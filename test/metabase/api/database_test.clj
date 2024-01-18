@@ -20,7 +20,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.sync :as sync]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
@@ -366,7 +365,7 @@
 (deftest create-db-audit-log-test
   (testing "POST /api/database"
     (testing "The id captured in the database-create event matches the new db's id"
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
           (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
                 audit-entry (mt/latest-audit-log-entry "database-create")]
@@ -397,7 +396,7 @@
   (deftest delete-database-audit-log-test
     (testing "DELETE /api/database/:id"
       (testing "Check that an audit log entry is created when someone deletes a Database"
-        (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-premium-features #{:audit-app}
           (t2.with-temp/with-temp [Database db]
             (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
             (is (= (audit-log/model-details db :model/Database)
@@ -471,7 +470,7 @@
 
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [Database {db-id :id}]
         (with-redefs [driver/can-connect? (constantly true)]
           (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
@@ -584,6 +583,7 @@
                                                              :has_field_values  "none"
                                                              :database_position 0
                                                              :database_required false
+                                                             :database_indexed  true
                                                              :database_is_auto_increment true})
                                                            (merge
                                                             (field-details (t2/select-one Field :id (mt/id :categories :name)))
@@ -598,6 +598,7 @@
                                                              :has_field_values  "list"
                                                              :database_position 1
                                                              :database_required true
+                                                             :database_indexed  false
                                                              :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
@@ -667,11 +668,19 @@
                                              :substring search))]
     (testing "GET /api/database/:id/autocomplete_suggestions"
       (doseq [[prefix expected] {"u"   [["USERS" "Table"]
-                                        ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
+                                        ["USER_ID" "CHECKINS :type/Integer :type/FK"]
+                                        ["USER_ID" "ORDERS :type/Integer :type/FK"]]
                                  "c"   [["CATEGORIES" "Table"]
                                         ["CHECKINS" "Table"]
-                                        ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+                                        ["CATEGORY" "PRODUCTS :type/Text :type/Category"]
+                                        ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]
+                                        ["CITY" "PEOPLE :type/Text :type/City"]
+                                        ["CREATED_AT" "ORDERS :type/DateTimeWithLocalTZ :type/CreationTimestamp"]
+                                        ["CREATED_AT" "PEOPLE :type/DateTimeWithLocalTZ :type/CreationTimestamp"]
+                                        ["CREATED_AT" "PRODUCTS :type/DateTimeWithLocalTZ :type/CreationTimestamp"]
+                                        ["CREATED_AT" "REVIEWS :type/DateTimeWithLocalTZ :type/CreationTimestamp"]]
                                  "cat" [["CATEGORIES" "Table"]
+                                        ["CATEGORY" "PRODUCTS :type/Text :type/Category"]
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
         (is (= expected (prefix-fn (mt/id) prefix))))
       (testing " handles large numbers of tables and fields sensibly with prefix"
@@ -1110,7 +1119,7 @@
   (testing "Can we trigger a metadata sync for a DB?"
     (let [sync-called?    (promise)
           analyze-called? (promise)]
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (t2.with-temp/with-temp [Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
           (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
                         analyze/analyze-db!             (deliver-when-db analyze-called? db)]
@@ -1151,7 +1160,7 @@
 
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (let [update-field-values-called? (promise)]
         (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
           (with-redefs [field-values/update-field-values! (fn [synced-db]
@@ -1189,7 +1198,7 @@
 
 (deftest discard-db-fieldvalues-audit-log-test
   (testing "Do we get an audit log entry when we discard all the FieldValues for a DB?"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (mt/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
         (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
         (is (= (:id db) (:model_id (mt/latest-audit-log-entry))))))))
@@ -1809,33 +1818,33 @@
           (is (nil? (settings))))
         (testing "Set initial value"
           (testing "response"
-            (is (partial= {:settings {:max-unaggregated-query-row-limit 1337}}
-                          (set-settings! {:max-unaggregated-query-row-limit 1337}))))
+            (is (partial= {:settings {:unaggregated-query-row-limit 1337}}
+                          (set-settings! {:unaggregated-query-row-limit 1337}))))
           (testing "App DB"
-            (is (= {:max-unaggregated-query-row-limit 1337}
+            (is (= {:unaggregated-query-row-limit 1337}
                    (settings)))))
         (testing "Setting a different value should not affect anything not specified (PATCH-style update)"
           (testing "response"
-            (is (partial= {:settings {:max-unaggregated-query-row-limit   1337
+            (is (partial= {:settings {:unaggregated-query-row-limit   1337
                                       :database-enable-actions true}}
                           (set-settings! {:database-enable-actions true}))))
           (testing "App DB"
-            (is (= {:max-unaggregated-query-row-limit   1337
+            (is (= {:unaggregated-query-row-limit   1337
                     :database-enable-actions true}
                    (settings)))))
         (testing "Update existing value"
           (testing "response"
-            (is (partial= {:settings {:max-unaggregated-query-row-limit   1337
+            (is (partial= {:settings {:unaggregated-query-row-limit   1337
                                       :database-enable-actions false}}
                           (set-settings! {:database-enable-actions false}))))
           (testing "App DB"
-            (is (= {:max-unaggregated-query-row-limit   1337
+            (is (= {:unaggregated-query-row-limit   1337
                     :database-enable-actions false}
                    (settings)))))
         (testing "Unset a value"
           (testing "response"
             (is (partial= {:settings {:database-enable-actions false}}
-                          (set-settings! {:max-unaggregated-query-row-limit nil}))))
+                          (set-settings! {:unaggregated-query-row-limit nil}))))
           (testing "App DB"
             (is (= {:database-enable-actions false}
                    (settings)))))))))

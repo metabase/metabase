@@ -11,10 +11,12 @@ export const getFileInputOverrides =
       },
       styles: (theme, _, { size = "md" }) => ({
         wrapper: {
-          marginTop: theme.spacing.xs,
+          "&:not(:only-child)": {
+            marginTop: theme.spacing.xs,
+          },
         },
         label: {
-          color: theme.colors.text[1],
+          color: theme.fn.themeColor("text-medium"),
           fontSize: getSize({ size, sizes: theme.fontSizes }),
         },
       }),

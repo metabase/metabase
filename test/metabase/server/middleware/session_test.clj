@@ -5,7 +5,10 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
+   [metabase.api.common :as api :refer [*current-user*
+                                        *current-user-id*
+                                        *is-group-manager?*
+                                        *is-superuser?*]]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -15,11 +18,10 @@
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
+   [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -128,7 +130,7 @@
     (with-redefs [env/env (assoc env/env :max-session-age "1")]
       (doseq [[created-at expected msg]
               [[:%now                                                               false "brand-new session"]
-               [#t "1970-01-01T00:00:00Z"                                           true  "really old session"]
+               [#t "1970-01-01T00:00:01Z"                                           true  "really old session"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
@@ -243,6 +245,72 @@
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri]))))))
 
+(deftest current-user-info-for-api-key-test
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                            :user_id       (mt/user->id :lucky)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
+    (testing "A valid API key works, and user info is added to the request"
+      (let [req {:headers {"x-api-key" "mb_foobar"}}]
+        (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
+                           :is-superuser?     false
+                           :is-group-manager? false
+                           :user-locale       nil})
+               (#'mw.session/merge-current-user-info req)))))
+    (testing "Various invalid API keys do not modify the request"
+      (are [req] (= req (#'mw.session/merge-current-user-info req))
+        ;; a matching prefix, invalid key
+        {:headers {"x-api-key" "mb_fooby"}}
+
+        ;; no matching prefix, invalid key
+        {:headers {"x-api-key" "abcde"}}
+
+        ;; no key at all
+        {:headers {}}))))
+
+(defn- simple-auth-handler
+  "A handler that just does authentication and returns a map from the dynamic variables that are bound as a result."
+  [request]
+  (let [handler (fn [_ respond _]
+                  (respond
+                   {:user-id           *current-user-id*
+                    :is-superuser?     *is-superuser?*
+                    :is-group-manager? *is-group-manager?*
+                    :user              (select-keys @*current-user* [:id :email])}))]
+    ((-> handler
+         mw.session/bind-current-user
+         mw.session/wrap-current-user-info)
+     request
+     identity
+     (fn [e] (throw e)))))
+
+(deftest user-data-is-correctly-bound-for-api-keys
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                            :user_id       (mt/user->id :lucky)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}
+                           :model/ApiKey _ {:name          "A superuser API Key"
+                                            :user_id       (mt/user->id :crowberto)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  (u.secret/secret "mb_superuser")}]
+    (testing "A valid API key works, and user info is added to the request"
+      (is (= {:is-superuser?     false
+              :is-group-manager? false
+              :user-id           (mt/user->id :lucky)
+              :user              {:id    (mt/user->id :lucky)
+                                  :email (:email (mt/fetch-user :lucky))}}
+             (simple-auth-handler {:headers {"x-api-key" "mb_foobar"}}))))
+    (testing "A superuser API key has `*is-superuser?*` bound correctly"
+      (is (= {:is-superuser?     true
+              :is-group-manager? false
+              :user-id           (mt/user->id :crowberto)
+              :user              {:id    (mt/user->id :crowberto)
+                                  :email (:email (mt/fetch-user :crowberto))}}
+             (simple-auth-handler {:headers {"x-api-key" "mb_superuser"}}))))))
+
 (deftest current-user-info-for-session-test
   (testing "make sure the `current-user-info-for-session` logic is working correctly"
     ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work
@@ -272,7 +340,7 @@
         (t2/insert! Session {:id      (str test-uuid)
                              :user_id (:id user)})
         (testing "is `false` if advanced-permisison is disabled"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (is (= false
                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))
 
@@ -329,7 +397,7 @@
       (t2/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (t2/query-one {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
+      (t2/query-one {:update :core_session, :set {:created_at (t/instant 1000)}, :where [:= :id (str test-uuid)]})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally

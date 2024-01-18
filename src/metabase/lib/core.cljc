@@ -18,6 +18,7 @@
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -48,6 +49,7 @@
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
+         lib.filter.update/keep-me
          lib.join/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
@@ -115,7 +117,6 @@
   find-matching-column]
  [lib.expression
   expression
-  expression-name
   expressions
   expressions-metadata
   expressionable-columns
@@ -167,11 +168,8 @@
   filter-args-display-name]
  [lib.field
   add-field
-  field-id
-  legacy-card-or-table-id
   fieldable-columns
   fields
-  find-visible-column-for-legacy-ref
   find-visible-column-for-ref
   remove-field
   with-fields]
@@ -198,6 +196,10 @@
   contains does-not-contain
   time-interval
   segment]
+ [lib.filter.update
+  update-lat-lon-filter
+  update-numeric-filter
+  update-temporal-filter]
  [lib.join
   available-join-strategies
   join
@@ -274,7 +276,9 @@
   available-segments]
  [lib.stage
   append-stage
-  drop-stage]
+  drop-stage
+  drop-stage-if-empty
+  has-clauses?]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval

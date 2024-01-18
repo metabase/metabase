@@ -26,15 +26,19 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.events :as events]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.pulse.parameters :as params]
+   [metabase.models.params :as params]
+   [metabase.pulse.parameters :as pulse-params]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n
+    :as i18n
+    :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -113,18 +117,23 @@
         :when (not (contains? params-to-remove (keyword (:slug param))))]
     param))
 
+(defn- get-params-to-remove
+  "Gets the params in both the provided embedding-params and dashboard-or-card object that we should remove."
+  [dashboard-or-card embedding-params]
+  (set (concat (for [[param status] embedding-params
+                     :when          (not= status "enabled")]
+                 param)
+               (for [{slug :slug} (:parameters dashboard-or-card)
+                     :let         [param (keyword slug)]
+                     :when        (not (contains? embedding-params param))]
+                 param))))
+
 (mu/defn ^:private remove-locked-and-disabled-params
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card embedding-params :- ms/EmbeddingParams]
-  (let [params-to-remove (set (concat (for [[param status] embedding-params
-                                            :when          (not= status "enabled")]
-                                        param)
-                                      (for [{slug :slug} (:parameters dashboard-or-card)
-                                            :let         [param (keyword slug)]
-                                            :when        (not (contains? embedding-params param))]
-                                        param)))]
+  (let [params-to-remove (get-params-to-remove dashboard-or-card embedding-params)]
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
 (defn- remove-token-parameters
@@ -152,7 +161,7 @@
            (map
             (fn [card]
               (if (-> card :visualization_settings :virtual_card)
-                (params/process-virtual-dashcard card params-with-values)
+                (pulse-params/process-virtual-dashcard card params-with-values)
                 card))
             dashcards))))
 
@@ -251,18 +260,61 @@
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
+(defn- remove-linked-filters-param-values [dashboard]
+  (let [param-ids (set (map :id (:parameters dashboard)))
+        param-ids-to-remove (set (for [{param-id :id
+                                        filtering-parameters :filteringParameters} (:parameters dashboard)
+                                       filtering-parameter-id filtering-parameters
+                                       :when (not (contains? param-ids filtering-parameter-id))]
+                                   param-id))
+        linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))]
+    (update dashboard :param_values #(->> %
+                                          (map (fn [[param-id param]]
+                                                 {param-id (cond-> param
+                                                             (contains? linked-field-ids param-id) ;; is param linked?
+                                                             (assoc :values []))}))
+                                          (into {})))))
+
+(defn- remove-locked-parameters [dashboard embedding-params]
+  (let [params-to-remove (get-params-to-remove dashboard embedding-params)
+        param-ids-to-remove (set (for [parameter (:parameters dashboard)
+                                       :when     (contains? params-to-remove (keyword (:slug parameter)))]
+                                   (:id parameter)))
+        linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
+        remove-parameters (fn [dashcard]
+                            (update dashcard :parameter_mappings
+                                    (fn [param-mappings]
+                                      (remove (fn [{:keys [parameter_id]}]
+                                                (contains? param-ids-to-remove parameter_id)) param-mappings))))]
+    (-> dashboard
+        (update :dashcards #(map remove-parameters %))
+        (update :param_fields #(apply dissoc % linked-field-ids))
+        (update :param_values #(apply dissoc % linked-field-ids)))))
+
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
   the `public-dashboard` function that fetches the Dashboard."
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        embedding-params (or embedding-params
+                             (t2/select-one-fn :embedding_params Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
         (substitute-token-parameters-in-text token-params)
+        (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
-        (remove-locked-and-disabled-params (or embedding-params
-                                               (t2/select-one-fn :embedding_params Dashboard, :id dashboard-id))))))
+        (remove-locked-and-disabled-params embedding-params)
+        (remove-linked-filters-param-values))))
+
+(defn- get-embed-dashboard-context
+  "If a certain export-format is given, return the correct embedded dashboard context."
+  [export-format]
+  (case export-format
+    "csv"  :embedded-csv-download
+    "xlsx" :embedded-xlsx-download
+    "json" :embedded-json-download
+    :embedded-dashboard))
 
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
@@ -282,7 +334,7 @@
      :export-format export-format
      :parameters    parameters
      :qp-runner     qp-runner
-     :context       :embedded-dashboard
+     :context       (get-embed-dashboard-context export-format)
      :constraints   constraints
      :middleware    middleware)))
 
@@ -292,6 +344,8 @@
 (defn- check-embedding-enabled-for-object
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
+   (api/check (pos-int? id)
+     [400 (tru "{0} id should be a positive integer." (name entity))])
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]
@@ -377,7 +431,9 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
-    (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
+    (u/prog1 (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
+      (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
+                                                    :object <>}))))
 
 (defn- dashcard-results-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the

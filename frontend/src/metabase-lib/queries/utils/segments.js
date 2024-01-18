@@ -2,7 +2,7 @@ import Question from "metabase-lib/Question";
 
 export function getSegmentOrMetricQuestion(query, table, metadata) {
   return table
-    ? metadata.table(table.id).query(query).question()
+    ? metadata.table(table.id).legacyQuery(query).question()
     : Question.create({ metadata });
 }
 
@@ -13,11 +13,16 @@ export function getDefaultSegmentOrMetricQuestion(table, metadata) {
     const dateField = table.fields.find(f => f.name === "ga:date");
     if (dateField) {
       return question
+        .legacyQuery({ useStructuredQuery: true })
         .filter(["time-interval", ["field", dateField.id, null], -365, "day"])
-        .aggregate(["metric", "ga:users"]);
+        .aggregate(["metric", "ga:users"])
+        .question();
     }
   } else {
-    return question.aggregate(["count"]);
+    return question
+      .legacyQuery({ useStructuredQuery: true })
+      .aggregate(["count"])
+      .question();
   }
 
   return null;

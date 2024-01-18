@@ -10,6 +10,13 @@ import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationMod
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
+import {
+  Modal as NewModal,
+  Text,
+  Button as NewButton,
+  Group,
+} from "metabase/ui";
+
 import type { PermissionsGraph } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -21,13 +28,14 @@ import {
   CloseSidebarButton,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import {
   clearSaveError as clearPermissionsSaveError,
   toggleHelpReference,
 } from "../../permissions";
 import { ToolbarButton } from "../ToolbarButton";
+import { showRevisionChangedModal } from "../../selectors/data-permissions/revision";
 import { PermissionsTabs } from "./PermissionsTabs";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
@@ -70,7 +78,7 @@ function PermissionsPageLayout({
   helpContent,
 }: PermissionsPageLayoutProps) {
   const saveError = useSelector(state => state.admin.permissions.saveError);
-
+  const showRefreshModal = useSelector(showRevisionChangedModal);
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
 
@@ -132,6 +140,24 @@ function PermissionsPageLayout({
           {helpContent}
         </PermissionPageSidebar>
       )}
+      <NewModal
+        title="Someone just changed permissions"
+        opened={showRefreshModal}
+        size="lg"
+        padding="2.5rem"
+        withCloseButton={false}
+        onClose={() => true}
+      >
+        <Text mb="1rem">
+          To edit permissions, you need to start from the latest version. Please
+          refresh the page.
+        </Text>
+        <Group position="right">
+          <NewButton onClick={() => location.reload()} variant="filled">
+            Refresh the page
+          </NewButton>
+        </Group>
+      </NewModal>
     </PermissionPageRoot>
   );
 }

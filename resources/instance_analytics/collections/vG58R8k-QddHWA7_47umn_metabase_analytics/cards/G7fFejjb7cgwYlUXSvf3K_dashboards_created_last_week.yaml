@@ -29,7 +29,10 @@ dataset_query:
     - - count
     breakout:
     - - field
-      - created_at
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - created_at
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
     filter:
@@ -51,9 +54,8 @@ dataset_query:
         - base-type: type/DateTimeWithLocalTZ
       - -2
       - week
-      - include-current: false
     joins:
-    - alias: Question 34
+    - alias: Group Members - Creator
       condition:
       - =
       - - field
@@ -68,9 +70,9 @@ dataset_query:
           - v_group_members
           - user_id
         - base-type: type/Integer
-          join-alias: Question 34
-      fields: all
+          join-alias: Group Members - Creator
       source-table: lTp-ATFsCUFEr9I0fMEaO
+      strategy: left-join
     source-table: AxSackBiyXVRUzM_TyyQY
   type: query
 result_metadata: null
@@ -80,6 +82,7 @@ visualization_settings:
   - created_at
   - group_name
   graph.metrics:
+  - count
   - count
 serdes/meta:
 - id: G7fFejjb7cgwYlUXSvf3K

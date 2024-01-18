@@ -2,7 +2,12 @@ import type { LocalFieldReference } from "metabase-types/api";
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
-import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
+import type {
+  DatasetQuery,
+  DatetimeUnit,
+  DimensionReference,
+  RelativeDatetimeUnit,
+} from "./query";
 import type { DownloadPermission } from "./permissions";
 import type { ParameterOptions } from "./parameters";
 import type { TableId } from "./table";
@@ -10,12 +15,19 @@ import type { TableId } from "./table";
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
 
+export type BinningMetadata = {
+  binning_strategy?: "default" | "bin-width" | "num-bins";
+  bin_width?: number;
+  num_bins?: number;
+};
+
 export interface DatasetColumn {
   id?: FieldId;
   name: string;
   display_name: string;
   description?: string | null;
   source: string;
+  aggregation_index?: number;
   coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   table_id?: TableId;
@@ -29,9 +41,7 @@ export interface DatasetColumn {
   remapped_from?: string;
   remapped_to?: string;
   effective_type?: string;
-  binning_info?: {
-    bin_width?: number;
-  };
+  binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
 
@@ -43,14 +53,23 @@ export interface ResultsMetadata {
   columns: DatasetColumn[];
 }
 
+export type Insight = {
+  col: string;
+  unit: RelativeDatetimeUnit;
+};
+
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
+  insights?: Insight[];
+  results_metadata: ResultsMetadata;
   rows_truncated: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
-  results_metadata: ResultsMetadata;
+  native_form: {
+    query: string;
+  };
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -76,8 +95,7 @@ export interface EmbedDatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
-  // TODO: Correct this type
-  insights: any;
+  insights?: Insight[];
   requested_timezone?: string;
   results_timezone?: string;
 }

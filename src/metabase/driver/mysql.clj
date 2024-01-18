@@ -28,7 +28,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -54,19 +53,20 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(doseq [[feature supported?] {:persist-models          true
-                              :convert-timezone        true
-                              :datetime-diff           true
-                              :now                     true
-                              :regex                   false
-                              :percentile-aggregations false
-                              :full-join               false
-                              :uploads                 true
-                              :schemas                 false
+(doseq [[feature supported?] {:persist-models                         true
+                              :convert-timezone                       true
+                              :datetime-diff                          true
+                              :now                                    true
+                              :regex                                  false
+                              :percentile-aggregations                false
+                              :full-join                              false
+                              :uploads                                true
+                              :schemas                                false
                               ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
                               ;; users in the UI
-                              :case-sensitivity-string-filter-options false}]
+                              :case-sensitivity-string-filter-options false
+                              :index-info                             true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -225,10 +225,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod sql.qp/honey-sql-version :mysql
-  [_driver]
-  2)
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   [:from_unixtime expr])
@@ -648,13 +644,11 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
-    ::upload/int-pk                   [:bigint :primary-key]
     ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
-    ::upload/string-pk                [[:varchar 255] :primary-key]
     ::upload/float                    [:double]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]
+    ::upload/datetime                 [:datetime]
     ::upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/table-name-length-limit :mysql
@@ -674,7 +668,7 @@
   to calculate one by hand."
   [driver database ^OffsetDateTime offset-time]
   (let [zone-id (t/zone-id (driver/db-default-timezone driver database))]
-    (t/local-date-time offset-time zone-id )))
+    (t/local-date-time offset-time zone-id)))
 
 (defmulti ^:private value->string
   "Convert a value into a string that's safe for insertion"
@@ -761,7 +755,12 @@
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))
-          (qp.writeback/execute-write-sql! db-id sql))
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver
+           db-id
+           nil
+           (fn [conn]
+             (jdbc/execute! {:connection conn} sql))))
         (finally
           (.delete temp-file))))))
 
@@ -855,7 +854,7 @@
   (let [{global-grants   :global
          database-grants :database
          table-grants    :table} (group-by :level privilege-grants)
-        lower-database-name (u/lower-case-en database-name)
+        lower-database-name  (u/lower-case-en database-name)
         all-table-privileges (set/union (:privilege-types (first global-grants))
                                         (:privilege-types (m/find-first #(= (:object %) (str "`" lower-database-name "`.*"))
                                                                         database-grants)))
@@ -877,11 +876,14 @@
   ;; for the mysql database), so we can't query the full privileges of the current user.
   (when-not (mariadb? database)
     (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+          db-name     (or (get-in database [:details :db])
+                          ;; some tests are stil using dbname
+                          (get-in database [:details :dbname]))
           table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
                            (drop 1)
                            (map first))]
       (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()")
-                                                             (:name database)
+                                                             db-name
                                                              table-names)]
         {:role   nil
          :schema nil

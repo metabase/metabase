@@ -20,6 +20,7 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -257,7 +258,7 @@
    (remove nil?)
    set))
 
-(mu/defn ^:private sandbox->perms-set :- [:set perms/PathSchema]
+(mu/defn ^:private sandbox->perms-set :- [:set perms.u/PathSchema]
   "Calculate the set of permissions needed to run the query associated with a sandbox; this set of permissions is excluded
   during the normal QP perms check.
 

@@ -4,8 +4,6 @@
    [clojure.test :refer :all]
    [metabase.models :refer [PermissionsGroup]]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -13,7 +11,7 @@
 
 (deftest create-impersonation-policy-test
   (testing "/api/permissions/graph"
-    (premium-features-test/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:advanced-permissions}
       (testing "A connection impersonation policy can be created via the permissions graph endpoint"
         (mt/with-user-in-groups
           [group {:name "New Group"}
@@ -50,7 +48,7 @@
                              :model/ConnectionImpersonation {impersonation-id-2 :id :as impersonation-2} {:group_id group-id-2
                                                                                                           :db_id    (mt/id)
                                                                                                           :attribute "Attribute Name 2"}]
-      (premium-features-test/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:advanced-permissions}
         (testing "Test that we can fetch a list of all Connection Impersonations"
           (is (= [impersonation-1 impersonation-2]
                  (filter
@@ -66,12 +64,12 @@
           (mt/user-http-request :rasta :get 403 "ee/advanced-permissions/impersonation")))
 
       (testing "Test that the :advanced-permissions flag is required to fetch Connection Impersonation Details"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/impersonation"))))))
 
 (deftest delete-impersonation-policy
   (testing "DELETE /api/ee/advanced-permissions/impersonation"
-    (premium-features-test/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:advanced-permissions}
       (testing "Test that a Connection Impersonation can be deleted by ID"
         (t2.with-temp/with-temp [PermissionsGroup               {group-id :id}         {}
                                  :model/ConnectionImpersonation {impersonation-id :id} {:group_id group-id
@@ -90,7 +88,7 @@
           (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))
 
     (testing "Test that the :advanced-permissions flag is required to delete a Connection Impersonation"
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
                                  :model/ConnectionImpersonation {impersonation-id :id :as impersonation}
                                                                 {:group_id group-id
@@ -100,7 +98,7 @@
           (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))))
 
 (deftest delete-impersonation-policy-after-permissions-change-test
-  (premium-features-test/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions}
     (testing "A connection impersonation policy is deleted automatically if the data permissions are changed"
       (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
                                :model/ConnectionImpersonation {impersonation-id :id}

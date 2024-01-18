@@ -2,20 +2,15 @@
   "/api/card endpoints."
   (:require
    [cheshire.core :as json]
-   [clj-bom.core :as bom]
    [clojure.core.async :as a]
-   [clojure.data.csv :as csv]
-   [clojure.string :as str]
+   [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.driver :as driver]
-   [metabase.driver.sync :as driver.s]
-   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -25,11 +20,9 @@
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
@@ -41,10 +34,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
-   [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
-   [metabase.sync.sync-metadata.fields :as sync-fields]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -53,9 +43,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [steffan-westcott.clj-otel.api.trace.span :as span]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -148,21 +137,25 @@
                      card)))
             cards))))
 
-(defn hydrate-for-frontend
+(defn hydrate-card-details
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
   returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
   it currently has with returned one -- See #4283"
-  [card]
-  (-> card
-      (t2/hydrate :creator
-                  :dashboard_count
-                  :can_write
-                  :average_query_time
-                  :last_query_start
-                  [:collection :is_personal]
-                  [:moderation_reviews :moderator_details])
-      (cond-> ; card
-        (:dataset card) (t2/hydrate :persisted))))
+  [{card-id :id :as card}]
+  (span/with-span!
+    {:name       "hydrate-card-details"
+     :attributes {:card/id card-id}}
+    (-> card
+        (t2/hydrate :creator
+                    :dashboard_count
+                    :can_write
+                    :average_query_time
+                    :last_query_start
+                    :parameter_usage_count
+                    [:collection :is_personal]
+                    [:moderation_reviews :moderator_details])
+        (cond->                                             ; card
+          (:dataset card) (t2/hydrate :persisted)))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
@@ -172,9 +165,7 @@
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
                  api/read-check
-                 hydrate-for-frontend
-                 ;; Cal 2023-11-27: why is parameter_usage_count not hydrated for other endpoints? Maybe it should be
-                 (t2/hydrate :parameter_usage_count)
+                 hydrate-card-details
                  ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
                  (last-edit/with-last-edit-info :card)
                  collection.root/hydrate-root-collection)]
@@ -413,7 +404,7 @@
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   (-> (card/create-card! body @api/*current-user*)
-      hydrate-for-frontend
+      hydrate-card-details
       (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 (api/defendpoint POST "/:id/copy"
@@ -424,7 +415,7 @@
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
-        hydrate-for-frontend
+        hydrate-card-details
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
@@ -494,7 +485,7 @@
       (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
                                        :card-updates       card-updates
                                        :actor              @api/*current-user*})
-                   hydrate-for-frontend
+                   hydrate-card-details
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
           (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
@@ -808,127 +799,33 @@
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
-(defn- scan-and-sync-table!
-  [database table]
-  (sync-fields/sync-fields-for-table! database table)
-  (future
-    (sync/sync-table! table)))
-
-(defn- csv-stats [^File csv-file]
-  (with-open [reader (bom/bom-reader csv-file)]
-    (let [rows (csv/read-csv reader)]
-      {:size-mb     (/ (.length csv-file) 1048576.0)
-       :num-columns (count (first rows))
-       :num-rows    (count (rest rows))})))
-
-(defn- can-upload-error
-  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
-  [db schema-name]
-  (let [driver (driver.u/database->driver db)]
-    (cond
-      (not (public-settings/uploads-enabled))
-      (ex-info (tru "Uploads are not enabled.")
-               {:status-code 422})
-      (premium-features/sandboxed-user?)
-      (ex-info (tru "Uploads are not permitted for sandboxed users.")
-               {:status-code 403})
-      (not (driver/database-supports? driver :uploads nil))
-      (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
-               {:status-code 422})
-      (and (str/blank? schema-name)
-           (driver/database-supports? driver :schemas db))
-      (ex-info (tru "A schema has not been set.")
-               {:status-code 422})
-      (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                            (perms/data-perms-path (u/the-id db) schema-name)))
-      (ex-info (tru "You don''t have permissions to do that.")
-               {:status-code 403})
-      (and (some? schema-name)
-           (not (driver.s/include-schema? db schema-name)))
-      (ex-info (tru "The schema {0} is not syncable." schema-name)
-               {:status-code 422}))))
-
-(defn- check-can-upload
-  "Throws an error if the user cannot upload to the given database and schema."
-  [db schema-name]
-  (when-let [error (can-upload-error db schema-name)]
-    (throw error)))
-
-(defn can-upload?
-  "Returns true if the user can upload to the given database and schema, and false otherwise."
-  [db schema-name]
-  (nil? (can-upload-error db schema-name)))
-
-(defn upload-csv!
-  "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
-  syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
-  DB errors."
-  [collection-id filename ^File csv-file]
-  {collection-id ms/PositiveInt}
-  (collection/check-write-perms-for-collection collection-id)
+(defn- from-csv!
+  "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
+  [{:keys [collection-id filename file]}]
   (try
-    (let [start-time        (System/currentTimeMillis)
-          db-id             (public-settings/uploads-database-id)
-          database          (or (t2/select-one Database :id db-id)
-                                (throw (Exception. (tru "The uploads database does not exist."))))
-          driver            (driver.u/database->driver database)
-          schema-name       (public-settings/uploads-schema-name)
-          _                 (check-can-upload database schema-name)
-          filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
-                                filename)
-          table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
-                                 (upload/unique-table-name driver)
-                                 (u/lower-case-en))
-          schema+table-name (if (str/blank? schema-name)
-                              table-name
-                              (str schema-name "." table-name))
-          stats             (upload/load-from-csv! driver db-id schema+table-name csv-file)
-          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-          table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
-          _set_is_upload    (t2/update! Table (u/the-id table) {:is_upload true})
-          _sync             (scan-and-sync-table! database table)
-          card              (card/create-card!
-                             {:collection_id          collection-id,
-                              :dataset                true
-                              :database_id            db-id
-                              :dataset_query          {:database db-id
-                                                       :query    {:source-table (u/the-id table)}
-                                                       :type     :query}
-                              :display                :table
-                              :name                   (humanization/name->human-readable-name filename-prefix)
-                              :visualization_settings {}}
-                             @api/*current-user*)
-          upload-seconds    (/ (- (System/currentTimeMillis) start-time)
-                               1000.0)]
-      (snowplow/track-event! ::snowplow/csv-upload-successful
-                             api/*current-user-id*
-                             (merge
-                              {:model-id (:id card)
-                               :upload-seconds upload-seconds}
-                              stats))
-      (.delete csv-file)
-      (hydrate-for-frontend card))
+    (let [model (upload/create-csv-upload! {:collection-id collection-id
+                                            :filename      filename
+                                            :file          file
+                                            :schema-name   (public-settings/uploads-schema-name)
+                                            :table-prefix  (public-settings/uploads-table-prefix)
+                                            :db-id         (or (public-settings/uploads-database-id)
+                                                               (throw (ex-info (tru "The uploads database is not configured.")
+                                                                               {:status-code 422})))})]
+      {:status 200
+       :body   (:id model)})
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-upload-failed
-                             api/*current-user-id*
-                             (csv-stats csv-file))
-      (.delete csv-file)
-      (throw e))))
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error uploading the file"))}})
+    (finally (io/delete-file file :silently))))
 
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
   [:as {raw-params :params}]
   ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
-  (try
-    (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
-                                     (get-in raw-params ["file" :filename])
-                                     (get-in raw-params ["file" :tempfile])))]
-      {:status 200
-       :body   model-id})
-    (catch Throwable e
-      {:status (or (-> e ex-data :status-code)
-                   500)
-       :body   {:message (or (ex-message e)
-                             (tru "There was an error uploading the file"))}})))
+  (from-csv! {:collection-id (parse-long (get raw-params "collection_id"))
+              :filename      (get-in raw-params ["file" :filename])
+              :file          (get-in raw-params ["file" :tempfile])}))
 
 (api/define-routes)

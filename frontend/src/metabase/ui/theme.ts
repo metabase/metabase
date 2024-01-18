@@ -1,9 +1,10 @@
-import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
-import { color } from "metabase/lib/colors";
 import {
   getAccordionOverrides,
+  getActionIconOverrides,
   getAnchorOverrides,
+  getAutocompleteOverrides,
   getButtonOverrides,
   getCalendarOverrides,
   getCardOverrides,
@@ -15,9 +16,11 @@ import {
   getInputOverrides,
   getMenuOverrides,
   getModalOverrides,
+  getMultiSelectOverrides,
   getRadioOverrides,
   getPaperOverrides,
   getPopoverOverrides,
+  getSegmentedControlOverrides,
   getSelectOverrides,
   getSwitchOverrides,
   getTabsOverrides,
@@ -28,38 +31,14 @@ import {
   getTitleOverrides,
   getTooltipOverrides,
 } from "./components";
-
-type ThemeColors = MantineTheme["colors"]["brand"];
-
-const getThemeColors = (colors: string[]): ThemeColors => {
-  return Array.from(
-    { length: 10 },
-    (_, index) => colors[index] ?? "transparent",
-  ) as ThemeColors;
-};
+import { getThemeColors } from "./utils/colors";
 
 export const getThemeOverrides = (): MantineThemeOverride => ({
-  colors: {
-    brand: getThemeColors([color("brand-lighter"), color("brand")]),
-    text: getThemeColors([
-      color("text-light"),
-      color("text-medium"),
-      color("text-dark"),
-    ]),
-    focus: getThemeColors([color("focus")]),
-    border: getThemeColors([color("border")]),
-    bg: getThemeColors([
-      color("bg-light"),
-      color("bg-medium"),
-      color("bg-dark"),
-      color("bg-black"),
-    ]),
-    success: getThemeColors([color("success")]),
-    error: getThemeColors([color("error")]),
-  },
+  colors: getThemeColors(),
   primaryColor: "brand",
-  primaryShade: 1,
+  primaryShade: 0,
   shadows: {
+    sm: "0px 4px 4px 0px rgba(0, 0, 0, 0.08)",
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
   },
   spacing: {
@@ -113,7 +92,9 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   },
   components: {
     ...getAccordionOverrides(),
+    ...getActionIconOverrides(),
     ...getAnchorOverrides(),
+    ...getAutocompleteOverrides(),
     ...getButtonOverrides(),
     ...getCalendarOverrides(),
     ...getCardOverrides(),
@@ -125,9 +106,11 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getInputOverrides(),
     ...getMenuOverrides(),
     ...getModalOverrides(),
+    ...getMultiSelectOverrides(),
     ...getRadioOverrides(),
     ...getPaperOverrides(),
     ...getPopoverOverrides(),
+    ...getSegmentedControlOverrides(),
     ...getSelectOverrides(),
     ...getSwitchOverrides(),
     ...getTabsOverrides(),

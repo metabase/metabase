@@ -18,15 +18,9 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each (fn [thunk]
-                      (binding [hx/*honey-sql-version* 2]
-                        (thunk))))
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 

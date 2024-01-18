@@ -39,7 +39,7 @@ export const AreaSeries = ({
 
   return (
     <Group>
-      {multipleSeries.map((series, seriesIndex) => {
+      {multipleSeries.map(series => {
         const yScale =
           series.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
 

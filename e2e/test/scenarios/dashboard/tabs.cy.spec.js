@@ -27,6 +27,9 @@ import {
   moveDashCardToTab,
   addTextBoxWhileEditing,
   expectGoodSnowplowEvent,
+  selectDashboardFilter,
+  filterWidget,
+  popover,
 } from "e2e/support/helpers";
 
 import {
@@ -288,7 +291,6 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
-      cy.wrap(response.body.tabs[0].id).as("firstTabId");
     });
 
     cy.intercept(
@@ -306,9 +308,8 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Visit first tab and confirm only first card was queried
-    cy.get("@firstTabId").then(firstTabId => {
-      visitDashboard(ORDERS_DASHBOARD_ID, { params: { tab: firstTabId } });
-    });
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
@@ -352,6 +353,59 @@ describe("scenarios > dashboard > tabs", () => {
     goToTab("Tab 2");
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
+  });
+
+  it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    createNewTab();
+    saveDashboard();
+
+    goToTab("Tab 2");
+    editDashboard();
+    openQuestionsSidebar();
+    sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+
+    cy.findByTestId("dashboard-header").within(() => {
+      cy.icon("filter").click();
+    });
+
+    popover().within(() => {
+      cy.contains("Time").click();
+      cy.findByText("Relative Date").click();
+    });
+
+    // Auto-connection happens here
+    selectDashboardFilter(getDashboardCard(0), "Created At");
+    saveDashboard();
+
+    cy.intercept(
+      "POST",
+      "/api/dashboard/*/dashcard/*/card/*/query",
+      delayResponse(500),
+    ).as("saveCard");
+
+    filterWidget().contains("Relative Date").click();
+    popover().within(() => {
+      cy.findByText("Today").click();
+    });
+
+    // Loader in the 2nd tab
+    getDashboardCard(0).within(() => {
+      cy.findByTestId("loading-spinner").should("exist");
+      cy.wait("@saveCard");
+      cy.findAllByTestId("table-row").should("exist");
+    });
+
+    // Loader in the 1st tab
+    goToTab("Tab 1");
+    getDashboardCard(0).within(() => {
+      cy.findByTestId("loading-spinner").should("exist");
+      cy.wait("@saveCard");
+      cy.findAllByTestId("table-row").should("exist");
+    });
   });
 });
 
@@ -412,3 +466,19 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
     );
   });
 });
+
+/**
+ * When you need to postpone a response (to check for loading spinners or alike),
+ * use this:
+ *
+ * `cy.intercept('POST', path, delayResponse(1000)).as('delayed')`
+ *
+ * `cy.wait('@delayed')` - you'll have 1000 ms until this resolves
+ */
+function delayResponse(delayMs) {
+  return function (req) {
+    req.on("response", res => {
+      res.setDelay(delayMs);
+    });
+  };
+}

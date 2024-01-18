@@ -1,4 +1,5 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
+import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 /**
  * @typedef {object} QuestionResource
@@ -107,10 +108,112 @@ export function visitEmbeddedPage(
  * but make sure user is signed out.
  */
 export function visitIframe() {
+  modal().findByText("Preview").click();
+
   cy.document().then(doc => {
     const iframe = doc.querySelector("iframe");
 
     cy.signOut();
     cy.visit(iframe.src);
   });
+}
+
+/**
+ * Get page iframe body wrapped in `cy` helper
+ * @param {string} [selector]
+ */
+export function getIframeBody(selector = "iframe") {
+  return cy
+    .get(selector)
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.null")
+    .then(cy.wrap);
+}
+
+export function getEmbedModalSharingPane() {
+  return cy.findByTestId("sharing-pane-container");
+}
+
+export function openPublicLinkPopoverFromMenu() {
+  cy.icon("share").click();
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-public-link-item")
+    .click();
+}
+
+export function openEmbedModalFromMenu() {
+  cy.icon("share").click();
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-embed-modal-item")
+    .click();
+}
+
+/**
+ * Open Static Embedding setup modal
+ * @param {object} params
+ * @param {("overview"|"parameters"|"appearance")} [params.activeTab] - modal tab to open
+ * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
+ */
+export function openStaticEmbeddingModal({
+  activeTab,
+  previewMode,
+  confirmSave,
+} = {}) {
+  openEmbedModalFromMenu();
+
+  if (confirmSave) {
+    cy.findByRole("button", { name: "Save" }).click();
+  }
+
+  cy.findByTestId("sharing-pane-static-embed-button").click();
+
+  modal().within(() => {
+    if (activeTab) {
+      const tabKeyToNameMap = {
+        overview: "Overview",
+        parameters: "Parameters",
+        appearance: "Appearance",
+      };
+
+      cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();
+    }
+
+    if (previewMode) {
+      const previewModeToKeyMap = {
+        code: "Code",
+        preview: "Preview",
+      };
+
+      cy.findByText(previewModeToKeyMap[previewMode]).click();
+    }
+  });
+}
+
+// @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
+export function openNewPublicLinkDropdown(resourceType) {
+  cy.intercept("POST", `/api/${resourceType}/*/public_link`).as(
+    "sharingEnabled",
+  );
+
+  openPublicLinkPopoverFromMenu();
+
+  cy.wait("@sharingEnabled").then(
+    ({
+      response: {
+        body: { uuid },
+      },
+    }) => {
+      cy.wrap(uuid).as("uuid");
+    },
+  );
+}
+
+export function createPublicQuestionLink(questionId) {
+  return cy.request("POST", `/api/card/${questionId}/public_link`, {});
+}
+
+export function createPublicDashboardLink(dashboardId) {
+  return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }

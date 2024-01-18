@@ -120,3 +120,47 @@
       :query-type  :aggregated
       :column-name "sum"
       :expected    {:type :drill-thru/zoom-in.timeseries}})))
+
+(deftest ^:parallel returns-zoom-in-timeseries-e2e-test-2
+  (testing "zoom-in.timeseries should be returned for a"
+    (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                             (lib/aggregate (lib/count))
+                             (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                               (lib/with-temporal-bucket :year))))
+          created-at-col (m/find-first #(= (:name %) "CREATED_AT")
+                                       (lib/returned-columns query))
+          _              (is (some? created-at-col))]
+      (doseq [[message context] {"pivot cell (no column, value = NULL) (#36173)"
+                                 {:value      :null
+                                  :column     nil
+                                  :column-ref nil
+                                  :dimensions [{:column     created-at-col
+                                                :column-ref (lib/ref created-at-col)
+                                                :value      "2022-12-01T00:00:00+02:00"}]}
+
+                                 "for a legend item (no column, no value) (#36173)"
+                                 {:value      nil
+                                  :column     nil
+                                  :column-ref nil
+                                  :dimensions [{:column     created-at-col
+                                                :column-ref (lib/ref created-at-col)
+                                                :value      "2022-12-01T00:00:00+02:00"}]}}]
+        (testing message
+          (let [[drill :as drills] (filter #(= (:type %) :drill-thru/zoom-in.timeseries)
+                                           (lib/available-drill-thrus query -1 context))]
+            (is (= 1
+                   (count drills)))
+            (is (=? {:lib/type     :metabase.lib.drill-thru/drill-thru
+                     :display-name "See this year by quarter"
+                     :type         :drill-thru/zoom-in.timeseries
+                     :dimension    {:column {:name "CREATED_AT"}
+                                    :value  "2022-12-01T00:00:00+02:00"}
+                     :next-unit    :quarter}
+                    drill))
+            (is (=? {:stages [{:aggregation [[:count {}]]
+                               :breakout    [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]],
+                               :filters     [[:=
+                                              {}
+                                              [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+                                              "2022-12-01T00:00:00+02:00"]]}]}
+                    (lib/drill-thru query -1 drill)))))))))

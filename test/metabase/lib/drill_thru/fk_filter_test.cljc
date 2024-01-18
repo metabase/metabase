@@ -64,7 +64,7 @@
                           :drill-thru/fk-filter))))))
 
 (deftest ^:parallel fk-filter-on-model-test
-  (testing "FK filter drill should work correctly for native query models (#35689)"
+  (testing "FK filter drill should not appear on native query models (#35689, #36633)"
     (let [native-metadata   (fn [col]
                               (-> col
                                   (assoc :lib/source :source/native)
@@ -92,27 +92,45 @@
           drills            (lib/available-drill-thrus query context)
           fk-filter-drill   (m/find-first #(= (:type %) :drill-thru/fk-filter)
                                           drills)]
-      (testing "Drill should be returned"
-        (is (=? {:lib/type :metabase.lib.drill-thru/drill-thru
-                 :type     :drill-thru/fk-filter
-                 :filter   [:= {} [:field {} "USER_ID"] 1]}
-                fk-filter-drill)))
-      (when fk-filter-drill
-        (testing "Drill application"
-          (testing "Should introduce another query stage"
-            (is (=? {:lib/type :mbql/query
-                     :stages   [{:lib/type :mbql.stage/native,
-                                 :native   "SELECT id, user_id, product_id FROM ORDERS LIMIT 10;"}
-                                {:lib/type :mbql.stage/mbql,
-                                 :filters  [[:= {} [:field {} "USER_ID"] 1]]}]}
-                    (lib/drill-thru query -1 fk-filter-drill))))
-          (testing "Query already has another stage after the native stage -- add filter to existing stage"
-            (let [query (-> (lib/append-stage query)
-                            (lib/filter (lib/> 3 1)))]
-              (is (=? {:lib/type :mbql/query
-                       :stages   [{:lib/type :mbql.stage/native,
-                                   :native   "SELECT id, user_id, product_id FROM ORDERS LIMIT 10;"}
-                                  {:lib/type :mbql.stage/mbql,
-                                   :filters  [[:> {} 3 1]
-                                              [:= {} [:field {} "USER_ID"] 1]]}]}
-                      (lib/drill-thru query 0 fk-filter-drill))))))))))
+      (testing "Drill should not be returned"
+        (is (nil? fk-filter-drill))))))
+
+(deftest ^:parallel fk-filter-display-info-test
+  (let [base            (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+        join-clause     (lib/join-clause
+                         (meta/table-metadata :venues)
+                         [(lib/=
+                           (meta/field-metadata :checkins :venue-id)
+                           (meta/field-metadata :venues :id))])
+        query           (-> base
+                            (lib/join join-clause)
+                            (lib/with-fields [(meta/field-metadata :checkins :id)
+                                              (lib/with-join-alias (meta/field-metadata :venues :id) "Venues")
+                                              (lib/with-join-alias (meta/field-metadata :venues :category-id) "Venues")]))
+        [checkins-id
+         venues-id
+         category-id]   (lib/returned-columns query)
+        context         {:column     category-id
+                         :column-ref (lib/ref category-id)
+                         :value      2
+                         :row        [{:column     checkins-id
+                                       :column-ref (lib/ref checkins-id)
+                                       :value      1}
+                                      {:column     venues-id
+                                       :column-ref (lib/ref venues-id)
+                                       :value      12}
+                                      {:column     category-id
+                                       :column-ref (lib/ref category-id)
+                                       :value      2}]}
+        fk-filter-drill (m/find-first #(= (:type %) :drill-thru/fk-filter)
+                                      (lib/available-drill-thrus query context))]
+    (is (=? {:lib/type    :metabase.lib.drill-thru/drill-thru,
+             :type        :drill-thru/fk-filter
+             :filter      [:= {} [:field {:join-alias "Venues"} (meta/id :venues :category-id)] 2]
+             :column-name "Venues → Category ID"
+             :table-name  "Checkins"}
+            fk-filter-drill))
+    (is (= {:type :drill-thru/fk-filter
+            :column-name "Venues → Category ID"
+            :table-name "Checkins"}
+           (lib/display-info query fk-filter-drill)))))

@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-import { getIcon } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 
 import {
   createMockCard,
@@ -33,7 +32,7 @@ const state = createMockState({
 const metadata = getMetadata(state); // metabase-lib Metadata instance
 
 const setup = options => {
-  render(
+  renderWithProviders(
     <DashCardCardParameterMapper
       card={createMockCard()}
       dashcard={createMockDashboardCard()}
@@ -50,7 +49,11 @@ const setup = options => {
 
 describe("DashCardParameterMapper", () => {
   it("should render an unauthorized state for a card with no dataset query", () => {
-    setup();
+    const card = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({ query: {} }),
+    });
+    setup({ card });
+
     expect(getIcon("key")).toBeInTheDocument();
     expect(
       screen.getByLabelText(/permission to see this question/i),

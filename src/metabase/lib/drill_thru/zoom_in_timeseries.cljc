@@ -1,4 +1,37 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries
+  "\"See this month by weeks\" type of transform.
+
+  Entry points:
+
+  - Cell
+
+  - Pivot cell
+
+  - Legend item
+
+  Requirements:
+
+  - `dimensions` have a date column with `year`, `quarter`, `month`, `week`, `day`, `hour` temporal unit. For other
+    units, or when there is no temporal bucketing this drill cannot be applied. Changing `hour` to `minute` ends the
+    sequence. Only the first matching column would be used in query transformation.
+
+  - `displayInfo` returns `displayName` with `See this {0} by {1}` string using the current and the next available
+    temporal unit.
+
+  Query transformation:
+
+  - Remove breakouts for `dimensions`. Please note that with regular cells and pivot cells it would mean removing all
+    breakouts; but with legend item clicks it would remove the breakout for the legend item column only.
+
+  - Add a filter based on columns and values from `dimensions`. Take temporal units and binning strategies into
+    account
+    https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/queries/utils/actions.js#L99
+
+  - Add a breakout based on the date column (from requirements), using the next (more granular) temporal unit.
+
+  Question transformation:
+
+  - Set default display"
   (:require
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
@@ -59,21 +92,19 @@
   For example: The month of a year, days or weeks of a quarter, smaller lat/long regions, etc.
 
   This is different from the `:drill-thru/zoom` type, which is for showing the details of a single object."
-  ;; TODO: This naming is confusing. Fix it?
-  [query                             :- ::lib.schema/query
-   stage-number                      :- :int
-   {:keys [column dimensions value]} :- ::lib.schema.drill-thru/context]
+  [query                              :- ::lib.schema/query
+   stage-number                       :- :int
+   {:keys [dimensions], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (not-empty dimensions)
-             (some? value))
-    (when-let [dimension (matching-breakout-dimension query stage-number dimensions)]
-      (when-let [next-unit (next-breakout-unit (:column dimension))]
-        {:lib/type     :metabase.lib.drill-thru/drill-thru
-         :display-name (describe-next-unit next-unit)
-         :type         :drill-thru/zoom-in.timeseries
-         :dimension    dimension
-         :next-unit    next-unit}))))
+             (not-empty dimensions))
+    (when-let [{:keys [value], :as dimension} (matching-breakout-dimension query stage-number dimensions)]
+      (when value
+        (when-let [next-unit (next-breakout-unit (:column dimension))]
+          {:lib/type     :metabase.lib.drill-thru/drill-thru
+           :display-name (describe-next-unit next-unit)
+           :type         :drill-thru/zoom-in.timeseries
+           :dimension    dimension
+           :next-unit    next-unit})))))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/zoom-in.timeseries
   [query                         :- ::lib.schema/query

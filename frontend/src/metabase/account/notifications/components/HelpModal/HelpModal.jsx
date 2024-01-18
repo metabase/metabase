@@ -4,6 +4,9 @@ import Settings from "metabase/lib/settings";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+
 import { ModalMessage } from "./HelpModal.styled";
 
 const propTypes = {
@@ -14,6 +17,8 @@ const HelpModal = ({ onClose }) => {
   const email = Settings.get("admin-email");
 
   const handleClose = () => onClose(true);
+
+  const applicationName = useSelector(getApplicationName);
 
   return (
     <ModalContent
@@ -26,10 +31,10 @@ const HelpModal = ({ onClose }) => {
       onClose={handleClose}
     >
       <ModalMessage>
-        {t`It’s possible you may also receive emails from Metabase if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
+        {t`It’s possible you may also receive emails from ${applicationName} if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
       </ModalMessage>
       <ModalMessage>
-        {getAdminMessage(email)}
+        {getAdminMessage(email, applicationName)}
         {t`Hopefully they’ll be able to help you out!`}
       </ModalMessage>
     </ModalContent>
@@ -48,9 +53,9 @@ const getAdminLink = (email, text) => {
   );
 };
 
-const getAdminMessage = email => {
+const getAdminMessage = (email, applicationName) => {
   const adminLink = getAdminLink(email, t`your instance administrator`);
-  return jt`Metabase doesn’t manage those lists, so we’d recommend contacting ${adminLink}. `;
+  return jt`${applicationName} doesn’t manage those lists, so we’d recommend contacting ${adminLink}. `;
 };
 
 export default HelpModal;

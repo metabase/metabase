@@ -19,5 +19,13 @@ export const getLoadingMessage = (state: EnterpriseState) =>
   LOADING_MESSAGE_BY_SETTING[getSetting(state, "loading-message")];
 
 const DEFAULT_APPLICATION_NAME = "Metabase";
-export const getIsWhiteLabeling = (states: EnterpriseState) =>
-  getSetting(states, "application-name") !== DEFAULT_APPLICATION_NAME;
+export const getIsWhiteLabeling = (state: EnterpriseState) =>
+  getApplicationName(state) !== DEFAULT_APPLICATION_NAME;
+
+export function getApplicationName(state: EnterpriseState) {
+  return getSetting(state, "application-name");
+}
+
+export function getShowMetabaseLinks(state: EnterpriseState) {
+  return getSetting(state, "show-metabase-links");
+}

@@ -1,7 +1,8 @@
 (ns metabase.lib.js-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [goog.object :as gobject]
+   [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.js :as lib.js]
    [metabase.lib.options :as lib.options]
@@ -70,6 +71,36 @@
       (is (not= join join-class))
       (is (not= (js->clj join) (js->clj join-class)))
       (is (lib.js/query= basic-query classy-query)))))
+
+(defn- query-with-field-opts [opts]
+  #js {"type" "query"
+       "query" #js {"source-table" 1
+                    "filter" #js ["=" #js ["field" 12 opts] 7]}})
+
+(deftest ^:parallel query=-field-types-test
+  (testing "equal field types are equal"
+    (is (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                       (query-with-field-opts #js {"base-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Float"})
+                       (query-with-field-opts #js {"effective-type" "type/Float"}))))
+
+  (testing "mismatched field types are not equal"
+    (is (not (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                            (query-with-field-opts #js {"base-type" "type/Float"}))))
+    (is (not (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Text"})
+                            (query-with-field-opts #js {"effective-type" "type/Float"})))))
+
+  (testing "missing field types are equal"
+    (is (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                       (query-with-field-opts #js {})))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts #js {"base-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Text"})
+                       (query-with-field-opts nil)))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts #js {"effective-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts nil)))))
 
 (deftest ^:parallel available-join-strategies-test
   (testing "available-join-strategies returns an array of opaque strategy objects (#32089)"
@@ -142,17 +173,51 @@
          (#'lib.js/cljs-key->js-key :many-pks?))))
 
 (deftest ^:parallel expression-clause-<->-legacy-expression-test
-  (let [query (-> lib.tu/venues-query
-                  (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
-                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
-        agg-uuid (-> query lib/aggregations first lib.options/uuid)
-        legacy-expr #js [">" #js ["aggregation" 0] 100]
-        pmbql-expr (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)
-        legacy-expr' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-expr)]
-    (testing "from legacy expression"
-      (is (=? [:> {} [:aggregation {} agg-uuid] 100] pmbql-expr)))
-    (testing "from pMBQL expression"
-      (is (= (js->clj legacy-expr) (js->clj legacy-expr'))))))
+  (testing "conversion works both ways, even with aggregations (#34830, #36087)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
+                    (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
+          agg-uuid (-> query lib/aggregations first lib.options/uuid)
+          legacy-expr #js [">" #js ["aggregation" 0] 100]
+          pmbql-expr (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)
+          legacy-expr' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-expr)
+          legacy-filter #js ["<" #js ["field" (meta/id :venues :price) nil] 100]
+          pmbql-filter (lib.js/expression-clause-for-legacy-expression query -1 legacy-filter)
+          legacy-filter' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-filter)]
+      (testing "from legacy expression"
+        (is (=? [:> {} [:aggregation {} agg-uuid] 100]
+                pmbql-expr)))
+      (testing "from pMBQL expression"
+        (is (= (js->clj legacy-expr) (js->clj legacy-expr'))))
+      (testing "from legacy filter"
+        (is (=? [:< {} [:field {} (meta/id :venues :price)] 100]
+                pmbql-filter)))
+      (testing "from pMBQL filter"
+        (is (= (js->clj legacy-filter) (js->clj legacy-filter'))))))
+  (testing "conversion drops aggregation-options (#36120)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib.options/update-options (lib/sum (meta/field-metadata :venues :price))
+                                                               assoc :display-name "price sum")))
+          agg-expr (-> query lib/aggregations first)
+          legacy-agg-expr #js ["sum" #js ["field" (meta/id :venues :price) #js {:base-type "Integer"}]]
+          legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
+      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
+  (testing "legacy expressions are converted properly (#36120)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib/count)))
+          agg-expr (-> query lib/aggregations first)
+          legacy-agg-expr #js ["count"]
+          legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
+      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
+  (testing "simple values can be converted properly (#36459)"
+    (let [query lib.tu/venues-query
+          legacy-expr 0
+          expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
+          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
+          query-with-expr (lib/expression query 0 "expr" expr)
+          expr-from-query (first (lib/expressions query-with-expr 0))
+          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)]
+      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query)))))
 
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"
@@ -164,3 +229,116 @@
     (testing "converts :null keyword used by drill-thrus back to JS null"
       (is (=? nil
               (.-value (lib.js/filter-drill-details {:value :null})))))))
+
+(deftest ^:parallel legacy-ref-test
+  (let [segment-id 100
+
+        segment-definition
+        {:source-table (meta/id :venues)
+         :aggregation  [[:count]]
+         :filter       [:and
+                        [:> [:field (meta/id :venues :id) nil] [:* [:field (meta/id :venues :price) nil] 11]]
+                        [:contains [:field (meta/id :venues :name) nil] "BBQ" {:case-sensitive true}]]}
+
+        metric-id 101
+
+        metric-definition
+        {:source-table (meta/id :venues)
+         :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
+         :filter       [:= [:field (meta/id :venues :price) nil] 4]}
+
+        metadata-provider
+        (lib.tu/mock-metadata-provider
+         meta/metadata-provider
+         {:segments [{:id          segment-id
+                      :name        "PriceID-BBQ"
+                      :table-id    (meta/id :venues)
+                      :definition  segment-definition
+                      :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]
+          :metrics [{:id          metric-id
+                     :name        "Sum of Cans"
+                     :table-id    (meta/id :venues)
+                     :definition  metric-definition
+                     :description "Number of toucans plus number of pelicans"}]})
+
+        query (lib/query metadata-provider (meta/table-metadata :venues))
+
+        array-checker #(when (array? %) (js->clj %))
+        to-legacy-refs (comp array-checker lib.js/legacy-ref)]
+    (testing "field refs come with options"
+      (is (= [["field" (meta/id :venues :id) {"base-type" "type/BigInteger"}]
+              ["field" (meta/id :venues :name) {"base-type" "type/Text"}]
+              ["field" (meta/id :venues :category-id) {"base-type" "type/Integer"}]
+              ["field" (meta/id :venues :latitude) {"base-type" "type/Float"}]
+              ["field" (meta/id :venues :longitude) {"base-type" "type/Float"}]
+              ["field" (meta/id :venues :price) {"base-type" "type/Integer"}]]
+             (->> query lib/returned-columns (map to-legacy-refs)))))
+    (testing "segment refs come without options"
+      (is (= [["segment" segment-id]]
+             (->> query lib/available-segments (map to-legacy-refs)))))
+    (testing "metric refs come without options"
+      (is (= [["metric" metric-id]]
+             (->> query lib/available-metrics (map to-legacy-refs)))))))
+
+(deftest ^:parallel source-table-or-card-id-test
+  (testing "returns the table-id as a number"
+    (are [query] (= (meta/id :venues) (lib.js/source-table-or-card-id query))
+      lib.tu/venues-query
+      (lib/append-stage lib.tu/venues-query)))
+  (testing "returns the card-id in the legacy string form"
+    (are [query] (= "card__1" (lib.js/source-table-or-card-id query))
+      lib.tu/query-with-source-card
+      (lib/append-stage lib.tu/query-with-source-card)))
+  (testing "returns nil for questions starting from a native query"
+    (are [query] (nil? (lib.js/source-table-or-card-id query))
+      lib.tu/native-query
+      (lib/append-stage lib.tu/native-query))))
+
+(deftest ^:parallel expression-clause-normalization-test
+  (are [x y] (do
+               (is (mc/validate :metabase.lib.schema.expression/expression y))
+               (is (=? x y)))
+
+    [:time-interval {} [:field {} int?] :current :day]
+    (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) "current" "day"] nil)
+
+    [:time-interval {} [:field {} int?] 10 :day]
+    (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day"] nil)
+
+    [:relative-datetime {} :current :day]
+    (lib.js/expression-clause "relative-datetime" ["current" "day"] nil)
+
+    [:relative-datetime {} 10 :day]
+    (lib.js/expression-clause "relative-datetime" [10 "day"] nil)
+
+    [:interval {} 10 :day]
+    (lib.js/expression-clause "interval" [10 "day"] nil)
+
+    [:datetime-add {} [:field {} int?] 10 :day]
+    (lib.js/expression-clause "datetime-add" [(meta/field-metadata :products :created-at) 10 "day"] nil)
+
+    [:datetime-subtract {} [:field {} int?] 10 :day]
+    (lib.js/expression-clause "datetime-subtract" [(meta/field-metadata :products :created-at) 10 "day"] nil)
+
+    [:get-week {} [:field {} int?] :iso]
+    (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at) "iso"] nil)
+
+    [:get-week {} [:field {} int?]]
+    (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at)] nil)
+
+    [:temporal-extract {} [:field {} int?] :day-of-week]
+    (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week"] nil)
+
+    [:temporal-extract {} [:field {} int?] :day-of-week :iso]
+    (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week" "iso"] nil)
+
+    [:datetime-diff {} [:field {} int?] [:field {} int?] :day]
+    (lib.js/expression-clause "datetime-diff" [(meta/field-metadata :products :created-at) (meta/field-metadata :products :created-at) "day"] nil))
+
+  (testing "normalizes recursively"
+    (is (=?
+          [:time-interval {} [:field {} int?]
+           [:interval {} 10 :day]
+           :day]
+          (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at)
+                                                     (lib.js/expression-clause "interval" [10 "day"] nil) "day"] nil)))))

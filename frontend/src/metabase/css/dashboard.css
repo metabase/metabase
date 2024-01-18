@@ -250,7 +250,7 @@
 }
 
 .ScalarValue {
-  font-weight: 900;
+  font-weight: 700;
   white-space: pre;
 }
 
@@ -261,24 +261,6 @@
 .Dashboard .SmartWrapper {
   position: relative;
   font-size: inherit;
-}
-
-.AutomaticDashboard.AutomaticDashboard--withSidebar #SmartScalar-PreviousValue {
-  display: none !important;
-}
-
-@media screen and (min-width: 1280px) {
-  .AutomaticDashboard.AutomaticDashboard--withSidebar
-    #SmartScalar-PreviousValue {
-    display: none;
-  }
-}
-
-@media screen and (min-width: 1540px) {
-  .AutomaticDashboard.AutomaticDashboard--withSidebar
-    #SmartScalar-PreviousValue {
-    display: inherit;
-  }
 }
 
 /*

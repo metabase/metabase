@@ -13,10 +13,12 @@
 
     (locales) ; -> #{\"nl\" \"pt\" \"zh\" \"tr\" \"it\" \"fa\" ...}"
   []
-  (set (for [^java.io.File file (.listFiles (io/file (u/filename u/project-root-directory "locales")))
-             :let               [file-name (.getName file)]
-             :when              (str/ends-with? file-name ".po")]
-         (str/replace file-name #"\.po$" ""))))
+  (into
+   (sorted-set)
+   (for [^java.io.File file (.listFiles (io/file (u/filename u/project-root-directory "locales")))
+         :let               [file-name (.getName file)]
+         :when              (str/ends-with? file-name ".po")]
+     (str/replace file-name #"\.po$" ""))))
 
 (defn locale-source-po-filename
   "E.g.

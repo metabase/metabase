@@ -74,6 +74,18 @@ Get PNG rendering of a Card with `id`.
 
 *  **`id`** value must be an integer greater than zero.
 
+## `GET /api/pulse/preview_dashboard/:id`
+
+Get HTML rendering of a Dashboard with `id`.
+
+  This endpoint relies on a custom middleware defined in `metabase.pulse.preview/style-tag-nonce-middleware` to
+  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
+  routes at the bottom of this namespace using `metabase.api.common/define-routes`.
+
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
+
 ## `POST /api/pulse/`
 
 Create a new `Pulse`.

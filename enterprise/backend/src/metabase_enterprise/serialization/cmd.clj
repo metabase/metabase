@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
   (:require
+   [clojure.java.io :as io]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
@@ -81,7 +82,9 @@
 
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
-   opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]
+   opts :- [:map
+            [:abort-on-error {:optional true} [:maybe :boolean]]
+            [:backfill? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?]
       :or   {token-check? true}}]
@@ -101,7 +104,9 @@
 
    opts are passed to load-metabase"
   [path :- :string
-   opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
+   opts :- [:map
+            [:abort-on-error {:optional true} [:maybe :boolean]]
+            [:backfill? {:optional true} [:maybe :boolean]]]]
   (v2-load-internal! path opts :token-check? true))
 
 (defn- select-entities-in-collections
@@ -206,6 +211,10 @@
   (mdb/setup-db!)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
+  (let [f (io/file path)]
+    (.mkdirs f)
+    (when-not (.canWrite f)
+      (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
   (serdes/with-cache
     (-> (cond-> opts
           (seq collection-ids) (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
@@ -221,7 +230,7 @@
   []
   (v2.entity-ids/seed-entity-ids!))
 
-(defn drop-entity-hds!
+(defn drop-entity-ids!
   "Drop entity IDs for all instances of serializable models.
 
   This is needed for some cases of migrating from v1 to v2 serdes. v1 doesn't dump `entity_id`, so they may have been

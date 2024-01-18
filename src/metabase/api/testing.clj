@@ -64,7 +64,24 @@
     (doseq [sql-args [["SET LOCK_TIMEOUT 180000"]
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
-      (jdbc/execute! {:connection conn} sql-args)))
+      (jdbc/execute! {:connection conn} sql-args))
+
+    ;; We've found a delightful bug in H2 where if you:
+    ;; - create a table, then
+    ;; - create a view based on the table, then
+    ;; - modify the original table, then
+    ;; - generate a snapshot
+
+    ;; the generated snapshot has the `CREATE VIEW` *before* the `CREATE TABLE`. This results in a view that can't be
+    ;; queried successfully until it is recompiled. Our workaround is to recompile ALL views immediately after we
+    ;; restore the app DB from a snapshot. Bug report is here: https://github.com/h2database/h2database/issues/3942
+    (doseq [table-name
+            (->> (jdbc/query {:connection conn} ["SELECT table_name FROM information_schema.views WHERE table_schema=?" "PUBLIC"])
+                 (map :table_name))]
+      ;; parameterization doesn't work with view names. If someone maliciously named a table, this is bad. On the
+      ;; other hand, this is not running in prod and you already had to have enough access to maliciously name the
+      ;; table, so this is probably safe enough.
+      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name))))
   ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend` and a
   ;; backend server started with `dev/start!` the snapshots are always missing columms added by DB migrations. So let's
   ;; just check and make sure it's fully up to date in this scenario. Not doing this outside of dev because it seems to

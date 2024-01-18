@@ -367,8 +367,8 @@
     ;; manually.
     (when-not write?
       (try
-        (log/trace (pr-str '(.setAutoCommit conn false)))
-        (.setAutoCommit conn false)
+        (log/trace (pr-str '(.setAutoCommit conn true)))
+        (.setAutoCommit conn true)
         (catch Throwable e
           (log/debug e "Error enabling connection autoCommit"))))
     (try
@@ -680,8 +680,11 @@
   {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
   ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
    {:pre [(string? sql) (seq sql)]}
-   (let [remark   (qp.util/query->remark driver outer-query)
-         sql      (inject-remark driver sql remark)
+   (let [database (lib.metadata/database (qp.store/metadata-provider))
+         sql      (if (get-in database [:details :include-user-id-and-hash] true)
+                    (->> (qp.util/query->remark driver outer-query)
+                         (inject-remark driver sql))
+                    sql)
          max-rows (limit/determine-query-max-rows outer-query)]
      (execute-reducible-query driver sql params max-rows context respond)))
 

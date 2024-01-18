@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
-import ClauseStep from "../ClauseStep";
+import { ClauseStep } from "../ClauseStep";
 import { SortDirectionButton } from "./SortStep.styled";
 
 function SortStep({
-  topLevelQuery,
+  query,
   step,
   color,
   isLastOpened,
@@ -18,16 +18,16 @@ function SortStep({
   const { stageIndex } = step;
 
   const clauses = useMemo(() => {
-    return Lib.orderBys(topLevelQuery, stageIndex);
-  }, [topLevelQuery, stageIndex]);
+    return Lib.orderBys(query, stageIndex);
+  }, [query, stageIndex]);
 
   const handleAddOrderBy = (column: Lib.ColumnMetadata) => {
-    const nextQuery = Lib.orderBy(topLevelQuery, stageIndex, column, "asc");
+    const nextQuery = Lib.orderBy(query, stageIndex, column, "asc");
     updateQuery(nextQuery);
   };
 
   const handleToggleOrderByDirection = (clause: Lib.OrderByClause) => {
-    const nextQuery = Lib.changeDirection(topLevelQuery, clause);
+    const nextQuery = Lib.changeDirection(query, clause);
     updateQuery(nextQuery);
   };
 
@@ -36,17 +36,12 @@ function SortStep({
     column: Lib.ColumnMetadata,
   ) => {
     const nextClause = Lib.orderByClause(column);
-    const nextQuery = Lib.replaceClause(
-      topLevelQuery,
-      stageIndex,
-      clause,
-      nextClause,
-    );
+    const nextQuery = Lib.replaceClause(query, stageIndex, clause, nextClause);
     updateQuery(nextQuery);
   };
 
   const handleRemoveOrderBy = (clause: Lib.OrderByClause) => {
-    const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, clause);
+    const nextQuery = Lib.removeClause(query, stageIndex, clause);
     updateQuery(nextQuery);
   };
 
@@ -58,21 +53,22 @@ function SortStep({
       isLastOpened={isLastOpened}
       renderName={clause => (
         <SortDisplayName
-          displayInfo={Lib.displayInfo(topLevelQuery, stageIndex, clause)}
+          displayInfo={Lib.displayInfo(query, stageIndex, clause)}
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
-      renderPopover={(orderBy, orderByIndex) => (
+      renderPopover={({ item: orderBy, index }) => (
         <SortPopover
-          query={topLevelQuery}
+          query={query}
           stageIndex={stageIndex}
           orderBy={orderBy}
-          orderByIndex={orderByIndex}
+          orderByIndex={index}
           onAddOrderBy={handleAddOrderBy}
           onUpdateOrderByColumn={handleUpdateOrderByColumn}
         />
       )}
       onRemove={handleRemoveOrderBy}
+      withLegacyPopover
     />
   );
 }

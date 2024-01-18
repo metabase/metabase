@@ -9,7 +9,7 @@ import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
-import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar/AddCardSidebar";
+import { AddCardSidebar } from "./AddCardSidebar";
 import { ActionSidebarConnected } from "./ActionSidebar";
 
 DashboardSidebars.propTypes = {

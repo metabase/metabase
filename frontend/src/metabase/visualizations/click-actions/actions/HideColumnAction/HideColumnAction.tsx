@@ -16,7 +16,7 @@ export const HideColumnAction: LegacyDrill = ({
     clicked.value !== undefined ||
     !clicked.column ||
     clicked?.extraData?.isRawTable ||
-    !question.query().isEditable()
+    !question.isQueryEditable()
   ) {
     return [];
   }
@@ -36,7 +36,7 @@ export const HideColumnAction: LegacyDrill = ({
         const columnSettings = getColumnSettingsWithRefs(
           settings?.["table.columns"] || [],
         );
-        const query = question._getMLv2Query();
+        const query = question.query();
 
         const columnSettingIndex = findColumnSettingIndex(
           query,

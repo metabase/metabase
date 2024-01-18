@@ -1,8 +1,6 @@
 (ns metabase.public-settings
   (:require
-   [cheshire.core :as json]
-   [clj-http.client :as http]
-   [clojure.core.memoize :as memoize]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -28,9 +26,10 @@
 (defsetting application-name
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
   :visibility :public
+  :export?    true
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    "Metabase")
 
 (defn application-name-for-setting-descriptions
@@ -98,10 +97,11 @@
                 (application-name-for-setting-descriptions))
   :default    "Metabase"
   :audit      :getter
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :export?    true)
 
 (defsetting custom-homepage
-  (deferred-tru "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.")
+  (deferred-tru "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. To revert to the default Metabase homepage, simply turn off the toggle.")
   :default    false
   :type       :boolean
   :audit      :getter
@@ -215,6 +215,7 @@
     (application-name-for-setting-descriptions))
   :default    "en"
   :visibility :public
+  :export?    true
   :audit      :getter
   :getter     (fn []
                 (let [value (setting/get-value-of-type :string :site-locale)]
@@ -260,12 +261,30 @@
   :visibility :public
   :audit      :getter)
 
+(defn- coerce-to-relative-url
+  "Get the path of a given URL if the URL contains an origin.
+   Otherwise make the landing-page a relative path."
+  [landing-page]
+  (cond
+    (u/url? landing-page) (-> landing-page io/as-url .getPath)
+    (empty? landing-page) ""
+    (not (str/starts-with? landing-page "/")) (str "/" landing-page)
+    :else landing-page))
+
 (defsetting landing-page
   (deferred-tru "Default page to show people when they log in.")
   :visibility :public
+  :export?    true
   :type       :string
   :default    ""
-  :audit      :getter)
+  :audit      :getter
+  :setter     (fn [new-landing-page]
+                (when new-landing-page
+                  ;; If the landing page is a valid URL or mailto, sms, or file, then check with if site-url has the same origin.
+                  (when (and (or (re-matches #"^(mailto|sms|file):(.*)" new-landing-page) (u/url? new-landing-page))
+                             (not (str/starts-with? new-landing-page (site-url))))
+                    (throw (ex-info (tru "This field must be a relative URL.") {:status-code 400}))))
+                (setting/set-value-of-type! :string :landing-page (coerce-to-relative-url new-landing-page))))
 
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
@@ -274,25 +293,12 @@
   :visibility :authenticated
   :audit      :getter)
 
-(defsetting enable-embedding
-  (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
-  :type       :boolean
-  :default    false
-  :visibility :authenticated
-  :audit      :getter)
-
-(defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full {0} application"
-                (application-name-for-setting-descriptions))
-  :feature    :embedding
-  :visibility :public
-  :audit      :getter)
-
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
   :default    true
   :visibility :authenticated
+  :export?    true
   :audit      :getter)
 
 (defsetting enable-query-caching
@@ -307,6 +313,7 @@
   :type       :boolean
   :default    false
   :visibility :public
+  :export?    true
   :audit      :getter)
 
 (defsetting persisted-model-refresh-cron-schedule
@@ -371,7 +378,7 @@
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
   :visibility :internal
   :type       :string
-  :enabled?   premium-features/hide-embed-branding?
+  :feature    :whitelabel
   :audit      :getter)
 
 (defsetting deprecation-notice-version
@@ -383,7 +390,8 @@
 (defsetting loading-message
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
-  :enabled?   premium-features/enable-whitelabeling?
+  :export?    true
+  :feature    :whitelabel
   :type       :keyword
   :default    :doing-science
   :audit      :getter)
@@ -394,17 +402,19 @@
          "You might need to refresh your browser to see your changes take effect.")
     (application-name-for-setting-descriptions))
   :visibility :public
+  :export?    true
   :type       :json
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    {}
   :audit      :getter)
 
 (defsetting application-font
   (deferred-tru "This will replace “Lato” as the font family.")
   :visibility :public
+  :export?    true
   :type       :string
   :default    "Lato"
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :audit      :getter
   :setter     (fn [new-value]
                   (when new-value
@@ -415,9 +425,10 @@
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
   :visibility :public
+  :export?    true
   :type       :json
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?)
+  :feature    :whitelabel)
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -432,34 +443,90 @@
 (defsetting application-logo-url
   (deferred-tru "For best results, use an SVG file with a transparent background.")
   :visibility :public
+  :export?    true
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
   (deferred-tru "The url or image that you want to use as the favicon.")
   :visibility :public
+  :export?    true
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    "app/assets/img/favicon.ico")
 
 (defsetting show-metabot
   (deferred-tru "Enables Metabot character on the home page")
   :visibility :public
+  :export?    true
   :type       :boolean
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    true)
 
 (defsetting show-lighthouse-illustration
   (deferred-tru "Display the lighthouse illustration on the home and login pages.")
   :visibility :public
+  :export?    true
   :type       :boolean
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    true)
+
+(def ^:private help-link-options
+  #{:metabase :hidden :custom})
+
+(defsetting help-link
+  (deferred-tru
+   (str
+    "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
+    "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
+    "or be hidden if it is not set."))
+  :type       :keyword
+  :audit      :getter
+  :visibility :public
+  :feature    :whitelabel
+  :default    :metabase
+  :setter     (fn [value]
+                (when-not (help-link-options (keyword value))
+                  (throw (ex-info (tru "Invalid help link option")
+                                  {:value value
+                                   :valid-options help-link-options})))
+                (setting/set-value-of-type! :keyword :help-link value)))
+
+(defn- validate-help-url
+  "Checks that the provided URL is either a valid HTTP/HTTPS URL or a `mailto:` link. Returns `nil` if the input is valid;
+  throws an exception if it is not."
+  [url]
+  (let [validation-exception (ex-info (tru "Please make sure this is a valid URL")
+                                      {:url url})]
+   (if-let [matches (re-matches #"^mailto:(.*)" url)]
+     (when-not (u/email? (second matches))
+       (throw validation-exception))
+     (when-not (u/url? url)
+       (throw validation-exception)))))
+
+(defsetting help-link-custom-destination
+  (deferred-tru "Custom URL for the help link.")
+  :visibility :public
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :setter     (fn [new-value]
+                (let [new-value-string (str new-value)]
+                 (validate-help-url new-value-string)
+                 (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
+
+(defsetting show-metabase-links
+  (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :audit      :getter
+  :feature    :whitelabel)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
@@ -482,6 +549,7 @@
     (str "When using the default binning strategy and a number of bins is not provided, "
          "this number will be used as the default."))
   :type    :integer
+  :export? true
   :default 8
   :audit   :getter)
 
@@ -496,6 +564,7 @@
 (defsetting custom-formatting
   (deferred-tru "Object keyed by type, containing formatting settings")
   :type       :json
+  :export?    true
   :default    {}
   :visibility :public
   :audit      :getter)
@@ -505,6 +574,7 @@
   :type       :boolean
   :default    true
   :visibility :authenticated
+  :export?    true
   :audit      :getter)
 
 (defsetting show-homepage-data
@@ -514,6 +584,7 @@
   :type       :boolean
   :default    true
   :visibility :authenticated
+  :export?    true
   :audit      :getter)
 
 (defsetting show-homepage-xrays
@@ -523,6 +594,7 @@
   :type       :boolean
   :default    true
   :visibility :authenticated
+  :export?    true
   :audit      :getter)
 
 (defsetting show-homepage-pin-message
@@ -532,12 +604,14 @@
   :type       :boolean
   :default    true
   :visibility :authenticated
+  :export?    true
   :doc        false
   :audit      :getter)
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :default "X-Forwarded-For"
+  :export? true
   :audit   :getter
   :getter  (fn [] (some-> (setting/get-value-of-type :string :source-address-header)
                           u/lower-case-en)))
@@ -554,6 +628,7 @@
 (defsetting available-fonts
   "Available fonts"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     u.fonts/available-fonts
   :doc        false)
@@ -561,6 +636,7 @@
 (defsetting available-locales
   "Available i18n locales"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     available-locales-with-names
   :doc        false)
@@ -568,6 +644,7 @@
 (defsetting available-timezones
   "Available report timezone options"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     (comp sort t/available-zone-ids)
   :doc        false)
@@ -646,6 +723,7 @@
          "It won''t affect most SQL queries, "
          "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
+  :export?    true
   :type       :keyword
   :default    :sunday
   :audit      :raw-value
@@ -661,33 +739,15 @@
                            (trs "Invalid day of week: {0}" (pr-str new-value))))
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
 
-(defsetting cloud-gateway-ips-url
-  "Store URL for fetching the list of Cloud gateway IP addresses"
-  :visibility :internal
-  :setter     :none
-  :default    (str premium-features/store-url "/static/cloud_gateways.json")
-  :doc        false)
-
-(def ^:private fetch-cloud-gateway-ips-fn
-  (memoize/ttl
-   (fn []
-     (try
-       (-> (http/get (cloud-gateway-ips-url))
-           :body
-           (json/parse-string keyword)
-           :ip_addresses)
-       (catch Exception e
-         (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:")))))
-   :ttl/threshold (* 1000 60 60 24)))
-
 (defsetting cloud-gateway-ips
   (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
   :visibility :public
-  :type       :json
+  :type       :string
   :setter     :none
-  :getter     (fn []
-                (when (premium-features/is-hosted?)
-                  (fetch-cloud-gateway-ips-fn))))
+  :getter (fn []
+            (when (premium-features/is-hosted?)
+              (some-> (setting/get-value-of-type :string :cloud-gateway-ips)
+                      (str/split #",")))))
 
 (defsetting show-database-syncing-modal
   (deferred-tru
@@ -709,6 +769,7 @@
 (defsetting uploads-enabled
   (deferred-tru "Whether or not uploads are enabled")
   :visibility :authenticated
+  :export?    true
   :type       :boolean
   :audit      :getter
   :default    false)
@@ -728,6 +789,7 @@
 (defsetting uploads-database-id
   (deferred-tru "Database ID for uploads")
   :visibility :authenticated
+  :export?    true
   :type       :integer
   :audit      :getter
   :setter     set-uploads-database-id!)
@@ -735,6 +797,7 @@
 (defsetting uploads-schema-name
   (deferred-tru "Schema name for uploads")
   :visibility :authenticated
+  :export?    true
   :type       :string
   :audit      :getter)
 
@@ -743,3 +806,15 @@
   :visibility :authenticated
   :type       :string
   :audit      :getter)
+
+(defsetting attachment-table-row-limit
+  (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
+  :visibility :internal
+  :type       :positive-integer
+  :default    20
+  :audit      :getter
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :positive-integer :attachment-table-row-limit)]
+                  (if-not (pos-int? value)
+                    20
+                    value))))

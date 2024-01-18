@@ -15,7 +15,7 @@ database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
-- v_alerts_subscriptions
+- v_alerts
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -28,24 +28,35 @@ dataset_query:
     aggregation:
     - - count
     filter:
-    - and
-    - - =
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts
+        - archived
+      - base-type: type/Boolean
+    - false
+    joins:
+    - alias: People - Creator
+      condition:
+      - =
       - - field
         - - Internal Metabase Database
           - public
-          - v_alerts_subscriptions
-          - archived
-        - null
-      - false
-    - - =
+          - v_alerts
+          - creator_id
+        - base-type: type/Integer
       - - field
         - - Internal Metabase Database
           - public
-          - v_alerts_subscriptions
-          - entity_type
-        - null
-      - alert
-    source-table: 5ojUtU9iE-DCggHdFPIll
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - Creator
+      fields: none
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
+    source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
 result_metadata: null
 visualization_settings:

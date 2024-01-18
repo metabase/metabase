@@ -4,9 +4,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase.cmd :as cmd]
    [metabase.models :refer [Card Dashboard DashboardCard Database User]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -26,7 +26,7 @@
     ;;
     ;; making use of the functionality in the [[metabase.db.schema-migrations-test.impl]] namespace for this (since it
     ;; already does what we need)
-    (premium-features-test/with-premium-features #{:serialization}
+    (mt/with-premium-features #{:serialization}
       (mt/with-empty-h2-app-db
         ;; create a single dummy User to own a Card and a Database for it to reference
         (let [user  (t2/insert! (t2/table-name User)
@@ -62,7 +62,7 @@
 
 (deftest blank-target-db-test
   (testing "Loading a dump into an empty app DB still works (#16639)"
-    (premium-features-test/with-premium-features #{:serialization}
+    (mt/with-premium-features #{:serialization}
       (let [dump-dir                 (ts/random-dump-dir "serdes-")
             user-pre-insert-called?  (atom false)]
         (log/infof "Dumping to %s" dump-dir)
@@ -77,7 +77,7 @@
 
 (deftest mode-update-remove-cards-test
   (testing "--mode update should remove Cards in a Dashboard if they're gone from the serialized YAML (#20786)"
-    (premium-features-test/with-premium-features #{:serialization}
+    (mt/with-premium-features #{:serialization}
       (ts/with-random-dump-dir [dump-dir "serialization"]
         (let [dashboard-yaml-filename (str dump-dir "/collections/root/dashboards/Dashboard.yaml")]
           (ts/with-source-and-dest-dbs
@@ -140,7 +140,7 @@
 
 (deftest premium-features-test
   (testing "without a premium token"
-    (let [dump-dir (ts/random-dump-dir "serdes-")]
+    (ts/with-random-dump-dir [dump-dir "serdes-"]
       (testing "dump should fail"
         (is (thrown-with-msg? Exception #"Please upgrade"
                               (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
@@ -151,3 +151,14 @@
                                 (cmd/load dump-dir
                                           "--mode"     "update"
                                           "--on-error" "abort"))))))))
+
+(deftest dump-readonly-dir-test
+  (testing "command exits early when destination is not writable"
+    (mt/with-premium-features #{:serialization}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (.mkdirs (io/file dump-dir))
+        (.setWritable (io/file dump-dir) false)
+        (with-redefs [v2.extract/extract (fn [& _args]
+                                           (throw (ex-info "Do not call me!" {})))]
+          (is (thrown-with-msg? Exception #"Destination path is not writeable: "
+                                (cmd/export dump-dir))))))))

@@ -417,7 +417,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         );
 
         modal().within(() => {
-          cy.findByText("Change access to this database to limited?");
+          cy.findByText("Change access to this database to granular?");
           cy.button("Change").click();
         });
 
@@ -491,6 +491,30 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           ["Reviews", "Unrestricted", "Yes"],
         ]);
       });
+
+      it("should show a modal when a revision changes while an admin is editing", () => {
+        cy.intercept("/api/permissions/graph/group/1").as("graph");
+        cy.visit("/admin/permissions");
+
+        selectSidebarItem("collection");
+
+        modifyPermission(
+          "Sample Database",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
+        );
+
+        cy.get("@graph").then(data => {
+          cy.request("PUT", "/api/permissions/graph", {
+            groups: {},
+            revision: data.response.body.revision,
+          }).then(() => {
+            selectSidebarItem("data");
+
+            modal().findByText("Someone just changed permissions");
+          });
+        });
+      });
     });
 
     context("database focused view", () => {
@@ -531,7 +555,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         );
 
         modal().within(() => {
-          cy.findByText("Change access to this database to limited?");
+          cy.findByText("Change access to this database to granular?");
           cy.button("Change").click();
         });
 
@@ -597,6 +621,30 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           ["readonly", "Unrestricted", "Yes"],
         ]);
       });
+      it("should show a modal when a revision changes while an admin is editing", () => {
+        cy.intercept("/api/permissions/graph/group/1").as("graph");
+        cy.visit("/admin/permissions/");
+
+        selectSidebarItem("collection");
+
+        modifyPermission(
+          "Sample Database",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
+        );
+
+        cy.get("@graph").then(data => {
+          cy.request("PUT", "/api/permissions/graph", {
+            groups: {},
+            revision: data.response.body.revision,
+          }).then(() => {
+            cy.get("label").contains("Databases").click();
+            selectSidebarItem("Sample Database");
+
+            modal().findByText("Someone just changed permissions");
+          });
+        });
+      });
     });
   });
 });
@@ -616,7 +664,7 @@ describeEE("scenarios > admin > permissions", () => {
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
     modal().within(() => {
-      cy.findByText("Change access to this database to limited?");
+      cy.findByText("Change access to this database to granular?");
       cy.button("Change").click();
     });
 

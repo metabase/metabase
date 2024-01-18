@@ -20,6 +20,7 @@ import {
   editDashboard,
   getDashboardCard,
   saveDashboard,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -299,14 +300,19 @@ describe("scenarios > models", () => {
       cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add filters to narrow your answer").click();
-      selectFromDropdown("Products", { force: true });
-      selectFromDropdown("Price", { force: true });
-      selectFromDropdown("Equal to");
-      selectFromDropdown("Less than");
-      cy.findByPlaceholderText("Enter a number").type("50");
-      cy.button("Add filter").click();
+      getNotebookStep("filter")
+        .findByText("Add filters to narrow your answer")
+        .click();
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Price").click();
+        cy.findByDisplayValue("Equal to").click();
+      });
+      cy.findByRole("listbox").findByText("Less than").click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("50");
+        cy.button("Add filter").click();
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();

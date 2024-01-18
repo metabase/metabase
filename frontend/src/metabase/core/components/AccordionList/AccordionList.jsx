@@ -6,7 +6,7 @@ import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { AccordionListCell } from "./AccordionListCell";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { getNextCursor, getPrevCursor } from "./utils";
@@ -56,6 +56,8 @@ export default class AccordionList extends Component {
     // currently prop is number on initialization, then string afterwards
     width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     maxHeight: PropTypes.number,
+
+    role: PropTypes.string,
 
     sections: PropTypes.array.isRequired,
 
@@ -109,6 +111,7 @@ export default class AccordionList extends Component {
     alwaysExpanded: false,
     hideSingleSectionTitle: false,
     hideEmptySectionsInSearch: false,
+    role: "grid",
 
     // section getters/render props
     renderSectionIcon: section => section.icon && <Icon name={section.icon} />,
@@ -551,6 +554,7 @@ export default class AccordionList extends Component {
       style,
       className,
       sections,
+      role,
       "data-testid": testId,
     } = this.props;
     const { cursor, scrollToAlignment } = this.state;
@@ -632,6 +636,7 @@ export default class AccordionList extends Component {
         overscanRowCount={100}
         scrollToIndex={scrollToIndex}
         scrollToAlignment={scrollToAlignment}
+        containerRole={role}
         containerProps={{
           onKeyDown: this.handleKeyDown,
           "data-testid": testId,

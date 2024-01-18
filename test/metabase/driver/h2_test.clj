@@ -18,18 +18,11 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each (fn [thunk]
-                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
-                      #_{:clj-kondo/ignore [:unresolved-var]}
-                      (binding [hx/*honey-sql-version* 2]
-                        (thunk))))
 
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -130,17 +123,17 @@
 
 (deftest ^:parallel add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= (hx/call :dateadd
-                    (hx/literal "millisecond")
-                    (hx/with-database-type-info (hx/call :cast [:inline 100500.0] (hx/raw "long")) "long")
-                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
+    (is (= [:dateadd
+            (h2x/literal "millisecond")
+            (h2x/with-database-type-info [:cast [:inline 100500.0] [:raw "long"]] "long")
+            (h2x/with-database-type-info [:cast :%now [:raw "datetime"]] "datetime")]
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= (hx/call :dateadd
-                    (hx/literal "second")
-                    (hx/with-database-type-info (hx/call :cast [:inline 100.0] (hx/raw "long")) "long")
-                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
+    (is (= [:dateadd
+            (h2x/literal "second")
+            (h2x/with-database-type-info [:cast [:inline 100.0] [:raw "long"]] "long")
+            (h2x/with-database-type-info [:cast :%now [:raw "datetime"]] "datetime")]
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest ^:parallel clob-test

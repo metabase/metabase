@@ -139,13 +139,14 @@
      (select-keys column-binning [:strategy :num-bins :bin-width])))
 
 (mu/defn resolve-bin-width :- [:maybe [:map
-                                       [:bin-width number?]
+                                       [:bin-width ::lib.schema.binning/bin-width]
                                        [:min-value number?]
                                        [:max-value number?]]]
   "If a `column` is binned, resolve the actual bin width that will be used when a query is processed as well as min
   and max values."
-  [column-metadata :- ::lib.schema.metadata/column
-   value           :- number?]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column-metadata       :- ::lib.schema.metadata/column
+   value                 :- number?]
   (when-let [binning-options (binning column-metadata)]
     (case (:strategy binning-options)
       :num-bins
@@ -164,4 +165,13 @@
          :max-value (+ value bin-width)})
 
       :default
-      nil)))
+      (when-let [{min-value :min, max-value :max, :as _number-fingerprint} (get-in column-metadata [:fingerprint :type :type/Number])]
+        (when-let [[_strategy {:keys [bin-width]}] (lib.binning.util/resolve-options metadata-providerable
+                                                                                     :default
+                                                                                     nil
+                                                                                     column-metadata
+                                                                                     min-value
+                                                                                     max-value)]
+          {:bin-width bin-width
+           :min-value value
+           :max-value (+ value bin-width)})))))

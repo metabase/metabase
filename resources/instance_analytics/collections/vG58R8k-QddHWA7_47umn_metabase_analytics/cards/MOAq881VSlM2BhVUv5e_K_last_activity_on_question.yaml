@@ -27,10 +27,16 @@ dataset_query:
   query:
     fields:
     - - field
-      - topic
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
       - base-type: type/Text
     - - field
-      - timestamp
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
       - base-type: type/DateTimeWithLocalTZ
     filter:
     - =
@@ -44,7 +50,7 @@ dataset_query:
     - card-delete
     - card-update
     joins:
-    - alias: Question 1
+    - alias: People - User
       condition:
       - =
       - - field
@@ -59,24 +65,18 @@ dataset_query:
           - v_users
           - user_id
         - base-type: type/Integer
-          join-alias: Question 1
+          join-alias: People - User
       fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: Question 1
       - - field
         - - Internal Metabase Database
           - public
           - v_users
           - full_name
         - base-type: type/Text
-          join-alias: Question 1
+          join-alias: People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
-    - alias: Question 35
+      strategy: left-join
+    - alias: Content - Entity Qualified
       condition:
       - =
       - - field
@@ -91,9 +91,10 @@ dataset_query:
           - v_content
           - entity_qualified_id
         - base-type: type/Text
-          join-alias: Question 35
+          join-alias: Content - Entity Qualified
       fields: none
       source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
     order-by:
     - - desc
       - - field
@@ -107,6 +108,8 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
+    : column_title: Person
     ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
     : column_title: Person
   table.cell_column: model_id
@@ -128,18 +131,7 @@ visualization_settings:
       - v_audit_log
       - timestamp
     - base-type: type/DateTimeWithLocalTZ
-      temporal-unit: default
     name: timestamp
-  - enabled: false
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - user_id
-    - base-type: type/Integer
-      join-alias: Question 1
-    name: user_id
   - enabled: true
     fieldRef:
     - field
@@ -148,7 +140,7 @@ visualization_settings:
       - v_users
       - full_name
     - base-type: type/Text
-      join-alias: Question 1
+      join-alias: People - User
     name: full_name
   table.pivot_column: end_timestamp
 serdes/meta:

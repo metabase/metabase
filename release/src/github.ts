@@ -1,32 +1,45 @@
 /* eslint-disable no-console */
 import {
-  isEnterpriseVersion,
   getOSSVersion,
   isLatestVersion,
   getNextVersions,
+  isValidVersionString,
 } from "./version-helpers";
 
 import type { ReleaseProps, Issue } from "./types";
 
-const findMilestone = async ({
-  version,
+const getMilestones = async ({
   github,
   owner,
   repo,
-}: ReleaseProps) => {
+}: Omit<ReleaseProps, 'version'>) => {
   const milestones = await github.rest.issues.listMilestones({
     owner,
     repo,
     state: "open",
   });
 
-  // our milestones don't have the v prefix
-  const expectedMilestoneName = getOSSVersion(version).replace(/^v/, "");
+  return milestones.data;
+};
 
-  return milestones.data.find(
+export const findMilestone = async ({
+  version,
+  github,
+  owner,
+  repo,
+}: ReleaseProps) => {
+  const milestones = await getMilestones({ github, owner, repo });
+
+  // our milestones don't have the v prefix or a .0 suffix
+  const expectedMilestoneName = getOSSVersion(version)
+    .replace(/^v/, "")
+    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
+    .replace(/\.0$/, '');
+
+  return milestones.find(
     (milestone: { title: string; number: number }) =>
       milestone.title === expectedMilestoneName,
-  )?.number;
+  );
 };
 
 export const closeMilestone = async ({
@@ -35,9 +48,9 @@ export const closeMilestone = async ({
   repo,
   version,
 }: ReleaseProps) => {
-  const milestoneId = await findMilestone({ version, github, owner, repo });
+  const milestone = await findMilestone({ version, github, owner, repo });
 
-  if (!milestoneId) {
+  if (!milestone?.number) {
     console.log(`No milestone found for ${version}`);
     return;
   }
@@ -45,7 +58,7 @@ export const closeMilestone = async ({
   await github.rest.issues.updateMilestone({
     owner,
     repo,
-    milestone_number: milestoneId,
+    milestone_number: milestone.number,
     state: "closed",
   });
 };
@@ -76,35 +89,35 @@ export const getMilestoneIssues = async ({
   github,
   owner,
   repo,
-}: ReleaseProps): Promise<Issue[]> => {
-  const milestoneId = await findMilestone({ version, github, owner, repo });
+  state = "closed",
+}: ReleaseProps & { state?: "closed" | "open" }): Promise<Issue[]> => {
+  const milestone = await findMilestone({ version, github, owner, repo });
 
-  if (!milestoneId) {
+  if (!milestone) {
     return [];
   }
 
-  const milestone = await github.rest.issues.listForRepo({
+  // we have to use paginate function or the issues will be truncated to 100
+  const issues = await github.paginate(github.rest.issues.listForRepo, {
     owner,
     repo,
-    milestone: milestoneId.toString(),
-    state: "closed",
+    milestone: String(milestone.number),
+    state,
   });
 
-  return (milestone?.data ?? []) as Issue[];
+  return (issues ?? []) as Issue[];
 };
 
-// latest for the purposes of github release notes
 export const isLatestRelease = async ({
   version,
   github,
   owner,
   repo,
-}: ReleaseProps): Promise<"true" | "false"> => {
-  // for the purposes of github releases enterprise versions are never latest
-  if (isEnterpriseVersion(version)) {
-    return "false";
+}: ReleaseProps): Promise<boolean> => {
+  if (!isValidVersionString(version)) {
+    console.warn(`Invalid version string: ${version}`);
+    return false;
   }
-
   const releases = await github.rest.repos.listReleases({
     owner,
     repo,
@@ -114,8 +127,7 @@ export const isLatestRelease = async ({
     (r: { tag_name: string }) => r.tag_name,
   );
 
-  // github needs this to be a string
-  return isLatestVersion(version, releaseNames) ? "true" : "false";
+  return isLatestVersion(version, releaseNames);
 };
 
 export const hasBeenReleased = async ({

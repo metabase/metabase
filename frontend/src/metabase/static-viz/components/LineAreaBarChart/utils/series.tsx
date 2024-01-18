@@ -202,7 +202,7 @@ function removeEmptyValues(
 ): Record<string, string> | undefined {
   if (seriesColors) {
     return Object.fromEntries(
-      Object.entries(seriesColors).filter(([key, value]) => isNotNull(value)),
+      Object.entries(seriesColors).filter(([_key, value]) => isNotNull(value)),
     ) as unknown as Record<string, string>;
   }
 }

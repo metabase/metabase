@@ -1,6 +1,7 @@
 (ns metabase.models.field-values
-  "FieldValues is used to store a cached list of values of Fields that has `has_field_values=:auto-list or :list`.
-  Check the doc in [[metabase.models.field/has-field-values-options]] for more info about `has_field_values`.
+  "FieldValues is used to store a cached list of values of Fields that has `has_field_values=:auto-list` or `:list`.
+  Check the doc in [[metabase.lib.schema.metadata/column-has-field-values-options]] for more info about
+  `has_field_values`.
 
   There are 2 main classes of FieldValues: Full and Advanced.
   - Full FieldValues store a list of distinct values of a Field without any constraints.
@@ -17,7 +18,10 @@
   - Advanced FieldValues are created on demand: for example the Sandbox FieldValues are created when a user with
     sandboxed permission try to get values of a Field.
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
-    But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
+    But they will also be automatically deleted when the Full FieldValues of the same Field got updated.
+
+  There is also more written about how these are used for remapping in the docstrings
+  for [[metabase.models.params.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
   (:require
    [java-time.api :as t]
    [malli.core :as mc]
@@ -344,12 +348,12 @@
         values                    (map first unwrapped-values)
         field-name                (or (:name field) (:id field))]
     (cond
-      ;; If this Field is marked `auto-list`, and the number of values in now over the [[auto-list-cardinality-threshold]] or
-      ;; the accumulated length of all values exceeded the [[*total-max-length*]] threshold
-      ;; we need to unmark it as `auto-list`. Switch it to `has_field_values` = `nil` and delete the FieldValues;
-      ;; this will result in it getting a Search Widget in the UI when `has_field_values` is automatically inferred
-      ;; by the [[metabase.models.field/infer-has-field-values]] hydration function (see that namespace for more detailed
-      ;; discussion)
+      ;; If this Field is marked `auto-list`, and the number of values in now over
+      ;; the [[auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
+      ;; the [[*total-max-length*]] threshold we need to unmark it as `auto-list`. Switch it to `has_field_values` =
+      ;; `nil` and delete the FieldValues; this will result in it getting a Search Widget in the UI when
+      ;; `has_field_values` is automatically inferred by the [[metabase.models.field/infer-has-field-values]] hydration
+      ;; function (see that namespace for more detailed discussion)
       ;;
       ;; It would be nicer if we could do this in analysis where it gets marked `:auto-list` in the first place, but
       ;; Fingerprints don't get updated regularly enough that we could detect the sudden increase in cardinality in a

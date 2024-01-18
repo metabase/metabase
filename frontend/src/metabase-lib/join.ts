@@ -14,7 +14,8 @@ import type {
   TableMetadata,
 } from "./types";
 import { expressionParts } from "./expression";
-import { displayInfo, isColumnMetadata } from "./metadata";
+import { isColumnMetadata } from "./internal";
+import { displayInfo } from "./metadata";
 
 /**
  * Something you can join against -- either a raw Table, or a Card, which can be either a plain Saved Question or a
@@ -242,7 +243,13 @@ export type PickerInfo = {
   isModel?: boolean;
 };
 
-export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
+/**
+ * Returns `null` when the joined table/card isn't available, e.g. due to sandboxing.
+ */
+export function pickerInfo(
+  query: Query,
+  metadata: Joinable,
+): PickerInfo | null {
   return ML.picker_info(query, metadata);
 }
 

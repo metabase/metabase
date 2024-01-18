@@ -7,6 +7,7 @@ import type Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
 import type Variable from "metabase-lib/variables/Variable";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
@@ -32,7 +33,7 @@ class Query {
    * Can only be applied to query that is a direct child of the question.
    */
   question = _.once((): Question => {
-    return this._originalQuestion.setQuery(this);
+    return this._originalQuestion.setLegacyQuery(this);
   });
 
   /**
@@ -63,7 +64,7 @@ class Query {
     return this._datasetQuery;
   }
 
-  setDatasetQuery(datasetQuery: DatasetQuery): Query {
+  setDatasetQuery(_datasetQuery: DatasetQuery): Query {
     return this;
   }
 
@@ -83,18 +84,11 @@ class Query {
   }
 
   /**
-   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
-   */
-  readOnly(): boolean {
-    return true;
-  }
-
-  /**
    * Dimensions exposed by this query
    * NOTE: Ideally we'd also have `dimensions()` that returns a flat list, but currently StructuredQuery has it's own `dimensions()` for another purpose.
    */
   dimensionOptions(
-    filter?: (dimension: Dimension) => boolean,
+    _filter?: (dimension: Dimension) => boolean,
   ): DimensionOptions {
     return new DimensionOptions();
   }
@@ -102,7 +96,7 @@ class Query {
   /**
    * Variables exposed by this query
    */
-  variables(filter?: (variable: Variable) => boolean): Variable[] {
+  variables(_filter?: (variable: Variable) => boolean): TemplateTagVariable[] {
     return [];
   }
 
@@ -111,10 +105,6 @@ class Query {
    */
   dependentMetadata(): DependentMetadataItem[] {
     return [];
-  }
-
-  setDefaultQuery(): Query {
-    return this;
   }
 
   parseFieldReference(fieldRef, query = this): Dimension | null | undefined {

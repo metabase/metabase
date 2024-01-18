@@ -15,7 +15,8 @@
     :is_active false
     :is_superuser false
     :login_attributes nil
-    :sso_source nil}))
+    :sso_source nil
+    :type :internal}))
 
 (defn ensure-internal-user-exists!
   "Creates the internal user"

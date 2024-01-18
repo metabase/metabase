@@ -58,10 +58,20 @@ export const DashboardData = ComposedComponent =>
 
         initialize({ clearCache: !isNavigatingBackToDashboard });
 
-        try {
-          await fetchDashboard(dashboardId, location && location.query, {
+        const result = await fetchDashboard({
+          dashId: dashboardId,
+          queryParams: location && location.query,
+          options: {
             clearCache: !isNavigatingBackToDashboard,
-          });
+          },
+        });
+
+        if (result.error) {
+          setErrorPage(result.payload);
+          return;
+        }
+
+        try {
           await fetchDashboardCardData({
             reload: false,
             clearCache: !isNavigatingBackToDashboard,

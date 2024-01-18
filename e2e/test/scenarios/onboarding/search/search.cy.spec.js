@@ -12,12 +12,15 @@ import {
   setActionsEnabledForDB,
   setTokenFeatures,
   summarize,
+  assertIsEllipsified,
+  main,
 } from "e2e/support/helpers";
 import {
   ADMIN_USER_ID,
   NORMAL_USER_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -173,6 +176,78 @@ describe("scenarios > search", () => {
       );
 
       cy.get("@search.all").should("have.length", 1);
+    });
+
+    it("should render a preview of markdown descriptions", () => {
+      cy.createQuestion({
+        name: "Description Test",
+        query: { "source-table": ORDERS_ID },
+        description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
+
+        Lorem ipsum dolor sit amet.
+        
+        ----
+        
+        ## Heading 1
+        
+        This is a [link](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg).
+        
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
+      }).then(() => {
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        getSearchBar().type("Test");
+      });
+
+      //Enseure that text is ellipsified
+      cy.findByTestId("result-description")
+        .findByText(/Lorem ipsum dolor sit amet./)
+        .then(el => assertIsEllipsified(el[0]));
+
+      //Ensure that images are not being rendered in the descriptions
+      cy.findByTestId("result-description")
+        .findByRole("img")
+        .should("not.exist");
+    });
+
+    it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
+      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+      // Type as soon as possible, before the dashboard has finished loading
+      getSearchBar().type("ord");
+
+      // Once the dashboard is visible, the search results should not be dismissed
+      main().findByRole("heading", { name: "Loading..." }).should("not.exist");
+      cy.findByTestId("search-results-floating-container").should("exist");
+    });
+
+    it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
+      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
+        value: ORDERS_DASHBOARD_ID,
+      });
+      cy.intercept(
+        {
+          url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
+          method: "GET",
+          middleware: true,
+        },
+        req => {
+          req.continue(res => {
+            res.delay = 1000;
+            res.send();
+          });
+        },
+      );
+      cy.visit(`/`);
+
+      // Type as soon as possible, before the dashboard has finished loading
+      getSearchBar().type("ord");
+
+      // Once the dashboard is visible, the search results should not be dismissed
+      cy.findByTestId("dashboard-parameters-and-cards").should("exist");
+
+      cy.findByTestId("search-results-floating-container").should("exist");
     });
   });
   describe("accessing full page search with `Enter`", () => {

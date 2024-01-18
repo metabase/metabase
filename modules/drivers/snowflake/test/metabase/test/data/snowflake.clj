@@ -42,7 +42,7 @@
   because it relies on [[public-settings/site-uuid]]."
   #'sql.tu.unique-prefix/unique-prefix)
 
-(defn- qualified-db-name
+(defn qualified-db-name
   "Prepend `database-name` with the [[*database-prefix-fn*]] so we don't stomp on any other jobs running at the same
   time."
   [database-name]

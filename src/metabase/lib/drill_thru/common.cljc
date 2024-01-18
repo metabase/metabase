@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.common
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]))
 
 (defn mbql-stage?
@@ -35,3 +36,8 @@
   ;; Several drill-thrus are rendered as a fixed label for that type, with no reference to the column or value,
   ;; so the default is simply the drill-thru type.
   (select-keys drill-thru [:type :display-name]))
+
+(defn many-pks?
+  "Does the source table for this `query` have more than one primary key?"
+  [query]
+  (> (count (lib.metadata.calculation/primary-keys query)) 1))

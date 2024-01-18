@@ -52,3 +52,11 @@ yarn release-offline v0.77.77 1234567890abcdef1234567890abcdef12345678 --publish
 ```
 
 The order of the arguments matters, the script will yell at you if you put the flags in the wrong order. We could make this more robust, but it's probably not worth the effort since hopefully we won't ever have to use this :crossed_fingers:.
+
+## Utilities
+
+In case you want to preview release notes generation, or re-generate them after a release has been built, you can use this command. (the hash doesn't matter, it's just a placeholder)
+
+```sh
+yarn release-offline v0.77.0 1234567890abcdef1234567890abcdef12345678  --changelog > changelog.log
+```

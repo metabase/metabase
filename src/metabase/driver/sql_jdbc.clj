@@ -13,8 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx])
+   [metabase.util.honey-sql-2 :as h2x])
   (:import
    (java.sql Connection)))
 
@@ -36,11 +35,8 @@
                (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
-   (let [table-identifier (sql.qp/with-driver-honey-sql-version driver
-                            (->> (hx/identifier :table (:schema table) (:name table))
-                                 (sql.qp/->honeysql driver)
-                                 sql.qp/maybe-wrap-unaliased-expr))]
-     (query driver database (merge {:from [table-identifier]}
+   (let [table-identifier (sql.qp/->honeysql driver (h2x/identifier :table (:schema table) (:name table)))]
+     (query driver database (merge {:from [[table-identifier]]}
                                    honeysql-form)))))
 
 
@@ -83,7 +79,7 @@
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
-  (sql-jdbc.conn/notify-database-updated database))
+  (sql-jdbc.conn/invalidate-pool-for-db! database))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
@@ -101,21 +97,25 @@
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
 
+(defmethod driver/describe-table-indexes :sql-jdbc
+  [driver database table]
+  (sql-jdbc.sync/describe-table-indexes driver database table))
+
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
-  (hx/->timestamp expr))
+  (h2x/->timestamp expr))
 
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->Date]
   [_driver _semantic_type expr]
-  (hx/->date expr))
+  (h2x/->date expr))
 
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
-  (hx/->time expr))
+  (h2x/->time expr))
 
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _semantic_type expr]
-  (hx/->timestamp expr))
+  (h2x/->timestamp expr))
 
 (defn- create-table-sql
   [driver table-name col->type]
@@ -142,21 +142,34 @@
   [driver db-id table-name column-names values]
   (let [table-name (keyword table-name)
         columns    (map keyword column-names)
+        ;; We need to partition the insert into multiple statements for both performance and correctness.
+        ;;
+        ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
+        ;; little faster but not by much (3.63m), and 10,000 threw an error:
+        ;;     PreparedStatement can have at most 65,535 parameters
+        ;; One imagines that `(long (/ 65535 (count columns)))` might be best, but I don't trust the 65K limit to apply
+        ;; across all drivers. With that in mind, 100 seems like a safe compromise.
+        ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
+        chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
         sqls       (map #(sql/format {:insert-into table-name
                                       :columns     columns
                                       :values      %}
                                      :quoted true
                                      :dialect (sql.qp/quote-style driver))
-                        (partition-all 100 values))]
-    ;; We need to partition the insert into multiple statements for both performance and correctness.
-    ;;
-    ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
-    ;; little faster but not by much (3.63m), and 10,000 threw an error:
-    ;;     PreparedStatement can have at most 65,535 parameters
-    ;; One imagines that `(long (/ 65535 (count columns)))` might be best, but I don't trust the 65K limit to apply
-    ;; across all drivers. With that in mind, 100 seems like a safe compromise.
-    (doseq [sql sqls]
-      (qp.writeback/execute-write-sql! db-id sql))))
+                        chunks)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (doseq [sql sqls]
+        (jdbc/execute! conn sql)))))
+
+(defmethod driver/add-columns! :sql-jdbc
+  [driver db-id table-name col->type]
+  (let [sql (first (sql/format {:alter-table (keyword table-name)
+                                :add-column (map (fn [[name type-spec]]
+                                                   (vec (cons name type-spec)))
+                                                 col->type)}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
+    (qp.writeback/execute-write-sql! db-id sql)))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]

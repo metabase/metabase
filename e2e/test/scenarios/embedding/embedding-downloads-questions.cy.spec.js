@@ -1,12 +1,13 @@
 import {
-  restore,
   describeEE,
-  visitQuestion,
-  visitEmbeddedPage,
-  popover,
-  setTokenFeatures,
-  visitIframe,
   filterWidget,
+  openStaticEmbeddingModal,
+  popover,
+  restore,
+  setTokenFeatures,
+  visitEmbeddedPage,
+  visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -42,14 +43,14 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     it("should not be possible to disable downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
-        openEmbeddingSettingsPage();
+
+        openStaticEmbeddingModal({ activeTab: "appearance" });
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
         );
-        cy.get("section")
-          .should("have.length", 2)
-          .and("not.contain", "Download data")
+        cy.findByLabelText("Play with the options here")
+          .should("not.contain", "Download data")
           .and("not.contain", "Enable users to download data from this embed?");
 
         cy.log('Use API to "publish" this question and to enable its filter');
@@ -101,13 +102,16 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     it("should be possible to disable downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
-        openEmbeddingSettingsPage();
+
+        openStaticEmbeddingModal({ activeTab: "appearance" });
 
         cy.log("Disable downloads");
         cy.findByLabelText("Enable users to download data from this embed?")
-          .should("be.checked")
-          .click()
-          .should("not.be.checked");
+          .as("allow-download-toggle")
+          .should("be.checked");
+
+        cy.findByText("Enable users to download data from this embed?").click();
+        cy.get("@allow-download-toggle").should("not.be.checked");
 
         cy.log('Use API to "publish" this question and to enable its filter');
         cy.request("PUT", `/api/card/${questionId}`, {
@@ -132,11 +136,3 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     });
   });
 });
-
-function openEmbeddingSettingsPage() {
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-
-  cy.icon("share").click();
-  cy.findByText("Embed in your application").click();
-  cy.wait("@sessionProperties");
-}

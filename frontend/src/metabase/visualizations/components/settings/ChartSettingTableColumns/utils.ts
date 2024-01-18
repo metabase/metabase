@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -117,7 +117,7 @@ export const getAdditionalMetadataColumns = (
 ): Lib.ColumnMetadata[] => {
   const additionalColumns = new Set(metadataColumns);
 
-  columnSettingItems.forEach(({ enabled, metadataColumn }) => {
+  columnSettingItems.forEach(({ metadataColumn }) => {
     if (metadataColumn) {
       additionalColumns.delete(metadataColumn);
     }
@@ -126,13 +126,8 @@ export const getAdditionalMetadataColumns = (
   return Array.from(additionalColumns);
 };
 
-const getColumnGroupName = (
-  displayInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo,
-) => {
-  const columnInfo = displayInfo as Lib.ColumnDisplayInfo;
-  const tableInfo = displayInfo as Lib.TableDisplayInfo;
-  return columnInfo.fkReferenceName || tableInfo.displayName;
-};
+const getColumnGroupName = (displayInfo: Lib.ColumnGroupDisplayInfo) =>
+  displayInfo.fkReferenceName || displayInfo.displayName;
 
 export const getColumnGroups = (
   query: Lib.Query,
@@ -185,9 +180,10 @@ export const enableColumnInQuery = (
   }
 
   const displayInfo = Lib.displayInfo(query, STAGE_INDEX, metadataColumn);
-  return displayInfo.selected
+  const newQuery = displayInfo.selected
     ? query
     : Lib.addField(query, STAGE_INDEX, metadataColumn);
+  return Lib.dropStageIfEmpty(newQuery, STAGE_INDEX);
 };
 
 export const disableColumnInQuery = (
@@ -198,7 +194,8 @@ export const disableColumnInQuery = (
     return query;
   }
 
-  return Lib.removeField(query, STAGE_INDEX, metadataColumn);
+  const newQuery = Lib.removeField(query, STAGE_INDEX, metadataColumn);
+  return Lib.dropStageIfEmpty(newQuery, STAGE_INDEX);
 };
 
 export const findColumnSettingIndex = (
@@ -227,7 +224,7 @@ export const addColumnInSettings = (
   if (settingIndex >= 0) {
     newSettings[settingIndex] = { ...newSettings[settingIndex], enabled: true };
   } else {
-    const fieldRef = Lib.legacyFieldRef(column);
+    const fieldRef = Lib.legacyRef(column);
     newSettings.push({ name, fieldRef, enabled: true });
   }
 

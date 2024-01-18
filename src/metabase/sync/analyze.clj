@@ -10,7 +10,6 @@
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -89,16 +88,16 @@
         (log/info (u/format-color 'blue "%s Analyzed %s %s" step progress-bar-result (sync-util/name-for-logging table)))))))
 
 (defn- fingerprint-fields-summary [{:keys [fingerprints-attempted updated-fingerprints no-data-fingerprints failed-fingerprints]}]
-  (trs "Fingerprint updates attempted {0}, updated {1}, no data found {2}, failed {3}"
-       fingerprints-attempted updated-fingerprints no-data-fingerprints failed-fingerprints))
+  (format "Fingerprint updates attempted %d, updated %d, no data found %d, failed %d"
+          fingerprints-attempted updated-fingerprints no-data-fingerprints failed-fingerprints))
 
 (defn- classify-fields-summary [{:keys [fields-classified fields-failed]}]
-  (trs "Total number of fields classified {0}, {1} failed"
-       fields-classified fields-failed))
+  (format "Total number of fields classified %d, %d failed"
+          fields-classified fields-failed))
 
 (defn- classify-tables-summary [{:keys [total-tables tables-classified]}]
-  (trs "Total number of tables classified {0}, {1} updated"
-       total-tables tables-classified))
+  (format "Total number of tables classified %d, %d updated"
+          total-tables tables-classified))
 
 (defn- make-analyze-steps [tables log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"

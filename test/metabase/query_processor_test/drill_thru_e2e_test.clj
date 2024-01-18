@@ -14,7 +14,7 @@
 
 (deftest ^:parallel quick-filter-on-bucketed-date-test
   (testing "a quick-filter drill on a bucketed DATE should produce valid results (#18769)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (qp.store/with-metadata-provider (mt/id)
         (let [products           (lib.metadata/table (qp.store/metadata-provider) (mt/id :products))
               created-at         (-> (lib.metadata/field (qp.store/metadata-provider) (mt/id :products :created_at))
@@ -28,19 +28,25 @@
               quick-filter-drill (m/find-first #(= (:type %) :drill-thru/quick-filter)
                                                (lib/available-drill-thrus query drill-context))]
           (is (some? quick-filter-drill))
-          (let [query' (lib/drill-thru query -1 quick-filter-drill "=")]
-            (is (=? {:stages [{:filters [[:=
+          (let [query' (lib/drill-thru query -1 quick-filter-drill "<")]
+            (is (=? {:stages [{:filters [[:<
                                           {}
-                                          [:field {:temporal-unit :day} (mt/id :products :created_at)]
+                                          [:field {} (mt/id :products :created_at)]
                                           #t "2016-05-30T00:00Z[UTC]"]]}]}
                     query'))
             (mt/with-native-query-testing-context query'
-              (is (= [["2016-05-30T00:00:00Z" 2]]
+              (is (= [["2016-04-26T00:00:00Z" 1]
+                      ["2016-04-28T00:00:00Z" 1]
+                      ["2016-05-02T00:00:00Z" 1]
+                      ["2016-05-04T00:00:00Z" 1]
+                      ["2016-05-11T00:00:00Z" 1]
+                      ["2016-05-12T00:00:00Z" 1]
+                      ["2016-05-24T00:00:00Z" 1]]
                      (mt/rows (qp/process-query query')))))))))))
 
 (deftest ^:parallel distribution-drill-on-longitude-from-sql-source-card-test
   (testing "#16672"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             card-query         (lib/native-query metadata-provider "SELECT * FROM PEOPLE ORDER BY ID DESC LIMIT 100;")
             results            (qp/process-query card-query)

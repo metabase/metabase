@@ -3,15 +3,22 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
+   [metabase.models.serialization :as serdes]
+   [metabase.plugins :as plugins]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :plugins))
 
 (defmacro with-audit-db-restoration [& body]
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
@@ -29,7 +36,7 @@
     (testing "Audit DB content is not installed when it is not found"
       (t2/delete! :model/Database :is_audit true)
       (with-redefs [audit-db/analytics-dir-resource nil]
-        (is (= nil audit-db/analytics-dir-resource))
+        (is (nil? @#'audit-db/analytics-dir-resource))
         (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
@@ -44,6 +51,9 @@
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
+
+    (testing "Only admins have data perms for the audit DB after it is installed"
+      (is (not (t2/exists? :model/Permissions {:where [:like :object (str "%" perms/audit-db-id "%")]}))))
 
     (testing "Audit DB does not have scheduled syncs"
       (let [db-has-sync-job-trigger? (fn [db-id]
@@ -61,15 +71,27 @@
         (is (= ::audit-db/no-op (audit-db/ensure-audit-db-installed!)))
         (t2/update! Database :is_audit true {:engine "h2"})))))
 
-(deftest audit-db-instance-analytics-content-is-copied-properly
-  (fs/delete-tree "plugins/instance_analytics")
-  (is (not (contains? (set (map str (fs/list-dir "plugins")))
-                      "plugins/instance_analytics")))
+(deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
+  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+    (try
+     (let [plugins-dir (plugins/plugins-dir)]
+       (fs/create-dirs plugins-dir)
+       (#'audit-db/ia-content->plugins plugins-dir)
+       (doseq [top-level-plugin-dir (map (comp str fs/absolutize)
+                                         (fs/list-dir (fs/path plugins-dir "instance_analytics")))]
+         (testing (str top-level-plugin-dir " starts with plugins value")
+           (is (str/starts-with? top-level-plugin-dir (str (fs/absolutize plugins-dir)))))))
+     (finally
+       (fs/delete-tree (plugins/plugins-dir))))))
 
-  (#'audit-db/ia-content->plugins)
-  (is (= #{"plugins/instance_analytics/collections"
-           "plugins/instance_analytics/databases"}
-         (set (map str (fs/list-dir "plugins/instance_analytics"))))))
+(deftest all-instance-analytics-content-is-copied-from-mb-plugins-dir-test
+  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+    (try
+      (#'audit-db/ia-content->plugins (plugins/plugins-dir))
+      (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
+             (count (file-seq (io/file (io/resource "instance_analytics"))))))
+     (finally
+       (fs/delete-tree (plugins/plugins-dir))))))
 
 (defn- get-audit-db-trigger-keys []
   (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))
@@ -87,3 +109,23 @@
            #"Cannot sync Database: It is the audit db."
            (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
     (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
+
+(deftest no-backfill-occurs-when-loading-analytics-content-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [c1-instance (t2/insert-returning-instance! :model/Collection
+                                                     {:entity_id nil,
+                                                      :name      "My Duped Collection",
+                                                      :location  "/"})]
+      ;; fill in the entity_id for c1:
+      (serdes.backfill/backfill-ids-for! :model/Collection)
+      ;; insert c2, which will have the same entity id:
+      (let [c2-instance (t2/insert-returning-instance! :model/Collection (dissoc c1-instance :id))]
+        (testing "c1 and c2 hash to the same entity id."
+          (is (= (u/generate-nano-id (serdes/identity-hash c1-instance))
+                 (u/generate-nano-id (serdes/identity-hash c2-instance)))))
+        (testing "A backfill with 'duplicate' rows (with different ids)."
+          (is (thrown? Exception
+                       (serdes.backfill/backfill-ids-for! :model/Collection))))
+        (testing "No exception is thrown when db has 'duplicate' entries."
+          (is (= :metabase-enterprise.audit-db/no-op
+                 (audit-db/ensure-audit-db-installed!))))))))

@@ -4,7 +4,9 @@ import {
   popover,
   restore,
 } from "e2e/support/helpers";
-import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("issue 28599", () => {
   beforeEach(() => {
@@ -36,9 +38,9 @@ describe("issue 28599", () => {
   });
 
   it("should not show time granularity footer after question conversion to a model (metabase#28599)", () => {
-    cy.findByTestId("time-series-mode-footer").within(() => {
+    cy.findByTestId("timeseries-chrome").within(() => {
       cy.findByText(`View`).should("be.visible");
-      cy.findByText(`All Time`).should("be.visible");
+      cy.findByText(`All time`).should("be.visible");
       cy.findByText(`by`).should("be.visible");
       cy.findByText(`Year`).should("be.visible");
     });

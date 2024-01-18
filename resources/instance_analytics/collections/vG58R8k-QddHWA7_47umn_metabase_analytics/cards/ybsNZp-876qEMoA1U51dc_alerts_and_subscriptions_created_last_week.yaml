@@ -15,7 +15,7 @@ database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
-- v_alerts_subscriptions
+- v_subscriptions
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -29,38 +29,20 @@ dataset_query:
     - - count
     breakout:
     - - field
-      - created_at
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - created_at
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
-    filter:
-    - and
-    - - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - group_name
-        - base-type: type/Text
-          join-alias: Question 34
-      - All Users
-    - - time-interval
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_alerts_subscriptions
-          - created_at
-        - base-type: type/DateTimeWithLocalTZ
-      - -2
-      - week
-      - include-current: false
     joins:
-    - alias: Question 34
+    - alias: Group Members - Creator
       condition:
       - =
       - - field
         - - Internal Metabase Database
           - public
-          - v_alerts_subscriptions
+          - v_subscriptions
           - creator_id
         - base-type: type/Integer
       - - field
@@ -69,9 +51,9 @@ dataset_query:
           - v_group_members
           - user_id
         - base-type: type/Integer
-          join-alias: Question 34
-      fields: all
+          join-alias: Group Members - Creator
       source-table: lTp-ATFsCUFEr9I0fMEaO
+      strategy: left-join
     source-table: 5ojUtU9iE-DCggHdFPIll
   type: query
 result_metadata: null

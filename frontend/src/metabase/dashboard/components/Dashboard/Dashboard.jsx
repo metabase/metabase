@@ -3,6 +3,8 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
@@ -27,15 +29,12 @@ import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
-import { updateParametersWidgetStickiness } from "./stickyParameters";
-
-// NOTE: move DashboardControls HoC to container
 
 class DashboardInner extends Component {
   state = {
     error: null,
-    isParametersWidgetSticky: false,
     parametersListLength: 0,
+    hasScroll: getMainElement()?.scrollTop > 0,
   };
 
   static defaultProps = {
@@ -55,11 +54,13 @@ class DashboardInner extends Component {
 
   async componentDidMount() {
     await this.loadDashboard(this.props.dashboardId);
+    getMainElement().addEventListener("scroll", this.onMainScroll, {
+      capture: false,
+      passive: true,
+    });
   }
 
   async componentDidUpdate(prevProps) {
-    updateParametersWidgetStickiness(this);
-
     if (prevProps.dashboardId !== this.props.dashboardId) {
       await this.loadDashboard(this.props.dashboardId);
       return;
@@ -81,6 +82,7 @@ class DashboardInner extends Component {
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
+    getMainElement().removeEventListener("scroll", this.onMainScroll);
   }
 
   async loadDashboard(dashboardId) {
@@ -100,11 +102,21 @@ class DashboardInner extends Component {
 
     loadDashboardParams();
 
-    try {
-      await fetchDashboard(dashboardId, location.query, {
+    const result = await fetchDashboard({
+      dashId: dashboardId,
+      queryParams: location.query,
+      options: {
         clearCache: !isNavigatingBackToDashboard,
         preserveParameters: isNavigatingBackToDashboard,
-      });
+      },
+    });
+
+    if (result.error) {
+      setErrorPage(result.payload);
+      return;
+    }
+
+    try {
       if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
       }
@@ -142,13 +154,17 @@ class DashboardInner extends Component {
   };
 
   onSharingClick = () => {
-    this.props.setSharing(true);
+    this.props.setSharing(!this.props.isSharing);
   };
 
   onAddQuestion = () => {
     const { dashboard } = this.props;
     this.setEditing(dashboard);
     this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
+  };
+
+  onMainScroll = event => {
+    this.setState({ hasScroll: event.target.scrollTop > 0 });
   };
 
   renderContent = () => {
@@ -205,7 +221,6 @@ class DashboardInner extends Component {
       addParameter,
       dashboard,
       isEditing,
-      isEditingParameter,
       isFullscreen,
       isNightMode,
       isSharing,
@@ -220,11 +235,12 @@ class DashboardInner extends Component {
       isAutoApplyFilters,
     } = this.props;
 
-    const { error, isParametersWidgetSticky } = this.state;
+    const { error, parametersListLength, hasScroll } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
     const visibleParameters = getVisibleParameters(parameters);
+    const hasVisibleParameters = visibleParameters.length > 0;
 
     const parametersWidget = (
       <SyncedParametersList
@@ -244,14 +260,10 @@ class DashboardInner extends Component {
     );
 
     const shouldRenderParametersWidgetInViewMode =
-      !isEditing && !isFullscreen && visibleParameters.length > 0;
+      !isEditing && !isFullscreen && hasVisibleParameters;
 
     const shouldRenderParametersWidgetInEditMode =
-      isEditing && visibleParameters.length > 0;
-
-    const cardsContainerShouldHaveMarginTop =
-      !shouldRenderParametersWidgetInViewMode &&
-      (!isEditing || isEditingParameter);
+      isEditing && hasVisibleParameters;
 
     return (
       <DashboardLoadingAndErrorWrapper
@@ -298,17 +310,17 @@ class DashboardInner extends Component {
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     data-testid="dashboard-parameters-widget-container"
-                    isSticky={isParametersWidgetSticky}
+                    hasScroll={hasScroll}
+                    isSticky={isParametersWidgetContainersSticky(
+                      parametersListLength,
+                    )}
                   >
                     {parametersWidget}
                     <FilterApplyButton />
                   </ParametersWidgetContainer>
                 )}
 
-                <CardsContainer
-                  addMarginTop={cardsContainerShouldHaveMarginTop}
-                  id="Dashboard-Cards-Container"
-                >
+                <CardsContainer id="Dashboard-Cards-Container">
                   {this.renderContent()}
                 </CardsContainer>
               </ParametersAndCardsContainer>
@@ -386,5 +398,15 @@ DashboardInner.propTypes = {
   closeNavbar: PropTypes.func.isRequired,
   isAutoApplyFilters: PropTypes.bool,
 };
+
+function isParametersWidgetContainersSticky(parameterCount) {
+  if (!isSmallScreen()) {
+    return true;
+  }
+
+  // Sticky header with more than 5 parameters
+  // takes too much space on small screens
+  return parameterCount <= 5;
+}
 
 export const Dashboard = DashboardControls(DashboardInner);

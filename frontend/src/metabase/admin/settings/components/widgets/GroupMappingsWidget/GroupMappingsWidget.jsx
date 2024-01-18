@@ -6,7 +6,7 @@ import { t } from "ttag";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { isDefaultGroup } from "metabase/lib/groups";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import { FormSwitch } from "metabase/forms";
 
@@ -108,7 +108,10 @@ function GroupMappingsWidget({
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
             {isFormik ? ( // temporary until SettingsJWTForm and SettingsLdapForm are migrated to formik
-              <FormSwitch name={props.setting.key}></FormSwitch>
+              <FormSwitch
+                data-testid="group-sync-switch"
+                name={props.setting.key}
+              />
             ) : (
               <SettingToggle {...props} hideLabel />
             )}

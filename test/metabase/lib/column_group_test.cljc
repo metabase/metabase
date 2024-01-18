@@ -31,17 +31,19 @@
                                              {:name "NAME", :display-name "Name"}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:is-from-join           false
-                :is-implicitly-joinable false
-                :name                   "VENUES"
-                :display-name           "Venues"}
-               {:is-from-join           false
-                :is-implicitly-joinable true
-                :name                   "CATEGORY_ID"
-                :display-name           "Category ID"
-                :fk-reference-name      "Category"}]
+      (is (=? [[{:is-from-join           false
+                 :is-implicitly-joinable false
+                 :name                   "VENUES"
+                 :display-name           "Venues"}
+                "Venues"]
+               [{:is-from-join           false
+                 :is-implicitly-joinable true
+                 :name                   "CATEGORY_ID"
+                 :display-name           "Category"}
+                "Category"]]
               (for [group groups]
-                (lib/display-info query group)))))
+                [(lib/display-info query group)
+                 (lib/display-name query group)]))))
     (testing `lib/columns-group-columns
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
@@ -163,8 +165,7 @@
                {:is-from-join           false
                 :is-implicitly-joinable true
                 :name                   "CATEGORY_ID"
-                :display-name           "Category ID"
-                :fk-reference-name      "Category"}]
+                :display-name           "Category"}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -371,16 +372,16 @@
                {:display-name "Mock orders card"
                 :is-from-join true,
                 :is-implicitly-joinable false}
-               {:display-name "Product ID"
+               {:display-name "Product"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "User ID"
+               {:display-name "User"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "Product ID"
+               {:display-name "Product"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "User ID"
+               {:display-name "User"
                 :is-from-join false,
                 :is-implicitly-joinable true}]
               (map #(lib/display-info query %) groups)))

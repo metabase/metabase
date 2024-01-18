@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
-import type { IconProps } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 
 import type { Collection } from "metabase-types/api";
 import { getCollectionType } from "../utils";
@@ -32,7 +32,7 @@ export function CollectionInstanceAnalyticsIcon({
     <Icon
       {...iconProps}
       name={collectionType.icon}
-      tooltip={t`This is a read-only Instance Analytics ${collectionIconTooltipNameMap[entity]}.`}
+      tooltip={t`This is a read-only Metabase Analytics ${collectionIconTooltipNameMap[entity]}.`}
       data-testid="instance-analytics-collection-marker"
     />
   );

@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: schedule_day
   model: Field
+database_indexed: null

@@ -1,5 +1,5 @@
 (ns metabase.driver.sql.parameters.substitution-test
-  "Most of the code in `metabase.driver.sql.parameters.substitution` is actually tested by
+  "Most of the code in [[metabase.driver.sql.parameters.substitution]] is actually tested by
   [[metabase.driver.sql.parameters.substitute-test]]."
   (:require
    [clojure.test :refer :all]
@@ -28,7 +28,8 @@
           (#'sql.params.substitution/field->clause
            :h2
            (meta/field-metadata :venues :id)
-           :number/=))))
+           :number/=
+           nil))))
 
 (deftest ^:parallel honeysql->replacement-snippet-info-test
   (testing "make sure we handle quotes inside names correctly!"
@@ -47,7 +48,7 @@
                :value {:type  :string/=
                        :value ["Doohickey"]}})))))
   (testing "Compound filters should be wrapped in parens"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-metadata-provider meta/metadata-provider
         (is (= {:replacement-snippet     "((\"PUBLIC\".\"PEOPLE\".\"STATE\" <> ?) OR (\"PUBLIC\".\"PEOPLE\".\"STATE\" IS NULL))"
                 :prepared-statement-args ["OR"]}
@@ -68,7 +69,7 @@
               :query   "SELECT * FROM table WHERE x LIKE ?"
               :params  ["G%"]}))))))
 
-;;; -------------------------------------- align-temporal-unit-with-param-type test ----------------------------------------
+;;; ------------------------------------ align-temporal-unit-with-param-type-and-value test ------------------------------------
 
 (driver/register! ::temporal-unit-alignment-original :abstract? true :parent :sql)
 (driver/register! ::temporal-unit-alignment-override :abstract? true :parent :sql)
@@ -78,8 +79,8 @@
     [_driver _feature _db]
     false))
 
-(defmethod sql.params.substitution/align-temporal-unit-with-param-type ::temporal-unit-alignment-override
-  [_driver _field _param-type]
+(defmethod sql.params.substitution/align-temporal-unit-with-param-type-and-value ::temporal-unit-alignment-override
+  [_driver _field _param-type _value]
   nil)
 
 ;; The original implementation will call this method despite the value being past30minutes. This is likely a bug.
@@ -88,7 +89,7 @@
   [_driver _unit expr]
   (h2x/day expr))
 
-(deftest align-temporal-unit-with-param-type-test
+(deftest ^:parallel align-temporal-unit-with-param-type-test
   (mt/with-clock #t "2018-07-01T12:30:00.000Z"
     (mt/with-metadata-provider meta/metadata-provider
       (let [field-filter (params/map->FieldFilter
@@ -100,7 +101,7 @@
           (driver/with-driver ::temporal-unit-alignment-original
             (is (= {:prepared-statement-args expected-args
                     ;; `sql.qp/date [driver :day]` was called due to `:day` returned from the multimethod by default
-                    :replacement-snippet "day(\"PUBLIC\".\"CHECKINS\".\"DATE\") BETWEEN ? AND ?"}
+                    :replacement-snippet "DAY(\"PUBLIC\".\"CHECKINS\".\"DATE\") BETWEEN ? AND ?"}
                    (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-original field-filter)))))
         (testing "override"
           (driver/with-driver ::temporal-unit-alignment-override

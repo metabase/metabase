@@ -16,7 +16,6 @@
    [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -47,8 +46,8 @@
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
     (t2/insert-returning-pks! Field
-      (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
-                    field-comment database-position nfc-path visibility-type json-unfolding]
+      (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
+                    database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
              field-name :name :as field} new-field-metadatas]
         (do
           (when (and effective-type
@@ -79,6 +78,7 @@
            :json_unfolding             (or json-unfolding false)
            :database_is_auto_increment (or database-is-auto-increment false)
            :database_required          (or database-required false)
+           :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
            :visibility_type            (or visibility-type :normal)})))))
 
 (mu/defn ^:private create-or-reactivate-fields! :- [:maybe [:sequential i/FieldInstance]]
@@ -127,15 +127,15 @@
      ;; Field sync logic below is broken out into chunks of 1000 fields for huge star schemas or other situations
      ;; where we don't want to be updating way too many rows at once
      (sync-util/sum-for [db-field-chunk (partition-all 1000 db-metadata)]
-       (sync-util/with-error-handling (trs "Error checking if Fields {0} need to be created or reactivated"
-                                           (pr-str (map :name db-field-chunk)))
-         (let [known-field?        (comp known-fields common/canonical-name)
-               new-fields          (remove known-field? db-field-chunk)
-               new-field-instances (create-or-reactivate-fields! table new-fields parent-id)]
-           ;; save any updates to `our-metadata`
-           (swap! our-metadata into (fetch-metadata/fields->our-metadata new-field-instances parent-id))
-           ;; now return count of rows updated
-           (count new-fields))))
+       (sync-util/with-error-handling (format "Error checking if Fields %s need to be created or reactivated"
+                                              (pr-str (map :name db-field-chunk)))
+        (let [known-field?        (comp known-fields common/canonical-name)
+              new-fields          (remove known-field? db-field-chunk)
+              new-field-instances (create-or-reactivate-fields! table new-fields parent-id)]
+          ;; save any updates to `our-metadata`
+          (swap! our-metadata into (fetch-metadata/fields->our-metadata new-field-instances parent-id))
+          ;; now return count of rows updated
+          (count new-fields))))
 
      :our-metadata
      @our-metadata}))
@@ -150,7 +150,7 @@
   nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
   [table          :- i/TableInstance
    metabase-field :- common/TableMetadataFieldWithID]
-  (log/info (trs "Marking Field ''{0}'' as inactive." (common/field-metadata-name-for-logging table metabase-field)))
+  (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
   (when (pos? (t2/update! Field (u/the-id metabase-field) {:active false}))
     1))
 
@@ -164,8 +164,8 @@
   ;; retire all the Fields not present in `db-metadata`, and count how many rows were actually affected
   (sync-util/sum-for [metabase-field our-metadata
                       :when          (not (common/matching-field-metadata metabase-field db-metadata))]
-    (sync-util/with-error-handling (trs "Error retiring {0}"
-                                        (common/field-metadata-name-for-logging table metabase-field))
+    (sync-util/with-error-handling (format "Error retiring %s"
+                                           (common/field-metadata-name-for-logging table metabase-field))
       (retire-field! table metabase-field))))
 
 

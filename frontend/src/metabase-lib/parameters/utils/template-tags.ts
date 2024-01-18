@@ -41,6 +41,7 @@ export function getTemplateTagParameter(
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
+    required: tag.required,
     options: tag.options,
     values_query_type: config?.values_query_type,
     values_source_type: config?.values_source_type,
@@ -48,7 +49,7 @@ export function getTemplateTagParameter(
   };
 }
 
-// NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
+// NOTE: this should mirror `template-tag-parameters` in src/metabase/models/card.clj
 // If this function moves you should update the comment that links to this one
 export function getTemplateTagParameters(
   tags: TemplateTag[],
@@ -60,25 +61,19 @@ export function getTemplateTagParameters(
     .filter(
       tag =>
         tag.type != null &&
+        tag.type !== "card" &&
+        tag.type !== "snippet" &&
         ((tag["widget-type"] && tag["widget-type"] !== "none") ||
           tag.type !== "dimension"),
     )
     .map(tag => getTemplateTagParameter(tag, parametersById[tag.id]));
 }
 
-export function getTemplateTagsForParameters(card: Card) {
-  const templateTags: TemplateTag[] =
-    card &&
-    card.dataset_query &&
-    card.dataset_query.type === "native" &&
+export function getTemplateTags(card: Card): TemplateTag[] {
+  return card?.dataset_query?.type === "native" &&
     card.dataset_query.native["template-tags"]
-      ? Object.values(card.dataset_query.native["template-tags"])
-      : [];
-
-  return templateTags.filter(
-    // this should only return template tags that define a parameter of the card
-    tag => tag.type !== "card" && tag.type !== "snippet",
-  );
+    ? Object.values(card.dataset_query.native["template-tags"])
+    : [];
 }
 
 export function getParametersFromCard(
@@ -96,7 +91,7 @@ export function getParametersFromCard(
 }
 
 export function getTemplateTagParametersFromCard(card: Card) {
-  const tags = getTemplateTagsForParameters(card);
+  const tags = getTemplateTags(card);
   return getTemplateTagParameters(tags, card.parameters);
 }
 

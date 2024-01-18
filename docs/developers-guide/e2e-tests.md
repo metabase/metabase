@@ -10,7 +10,13 @@ Metabase uses Cypress for “end-to-end testing”, that is, tests that are exec
 
 Metabase’s Cypress tests are located in the `e2e/test/scenarios` source tree, in a structure that roughly mirrors Metabase’s URL structure. For example, tests for the admin “datamodel” pages are located in `e2e/test/scenarios/admin/datamodel`.
 
-During development you will want to run `yarn build-hot` to continuously build the frontend, and `yarn test-cypress-open` to open the Cypress application where you can execute the tests you are working on.
+### Standard Development Flow
+1. Run `yarn build-hot` to continuously build the frontend
+
+2. then `yarn test-cypress-open --browser=electron` to open the Cypress application where you can execute tests you are working on
+
+
+### Running Options
 
 To run all Cypress tests programmatically in the terminal:
 ```
@@ -28,6 +34,8 @@ You can quickly test a single file only by using the `--spec` flag.
 ```
 yarn test-cypress-run --spec e2e/test/scenarios/question/new.cy.spec.js
 ```
+
+## Anatomy of the Test
 
 Cypress test files are structured like Mocha tests, where `describe` blocks are used to group related tests, and `it` blocks are the tests themselves.
 
@@ -102,13 +110,12 @@ Snapshots are created with a separate set of Cypress tests. These tests start wi
 These snapshot-generating tests have the extension `.cy.snap.js`. When these tests run they create db dumps in `frontend/tests/snapshots/*.sql`. They are run before the tests begin and don't get committed to git.
 
 ## Running in CI
+
 Cypress records videos of each test run, which can be helpful in debugging. Additionally, failed tests have higher quality images saved.
 
 These files can be found under the “Artifacts” section for each run's summary in GitHub Actions.
 The example of the artifacts for a failed test in "Onboarding" directory:
 ![GitHub Actions artifacts section](https://user-images.githubusercontent.com/31325167/241774190-f19da1d5-8fca-4c48-9342-ead18066bd12.png)
-
-Additionally, you will find a handy [DeploySentinel](https://www.deploysentinel.com/ci/dashboard) recording link for each failed test in the logs.
 
 ## Running Cypress tests against Metabase® Enterprise Edition™
 

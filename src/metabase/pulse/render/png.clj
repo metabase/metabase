@@ -8,7 +8,7 @@
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
   (:require
    [hiccup.core :refer [html]]
-   [metabase.pulse.render.common :as common]
+   [metabase.formatter :as formatter]
    [metabase.pulse.render.style :as style]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -76,7 +76,7 @@
 
 (s/defn render-html-to-png :- bytes
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
-  [{:keys [content]} :- common/RenderedPulseCard
+  [{:keys [content]} :- formatter/RenderedPulseCard
    width]
   (try
     (let [html (html [:html [:body {:style (style/style

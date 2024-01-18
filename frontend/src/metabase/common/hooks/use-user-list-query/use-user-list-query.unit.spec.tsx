@@ -9,12 +9,12 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockUserInfo } from "metabase-types/api/mocks";
+import { createMockUserListResult } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 
 import { useUserListQuery } from "./use-user-list-query";
 
-const TEST_USER = createMockUserInfo();
+const TEST_USER = createMockUserListResult();
 
 type TestComponentProps = { getRecipients?: boolean };
 

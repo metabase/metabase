@@ -31,13 +31,12 @@
    (clojure.lang PersistentList)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
-                              TableDefinition$Type TableId TableResult)))
+                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema StandardTableDefinition
+                              Table TableDefinition$Type TableId TableResult)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
@@ -63,50 +62,49 @@
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- list-datasets
+  "Fetch all datasets given database `details`, applying dataset filters if specified."
+  [{:keys [project-id dataset-filters-type dataset-filters-patterns] :as details}]
+  (let [client (database-details->client details)
+        project-id (or project-id (bigquery.common/database-details->credential-project-id details))
+        datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+        inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
+        exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
+    (for [^Dataset dataset (.iterateAll datasets)
+          :let [^DatasetId dataset-id (.. dataset getDatasetId)]
+          :when (driver.s/include-schema? inclusion-patterns
+                                          exclusion-patterns
+                                          (.getDataset dataset-id))]
+      dataset-id)))
+
 (defn- list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [database-details]
-   (list-tables database-details {:validate-dataset? false}))
-  (^Iterable [{:keys [project-id dataset-filters-type dataset-filters-patterns] :as details} {:keys [validate-dataset?]}]
+  (^Iterable [details]
    (let [client (database-details->client details)
-         project-id (or project-id (bigquery.common/database-details->credential-project-id details))
-         datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-         inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
-         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)
-         dataset-iter (for [^Dataset dataset (.iterateAll datasets)
-                            :let [^DatasetId dataset-id (.. dataset getDatasetId)]
-                            :when (driver.s/include-schema? inclusion-patterns
-                                                            exclusion-patterns
-                                                            (.getDataset dataset-id))]
-                        dataset-id)]
-     (when (and (not= dataset-filters-type "all")
-                validate-dataset?
-                (zero? (count dataset-iter)))
-       (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
-                       {::driver/can-connect-message? true})))
+         dataset-iter (list-datasets details)]
      (apply concat (for [^DatasetId dataset-id dataset-iter]
                      (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
                          .iterateAll
                          .iterator
                          iterator-seq))))))
 
-(defmethod driver/describe-database :bigquery-cloud-sdk
-  [_ database]
-  (let [tables (list-tables (:details database))]
-    {:tables (set (for [^Table table tables
-                        :let  [^TableId table-id  (.getTableId table)
-                               ^String dataset-id (.getDataset table-id)]]
-                    {:schema dataset-id, :name (.getTable table-id)}))}))
-
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ details-map]
-  ;; check whether we can connect by seeing whether listing tables succeeds
-  (try (some? (list-tables details-map {:validate-dataset? true}))
-       (catch Exception e
-         (when (::driver/can-connect-message? (ex-data e))
-           (throw e))
-         (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
-         false)))
+  [_ details]
+  ;; check whether we can connect by seeing whether listing datasets succeeds
+  (let [[success? datasets] (try [true (list-datasets details)]
+                                 (catch Exception e
+                                   (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
+                                   [false nil]))]
+    (cond
+      (not success?)
+      false
+      ;; if the datasets are filtered and we don't find any matches, throw an exception with a message that we can show
+      ;; to the user
+      (and (not= (:dataset-filters-type details) "all")
+           (nil? (first datasets)))
+      (throw (Exception. (tru "Looks like we cannot find any matching datasets.")))
+      :else
+      true)))
 
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
@@ -122,6 +120,39 @@
    (if project-id
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
+
+(defn- table-is-partitioned?
+  [^StandardTableDefinition tabledef]
+  (when (#{TableDefinition$Type/TABLE TableDefinition$Type/MATERIALIZED_VIEW} (.getType tabledef))
+    (or (.getRangePartitioning tabledef)
+        (.getTimePartitioning tabledef))))
+
+(defmethod driver/describe-database :bigquery-cloud-sdk
+  [_ database]
+  (let [tables (list-tables (:details database))]
+    {:tables (set (for [^Table table tables
+                        :let  [^TableId                 table-id   (.getTableId table)
+                               ^String                  dataset-id (.getDataset table-id)
+                               ^StandardTableDefinition tabledef   (.getDefinition table)
+                                                        table-name (str (.getTable table-id))]]
+                    {:schema                  dataset-id
+                     :name                    table-name
+                     :database_require_filter
+                     (boolean
+                      (and
+                       ;; Materialiezed views can be partitioned, and whether the view require a filter or not is based
+                       ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                       ;; thus we can't know whether the view require a filter or not.
+                       ;; Maybe this is something we can do once we can parse sql
+                       (= TableDefinition$Type/TABLE (. tabledef getType))
+                       (when (table-is-partitioned? tabledef)
+                         ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
+                         ;; on the `table` object from `list-tables` will return `nil` even though the table requires
+                         ;; a partition filter.
+                         ;; This is an upstream bug where the v2 API is incomplete when setting object values see
+                         ;; https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
+                         ;; Anyway, we only call it when the table is partitioned, so I don't think it's a big deal
+                         (.getRequirePartitionFilter (get-table database dataset-id table-name)))))}))}))
 
 (defn- bigquery-type->base-type
   "Returns the base type for the given BigQuery field's `field-mode` and `field-type`. In BQ, an ARRAY of INTEGER has
@@ -157,13 +188,50 @@
        :base-type         (bigquery-type->base-type f-mode type-name)
        :database-position idx})))
 
+(def ^:private partitioned-time-field-name
+  "The name of pseudo-column for tables that are partitioned by ingestion time.
+  See https://cloud.google.com/bigquery/docs/partitioned-tables#ingestion_time"
+  "_PARTITIONTIME")
+
+(def ^:private partitioned-date-field-name
+  "This is also a pseudo-column, similiar to [[partitioned-time-field-name]].
+  In fact _PARTITIONDATE is _PARTITIONTIME truncated to DATE.
+  See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
+  "_PARTITIONDATE")
+
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
-  {:schema dataset-id
-   :name   table-name
-   :fields (-> (.. (get-table database dataset-id table-name) getDefinition getSchema)
-               table-schema->metabase-field-info
-               set)})
+  (let [table                  (get-table database dataset-id table-name)
+        ^StandardTableDefinition tabledef (.getDefinition table)
+        is-partitioned?        (table-is-partitioned? tabledef)
+        ;; a table can only have one partitioned field
+        partitioned-field-name (when is-partitioned?
+                                 (or (some-> (.getRangePartitioning tabledef) .getField)
+                                     (some-> (.getTimePartitioning tabledef) .getField)))
+        fields                 (set
+                                (map
+                                 #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
+                                 (table-schema->metabase-field-info (. tabledef getSchema))))]
+    {:schema dataset-id
+     :name   table-name
+     :fields (cond-> fields
+               ;; if table has time partition but no field is specified as partitioned
+               ;; meaning this table is partitioned by ingestion time
+               ;; so we manually sync the 2 pseudo-columns _PARTITIONTIME AND _PARTITIONDATE
+               (and is-partitioned?
+                    (some? (.getTimePartitioning tabledef))
+                    (nil? partitioned-field-name))
+               (conj
+                {:name                 partitioned-time-field-name
+                 :database-type        "TIMESTAMP"
+                 :base-type            (bigquery-type->base-type nil "TIMESTAMP")
+                 :database-position    (count fields)
+                 :database-partitioned true}
+                {:name                 partitioned-date-field-name
+                 :database-type        "DATE"
+                 :base-type            (bigquery-type->base-type nil "DATE")
+                 :database-position    (inc (count fields))
+                 :database-partitioned true}))}))
 
 (defn- get-field-parsers [^Schema schema]
   (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
@@ -171,7 +239,7 @@
           (map (fn [^Field field]
                  (let [column-type (.. field getType name)
                        column-mode (.getMode field)
-                       method (get-method bigquery.qp/parse-result-of-type column-type)]
+                       method      (get-method bigquery.qp/parse-result-of-type column-type)]
                    (when (= method default-parser)
                      (let [column-name (.getName field)]
                        (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
@@ -216,17 +284,24 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
+(defn- ingestion-time-partitioned-table?
+  [table-id]
+  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name :database_partitioned true :active true))
+
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
   (let [database (table/database table)
         bq-table (get-table database dataset-id table-name)]
-    (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
-           ;; We couldn't easily test if the following two can show up as
-           ;; tables and if `.list` is supported for hem, so they are here
-           ;; to make sure we don't break existing instances.
-           TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
-         (.. bq-table getDefinition getType))
-      (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
+    (if (or (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
+               ;; We couldn't easily test if the following two can show up as
+               ;; tables and if `.list` is supported for them, so they are here
+               ;; to make sure we don't break existing instances.
+               TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+             (.. bq-table getDefinition getType))
+            ;; if the table is partitioned by ingestion time, using .list or .listTableData won't return values for
+            ;; the _PARTITIONTIME field, so we need to fall back to using sql
+            (ingestion-time-partitioned-table? (:id table)))
+      (do (log/debugf "%s.%s is a view or a table partitioned by ingestion time, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
           ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
       (sample-table bq-table fields rff))))
@@ -281,8 +356,7 @@
                 @res-fut)))))
       @res-fut)
     (catch java.util.concurrent.CancellationException _e
-      ;; trying to deref the value after the future has been cancelled
-      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters})))
+      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
@@ -353,7 +427,8 @@
       (thunk)
       (catch Throwable e
         (let [ex-data (u/all-ex-data e)]
-          (if (or (:retryable? e) (not (qp.error-type/client-error? (:type ex-data))))
+          (if (and (not (::cancelled? ex-data))
+                   (or (:retryable? ex-data) (not (qp.error-type/client-error? (:type ex-data)))))
             (thunk)
             (throw e)))))))
 

@@ -1,4 +1,5 @@
 import {
+  addSummaryGroupingField,
   restore,
   popover,
   modal,
@@ -9,6 +10,8 @@ import {
   questionInfoButton,
   rightSidebar,
   appBar,
+  queryBuilderHeader,
+  openNotebook,
 } from "e2e/support/helpers";
 
 import {
@@ -20,54 +23,43 @@ describe("scenarios > question > saved", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "api/card").as("cardCreate");
   });
 
   it("should should correctly display 'Save' modal (metabase#13817)", () => {
     openOrdersTable();
-    cy.icon("notebook").click();
+    openNotebook();
+
     summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    popover().findByText("Total").click();
+    popover().findByText("Count of rows").click();
+    addSummaryGroupingField({ field: "Total" });
+
     // Save the question
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    modal().within(() => {
-      cy.findByText("Save").click();
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not now").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").should("not.exist");
+    queryBuilderHeader().button("Save").click();
+    modal().button("Save").click();
+    cy.wait("@cardCreate");
+    modal().button("Not now").click();
 
     // Add a filter in order to be able to save question again
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    popover()
-      .findByText(/^Total$/)
-      .click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number").type("60");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filter").click();
+    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    // Save question - opens "Save question" modal
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
+    popover().within(() => {
+      cy.findByText("Total: Auto binned").click();
+      cy.findByDisplayValue("Equal to").click();
+    });
+    cy.findByRole("listbox").findByText("Greater than").click();
+
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("60");
+      cy.button("Add filter").click();
+    });
+
+    queryBuilderHeader().button("Save").click();
 
     modal().within(() => {
-      cy.findByText("Save question");
-      cy.button("Save").as("saveButton");
-      cy.get("@saveButton").should("not.be.disabled");
+      cy.findByText("Save question").should("be.visible");
+      cy.button("Save").should("be.enabled");
 
-      cy.log(
-        "**When there is no question name, it shouldn't be possible to save**",
-      );
       cy.findByText("Save as new question").click();
       cy.findByLabelText("Name")
         .click()
@@ -75,13 +67,10 @@ describe("scenarios > question > saved", () => {
         .blur();
       cy.findByLabelText("Name: required").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
-      cy.get("@saveButton").should("be.disabled");
+      cy.button("Save").should("be.disabled");
 
-      cy.log(
-        "**It should `always` be possible to overwrite the original question**",
-      );
       cy.findByText(/^Replace original question,/).click();
-      cy.get("@saveButton").should("not.be.disabled");
+      cy.button("Save").should("be.enabled");
     });
   });
 

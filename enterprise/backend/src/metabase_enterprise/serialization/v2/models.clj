@@ -32,11 +32,13 @@
    "DashboardTab"
    "Dimension"
    "ParameterCard"
+   "DashboardCardSeries"
    "TimelineEvent"])
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
   ["Activity"
+   "ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "BookmarkOrdering"
@@ -45,7 +47,6 @@
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
    "DashboardBookmark"
-   "DashboardCardSeries"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"

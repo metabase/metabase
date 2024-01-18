@@ -104,7 +104,8 @@
         ;; filter out Cards not created as part of `with-world` so these tests can be ran from the REPL.
         (m/update-existing :similar-questions (partial filter (set ((juxt :card-id-a :card-id-b :card-id-c) *world*))))
         ;; do the same for Collections.
-        (m/update-existing :collections (partial filter (partial = (:collection-id *world*)))))))
+        (m/update-existing :collections (partial filter (partial = (:collection-id *world*))))
+        (m/update-existing :tables set))))
 
 (deftest related-cards-test
   (with-world
@@ -142,10 +143,9 @@
             :segments    (sort [segment-id-a segment-id-b])
             :linking-to  [(mt/id :categories)]
             :linked-from [(mt/id :checkins)]
-            :tables      [(mt/id :users)]}
+            :tables      #{(mt/id :products) (mt/id :orders) (mt/id :users) (mt/id :people) (mt/id :reviews)}}
            (->> (mt/user-http-request :crowberto :get 200 (format "table/%s/related" (mt/id :venues)))
                 result-mask)))))
-
 
 ;; We should ignore non-active entities
 

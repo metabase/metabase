@@ -50,7 +50,6 @@
      metabase.test/with-all-users-permission
      metabase.test/with-column-remappings
      metabase.test/with-discarded-collections-perms-changes
-     metabase.test/with-ensure-with-temp-no-transaction!
      metabase.test/with-env-keys-renamed-by
      metabase.test/with-expected-messages
      metabase.test/with-fake-inbox
@@ -64,7 +63,6 @@
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
      metabase.test/with-system-timezone-id
-     metabase.test/with-temp!
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
@@ -109,6 +107,7 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.query-processor/process-query-and-save-execution!
      metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})

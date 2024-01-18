@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata.calculation
   (:require
+   #?(:clj [metabase.config :as config])
    [clojure.string :as str]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -67,7 +68,7 @@
     style        :- DisplayNameStyle]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
-    (:display-name (lib.options/options x))
+    ((some-fn :display-name :lib/expression-name) (lib.options/options x))
     (try
       (display-name-method query stage-number x style)
       (catch #?(:clj Throwable :cljs js/Error) e
@@ -97,11 +98,15 @@
 
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
-  ;; hopefully this is dev-facing only, so not i18n'ed.
-  (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-             (pr-str x)
-             `display-name-method
-             (lib.dispatch/dispatch-value x))
+  ;; This was suspected as hurting performance, going to skip it in prod for now
+  (when #?(:clj          (not config/is-prod?)
+           :cljs         true ;; the linter complains when :cljs is not here(?)
+           :cljs-dev     true
+           :cljs-release false)
+    (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
+               (pr-str x)
+               `display-name-method
+               (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause: just use the name of the clause.
@@ -275,43 +280,45 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(mr/register! ::display-info
-              [:map
-               [:display-name :string]
-               [:long-display-name {:optional true} :string]
+(mr/def ::display-info
+  [:map
+   [:display-name {:optional true} :string]
+   [:long-display-name {:optional true} :string]
+   ;; for things with user specified names
+   [:named? {:optional true} :boolean]
    ;; for things that have a Table, e.g. a Field
-               [:table {:optional true} [:maybe [:ref ::display-info]]]
+   [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.schema.metadata/column-source`, but instead of using
    ;; that value directly we're returning a different property so the FE doesn't break if we change those keys in the
    ;; future, e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
    ;;
    ;; if this is a Column, does it come from a previous stage?
-               [:is-from-previous-stage {:optional true} [:maybe :boolean]]
+   [:is-from-previous-stage {:optional true} [:maybe :boolean]]
    ;; if this is a Column, does it come from a join in this stage?
-               [:is-from-join {:optional true} [:maybe :boolean]]
+   [:is-from-join {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it 'calculated', i.e. does it come from an expression in this stage?
-               [:is-calculated {:optional true} [:maybe :boolean]]
+   [:is-calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-               [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
+   [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
-               [:is-source-table {:optional true} [:maybe :boolean]]
+   [:is-source-table {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
-               [:is-breakout-column {:optional true} [:maybe :boolean]]
+   [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
-               [:is-order-by-column {:optional true} [:maybe :boolean]]
+   [:is-order-by-column {:optional true} [:maybe :boolean]]
    ;; for joins
-               [:name {:optional true} :string]
+   [:name {:optional true} :string]
    ;; for aggregation operators
-               [:column-name {:optional true} :string]
-               [:description {:optional true} :string]
-               [:short-name {:optional true} :string]
-               [:requires-column {:optional true} :boolean]
-               [:selected {:optional true} :boolean]
+   [:column-name {:optional true} :string]
+   [:description {:optional true} :string]
+   [:short-name {:optional true} :string]
+   [:requires-column {:optional true} :boolean]
+   [:selected {:optional true} :boolean]
    ;; for binning and bucketing
-               [:default {:optional true} :boolean]
+   [:default {:optional true} :boolean]
    ;; for order by
-               [:direction {:optional true} [:enum :asc :desc]]])
+   [:direction {:optional true} [:enum :asc :desc]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -347,6 +354,9 @@
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
      ;; everywhere? Determine whether or not this is the case.
      (select-keys x-metadata [:name :display-name :semantic-type])
+     (when-let [custom (lib.util/custom-name x)]
+       {:display-name custom
+        :named? true})
      (when-let [long-display-name (display-name query stage-number x :long)]
        {:long-display-name long-display-name})
      ;; don't return `:base-type`, FE should just use `:effective-type` everywhere and not even need to know
@@ -354,15 +364,14 @@
      (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]
        {:effective-type effective-type})
      (when-let [table-id (:table-id x-metadata)]
-       {:table (display-info
-                query
-                stage-number
-                ;; TODO: only ColumnMetadatas should possibly have legacy `card__<id>` `:table-id`s... we should
-                ;; probably move this special casing into [[metabase.lib.field]] instead of having it be part of the
-                ;; `:default` method.
-                (cond
-                  (integer? table-id) (lib.metadata/table query table-id)
-                  (string? table-id)  (lib.metadata/card query (lib.util/legacy-string-table-id->card-id table-id))))})
+       ;; TODO: only ColumnMetadatas should possibly have legacy `card__<id>` `:table-id`s... we should
+       ;; probably move this special casing into [[metabase.lib.field]] instead of having it be part of the
+       ;; `:default` method.
+       (when-let [inner-metadata (cond
+                                   (integer? table-id) (lib.metadata/table query table-id)
+                                   (string? table-id)  (lib.metadata/card
+                                                         query (lib.util/legacy-string-table-id->card-id table-id)))]
+         {:table (display-info query stage-number inner-metadata)}))
      (when-let [source (:lib/source x-metadata)]
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
@@ -542,9 +551,9 @@
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
-  have appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field. (I think we only include
-  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
-  check here.)
+  have (1) appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field, and (2) have a numeric
+  `:id`, i.e. be a real database column that can be used in a JOIN condition. (I think we only include this information
+  for Databases that support FKs and joins, so I don't think we need to do an additional DB feature check here.)
 
   Does not include columns from any Tables that are already explicitly joined.
 
@@ -553,6 +562,8 @@
   (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
     (into []
           (comp (filter :fk-target-field-id)
+                (filter :id)
+                (filter (comp number? :id))
                 (map (fn [{source-field-id :id, :keys [fk-target-field-id] :as source}]
                        (-> (lib.metadata/field query fk-target-field-id)
                            (assoc ::source-field-id source-field-id
@@ -571,3 +582,17 @@
                               (assoc field :lib/desired-column-alias (unique-name-fn
                                                                       (lib.join.util/desired-alias query field))))))))
           column-metadatas)))
+
+(mu/defn default-columns-for-stage :- ColumnsWithUniqueAliases
+  "Given a query and stage, returns the columns which would be selected by default.
+
+  This is exactly [[lib.metadata.calculation/returned-columns]] filtered by the `:lib/source`.
+  (Fields from explicit joins are listed on the join itself and should not be listed in `:fields`.)
+
+  If there is already a `:fields` list on that stage, it is ignored for this calculation."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [no-fields (lib.util/update-query-stage query stage-number dissoc :fields)]
+    (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
+                           :lib/source))
+          (returned-columns no-fields stage-number (lib.util/query-stage no-fields stage-number)))))

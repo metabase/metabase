@@ -1,5 +1,6 @@
 import {
   addOrUpdateDashboardCard,
+  queryBuilderMain,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -58,7 +59,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             database: SAMPLE_DB_ID,
             query: {
               aggregation: [["count"]],
-              filter: [">", ["field", ORDERS.TOTAL, null], 100],
+              filter: [
+                ">",
+                ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
+                100,
+              ],
               "source-table": ORDERS_ID,
             },
             type: "query",
@@ -93,8 +98,12 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               "source-table": PEOPLE_ID,
               aggregation: [["count"]],
               breakout: [
-                ["field", PEOPLE.SOURCE, null],
-                ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
+                ["field", PEOPLE.SOURCE, { "base-type": "type/Text" }],
+                [
+                  "field",
+                  PEOPLE.CREATED_AT,
+                  { "base-type": "type/DateTime", "temporal-unit": "month" },
+                ],
               ],
             },
             display: "line",
@@ -180,9 +189,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           });
 
           visitDashboard(dashboard_id);
-          cy.findByText(QUESTION_NAME).click();
-          cy.findByText("Category is Doohickey");
-          cy.findByText("177"); // Doohickeys for 2022
+          cy.findByTestId("dashcard").findByText(QUESTION_NAME).click();
+          cy.findByTestId("qb-filters-panel")
+            .findByText("Product → Category is Doohickey")
+            .should("be.visible");
+          queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2022
         });
       });
     });

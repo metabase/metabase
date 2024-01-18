@@ -23,7 +23,7 @@ preview_display: true
 position: 6
 custom_position: 0
 database_position: 6
-has_field_values: auto-list
+has_field_values: null
 settings: null
 caveats: null
 points_of_interest: null
@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: details
   model: Field
+database_indexed: null

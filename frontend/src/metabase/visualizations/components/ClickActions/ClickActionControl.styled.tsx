@@ -1,20 +1,20 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
-
-export const IconWrapper = styled.span`
-  display: flex;
-  margin-right: 0.25rem;
-
-  color: ${color("brand")};
-
-  transition: all 200ms linear;
-`;
+import { Icon } from "metabase/ui";
 
 export const ClickActionButtonIcon = styled(Icon)`
   margin-right: 0.2rem;
+  color: ${color("brand")};
+  transition: all 200ms linear;
+`;
 
+export const ClickActionButtonTextIcon = styled.span`
+  margin-right: 0.25rem;
+  width: 0.875rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.25rem;
   color: ${color("brand")};
   transition: all 200ms linear;
 `;
@@ -42,7 +42,7 @@ export const HorizontalClickActionButton = styled(Button)`
       color: ${color("white")};
     }
 
-    ${IconWrapper} {
+    ${ClickActionButtonTextIcon} {
       color: ${color("white")};
     }
   }

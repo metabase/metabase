@@ -2,7 +2,6 @@
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
-   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,22 +9,18 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
-   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
    [metabase.config :as config]
-   [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.util :as driver.u]
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [CardBookmark
+    :refer [Card
+            CardBookmark
             Collection
             Dashboard
             Database
-            Field
             ModerationReview
             Pulse
             PulseCard
@@ -34,13 +29,11 @@
             Table
             Timeline
             TimelineEvent]]
-   [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
+   [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -51,14 +44,14 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
-   [metabase.upload :as upload]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.io ByteArrayInputStream)
-   (org.quartz.impl StdSchedulerFactory)))
+    (java.io ByteArrayInputStream)
+    (org.apache.poi.ss.usermodel DataFormatter)
+    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -510,7 +503,7 @@
                              :semantic_type :type/Number}]})
 
 (deftest sereies-are-compatible-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "area-line-bar charts"
       (t2.with-temp/with-temp
         [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
@@ -604,51 +597,51 @@
           (mt/with-model-cleanup [:model/Card]
             (let [card (assoc (card-with-name-and-query (mt/random-name)
                                                         (mbql-count-query (mt/id) (mt/id :venues)))
-                              :collection_id      (u/the-id collection)
-                              :parameters         [{:id "abc123", :name "test", :type "date"}]
-                              :parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                    :target [:dimension [:template-tags "category"]]}])]
-              (is (= (merge
-                      card-defaults
-                      {:name                   (:name card)
-                       :collection_id          true
-                       :collection             (assoc collection :is_personal false)
-                       :creator_id             (mt/user->id :rasta)
-                       :parameters             [{:id "abc123", :name "test", :type "date"}]
-                       :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
-                                                 :target ["dimension" ["template-tags" "category"]]}]
-                       :dataset_query          true
-                       :query_type             "query"
-                       :visualization_settings {:global {:title nil}}
-                       :database_id            true
-                       :table_id               true
-                       :entity_id              true
-                       :can_write              true
-                       :dashboard_count        0
-                       :result_metadata        true
-                       :last-edit-info         {:timestamp true :id true :first_name "Rasta"
-                                                :last_name "Toucan" :email "rasta@metabase.com"}
-                       :creator                (merge
-                                                (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
-                                                {:common_name  "Rasta Toucan"
-                                                 :is_superuser false
-                                                 :last_name    "Toucan"
-                                                 :first_name   "Rasta"
-                                                 :email        "rasta@metabase.com"})
-                       :metabase_version       config/mb-version-string})
-                     (-> (mt/user-http-request :rasta :post 200 "card" card)
-                         (dissoc :created_at :updated_at :id)
-                         (update :table_id integer?)
-                         (update :database_id integer?)
-                         (update :collection_id integer?)
-                         (update :dataset_query map?)
-                         (update :entity_id string?)
-                         (update :result_metadata (partial every? map?))
-                         (update :creator dissoc :is_qbnewb)
-                         (update :last-edit-info (fn [edit-info]
-                                                   (-> edit-info
-                                                       (update :id boolean)
-                                                       (update :timestamp boolean))))))))))))))
+                         :collection_id (u/the-id collection)
+                         :parameters [{:id "abc123", :name "test", :type "date"}]
+                         :parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                               :target       [:dimension [:template-tags "category"]]}])]
+              (is (=? (merge
+                        card-defaults
+                        {:name                   (:name card)
+                         :collection_id          true
+                         :collection             (assoc collection :is_personal false)
+                         :creator_id             (mt/user->id :rasta)
+                         :parameters             [{:id "abc123", :name "test", :type "date"}]
+                         :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
+                                                   :target       ["dimension" ["template-tags" "category"]]}]
+                         :dataset_query          true
+                         :query_type             "query"
+                         :visualization_settings {:global {:title nil}}
+                         :database_id            true
+                         :table_id               true
+                         :entity_id              true
+                         :can_write              true
+                         :dashboard_count        0
+                         :result_metadata        true
+                         :last-edit-info         {:timestamp true :id true :first_name "Rasta"
+                                                  :last_name "Toucan" :email "rasta@metabase.com"}
+                         :creator                (merge
+                                                   (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
+                                                   {:common_name  "Rasta Toucan"
+                                                    :is_superuser false
+                                                    :last_name    "Toucan"
+                                                    :first_name   "Rasta"
+                                                    :email        "rasta@metabase.com"})
+                         :metabase_version       config/mb-version-string})
+                      (-> (mt/user-http-request :rasta :post 200 "card" card)
+                          (dissoc :created_at :updated_at :id)
+                          (update :table_id integer?)
+                          (update :database_id integer?)
+                          (update :collection_id integer?)
+                          (update :dataset_query map?)
+                          (update :entity_id string?)
+                          (update :result_metadata (partial every? map?))
+                          (update :creator dissoc :is_qbnewb)
+                          (update :last-edit-info (fn [edit-info]
+                                                    (-> edit-info
+                                                        (update :id boolean)
+                                                        (update :timestamp boolean))))))))))))))
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
@@ -674,19 +667,30 @@
                                        :dataset_query (:dataset_query card)})))))
       (testing "You can create a card with a saved question CTE as a model"
         (mt/with-model-cleanup [:model/Card]
-          (let [card-tag-name (str "#" (u/the-id card))]
-            (is (=? {:id pos-int?}
-                    (mt/user-http-request :rasta :post 200 "card"
-                                          (merge
-                                           (mt/with-temp-defaults :model/Card)
-                                           {:dataset_query {:database (u/the-id db)
-                                                            :type     :native
-                                                            :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
-                                                                       :template-tags {card-tag-name {:card-id      (u/the-id card),
-                                                                                                      :display-name card-tag-name,
-                                                                                                      :id           (str (random-uuid))
-                                                                                                      :name         card-tag-name,
-                                                                                                      :type         :card}}}}}))))))))))
+          (let [card-tag-name (str "#" (u/the-id card))
+                dataset-query {:dataset_query {:database (u/the-id db)
+                                               :type     :native
+                                               :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
+                                                          :template-tags {card-tag-name {:card-id      (u/the-id card),
+                                                                                         :display-name card-tag-name,
+                                                                                         :id           (str (random-uuid))
+                                                                                         :name         card-tag-name,
+                                                                                         :type         :card}}}}}
+                {card-id :id
+                 :as     created} (mt/user-http-request :rasta :post 200 "card"
+                                              (merge
+                                                (mt/with-temp-defaults :model/Card)
+                                                dataset-query))
+                retrieved     (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
+            (is (pos-int? card-id))
+            (testing "A POST returns the newly created object, so no follow-on GET is required (#34828)"
+              (is (=
+                    (-> created
+                        (update :last-edit-info dissoc :timestamp)
+                        (dissoc :collection))
+                    (-> retrieved
+                        (update :last-edit-info dissoc :timestamp)
+                        (dissoc :collection)))))))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -809,17 +813,26 @@
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
-                                           :rasta :post 200
-                                           "card"
-                                           (card-with-name-and-query "card-name"
-                                                                     query))]
+                                            :rasta :post 200
+                                            "card"
+                                            (card-with-name-and-query "card-name"
+                                                                      query))
+                  ;; simulate a user changing the query without rerunning the query
+                  updated   (mt/user-http-request
+                              :rasta :put 200 (str "card/" card-id)
+                              (assoc card :dataset_query modified-query))
+                  retrieved (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
               (is (= ["ID" "NAME"] (map norm metadata)))
-              ;; simulate a user changing the query without rerunning the query
-              (mt/user-http-request
-               :rasta :put 200 (str "card/" card-id)
-               (assoc card :dataset_query modified-query))
               (is (= ["ID" "NAME" "PRICE"]
-                     (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))))
+                     (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
+              (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
+                (is (=
+                      (-> updated
+                          (update :last-edit-info dissoc :timestamp)
+                          (dissoc :collection))
+                      (-> retrieved
+                          (update :last-edit-info dissoc :timestamp)
+                          (dissoc :collection))))))))))))
 
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
@@ -959,8 +972,8 @@
             (is (malli= [:map
                          [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                          [:query          [:= {} (mt/obj->json->obj query)]]
-                         [:required-perms [:sequential perms/PathSchema]]
-                         [:actual-perms   [:sequential perms/PathSchema]]
+                         [:required-perms [:sequential perms.u/PathSchema]]
+                         [:actual-perms   [:sequential perms.u/PathSchema]]
                          [:trace          [:sequential :any]]]
                         (create-card! :rasta 403)))))))))
 
@@ -1489,8 +1502,8 @@
                 (is (malli= [:map
                              [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                              [:query          [:= {} (mt/obj->json->obj (mt/mbql-query users))]]
-                             [:required-perms [:sequential perms/PathSchema]]
-                             [:actual-perms   [:sequential perms/PathSchema]]
+                             [:required-perms [:sequential perms.u/PathSchema]]
+                             [:actual-perms   [:sequential perms.u/PathSchema]]
                              [:trace          [:sequential :any]]]
                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
@@ -1517,92 +1530,96 @@
                            :body    body-map}))
 
 (deftest alert-deletion-test
-  (doseq [{:keys [message card deleted? expected-email f]}
-          [{:message        "Archiving a Card should trigger Alert deletion"
-            :deleted?       true
-            :expected-email "the question was archived by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
-           {:message        "Validate changing a display type triggers alert deletion"
-            :card           {:display :table}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
-           {:message        "Changing the display type from line to table should force a delete"
-            :card           {:display :line}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
-           {:message        "Removing the goal value will trigger the alert to be deleted"
-            :card           {:display                :line
-                             :visualization_settings {:graph.goal_value 10}}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
-           {:message        "Adding an additional breakout does not cause the alert to be removed if no goal is set"
-            :card           {:display                :line
-                             :visualization_settings {}
-                             :dataset_query          (assoc-in
-                                                      (mbql-count-query (mt/id) (mt/id :checkins))
-                                                      [:query :breakout]
-                                                      [[:field
-                                                        (mt/id :checkins :date)
-                                                        {:temporal-unit :hour}]])}
-            :deleted?       false
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
-                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
-           {:message        "Adding an additional breakout will cause the alert to be removed if a goal is set"
-            :card           {:display                :line
-                             :visualization_settings {:graph.goal_value 10}
-                             :dataset_query          (assoc-in
-                                                      (mbql-count-query (mt/id) (mt/id :checkins))
-                                                      [:query :breakout]
-                                                      [[:field
-                                                        (mt/id :checkins :date)
-                                                        {:temporal-unit :hour}]])}
-            :deleted?       true
-            :expected-email "the question was edited by Crowberto Corv"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
-                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
+  (doseq [{:keys [message card deleted? expected-email-re f]}
+          [{:message           "Archiving a Card should trigger Alert deletion"
+            :deleted?          true
+            :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
+           {:message           "Validate changing a display type triggers alert deletion"
+            :card              {:display :table}
+            :deleted?          true
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
+           {:message           "Changing the display type from line to table should force a delete"
+            :card              {:display :line}
+            :deleted?          true
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
+           {:message           "Removing the goal value will trigger the alert to be deleted"
+            :card              {:display                :line
+                                :visualization_settings {:graph.goal_value 10}}
+            :deleted?          true
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
+           {:message           "Adding an additional breakout does not cause the alert to be removed if no goal is set"
+            :card              {:display                :line
+                                :visualization_settings {}
+                                :dataset_query          (assoc-in
+                                                         (mbql-count-query (mt/id) (mt/id :checkins))
+                                                         [:query :breakout]
+                                                         [[:field
+                                                           (mt/id :checkins :date)
+                                                           {:temporal-unit :hour}]])}
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
+            :deleted?          false
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                       {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                                 [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                     [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
+           {:message           "Adding an additional breakout will cause the alert to be removed if a goal is set"
+            :card              {:display                :line
+                                :visualization_settings {:graph.goal_value 10}
+                                :dataset_query          (assoc-in
+                                                         (mbql-count-query (mt/id) (mt/id :checkins))
+                                                         [:query :breakout]
+                                                         [[:field
+                                                           (mt/id :checkins :date)
+                                                           {:temporal-unit :hour}]])}
+            :deleted?          true
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                       {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                                 [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                     [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
-      (mt/with-temp [:model/Card           card  card
-                     Pulse                 pulse {:alert_condition  "rows"
-                                                  :alert_first_only false
-                                                  :creator_id       (mt/user->id :rasta)
-                                                  :name             "Original Alert Name"}
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card           card  card
+           Pulse                 pulse {:alert_condition  "rows"
+                                        :alert_first_only false
+                                        :creator_id       (mt/user->id :rasta)
+                                        :name             "Original Alert Name"}
 
-                     PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                  :card_id  (u/the-id card)
-                                                  :position 0}
-                     PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                                  :pulse_channel_id (u/the-id pc)}
-                     PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                                  :pulse_channel_id (u/the-id pc)}]
-        (with-cards-in-writeable-collection card
-          (mt/with-fake-inbox
-            (when deleted?
-              (u/with-timeout 5000
-                (mt/with-expected-messages 2
-                  (f {:card card}))
-               (is (= (merge (crowberto-alert-not-working {expected-email true})
-                             (rasta-alert-not-working     {expected-email true}))
-                      (mt/regex-email-bodies (re-pattern expected-email)))
-                   (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))))
-            (if deleted?
-              (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                  "Alert should have been deleted")
-              (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                  "Alert should not have been deleted"))))))))
+           PulseCard             _     {:pulse_id (u/the-id pulse)
+                                        :card_id  (u/the-id card)
+                                        :position 0}
+           PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+           PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
+                                        :pulse_channel_id (u/the-id pc)}
+           PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
+                                        :pulse_channel_id (u/the-id pc)}]
+          (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+            (with-cards-in-writeable-collection card
+              (mt/with-fake-inbox
+                (when deleted?
+                  (u/with-timeout 5000
+                    (mt/with-expected-messages 2
+                      (f {:card card}))
+                    (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
+                                  (rasta-alert-not-working     {(str expected-email-re) true}))
+                           (mt/regex-email-bodies expected-email-re))
+                        (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
+                (if deleted?
+                  (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                      "Alert should have been deleted")
+                  (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                      "Alert should not have been deleted"))))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (is (= {:emails-1 {}
@@ -1802,14 +1819,99 @@
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection card
-        (is (= [{(keyword "COUNT(*)") 75}]
+        (is (= [{(keyword "COUNT(*)") "75"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection card
-        (is (= [{(keyword "COUNT(*)") 8}]
+        (is (= [{(keyword "COUNT(*)") "8"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
                                      :parameters encoded-params)))))))
+
+(deftest renamed-column-names-are-applied-to-json-test
+  (testing "JSON downloads should have the same columns as displayed in Metabase (#18572)"
+    (mt/with-temporary-setting-values [custom-formatting nil]
+      (let [query        {:source-table (mt/id :orders)
+                          :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                         [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :discount) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :quantity) {:base-type :type/Integer}]
+                                         [:expression "Tax Rate"]],
+                          :expressions  {"Tax Rate" [:/
+                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                          :limit        10}
+            viz-settings {:table.cell_column "TAX",
+                          :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :id))
+                                              {:column_title "THE_ID"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :tax))
+                                              {:column_title "ORDER TAX"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :total))
+                                              {:column_title "Total Amount"},
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :discount))
+                                              {:column_title "Discount Applied"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                      (mt/id :orders :quantity))
+                                              {:column_title "Amount Ordered"}
+                                              "[\"ref\",[\"expression\",\"Tax Rate\"]]"
+                                              {:column_title "Effective Tax Rate"}}}]
+        (t2.with-temp/with-temp [Card {base-card-id :id} {:dataset_query          {:database (mt/id)
+                                                                                   :type     :query
+                                                                                   :query    query}
+                                                          :visualization_settings viz-settings}
+                                 Card {model-card-id  :id
+                                       model-metadata :result_metadata} {:dataset       true
+                                                                         :dataset_query {:database (mt/id)
+                                                                                         :type     :query
+                                                                                         :query    {:source-table
+                                                                                                    (format "card__%s" base-card-id)}}}
+                                 Card {meta-model-card-id :id} {:dataset         true
+                                                                :dataset_query   {:database (mt/id)
+                                                                                  :type     :query
+                                                                                  :query    {:source-table
+                                                                                             (format "card__%s" model-card-id)}}
+                                                                :result_metadata (mapv
+                                                                                   (fn [{column-name :name :as col}]
+                                                                                     (cond-> col
+                                                                                       (= "DISCOUNT" column-name)
+                                                                                       (assoc :display_name "Amount of Discount")
+                                                                                       (= "TOTAL" column-name)
+                                                                                       (assoc :display_name "Grand Total")
+                                                                                       (= "QUANTITY" column-name)
+                                                                                       (assoc :display_name "N")))
+                                                                                   model-metadata)}
+                                 Card {question-card-id :id} {:dataset_query          {:database (mt/id)
+                                                                                       :type     :query
+                                                                                       :query    {:source-table
+                                                                                                  (format "card__%s" meta-model-card-id)}}
+                                                              :visualization_settings {:table.pivot_column "DISCOUNT",
+                                                                                       :table.cell_column  "TAX",
+                                                                                       :column_settings    {(format
+                                                                                                              "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                              (mt/id :orders :quantity))
+                                                                                                            {:column_title "Count"}
+                                                                                                            (format
+                                                                                                              "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                              (mt/id :orders :id))
+                                                                                                            {:column_title "IDENTIFIER"}}}}]
+          (letfn [(col-names [card-id]
+                    (->> (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" card-id)) first keys (map name) set))]
+            (testing "Renaming columns via viz settings is correctly applied to the CSV export"
+              (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
+                     (col-names base-card-id))))
+            (testing "A question derived from another question does not bring forward any renames"
+              (is (= #{"ID" "Tax" "Total" "Discount ($)" "Quantity" "Tax Rate"}
+                     (col-names model-card-id))))
+            (testing "A model with custom metadata shows the renamed metadata columns"
+              (is (= #{"ID" "Tax" "Grand Total" "Amount of Discount ($)" "N" "Tax Rate"}
+                     (col-names meta-model-card-id))))
+            (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
+              (is (= #{"IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"}
+                     (col-names question-card-id))))))))))
 
 (defn- parse-xlsx-results [results]
   (->> results
@@ -1832,6 +1934,240 @@
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
                                       :parameters encoded-params))))))))
+
+(defn- parse-xlsx-results-to-strings
+  "Parse an excel response into a 2-D array of formatted values"
+  [results]
+  (let [df (DataFormatter.)]
+    (->> results
+         ByteArrayInputStream.
+         spreadsheet/load-workbook
+         (spreadsheet/select-sheet "Query result")
+         spreadsheet/row-seq
+         (mapv (fn [row]
+                 (mapv (fn [cell] (.formatCellValue df cell)) (spreadsheet/cell-seq row)))))))
+
+(deftest xlsx-timestamp-formatting-test
+  (testing "A timestamp should format correctly in an excel export (#14393)"
+    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
+                                                        :type     :native
+                                                        :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}
+                                        :display :table
+                                        :visualization_settings {:table.pivot_column "T",
+                                                                 :column_settings {"[\"name\",\"T\"]" {:date_style "YYYY/M/D",
+                                                                                                       :date_separator "-",
+                                                                                                       :time_enabled nil}}}}]
+      (testing "Removing the time portion of the timestamp should only show the date"
+        (is (= [["T"] ["2023-1-1"]]
+               (parse-xlsx-results-to-strings
+                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-default-currency-formatting-test
+  (testing "The default currency is USD"
+    (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                 :type     :native
+                                                                 :native   {:query "SELECT 123.45 AS MONEY"}}
+                                        :display                :table
+                                        :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
+                                                                                   {:number_style       "currency"
+                                                                                    :currency_in_header false}}}}]
+      (is (= [["MONEY"]
+              ["[$$]123.45"]]
+             (parse-xlsx-results-to-strings
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))
+  (testing "Default localization settings take effect"
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
+                                                          :type/Currency {:currency "EUR", :currency_style "symbol"}}]
+      (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                   :type     :native
+                                                                   :native   {:query "SELECT 123.45 AS MONEY"}}
+                                          :display                :table
+                                          :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
+                                                                                     {:number_style       "currency"
+                                                                                      :currency_in_header false}}}}]
+        (is (= [["MONEY"]
+                ["[$€]123.45"]]
+               (parse-xlsx-results-to-strings
+                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-currency-formatting-test
+  (testing "Currencies are applied correctly in Excel files"
+    (let [currencies ["USD" "CAD" "EUR" "JPY"]
+          q (format "SELECT %s" (str/join "," (map (partial format "123.45 as %s") currencies)))
+          settings (reduce (fn [acc currency]
+                             (assoc acc (format "[\"name\",\"%s\"]" currency)
+                                        {:number_style       "currency"
+                                         :currency           currency
+                                         :currency_in_header false}))
+                           {}
+                           currencies)]
+      (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                   :type     :native
+                                                                   :native   {:query q}}
+                                          :display                :table
+                                          :visualization_settings {:column_settings settings}}]
+        (testing "Removing the time portion of the timestamp should only show the date"
+          (is (= [currencies
+                  ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
+                 (parse-xlsx-results-to-strings
+                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))))
+
+(deftest xlsx-full-formatting-test
+  (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
+    (let [excel-data-query
+                       "with t1 as (
+                      select *
+                      FROM (
+                       VALUES
+                         (1234.05, 1234.05, 2345.05, 4321.05, 7180.643352291768, 1234.00, 0.053010935820623994, 0.1920, TIMESTAMP '2023-01-01 12:34:56'),
+                         (2345.30, 2345.30, 3456.30, 2931.30, 17180.643352291768, 0.00, 8.01623207863001, 0.00, TIMESTAMP '2023-01-01 12:34:56'),
+                         (3456.00, 3456.00, 2300.00, 2250.00, 127180.643352291768, 122.00, 95.40200874663908, 0.1158, TIMESTAMP '2023-01-01 12:34:56')
+                       )
+                     ),
+                     t2 as (
+                     select
+                         c1 as default_currency,
+                         c2 as currency1,
+                         c3 as currency2,
+                         c4 as currency3,
+                         c5 as scientific,
+                         c6 as hide_me,
+                         c7 as percent1,
+                         c8 as percent2,
+                         c9 as og_creation_timestamp,
+                         c9 as creation_timestamp,
+                         c9 as creation_timestamp_dup,
+                         CAST(c9 AS DATE) as creation_date,
+                         CAST(c9 AS TIME) as creation_time,
+                         from t1
+                     )
+                     select * from t2"
+          viz-settings {:table.pivot_column "SCIENTIFIC"
+                        :table.cell_column  "CURRENCY1"
+                        :table.columns      [{:name     "OG_CREATION_TIMESTAMP"
+                                              :fieldRef [:field "OG_CREATION_TIMESTAMP" {:base-type :type/DateTime}]
+                                              :enabled  true}
+                                             {:name     "CREATION_TIMESTAMP"
+                                              :fieldRef [:field "CREATION_TIMESTAMP" {:base-type :type/DateTime}]
+                                              :enabled  true}
+                                             {:name     "CREATION_TIMESTAMP_DUP"
+                                              :fieldRef [:field "CREATION_TIMESTAMP_DUP" {:base-type :type/DateTime}]
+                                              :enabled  true}
+                                             {:name     "CREATION_DATE"
+                                              :fieldRef [:field "CREATION_DATE" {:base-type :type/Date}]
+                                              :enabled  true}
+                                             {:name     "CREATION_TIME"
+                                              :fieldRef [:field "CREATION_TIME" {:base-type :type/Time}]
+                                              :enabled  true}
+                                             {:name     "DEFAULT_CURRENCY"
+                                              :fieldRef [:field "DEFAULT_CURRENCY" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "CURRENCY1"
+                                              :fieldRef [:field "CURRENCY1" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "CURRENCY2"
+                                              :fieldRef [:field "CURRENCY2" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "CURRENCY3"
+                                              :fieldRef [:field "CURRENCY3" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "SCIENTIFIC"
+                                              :fieldRef [:field "SCIENTIFIC" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "HIDE_ME"
+                                              :fieldRef [:field "HIDE_ME" {:base-type :type/Decimal}]
+                                              :enabled  false}
+                                             {:name     "PERCENT1"
+                                              :fieldRef [:field "PERCENT1" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "PERCENT2"
+                                              :fieldRef [:field "PERCENT2" {:base-type :type/Decimal}]
+                                              :enabled  true}]
+                        :column_settings    {"[\"name\",\"OG_CREATION_TIMESTAMP\"]"  {:column_title "No Formatting TS"}
+                                             "[\"name\",\"SCIENTIFIC\"]"             {:number_style "scientific"
+                                                                                      :column_title "EXPO"}
+                                             "[\"name\",\"CREATION_TIME\"]"          {:column_title "Time"}
+                                             "[\"name\",\"CURRENCY3\"]"              {:number_style       "currency"
+                                                                                      :currency_style     "name"
+                                                                                      :number_separators  ".’"
+                                                                                      :column_title       "DOL Col"
+                                                                                      :currency_in_header false}
+                                             "[\"name\",\"PERCENT2\"]"               {:number_style "percent"
+                                                                                      :column_title "3D PCT"
+                                                                                      :decimals     3}
+                                             "[\"name\",\"CURRENCY1\"]"              {:number_style       "currency"
+                                                                                      :currency_in_header false
+                                                                                      :column_title       "Col $"}
+                                             "[\"name\",\"CREATION_TIMESTAMP\"]"     {:time_enabled   nil
+                                                                                      :time_style     "HH:mm"
+                                                                                      :date_style     "YYYY/M/D"
+                                                                                      :date_separator "-"
+                                                                                      :column_title   "DATE-ONLY TS"}
+                                             "[\"name\",\"CREATION_TIMESTAMP_DUP\"]" {:time_enabled   "milliseconds",
+                                                                                      :time_style     "HH:mm",
+                                                                                      :date_style     "D/M/YYYY",
+                                                                                      :date_separator "-",
+                                                                                      :column_title   "TS W/FORMATTING"}
+                                             "[\"name\",\"PERCENT1\"]"               {:number_style "percent"
+                                                                                      :scale        0.01
+                                                                                      :column_title "Scaled PCT"}
+                                             "[\"name\",\"CURRENCY2\"]"              {:number_style       "currency"
+                                                                                      :currency_style     "code"
+                                                                                      :currency_in_header false
+                                                                                      :number_separators  "."
+                                                                                      :column_title       "USD Col"}
+                                             "[\"name\",\"CREATION_DATE\"]"          {:column_title "Date"}
+                                             "[\"name\",\"DEFAULT_CURRENCY\"]"       {:number_style "currency"
+                                                                                      :column_title "Plain Currency"}}}]
+      (testing "The default settings (USD) are applied correctly"
+        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}}]
+          (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query excel-data-query}}
+                                              :display                :table
+                                              :visualization_settings viz-settings}]
+            ;; The following formatting has been applied:
+            ;; - All columns renamed
+            ;; - Column reordering
+            ;; - Column hiding (See "HIDE_ME") above
+            ;; - Base formatting ("No Formatting TS") conforms to standard datetime format
+            ;; - "DATE-ONLY TS" shows only a date-formatted timestamp
+            ;; - "TS W/FORMATTING" shows a timestamp with custom date and time formatting
+            ;; - "Date" shows simple date formatting
+            ;; - "Time" shows simple time formatting
+            ;; - "Plain Currency ($)" formats numbers as regular numbers with no dollar sign in the number column
+            ;; - "Col $" formats currency with leading $. Note that the strings as presented aren't as you'd see in Excel. Excel properly just adds a leading $.
+            ;; - "USD Col" has a leading USD. Again, the formatting of this output is an artifact of POI rendering. It is correct in Excel as "USD 1.23"
+            ;; - "DOL Col" has trailing US dollars
+            ;; - "EXPO" has exponentiated values
+            ;; - "Scaled PCT" multiplies values by 0.01 and presents as percentages
+            ;; - "3D PCT" is a standard percentage with a customization of 3 significant digits
+            (testing "All formatting is applied correctly in a complex situation."
+              (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency ($)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$$]1,234.05" "[$USD] 2345.05" "4,321.05 US dollars" "7180.64E+0" "0.05%" "19.200%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
+                     (parse-xlsx-results-to-strings
+                       (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+      (testing "Global currency settings are applied correctly"
+        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
+                                                              :type/Currency {:currency "EUR", :currency_style "symbol"}}]
+          (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query excel-data-query}}
+                                              :display                :table
+                                              :visualization_settings viz-settings}]
+            (testing "All formatting is applied correctly in a complex situation."
+              (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency (€)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$€]1,234.05" "[$EUR] 2345.05" "4,321.05 euros" "7180.64E+0" "0.05%" "19.200%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$€]2,345.30" "[$EUR] 3456.30" "2,931.30 euros" "1.71806E+4" "8.02%" "0.000%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
+                     (parse-xlsx-results-to-strings
+                       (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))
+            (parse-xlsx-results-to-strings
+              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest download-default-constraints-test
   (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database   (mt/id)
@@ -2290,7 +2626,7 @@
 
 (deftest pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "POST /api/card/pivot/:card-id/query"
         (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
@@ -2520,29 +2856,29 @@
       [:model/Card          model     {:database_id (u/the-id db), :dataset true}
        :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Can't unpersist models without :cache-granular-controls feature flag enabled"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :post 402 (format "card/%d/unpersist" (u/the-id model)))
           (is (= "persisted"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
       (testing "Can unpersist models with the :cache-granular-controls feature flag enabled"
-        (premium-features-test/with-premium-features #{:cache-granular-controls}
+        (mt/with-premium-features #{:cache-granular-controls}
           (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id model)))
           (is (= "off"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
       (testing "Can't re-persist models with the :cache-granular-controls feature flag enabled"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :post 402 (format "card/%d/persist" (u/the-id model)))
           (is (= "off"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
       (testing "Can re-persist models with the :cache-granular-controls feature flag enabled"
-        (premium-features-test/with-premium-features #{:cache-granular-controls}
+        (mt/with-premium-features #{:cache-granular-controls}
           (mt/user-http-request :crowberto :post 204 (format "card/%d/persist" (u/the-id model)))
           (is (= "creating"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
     (t2.with-temp/with-temp
       [:model/Card          notmodel  {:database_id (u/the-id db), :dataset false}
        :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
-      (premium-features-test/with-premium-features #{:cache-granular-controls}
+      (mt/with-premium-features #{:cache-granular-controls}
         (testing "Allows unpersisting non-model cards"
           (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel)))
           (is (= "off"
@@ -2817,225 +3153,51 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(defn upload-example-csv!
-  "Upload a small CSV file to the given collection ID"
-  ([collection-id]
-   (upload-example-csv! collection-id true))
-  ([collection-id grant-permission?]
-   (mt/with-current-user (mt/user->id :rasta)
-     (let [;; Make the file-name unique so the table names don't collide
-           csv-file-name     (str "example csv file " (random-uuid) ".csv")
-           file              (upload-test/csv-file-with
-                              ["id, name"
-                               "1, Luke Skywalker"
-                               "2, Darth Vader"]
-                              csv-file-name)
-           group-id          (u/the-id (perms-group/all-users))
-           can-already-read? (mi/can-read? (mt/db))
-           grant?            (and (not can-already-read?)
-                                  grant-permission?)]
-       (when grant?
-         (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
-       (u/prog1 (api.card/upload-csv! collection-id csv-file-name file)
-         (when grant?
-           (perms/revoke-data-perms! group-id (mt/id))))))))
+(defn upload-example-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  [& {:as args}]
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [;; Make the file-name unique so the table names don't collide
+          filename (str "example csv file " (random-uuid) ".csv")
+          file     (upload-test/csv-file-with
+                    ["id, name"
+                     "1, Luke Skywalker"
+                     "2, Darth Vader"]
+                    filename)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (@#'api.card/from-csv! (merge {:collection-id nil ;; root collection
+                                       :filename      filename
+                                       :file          file}
+                                      args))))))
 
-(deftest upload-csv!-schema-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
-    (mt/with-empty-db
-      (let [db                   (mt/db)
-            db-id                (u/the-id db)
-            original-sync-values (select-keys db [:is_on_demand :is_full_sync])
-            in-future?           (atom false)
-            _                    (t2/update! Database db-id {:is_on_demand false
-                                                             :is_full_sync false})]
-        (try
-          (with-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
-                        future-call (fn [thunk]
-                                      (swap! in-future? (constantly true))
-                                      (thunk))]
-            (testing "Happy path with schema, and without table-prefix"
-              ;; create not_public schema in the db
-              (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-                (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                               ["CREATE SCHEMA \"not_public\";"]))
-              (mt/with-temporary-setting-values [uploads-enabled      true
-                                                 uploads-database-id  db-id
-                                                 uploads-schema-name  "not_public"
-                                                 uploads-table-prefix nil]
-                (let [new-model (upload-example-csv! nil)
-                      new-table (t2/select-one Table :db_id db-id)]
-                  (is (=? {:display          :table
-                           :database_id      db-id
-                           :dataset_query    {:database db-id
-                                              :query    {:source-table (:id new-table)}
-                                              :type     :query}
-                           :creator_id       (mt/user->id :rasta)
-                           :name             #"(?i)example csv file(.*)"
-                           :collection_id    nil} new-model)
-                      "A new model is created")
-                  (is (=? {:name      #"(?i)example(.*)"
-                           :schema    #"(?i)not_public"
-                           :is_upload true}
-                          new-table)
-                      "A new table is created")
-                  (is (= "complete"
-                         (:initial_sync_status new-table))
-                      "The table is synced and marked as complete")
-                  (is (= #{["id"   :type/PK]
-                           ["name" :type/Name]}
-                         (->> (t2/select Field :table_id (:id new-table))
-                              (map (fn [field] [(u/lower-case-en (:name field))
-                                                (:semantic_type field)]))
-                              set))
-                      "The sync actually runs")
-                  (is (true? @in-future?)
-                      "Table has been synced in a separate thread")))))
-          (finally
-            (t2/update! Database db-id original-sync-values)))))))
-
-(deftest upload-csv!-table-prefix-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (mt/with-empty-db
-      (let [db-id (u/the-id (mt/db))]
-        (testing "Happy path with table prefix, and without schema"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  nil
-                                             uploads-table-prefix "uploaded_magic_"]
-            (if (= driver/*driver* :mysql)
-              (let [new-model (upload-example-csv! nil)
-                    new-table (t2/select-one Table :db_id db-id)]
-                (is (=? {:name #"(?i)example csv file(.*)"}
-                        new-model))
-                (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
-                        new-table))
-                (if (= driver/*driver* :mysql)
-                  (is (nil? (:schema new-table)))
-                  (is (=? {:schema #"(?i)public"} new-table))))
-              ;; Else, for drivers that support schemas
-              (is (thrown-with-msg?
-                   java.lang.Exception
-                   #"^A schema has not been set."
-                   (upload-example-csv! nil))))))))))
-
-(deftest upload-csv!-failure-test
-  ;; Just test with postgres because failure should be independent of the driver
-  (mt/test-driver :postgres
-    (mt/with-empty-db
-      (let [db-id (u/the-id (mt/db))]
-        (testing "Uploads must be enabled"
-          (doseq [uploads-enabled-value [false nil]]
-            (mt/with-temporary-setting-values [uploads-enabled      uploads-enabled-value
-                                               uploads-database-id  db-id
-                                               uploads-schema-name  "public"
-                                               uploads-table-prefix "uploaded_magic_"]
-              (is (thrown-with-msg?
-                   java.lang.Exception
-                   #"^Uploads are not enabled\.$"
-                   (upload-example-csv! nil))))))
-        (testing "Database ID must be set"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  nil
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^The uploads database does not exist\.$"
-                 (upload-example-csv! nil)))))
-        (testing "Database ID must be valid"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  -1
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^The uploads database does not exist\."
-                 (upload-example-csv! nil)))))
-        (testing "Uploads must be supported"
-          (with-redefs [driver/database-supports? (constantly false)]
-            (mt/with-temporary-setting-values [uploads-enabled      true
-                                               uploads-database-id  db-id
-                                               uploads-schema-name  "public"
-                                               uploads-table-prefix "uploaded_magic_"]
-              (is (thrown-with-msg?
-                   java.lang.Exception
-                   #"^Uploads are not supported on Postgres databases\."
-                   (upload-example-csv! nil))))))
-        (testing "User must have write permissions on the collection"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temporary-setting-values [uploads-enabled      true
-                                               uploads-database-id  db-id
-                                               uploads-schema-name  "public"
-                                               uploads-table-prefix "uploaded_magic_"]
-              (mt/with-current-user (mt/user->id :lucky)
-                (is (thrown-with-msg?
-                     java.lang.Exception
-                     #"^You do not have curate permissions for this Collection\.$"
-                     (upload-example-csv! nil)))))))))))
-
-(defn- find-schema-filters-prop [driver]
-  (first (filter (fn [conn-prop]
-                   (= :schema-filters (keyword (:type conn-prop))))
-                 (driver/connection-properties driver))))
-
-(deftest upload-csv!-schema-does-not-sync-test
-  ;; Just test with postgres because failure should be independent of the driver
-  (mt/test-driver :postgres
-    (mt/with-empty-db
-      (let [driver             (driver.u/database->driver (mt/db))
-            schema-filter-prop (find-schema-filters-prop driver)
-            filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
-            patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
-        (t2/update! Database (mt/id) {:details (-> (mt/db)
-                                                   :details
-                                                   (assoc filter-type-prop "exclusion"
-                                                          patterns-type-prop "public"))})
-        (mt/with-temporary-setting-values [uploads-enabled     true
-                                           uploads-database-id (mt/id)
-                                           uploads-schema-name "public"]
-          (testing "Upload should fail if table can't be found after sync, for example because of schema filters"
-            (try (upload-example-csv! nil)
-                 (catch Exception e
-                   (is (= {:status-code 422}
-                          (ex-data e)))
-                   (is (re-matches #"^The schema public is not syncable\.$"
-                                   (.getMessage e))))))
-          (testing "\nThe table should be deleted"
-            (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-                          (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                                          ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
-                              first :exists))))))))))
-
-(deftest csv-upload-snowplow-test
+(deftest from-csv-test
   (mt/test-driver :h2
     (mt/with-empty-db
-      (let [db-id (u/the-id (mt/db))]
-        (mt/with-temporary-setting-values [uploads-enabled      true
-                                           uploads-database-id  db-id
-                                           uploads-schema-name  "PUBLIC"
-                                           uploads-table-prefix nil]
-          (snowplow-test/with-fake-snowplow-collector
-            (upload-example-csv! nil)
-            (is (=? {:data {"model_id"        pos?
-                            "size_mb"         3.910064697265625E-5
-                            "num_columns"     2
-                            "num_rows"        2
-                            "upload_seconds"  pos?
-                            "event"           "csv_upload_successful"}
-                     :user-id (str (mt/user->id :rasta))}
-                    (last (snowplow-test/pop-event-data-and-user-id!))))
-            (with-redefs [upload/load-from-csv! (fn [_ _ _ _]
-                                                  (throw (Exception.)))]
-              (try (upload-example-csv! nil)
-                   (catch Throwable _
-                     nil))
-              (is (= {:data {"size_mb"     3.910064697265625E-5
-                             "num_columns" 2
-                             "num_rows"    2
-                             "event"       "csv_upload_failed"}
-                      :user-id (str (mt/user->id :rasta))}
-                     (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
+      (testing "Happy path"
+        (mt/with-temporary-setting-values [uploads-enabled true
+                                           uploads-database-id (mt/id)
+                                           uploads-table-prefix nil
+                                           uploads-schema-name "PUBLIC"]
+          (let [{:keys [status body]} (upload-example-csv-via-api!)]
+            (is (= 200
+                   status))
+            (is (= body
+                   (t2/select-one-pk :model/Card :database_id (mt/id)))))))
+      (testing "Failure paths return an appropriate status code and a message in the body"
+        (mt/with-temporary-setting-values [uploads-enabled true
+                                           uploads-database-id nil
+                                           uploads-table-prefix nil
+                                           uploads-schema-name "PUBLIC"]
+          (is (= {:body   {:message "The uploads database is not configured."},
+                  :status 422}
+                 (upload-example-csv-via-api!))))
+        (mt/with-temporary-setting-values [uploads-enabled true
+                                           uploads-database-id Integer/MAX_VALUE
+                                           uploads-table-prefix nil
+                                           uploads-schema-name "PUBLIC"]
+          (is (= {:body   {:message "The uploads database does not exist."},
+                  :status 422}
+                 (upload-example-csv-via-api!))))))))
 
 (deftest card-read-event-test
   (testing "Card reads (views) via the API are recorded in the view_log"
@@ -3047,3 +3209,44 @@
               :model    "card"
               :model_id (u/id card)}
              (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))
+
+(deftest pivot-from-model-test
+  (testing "Pivot options should match fields through models (#35319)"
+    (mt/dataset test-data
+      (testing "visualization_settings references field by id"
+        (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
+                                                    :dataset true}
+                                 :model/Card card {:dataset_query
+                                                   {:database (mt/id)
+                                                    :type :query
+                                                    :query {:source-table (str "card__" (u/the-id model))
+                                                            :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
+                                                            :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
+                                                   ;; The FE sometimes used a field id instead of field by name - we need
+                                                   ;; to handle this
+                                                   :visualization_settings {:pivot_table.column_split {:rows [[:field (mt/id :orders :user_id) nil]],
+                                                                                                       :columns [],
+                                                                                                       :values [[:aggregation 0]]},
+                                                                            :table.cell_column "sum"}}]
+          (with-cards-in-readable-collection [model card]
+            (is (=?
+                  {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
+                  (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))
+
+      (testing "visualization_settings references field by name"
+        (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
+                                                    :dataset true}
+                                 :model/Card card {:dataset_query
+                                                   {:database (mt/id)
+                                                    :type :query
+                                                    :query {:source-table (str "card__" (u/the-id model))
+                                                            :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
+                                                            :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
+                                                   :visualization_settings {:pivot_table.column_split {:rows [[:field "USER_ID" nil]],
+                                                                                                       :columns [],
+                                                                                                       :values [[:aggregation 0]]},
+                                                                            :table.cell_column "sum"}}]
+          (with-cards-in-readable-collection [model card]
+            (is (=?
+                  {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
+                  (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))

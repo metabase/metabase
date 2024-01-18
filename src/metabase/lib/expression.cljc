@@ -4,6 +4,7 @@
    [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -215,7 +216,7 @@
       query stage-number
       add-expression-to-stage
       (-> (lib.common/->op-arg expressionable)
-          (lib.util/named-expression-clause expression-name))))))
+          (lib.util/top-level-expression-clause expression-name))))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
@@ -347,16 +348,33 @@
         (expression-metadata query stage-number)
         lib.ref/ref)))
 
-(mu/defn expression-name :- :string
-  "Return the name of `an-expression-clause`."
-  [an-expression-clause :- ::lib.schema.expression/expression]
-  (-> an-expression-clause lib.options/options :lib/expression-name))
+(def ^:private expression-validator
+  (mc/validator ::lib.schema.expression/expression))
+
+(defn expression-clause?
+  "Returns true if `expression-clause` is indeed an expression clause, false otherwise."
+  [expression-clause]
+  (expression-validator expression-clause))
 
 (mu/defn with-expression-name :- ::lib.schema.expression/expression
-  "Return a new expression clause like `an-expression-clause` but with name `new-name`."
+  "Return a new expression clause like `an-expression-clause` but with name `new-name`.
+  For expressions from the :expressions clause of a pMBQL query this sets the :lib/expression-name option,
+  for other expressions (for example named aggregation expressions) the :display-name option is set.
+
+  Note that always setting :lib/expression-name would lead to confusion, because that option is used
+  to decide what kind of reference is to be created. For example, expression are referenced by name,
+  aggregations are referenced by position."
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.options/update-options
-   an-expression-clause assoc
-   :lib/expression-name new-name
-   :lib/uuid (str (random-uuid))))
+   (if (lib.util/clause? an-expression-clause)
+     an-expression-clause
+     [:value {:effective-type (lib.schema.expression/type-of an-expression-clause)}
+      an-expression-clause])
+   (fn [opts]
+     (let [opts (assoc opts :lib/uuid (str (random-uuid)))]
+       (if (:lib/expression-name opts)
+         (-> opts
+             (dissoc :display-name :name)
+             (assoc :lib/expression-name new-name))
+         (assoc opts :name new-name :display-name new-name))))))

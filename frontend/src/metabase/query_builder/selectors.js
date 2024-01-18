@@ -5,8 +5,9 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";
 
+import * as Lib from "metabase-lib";
+
 // Needed due to wrong dependency resolution order
-import { Mode } from "metabase/visualizations/click-actions/Mode";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -29,17 +30,14 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
-import { ObjectMode } from "metabase/visualizations/click-actions/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-import * as ML from "metabase-lib/v2";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   normalizeParameters,
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 
@@ -352,11 +350,11 @@ export const getQuestion = createSelector(
 );
 
 function isQuestionEditable(question) {
-  return !question?.query().readOnly();
+  return question ? question.isQueryEditable() : false;
 }
 
 function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
-  return ML.areLegacyQueriesEqual(
+  return Lib.areLegacyQueriesEqual(
     queryA,
     queryB,
     tableMetadata?.fields.map(({ id }) => id),
@@ -534,11 +532,8 @@ const isZoomingRow = createSelector(
 );
 
 export const getMode = createSelector(
-  [getLastRunQuestion, isZoomingRow],
-  (question, isZoomingRow) =>
-    isZoomingRow
-      ? new Mode(question, ObjectMode)
-      : question && getQuestionMode(question),
+  [getLastRunQuestion],
+  question => question && getQuestionMode(question),
 );
 
 export const getIsObjectDetail = createSelector(
@@ -575,11 +570,6 @@ export const getIsSavedQuestionChanged = createSelector(
   },
 );
 
-export const getQuery = createSelector(
-  [getQuestion],
-  question => question && question.query(),
-);
-
 export const getIsRunnable = createSelector(
   [getQuestion, getIsDirty],
   (question, isDirty) => {
@@ -587,7 +577,7 @@ export const getIsRunnable = createSelector(
       return false;
     }
     if (!question.isSaved() || isDirty) {
-      return question.canRun() && !question.query().readOnly();
+      return question.canRun() && question.isQueryEditable();
     }
     return question.canRun();
   },
@@ -720,7 +710,7 @@ export const getVisualizationSettings = createSelector(
  */
 export const getIsNative = createSelector(
   [getQuestion],
-  question => question && question.query() instanceof NativeQuery,
+  question => question && question.isNative(),
 );
 
 /**

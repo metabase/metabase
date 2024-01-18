@@ -20,7 +20,7 @@
                                       :cache-ttl 10)
               run-query        (fn []
                                  (let [results (qp/process-query query)]
-                                   {:cached?  (boolean (:cached results))
+                                   {:cached?  (boolean (:cached (:cache/details results)))
                                     :num-rows (count (mt/rows results))}))
               expected-results (qp/preprocess query)]
           (testing "Check preprocess before caching to make sure results make sense"
@@ -51,7 +51,7 @@
 
 (deftest ^:parallel query->expected-cols-test
   (testing "field_refs in expected columns have the original join aliases (#30648)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
         (let [query
               (mt/mbql-query

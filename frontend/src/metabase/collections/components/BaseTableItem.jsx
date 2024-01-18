@@ -72,9 +72,6 @@ export function BaseTableItem({
       collection.can_write && typeof onToggleSelected === "function";
 
     const lastEditInfo = item["last-edit-info"];
-
-    // We don't keep last edit info for pulses
-    // TODO Remove ternary when Pulses are gone (metabase#16519-1)
     const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
@@ -130,7 +127,7 @@ export function BaseTableItem({
                 name="info"
                 size={16}
                 tooltip={
-                  <Markdown dark disallowHeading unstyleLinks>
+                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
                     {item.description}
                   </Markdown>
                 }
@@ -202,7 +199,6 @@ function getLastEditedBy(lastEditInfo) {
   if (!lastEditInfo) {
     return "";
   }
-
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 }

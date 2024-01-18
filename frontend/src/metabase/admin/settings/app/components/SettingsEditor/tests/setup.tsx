@@ -15,6 +15,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupApiKeyEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -61,10 +62,11 @@ export const setup = async ({
     setupEnterprisePlugins();
   }
 
+  setupApiKeyEndpoints([]);
   setupSettingsEndpoints(settings);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  renderWithProviders(
+  const { history } = renderWithProviders(
     <Route path="/admin/settings">
       <IndexRedirect to="general" />
       <Route path="*" component={SettingsEditor} />
@@ -77,4 +79,6 @@ export const setup = async ({
   );
 
   await waitFor(() => screen.getByText(/general/i));
+
+  return { history };
 };

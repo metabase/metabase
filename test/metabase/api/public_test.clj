@@ -12,17 +12,11 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public :as api.public]
    [metabase.config :as config]
+   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            Collection
-            Database
-            Dashboard
-            DashboardCard
-            DashboardCardSeries
-            Dimension
-            Field
-            FieldValues]]
+    :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
+            Database Dimension Field FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
@@ -172,6 +166,110 @@
                  (update-in [category-name-id :values] count)
                  (update category-name-id #(into {} %))))))))
 
+(defn card-with-snippet-and-card-template-tags []
+  {:enable_embedding true
+   :dataset_query
+   {:database (mt/id)
+    :type     :native
+    :native   {:query         "select {{snippet: all}} from {{#1-card}}"
+               :template-tags {:a           {:type         "date"
+                                             :name         "a"
+                                             :display-name "a"
+                                             :id           "a"
+                                             :default      "A TAG"}
+                               "snippet: all" {:type         :snippet,
+                                               :name         "snippet: all",
+                                               :id           (str (random-uuid)),
+                                               :snippet-name "all",
+                                               :display-name "Snippet: All",
+                                               :snippet-id   1}
+                               "1-card"       {:type         :card,
+                                               :name         "1-card",
+                                               :id           (str (random-uuid)),
+                                               :display-name "1 Card",
+                                               :card-id      1}}}}
+   :embedding_params {:a "enabled"}})
+
+(defn card-with-embedded-params []
+  {:enable_embedding true
+   :dataset_query    {:database (mt/id)
+                      :type     :native
+                      :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
+                                                 :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
+                                                 :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
+                                                 :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
+   :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
+                      {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
+                      {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
+                       :values_source_type "static-list" :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+   :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}})
+
+(deftest get-card-parameters-should-work-with-legacy-template-tags
+  ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+  ;; because doing such migration is costly.
+  ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+  ;; that why we need to keep concat both of them then dedupe by id
+  (testing "parameters should get from both template-tags and card.parameters"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card card (assoc (card-with-embedded-params) :public_uuid (str (random-uuid)))]
+        (is (= [{:type         "date/single",
+                 :name         "a",
+                 :display_name "a",
+                 :id           "a",
+                 :default      "A TAG",
+                 :target       ["variable" ["template-tag" "a"]],
+                 :slug         "a"
+                 :required     false}
+                {:type         "date/single",
+                 :name         "b",
+                 :display_name "b",
+                 :id           "b",
+                 :default      "B TAG",
+                 :target       ["variable" ["template-tag" "b"]],
+                 :slug         "b"
+                 :required     false}
+                ;; the parameter with id = "c" exists in both card.parameters and tempalte-tags should have info
+                ;; merge of both places
+                {:type                 "date/single",
+                 :name                 "c",
+                 :display_name         "c",
+                 :slug                 "c",
+                 ;; order importance: the default from template-tag is in the final result
+                 :default              "C TAG",
+                 :required             false
+                 :values_source_type   "static-list",
+                 :id                   "c",
+                 :target               ["variable" ["template-tag" "c"]],
+                 :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
+                ;; the parameter id = "d" is in template-tags, but not card.parameters,
+                ;; when fetching card we should get it returned
+                {:id       "d",
+                 :type     "date/single",
+                 :target   ["variable" ["template-tag" "d"]],
+                 :name     "d",
+                 :slug     "d",
+                 :default  "D TAG"
+                 :required false}]
+               (:parameters (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))
+
+(deftest get-card-parameters-should-exclude-non-parameter-template-tags
+  ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+  ;; because doing such migration is costly.
+  ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+  ;; that why we need to keep concat both of them, but exclude non-parameter template-tags
+  (testing "parameters should exclude non-parameter template-tags"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card card (assoc (card-with-snippet-and-card-template-tags) :public_uuid (str (random-uuid)))]
+        (is (= [; this corresponds to the only template tag that is a parameter
+                {:type         "date/single",
+                 :name         "a",
+                 :id           "a",
+                 :default      "A TAG",
+                 :target       ["variable" ["template-tag" "a"]],
+                 :slug         "a"
+                 :required     false}]
+               (:parameters (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))
+
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
 (defn card-query-url
@@ -212,7 +310,7 @@
                  (mt/rows (client/client :get 202 (str "public/card/" uuid "/query"))))))
 
         (testing ":json download response format"
-          (is (= [{:Count 100}]
+          (is (= [{:Count "100"}]
                  (client/client :get 200 (str "public/card/" uuid "/query/json")))))
 
         (testing ":csv download response format"
@@ -381,17 +479,18 @@
 
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp! [Card {uuid :public_uuid} (card-with-date-field-filter)]
-      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* ""]
-        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-          (is (= "count\n107\n"
-                 (client/real-client :get 200 (str "public/question/" uuid ".csv")
-                                :parameters (json/encode [{:id     "_DATE_"
-                                                           :type   :date/quarter-year
-                                                           :target [:dimension [:template-tag :date]]
-                                                           :value  "Q1-2014"}])))))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
+        ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+        (binding [client/*url-prefix* ""]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+            (is (= "count\n107\n"
+                   (client/real-client :get 200 (str "public/question/" uuid ".csv")
+                                       :parameters (json/encode [{:id     "_DATE_"
+                                                                  :type   :date/quarter-year
+                                                                  :target [:dimension [:template-tag :date]]
+                                                                  :value  "Q1-2014"}]))))))))))
 
 (defn- card-with-trendline []
   (assoc (shared-obj)
@@ -448,6 +547,17 @@
          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
          (is (= {:name true, :dashcards 2, :tabs 2}
                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+
+(deftest public-dashboard-logs-view-test
+  (testing "Viewing a public dashboard logs the correct view log event."
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard-and-card [dash _]
+        (fetch-public-dashboard dash)
+        (is (partial=
+             {:model      "dashboard"
+              :model_id   (:id dash)
+              :has_access true}
+             (view-log-test/latest-view nil (:id dash))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1462,7 +1572,7 @@
 
 (deftest pivot-public-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "GET /api/public/pivot/card/:uuid/query"
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-public-card [{uuid :public_uuid} (api.pivots/pivot-card)]
@@ -1485,7 +1595,7 @@
 (deftest pivot-public-dashcard-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
     (mt/test-drivers (api.pivots/applicable-drivers)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-public-dashboard [dash {:parameters [{:id      "_STATE_"
                                                            :name    "State"

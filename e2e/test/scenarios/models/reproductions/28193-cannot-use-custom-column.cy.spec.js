@@ -3,7 +3,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const ccName = "CTax";
 
-describe.skip("issue 28193", () => {
+describe("issue 28193", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

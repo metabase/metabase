@@ -3,11 +3,11 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import { DataStep } from "../steps/DataStep";
 import { JoinStep } from "../steps/JoinStep";
-import ExpressionStep from "../steps/ExpressionStep";
-import FilterStep from "../steps/FilterStep";
+import { ExpressionStep } from "../steps/ExpressionStep";
+import { FilterStep } from "../steps/FilterStep";
 import { AggregateStep } from "../steps/AggregateStep";
 import BreakoutStep from "../steps/BreakoutStep";
 import SummarizeStep from "../steps/SummarizeStep";

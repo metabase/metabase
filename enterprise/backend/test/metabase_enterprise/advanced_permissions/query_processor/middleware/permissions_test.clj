@@ -7,10 +7,8 @@
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
     :as ee.qp.perms]
    [metabase.api.dataset :as api.dataset]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
@@ -20,16 +18,12 @@
 
 (defn- do-with-download-perms
   [db-or-id graph f]
-  (let [all-users-group-id           (u/the-id (perms-group/all-users))
-        db-id                        (u/the-id db-or-id)
-        current-download-perms-graph (get-in (perms/data-perms-graph)
-                                             [:groups all-users-group-id db-id :download])]
-    (premium-features-test/with-premium-features #{:advanced-permissions}
-      (ee.perms/update-db-download-permissions! all-users-group-id db-id graph)
-      (try
-        (f)
-        (finally
-          (ee.perms/update-db-download-permissions! all-users-group-id db-id current-download-perms-graph))))))
+  (let [all-users-group-id (u/the-id (perms-group/all-users))
+        db-id              (u/the-id db-or-id)]
+    (mt/with-premium-features #{:advanced-permissions}
+      (perms.test-util/with-restored-perms!
+        (ee.perms/update-db-download-permissions! all-users-group-id db-id graph)
+        (f)))))
 
 (defmacro ^:private with-download-perms
   "Runs `f` with the download perms for `db-or-id` set to the values in `graph` for the All Users permissions group."
@@ -130,8 +124,8 @@
              (check-download-permisions (mbql-download-query))))
 
         (testing "No exception is thrown for non-download queries"
-              (let [query (dissoc (mbql-download-query 'venues) :info)]
-                (is (= query (check-download-permisions query))))))))
+          (let [query (dissoc (mbql-download-query 'venues) :info)]
+            (is (= query (check-download-permisions query))))))))
 
   (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
     (with-download-perms-for-db (mt/id) :full
@@ -149,8 +143,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- csv-row-count
- [results]
- (count
+  [results]
+  (count
    ;; Ignore first row, since it's the header
    (rest (csv/read-csv results))))
 
@@ -187,10 +181,14 @@
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
 
-      (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :limited
+      (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'users)      :full
+                                                        (mt/id 'categories) :full
+                                                        (mt/id 'venues)     :limited
                                                         (mt/id 'checkins)   :full
-                                                        (mt/id 'users)      :full
-                                                        (mt/id 'categories) :full}}}
+                                                        (mt/id 'products)   :limited
+                                                        (mt/id 'people)     :limited
+                                                        (mt/id 'reviews)    :limited
+                                                        (mt/id 'orders)     :limited}}}
         (streaming-test/do-test
          "A user with limited download perms for a table has their query results limited for queries on that table"
          {:query      {:database (mt/id)
@@ -308,8 +306,8 @@
       (streaming-test/do-test
        "A user has limited downloads for a query with a join if they have limited permissions for one of the tables"
        {:query (mt/mbql-query checkins
-                    {:joins [{:source-table $$users
-                              :condition    [:= $user_id 1]}]
-                     :limit 10})
+                 {:joins [{:source-table $$users
+                           :condition    [:= $user_id 1]}]
+                  :limit 10})
         :endpoints  [:card :dataset]
         :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))))

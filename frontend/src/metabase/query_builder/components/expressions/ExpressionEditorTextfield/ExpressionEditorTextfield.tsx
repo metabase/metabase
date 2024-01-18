@@ -2,12 +2,17 @@ import type { RefObject } from "react";
 import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import { connect } from "react-redux";
 import type { ICommand, IMarker } from "react-ace";
 import AceEditor from "react-ace";
 import * as ace from "ace-builds/src-noconflict/ace";
 import type { Ace } from "ace-builds";
 import type { Expression } from "metabase-types/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import type { State } from "metabase-types/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import * as Lib from "metabase-lib";
 import { format } from "metabase-lib/expressions/format";
 import { processSource } from "metabase-lib/expressions/process";
 import { diagnose } from "metabase-lib/expressions/diagnostics";
@@ -15,10 +20,13 @@ import { tokenize } from "metabase-lib/expressions/tokenizer";
 import { isExpression } from "metabase-lib/expressions";
 import type { Suggestion } from "metabase-lib/expressions/suggest";
 import { suggest } from "metabase-lib/expressions/suggest";
-import type { HelpText } from "metabase-lib/expressions/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type {
+  ErrorWithMessage,
+  HelpText,
+} from "metabase-lib/expressions/types";
 
-import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 import {
@@ -29,8 +37,6 @@ import {
 
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
-
-type ErrorWithMessage = { message: string; pos?: number; len?: number };
 
 const ACE_OPTIONS = {
   behavioursEnabled: false,
@@ -45,23 +51,32 @@ const ACE_OPTIONS = {
 
 interface ExpressionEditorTextfieldProps {
   expression: Expression | undefined;
+  clause: Lib.ExpressionClause | undefined;
   name: string;
-  legacyQuery: StructuredQuery;
-  startRule?: string;
+  query: Lib.Query;
+  stageIndex: number;
+  metadata: Metadata;
+  startRule: string;
+  expressionPosition?: number;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
 
-  onChange: (expression: Expression | null) => void;
+  onChange: (
+    expression: Expression | null,
+    expressionClause: Lib.ExpressionClause | null,
+  ) => void;
   onError: (error: ErrorWithMessage | null) => void;
   onBlankChange: (isBlank: boolean) => void;
-  onCommit: (expression: Expression | null) => void;
+  onCommit: (
+    expression: Expression | null,
+    expressionClause: Lib.ExpressionClause | null,
+  ) => void;
   helpTextTarget: RefObject<HTMLElement>;
 }
 
 interface ExpressionEditorTextfieldState {
   source: string;
-  expression: Expression;
   suggestions: Suggestion[];
   highlightedSuggestionIndex: number;
   isFocused: boolean;
@@ -74,15 +89,25 @@ function transformPropsToState(
   props: ExpressionEditorTextfieldProps,
 ): ExpressionEditorTextfieldState {
   const {
-    expression = ExpressionEditorTextfield.defaultProps.expression,
-    legacyQuery,
+    expression: legacyExpression = ExpressionEditorTextfield.defaultProps
+      .expression,
     startRule = ExpressionEditorTextfield.defaultProps.startRule,
+    clause,
+    query,
+    stageIndex,
   } = props;
-  const source = format(expression, { legacyQuery, startRule });
+  const expressionFromClause = clause
+    ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
+    : undefined;
+  const expression = expressionFromClause ?? legacyExpression;
+  const source = format(expression, {
+    startRule,
+    stageIndex,
+    query,
+  });
 
   return {
     source,
-    expression,
     highlightedSuggestionIndex: 0,
     helpText: null,
     suggestions: [],
@@ -91,6 +116,12 @@ function transformPropsToState(
     hasChanges: false,
   };
 }
+
+const mapStateToProps = (state: State) => ({
+  metadata: getMetadata(state),
+});
+
+const CURSOR_DEBOUNCE_INTERVAL = 10;
 
 class ExpressionEditorTextfield extends React.Component<
   ExpressionEditorTextfieldProps,
@@ -103,8 +134,6 @@ class ExpressionEditorTextfield extends React.Component<
     expression: "",
     startRule: "expression",
   };
-
-  state: ExpressionEditorTextfieldState;
 
   constructor(props: ExpressionEditorTextfieldProps) {
     super(props);
@@ -120,9 +149,24 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { expression, legacyQuery, startRule } = newProps;
-    if (!this.state || !_.isEqual(this.props.expression, expression)) {
-      const source = format(expression, { legacyQuery, startRule });
+    const { expression, clause, startRule, query, stageIndex } = newProps;
+    const hasLegacyExpressionChanged = !_.isEqual(
+      this.props.expression,
+      expression,
+    );
+    const hasClauseChanged = !_.isEqual(this.props.clause, clause);
+    const hasExpressionChanged = hasLegacyExpressionChanged || hasClauseChanged;
+    const expressionFromClause = clause
+      ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
+      : undefined;
+    const newExpression = expressionFromClause ?? expression;
+
+    if (!this.state || hasExpressionChanged) {
+      const source = format(newExpression, {
+        startRule,
+        stageIndex,
+        query,
+      });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
 
@@ -279,6 +323,8 @@ class ExpressionEditorTextfield extends React.Component<
       return;
     }
 
+    const { onChange, onError } = this.props;
+
     this.clearSuggestions();
 
     const errorMessage = this.diagnoseExpression();
@@ -286,16 +332,20 @@ class ExpressionEditorTextfield extends React.Component<
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (errorMessage) {
-      this.props.onError(errorMessage);
+      onError(errorMessage);
     } else {
-      const expression = this.compileExpression();
-      if (expression) {
+      const compiledExpression = this.compileExpression();
+
+      if (compiledExpression) {
+        const { expression, expressionClause } = compiledExpression;
+
         if (!isExpression(expression)) {
           console.warn("isExpression=false", expression);
         }
-        this.props.onChange(expression);
+
+        onChange(expression, expressionClause);
       } else {
-        this.props.onError({ message: t`Invalid expression` });
+        onError({ message: t`Invalid expression` });
       }
     }
   };
@@ -331,53 +381,71 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { legacyQuery, startRule, name } = this.props;
+    const { query, stageIndex, startRule, name } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
-    const { expression } = processSource({
+    const { expression, expressionClause } = processSource({
       name,
       source,
-      legacyQuery,
+      query,
+      stageIndex,
       startRule,
     });
 
-    return expression;
+    return { expression, expressionClause };
   }
 
   diagnoseExpression(): ErrorWithMessage | null {
     const { source } = this.state;
     const {
-      legacyQuery,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       name,
+      query,
+      stageIndex,
     } = this.props;
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
     }
-    return diagnose(source, startRule, legacyQuery, name);
+    return diagnose({
+      source,
+      startRule,
+      name,
+      query,
+      stageIndex,
+    });
   }
 
   commitExpression() {
     const {
-      legacyQuery,
+      query,
+      stageIndex,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
+      onCommit,
+      onError,
     } = this.props;
     const { source } = this.state;
-    const errorMessage = diagnose(
+    const errorMessage = diagnose({
       source,
       startRule,
-      legacyQuery,
-    ) as ErrorWithMessage | null;
+      query,
+      stageIndex,
+    });
     this.setState({ errorMessage });
 
     if (errorMessage) {
-      this.props.onError(errorMessage);
+      onError(errorMessage);
     } else {
-      const expression = this.compileExpression();
+      const compiledExpression = this.compileExpression();
 
-      if (isExpression(expression)) {
-        this.props.onCommit(expression);
+      if (compiledExpression) {
+        const { expression, expressionClause } = compiledExpression;
+
+        if (isExpression(expression)) {
+          onCommit(expression, expressionClause);
+        }
+      } else {
+        onError({ message: t`Invalid expression` });
       }
     }
   }
@@ -386,7 +454,7 @@ class ExpressionEditorTextfield extends React.Component<
     this.handleExpressionChange(this.state.source);
   };
 
-  handleExpressionChange(source: string) {
+  handleExpressionChange = (source: string) => {
     if (source) {
       this.setState({ hasChanges: true });
     }
@@ -395,30 +463,37 @@ class ExpressionEditorTextfield extends React.Component<
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);
     }
-  }
+  };
 
-  handleCursorChange(selection: Ace.Selection) {
+  handleCursorChange = _.debounce((selection: Ace.Selection) => {
     const cursor = selection.getCursor();
 
     const {
-      legacyQuery,
+      query,
       reportTimezone,
+      stageIndex,
+      metadata,
+      expressionPosition,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
     } = this.props;
     const { source } = this.state;
     const { suggestions, helpText } = suggest({
-      legacyQuery,
       reportTimezone,
       startRule,
       source,
       targetOffset: cursor.column,
+      expressionPosition,
+      query,
+      stageIndex,
+      metadata,
+      getColumnIcon,
     });
 
     this.setState({ helpText: helpText || null });
     if (this.state.isFocused) {
       this.updateSuggestions(suggestions);
     }
-  }
+  }, CURSOR_DEBOUNCE_INTERVAL);
 
   errorAsMarkers(errorMessage: ErrorWithMessage | null = null): IMarker[] {
     if (errorMessage) {
@@ -464,8 +539,7 @@ class ExpressionEditorTextfield extends React.Component<
     },
     {
       name: "chooseSuggestion",
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore // Based on typings null is not a valid value, but bindKey is assigned dynamically if there are suggestions available.
+      // @ts-expect-error Based on typings null is not a valid value, but bindKey is assigned dynamically if there are suggestions available.
       bindKey: null,
       exec: () => {
         this.chooseSuggestion();
@@ -481,8 +555,16 @@ class ExpressionEditorTextfield extends React.Component<
   ];
 
   render() {
-    const { source, suggestions, errorMessage, hasChanges, isFocused } =
-      this.state;
+    const { helpTextTarget, width } = this.props;
+    const {
+      source,
+      suggestions,
+      errorMessage,
+      hasChanges,
+      isFocused,
+      highlightedSuggestionIndex,
+      helpText,
+    } = this.state;
 
     return (
       <React.Fragment>
@@ -506,24 +588,24 @@ class ExpressionEditorTextfield extends React.Component<
             onBlur={this.handleInputBlur}
             onFocus={this.handleFocus}
             setOptions={ACE_OPTIONS}
-            onChange={source => this.handleExpressionChange(source)}
-            onCursorChange={selection => this.handleCursorChange(selection)}
+            onChange={this.handleExpressionChange}
+            onCursorChange={this.handleCursorChange}
             width="100%"
           />
           <ExpressionEditorSuggestions
             target={this.suggestionTarget.current}
             suggestions={suggestions}
             onSuggestionMouseDown={this.onSuggestionSelected}
-            highlightedIndex={this.state.highlightedSuggestionIndex}
+            highlightedIndex={highlightedSuggestionIndex}
           />
         </EditorContainer>
         {errorMessage && hasChanges && (
           <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
         )}
         <ExpressionEditorHelpText
-          target={this.props.helpTextTarget}
-          helpText={this.state.helpText}
-          width={this.props.width}
+          target={helpTextTarget}
+          helpText={helpText}
+          width={width}
         />
       </React.Fragment>
     );
@@ -531,4 +613,7 @@ class ExpressionEditorTextfield extends React.Component<
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExplicitSize()(ExpressionEditorTextfield);
+export default _.compose(
+  ExplicitSize(),
+  connect(mapStateToProps),
+)(ExpressionEditorTextfield);

@@ -1,17 +1,18 @@
 (ns metabase.util.malli
   (:refer-clojure :exclude [fn defn defmethod])
   (:require
-   [clojure.core :as core]
-   [malli.core :as mc]
-   [malli.destructure]
-   [malli.util :as mut]
-   [metabase.shared.util.i18n :as i18n]
    #?@(:clj
        ([metabase.util.i18n]
         [metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
         [net.cgrand.macrovich :as macros]
-        [potemkin :as p])))
+        [potemkin :as p]))
+   [clojure.core :as core]
+   [malli.core :as mc]
+   [malli.destructure]
+   [malli.error :as me]
+   [malli.util :as mut]
+   [metabase.shared.util.i18n :as i18n])
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
@@ -24,6 +25,12 @@
   [{:keys [value message]}]
   ;; TODO Should this be translated with more complete context? (tru "{0}, received: {1}" message (pr-str value))
   (str message ", " (i18n/tru "received") ": " (pr-str value)))
+
+(core/defn explain
+  "Explains a schema failure, and returns the offending value."
+  [schema value]
+  (-> (mc/explain schema value)
+      (me/humanize {:wrap humanize-include-value})))
 
 (def ^:private Schema
   [:and any?

@@ -20,9 +20,10 @@ If you have Java installed:
 1. [Download the JAR file for Metabase OSS](https://metabase.com/start/oss/jar).
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
-   ```
-   java -jar metabase.jar
-   ```
+
+```
+java -jar metabase.jar
+```
 
 Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit `http://localhost:3000/setup`.
 

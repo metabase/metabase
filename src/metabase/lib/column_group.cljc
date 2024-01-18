@@ -1,5 +1,6 @@
 (ns metabase.lib.column-group
   (:require
+   [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
@@ -94,14 +95,20 @@
 (defmethod display-info-for-group-method :group-type/join.implicit
   [query stage-number {:keys [fk-field-id], :as _column-group}]
   (merge
-   (when-let [field (lib.metadata/field query fk-field-id)]
-     (let [field-info (lib.metadata.calculation/display-info query stage-number field)]
+   (when-let [;; TODO: This is clumsy and expensive; there is likely a neater way to find the full FK column.
+              ;; Note that using `lib.metadata/field` is out - we need to respect metadata overrides etc. in models, and
+              ;; `lib.metadata/field` uses the field's original status.
+              fk-column (->> (lib.util/query-stage query stage-number)
+                             (lib.metadata.calculation/visible-columns query stage-number)
+                             (m/find-first #(and (= (:id %) fk-field-id)
+                                                 (:fk-target-field-id %))))]
+     (let [fk-info (lib.metadata.calculation/display-info query stage-number fk-column)]
        ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
        ;; "ID" dropped instead.
        ;; This is very intentional: one table might have several FKs to one foreign table, each with different
        ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
        ;; See #30109 for more details.
-       (assoc field-info :fk-reference-name (lib.util/strip-id (:display-name field-info)))))
+       (update fk-info :display-name lib.util/strip-id)))
    {:is-from-join           false
     :is-implicitly-joinable true}))
 
@@ -177,3 +184,7 @@
   "Get the columns associated with a column group"
   [column-group :- ColumnGroup]
   (::columns column-group))
+
+(defmethod lib.metadata.calculation/display-name-method :metadata/column-group
+  [query stage-number column-group _display-name-style]
+  (:display-name (lib.metadata.calculation/display-info query stage-number column-group)))

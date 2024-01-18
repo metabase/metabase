@@ -174,23 +174,19 @@
   "Updates an existing DashboardCard including all DashboardCardSeries.
    `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
    Returns nil."
-  [{:keys [id action_id] :as dashboard-card} :- DashboardCardUpdates
-   old-dashboard-card                        :- DashboardCardUpdates]
+  [{dashcard-id :id :keys [series] :as dashboard-card} :- DashboardCardUpdates
+   old-dashboard-card :- DashboardCardUpdates]
   (t2/with-transaction [_conn]
-   (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
-                            :parameter_mappings :visualization_settings :dashboard_tab_id]
-                    ;; Allow changing card_id for action dashcards, but not for card dashcards.
-                    ;; This is to preserve the existing behavior of questions and card_id
-                    ;; I don't know why card_id couldn't be changed for cards though.
-                     action_id (conj :card_id))
-         updates (shallow-updates (select-keys dashboard-card update-ks)
-                                  (select-keys old-dashboard-card update-ks))]
-     (when (seq updates)
-       (t2/update! :model/DashboardCard id updates))
-     (when (not= (:series dashboard-card [])
-                 (:series old-dashboard-card []))
-       (update-dashboard-cards-series! {(:id dashboard-card) (:series dashboard-card)}))
-     nil)))
+    (let [update-ks [:action_id :card_id :row :col :size_x :size_y
+                     :parameter_mappings :visualization_settings :dashboard_tab_id]
+          updates   (shallow-updates (select-keys dashboard-card update-ks)
+                                     (select-keys old-dashboard-card update-ks))]
+      (when (seq updates)
+        (t2/update! :model/DashboardCard dashcard-id updates))
+      (when (not= (:series dashboard-card [])
+                  (:series old-dashboard-card []))
+        (update-dashboard-cards-series! {dashcard-id series}))
+      nil)))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
@@ -371,6 +367,7 @@
 (defmethod serdes/load-xform "DashboardCard"
   [dashcard]
   (-> dashcard
+      ;; Deliberately not doing anything to :series, they get handled by load-one! below
       (dissoc :serdes/meta)
       (update :card_id                serdes/*import-fk* :model/Card)
       (update :action_id              serdes/*import-fk* :model/Action)
@@ -379,3 +376,23 @@
       (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes/import-parameter-mappings)
       (update :visualization_settings serdes/import-visualization-settings)))
+
+(defn- dashboard-card-series-xform
+  [ingested]
+  (-> ingested
+      (update :card_id          serdes/*import-fk* :model/Card)
+      (update :dashboardcard_id serdes/*import-fk* :model/DashboardCard)))
+
+(defmethod serdes/load-one! "DashboardCard"
+  [ingested maybe-local]
+  (let [dashcard ((get-method serdes/load-one! :default) (dissoc ingested :series) maybe-local)]
+    ;; drop all existing series for this card and recreate them
+    ;; TODO: this is unnecessary, but it is simple to implement
+    (t2/delete! :model/DashboardCardSeries :dashboardcard_id (:id dashcard))
+    (doseq [[idx single-series] (map-indexed vector (:series ingested))] ;; a single series has a :card_id only
+      ;; instead of load-one! we use load-insert! here because :serdes/meta isn't necessary because no other
+      ;; entities depend on DashboardCardSeries
+      (serdes/load-insert! "DashboardCardSeries" (-> single-series
+                                                     (assoc :dashboardcard_id (:entity_id dashcard)
+                                                            :position idx)
+                                                     dashboard-card-series-xform)))))

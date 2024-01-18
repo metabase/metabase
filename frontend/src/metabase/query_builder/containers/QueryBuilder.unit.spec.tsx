@@ -318,16 +318,14 @@ describe("QueryBuilder", () => {
           card: TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
         });
         const timeSeriesModeFooter = await screen.findByTestId(
-          "time-series-mode-footer",
+          "timeseries-chrome",
         );
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(
           within(timeSeriesModeFooter).getByText("by"),
         ).toBeInTheDocument();
         expect(
-          within(timeSeriesModeFooter).getByTestId(
-            "time-series-grouping-select-button",
-          ),
+          within(timeSeriesModeFooter).getByTestId("timeseries-bucket-button"),
         ).toBeInTheDocument();
       });
 
@@ -337,7 +335,7 @@ describe("QueryBuilder", () => {
         });
 
         const timeSeriesModeFooter = await screen.findByTestId(
-          "time-series-mode-footer",
+          "timeseries-chrome",
         );
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(
@@ -345,7 +343,7 @@ describe("QueryBuilder", () => {
         ).not.toBeInTheDocument();
         expect(
           within(timeSeriesModeFooter).queryByTestId(
-            "time-series-grouping-select-button",
+            "timeseries-bucket-button",
           ),
         ).not.toBeInTheDocument();
       });
@@ -564,6 +562,9 @@ describe("QueryBuilder", () => {
           card: TEST_STRUCTURED_CARD,
         });
 
+        expect(
+          await screen.findByText(TEST_STRUCTURED_CARD.name),
+        ).toBeInTheDocument();
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
         expect(mockEvent.returnValue).toEqual(undefined);
@@ -1424,7 +1425,7 @@ const triggerVisualizationQueryChange = async () => {
   userEvent.click(screen.getByText("Filter"));
 
   const modal = screen.getByRole("dialog");
-  const total = within(modal).getByTestId("filter-field-Total");
+  const total = within(modal).getByTestId("filter-column-Total");
   const maxInput = within(total).getByPlaceholderText("Max");
   userEvent.type(maxInput, "1000");
   userEvent.tab();

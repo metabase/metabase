@@ -189,7 +189,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Boolean
   coercion_strategy: null
-  description: null
+  description: True if table is available in the data source. False if it not found in sync anymore.
   display_name: Active
   effective_type: type/Boolean
   field_ref:

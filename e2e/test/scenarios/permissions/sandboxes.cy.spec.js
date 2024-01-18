@@ -5,6 +5,7 @@ import {
   openPeopleTable,
   openReviewsTable,
   popover,
+  queryBuilderMain,
   restore,
   remapDisplayValueToFK,
   setupSMTP,
@@ -143,7 +144,7 @@ describeEE("formatting > sandboxes", () => {
     });
 
     describe("question with joins", () => {
-      it("should be sandboxed even after applying a filter to the question", () => {
+      it("should show permissions error after applying a filter to the question", () => {
         cy.log("Open saved question with joins");
         cy.get("@questionId").then(id => {
           visitQuestion(id);
@@ -160,22 +161,27 @@ describeEE("formatting > sandboxes", () => {
         filter({ mode: "notebook" });
         popover().within(() => {
           cy.findByText("Total").click({ force: true });
+          cy.findByDisplayValue("Equal to").click();
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Equal to").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Greater than").click();
-        cy.findByPlaceholderText("Enter a number").type("100");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Add filter").click();
+        cy.findByRole("listbox").findByText("Greater than").click();
+        popover().within(() => {
+          cy.findByPlaceholderText("Enter a number").type("100");
+          cy.button("Add filter").click();
+        });
 
         visualize();
 
-        cy.log("Make sure user is still sandboxed");
-        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
-          "have.length",
-          7,
-        );
+        cy.log("Make sure permissions error is shown");
+        queryBuilderMain().within(() => {
+          cy.findByText("There was a problem with your question").should(
+            "exist",
+          );
+
+          cy.findByText("Show error details").click();
+          cy.findByText(
+            "You do not have permissions to run this query.",
+          ).should("exist");
+        });
       });
     });
 
@@ -364,7 +370,7 @@ describeEE("formatting > sandboxes", () => {
           expect(xhr.response.body.error).not.to.exist;
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Category is Doohickey");
+        cy.findByText("Product → Category is Doohickey");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("97.44"); // Subtotal for order #10
       });
@@ -439,7 +445,7 @@ describeEE("formatting > sandboxes", () => {
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Category is Doohickey");
+      cy.findByText("Products → Category is Doohickey");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
     });
@@ -449,6 +455,7 @@ describeEE("formatting > sandboxes", () => {
       { tags: "@flaky" },
       () => {
         beforeEach(() => {
+          cy.intercept("POST", "/api/dataset").as("datasetQuery");
           cy.log("Remap Product ID's display value to `title`");
           remapDisplayValueToFK({
             display_value: ORDERS.PRODUCT_ID,
@@ -506,9 +513,14 @@ describeEE("formatting > sandboxes", () => {
               callback: xhr => expect(xhr.response.body.error).not.to.exist,
             });
 
-            cy.get(".cellData").contains("Awesome Concrete Shoes").click();
-            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-            cy.findByText(/View details/i).click();
+            cy.wait("@datasetQuery");
+
+            cy.findByTestId("TableInteractive-root")
+              .findByText("Awesome Concrete Shoes")
+              .click();
+            popover()
+              .findByText(/View details/i)
+              .click();
 
             cy.log(
               "It should show object details instead of filtering by this Product ID",
@@ -931,32 +943,6 @@ describeEE("formatting > sandboxes", () => {
 
       // should forward to email since that is the only one setup
       sidebar().findByText("Email this dashboard").should("exist");
-    });
-
-    it.skip("sandboxed user should be able to send pulses to Slack (metabase#14844)", () => {
-      cy.viewport(1400, 1000);
-
-      cy.intercept("GET", "/api/collection/*").as("collection");
-
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-      });
-
-      cy.signOut();
-      cy.signInAsSandboxedUser();
-
-      cy.visit("/pulse/create");
-      cy.wait("@collection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Where should this data go?")
-        .parent()
-        .within(() => {
-          cy.findByText("Email");
-          cy.findByText("Slack");
-        });
     });
 
     it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {

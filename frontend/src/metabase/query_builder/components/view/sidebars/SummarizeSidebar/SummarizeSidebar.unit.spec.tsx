@@ -1,7 +1,7 @@
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
-import { render, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
@@ -16,7 +16,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { SummarizeSidebar } from "./SummarizeSidebar";
 
 type SetupOpts = {
@@ -59,16 +58,11 @@ function setup({
       : new Question(card, metadata);
 
   function Wrapper() {
-    const [query, setQuery] = useState(question._getMLv2Query());
-
-    const legacyQuery = question
-      .setDatasetQuery(Lib.toLegacyQuery(query))
-      .query() as StructuredQuery;
+    const [query, setQuery] = useState(question.query());
 
     return (
       <SummarizeSidebar
         query={query}
-        legacyQuery={legacyQuery}
         onQueryChange={nextQuery => {
           setQuery(nextQuery);
           onQueryChange(nextQuery);
@@ -78,7 +72,7 @@ function setup({
     );
   }
 
-  render(<Wrapper />);
+  renderWithProviders(<Wrapper />);
 
   if (!withDefaultAggregation) {
     const countButton = screen.getByLabelText("Count");

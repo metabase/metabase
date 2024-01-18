@@ -1,5 +1,6 @@
 (ns metabase.models.setting-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [environ.core :as env]
@@ -8,8 +9,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -915,11 +914,11 @@
 
 (deftest feature-test
   (testing "Settings can be assigned an Enterprise feature flag, required for them to be enabled"
-    (premium-features-test/with-premium-features #{:test-feature}
+    (mt/with-premium-features #{:test-feature}
       (test-feature-setting! "custom")
       (is (= "custom" (test-feature-setting))))
 
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting test-feature-setting is not enabled because feature :test-feature is not available"
@@ -1112,7 +1111,7 @@
   :audit      :getter)
 
 (deftest setting-audit-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
                                               :topic :setting-update
                                               {:order-by [[:id :desc]]})]
@@ -1171,7 +1170,7 @@
   :audit      :raw-value)
 
 (deftest user-local-settings-audit-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (testing "User-local settings are not audited by default"
       (mt/with-test-user :rasta
         (test-user-local-only-setting! "DON'T AUDIT"))
@@ -1190,3 +1189,78 @@
                             :previous-value nil
                             :new-value      "AUDIT ME"}}
                  (mt/latest-audit-log-entry :setting-update))))))))
+
+(defsetting exported-setting
+  "This setting would be serialized"
+  :export? true
+  ;; make sure it's internal so it doesn't interfere with export test
+  :visibility :internal)
+
+(defsetting non-exported-setting
+  "This setting would not be serialized"
+  :export? false)
+
+(deftest export?-test
+  (testing "The :export? property is exposed"
+    (is (#'setting/export? :exported-setting))
+    (is (not (#'setting/export? :non-exported-setting))))
+
+  (testing "By default settings are not exported"
+    (is (not (#'setting/export? :test-setting-1)))))
+
+(deftest realize-throwing-test
+  (testing "The realize function ensures all nested lazy values are calculated"
+    (let [ok (lazy-seq (cons 1 (lazy-seq (list 2))))
+          ok-deep (lazy-seq (cons 1 (lazy-seq (list (lazy-seq (list 2))))))
+          shallow (lazy-seq (cons 1 (throw (ex-info "Surprise!" {}))))
+          deep (lazy-seq (cons 1 (cons 2 (list (lazy-seq (throw (ex-info "Surprise!" {})))))))]
+      (is (= '(1 2) (#'setting/realize ok)))
+      (is (= '(1 (2)) (#'setting/realize ok-deep)))
+      (doseq [x [shallow deep]]
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"^Surprise!$"
+              (#'setting/realize x)))))))
+
+(deftest valid-json-setting-test
+  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2]"]
+    (is (nil? (setting/validate-settings-formatting!)))))
+
+(defn- get-parse-exception [raw-value]
+  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" raw-value]
+    (try
+      (setting/validate-settings-formatting!)
+      (throw (java.lang.RuntimeException. "This code should never be reached."))
+      (catch java.lang.Exception e e))))
+
+(defn- assert-parser-exception! [ex cause-message]
+  (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
+  (is (= cause-message (ex-message (ex-cause ex)))))
+
+(deftest invalid-json-setting-test
+  (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
+    (let [ex (get-parse-exception "[1, 2,")]
+      (assert-parser-exception!
+        ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
+        #_(str "Unexpected end-of-input within/between Array entries\n"
+               " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
+        ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+
+(deftest sensitive-data-redacted-test
+  (testing "The exception thrown by validation will not contain sensitive info from the config"
+    (let [password "$ekr3t"
+          ex (get-parse-exception (str "[" password))]
+      (is (not (str/includes? (pr-str ex) password)))
+      (assert-parser-exception!
+        ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+
+(deftest safe-exceptions-not-redacted-test
+  (testing "An exception known not to contain sensitive info will not be redacted"
+    (let [password "123abc"
+          ex (get-parse-exception "{\"a\": \"123abc\", \"b\": 2")]
+      (is (not (str/includes? (pr-str ex) password)))
+      (assert-parser-exception!
+        ex
+        (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
+             " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
+             " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))

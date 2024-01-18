@@ -5,7 +5,7 @@ import _ from "underscore";
 import { isa } from "cljs/metabase.types";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import type {
-  FieldReference as AbstractField,
+  FieldReference,
   ConcreteFieldReference,
   LocalFieldReference,
   ExpressionReference,
@@ -28,7 +28,6 @@ import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/ValidationError";
 import type Aggregation from "metabase-lib/queries/structured/Aggregation";
-import Filter from "metabase-lib/queries/structured/Filter";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import {
@@ -100,7 +99,7 @@ export default class Dimension {
    * Metadata should be provided if you intend to use the display name or render methods.
    */
   static parseMBQL(
-    mbql: ConcreteFieldReference | VariableTarget,
+    mbql: FieldReference | VariableTarget,
     metadata?: Metadata,
     query?: StructuredQuery | NativeQuery | null | undefined,
   ): Dimension | null | undefined {
@@ -144,7 +143,7 @@ export default class Dimension {
    */
   // TODO Atte Keinänen 5/21/17: Rename either this or the instance method with the same name
   // Also making it clear in the method name that we're working with sub-dimensions would be good
-  static dimensions(parent: Dimension): Dimension[] {
+  static dimensions(_parent: Dimension): Dimension[] {
     return [];
   }
 
@@ -152,7 +151,7 @@ export default class Dimension {
    * The default sub-dimension for the provided dimension of this type, if any.
    * @abstract
    */
-  static defaultDimension(parent: Dimension): Dimension | null | undefined {
+  static defaultDimension(_parent: Dimension): Dimension | null | undefined {
     return null;
   }
 
@@ -254,7 +253,7 @@ export default class Dimension {
    * Does this dimension have the same underlying base dimension, typically a field
    */
   isSameBaseDimension(
-    other: Dimension | null | undefined | ConcreteFieldReference,
+    other: Dimension | null | undefined | FieldReference,
   ): boolean {
     if (other == null) {
       return false;
@@ -277,11 +276,11 @@ export default class Dimension {
     return isExpressionDimension(this);
   }
 
-  foreign(dimension: Dimension): FieldDimension {
+  foreign(_dimension: Dimension): FieldDimension {
     return null;
   }
 
-  datetime(unit: DatetimeUnit): FieldDimension {
+  datetime(_unit: DatetimeUnit): FieldDimension {
     return null;
   }
 
@@ -328,12 +327,6 @@ export default class Dimension {
     return this.field().isDate() ? null : this.filterOperators()[0];
   }
 
-  defaultFilterForDimension() {
-    return new Filter([], null, this.query()).setDimension(this.mbql(), {
-      useDefaultOperator: true,
-    });
-  }
-
   // AGGREGATIONS
 
   /**
@@ -341,10 +334,6 @@ export default class Dimension {
    */
   aggregationOperators(): AggregationOperator[] {
     return this.field().aggregationOperators();
-  }
-
-  defaultAggregationOperator(): AggregationOperator | null | undefined {
-    return this.aggregationOperators()[0];
   }
 
   // BREAKOUTS
@@ -394,11 +383,13 @@ export default class Dimension {
     return null;
   }
 
-  query(): StructuredQuery | null | undefined {
+  legacyQuery(
+    _opts: { useStructuredQuery: true } = {},
+  ): StructuredQuery | null | undefined {
     return this._query;
   }
 
-  setQuery(query: StructuredQuery): Dimension {
+  setQuery(_query: StructuredQuery): Dimension {
     return this;
   }
 
@@ -434,33 +425,33 @@ export default class Dimension {
   }
 
   // binning-strategy stuff
-  binningOptions() {
+  _binningOptions() {
     return this.getOption("binning");
   }
 
-  getBinningOption(option) {
-    return this.binningOptions() && this.binningOptions()[option];
+  _getBinningOption(option) {
+    return this._binningOptions() && this._binningOptions()[option];
   }
 
   binningStrategy() {
-    return this.getBinningOption("strategy");
+    return this._getBinningOption("strategy");
   }
 
   /**
    * Short string that describes the binning options used. Used for both subTriggerDisplayName() and render()
    */
-  describeBinning(): string {
-    if (!this.binningOptions()) {
+  _describeBinning(): string {
+    if (!this._binningOptions()) {
       return "";
     }
 
     if (this.binningStrategy() === "num-bins") {
-      const n = this.getBinningOption("num-bins");
+      const n = this._getBinningOption("num-bins");
       return ngettext(msgid`${n} bin`, `${n} bins`, n);
     }
 
     if (this.binningStrategy() === "bin-width") {
-      const binWidth = this.getBinningOption("bin-width");
+      const binWidth = this._getBinningOption("bin-width");
       const units = this.field().isCoordinate() ? "°" : "";
       return `${binWidth}${units}`;
     } else {
@@ -483,7 +474,7 @@ export default class Dimension {
    * Return a copy of this Dimension that includes the specified `options`.
    * @abstract
    */
-  withOptions(options: any): Dimension {
+  _withOptions(_options: any): Dimension {
     return this;
   }
 
@@ -491,7 +482,7 @@ export default class Dimension {
    * Return a copy of this Dimension with option `key` set to `value`.
    */
   withOption(key: string, value: any): Dimension {
-    return this.withOptions({
+    return this._withOptions({
       [key]: value,
     });
   }
@@ -500,17 +491,8 @@ export default class Dimension {
    * Return a copy of this Dimension, bucketed by the specified temporal unit.
    */
   withTemporalUnit(unit: string): Dimension {
-    return this.withOptions({
+    return this._withOptions({
       "temporal-unit": unit,
-    });
-  }
-
-  /**
-   * Return a copy of this Dimension, with its binning options replaced by the new ones.
-   */
-  withBinningOptions(newBinningOptions) {
-    return this.withOptions({
-      binning: newBinningOptions,
     });
   }
 
@@ -518,7 +500,7 @@ export default class Dimension {
    * Return a copy of this Dimension with join alias set to `newAlias`.
    */
   withJoinAlias(newAlias) {
-    return this.withOptions({
+    return this._withOptions({
       "join-alias": newAlias,
     });
   }
@@ -527,7 +509,7 @@ export default class Dimension {
    * Return a copy of this Dimension with a replacement source field.
    */
   withSourceField(sourceField) {
-    return this.withOptions({
+    return this._withOptions({
       "source-field": sourceField,
     });
   }
@@ -536,7 +518,7 @@ export default class Dimension {
    * Return a copy of this Dimension that excludes `options`.
    * @abstract
    */
-  withoutOptions(...options: string[]): Dimension {
+  withoutOptions(..._options: string[]): Dimension {
     return this;
   }
 
@@ -579,7 +561,7 @@ export default class Dimension {
     }
 
     if (this.binningStrategy()) {
-      return this.describeBinning();
+      return this._describeBinning();
     }
 
     // honestly, I have no idea why we do something totally random if we have a FK source field compared to everything
@@ -601,8 +583,8 @@ export default class Dimension {
     }
 
     // binned field
-    if (this.binningOptions()) {
-      return this.describeBinning();
+    if (this._binningOptions()) {
+      return this._describeBinning();
     }
 
     // temporal bucketed field
@@ -613,7 +595,7 @@ export default class Dimension {
     }
 
     // if the field is a binnable number, we should return 'Unbinned' here
-    if (this.isBinnable()) {
+    if (this._isBinnable()) {
       return t`Unbinned`;
     }
 
@@ -623,12 +605,12 @@ export default class Dimension {
   /**
    * Whether this is a numeric Field that can be binned
    */
-  isBinnable(): boolean {
+  _isBinnable(): boolean {
     const defaultDimension = this.defaultDimension();
     return (
       defaultDimension &&
       isFieldDimension(defaultDimension) &&
-      defaultDimension.binningOptions()
+      defaultDimension._binningOptions()
     );
   }
 
@@ -639,7 +621,7 @@ export default class Dimension {
     return this._parent ? this._parent.render() : this.displayName();
   }
 
-  mbql(): AbstractField | null | undefined {
+  mbql(): FieldReference | null | undefined {
     throw new Error("Abstract method `mbql` not implemented");
   }
 
@@ -889,7 +871,7 @@ export class FieldDimension extends Dimension {
   /**
    * Return a copy of this FieldDimension that includes the specified `options`.
    */
-  withOptions(options: any): FieldDimension {
+  _withOptions(options: any): FieldDimension {
     // optimization : if options is empty return self as-is
     if (!options || !Object.entries(options).length) {
       return this;
@@ -1077,8 +1059,8 @@ export class FieldDimension extends Dimension {
       )}`;
     }
 
-    if (this.binningOptions()) {
-      displayName = `${displayName}: ${this.describeBinning()}`;
+    if (this._binningOptions()) {
+      displayName = `${displayName}: ${this._describeBinning()}`;
     }
 
     return displayName;
@@ -1227,28 +1209,31 @@ export class ExpressionDimension extends Dimension {
     const table = query ? query.table() : null;
 
     // fallback
-    let type = MONOTYPE.Number;
+    const baseTypeOption = this.getOption("base-type");
+    let type = baseTypeOption || MONOTYPE.Number;
     let semantic_type = null;
 
-    if (query) {
-      const datasetQuery = query.query();
-      const expressions = datasetQuery?.expressions ?? {};
-      const expr = expressions[this.name()];
+    if (!baseTypeOption) {
+      if (query) {
+        const datasetQuery = query.legacyQuery({ useStructuredQuery: true });
+        const expressions = datasetQuery?.expressions ?? {};
+        const expr = expressions[this.name()];
 
-      const field = mbql => {
-        const dimension = Dimension.parseMBQL(
-          mbql,
-          this._metadata,
-          this._query,
-        );
-        return dimension?.field();
-      };
+        const field = mbql => {
+          const dimension = Dimension.parseMBQL(
+            mbql,
+            this._metadata,
+            this._query,
+          );
+          return dimension?.field();
+        };
 
-      type = infer(expr, mbql => field(mbql)?.base_type) ?? type;
-      semantic_type =
-        infer(expr, mbql => field(mbql)?.semantic_type) ?? semantic_type;
-    } else {
-      type = infer(this._expressionName);
+        type = infer(expr, mbql => field(mbql)?.base_type) ?? type;
+        semantic_type =
+          infer(expr, mbql => field(mbql)?.semantic_type) ?? semantic_type;
+      } else {
+        type = infer(this._expressionName);
+      }
     }
 
     let base_type = type;
@@ -1363,7 +1348,7 @@ export class ExpressionDimension extends Dimension {
   /**
    * Return a copy of this ExpressionDimension that includes the specified `options`.
    */
-  withOptions(options: any): ExpressionDimension {
+  _withOptions(options: any): ExpressionDimension {
     // optimization : if options is empty return self as-is
     if (!options || !Object.entries(options).length) {
       return this;
@@ -1386,8 +1371,8 @@ export class ExpressionDimension extends Dimension {
       )}`;
     }
 
-    if (this.binningOptions()) {
-      displayName = `${displayName}: ${this.describeBinning()}`;
+    if (this._binningOptions()) {
+      displayName = `${displayName}: ${this._describeBinning()}`;
     }
 
     return displayName;

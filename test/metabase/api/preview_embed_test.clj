@@ -47,12 +47,13 @@
                                                                         :b {:type "date", :name "b", :display_name "b" :id "b"}
                                                                         :c {:type "date", :name "c", :display_name "c" :id "c"}
                                                                         :d {:type "date", :name "d", :display_name "d" :id "d"}}}}}]
-            (is (= [{:id      "d"
-                     :type    "date/single"
-                     :target  ["variable" ["template-tag" "d"]]
-                     :name    "d"
-                     :slug    "d"
-                     :default nil}]
+            (is (= [{:id       "d"
+                     :type     "date/single"
+                     :target   ["variable" ["template-tag" "d"]]
+                     :name     "d"
+                     :slug     "d"
+                     :default  nil
+                     :required false}]
                    (-> (mt/user-http-request :crowberto :get 200 (card-url card {:_embedding_params {:a "locked"
                                                                                                       :b "disabled"
                                                                                                       :c "enabled"
@@ -197,12 +198,12 @@
     (testing "Only 2000 results returned when there are many more"
       (let [orders-row-count (count
                               (mt/rows
-                               (mt/dataset sample-dataset
+                               (mt/dataset test-data
                                  (mt/process-query
                                   (mt/query orders)))))
             expected-row-count 1]
         (with-redefs [api.preview-embed/max-results expected-row-count]
-          (mt/dataset sample-dataset
+          (mt/dataset test-data
             (embed-test/with-embedding-enabled-and-new-secret-key
               (let [sample-db-orders-question (mt/query orders)]
                 (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
@@ -423,7 +424,7 @@
 
 (deftest pivot-query-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "GET /api/preview_embed/pivot/card/:token/query"
         (testing "successful preview"
           (let [result (embed-test/with-embedding-enabled-and-new-secret-key
@@ -463,7 +464,7 @@
 
 (deftest pivot-card-id-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
         (embed-test/with-embedding-enabled-and-new-secret-key
           (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters []}
@@ -493,7 +494,7 @@
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (embed-test/with-embedding-enabled-and-new-secret-key
         (t2.with-temp/with-temp [Card {card-id :id, :as card} {:dataset_query    (mt/native-query
                                                                                    {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"

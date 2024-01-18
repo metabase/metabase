@@ -73,6 +73,8 @@ function _init(reducers, getRoutes, callback) {
 
   createTracker(store);
 
+  initializeEmbedding(store);
+
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
       <EmotionCacheProvider>
@@ -88,8 +90,6 @@ function _init(reducers, getRoutes, callback) {
   );
 
   registerVisualizations();
-
-  initializeEmbedding(store);
 
   store.dispatch(refreshSiteSettings());
 

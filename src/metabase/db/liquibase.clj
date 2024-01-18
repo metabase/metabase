@@ -17,9 +17,10 @@
   (:import
    (java.io StringWriter)
    (java.util List Map)
-   (liquibase Contexts LabelExpression Liquibase Scope Scope$Attr Scope$ScopedRunner RuntimeEnvironment)
+   (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner)
    (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
+   (liquibase.changelog.filter ChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.database Database DatabaseFactory)
    (liquibase.database.jvm JdbcConnection)
@@ -254,7 +255,7 @@
      :or {change-set-filters []}}]
    (let [change-log     (.getDatabaseChangeLog liquibase)
          database       (.getDatabase liquibase)
-         log-iterator   (ChangeLogIterator. change-log (into-array liquibase.changelog.filter.ChangeSetFilter change-set-filters))
+         log-iterator   (ChangeLogIterator. change-log ^"[Lliquibase.changelog.filter.ChangeSetFilter;" (into-array ChangeSetFilter change-set-filters))
          update-visitor (UpdateVisitor. database ^ChangeExecListener exec-listener)
          runtime-env    (RuntimeEnvironment. database (Contexts.) nil)]
      (run-in-scope-locked
@@ -349,3 +350,22 @@
          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
      (log/infof "Rolling back app database schema to version %d" target-version)
      (.rollback liquibase (count ids-to-drop) ""))))
+
+(defn latest-applied-major-version
+  "Gets the latest version that was applied to the database."
+  [conn]
+  (when-not (fresh-install? conn)
+    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED DESC LIMIT 1" (changelog-table-name conn))
+          changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
+      (some-> changeset-id extract-numbers first))))
+
+(defn latest-available-major-version
+  "Get the latest version that Liquibase would apply if we ran migrations right now."
+  [^Liquibase liquibase]
+  (->> liquibase
+       (.getDatabaseChangeLog)
+       (.getChangeSets)
+       (map #(.getId ^ChangeSet %))
+       last
+       extract-numbers
+       first))

@@ -129,6 +129,10 @@ export function isItemCollection(item: CollectionItem) {
   return item.model === "collection";
 }
 
+export function isReadOnlyCollection(collection: CollectionItem) {
+  return isItemCollection(collection) && !collection.can_write;
+}
+
 export function canPinItem(item: CollectionItem, collection: Collection) {
   return collection.can_write && item.setPinned != null;
 }
@@ -140,6 +144,7 @@ export function canPreviewItem(item: CollectionItem, collection: Collection) {
 export function canMoveItem(item: CollectionItem, collection: Collection) {
   return (
     collection.can_write &&
+    !isReadOnlyCollection(item) &&
     item.setCollection != null &&
     !(isItemCollection(item) && isRootPersonalCollection(item))
   );
@@ -148,6 +153,7 @@ export function canMoveItem(item: CollectionItem, collection: Collection) {
 export function canArchiveItem(item: CollectionItem, collection: Collection) {
   return (
     collection.can_write &&
+    !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item))
   );
 }

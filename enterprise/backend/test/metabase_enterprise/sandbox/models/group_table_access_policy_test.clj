@@ -5,8 +5,6 @@
     :refer [GroupTableAccessPolicy]]
    [metabase.models :refer [Card]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -87,7 +85,7 @@
 
 (deftest disallow-queries-that-change-types-test
   (testing "Don't allow saving a Sandboxing query that changes the type of a column vs. the type in the Table it replaces (#13715)"
-    (premium-features-test/with-premium-features #{:sandboxes}
+    (mt/with-premium-features #{:sandboxes}
       (doseq [[msg f] {"Create a new GTAP"
                        (fn [metadata]
                          (mt/with-temp [Card                   card {:dataset_query   (mt/mbql-query venues)

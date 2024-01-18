@@ -9,11 +9,10 @@
 
   Two different implementations are provided in this namespace: `fast-active-tables` (the default), and
   `post-filtered-active-tables`. You should be fine using the default, but refer to the documentation for those
-  functions for more details on the differences.
-
-  `metabase` is an instance of `DatabaseMetaData`."
+  functions for more details on the differences."
   {:added "0.37.1"
    :arglists '([driver
+                database
                 ^java.sql.Connection connection
                 ^String schema-inclusion-filters
                 ^String schema-exclusion-filters])}
@@ -72,9 +71,9 @@
   overriden because SQLite is silly and only returns column information for views if the query returns a non-zero
   number of rows.
 
-    (fallback-metadata-query :postgres \"public\" \"my_table\")
-    ;; -> [\"SELECT * FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
-  {:added "0.37.1" :arglists '([driver schema table])}
+    (fallback-metadata-query :postgres \"my_database\" \"public\" \"my_table\")
+    ;; -> [\"SELECT * FROM my_database.public.my_table WHERE 1 <> 1 LIMIT 0\"]"
+  {:added "0.37.1" :arglists '([driver db-name-or-nil schema-name table-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

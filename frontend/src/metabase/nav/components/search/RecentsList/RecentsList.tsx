@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { push } from "react-router-redux";
 import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
 import { useRecentItemListQuery } from "metabase/common/hooks";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import RecentItems from "metabase/entities/recent-items";
 import { useDispatch } from "metabase/lib/redux";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
@@ -28,8 +28,9 @@ export interface WrappedRecentItem extends RecentItem {
 }
 
 export const RecentsList = ({ onClick, className }: RecentsListProps) => {
-  const { data = [], isLoading: isRecentsListLoading } =
-    useRecentItemListQuery();
+  const { data = [], isLoading: isRecentsListLoading } = useRecentItemListQuery(
+    { reload: true },
+  );
 
   const wrappedResults: WrappedRecentItem[] = useMemo(
     () => data.map(item => RecentItems.wrapEntity(item)),

@@ -6,7 +6,11 @@ title: Usage analytics
 
 {% include plans-blockquote.html feature="Metabase analytics" %}
 
-The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase. These resources are useful for:
+The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
+
+![Metabase analytics collection](./images/metabase-analytics.png)
+
+These resources are useful for:
 
 - **Understanding Usage**: Understand how people use your Metabase (e.g., new questions, most active people and groups, and so on).
 - **Auditing activity**: Know who viewed or did what and when, including tracking dashboard and question views, queries, downloads, and other activity like changing settings or inviting people to your Metabase.
@@ -15,7 +19,7 @@ The **Metabase Analytics** collection is a special collection that contains view
 Some things to keep in mind with this special Metabase analytics collection:
 
 - Metabase analytics is a view-only collection. Even admins can't curate it. It is eternal.
-- By default, only admins can view the Metabase analytics collection (though they can grant other groups view access to it).
+- By default, only admins can view the Metabase analytics collection (though admins can grant other groups view access to it). If you're upgrading from a version older than 48, people in groups with [monitoring access](../usage-and-performance-tools/usage-analytics.md) will also get access to the Metabase analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Metabase analytics collection; you'll need to specifically grant groups access to the Metabase analytics collection.
 - You can duplicate any item in the Metabase analytics collection, modify the item to your liking, and save the item to another collection.
 
 ## Permissions
@@ -30,7 +34,11 @@ Additionally, this Metabase analytics collection has a default sub-collection ca
 
 You can duplicate any of the questions, dashboards and models in the Metabase analytics collection and tweak them to your liking, but you'll need to save them to a different collection.
 
-We recommend you save your custom reports in the conveniently named "Custom reports" collection, so these items inherit the same permissions, but you can save them wherever you like (except for the Metabase analytics collection).
+### Custom reports collection
+
+While you _can_ save custom questions, models, and dashboards wherever you like (except for the Metabase analytics collection), we recommend that you save your custom Metabase analytics reports in the conveniently named "Custom reports" sub-collection. That way these items inherit the same permissions as the parent Metabase analytics collection.
+
+There is one thing to know about the Custom reports collection: its metadata resets whenever Metabase restarts. While you are able to temporarily rename the Custom reports collection, or give it a description or an Official badge, Metabase will drop this collection's metadata when it restarts. But rest assured that Metabase will preserve any questions, models, events, or dashboards that you add to the Custom reports collection.
 
 ## Dashboards
 
@@ -202,13 +210,16 @@ Query sources include:
 - csv-download
 - dashboard
 - embedded-dashboard
+- embedded-csv-download
+- embedded-json-download
 - embedded-question
+- embedded-xlsx-download
 - json-download
 - map-tiles
-- metabot
+- metabot (experimental)
 - public-dashboard
 - public-question
-- pulse
+- pulse (which includes dashboard subscriptions and alerts)
 - question
 - xlsx-download
 
@@ -223,34 +234,51 @@ All Metabase content, including questions, models, dashboards, events, and colle
 - model
 - question
 
-### Alerts and subscriptions
+### Dashboard subscriptions
 
-Data from alerts and subscriptions including recipients. Fields include:
+Which subscriptions are active, who created them, who's subscribed to them, when they're sent, and more.
 
-- ID
-- Entity Type
+- Entity ID
+- Entity Qualified ID
 - Created At
 - Updated At
 - Creator ID
-- Name
-- Description
-- Collection ID
-- Made Public By User
 - Archived
-- Is Official
-- Action Type
-- Action Model ID
-- Collection Is Personal
-- Subscription Dashboard ID
-- Alert Question ID
+- Dashboard Qualified ID
+- Schedule Type
+- Schedule Day
+- Schedule Hour
 - Recipient Type
+- Recipients
+- Recipient External
+- Parameters
+
+### Alerts
+
+All alerts, both active and archived.
+
+- Entity ID
+- Entity Qualified ID
+- Created At
+- Updated At
+- Creator ID
+- Card ID
+- Card Qualified ID
+- Alert Condition
+- Schedule Type
+- Schedule Day
+- Schedule Hour
+- Archived
+- Recipient Type
+- Recipients
 - Recipient External
 
 ### Content
 
 Questions, dashboards, models, events, and collections.
 
-- ID
+- Entity ID
+- Entity Qualified ID
 - Entity Type
 - Created At
 - Updated At
@@ -374,3 +402,15 @@ All fields from all connected data sources. Fields include:
 - Has Field Values
 - Active
 - Table ID
+
+## System tasks
+
+Describes the last 14 days of Metabase internal processes tasks.
+
+- ID
+- Task
+- Database Qualified ID
+- Started At
+- Ended At
+- Duration Seconds
+- Details
