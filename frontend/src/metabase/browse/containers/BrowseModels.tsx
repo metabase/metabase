@@ -5,9 +5,9 @@ import { t } from "ttag";
 
 import {
   getHowLongAgo,
-  type CollectionItemWithLastEditInfo,
+  type ItemWithLastEditInfo,
 } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { Card, Collection, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
@@ -29,20 +29,13 @@ import {
   MultilineEllipsified,
 } from "./BrowseData.styled";
 
-interface Model extends CollectionItem {
-  last_editor_common_name?: string | undefined;
-  creator_common_name?: string | undefined;
-  last_edited_at?: string | undefined;
-  created_at?: string | undefined;
-}
-
-const emptyArray: Model[] = [];
+const emptyArray: SearchResult[] = [];
 
 export const BrowseModels = ({
   data: models = emptyArray,
   error,
   isLoading,
-}: ReturnType<typeof useSearchListQuery>) => {
+}: ReturnType<typeof useSearchListQuery<SearchResult>>) => {
   useEffect(() => {
     const configureGrid = () => {
       const gridOptions = getGridOptions(models);
@@ -79,7 +72,7 @@ export const BrowseModels = ({
 };
 
 interface ModelCellProps {
-  model: Model;
+  model: SearchResult;
   style?: React.CSSProperties;
   collectionHtmlId: string;
 }
@@ -97,7 +90,7 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
       key={model.id}
       style={style}
-      to={Urls.model(model)}
+      to={Urls.model(model as unknown as Partial<Card>)}
       // FIXME: Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
       data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
     >
@@ -137,7 +130,7 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
  * secondly by collection id,
  * thirdly by model name, and
  * lastly by model id. */
-const sortModels = (a: Model, b: Model) => {
+const sortModels = (a: SearchResult, b: SearchResult) => {
   const fallbackSortValue = Number.MAX_SAFE_INTEGER;
 
   // Sort first on the name of the model's parent collection, case insensitive
@@ -194,7 +187,7 @@ const CollectionHeader = ({
   style,
   id,
 }: {
-  collection?: Collection | null;
+  collection?: Pick<Collection, "id" | "name"> | null;
   style?: React.CSSProperties;
   id: string;
 }) => {
@@ -221,7 +214,7 @@ const CollectionHeader = ({
 
 type Cell = React.ReactElement | null;
 
-const makeCells = (models: Model[]): Cell[] => {
+const makeCells = (models: SearchResult[]): Cell[] => {
   const cells: Cell[] = [];
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -261,13 +254,13 @@ const makeCells = (models: Model[]): Cell[] => {
   return cells;
 };
 
-const getGridOptions = (models: Model[]) => {
+const getGridOptions = (models: SearchResult[]) => {
   const sortedModels = models.sort(sortModels);
   const cells = makeCells(sortedModels);
   return { cells };
 };
 
-const addLastEditInfo = (model: Model): CollectionItemWithLastEditInfo => ({
+const addLastEditInfo = (model: SearchResult): ItemWithLastEditInfo => ({
   ...model,
   "last-edit-info": {
     full_name: model.last_editor_common_name ?? model.creator_common_name,

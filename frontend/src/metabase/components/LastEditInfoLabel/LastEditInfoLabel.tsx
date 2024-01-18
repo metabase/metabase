@@ -10,17 +10,17 @@ import { getFullName } from "metabase/lib/user";
 import { TextButton } from "metabase/components/Button.styled";
 import { Tooltip } from "metabase/ui";
 import DateTime from "metabase/components/DateTime";
-import type { CollectionItem, User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 
 dayjs.extend(relativeTime);
 
-export type CollectionItemWithLastEditInfo = CollectionItem & {
+export type ItemWithLastEditInfo = {
   "last-edit-info": {
     id?: number;
     timestamp: string;
     first_name?: string;
     last_name?: string;
-    full_name?: string;
+    full_name?: string | null;
   };
 };
 
@@ -53,7 +53,7 @@ function LastEditInfoLabel({
   fullName = null,
   children,
 }: {
-  item: CollectionItemWithLastEditInfo;
+  item: ItemWithLastEditInfo;
   user: User;
   onClick: MouseEventHandler<HTMLButtonElement>;
   className: string;

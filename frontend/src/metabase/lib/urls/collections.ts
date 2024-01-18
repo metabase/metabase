@@ -32,7 +32,7 @@ function slugifyPersonalCollection(collection: Collection) {
   return slug;
 }
 
-export function collection(collection?: Collection) {
+export function collection(collection?: Pick<Collection, "id" | "name">) {
   const isSystemCollection =
     !collection || collection.id === null || typeof collection.id === "string";
 
