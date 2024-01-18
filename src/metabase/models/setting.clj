@@ -623,14 +623,8 @@
       (throw (Exception.
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
-(defn- random-uuid-str []
+(defn ^{:doc "The string representation of a type 4 random uuid"} random-uuid-str []
   (str (random-uuid)))
-
-;; This var-type allows the bundling of a number of attributes together. In some sense it is defining a subtype / mixin.
-(def ^{:doc "A random uuid value that should never change again"} uuid-nonce-type
-  {:type   :string
-   :setter :none
-   :init   random-uuid-str})
 
 ;; Strings are parsed as follows:
 ;;
@@ -1078,26 +1072,6 @@
   []
   (str/ends-with? (ns-name *ns*) "-test"))
 
-(defn- merge-type-map [setting-options type-options]
-  ;; we currently allow the type-map to define any of the setting parameters, we may want to restrict this.
-  (merge type-options
-         ;; we currently allow explicit keys to override anything in the type-map, we may want to disallow some.
-         setting-options
-         ;; if :type isn't defined here we'll get a (somewhat confusing) schema error
-         {:type (:type type-options)}))
-
-(defn- expand-setting-type
-  "If the :type of a setting corresponds to a map, use it like a mix-in"
-  [setting-options]
-  (let [setting-type (:type setting-options)]
-    (cond
-      (keyword? setting-type) setting-options
-      (map? setting-type) (merge-type-map setting-options setting-type)
-      (symbol? setting-type) (merge-type-map setting-options @(resolve setting-type))
-
-      ;; we don't expect other types, but leave it alone and let the schema complain about it
-      :else setting-options)))
-
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
   Conveniently can be used as a getter/setter as well
@@ -1208,8 +1182,7 @@
          ;; don't put exclamation points in your Setting names. We don't want functions like `exciting!` for the getter
          ;; and `exciting!!` for the setter.
          (not (str/includes? (name setting-symbol) "!"))]}
-  (let [options                   (expand-setting-type options)
-        description               (if (or (= (:visibility options) :internal)
+  (let [description               (if (or (= (:visibility options) :internal)
                                           (= (:setter options) :none)
                                           (in-test?))
                                     description
