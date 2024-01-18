@@ -413,8 +413,9 @@
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
-                             (binding [setting/*disable-init* skip-init?]
-                               (#'setting/get setting-k)))]
+                             (if skip-init?
+                               (setting/read-setting setting-k)
+                               (setting/get setting-k)))]
         (try
           (try
             (if raw-setting?
@@ -480,8 +481,7 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (let [value (binding [setting/*disable-init* true]
-                      (setting/get setting-k))]
+        (let [value (setting/read-setting setting-k)]
           (do-with-temporary-setting-value setting-k value thunk :skip-init? true))))
     thunk
     settings)))

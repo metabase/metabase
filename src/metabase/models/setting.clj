@@ -476,6 +476,14 @@
 
 (declare set!)
 
+(defn read-setting
+  "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
+  looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
+  if any."
+  [setting-definition-or-name]
+  (binding [*disable-init* true]
+    (get setting-definition-or-name)))
+
 (defn- call-me-maybe [f] (when f (f)))
 
 (defn- db-value [setting-definition-or-name]
@@ -515,8 +523,7 @@
         (throw (ex-info "Unable to get initialization lock" {:setting setting-definition-or-name}))
         (u/or-with some?
           ;; perhaps another process initialized this setting while we were waiting for the lock
-          (binding [*disable-init* true]
-            (get setting))
+          (read-setting setting)
           (when-let [init-value (call-me-maybe init)]
             (metabase.models.setting/set! setting init-value :bypass-read-only? true)))))))
 
@@ -656,7 +663,9 @@
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
-  if any."
+  if any.
+
+  Note: If the setting has an initializer, and this is the first time accessing, a value will be generated and saved."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
         disable-cache?                                   (or *disable-cache* (not cache?))]
