@@ -218,6 +218,13 @@ CombinedBarTimeSeriesDifferentGranularityWithBreakout.args = {
   renderingContext,
 };
 
+export const NumericXAxisIncludesZero37082 = Template.bind({});
+NumericXAxisIncludesZero37082.args = {
+  rawSeries: data.numbericXAxisIncludesZero37082 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
