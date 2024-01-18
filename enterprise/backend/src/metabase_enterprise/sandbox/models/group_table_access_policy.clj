@@ -77,6 +77,24 @@
                          :expected    table-col-base-type
                          :actual      (:base_type col)}))))))
 
+(defenterprise add-sandboxes-to-permissions-graph
+  "Augment a provided permissions graph with active sandboxing policies."
+  :feature :sandboxes
+  [graph]
+  (m/deep-merge
+   graph
+   (let [sandboxes (t2/select :model/GroupTableAccessPolicy
+                              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
+                               :from [[:sandboxes :s]]
+                               :join [[:metabase_table :t] [:= :s.table_id :t.id]]})]
+     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
+               (assoc-in acc
+                         [group_id db_id :data :schemas schema table_id]
+                         {:query :segmented
+                          :read :all}))
+             {}
+             sandboxes))))
+
 (mu/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
   that's getting GTAPped. It's ok to remove columns, but you cannot add new columns. The base types of the Card
