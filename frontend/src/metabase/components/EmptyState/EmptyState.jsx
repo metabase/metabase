@@ -52,14 +52,20 @@ const EmptyState = ({
   <div className={className}>
     <EmptyStateHeader>
       {illustrationElement && (
-        <EmptyStateIllustration>{illustrationElement}</EmptyStateIllustration>
+        <EmptyStateIllustration className="empty-state-illustration">
+          {illustrationElement}
+        </EmptyStateIllustration>
       )}
       <div>
         <LegacyIcon {...rest} />
         <LegacyImage {...rest} />
       </div>
       {title && <h2 className="text-medium">{title}</h2>}
-      {message && <Text color="medium">{message}</Text>}
+      {message && (
+        <Text color="medium" className="empty-state-message">
+          {message}
+        </Text>
+      )}
     </EmptyStateHeader>
     {/* TODO - we should make this children or some other more flexible way to
       add actions
