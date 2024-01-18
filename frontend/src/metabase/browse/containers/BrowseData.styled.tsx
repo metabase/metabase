@@ -106,6 +106,15 @@ export const CenteredEmptyState = styled(EmptyState)`
   justify-content: center;
   width: 100%;
   height: 100%;
+  h2 {
+    margin-bottom: 0.5rem;
+  }
+  .empty-state-illustration {
+    margin-bottom: 0.5rem;
+  }
+  .empty-state-message {
+    max-width: 24rem;
+  }
 `;
 
 export const GridContainer = styled.div`
