@@ -49,6 +49,7 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { DashboardCardContainer } from "./DashboardGrid.styled";
 
+import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
 import { GridLayout } from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 
@@ -101,6 +102,7 @@ interface DashboardGridProps {
     dashcardId: DashCardId;
     nextCardId: CardId;
   }) => void;
+  markNewCardSeen: (dashcardId: DashCardId) => void;
 
   setDashCardAttributes: (options: DashboardChangeItem) => void;
   setMultipleDashCardAttributes: (changes: {
@@ -122,18 +124,16 @@ interface DashboardGridProps {
     settings: Partial<VisualizationSettings>,
   ) => void;
 
+  onChangeLocation: (location: LocationDescriptor) => void;
+  navigateToNewCardFromDashboard: DashCardOnChangeCardAndRunHandler;
+
+  showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
+
   addUndo: (options: {
     message: string;
     undo: boolean;
     action: () => void;
   }) => void;
-
-  onChangeLocation: (location: LocationDescriptor) => void;
-
-  // TODO
-  showClickBehaviorSidebar: () => void;
-  navigateToNewCardFromDashboard: () => void;
-  markNewCardSeen: () => void;
 }
 
 interface DashboardGridState {
