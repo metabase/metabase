@@ -75,7 +75,7 @@ const MetadataSchemaList = ({
   }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 
   return (
-    <div className="MetadataEditor-table-list AdminList flex-no-shrink">
+    <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
       <div className="AdminList-search">
         <Icon name="search" size={16} />
         <input
@@ -103,7 +103,7 @@ const MetadataSchemaList = ({
           />
         ))}
       </ul>
-    </div>
+    </aside>
   );
 };
 
