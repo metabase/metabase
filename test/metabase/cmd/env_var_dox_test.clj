@@ -42,7 +42,7 @@
                  :user-local :never,
                  :default nil,
                  :name :analytics-uuid,
-                 :type :alias/uuid-nonce,
+                 :type :setting/uuid-nonce-type,
                  :enabled? nil,
                  :deprecated nil,
                  :sensitive? false,

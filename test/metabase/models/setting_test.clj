@@ -5,6 +5,8 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
@@ -169,7 +171,7 @@
   ;; Some other pre-existing test is initializing this value, this is a stop gap until we fix its hygiene
   (#'setting/set! custom-init-setting nil :bypass-read-only? true)
 
-  (let [get-via-db #(#'setting/db-or-cache-value :test-setting-custom-init)]
+  (let [get-via-db #(#'setting/read-setting :test-setting-custom-init)]
     (testing "The value will be initialized and saved"
       (mt/discard-setting-changes [test-setting-custom-init]
         (is (= nil (get-via-db)))
@@ -182,6 +184,19 @@
       (mt/discard-setting-changes [test-setting-custom-init]
         (setting/validate-settings-formatting!)
         (is (= nil (get-via-db)))))))
+
+(deftest init-requires-db-test
+  (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
+    (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
+      (is (= false (mdb/db-is-set-up?)))
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"Cannot initialize setting before the db is set up"
+            (test-setting-custom-init)))
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"Cannot initialize setting before the db is set up"
+            (setting/get :test-setting-custom-init))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
