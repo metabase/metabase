@@ -23,7 +23,7 @@ title: Driver interface changelog
 
 - The method `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type` is now deprecated.
   Use `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type-and-value` instead,
-  which has the access to `value` and intended to provide more flexibility on choosing the right conversion unit.
+  which has access to `value` and therefore provides more flexibility for choosing the right conversion unit.
 
 ## Metabase 0.48.0
 
