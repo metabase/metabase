@@ -45,6 +45,7 @@ export function ScatterPlot({
     null,
     [],
     computedVisualizationSettings,
+    WIDTH,
     false,
     renderingContext,
   );
