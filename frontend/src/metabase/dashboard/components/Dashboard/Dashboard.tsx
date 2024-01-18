@@ -61,6 +61,13 @@ import {
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 
+type SuccessfulFetchDashboardResult = { payload: { dashboard: IDashboard } };
+type FailedFetchDashboardResult = { error: unknown; payload: unknown };
+
+type FetchDashboardResult =
+  | SuccessfulFetchDashboardResult
+  | FailedFetchDashboardResult;
+
 interface DashboardProps {
   dashboardId: DashboardId;
   route: Route;
@@ -110,7 +117,7 @@ interface DashboardProps {
       clearCache?: boolean;
       preserveParameters?: boolean;
     };
-  }) => Promise<{ error?: unknown; payload?: unknown }>;
+  }) => Promise<FetchDashboardResult>;
   fetchDashboardCardData: (opts?: {
     reload?: boolean;
     clearCache?: boolean;
@@ -282,7 +289,7 @@ function DashboardInner(props: DashboardProps) {
 
       loadDashboardParams();
 
-      const result: any = await fetchDashboard({
+      const result = await fetchDashboard({
         dashId: dashboardId,
         queryParams: location.query,
         options: {
@@ -291,7 +298,7 @@ function DashboardInner(props: DashboardProps) {
         },
       });
 
-      if (result.error) {
+      if (!isSuccessfulFetchDashboardResult(result)) {
         setErrorPage(result.payload);
         return;
       }
@@ -530,6 +537,13 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   // Sticky header with more than 5 parameters
   // takes too much space on small screens
   return parameterCount <= 5;
+}
+
+function isSuccessfulFetchDashboardResult(
+  result: FetchDashboardResult,
+): result is SuccessfulFetchDashboardResult {
+  const hasError = "error" in result;
+  return !hasError;
 }
 
 export const Dashboard = DashboardControls(DashboardInner);
