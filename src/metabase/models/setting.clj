@@ -892,7 +892,7 @@
     (mandrill-api-key \"xyz123\")"
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
   (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
-        name (setting-name setting)]
+        name                                                 (setting-name setting)]
     (when (and feature (not (has-feature? feature)))
       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
     (when (and enabled? (not (enabled?)))
@@ -928,7 +928,7 @@
                  :getter         (partial (default-getter-for-type setting-type) setting-name)
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
                  :init           nil
-                 :tag            nil
+                 :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
                  :export?        false
                  :sensitive?     false
@@ -1399,7 +1399,8 @@
   [setting]
   (when (= :json (:type setting))
     (try
-      (get-value-of-type (:type setting) setting)
+      (binding [*disable-init* true]
+        (get-value-of-type (:type setting) setting))
       nil
       (catch clojure.lang.ExceptionInfo e
         (let [parse-error (or (ex-cause e) e)

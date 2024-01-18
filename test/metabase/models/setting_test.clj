@@ -138,9 +138,6 @@
     (is (= "[Default Value]"
            (test-setting-2)))))
 
-(defn reset-init! []
-  (setting/set! :test-setting-custom-init nil))
-
 (def custom-init-setting (setting/resolve-setting :test-setting-custom-init))
 
 (deftest user-facing-value-test
@@ -164,20 +161,25 @@
       (is (some? (resolve `test-setting-calculated-getter))))
     (is (not (resolve `test-setting-calculated-getter!)))))
 
-(deftest custom-init-test
-  (testing "The value will be saved and saved"
-    (mt/discard-setting-changes [test-setting-custom-init]
-      (is (= nil (binding [setting/*disable-init* true]
-                   (test-setting-custom-init))))
-      (let [val (setting/get custom-init-setting)]
-        (is (some? val))
-        (is (= val (test-setting-custom-init))))))
+(comment
+  (#'setting/db-or-cache-value custom-init-setting)
+  (#'setting/set! custom-init-setting nil :bypass-read-only? true)
+  )
 
-  (testing "The implicit getter function will call init"
-    (mt/discard-setting-changes [test-setting-custom-init]
-      (is (some? (test-setting-custom-init)))
-      (is (= (test-setting-custom-init)
-             (setting/get custom-init-setting))))))
+(deftest custom-init-test
+  (let [get-via-db #(#'setting/db-or-cache-value :test-setting-custom-init)]
+    (testing "The value will be initialized and saved"
+      (mt/discard-setting-changes [test-setting-custom-init]
+        (is (= nil (get-via-db)))
+        (let [val (setting/get custom-init-setting)]
+          (is (some? val))
+          (is (= val (test-setting-custom-init)))
+          (is (= val (get-via-db))))))
+
+    (testing "Validation does not initialize the setting"
+      (mt/discard-setting-changes [test-setting-custom-init]
+        (setting/validate-settings-formatting!)
+        (is (= nil (get-via-db)))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
