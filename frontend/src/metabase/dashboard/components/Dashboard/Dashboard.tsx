@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMount, usePrevious, useUnmount } from "react-use";
+import { usePrevious, useUnmount } from "react-use";
 import type { Route } from "react-router";
 import _ from "underscore";
 import type { Location } from "history";
@@ -341,11 +341,39 @@ function DashboardInner(props: DashboardProps) {
     ],
   );
 
-  useMount(() => {
-    handleLoadDashboard(dashboardId).then(() => {
-      setIsInitialized(true);
-    });
-  });
+  useEffect(() => {
+    if (previousDashboardId !== dashboardId) {
+      handleLoadDashboard(dashboardId).then(() => {
+        setIsInitialized(true);
+      });
+      return;
+    }
+    if (previousTabId !== selectedTabId) {
+      fetchDashboardCardData();
+      fetchDashboardCardMetadata();
+      return;
+    }
+    const didDashboardLoad = !previousDashboard && dashboard;
+    const didParameterValuesChange = !_.isEqual(
+      previousParameterValues,
+      parameterValues,
+    );
+    if (didDashboardLoad || didParameterValuesChange) {
+      fetchDashboardCardData({ reload: false, clearCache: true });
+    }
+  }, [
+    dashboard,
+    dashboardId,
+    fetchDashboardCardData,
+    fetchDashboardCardMetadata,
+    handleLoadDashboard,
+    parameterValues,
+    previousDashboard,
+    previousDashboardId,
+    previousParameterValues,
+    previousTabId,
+    selectedTabId,
+  ]);
 
   useEffect(() => {
     if (!isInitialized) {
@@ -365,42 +393,6 @@ function DashboardInner(props: DashboardProps) {
 
     return () => node.removeEventListener("scroll", handleScroll);
   }, [isInitialized]);
-
-  useEffect(() => {
-    if (!previousDashboard && dashboard) {
-      fetchDashboardCardData({ reload: false, clearCache: true });
-    }
-  }, [dashboard, fetchDashboardCardData, previousDashboard]);
-
-  useEffect(() => {
-    if (isInitialized && previousDashboardId !== dashboardId) {
-      handleLoadDashboard(dashboardId);
-    }
-  }, [dashboardId, handleLoadDashboard, isInitialized, previousDashboardId]);
-
-  useEffect(() => {
-    if (isInitialized && previousTabId !== selectedTabId) {
-      fetchDashboardCardData();
-      fetchDashboardCardMetadata();
-    }
-  }, [
-    fetchDashboardCardData,
-    fetchDashboardCardMetadata,
-    isInitialized,
-    previousTabId,
-    selectedTabId,
-  ]);
-
-  useEffect(() => {
-    if (isInitialized && !_.isEqual(previousParameterValues, parameterValues)) {
-      fetchDashboardCardData({ reload: false, clearCache: true });
-    }
-  }, [
-    fetchDashboardCardData,
-    isInitialized,
-    parameterValues,
-    previousParameterValues,
-  ]);
 
   useUnmount(() => {
     cancelFetchDashboardCardData();
