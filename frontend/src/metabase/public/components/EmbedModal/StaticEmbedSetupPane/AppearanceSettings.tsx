@@ -9,12 +9,12 @@ import Select from "metabase/core/components/Select";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
 import type {
   EmbeddingDisplayOptions,
   EmbedResourceType,
 } from "metabase/public/lib/types";
 
+import { PreviewModeSelector } from "./PreviewModeSelector";
 import type { ActivePreviewPane } from "./types";
 import PreviewPane from "./PreviewPane";
 import {

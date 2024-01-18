@@ -5,7 +5,6 @@ import type { IconName } from "metabase/ui";
 import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
 import Select, { Option } from "metabase/core/components/Select";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
-import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
 import type {
   EmbeddingDisplayOptions,
   EmbeddingParameters,
@@ -15,6 +14,7 @@ import type {
 } from "metabase/public/lib/types";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
+import { PreviewModeSelector } from "./PreviewModeSelector";
 import type {
   ActivePreviewPane,
   EmbedResourceParameterWithValue,

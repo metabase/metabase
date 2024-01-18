@@ -1,20 +1,120 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
-import type { EmbedResource } from "metabase/public/lib/types";
-import { renderWithProviders } from "__support__/ui";
+import {
+  createMockCard,
+  createMockDashboard,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { getBrokenUpTextMatcher, renderWithProviders } from "__support__/ui";
 import { createMockSettingsState } from "metabase-types/store/mocks";
+import * as whitelabelSelectors from "metabase/selectors/whitelabel";
 
+import type { TextHighlightConfig } from "./types";
 import type { StaticEmbedSetupPaneProps } from "./StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "./StaticEmbedSetupPane";
 
-const TextEditorMock = ({ value }: { value: string }) => (
-  <div data-testid="text-editor-mock">{value}</div>
+const TextEditorMock = ({
+  value,
+  highlightedText,
+}: {
+  value: string;
+  highlightedText?: TextHighlightConfig[];
+}) => (
+  <div data-testid="text-editor-mock">
+    {value}
+    {highlightedText && (
+      <div data-testid="text-editor-mock-highlighted-code">
+        {highlightedText.map(({ text }) => text)}
+      </div>
+    )}
+  </div>
 );
 
 jest.mock("metabase/components/TextEditor", () => TextEditorMock);
 
+const FONTS_MOCK_VALUES = [
+  "My Awesome Font",
+  "Some Font 2",
+  "And Another Third Font",
+];
+
 describe("Static Embed Setup phase", () => {
+  describe("EmbedModalContentStatusBar", () => {
+    it.each([
+      {
+        resourceType: "dashboard" as const,
+      },
+      {
+        resourceType: "question" as const,
+      },
+    ])(
+      "should render actions banner for non-published $resourceType",
+      ({ resourceType }) => {
+        const { onUpdateEnableEmbedding } = setup({
+          props: {
+            resourceType,
+          },
+        });
+
+        expect(
+          screen.getByText(
+            `You will need to publish this ${resourceType} before you can embed it in another application.`,
+          ),
+        ).toBeVisible();
+
+        const button = screen.getByRole("button", {
+          name: "Publish",
+        });
+        expect(button).toBeVisible();
+
+        userEvent.click(button);
+
+        expect(onUpdateEnableEmbedding).toHaveBeenLastCalledWith(true);
+      },
+    );
+
+    it.each([
+      {
+        resourceType: "dashboard" as const,
+        resource: createMockDashboard({
+          enable_embedding: true,
+        }),
+      },
+      {
+        resourceType: "question" as const,
+        resource: createMockCard({
+          enable_embedding: true,
+        }),
+      },
+    ])(
+      "should render actions banner for published $resourceType",
+      ({ resourceType, resource }) => {
+        const { onUpdateEnableEmbedding } = setup({
+          props: {
+            resource,
+            resourceType,
+          },
+        });
+
+        expect(
+          screen.getByText(
+            `This ${resourceType} is published and ready to be embedded.`,
+          ),
+        ).toBeVisible();
+
+        const button = screen.getByRole("button", {
+          name: "Unpublish",
+        });
+        expect(button).toBeVisible();
+
+        userEvent.click(button);
+
+        expect(onUpdateEnableEmbedding).toHaveBeenLastCalledWith(false);
+      },
+    );
+  });
+
   describe("Overview tab", () => {
     it("should render content", () => {
       setup({
@@ -45,10 +145,27 @@ describe("Static Embed Setup phase", () => {
         ),
       ).toBeVisible();
     });
+
+    it("should select proper client code language on server code option change", async () => {
+      setup({
+        props: {},
+        activeTab: "Overview",
+      });
+
+      await selectServerCodeLanguage({
+        newLanguage: "Ruby",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("embed-frontend-select-button"),
+        ).toHaveTextContent("ERB");
+      });
+    });
   });
 
   describe("Parameters tab", () => {
-    it("should render Code mode by default", () => {
+    it("should render Code preview mode by default", () => {
       const dashboard = createMockDashboard();
       setup({
         props: {
@@ -176,7 +293,21 @@ describe("Static Embed Setup phase", () => {
       );
     });
 
-    it("should render changed code on parameters change", () => {
+    it("should render preview iframe in Preview mode", () => {
+      const dashboard = createMockDashboard();
+      setup({
+        props: {
+          resource: dashboard,
+        },
+        activeTab: "Parameters",
+      });
+
+      userEvent.click(screen.getByText("Preview"));
+
+      expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
+    });
+
+    it("should highlight changed code on parameters change", () => {
       const dashboard = createMockDashboard();
       const dateParameter = {
         id: "5cd742ef",
@@ -193,7 +324,7 @@ describe("Static Embed Setup phase", () => {
         activeTab: "Parameters",
       });
 
-      userEvent.click(screen.getByLabelText("Month and Year"));
+      userEvent.click(screen.getByLabelText(dateParameter.name));
 
       userEvent.click(screen.getByText("Locked"));
 
@@ -204,7 +335,7 @@ describe("Static Embed Setup phase", () => {
       ).toBeVisible();
 
       expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-        `var payload = { resource: { dashboard: ${dashboard.id} }, params: { "${dateParameter.slug}": null }, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration };`,
+        `params: { "${dateParameter.slug}": null }`,
       );
     });
 
@@ -260,7 +391,21 @@ describe("Static Embed Setup phase", () => {
       );
     });
 
-    it("should render code diff on settings change", () => {
+    it("should render preview iframe in Preview mode", () => {
+      const dashboard = createMockDashboard();
+      setup({
+        props: {
+          resource: dashboard,
+        },
+        activeTab: "Appearance",
+      });
+
+      userEvent.click(screen.getByText("Preview"));
+
+      expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
+    });
+
+    it("should highlight changed code on settings change", () => {
       setup({
         props: {
           resource: createMockDashboard(),
@@ -275,31 +420,264 @@ describe("Static Embed Setup phase", () => {
       ).toBeVisible();
 
       expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-        `var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#theme=transparent&bordered=true&titled=true";`,
+        `"#theme=transparent&bordered=true&titled=true"`,
       );
 
       userEvent.click(screen.getByText("Dashboard title"));
 
       expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-        `var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#theme=transparent&bordered=true&titled=false";`,
+        `"#theme=transparent&bordered=true&titled=false"`,
       );
     });
+
+    describe("OSS version", () => {
+      it("should not render Font selector", () => {
+        setup({
+          props: {},
+          activeTab: "Appearance",
+        });
+
+        expect(
+          screen.getByText(
+            getBrokenUpTextMatcher("You can change the font with a paid plan."),
+          ),
+        ).toBeVisible();
+      });
+
+      it('should render "Powered by Metabase" banner caption', () => {
+        setup({
+          props: {},
+          activeTab: "Appearance",
+        });
+
+        expect(
+          screen.getByText("Removing the “Powered by Metabase” banner"),
+        ).toBeVisible();
+
+        expect(
+          screen.getByText(
+            getBrokenUpTextMatcher(
+              "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to a paid plan to remove the banner.",
+            ),
+          ),
+        ).toBeVisible();
+      });
+    });
+
+    describe("EE version", () => {
+      beforeAll(() => {
+        jest
+          .spyOn(whitelabelSelectors, "getCanWhitelabel")
+          .mockImplementation((_state: any) => true);
+      });
+
+      afterAll(() => {
+        jest.resetAllMocks();
+      });
+
+      it("should render Font selector", async () => {
+        setup({
+          props: {},
+          activeTab: "Appearance",
+          isEE: true,
+        });
+
+        const fontSelect = screen.getByLabelText("Font");
+        expect(fontSelect).toBeVisible();
+
+        userEvent.click(fontSelect);
+
+        const popover = await screen.findByRole("grid");
+
+        FONTS_MOCK_VALUES.forEach(fontName => {
+          expect(within(popover).getByText(fontName)).toBeVisible();
+        });
+
+        userEvent.click(within(popover).getByText(FONTS_MOCK_VALUES[0]));
+
+        expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+          `font=${encodeURIComponent(FONTS_MOCK_VALUES[0])}`,
+        );
+      });
+
+      it('should not render "Powered by Metabase" banner caption', async () => {
+        setup({
+          props: {},
+          activeTab: "Appearance",
+          isEE: true,
+        });
+
+        expect(
+          screen.queryByText("Removing the “Powered by Metabase” banner"),
+        ).not.toBeInTheDocument();
+      });
+
+      it('should render "Download data" control for questions', () => {
+        setup({
+          props: {
+            resource: createMockCard({
+              enable_embedding: true,
+            }),
+            resourceType: "question",
+          },
+          activeTab: "Appearance",
+          isEE: true,
+        });
+
+        expect(screen.getByText("Download data")).toBeVisible();
+        expect(
+          screen.getByLabelText(
+            "Enable users to download data from this embed",
+          ),
+        ).toBeChecked();
+
+        userEvent.click(
+          screen.getByText("Enable users to download data from this embed"),
+        );
+
+        expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+          `hide_download_button=true`,
+        );
+      });
+    });
+  });
+
+  it("should preserve selected preview mode selection on tabs navigation", () => {
+    setup({
+      props: {},
+      activeTab: "Parameters",
+    });
+
+    userEvent.click(screen.getByText("Preview"));
+
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Appearance",
+      }),
+    );
+
+    expect(
+      screen.getByText("Customizing your embed’s appearance"),
+    ).toBeVisible();
+
+    expect(screen.getByLabelText("Preview")).toBeChecked();
+
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Parameters",
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        "This dashboard doesn't have any parameters to configure yet.",
+      ),
+    ).toBeVisible();
+
+    expect(screen.getByLabelText("Preview")).toBeChecked();
+  });
+
+  it("should preserve selected code language selection on tabs navigation", async () => {
+    setup({
+      props: {},
+      activeTab: "Overview",
+    });
+
+    await selectServerCodeLanguage({
+      newLanguage: "Python",
+    });
+
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Parameters",
+      }),
+    );
+
+    expect(screen.getByTestId("embed-backend-select-button")).toHaveTextContent(
+      "Python",
+    );
+
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Appearance",
+      }),
+    );
+
+    expect(screen.getByTestId("embed-backend-select-button")).toHaveTextContent(
+      "Python",
+    );
+  });
+
+  it("should preserve highlighted code on tabs navigation", async () => {
+    const dateParameter = {
+      id: "5cd742ef",
+      name: "Month and Year",
+      slug: "month_and_year",
+      type: "date/month-year",
+    };
+    setup({
+      props: {
+        resource: createMockDashboard(),
+        resourceParameters: [dateParameter],
+      },
+      activeTab: "Parameters",
+    });
+
+    userEvent.click(screen.getByLabelText(dateParameter.name));
+
+    userEvent.click(screen.getByText("Locked"));
+
+    const parametersChangedCode = `params: { "${dateParameter.slug}": null }`;
+
+    expect(
+      screen.getByTestId("text-editor-mock-highlighted-code"),
+    ).toHaveTextContent(parametersChangedCode);
+
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Appearance",
+      }),
+    );
+
+    expect(
+      screen.getByTestId("text-editor-mock-highlighted-code"),
+    ).toHaveTextContent(`params: { "${dateParameter.slug}": null }`);
+
+    userEvent.click(screen.getByText("Transparent"));
+
+    const appearanceChangedCode = `"#theme=transparent&bordered=true&titled=true"`;
+
+    expect(
+      screen.getByTestId("text-editor-mock-highlighted-code"),
+    ).toHaveTextContent(`${parametersChangedCode},${appearanceChangedCode}`);
+
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Overview",
+      }),
+    );
+
+    expect(
+      screen.getByTestId("text-editor-mock-highlighted-code"),
+    ).toHaveTextContent(`${parametersChangedCode},${appearanceChangedCode}`);
   });
 });
 
 function setup(
   {
     props: {
-      resource = {} as EmbedResource,
+      resource = createMockDashboard(),
       resourceType = "dashboard",
       resourceParameters = [],
       onUpdateEmbeddingParams = jest.fn(),
       onUpdateEnableEmbedding = jest.fn(),
     },
     activeTab = "Overview",
+    isEE = false,
   }: {
     props: Partial<StaticEmbedSetupPaneProps>;
     activeTab?: "Overview" | "Parameters" | "Appearance";
+    isEE?: boolean;
   } = {
     props: {},
   },
@@ -318,6 +696,12 @@ function setup(
         settings: createMockSettingsState({
           "enable-embedding": true,
           "embedding-secret-key": "my_super_secret_key",
+          "token-features": isEE
+            ? createMockTokenFeatures({
+                whitelabel: true,
+              })
+            : undefined,
+          "available-fonts": isEE ? FONTS_MOCK_VALUES : undefined,
         }),
       },
     },
@@ -336,4 +720,18 @@ function setup(
     onUpdateEmbeddingParams,
     onUpdateEnableEmbedding,
   };
+}
+
+async function selectServerCodeLanguage({
+  currentLanguage = "Node.js",
+  newLanguage,
+}: {
+  currentLanguage?: string;
+  newLanguage: string;
+}) {
+  userEvent.click(screen.getByText(currentLanguage));
+
+  userEvent.click(
+    within(await screen.findByRole("grid")).getByText(newLanguage),
+  );
 }

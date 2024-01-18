@@ -13,10 +13,10 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
 } from "metabase/public/lib/types";
-import { DEFAULT_DISPLAY_OPTIONS } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/config";
 import { getSignedPreviewUrl } from "metabase/public/lib/embed";
-
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
+
+import { DEFAULT_DISPLAY_OPTIONS } from "./config";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { ParametersSettings } from "./ParametersSettings";
