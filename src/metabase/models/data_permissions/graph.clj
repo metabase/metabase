@@ -7,42 +7,108 @@
   Essentially, this is a translation layer between the graph used by the v1 permissions system and the v2 permissions
   system."
   (:require
+   [medley.core :as m]
    [metabase.models.data-permissions :as data-perms]
-   [toucan2.core :as db]))
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-revision :as perms-revision]
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
-#_(def ^:private db->api-keys
-    {:data-access           :data
-     :download-results      :download
-     :manage-table-metadata :data-model
+(def ^:private db->api-keys
+  {:data-access           :data
+   :download-results      :download
+   :manage-table-metadata :data-model
 
-     :native-query-editing  :native
-     :manage-database       :details})
+   :native-query-editing  :native
+   :native-downloads      :native
+   :manage-database       :details})
 
-#_(def ^:private db->api-vals
-    {:data-access           {:unrestricted    :all
-                             :no-self-service nil
-                             :block           :block}
-     :download-results      {:one-million-rows  :full
-                             :ten-thousand-rows :limited
-                             :no                 nil}
-     :manage-table-metadata {:yes :all
-                             :no nil}
+(def ^:private db->api-vals
+  {:data-access           {:unrestricted    :all
+                           :no-self-service nil
+                           :block           :block}
+   :download-results      {:one-million-rows,  :full
+                           :ten-thousand-rows, :partial
+                           :no,                nil}
+   :manage-table-metadata {:yes :all, :no nil}
+   :native-query-editing  {:yes :full, :no nil}
+   :native-downloads      {:yes :write, :no nil}
+   :manage-database       {:yes :yes, :no :no}})
 
-     :native-query-editing  {:yes :full
-                             :no nil}
-     :manage-database       {:yes :yes
-                             :no  :no}})
+(defn- rename-or-ellide-kv
+  "Renames a kv pair from the data-permissions-graph to an API-style data permissions graph (which we send to the client)."
+  [[k v]]
+  (when-not (= (data-perms/most-permissive-value k) v)
+    [(db->api-keys k) ((db->api-vals k) v)]))
 
-;; TODO
+(mu/defn ^:private api-table-perms
+  "Helper to transform a 'leaf' value with table-level schemas in the data permissions graph into an API-style data permissions value."
+  [k :- (into [:enum] (keys db->api-keys))
+   schema->table-id->api-val]
+  (update-vals schema->table-id->api-val
+               (fn [table-id->api-val]
+                 (->> table-id->api-val
+                      (keep
+                       (fn [[table-id perm-val]]
+                         (when-not (= (data-perms/most-permissive-value k) perm-val)
+                           [table-id ((db->api-vals k) perm-val)])))
+                      (into {})))))
+
+(defn- granular-perm-rename [perm-key perm-value legacy-path]
+  (when perm-value
+    (cond
+      (map? perm-value)
+      (assoc-in {} legacy-path (api-table-perms perm-key perm-value))
+      (not= (data-perms/most-permissive-value perm-key) perm-value)
+      (assoc-in {} legacy-path ((db->api-vals perm-key) perm-value))
+      :else {})))
+
+(defn- rename-perm
+  "Transforms a 'leaf' value with db-level or table-level perms in the data permissions graph into an API-style data permissions value.
+  There's some tricks in here that ellide table-level and table-level permissions values that are the most-permissive setting."
+  [perm-map]
+  (let [{:keys [native-query-editing  data-access  download-results  manage-table-metadata]} perm-map
+        granular-keys [:native-query-editing :data-access :download-results :manage-table-metadata]]
+    (m/deep-merge
+     (into {} (keep rename-or-ellide-kv (apply dissoc perm-map granular-keys)))
+     (granular-perm-rename :native-query-editing native-query-editing [:data :native])
+     (granular-perm-rename :data-access data-access [:data :schemas])
+     (granular-perm-rename :download-results download-results [:download :schemas])
+     (granular-perm-rename :manage-table-metadata manage-table-metadata [:data-model]))))
+
+(defn- rename-perms [graph]
+  (update-vals graph
+               (fn [db-id->perms]
+                 (update-vals db-id->perms rename-perm))))
+
+(def ^:private legacy-admin-perms
+  {:data {:native :write, :schemas :all},
+   :download {:native :full, :schemas :full},
+   :data-model {:schemas :all},
+   :details :yes})
+
+(defn- add-admin-group-perms
+  "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it."
+  [api-graph]
+  (let [{admin-group-id :id} (perms-group/admin)
+        dbs (t2/select-fn-vec :id :model/Database)]
+    (assoc api-graph
+           admin-group-id
+           (zipmap dbs (repeat legacy-admin-perms)))))
+
 (defn db-graph->api-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
-  renames permission types and values from the names stored in the database to the ones expected by the frontend."
+  renames permission types and values from the names stored in the database to the ones expected by the frontend.
+
+  1. Convert DB key names to API key names
+  2. Nest table-level perms under :native and :schemas keys
+  3. Convert values to API values
+  TODO: Add sandboxed entries to graph
+  "
   [graph]
-  ;; 1. Convert DB key names to API key names
-  ;; 2. Nest table-level perms under :native and :schemas keys
-  ;; 3. Walk tree and convert values to API values
-  ;; 4. Add sandboxed entries to graph (maybe do this a level up?)
-  graph)
+  (let [groups (-> graph rename-perms add-admin-group-perms)]
+    {:groups groups
+     :revision (perms-revision/latest-id)}))
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
@@ -61,7 +127,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-metadata-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
      (case new-schema-perms
        :all
        (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :yes)))
@@ -98,7 +164,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-download-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
       (case new-schema-perms
         :full
         (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :one-million-rows)))
@@ -157,7 +223,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-data-access-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
       (case new-schema-perms
         :all
         (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :unrestricted)))

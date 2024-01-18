@@ -11,6 +11,8 @@
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.db.query :as mdb.query]
    [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group
@@ -33,11 +35,13 @@
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
+
 (api/defendpoint GET "/graph"
   "Fetch a graph of all v1 Permissions (excludes v2 query and data permissions)."
   []
   (api/check-superuser)
-  (perms/data-perms-graph))
+  (data-perms.graph/db-graph->api-graph
+   (data-perms/data-permissions-graph)))
 
 (api/defendpoint GET "/graph/db/:db-id"
   "Fetch a graph of all v1 Permissions for db-id `db-id` (excludes v2 query and data permissions)."
