@@ -30,6 +30,7 @@
 (setting/defsetting unaggregated-query-row-limit
   (deferred-tru "Maximum number of rows to return specifically on :rows type queries via the API.")
   :visibility     :authenticated
+  :export?        true
   :type           :integer
   :database-local :allowed
   :audit          :getter)
@@ -37,6 +38,7 @@
 (setting/defsetting aggregated-query-row-limit
   (deferred-tru "Maximum number of rows to return for aggregated queries via the API.")
   :visibility     :authenticated
+  :export?        true
   :type           :integer
   :database-local :allowed
   :audit          :getter)

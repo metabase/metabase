@@ -82,6 +82,7 @@
   (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user")
   (clojure-indent-style . always-align)
   (cljr-favor-prefix-notation . nil)
+  (cljr-insert-newline-after-require . t)
   (clojure-docstring-fill-column . 118)
   (cider-preferred-build-tool . clojure-cli)
   (cider-default-cljs-repl . shadow-select)

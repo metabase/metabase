@@ -1,4 +1,5 @@
 import * as TYPES from "cljs/metabase.lib.types.isa";
+import * as ML from "cljs/metabase.lib.js";
 import type { ColumnMetadata } from "./types";
 
 type TypeFn = (column: ColumnMetadata) => boolean;
@@ -38,3 +39,10 @@ export const isTime: TypeFn = TYPES.time_QMARK_;
 export const isTitle: TypeFn = TYPES.title_QMARK_;
 export const isURL: TypeFn = TYPES.URL_QMARK_;
 export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
+
+export function isAssignableType(
+  column1: ColumnMetadata,
+  column2: ColumnMetadata,
+): boolean {
+  return ML.valid_filter_for_QMARK_(column1, column2);
+}
