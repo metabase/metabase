@@ -163,10 +163,12 @@
 
 (comment
   (#'setting/db-or-cache-value custom-init-setting)
-  (#'setting/set! custom-init-setting nil :bypass-read-only? true)
   )
 
 (deftest custom-init-test
+  ;; Some other pre-existing test is initializing this value, this is a stop gap until we fix its hygiene
+  (#'setting/set! custom-init-setting nil :bypass-read-only? true)
+
   (let [get-via-db #(#'setting/db-or-cache-value :test-setting-custom-init)]
     (testing "The value will be initialized and saved"
       (mt/discard-setting-changes [test-setting-custom-init]
