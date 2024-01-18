@@ -72,6 +72,7 @@ export type AxisFormatter = (value: RowValue) => string;
 export type XAxisModel = {
   extent: Extent;
   formatter: AxisFormatter;
+  minDimensionChange: number;
   label?: string;
 };
 

@@ -118,11 +118,20 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   }
 };
 
-function getXAxisRange(extent: Extent, axisType: XAxisType) {
+function getXAxisRange(
+  { extent: [minExtent, maxExtent], minDimensionChange }: XAxisModel,
+  axisType: XAxisType,
+) {
   if (axisType !== "value") {
     return {};
   }
-  return { min: extent[0], max: extent[1] };
+  // ECharts' default bar width is determined by the smallest distance
+  // between bars, so we use that to add the smallest amount of padding
+  // needed as a buffer for the min and max
+  return {
+    min: minExtent - minDimensionChange,
+    max: maxExtent + minDimensionChange,
+  };
 }
 
 export const buildDimensionAxis = (
@@ -154,7 +163,7 @@ export const buildDimensionAxis = (
         ? settings["graph.x_axis.title_text"]
         : undefined,
     ),
-    ...getXAxisRange(xAxisModel.extent, axisType),
+    ...getXAxisRange(xAxisModel, axisType),
     axisTick: {
       show: false,
     },

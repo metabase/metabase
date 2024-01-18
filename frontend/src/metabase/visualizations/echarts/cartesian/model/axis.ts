@@ -21,7 +21,7 @@ import type {
   DatasetColumn,
   RowValue,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull, isNumber } from "metabase/lib/types";
 import {
   getDatasetExtents,
   getMetricDisplayValueGetter,
@@ -487,6 +487,22 @@ export function getXAxisModel(
       noRange: isHistogram,
     });
 
+  const minDimensionChange = Math.min(
+    ...dataset.map((_, index) => {
+      if (index === 0) {
+        return Infinity;
+      }
+      const prev = dataset[index - 1][dimensionModel.dataKey];
+      const curr = dataset[index][dimensionModel.dataKey];
+
+      if (!isNumber(prev) || !isNumber(curr)) {
+        return Infinity;
+      }
+
+      return curr - prev;
+    }),
+  );
+
   const label = settings["graph.x_axis.labels_enabled"]
     ? settings["graph.x_axis.title_text"]
     : undefined;
@@ -495,6 +511,7 @@ export function getXAxisModel(
 
   return {
     formatter,
+    minDimensionChange,
     label,
     extent,
   };
