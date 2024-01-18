@@ -4,6 +4,7 @@ import lineShowDotsAuto from "./line-show-dots-auto.json";
 import lineShowDotsOn from "./line-show-dots-on.json";
 import lineShowDotsOff from "./line-show-dots-off.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
+import barLinearXScaleStacked from "./bar-linear-x-scale-stacked.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
@@ -35,6 +36,7 @@ export const data = {
   lineShowDotsOn,
   lineShowDotsOff,
   barLinearXScale,
+  barLinearXScaleStacked,
   barHistogramXScale,
   barOrdinalXScale,
   barTwoAxesStackedWithNegativeValues,

@@ -70,6 +70,13 @@ BarLinearXScale.args = {
   renderingContext,
 };
 
+export const BarLinearXScaleStacked = Template.bind({});
+BarLinearXScaleStacked.args = {
+  rawSeries: data.barLinearXScaleStacked as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarHistogramXScale = Template.bind({});
 BarHistogramXScale.args = {
   rawSeries: data.barHistogramXScale as any,
