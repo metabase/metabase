@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
+   [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [toucan2.core :as db]))
 
@@ -234,3 +235,18 @@
         {group-id-1
          {database-id-1
           {:perms/manage-database :no}}}))))
+
+;; ------------------------------ API Graph Tests ------------------------------
+
+;; Temporarily needed while we do not have migrations working (there can be inconsistencies until all perms are touched).
+(defn- touch-every-perm []
+  )
+
+(deftest api-graphs-are-equal
+  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}  {}
+                 :model/Database         {db-id-1 :id}     {}]
+    (testing "legacy perms-graph should be equal to the new one"
+      (let [api-perms (perms/data-perms-graph)
+            data-perms (data-perms/data-permissions-graph)]
+        (is (= (:groups api-perms)
+               (:groups (data-perms.graph/db-graph->api-graph data-perms))))))))

@@ -42,6 +42,7 @@
            :else nil)
          (:model-id constructed-event)))))
 
+
 (deftest basic-record-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-test-user :rasta
