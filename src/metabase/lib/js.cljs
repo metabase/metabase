@@ -1224,15 +1224,15 @@
 
 (defn ^:export update-numeric-filter
   "Add or update a filter against `numeric-column`."
-  [a-query numeric-column stage-number start end]
+  [a-query stage-number numeric-column start end]
   (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
-    (lib.core/update-numeric-filter a-query numeric-column stage-number start end)))
+    (lib.core/update-numeric-filter a-query stage-number numeric-column start end)))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts."
-  [a-query temporal-column stage-number start end]
+  [a-query stage-number temporal-column start end]
   (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
-    (lib.core/update-temporal-filter a-query temporal-column stage-number start end)))
+    (lib.core/update-temporal-filter a-query stage-number temporal-column start end)))
 
 (defn ^:export valid-filter-for?
   "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`."
