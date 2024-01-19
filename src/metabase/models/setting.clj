@@ -533,13 +533,6 @@
           (finally
             (.unlock init-lock)))))))
 
-(defn- db-or-cache-or-init-value
-  "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
-  ^String [setting-definition-or-name]
-  (u/or-with some?
-    (db-or-cache-value setting-definition-or-name)
-    (init! setting-definition-or-name)))
-
 (defn- realize
   "Parsing a setting may result in a lazy value. Use this to ensure we finish parsing."
   [value]
@@ -576,12 +569,12 @@
          source-fns [user-local-value
                      database-local-value
                      env-var-value
-                     (if *disable-init*
-                       db-or-cache-value
-                       db-or-cache-or-init-value)
+                     db-or-cache-value
+                     (when-not *disable-init*
+                       init!)
                      default-value]]
      (loop [[f & more] source-fns]
-       (let [v (f setting)]
+       (let [v (when f (f setting))]
          (cond
            (some? v)  v
            (seq more) (recur more))))))
