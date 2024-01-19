@@ -94,18 +94,18 @@
         (is (partial=
              {all-users-group-id
               {db-id
-               {:data-access           {"PUBLIC" {table-id :unrestricted}}
-                :download-results      {"PUBLIC" {table-id :one-million-rows}}
-                :manage-table-metadata {"PUBLIC" {table-id :no}}}}}
+               {:perms/data-access           {"PUBLIC" {table-id :unrestricted}}
+                :perms/download-results      {"PUBLIC" {table-id :one-million-rows}}
+                :perms/manage-table-metadata {"PUBLIC" {table-id :no}}}}}
              (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
 
       ;; Other groups should have no-self-service data access and no download abilities or metadata management
       (is (partial=
            {group-id
             {db-id
-             {:data-access           {"PUBLIC" {table-id :no-self-service}}
-              :download-results      {"PUBLIC" {table-id :no}}
-              :manage-table-metadata {"PUBLIC" {table-id :no}}}}}
+             {:perms/data-access           {"PUBLIC" {table-id :no-self-service}}
+              :perms/download-results      {"PUBLIC" {table-id :no}}
+              :perms/manage-table-metadata {"PUBLIC" {table-id :no}}}}}
            (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
 
 (deftest cleanup-permissions-after-delete-table-test
