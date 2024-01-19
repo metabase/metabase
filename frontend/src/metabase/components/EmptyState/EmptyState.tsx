@@ -1,6 +1,6 @@
 import Button from "metabase/core/components/Button";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Icon, isValidIconName } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import Text from "metabase/components/type/Text";
 import {
@@ -45,7 +45,7 @@ type EmptyStateProps = {
   illustrationElement?: React.ReactNode;
   onActionClick?: () => void;
   className?: string;
-  icon?: IconName | string;
+  icon?: IconName;
   image?: string;
 };
 
@@ -69,7 +69,7 @@ const EmptyState = ({
         </EmptyStateIllustration>
       )}
       <div>
-        {icon && <LegacyIcon icon={icon} {...rest} />}
+        {isValidIconName(icon) && <LegacyIcon icon={icon} {...rest} />}
         {image && <LegacyImage image={image} {...rest} />}
       </div>
       {title && (
