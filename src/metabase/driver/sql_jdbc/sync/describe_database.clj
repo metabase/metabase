@@ -146,28 +146,28 @@
     (fn [{schema :schema table :name}]
       (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table))))
 
+(def ^{:dynamic true
+       :private true
+       :doc     "Introduced as hack during backport to pass database as a param for [[fast-active-tables]] without changing
+                the arity of [[sql-jdbc.sync.interface/active-tables]]. This var does not exist in 49. See #37439"}
+  *describing-database* nil)
+
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
   list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
 
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
-  [driver database ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
+  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
   (let [metadata                  (.getMetaData conn)
         syncable-schemas          (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
                                                                                      schema-inclusion-filters schema-exclusion-filters)
-        have-select-privilege-fn? (have-select-privilege-fn driver database conn)]
+        have-select-privilege-fn? (have-select-privilege-fn driver *describing-database* conn)]
     (eduction (mapcat (fn [schema]
                         (->> (db-tables driver metadata schema db-name-or-nil)
                              (filter have-select-privilege-fn?)
                              (map #(dissoc % :type))))) syncable-schemas)))
-
-(def ^{:dynamic true
-       :private true
-       :doc     "Introduced as hack during backport to pass database as a param for [[fast-active-tables]] without changing
-                the arity of [[sql-jdbc.sync.interface/active-tables]]. This var does not exist in 49. See #37439"}
-  *describing-database* nil)
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
   [driver connection schema-inclusion-filters schema-exclusion-filters]
