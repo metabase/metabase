@@ -150,8 +150,8 @@
    (update-temporal-filter query -1 temporal-column start end))
 
   ([query           :- ::lib.schema/query
-    temporal-column :- ::lib.schema.metadata/column
     stage-number    :- :int
+    temporal-column :- ::lib.schema.metadata/column
     start           :- ::temporal-literal
     end             :- ::temporal-literal]
    (let [query        (remove-existing-filters-against-column query stage-number temporal-column)

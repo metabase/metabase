@@ -928,8 +928,8 @@ export function updateTemporalFilter(
 ): Query {
   return ML.update_temporal_filter(
     query,
-    temporalColumn,
     stageIndex,
+    temporalColumn,
     start,
     end,
   );
