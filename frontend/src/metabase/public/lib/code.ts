@@ -1,14 +1,12 @@
+import type {
+  CodeSnippetProps,
+  IFrameUrlProps,
+  SignedEmbedOption,
+  SignTokenOption,
+} from "metabase/public/lib/types";
 import { optionsToHashParams } from "./embed";
 
-export const getPublicEmbedOptions = ({ iframeUrl }) => [
-  {
-    name: "HTML",
-    source: () => html({ iframeUrl: `"${iframeUrl}"` }),
-    mode: "ace/mode/html",
-  },
-];
-
-export const getSignedEmbedOptions = () => [
+export const getSignedEmbedOptions = (): SignedEmbedOption[] => [
   {
     name: "Mustache",
     source: () => html({ iframeUrl: `"{{iframeUrl}}"`, mode: "ace/mode/html" }),
@@ -21,7 +19,9 @@ export const getSignedEmbedOptions = () => [
   },
 ];
 
-export const getSignTokenOptions = params => [
+export const getSignTokenOptions = (
+  params: CodeSnippetProps,
+): SignTokenOption[] => [
   {
     name: "Node.js",
     source: () => node(params),
@@ -38,10 +38,10 @@ export const getSignTokenOptions = params => [
   { name: "Clojure", source: () => clojure(params), mode: "ace/mode/clojure" },
 ];
 
-export const getPublicEmbedHTML = iframeUrl =>
+export const getPublicEmbedHTML = (iframeUrl: string) =>
   html({ iframeUrl: JSON.stringify(iframeUrl) });
 
-const html = ({ iframeUrl }) =>
+const html = ({ iframeUrl }: IFrameUrlProps) =>
   `<iframe
     src=${iframeUrl}
     frameborder="0"
@@ -50,7 +50,7 @@ const html = ({ iframeUrl }) =>
     allowtransparency
 ></iframe>`;
 
-const jsx = ({ iframeUrl }) =>
+const jsx = ({ iframeUrl }: IFrameUrlProps) =>
   `<iframe
     src=${iframeUrl}
     frameBorder={0}
@@ -59,7 +59,7 @@ const jsx = ({ iframeUrl }) =>
     allowTransparency
 />`;
 
-const pug = ({ iframeUrl }) =>
+const pug = ({ iframeUrl }: IFrameUrlProps) =>
   `iframe(
     src=${iframeUrl}
     frameborder="0"
@@ -75,7 +75,7 @@ const node = ({
   resourceId,
   params,
   displayOptions,
-}) =>
+}: CodeSnippetProps) =>
   `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
 var jwt = require("jsonwebtoken");
@@ -103,7 +103,7 @@ const ruby = ({
   resourceId,
   params,
   displayOptions,
-}) =>
+}: CodeSnippetProps) =>
   `# you will need to install 'jwt' gem first via 'gem install jwt' or in your project Gemfile
 
 require 'jwt'
@@ -140,7 +140,7 @@ const python = ({
   resourceId,
   params,
   displayOptions,
-}) =>
+}: CodeSnippetProps) =>
   `# You'll need to install PyJWT via pip 'pip install PyJWT' or your project packages file
 
 import jwt
@@ -173,7 +173,7 @@ const clojure = ({
   resourceId,
   params,
   displayOptions,
-}) =>
+}: CodeSnippetProps) =>
   `(require '[buddy.sign.jwt :as jwt])
 
 (def metabase-site-url   ${JSON.stringify(siteUrl)})

@@ -165,22 +165,22 @@ export const EmbedModalContent = (
           resource={resource}
           resourceType={resourceType}
           embedType={embedType}
-          token={getSignedToken(
+          token={getSignedToken({
             resourceType,
-            resource.id,
-            previewParametersBySlug,
+            resourceId: resource.id,
+            params: previewParametersBySlug,
             secretKey,
-            embeddingParams,
-          )}
-          iframeUrl={getSignedPreviewUrl(
+            previewEmbeddingParams: embeddingParams,
+          })}
+          iframeUrl={getSignedPreviewUrl({
             siteUrl,
             resourceType,
-            resource.id,
-            previewParametersBySlug,
-            displayOptions,
+            resourceId: resource.id,
+            params: previewParametersBySlug,
+            options: displayOptions,
             secretKey,
-            embeddingParams,
-          )}
+            previewEmbeddingParams: embeddingParams,
+          })}
           siteUrl={siteUrl}
           secretKey={secretKey}
           params={previewParametersBySlug}
