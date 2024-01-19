@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
+import {
+  DndContext,
+  useSensor,
+  PointerSensor,
+  MouseSensor,
+} from "@dnd-kit/core";
 import type { UniqueIdentifier, DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -60,6 +65,12 @@ function TabRowInner<T>({
     activationConstraint: { distance: 10 },
   });
 
+  // Needed for DnD e2e tests to work
+  // See https://github.com/clauderic/dnd-kit/issues/208#issuecomment-824469766
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: { distance: 10 },
+  });
+
   const onDragEnd = (event: DragEndEvent) => {
     if (!event.over || !handleDragEnd) {
       return;
@@ -77,7 +88,7 @@ function TabRowInner<T>({
       <DndContext
         onDragEnd={onDragEnd}
         modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
-        sensors={[pointerSensor]}
+        sensors={[pointerSensor, mouseSensor]}
       >
         <SortableContext
           items={itemIds ?? []}
