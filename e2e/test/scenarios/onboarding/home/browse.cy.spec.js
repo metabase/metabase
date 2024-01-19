@@ -11,7 +11,6 @@ describe("scenarios > browse data", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Browse data/).click();
     cy.location("pathname").should("eq", "/browse");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByRole("heading", { name: "Browse data" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Learn about our data").click();
