@@ -1,6 +1,4 @@
 import { createEntity } from "metabase/lib/entities";
-import type { WrappedEntity } from "metabase-types/entities";
-import type { SearchResult } from "metabase-types/api";
 
 import { GET } from "metabase/lib/api";
 import { entityForObject } from "metabase/lib/schema";
@@ -23,13 +21,12 @@ import SnippetCollections from "./snippet-collections";
 const searchList = GET("/api/search");
 const collectionList = GET("/api/collection/:collection/items");
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default createEntity({
   name: "search",
   path: "/api/search",
 
   api: {
-    list: async (query: any = {}) => {
+    list: async (query = {}) => {
       if (query.collection) {
         const {
           collection,
@@ -65,7 +62,7 @@ export default createEntity({
         return {
           ...rest,
           data: data
-            ? data.map((item: any) => ({
+            ? data.map(item => ({
                 collection_id: canonicalCollectionId(collection),
                 archived: archived || false,
                 ...item,
@@ -78,7 +75,7 @@ export default createEntity({
         return {
           ...rest,
           data: data
-            ? data.map((item: any) => {
+            ? data.map(item => {
                 const collectionKey = item.collection
                   ? { collection_id: item.collection.id }
                   : {};
@@ -96,7 +93,7 @@ export default createEntity({
   schema: ObjectUnionSchema,
 
   // delegate to the actual object's entity wrapEntity
-  wrapEntity(object: any, dispatch: any = null) {
+  wrapEntity(object, dispatch = null) {
     const entity = entityForObject(object);
     if (entity) {
       return entity.wrapEntity(object, dispatch);
@@ -107,8 +104,8 @@ export default createEntity({
   },
 
   objectActions: {
-    setArchived: (object: any, archived: any) => {
-      return (dispatch: any) => {
+    setArchived: (object, archived) => {
+      return dispatch => {
         const entity = entityForObject(object);
         return entity
           ? dispatch(entity.actions.setArchived(object, archived))
@@ -116,8 +113,8 @@ export default createEntity({
       };
     },
 
-    delete: (object: any) => {
-      return (dispatch: any) => {
+    delete: object => {
+      return dispatch => {
         const entity = entityForObject(object);
         return entity
           ? dispatch(entity.actions.delete(object))
@@ -127,7 +124,7 @@ export default createEntity({
   },
 
   objectSelectors: {
-    getCollection: (object: any) => {
+    getCollection: object => {
       const entity = entityForObject(object);
       return entity
         ? entity?.objectSelectors?.getCollection?.(object) ??
@@ -136,21 +133,21 @@ export default createEntity({
         : warnEntityAndReturnObject(object);
     },
 
-    getName: (object: any) => {
+    getName: object => {
       const entity = entityForObject(object);
       return entity
         ? entity?.objectSelectors?.getName?.(object) ?? object?.name
         : warnEntityAndReturnObject(object);
     },
 
-    getColor: (object: any) => {
+    getColor: object => {
       const entity = entityForObject(object);
       return entity
         ? entity?.objectSelectors?.getColor?.(object) ?? null
         : warnEntityAndReturnObject(object);
     },
 
-    getIcon: (object: any) => {
+    getIcon: object => {
       const entity = entityForObject(object);
       return entity
         ? entity?.objectSelectors?.getIcon?.(object) ?? null
@@ -158,7 +155,7 @@ export default createEntity({
     },
   },
   // delegate to each entity's actionShouldInvalidateLists
-  actionShouldInvalidateLists(action: any) {
+  actionShouldInvalidateLists(action) {
     return (
       Actions.actionShouldInvalidateLists(action) ||
       Bookmarks.actionShouldInvalidateLists(action) ||
@@ -174,14 +171,7 @@ export default createEntity({
   },
 });
 
-function warnEntityAndReturnObject(object: any) {
+function warnEntityAndReturnObject(object) {
   console.warn("Couldn't find entity for object", object);
   return object;
-}
-
-export interface SearchListLoaderProps {
-  list: WrappedEntity<SearchResult>[];
-  metadata: {
-    total: number;
-  };
 }
