@@ -5336,6 +5336,71 @@ databaseChangeLog:
             indexName: idx_data_permissions_group_id
 
   - changeSet:
+      id: v49.2024-01-10T03:27:30
+      author: noahmoss
+      comment: Migrate data-access permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_data_access.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v49.2024-01-10T03:27:31
+      author: noahmoss
+      comment: Migrate native-query-editing permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            path: permissions/native_query_editing.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v49.2024-01-10T03:27:32
+      author: noahmoss
+      comment: Migrate download-results permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_download_results.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v49.2024-01-10T03:27:33
+      author: noahmoss
+      comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_manage_table_metadata.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v49.2024-01-10T03:27:34
+      author: noahmoss
+      comment: Migrate manage-database permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            path: permissions/manage_database.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
       id: v49.2024-01-22T11:50:00
       author: qnkhuat
       comment: Add `report_card.type`
