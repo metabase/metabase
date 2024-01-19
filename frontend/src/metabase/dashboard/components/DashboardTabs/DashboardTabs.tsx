@@ -40,7 +40,7 @@ export function DashboardTabs({
     return null;
   }
 
-  const menuItems: TabButtonMenuItem<SelectedTabId>[] = [
+  const menuItems: TabButtonMenuItem[] = [
     {
       label: t`Duplicate`,
       action: (_, value) => duplicateTab(value),
@@ -71,7 +71,7 @@ export function DashboardTabs({
         ) : (
           tabs.map(tab => (
             <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
-              <TabButton.Renameable<SelectedTabId>
+              <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}
                 onRename={name => renameTab(tab.id, name)}
