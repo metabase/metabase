@@ -747,39 +747,20 @@ const MODEL_NAME = "Test Action Model";
                 newValue: newTime,
               });
 
-              // only postgres has timezone-aware columns
-              // the instance is in US/Pacific so it's -8 hours
-              if (dialect === "postgres") {
-                changeValue({
-                  fieldName: "DatetimeTZ",
-                  fieldType: "datetime-local",
-                  oldValue: "2020-01-01T00:35:55",
-                  newValue: newTime,
-                });
+              changeValue({
+                fieldName: "DatetimeTZ",
+                fieldType: "datetime-local",
+                oldValue: oldRow.datetimeTZ.replace(" ", "T"),
+                newValue: newTime,
+              });
 
-                changeValue({
-                  fieldName: "TimestampTZ",
-                  fieldType: "datetime-local",
-                  oldValue: "2020-01-01T00:35:55",
-                  newValue: newTime,
-                });
-              }
+              changeValue({
+                fieldName: "TimestampTZ",
+                fieldType: "datetime-local",
+                oldValue: oldRow.timestampTZ.replace(" ", "T"),
+                newValue: newTime,
+              });
 
-              if (dialect === "mysql") {
-                changeValue({
-                  fieldName: "DatetimeTZ",
-                  fieldType: "datetime-local",
-                  oldValue: oldRow.datetimeTZ.replace(" ", "T"),
-                  newValue: newTime,
-                });
-
-                changeValue({
-                  fieldName: "TimestampTZ",
-                  fieldType: "datetime-local",
-                  oldValue: oldRow.timestampTZ.replace(" ", "T"),
-                  newValue: newTime,
-                });
-              }
               cy.button("Update").click();
             });
 

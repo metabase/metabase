@@ -394,3 +394,9 @@
   (if (string? t)
     (str (add (u.date/parse t) unit amount))
     (u.date/add t unit amount)))
+
+(defn format-for-base-type
+  "Clojure implementation of [[metabase.shared.util.time/format-for-base-type]]; format a temporal value as an ISO-8601
+  string. `base-type` is ignored for the Clojure implementation; this simply calls [[clojure.core/str]]."
+  [t _base-type]
+  (str t))

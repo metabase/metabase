@@ -2413,6 +2413,7 @@
    :options                     nil
    :engine                      :h2
    :initial-sync-status         "complete"
+   :native-permissions          :write
    :dbms-version                {:flavor "H2", :version "2.1.212 (2022-04-09)", :semantic-version [2 1]}
    :refingerprint               nil
    :points-of-interest          nil

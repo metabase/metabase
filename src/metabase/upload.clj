@@ -600,7 +600,7 @@
                             (tru "The CSV file contains extra columns that are not in the table: {0}."
                                  (format-columns extra))
                             missing
-                            (tru "The CSV file contains extra columns that are not in the table: {0}."
+                            (tru "The CSV file is missing columns that are in the table: {0}."
                                  (format-columns missing)))]
         (throw (ex-info error-message {:status-code 422}))))))
 

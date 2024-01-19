@@ -215,6 +215,7 @@
 
   There's no editable flag! Instead, a query is **not** editable if:
   - Database is missing from the metadata (no permissions at all);
+  - Database is present but it doesn't have native write permissions;
   - Database is present but tables (at least the `:source-table`) are missing (missing table permissions); or
   - Similarly, the card specified by `:source-card` is missing from the metadata.
   If metadata for the `:source-table` or `:source-card` can be found, then the query is editable."
@@ -224,4 +225,8 @@
                     (= (:database query) id))
                   (or (and source-table (table query source-table))
                       (and source-card  (card  query source-card))
-                      (= (:lib/type stage0) :mbql.stage/native))))))
+                      (and
+                        (= (:lib/type stage0) :mbql.stage/native)
+                        ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
+                        ;; TODO Find a way to unify has-write-permissions and this function?
+                        (= :write (:native-permissions (database query)))))))))
