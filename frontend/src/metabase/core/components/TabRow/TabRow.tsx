@@ -68,7 +68,7 @@ function TabRowInner<T>({
   // Needed for DnD e2e tests to work
   // See https://github.com/clauderic/dnd-kit/issues/208#issuecomment-824469766
   const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: { distance: 10 }
+    activationConstraint: { distance: 10 },
   });
 
   const onDragEnd = (event: DragEndEvent) => {

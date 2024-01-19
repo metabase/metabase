@@ -415,15 +415,9 @@ describe("scenarios > dashboard > tabs", () => {
     createNewTab();
 
     // Assert initial tab order
-    cy.findAllByTestId("tab-button-input-wrapper")
-      .eq(0)
-      .findByText("Tab 1");
-    cy.findAllByTestId("tab-button-input-wrapper")
-      .eq(1)
-      .findByText("Tab 2");
-    cy.findAllByTestId("tab-button-input-wrapper")
-      .eq(2)
-      .findByText("Tab 3");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText("Tab 1");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 2");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 3");
 
     // Prior to this bugfix, tab containing this text would be too long to drag to the left of either of the other tabs.
     const longName =
@@ -453,13 +447,13 @@ describe("scenarios > dashboard > tabs", () => {
             button: 0,
             clientX: 11,
             clientY: 0,
-            force: true
+            force: true,
           })
           .trigger("mousemove", {
             button: 0,
             clientX: coordsDrag.x,
             clientY: 0,
-            force: true
+            force: true,
           })
           .trigger("mouseup");
       });
@@ -471,15 +465,9 @@ describe("scenarios > dashboard > tabs", () => {
     saveDashboard();
 
     // After the long tab is dragged, it is now in the first position
-    cy.findAllByTestId("tab-button-input-wrapper")
-      .eq(0)
-      .findByText( longName);
-    cy.findAllByTestId("tab-button-input-wrapper")
-      .eq(1)
-      .findByText("Tab 1");
-    cy.findAllByTestId("tab-button-input-wrapper")
-      .eq(2)
-      .findByText("Tab 2");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText(longName);
+    cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 1");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
   });
 });
 
