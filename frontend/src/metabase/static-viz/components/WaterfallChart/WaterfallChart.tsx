@@ -33,7 +33,6 @@ export function WaterfallChart({
     [],
     computedVisualizationSettings,
     WIDTH,
-    false,
     renderingContext,
   );
 
