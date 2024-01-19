@@ -191,8 +191,8 @@
 
 (defn- assert-valid-permission
   [{:keys [perm_type perm_value] :as permission}]
-  (when-not (mc/validate PermissionType perm_type)
-    (throw (ex-info (str/join (mu/explain PermissionType perm_type)) permission)))
+  (when-not (mc/validate Type perm_type)
+    (throw (ex-info (str/join (mu/explain Type perm_type)) permission)))
   (assert-value-matches-perm-type perm_type perm_value))
 
 (t2/define-before-insert :model/DataPermissions
