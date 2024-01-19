@@ -579,7 +579,7 @@ describe("scenarios > visualizations > line chart", () => {
   });
 
   it(
-    "should apply filters to the series selecting area range",
+    "should apply brush filters to the series selecting area range",
     { tags: "@flaky" },
     () => {
       cy.viewport(1280, 800);
@@ -606,7 +606,7 @@ describe("scenarios > visualizations > line chart", () => {
     },
   );
 
-  it("should apply filters to the series selecting area range when axis is a number", () => {
+  it("should apply brush filters to the series selecting area range when axis is a number", () => {
     const testQuery = {
       type: "query",
       query: {

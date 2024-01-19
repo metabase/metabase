@@ -369,36 +369,16 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
       // timestamps
       const [start, end] = range;
 
-      // TODO: updateTemporalFilter should accept DatasetColumn
-      const columns = Lib.returnedColumns(query, stageIndex);
-      const [index] = Lib.findColumnIndexesFromLegacyRefs(
-        query,
-        stageIndex,
-        columns,
-        [
-          column.field_ref.map((value, index) => {
-            // by default it's a number, I needed to convert it to string to make fn work
-            return index === 1 ? String(value) : value;
-          }),
-        ],
-      );
-
       if (isDimensionTimeseries(series)) {
         const nextQuery = Lib.updateTemporalFilter(
           query,
           stageIndex,
-          columns[index],
-          // TODO: updateTemporalFilter should accept timestamps
+          column,
           new Date(start).toISOString(),
           new Date(end).toISOString(),
         );
-        const updatedQuestion = question._setMLv2Query(nextQuery);
+        const updatedQuestion = question.setQuery(nextQuery);
         const nextCard = updatedQuestion.card();
-
-        // TODO: updateTemporalFilter should accept field id as a string
-        nextCard.dataset_query.query.filter[1][1] = Number(
-          nextCard.dataset_query.query.filter[1][1],
-        );
 
         onChangeCardAndRun({
           nextCard,
@@ -408,17 +388,12 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
         const nextQuery = Lib.updateNumericFilter(
           query,
           stageIndex,
-          columns[index],
+          column,
           start,
           end,
         );
-        const updatedQuestion = question._setMLv2Query(nextQuery);
+        const updatedQuestion = question.setQuery(nextQuery);
         const nextCard = updatedQuestion.card();
-
-        // TODO: updateNumericFilter should accept field id as a string
-        nextCard.dataset_query.query.filter[1][1] = Number(
-          nextCard.dataset_query.query.filter[1][1],
-        );
 
         onChangeCardAndRun({
           nextCard,
