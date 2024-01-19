@@ -2,7 +2,7 @@
 
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT pg.id AS group_id,
-       'manage-table-metadata' AS perm_type,
+       'perms/manage-table-metadata' AS perm_type,
        md.id AS db_id,
        NULL AS schema_name,
        NULL AS table_id,
@@ -23,7 +23,7 @@ WHERE pg.name != 'Administrators'
      FROM data_permissions dp
      WHERE dp.group_id = pg.id
        AND dp.db_id = md.id
-       AND dp.perm_type = 'manage-table-metadata')
+       AND dp.perm_type = 'perms/manage-table-metadata')
   AND CASE
           WHEN EXISTS
                  (SELECT 1
@@ -49,7 +49,7 @@ SELECT mt.id,
     FROM metabase_table mt
 )
 SELECT pg.id AS group_id,
-       'manage-table-metadata' AS perm_type,
+       'perms/manage-table-metadata' AS perm_type,
        mt.db_id,
        mt.schema AS schema_name,
        mt.id AS table_id,
@@ -70,11 +70,11 @@ WHERE pg.name != 'Administrators'
      WHERE dp.group_id = pg.id
        AND dp.db_id = mt.db_id
        AND dp.table_id = mt.id
-       AND dp.perm_type = 'manage-table-metadata')
+       AND dp.perm_type = 'perms/manage-table-metadata')
   AND NOT EXISTS
     (SELECT 1
      FROM data_permissions dp
      WHERE dp.group_id = pg.id
        AND dp.db_id = mt.db_id
        AND dp.table_id IS NULL
-       AND dp.perm_type = 'manage-table-metadata');
+       AND dp.perm_type = 'perms/manage-table-metadata');
