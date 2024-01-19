@@ -4,10 +4,9 @@ import { t } from "ttag";
 
 import type {
   Card,
-  CardId,
+  DashCardDataMap,
   DashCardId,
   DashboardCard,
-  Dataset,
 } from "metabase-types/api";
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -23,7 +22,7 @@ const CAN_REMOVE_SERIES = (seriesIndex: number) => seriesIndex > 0;
 
 export interface Props {
   dashcard: DashboardCard;
-  dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
+  dashcardData: DashCardDataMap;
   fetchCardData: (
     card: Card,
     dashcard: DashboardCard,

@@ -560,9 +560,9 @@ Since: v47.4
 
 Metabase's query processor will normally kill connections when their queries time out, but in practice some connections can be severed and go undetected by Metabase, staying alive even after a query returns or times out. This environment variable tells  Metabase how long to wait before killing connections if no response is received from the connection.
 
-This variable affects connection that are severed and undetected by Metabase (i.e. Metabase never receives connection closed signal and is treating an inactive connection as active). It is most often adjusted when connecting to unreliable or dynamic connections that are behind a SSH tunnel where the connection to the SSH tunnel host may stay active even after the connection from the SSH tunnel host to the Database is severed.
+This variable affects connections that are severed and undetected by Metabase (that is, in situations where Metabase never receives a connection closed signal and is treating an inactive connection as active). You may want to adjust this variable's value if your connection is unreliable or is a dynamic connections behind a SSH tunnel where the connection to the SSH tunnel host may stay active even after the connection from the SSH tunnel host to your database is severed.
 
-If left blank, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
+Unless set otherwise, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 

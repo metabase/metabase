@@ -16,7 +16,7 @@ import type {
   EmbeddingParametersValues,
   EmbeddingDisplayOptions,
   EmbedResource,
-  EmbedType,
+  EmbedModalStep,
   EmbedResourceParameterWithValue,
 } from "../types";
 import EmbedCodePane from "./EmbedCodePane";
@@ -35,7 +35,7 @@ export interface ParametersSettingsProps {
   lockedParameters: EmbedResourceParameter[];
   parameterValues: EmbeddingParametersValues;
 
-  embedType: EmbedType;
+  embedType: EmbedModalStep;
 
   iframeUrl: string;
   token: string;

@@ -53,7 +53,7 @@ export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
 export const updateSetting = createThunkAction(
   UPDATE_SETTING,
   function (setting) {
-    return async function (dispatch, getState) {
+    return async function (dispatch) {
       try {
         await SettingsApi.put(setting);
       } catch (error) {
