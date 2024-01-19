@@ -231,6 +231,7 @@
 
 ;; ------------------------------ API Graph Tests ------------------------------
 
+<<<<<<< variant A
 (deftest ellide?-test
   (is (#'data-perms.graph/ellide?      :perms/data-access :no-self-service))
   (is (not (#'data-perms.graph/ellide? :perms/data-access :block))))
@@ -244,6 +245,22 @@
        (update x 1 dissoc :native)
        x))
    graph))
+>>>>>>> variant B
+;; download.native is not used by the fe, so not needed:
+(defn- remove-download:native [graph]
+  (walk/postwalk
+   (fn [x]
+     (if (and
+          (instance? clojure.lang.MapEntry x)
+          (= :download (first x)))
+       (update x 1 dissoc :native)
+       x))
+   graph))
+####### Ancestor
+;; Temporarily needed while we do not have migrations working (there can be inconsistencies until all perms are touched).
+(defn- touch-every-perm []
+  )
+======= end
 
 (defn replace-empty-map-with-nil [graph]
   (walk/postwalk
@@ -305,11 +322,52 @@
       (assoc :groups {group-id (get-in graph [:groups group-id])})
       (assoc-in [:groups group-id] {db-id (get-in graph [:groups group-id db-id])})))
 
-(deftest api-graphs-are-equal
+(defn- api-graph= [a b]
+  (= (remove-download:native a)
+     (remove-download:native b)))
+
+#_(defn- generate-maps
+    "Given a map like {:a [1 2] :b [2]} returns all combos like: [{:a 1 :b 2} {:a 2 :b 2}]"
+    [m]
+    (let [keys (keys m)
+          values (vals m)
+          combinations (apply math.combo/cartesian-product values)]
+      (mapv #(zipmap keys %) combinations)))
+
+;; TODO: eyeball this:
+#_(defn- all-nongranular-perm-maps []
+  (generate-maps (update-vals @#'data-perms.graph/->api-vals keys)))
+#_(doseq [in (all-nongranular-perm-maps)] (println "----\n" in "\n" (#'data-perms.graph/rename-perm in)))
+
+(deftest perms-are-renamed-test
+  (is (= (#'data-perms.graph/rename-perm {:data-access :unrestricted})           {:data {:schemas :all}}))
+  (is (= (#'data-perms.graph/rename-perm {:data-access :no-self-service})        {}))
+  (is (= (#'data-perms.graph/rename-perm {:data-access :block})                  {:data {:schemas :block}}))
+  (is (= (#'data-perms.graph/rename-perm {:download-results :one-million-rows})  {:download {:schemas :full}}))
+  (is (= (#'data-perms.graph/rename-perm {:download-results :ten-thousand-rows}) {:download {:schemas :partial}}))
+  (is (= (#'data-perms.graph/rename-perm {:download-results :no})                {}))
+  (is (= (#'data-perms.graph/rename-perm {:manage-table-metadata :yes})          {:data-model {:schemas :all}}))
+  (is (= (#'data-perms.graph/rename-perm {:manage-table-metadata :no})           {}))
+  (is (= (#'data-perms.graph/rename-perm {:native-query-editing :yes})           {:data {:native :write}}))
+  (is (= (#'data-perms.graph/rename-perm {:native-query-editing :no})            {}))
+  (is (= (#'data-perms.graph/rename-perm {:manage-database :yes})                {:details :yes}))
+  (is (= (#'data-perms.graph/rename-perm {:manage-database :no})                 {})))
+
+(deftest rename-perm-test
+  (is (api-graph=
+       (#'data-perms.graph/rename-perm {:data-access :unrestricted
+                                        :native-query-editing :yes
+                                        :manage-database :no
+                                        :download-results :one-million-rows
+                                        :manage-table-metadata :no})
+       {:data {:native :write, :schemas :all} :download {:native :full, :schemas :full}})))
+
+#_(deftest api-graphs-are-equal
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}  {}
                  :model/Database         {db-id-1 :id}     {}]
     ;; TODO constrain graph outputs to just the temp values...
     (testing "legacy perms-graph should be equal to the new one"
+<<<<<<< HEAD
       (let [data-perms (constrain-graph group-id-1 db-id-1
                                         (data-perms.graph/db-graph->api-graph
                                          (data-perms/data-permissions-graph)))
@@ -318,6 +376,7 @@
         (is (api-graph=
              (:groups api-perms)
              (:groups data-perms)))))))
+<<<<<<< variant A
 
 (comment
 
@@ -348,3 +407,56 @@
 
   (check-sample (sample last))
   )
+||||||| parent of 8ffaf108a5 (WIP starting more testing)
+=======
+>>>>>>> variant B
+      (let [api-perms (perms/data-perms-graph)
+            data-perms (data-perms/data-permissions-graph)]
+        (is (api-graph=
+             (:groups api-perms)
+             (:groups (data-perms.graph/db-graph->api-graph data-perms))))))))
+
+  (comment
+
+    (require '[metabase.util :as u])
+
+    (defn record! []
+      ;;(spit "permz.edn" "")
+      (spit "../permz.edn"
+            (str "\n" (u/pprint-to-str {:data-perms (data-perms/data-permissions-graph) :api-perms (perms/data-perms-graph)}))
+            :append true))
+
+    (defn samples [] (read-string (format "[%s]" (slurp "../permz.edn"))))
+    (defn sample [& [n]] ((cond
+                            (number? n) #(nth % n)
+                            (fn? n) n
+                            :else rand-nth)
+                          (samples)))
+    (samples)
+    (:data-perms (sample last))
+
+    (remove-download:native (:api-perms (sample last)))
+
+    (defn api-graph= [a b]
+      (= (remove-download:native a)
+         (remove-download:native b)))
+
+    (defn fmt [pg] (into (sorted-map) (remove-download:native (get pg 1))))
+
+    (defn check-sample [{:keys [api-perms data-perms]}]
+      [[::data-perms (fmt data-perms)]
+       [::data->api (fmt (:groups (data-perms.graph/db-graph->api-graph data-perms)))]
+       [::api (fmt (:groups api-perms))]
+       [::equal? (api-graph=
+                  (:groups (data-perms.graph/db-graph->api-graph data-perms))
+                  (:groups api-perms))]])
+
+    (check-sample (sample last))
+    )
+####### Ancestor
+      (let [api-perms (perms/data-perms-graph)
+            data-perms (data-perms/data-permissions-graph)]
+        (is (= (:groups api-perms)
+               (:groups (data-perms.graph/db-graph->api-graph data-perms))))))))
+======= end
+>>>>>>> 8ffaf108a5 (WIP starting more testing)
