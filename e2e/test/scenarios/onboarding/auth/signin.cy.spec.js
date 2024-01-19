@@ -81,6 +81,7 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/");
     // Browse data moved to an icon
     browse().click();
+    cy.findByRole("tab", { name: "Databases" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sample Database").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
