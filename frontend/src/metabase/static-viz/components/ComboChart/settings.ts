@@ -27,6 +27,7 @@ import {
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
+  getYAxisAutoRangeDefault,
   isStackingValueValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
@@ -156,6 +157,12 @@ export const computeStaticComboChartSettings = (
     settings,
     "graph.y_axis.labels_enabled",
     getIsYAxisLabelEnabledDefault(),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.y_axis.auto_range",
+    getYAxisAutoRangeDefault(),
   );
 
   fillWithDefaultValue(
