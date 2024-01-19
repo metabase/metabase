@@ -12,8 +12,6 @@ import { Icon } from "metabase/ui";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import SlackChannelField from "metabase/sharing/components/SlackChannelField";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
 import RecipientPicker from "./RecipientPicker";
 
@@ -57,12 +55,6 @@ export default class PulseEditChannels extends Component {
     const channel = createChannel(channelSpec);
 
     this.props.setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
-
-    MetabaseAnalytics.trackStructEvent(
-      this.props.pulseId ? "PulseEdit" : "PulseCreate",
-      "AddChannel",
-      type,
-    );
   }
 
   removeChannel(index) {
@@ -84,12 +76,6 @@ export default class PulseEditChannels extends Component {
   onChannelScheduleChange(index, newSchedule, changedProp) {
     const { pulse } = this.props;
     const channels = [...pulse.channels];
-
-    MetabaseAnalytics.trackStructEvent(
-      this.props.pulseId ? "PulseEdit" : "PulseCreate",
-      channels[index].channel_type + ":" + changedProp.name,
-      changedProp.value,
-    );
 
     channels[index] = { ...channels[index], ...newSchedule };
     this.props.setPulse({ ...pulse, channels });
@@ -134,12 +120,6 @@ export default class PulseEditChannels extends Component {
           );
 
       this.props.setPulse(updatedPulse);
-
-      MetabaseAnalytics.trackStructEvent(
-        this.props.pulseId ? "PulseEdit" : "PulseCreate",
-        "RemoveChannel",
-        type,
-      );
     }
   }
 

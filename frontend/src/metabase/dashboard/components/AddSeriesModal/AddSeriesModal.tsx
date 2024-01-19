@@ -9,7 +9,6 @@ import type {
   DashboardCard,
   Dataset,
 } from "metabase-types/api";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -67,8 +66,6 @@ export class AddSeriesModal extends Component<Props, State> {
       this.setState({
         series: this.state.series.filter(c => c.id !== card.id),
       });
-
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
       return;
     }
 
@@ -84,12 +81,6 @@ export class AddSeriesModal extends Component<Props, State> {
       isLoading: false,
       series: this.state.series.concat(card),
     });
-
-    MetabaseAnalytics.trackStructEvent(
-      "Dashboard",
-      "Add Series",
-      card.display + ", success",
-    );
   };
 
   handleRemoveSeries = (_event: MouseEvent, removedIndex: number) => {
@@ -107,7 +98,6 @@ export class AddSeriesModal extends Component<Props, State> {
         ...this.state.series.slice(actualRemovedIndex + 1),
       ],
     });
-    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
   };
 
   handleDone = () => {
@@ -116,11 +106,6 @@ export class AddSeriesModal extends Component<Props, State> {
       attributes: { series: this.state.series },
     });
     this.props.onClose();
-    MetabaseAnalytics.trackStructEvent(
-      "Dashboard",
-      "Edit Series Modal",
-      "done",
-    );
   };
 
   render() {

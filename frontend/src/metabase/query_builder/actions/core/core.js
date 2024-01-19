@@ -1,7 +1,6 @@
 import { createAction } from "redux-actions";
 
 import _ from "underscore";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
@@ -202,11 +201,6 @@ export const apiCreateQuestion = question => {
       dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
     }
 
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Create Card",
-      createdQuestion.type(),
-    );
     trackNewQuestionSaved(
       question,
       createdQuestion,
@@ -270,12 +264,6 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
     await dispatch(fetchAlertsForQuestion(updatedQuestion.id()));
-
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Update Card",
-      updatedQuestion.type(),
-    );
 
     await dispatch({
       type: API_UPDATE_QUESTION,
