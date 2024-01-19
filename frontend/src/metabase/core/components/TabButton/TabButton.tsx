@@ -54,7 +54,7 @@ export interface TabButtonProps<T> extends HTMLAttributes<HTMLDivElement> {
   label: string;
   value: T;
   showMenu?: boolean;
-  menuItems?: TabButtonMenuItem<unknown>[];
+  menuItems?: TabButtonMenuItem<any>[];
   onRename?: ChangeEventHandler<HTMLInputElement>;
   onFinishRenaming?: () => void;
   isRenaming?: boolean;
