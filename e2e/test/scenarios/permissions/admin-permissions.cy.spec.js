@@ -490,6 +490,18 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           ["Products", "Unrestricted", "Yes"],
           ["Reviews", "Unrestricted", "Yes"],
         ]);
+
+        // After saving permissions, user should be able to make further edits without refreshing the page
+        // metabase#37811
+        selectSidebarItem("data");
+
+        modifyPermission(
+          "Sample Database",
+          NATIVE_QUERIES_PERMISSION_INDEX,
+          "No",
+        );
+
+        cy.button("Refresh the page").should("not.exist");
       });
 
       it("should show a modal when a revision changes while an admin is editing", () => {

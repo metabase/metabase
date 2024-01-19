@@ -85,14 +85,6 @@ describe("GroupsPermissionsPage", function () {
       await expect(screen.getByText("Cancel")).toBeInTheDocument();
       await expect(screen.getByText("Save changes")).toBeInTheDocument();
     });
-
-    it.only("should be able to render group permissions for a DB when a schema is provided", async () => {
-      await setup({
-        initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[1].id}/database/${TEST_DATABASE.id}/schema/PUBLIC`,
-      });
-
-      screen.logTestingPlaygroundURL();
-    });
   });
 
   describe("triggering beforeunload events", () => {
