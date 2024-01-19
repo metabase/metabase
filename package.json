@@ -277,6 +277,7 @@
     "mysql2": "^3.9.4",
     "node-polyfill-webpack-plugin": "2.0.1",
     "null-loader": "^4.0.1",
+    "open-cli": "^8.0.0",
     "pg": "^8.8.0",
     "postcss": "8.4.19",
     "postcss-color-mod-function": "^3.0.3",
@@ -402,12 +403,11 @@
     "test-visual-run": "percy exec -- yarn test-cypress-run --spec \"./e2e/test/visual/**/*.cy.spec.js\"",
     "test-visual:loki": "yarn loki test",
     "test-visual:loki-update": "yarn loki update",
+    "test-visual:loki-report": "node frontend/test/generate-loki-report-json.js && reg-cli --from .loki/report.json --report .loki/report.html",
+    "test-visual:loki-report-open": "yarn test-visual:loki && yarn test-visual:loki-report && open-cli .loki/report.html",
     "type-check": "yarn clean:cljs && yarn build:cljs && yarn type-check-pure",
     "type-check-pure": "tsc --noEmit",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
-    "visual:report": "yarn visual:report:json && yarn visual:report:html",
-    "visual:report:html": "reg-cli --from .loki/report.json --report .loki/report.html",
-    "visual:report:json": "node frontend/test/generate-loki-report-json.js",
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done"
   },
   "lint-staged": {
