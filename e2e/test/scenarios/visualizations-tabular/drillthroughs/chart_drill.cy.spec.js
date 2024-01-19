@@ -79,12 +79,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  // TODO: double check this test
   ["month", "month-of-year"].forEach(granularity => {
     it(`brush filter should work post-aggregation for ${granularity} granularity (metabase#18011)`, () => {
-      // TODO: Remove this line when the issue is fixed!
-      cy.skipOn(granularity === "month-of-year");
-
       cy.intercept("POST", "/api/dataset").as("dataset");
 
       const questionDetails = {
