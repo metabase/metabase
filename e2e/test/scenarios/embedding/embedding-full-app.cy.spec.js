@@ -141,7 +141,7 @@ describeEE("scenarios > embedding > full app", () => {
         qs: { side_nav: false, logo: false },
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our data").should("be.visible");
+      cy.findByText("Browse data").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics").should("not.exist");
       appBar().should("not.exist");
