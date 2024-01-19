@@ -115,7 +115,7 @@ For archived, we can either include everthing (when archived is `nil`), only arc
   By default, admin users will see all collections. To hide other user's collections pass in
   `?exclude-other-user-collections=true`.
 
-  If personal-only is true, then return only peronsal collections."
+  If personal-only is `true`, then return only personal collections, and all other query-params are ignored."
   [archived exclude-other-user-collections namespace personal-only]
   {archived                       [:maybe ms/BooleanValue]
    exclude-other-user-collections [:maybe ms/BooleanValue]
