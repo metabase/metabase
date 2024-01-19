@@ -2,7 +2,6 @@ import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
 import _ from "underscore";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 
@@ -315,12 +314,6 @@ async function handleQBInit(
     uiControls.isShowingSummarySidebar = true;
   }
 
-  MetabaseAnalytics.trackStructEvent(
-    "QueryBuilder",
-    hasCard ? "Query Loaded" : "Query Started",
-    card.dataset_query.type,
-  );
-
   if (isSavedCard(card)) {
     dispatch(fetchAlertsForQuestion(card.id));
   }
@@ -338,7 +331,6 @@ async function handleQBInit(
     const currentUser = getUser(getState());
     if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
-      MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
     }
   }
 

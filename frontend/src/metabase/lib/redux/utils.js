@@ -5,7 +5,6 @@ import { getIn } from "icepick";
 import { normalize } from "normalizr";
 import { compose } from "@reduxjs/toolkit";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   setRequestLoading,
   setRequestLoaded,
@@ -335,31 +334,6 @@ function withCachedData(
 
         return thunkCreator(...args)(dispatch, getState);
       };
-}
-
-export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
-  // thunk decorator:
-  return thunkCreator =>
-    // thunk creator:
-    (...args) =>
-    // thunk:
-    (dispatch, getState) => {
-      function get(valueOrFn, extra = {}) {
-        if (typeof valueOrFn === "function") {
-          return valueOrFn(args, { ...extra }, getState);
-        }
-      }
-      try {
-        const category = get(categoryOrFn);
-        const action = get(actionOrFn, { category });
-        const label = get(labelOrFn, { category, action });
-        const value = get(valueOrFn, { category, action, label });
-        MetabaseAnalytics.trackStructEvent(category, action, label, value);
-      } catch (error) {
-        console.warn("withAnalytics threw an error:", error);
-      }
-      return thunkCreator(...args)(dispatch, getState);
-    };
 }
 
 export function withNormalize(schema) {

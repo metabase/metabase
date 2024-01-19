@@ -85,7 +85,6 @@ import {
   handleEntities,
   compose,
   withAction,
-  withAnalytics,
   withRequestState,
   withCachedDataAndRequestState,
 } from "metabase/lib/redux";
@@ -192,16 +191,6 @@ export function createEntity(def) {
     ]);
   }
 
-  // same as withRequestState, but with category/label
-  function withEntityAnalytics(action) {
-    return withAnalytics(
-      "entities",
-      entity.name,
-      action,
-      entity.getAnalyticsMetadata,
-    );
-  }
-
   function withEntityActionDecorators(action) {
     return entity.actionDecorators[action] || (_ => _);
   }
@@ -225,7 +214,6 @@ export function createEntity(def) {
 
     create: compose(
       withAction(CREATE_ACTION),
-      withEntityAnalytics("create"),
       withEntityRequestState(() => ["create"]),
       withEntityActionDecorators("create"),
     )(entityObject => async (dispatch, getState) => {
@@ -236,7 +224,6 @@ export function createEntity(def) {
 
     update: compose(
       withAction(UPDATE_ACTION),
-      withEntityAnalytics("update"),
       withEntityRequestState(object => [object.id, "update"]),
       withEntityActionDecorators("update"),
     )(
@@ -288,7 +275,6 @@ export function createEntity(def) {
 
     delete: compose(
       withAction(DELETE_ACTION),
-      withEntityAnalytics("delete"),
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {

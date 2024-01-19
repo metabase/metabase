@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 
 import screenfull from "screenfull";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
 const TICK_PERIOD = 1; // seconds
@@ -117,11 +116,6 @@ export const DashboardControls = ComposedComponent =>
           );
           this.setState({ refreshPeriod });
           this.setRefreshElapsed(0);
-          MetabaseAnalytics.trackStructEvent(
-            "Dashboard",
-            "Set Refresh",
-            refreshPeriod,
-          );
         } else {
           this.setState({ refreshPeriod: null });
           this.setRefreshElapsed(null);
