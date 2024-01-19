@@ -26,11 +26,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.signInAsAdmin();
   });
 
-  // TODO: double check if it's a duplication of the test I added in line_chart :(
   it("should allow brush date filter", { tags: "@flaky" }, () => {
     cy.createQuestion(
       {
-        name: "Brush Date Filter",
+        name: "Brush Date Temporal Filter",
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
