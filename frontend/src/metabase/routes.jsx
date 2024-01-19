@@ -154,7 +154,7 @@ export const getRoutes = store => {
               if (page && page !== "/") {
                 replace({
                   pathname: page[0] === "/" ? page : `/${page}`,
-                  state: { isNavbarOpen: true },
+                  state: { isHomePageRedirect: true },
                 });
               }
             }}

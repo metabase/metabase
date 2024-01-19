@@ -22,7 +22,11 @@ describe("scenarios > navigation > navbar", () => {
       cy.visit("/collection/root");
       cy.findByTestId("main-navbar-root").should("be.visible");
       cy.findByTestId("main-logo-link").click();
-      cy.url().should("eq", `${location.origin}/`);
+      cy.findByTestId("main-navbar-root").should("be.visible");
+      visitDashboard(8);
+      cy.findByTestId("main-navbar-root").should("not.be.visible");
+      cy.findByTestId("main-logo-link").click();
+      cy.findByTestId("main-navbar-root").should("not.be.visible");
     });
 
     it("should close when visiting a dashboard", () => {
@@ -50,6 +54,7 @@ describe("scenarios > navigation > navbar", () => {
         .click();
       cy.findByTestId("main-navbar-root").should("not.be.visible");
     });
+
     it("should close when opening a sql editor", () => {
       cy.visit("/");
       cy.findByTestId("main-navbar-root").should("be.visible");
@@ -68,6 +73,15 @@ describe("scenarios > navigation > navbar", () => {
       cy.url().should("contain", "dashboard");
       cy.findByTestId("main-navbar-root").should("be.visible");
     });
+
+    it("should preserve state when clicking the mb logo and a custom home page is configured", () => {
+      cy.signInAsAdmin();
+      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", { value: 8 });
+      visitDashboard(8);
+      cy.findByTestId("main-logo-link").click();
+      cy.findByTestId("main-navbar-root").should("not.be.visible");
+    });
   });
 
   describeEE("EE", () => {
@@ -84,6 +98,15 @@ describe("scenarios > navigation > navbar", () => {
       cy.visit("/");
       cy.url().should("contain", "question");
       cy.findByTestId("main-navbar-root").should("be.visible");
+    });
+
+    it("should preserve state when clicking the mb logo and landing page is configured", () => {
+      cy.request("PUT", "/api/setting/landing-page", {
+        value: "/question/76",
+      });
+      visitDashboard(8);
+      cy.findByTestId("main-logo-link").click();
+      cy.findByTestId("main-navbar-root").should("not.be.visible");
     });
   });
 });

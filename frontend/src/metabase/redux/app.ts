@@ -60,15 +60,10 @@ const errorPage = handleActions(
 
 const PATH_WITH_COLLAPSED_NAVBAR = /\/(model|question|dashboard|metabot).*/;
 
-export function isNavbarOpenForPathname(
-  pathname: string,
-  prevState: boolean,
-  override?: boolean,
-) {
-  if (isSmallScreen()) {
-    return false;
-  }
-  return override ?? (!PATH_WITH_COLLAPSED_NAVBAR.test(pathname) && prevState);
+export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
+  return (
+    !isSmallScreen() && !PATH_WITH_COLLAPSED_NAVBAR.test(pathname) && prevState
+  );
 }
 
 export const OPEN_NAVBAR = "metabase/app/OPEN_NAVBAR";
@@ -84,12 +79,18 @@ const isNavbarOpen = handleActions(
     [OPEN_NAVBAR]: () => true,
     [TOGGLE_NAVBAR]: isOpen => !isOpen,
     [CLOSE_NAVBAR]: () => false,
-    ["@@router/LOCATION_CHANGE"]: (prevState, action: LocationChangeAction) => {
-      const { pathname, state } = action.payload;
-      return isNavbarOpenForPathname(pathname, prevState, state?.isNavbarOpen);
+    ["@@router/LOCATION_CHANGE"]: (
+      prevState,
+      { payload }: LocationChangeAction,
+    ) => {
+      const { pathname, state } = payload;
+      if (state?.isHomePageRedirect) {
+        return prevState;
+      }
+      return isNavbarOpenForPathname(pathname, prevState);
     },
   },
-  isNavbarOpenForPathname(window.location.pathname, true),
+  true,
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
