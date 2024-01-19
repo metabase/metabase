@@ -2,7 +2,7 @@ import type { Card, Dashboard } from "metabase-types/api";
 
 export type ActivePreviewPane = "preview" | "code";
 
-export type EmbedType = "application" | null;
+export type EmbedModalStep = "application" | "legalese" | null;
 
 export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters | null;

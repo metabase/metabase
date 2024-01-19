@@ -15,7 +15,7 @@ import type {
   EmbeddingParameters,
   EmbedResource,
   EmbedResourceType,
-  EmbedType,
+  EmbedModalStep,
 } from "../types";
 import EmbedCodePane from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
@@ -35,7 +35,7 @@ const DEFAULT_THEME = THEME_OPTIONS[0].value;
 export interface AppearanceSettingsProps {
   activePane: ActivePreviewPane;
 
-  embedType: EmbedType;
+  embedType: EmbedModalStep;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
   iframeUrl: string;
