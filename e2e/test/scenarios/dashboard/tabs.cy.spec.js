@@ -417,13 +417,13 @@ describe("scenarios > dashboard > tabs", () => {
     // Assert initial tab order
     cy.findAllByTestId("tab-button-input-wrapper")
       .eq(0)
-      .should("have.text", "Tab 1");
+      .findByText("Tab 1");
     cy.findAllByTestId("tab-button-input-wrapper")
       .eq(1)
-      .should("have.text", "Tab 2");
+      .findByText("Tab 2");
     cy.findAllByTestId("tab-button-input-wrapper")
       .eq(2)
-      .should("have.text", "Tab 3");
+      .findByText("Tab 3");
 
     // Prior to this bugfix, tab containing this text would be too long to drag to the left of either of the other tabs.
     const longName =
@@ -435,40 +435,51 @@ describe("scenarios > dashboard > tabs", () => {
       .type(`${longName}{enter}`);
 
     // Drag the long tab to the beginning of the tab row
-    cy.findByRole("button", { name: "Tab 1" }).as("T1");
-    cy.findByRole("button", { name: longName }).as("L2");
+    cy.findByRole("button", { name: "Tab 1" }).as("Tab 1");
+    cy.findByRole("button", { name: longName }).as("LongTab");
 
-    cy.get("@L2").then(target => {
-      cy.get("@T1").then(x => {
-        const coordsDrag = x[0].getBoundingClientRect();
+    cy.get("@LongTab").then(target => {
+      cy.get("@Tab 1").then(tab1Element => {
+        const coordsDrag = tab1Element[0].getBoundingClientRect();
         cy.wrap(target)
           .should("exist")
           .trigger("mousedown", { button: 0, force: true })
+          // You have to move the mouse at least 10 pixels to satisfy the
+          // activationConstraint: { distance: 10 } in the mouseSensor.
+          // If you remove that activationConstraint while still having the
+          // mouseSensor (required to make this pass), then the tests in
+          // DashboardTabs.unit.spec.tsx will fail.
+          .trigger("mousemove", {
+            button: 0,
+            clientX: 11,
+            clientY: 0,
+            force: true
+          })
           .trigger("mousemove", {
             button: 0,
             clientX: coordsDrag.x,
             clientY: 0,
-            force: true,
+            force: true
           })
           .trigger("mouseup");
       });
     });
 
-    // This seems to be needed to ensure the drag is completed
-    cy.wait(100);
+    // Ensure the tab name has reverted to the long name after the drag has completed
+    cy.findByRole("button", { name: longName });
 
     saveDashboard();
 
     // After the long tab is dragged, it is now in the first position
     cy.findAllByTestId("tab-button-input-wrapper")
       .eq(0)
-      .should("have.text", longName);
+      .findByText( longName);
     cy.findAllByTestId("tab-button-input-wrapper")
       .eq(1)
-      .should("have.text", "Tab 1");
+      .findByText("Tab 1");
     cy.findAllByTestId("tab-button-input-wrapper")
       .eq(2)
-      .should("have.text", "Tab 2");
+      .findByText("Tab 2");
   });
 });
 
