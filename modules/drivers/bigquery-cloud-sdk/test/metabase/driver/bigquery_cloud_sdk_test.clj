@@ -643,9 +643,10 @@
               exclude-prefixes (rest prefixes)
               ;; inclusion-patterns selects the first dataset
               inclusion-patterns (str include-prefix "*")
-              ;; exclusion-patterns excludes every dataset with exclude prefixes. It should exclude all other datasets
-              ;; except ones that match the include-prefix, but there could be other tests creating new datasets for
-              ;; the same test DB in the meantime, causing this test to flake.
+              ;; exclusion-patterns excludes every dataset with exclude prefixes. It would exclude all other datasets
+              ;; except ones that match the include-prefix, except there could be other tests creating new datasets for
+              ;; the same test DB while this test is running, so we can't guarantee that the include-prefix will match all the
+              ;; datasets
               exclusion-patterns (str/join "," (map #(str % "*") (set exclude-prefixes)))]
           (testing " with an inclusion filter"
             (let [tables (synced-tables {:name    "BigQuery Test DB with dataset inclusion filters"
