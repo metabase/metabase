@@ -102,11 +102,11 @@
           non-magic-groups (perms-group/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; All other permissions are set at the table-level, so they are added when individual tables are synced
-      (data-perms/set-database-permission! all-users-group database :native-query-editing :yes)
+      (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
       (doseq [group non-magic-groups]
-        (data-perms/set-database-permission! group database :native-query-editing :no))
+        (data-perms/set-database-permission! group database :perms/native-query-editing :no))
       (doseq [group non-admin-groups]
-        (data-perms/set-database-permission! group database :manage-database :no)))))
+        (data-perms/set-database-permission! group database :perms/manage-database :no)))))
 
 (t2/define-after-insert :model/Database
   [database]
