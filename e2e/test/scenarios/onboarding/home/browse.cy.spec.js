@@ -12,11 +12,12 @@ describe("scenarios > browse data", () => {
     cy.findByText(/Browse data/).click();
     cy.location("pathname").should("eq", "/browse");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^Our data$/i);
+    cy.findByRole("heading", { name: "Browse data" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Learn about our data").click();
     cy.location("pathname").should("eq", "/reference/databases");
     cy.go("back");
+    cy.findByRole("tab", { name: "Databases" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sample Database").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
