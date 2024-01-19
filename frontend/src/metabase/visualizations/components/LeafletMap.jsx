@@ -147,6 +147,7 @@ export default class LeafletMap extends Component {
       ],
       settings,
       onChangeCardAndRun,
+      metadata,
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
@@ -156,7 +157,7 @@ export default class LeafletMap extends Component {
       name: settings["map.longitude_column"],
     });
 
-    const question = new Question(card);
+    const question = new Question(card, metadata);
     if (question.isStructured()) {
       const query = question.query();
       const stageIndex = -1;
