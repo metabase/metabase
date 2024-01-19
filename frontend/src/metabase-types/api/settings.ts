@@ -281,6 +281,7 @@ export interface Settings {
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
   "last-acknowledged-version": string | null;
+  "show-static-embed-terms": boolean | null;
 }
 
 export type SettingKey = keyof Settings;
