@@ -5234,7 +5234,7 @@ databaseChangeLog:
                     deleteCascade: true
               - column:
                   remarks: The type of the permission (e.g. "data", "collection", "download"...)
-                  name: type
+                  name: perm_type
                   type: varchar(64)
                   constraints:
                     nullable: false
@@ -5250,7 +5250,7 @@ databaseChangeLog:
                     deleteCascade: true
               - column:
                   remarks: A schema name, for table-level permissions
-                  name: schema
+                  name: schema_name
                   type: varchar(254)
                   constraints:
                     nullable: true
@@ -5265,9 +5265,7 @@ databaseChangeLog:
                     foreignKeyName: fk_data_permissions_ref_table_id
                     deleteCascade: true
               - column:
-                  remarks: >-
-                    The value this permission is set to. I wanted to call this 'value' but that's a reserved word
-                    in H2 which makes migrations a little more difficult.
+                  remarks: The value this permission is set to.
                   name: perm_value
                   type: varchar(64)
                   constraints:
@@ -5312,6 +5310,70 @@ databaseChangeLog:
                   name: group_id
             indexName: idx_data_permissions_group_id
 
+  - changeSet:
+      id: v49.2024-01-10T03:27:30
+      author: noahmoss
+      comment: Migrate data-access permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_data_access.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v49.2024-01-10T03:27:31
+      author: noahmoss
+      comment: Migrate native-query-editing permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            path: permissions/native_query_editing.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v49.2024-01-10T03:27:32
+      author: noahmoss
+      comment: Migrate download-results permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_download_results.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v49.2024-01-10T03:27:33
+      author: noahmoss
+      comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_manage_table_metadata.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v49.2024-01-10T03:27:34
+      author: noahmoss
+      comment: Migrate manage-database permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            path: permissions/manage_database.sql
+            relativeToChangelogFile: true
+      rollback:
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
