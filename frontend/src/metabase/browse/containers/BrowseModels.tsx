@@ -427,6 +427,9 @@ const getGridOptions = (
   };
 };
 
+const cellIsInHeaderRow = (item: Cell) =>
+  item?.type === CollectionHeader || item?.type === BlankCellInHeader;
+
 const renderItem: RenderItemFunction = ({
   columnCount,
   columnIndex,
