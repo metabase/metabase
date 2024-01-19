@@ -138,6 +138,12 @@
            (:where (search.filter/build-filters
                     base-search-query "table"  default-search-ctx))))))
 
+(deftest ^:parallel build-table-filter-always-ignores-audit-tables
+  (is (contains?
+         (set (:where (search.filter/build-filters
+                       base-search-query "table"  default-search-ctx)))
+         [:not [:= :table.db_id perms/audit-db-id]])))
+
 (deftest ^:parallel build-filter-with-search-string-test
   (testing "with search string"
     (is (= [:and
