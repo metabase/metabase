@@ -234,6 +234,7 @@ const makeCells = (models: SearchResult[]): Cell[] => {
     const firstModelInItsCollection =
       i === 0 || collectionIdChanged || model.collection?.id === undefined;
 
+    /** This id is used by aria-labelledby */
     const collectionHtmlId = model?.collection?.id
       ? `collection-${model.collection?.id}`
       : `item-${cells.length}`;
@@ -241,7 +242,6 @@ const makeCells = (models: SearchResult[]): Cell[] => {
     // Before the first model in a given collection,
     // add an item that represents the header of the collection
     if (firstModelInItsCollection) {
-      // This id is used by aria-labelledby
       const header = (
         <CollectionHeader
           collection={model.collection}
