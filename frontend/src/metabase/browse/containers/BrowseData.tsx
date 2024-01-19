@@ -85,8 +85,6 @@ export const BrowseDataPage = () => {
   );
 };
 
-// NOTE: The minimum mergeable version does not need to include the verified badges
-
 const emptyArray: Database[] = [];
 
 const BrowseDatabases = ({
