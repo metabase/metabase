@@ -47,9 +47,9 @@
                  :model/Database         {database-id :id} {}]
     (let [perm-value (fn [perm-type] (t2/select-one-fn :perm_value
                                                        :model/DataPermissions
-                                                       :db_id database-id
-                                                       :group_id group-id
-                                                       :type perm-type))]
+                                                       :db_id     database-id
+                                                       :group_id  group-id
+                                                       :perm_type perm-type))]
      (with-restored-perms-for-group! group-id
        (testing "`set-database-permission!` correctly updates an individual database's permissions"
          (data-perms/set-database-permission! group-id database-id :native-query-editing :no)
@@ -78,10 +78,10 @@
                  :model/Table            {table-id-3 :id}    {:db_id database-id}
                  :model/Table            {table-id-4 :id}    {:db_id database-id-2}]
     (let [data-access-perm-value (fn [table-id] (t2/select-one-fn :perm_value :model/DataPermissions
-                                                                  :db_id database-id
-                                                                  :group_id group-id
-                                                                  :table_id table-id
-                                                                  :type :data-access))]
+                                                                  :db_id     database-id
+                                                                  :group_id  group-id
+                                                                  :table_id  table-id
+                                                                  :perm_type :data-access))]
       (with-restored-perms-for-group! group-id
         (testing "`set-table-permissions!` can set individual table permissions to different values"
           (data-perms/set-table-permissions! group-id :data-access {table-id-1 :no-self-service
