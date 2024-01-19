@@ -20,14 +20,12 @@ const TextEditorMock = ({
   value: string;
   highlightedText?: string[];
 }) => (
-  <div data-testid="text-editor-mock">
-    {value}
-    {highlightedText && (
-      <div data-testid="text-editor-mock-highlighted-code">
-        {highlightedText.map(text => text)}
-      </div>
-    )}
-  </div>
+  <>
+    <div data-testid="text-editor-mock">{value}</div>
+    <div data-testid="text-editor-mock-highlighted-code">
+      {highlightedText?.map(text => text)}
+    </div>
+  </>
 );
 
 jest.mock("metabase/components/TextEditor", () => TextEditorMock);
@@ -131,6 +129,12 @@ describe("Static Embed Setup phase", () => {
         "href",
         "https://www.metabase.com/docs/latest/embedding/static-embedding.html",
       );
+
+      expect(
+        screen.getByText(
+          "You can also hide or lock any of the dashboard’s parameters.",
+        ),
+      ).toBeVisible();
 
       expect(
         screen.getByText(
@@ -339,6 +343,12 @@ describe("Static Embed Setup phase", () => {
     });
 
     it("should switch to Preview mode if user changes locked parameter value", () => {
+      const dateParameter = {
+        id: "5cd742ef",
+        name: "Month and Year",
+        slug: "month_and_year",
+        type: "date/month-year",
+      };
       setup({
         props: {
           resource: {
@@ -347,14 +357,7 @@ describe("Static Embed Setup phase", () => {
               month_and_year: "locked",
             },
           },
-          resourceParameters: [
-            {
-              id: "5cd742ef",
-              name: "Month and Year",
-              slug: "month_and_year",
-              type: "date/month-year",
-            },
-          ],
+          resourceParameters: [dateParameter],
         },
         activeTab: "Parameters",
       });
@@ -362,7 +365,7 @@ describe("Static Embed Setup phase", () => {
       userEvent.click(
         within(screen.getByLabelText("Previewing locked parameters")).getByRole(
           "button",
-          { name: "Month and Year" },
+          { name: dateParameter.name },
         ),
       );
 
@@ -370,6 +373,44 @@ describe("Static Embed Setup phase", () => {
 
       expect(screen.getByLabelText("Preview")).toBeChecked();
       expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
+    });
+
+    it("should highlight changed code on locked parameter value change", () => {
+      const dateParameter = {
+        id: "5cd742ef",
+        name: "Month and Year",
+        slug: "month_and_year",
+        type: "date/month-year",
+      };
+      setup({
+        props: {
+          resource: {
+            ...createMockDashboard(),
+            embedding_params: {
+              month_and_year: "locked",
+            },
+          },
+          resourceParameters: [dateParameter],
+        },
+        activeTab: "Parameters",
+      });
+
+      userEvent.click(
+        within(screen.getByLabelText("Previewing locked parameters")).getByRole(
+          "button",
+          { name: dateParameter.name },
+        ),
+      );
+
+      userEvent.click(screen.getByText("February"));
+
+      userEvent.click(screen.getByText("Code"));
+
+      expect(
+        screen.getByTestId("text-editor-mock-highlighted-code"),
+      ).toHaveTextContent(
+        `params: { "${dateParameter.slug}": "${new Date().getFullYear()}-02" }`,
+      );
     });
   });
 
@@ -659,6 +700,68 @@ describe("Static Embed Setup phase", () => {
     expect(
       screen.getByTestId("text-editor-mock-highlighted-code"),
     ).toHaveTextContent(`${parametersChangedCode},${appearanceChangedCode}`);
+  });
+
+  it("should not display changes after parameters reset to initial values", async () => {
+    setup({
+      props: {
+        resource: {
+          ...createMockDashboard({
+            enable_embedding: true,
+          }),
+          embedding_params: {
+            my_param: "locked",
+          },
+        },
+        resourceParameters: [
+          {
+            id: "my_param",
+            name: "My param",
+            slug: "my_param",
+            type: "category",
+          },
+          {
+            id: "my_other_param",
+            name: "My other param",
+            slug: "my_other_param",
+            type: "category",
+          },
+        ],
+      },
+      activeTab: "Parameters",
+    });
+
+    const parametersTypeSection = screen.getByLabelText(
+      "Configuring parameters",
+    );
+
+    userEvent.click(
+      within(parametersTypeSection).getByLabelText("My other param"),
+    );
+
+    userEvent.click(
+      within(await screen.findByRole("grid")).getByText("Locked"),
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "Discard changes",
+      }),
+    ).toBeVisible();
+
+    userEvent.click(
+      within(parametersTypeSection).getByLabelText("My other param"),
+    );
+
+    userEvent.click(
+      within(await screen.findByRole("grid")).getByText("Disabled"),
+    );
+
+    expect(
+      screen.queryByRole("button", {
+        name: "Discard changes",
+      }),
+    ).not.toBeInTheDocument();
   });
 });
 

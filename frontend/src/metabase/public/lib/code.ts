@@ -38,37 +38,45 @@ export const getEmbedClientCodeExampleOptions =
   ];
 
 export const getEmbedServerCodeExampleOptions = (
-  params: CodeSampleParameters,
+  codeSampleParameters: CodeSampleParameters,
 ): ServerCodeSampleConfig[] => [
   {
     name: "Node.js",
-    source: node.getServerSource(params),
-    parametersSource: node.getParametersSource(params.params),
-    getIframeQuerySource: node.getIframeQuerySource(params.displayOptions),
+    source: node.getServerSource(codeSampleParameters),
+    parametersSource: node.getParametersSource(codeSampleParameters.params),
+    getIframeQuerySource: node.getIframeQuerySource(
+      codeSampleParameters.displayOptions,
+    ),
     mode: "ace/mode/javascript",
     embedOption: "Pug / Jade",
   },
   {
     name: "Ruby",
-    source: ruby.getServerSource(params),
-    parametersSource: ruby.getParametersSource(params.params),
-    getIframeQuerySource: ruby.getIframeQuerySource(params.displayOptions),
+    source: ruby.getServerSource(codeSampleParameters),
+    parametersSource: ruby.getParametersSource(codeSampleParameters.params),
+    getIframeQuerySource: ruby.getIframeQuerySource(
+      codeSampleParameters.displayOptions,
+    ),
     mode: "ace/mode/ruby",
     embedOption: "ERB",
   },
   {
     name: "Python",
-    source: python.getServerSource(params),
-    parametersSource: python.getParametersSource(params.params),
-    getIframeQuerySource: python.getIframeQuerySource(params.displayOptions),
+    source: python.getServerSource(codeSampleParameters),
+    parametersSource: python.getParametersSource(codeSampleParameters.params),
+    getIframeQuerySource: python.getIframeQuerySource(
+      codeSampleParameters.displayOptions,
+    ),
     mode: "ace/mode/python",
     embedOption: "Pug / Jade",
   },
   {
     name: "Clojure",
-    source: closure.getServerSource(params),
-    parametersSource: closure.getParametersSource(params.params),
-    getIframeQuerySource: closure.getIframeQuerySource(params.displayOptions),
+    source: closure.getServerSource(codeSampleParameters),
+    parametersSource: closure.getParametersSource(codeSampleParameters.params),
+    getIframeQuerySource: closure.getIframeQuerySource(
+      codeSampleParameters.displayOptions,
+    ),
     mode: "ace/mode/clojure",
     embedOption: "Pug / Jade",
   },

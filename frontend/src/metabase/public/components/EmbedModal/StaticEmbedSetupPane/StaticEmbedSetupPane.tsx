@@ -75,7 +75,7 @@ export const StaticEmbedSetupPane = ({
   const initialPreviewParameters = getPreviewParamsBySlug({
     resourceParameters,
     embeddingParams: initialEmbeddingParams,
-    parameterValues,
+    parameterValues: {},
   });
   const lockedParameters = getLockedPreviewParameters(
     resourceParameters,
