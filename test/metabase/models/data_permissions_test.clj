@@ -37,10 +37,10 @@
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
     (are [expected args] (= expected (apply data-perms/coalesce args))
-      :unrestricted    [:data-access #{:unrestricted :restricted :none}]
-      :no-self-service [:data-access #{:no-self-service :none}]
-      :block           [:data-access #{:block}]
-      nil              [:data-access #{}])))
+      :unrestricted    [:perms/data-access #{:unrestricted :restricted :none}]
+      :no-self-service [:perms/data-access #{:no-self-service :none}]
+      :block           [:perms/data-access #{:block}]
+      nil              [:perms/data-access #{}])))
 
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
@@ -52,21 +52,21 @@
                                                        :perm_type perm-type))]
      (with-restored-perms-for-group! group-id
        (testing "`set-database-permission!` correctly updates an individual database's permissions"
-         (data-perms/set-database-permission! group-id database-id :native-query-editing :no)
-         (is (= :no (perm-value :native-query-editing)))
-         (data-perms/set-database-permission! group-id database-id :native-query-editing :yes)
-         (is (= :yes (perm-value :native-query-editing))))
+         (data-perms/set-database-permission! group-id database-id :perms/native-query-editing :no)
+         (is (= :no (perm-value :perms/native-query-editing)))
+         (data-perms/set-database-permission! group-id database-id :perms/native-query-editing :yes)
+         (is (= :yes (perm-value :perms/native-query-editing))))
 
        (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :block"
-         (data-perms/set-database-permission! group-id database-id :data-access :block)
-         (is (= :block (perm-value :data-access)))
-         (is (= :no (perm-value :native-query-editing))))
+         (data-perms/set-database-permission! group-id database-id :perms/data-access :block)
+         (is (= :block (perm-value :perms/data-access)))
+         (is (= :no (perm-value :perms/native-query-editing))))
 
        (testing "A database-level permission cannot be set to an invalid value"
          (is (thrown-with-msg?
               ExceptionInfo
-              #"Permission type :native-query-editing cannot be set to :invalid-value"
-              (data-perms/set-database-permission! group-id database-id :native-query-editing :invalid-value))))))))
+              #"Permission type :perms/native-query-editing cannot be set to :invalid-value"
+              (data-perms/set-database-permission! group-id database-id :perms/native-query-editing :invalid-value))))))))
 
 (deftest set-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
@@ -81,31 +81,31 @@
                                                                   :db_id     database-id
                                                                   :group_id  group-id
                                                                   :table_id  table-id
-                                                                  :perm_type :data-access))]
+                                                                  :perm_type :perms/data-access))]
       (with-restored-perms-for-group! group-id
         (testing "`set-table-permissions!` can set individual table permissions to different values"
-          (data-perms/set-table-permissions! group-id :data-access {table-id-1 :no-self-service
-                                                                    table-id-2 :unrestricted
-                                                                    table-id-3 :no-self-service})
+          (data-perms/set-table-permissions! group-id :perms/data-access {table-id-1 :no-self-service
+                                                                          table-id-2 :unrestricted
+                                                                          table-id-3 :no-self-service})
           (is (= :no-self-service (data-access-perm-value table-id-1)))
           (is (= :unrestricted    (data-access-perm-value table-id-2)))
           (is (= :no-self-service (data-access-perm-value table-id-3))))
 
         (testing "`set-table-permissions!` can set individual table permissions passed in as the full tables"
-          (data-perms/set-table-permissions! group-id :data-access {table-1 :unrestricted})
+          (data-perms/set-table-permissions! group-id :perms/data-access {table-1 :unrestricted})
           (is (= :unrestricted (data-access-perm-value table-id-1))))
 
         (testing "`set-table-permission!` coalesces table perms to a DB-level value if they're all the same"
-          (data-perms/set-table-permissions! group-id :data-access {table-id-1 :no-self-service
-                                                                    table-id-2 :no-self-service})
+          (data-perms/set-table-permissions! group-id :perms/data-access {table-id-1 :no-self-service
+                                                                          table-id-2 :no-self-service})
           (is (= :no-self-service (data-access-perm-value nil)))
           (is (nil?               (data-access-perm-value table-id-1)))
           (is (nil?               (data-access-perm-value table-id-2)))
           (is (nil?               (data-access-perm-value table-id-3))))
 
         (testing "`set-table-permission!` breaks table perms out again if any are modified"
-          (data-perms/set-table-permissions! group-id :data-access {table-id-2 :unrestricted
-                                                                    table-id-3 :no-self-service})
+          (data-perms/set-table-permissions! group-id :perms/data-access {table-id-2 :unrestricted
+                                                                          table-id-3 :no-self-service})
           (is (nil?               (data-access-perm-value nil)))
           (is (= :no-self-service (data-access-perm-value table-id-1)))
           (is (= :unrestricted    (data-access-perm-value table-id-2)))
@@ -114,30 +114,30 @@
         (testing "A non table-level permission cannot be set"
           (is (thrown-with-msg?
                ExceptionInfo
-               #"Permission type :native-query-editing cannot be set on tables."
-               (data-perms/set-table-permissions! group-id :native-query-editing {table-id-1 :yes}))))
+               #"Permission type :perms/native-query-editing cannot be set on tables."
+               (data-perms/set-table-permissions! group-id :perms/native-query-editing {table-id-1 :yes}))))
 
         (testing "A table-level permission cannot be set to an invalid value"
           (is (thrown-with-msg?
                ExceptionInfo
-               #"Permission type :data-access cannot be set to :invalid"
-               (data-perms/set-table-permissions! group-id :data-access {table-id-1 :invalid}))))
+               #"Permission type :perms/data-access cannot be set to :invalid"
+               (data-perms/set-table-permissions! group-id :perms/data-access {table-id-1 :invalid}))))
 
         (testing "A table-level permission cannot be set to :block"
           (is (thrown-with-msg?
                ExceptionInfo
                #"Block permissions must be set at the database-level only."
-               (data-perms/set-table-permissions! group-id :data-access {table-id-1 :block}))))
+               (data-perms/set-table-permissions! group-id :perms/data-access {table-id-1 :block}))))
 
         (testing "Table-level permissions can only be set in bulk for tables in the same database"
           (is (thrown-with-msg?
                ExceptionInfo
                #"All tables must belong to the same database."
-               (data-perms/set-table-permissions! group-id :data-access {table-id-3 :unrestricted
-                                                                         table-id-4 :unrestricted}))))
+               (data-perms/set-table-permissions! group-id :perms/data-access {table-id-3 :unrestricted
+                                                                               table-id-4 :unrestricted}))))
 
         (testing "Setting block permissions at the database level clears table-level data access perms"
-          (data-perms/set-database-permission! group-id database-id :data-access :block)
+          (data-perms/set-database-permission! group-id database-id :perms/data-access :block)
           (is (= :block (data-access-perm-value nil)))
           (is (nil?     (data-access-perm-value table-id-1)))
           (is (nil?     (data-access-perm-value table-id-2)))
@@ -155,16 +155,16 @@
                  :model/Database                   {database-id-2 :id} {}]
     (with-restored-perms-for-groups! [group-id-1 group-id-2]
       (testing "`database-permission-for-user` coalesces permissions from all groups a user is in"
-        (data-perms/set-database-permission! group-id-1 database-id-1 :native-query-editing :yes)
-        (data-perms/set-database-permission! group-id-2 database-id-1 :native-query-editing :no)
-        (is (= :yes (data-perms/database-permission-for-user user-id :native-query-editing database-id-1))))
+        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/native-query-editing :yes)
+        (data-perms/set-database-permission! group-id-2 database-id-1 :perms/native-query-editing :no)
+        (is (= :yes (data-perms/database-permission-for-user user-id :perms/native-query-editing database-id-1))))
 
       (testing "`database-permission-for-user` falls back to the least permissive value if no value exists for the user"
         (t2/delete! :model/DataPermissions :db_id database-id-2)
-        (is (= :no (data-perms/database-permission-for-user user-id :native-query-editing database-id-2))))
+        (is (= :no (data-perms/database-permission-for-user user-id :perms/native-query-editing database-id-2))))
 
       (testing "Admins always have the most permissive value, regardless of group membership"
-        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :native-query-editing database-id-2)))))))
+        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :perms/native-query-editing database-id-2)))))))
 
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
@@ -179,16 +179,16 @@
                  :model/Table                      {table-id-2 :id}  {:db_id database-id}]
     (with-restored-perms-for-groups! [group-id-1 group-id-2]
       (testing "`table-permission-for-user` coalesces permissions from all groups a user is in"
-        (data-perms/set-table-permission! group-id-1 table-id-1 :data-access :unrestricted)
-        (data-perms/set-table-permission! group-id-2 table-id-1 :data-access :no-self-service)
-        (is (= :unrestricted (data-perms/table-permission-for-user user-id :data-access database-id table-id-1))))
+        (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! group-id-2 table-id-1 :perms/data-access :no-self-service)
+        (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/data-access database-id table-id-1))))
 
       (testing "`table-permission-for-user` falls back to the least permissive value if no value exists for the user"
         (t2/delete! :model/DataPermissions :db_id database-id)
-        (is (= :block (data-perms/table-permission-for-user user-id :data-access database-id table-id-2))))
+        (is (= :block (data-perms/table-permission-for-user user-id :perms/data-access database-id table-id-2))))
 
       (testing "Admins always have the most permissive value, regardless of group membership"
-        (is (= :unrestricted (data-perms/table-permission-for-user (mt/user->id :crowberto) :data-access database-id table-id-2)))))))
+        (is (= :unrestricted (data-perms/table-permission-for-user (mt/user->id :crowberto) :perms/data-access database-id table-id-2)))))))
 
 (deftest data-permissions-graph-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
@@ -206,81 +206,81 @@
       (t2/delete! :model/DataPermissions :group_id group-id-1)
       (t2/delete! :model/DataPermissions :group_id group-id-2)
       (testing "Data access and native query permissions can be fetched as a graph"
-        (data-perms/set-table-permission! group-id-1 table-id-1 :data-access :unrestricted)
-        (data-perms/set-table-permission! group-id-1 table-id-2 :data-access :no-self-service)
-        (data-perms/set-table-permission! group-id-1 table-id-3 :data-access :unrestricted)
-        (data-perms/set-database-permission! group-id-1 database-id-1 :native-query-editing :yes)
-        (data-perms/set-database-permission! group-id-1 database-id-2 :native-query-editing :no)
-        (data-perms/set-table-permission! group-id-2 table-id-1 :data-access :no-self-service)
+        (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! group-id-1 table-id-2 :perms/data-access :no-self-service)
+        (data-perms/set-table-permission! group-id-1 table-id-3 :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/native-query-editing :yes)
+        (data-perms/set-database-permission! group-id-1 database-id-2 :perms/native-query-editing :no)
+        (data-perms/set-table-permission! group-id-2 table-id-1 :perms/data-access :no-self-service)
         (is (partial=
              {group-id-1
-              {database-id-1 {:data-access
+              {database-id-1 {:perms/data-access
                               {"PUBLIC"
                                {table-id-1 :unrestricted
                                 table-id-2 :no-self-service}}
-                              :native-query-editing :yes}
-               database-id-2 {:data-access
+                              :perms/native-query-editing :yes}
+               database-id-2 {:perms/data-access
                               {""
                                {table-id-3 :unrestricted}}
-                              :native-query-editing :no}}
+                              :perms/native-query-editing :no}}
               group-id-2
-              {database-id-1 {:data-access
+              {database-id-1 {:perms/data-access
                               {"PUBLIC"
                                {table-id-1 :no-self-service}}}}}
              (data-perms/data-permissions-graph))))
 
       (testing "Additional data permissions are included when set"
-        (data-perms/set-table-permission! group-id-1 table-id-3 :download-results :one-million-rows)
-        (data-perms/set-table-permission! group-id-1 table-id-1 :manage-table-metadata :yes)
-        (data-perms/set-database-permission! group-id-1 database-id-2 :manage-database :yes)
+        (data-perms/set-table-permission! group-id-1 table-id-3 :perms/download-results :one-million-rows)
+        (data-perms/set-table-permission! group-id-1 table-id-1 :perms/manage-table-metadata :yes)
+        (data-perms/set-database-permission! group-id-1 database-id-2 :perms/manage-database :yes)
         (is (partial=
              {group-id-1
-              {database-id-1 {:manage-table-metadata
+              {database-id-1 {:perms/manage-table-metadata
                               {"PUBLIC"
                                {table-id-1 :yes}}}
-               database-id-2 {:download-results
+               database-id-2 {:perms/download-results
                               {""
                                {table-id-3 :one-million-rows}}
-                              :manage-database :yes}}}
+                              :perms/manage-database :yes}}}
              (data-perms/data-permissions-graph))))
 
       (testing "Data permissions graph can be filtered by group ID, database ID, and permission type"
         (is (= {group-id-1
-                {database-id-1 {:data-access
+                {database-id-1 {:perms/data-access
                                 {"PUBLIC"
                                  {table-id-1 :unrestricted
                                   table-id-2 :no-self-service}}
-                                :native-query-editing :yes
-                                :manage-table-metadata
+                                :perms/native-query-editing :yes
+                                :perms/manage-table-metadata
                                 {"PUBLIC"
                                  {table-id-1 :yes}}}
-                 database-id-2 {:data-access
+                 database-id-2 {:perms/data-access
                                 {""
                                  {table-id-3 :unrestricted}}
-                                :download-results
+                                :perms/download-results
                                 {""
                                  {table-id-3 :one-million-rows}}
-                                :manage-database :yes
-                                :native-query-editing :no}}}
+                                :perms/manage-database :yes
+                                :perms/native-query-editing :no}}}
                (data-perms/data-permissions-graph :group-id group-id-1)))
 
         (is (= {group-id-1
-                {database-id-1 {:data-access
+                {database-id-1 {:perms/data-access
                                 {"PUBLIC"
                                  {table-id-1 :unrestricted
                                   table-id-2 :no-self-service}}
-                                :native-query-editing :yes
-                                :manage-table-metadata
+                                :perms/native-query-editing :yes
+                                :perms/manage-table-metadata
                                 {"PUBLIC"
                                  {table-id-1 :yes}}}}}
                (data-perms/data-permissions-graph :group-id group-id-1
                                                   :db-id database-id-1)))
 
         (is (= {group-id-1
-                {database-id-1 {:data-access
+                {database-id-1 {:perms/data-access
                                 {"PUBLIC"
                                  {table-id-1 :unrestricted
                                   table-id-2 :no-self-service}}}}}
                (data-perms/data-permissions-graph :group-id group-id-1
                                                   :db-id database-id-1
-                                                  :perm-type :data-access)))))))
+                                                  :perm-type :perms/data-access)))))))
