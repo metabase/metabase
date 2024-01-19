@@ -348,7 +348,7 @@ function getYAxisProps(props, yExtents, datas) {
 
 /// make the `onBrushChange()` and `onBrushEnd()` functions we'll use later, as well as an `isBrushing()` function to check
 /// current status.
-function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
+function makeBrushChangeFunctions({ series, onChangeCardAndRun, metadata }) {
   let _isBrushing = false;
 
   const isBrushing = () => _isBrushing;
@@ -359,14 +359,14 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
 
   function onBrushEnd(range) {
     _isBrushing = false;
+
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
-      const question = new Question(card);
+      const question = new Question(card, metadata);
       const query = question.query();
       const stageIndex = -1;
 
-      // timestamps
       const [start, end] = range;
 
       if (isDimensionTimeseries(series)) {
