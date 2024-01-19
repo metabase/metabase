@@ -407,6 +407,69 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findAllByTestId("table-row").should("exist");
     });
   });
+
+  it("should allow me to rearrange long tabs (#34970)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    createNewTab();
+    createNewTab();
+
+    // Assert initial tab order
+    cy.findAllByTestId("tab-button-input-wrapper")
+      .eq(0)
+      .should("have.text", "Tab 1");
+    cy.findAllByTestId("tab-button-input-wrapper")
+      .eq(1)
+      .should("have.text", "Tab 2");
+    cy.findAllByTestId("tab-button-input-wrapper")
+      .eq(2)
+      .should("have.text", "Tab 3");
+
+    // Prior to this bugfix, tab containing this text would be too long to drag to the left of either of the other tabs.
+    const longName =
+      "This is a really, really, really, really, really long tab name";
+
+    // Set the long tab name
+    cy.findByRole("tab", { name: "Tab 3" })
+      .dblclick()
+      .type(`${longName}{enter}`);
+
+    // Drag the long tab to the beginning of the tab row
+    cy.findByRole("button", { name: "Tab 1" }).as("T1");
+    cy.findByRole("button", { name: longName }).as("L2");
+
+    cy.get("@L2").then(target => {
+      cy.get("@T1").then(x => {
+        const coordsDrag = x[0].getBoundingClientRect();
+        cy.wrap(target)
+          .should("exist")
+          .trigger("mousedown", { button: 0, force: true })
+          .trigger("mousemove", {
+            button: 0,
+            clientX: coordsDrag.x,
+            clientY: 0,
+            force: true,
+          })
+          .trigger("mouseup");
+      });
+    });
+
+    // This seems to be needed to ensure the drag is completed
+    cy.wait(100);
+
+    saveDashboard();
+
+    // After the long tab is dragged, it is now in the first position
+    cy.findAllByTestId("tab-button-input-wrapper")
+      .eq(0)
+      .should("have.text", longName);
+    cy.findAllByTestId("tab-button-input-wrapper")
+      .eq(1)
+      .should("have.text", "Tab 1");
+    cy.findAllByTestId("tab-button-input-wrapper")
+      .eq(2)
+      .should("have.text", "Tab 2");
+  });
 });
 
 describeWithSnowplow("scenarios > dashboard > tabs", () => {
