@@ -314,8 +314,10 @@ class DashboardInner extends Component<DashboardProps, DashboardState> {
     this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
   };
 
-  onMainScroll = (event: any) => {
-    this.setState({ hasScroll: event.target.scrollTop > 0 });
+  onMainScroll = (event: Event) => {
+    if (event.target instanceof HTMLElement) {
+      this.setState({ hasScroll: event.target.scrollTop > 0 });
+    }
   };
 
   renderContent = () => {
