@@ -22,7 +22,6 @@
    :manage-table-metadata :data-model
 
    :native-query-editing  :native
-   :native-downloads      :native
    :manage-database       :details})
 
 (def ^:private ->api-vals
@@ -33,27 +32,39 @@
                            :ten-thousand-rows :partial
                            :no                nil}
    :manage-table-metadata {:yes :all :no nil}
-   :native-query-editing  {:yes :full :no nil}
-   :native-downloads      {:yes :write :no nil}
+   :native-query-editing  {:yes :write :no nil}
    :manage-database       {:yes :yes :no :no}})
+
+(mu/defn ellide? :- :boolean
+  "If a table has the least permissive value for a perm type, leave it out,
+   Unless it's :data perms, in which case, leave it out only if it's no-self-service"
+  [type :- data-perms/Type
+   value :- data-perms/Value]
+  (if (= type :data-access)
+    ;; for `:data-access`, `:no-self-service` is the default (block  is a 'negative' permission),  so we should ellide
+    (= value :no-self-service)
+    (= (data-perms/least-permissive-value type) value)))
+
+(assert (ellide?         :data-access :no-self-service))
+(assert (false? (ellide? :data-access :block)))
 
 (defn- rename-or-ellide-kv
   "Renames a kv pair from the data-permissions-graph to an API-style data permissions graph (which we send to the client)."
-  [[k v]]
-  (when-not (= (data-perms/most-permissive-value k) v)
-    [(->api-keys k) ((->api-vals k) v)]))
+  [[type value]]
+  (when-not (ellide? type value)
+    [(->api-keys type) ((->api-vals type) value)]))
 
 (mu/defn ^:private api-table-perms
   "Helper to transform a 'leaf' value with table-level schemas in the data permissions graph into an API-style data permissions value."
-  [k :- data-perms/Type
+  [type :- data-perms/Type
    schema->table-id->api-val]
   (update-vals schema->table-id->api-val
                (fn [table-id->api-val]
                  (->> table-id->api-val
                       (keep
                        (fn [[table-id perm-val]]
-                         (when-not (= (data-perms/most-permissive-value k) perm-val)
-                           [table-id ((->api-vals k) perm-val)])))
+                         (when-not (ellide? type perm-val)
+                           [table-id ((->api-vals type) perm-val)])))
                       (into {})))))
 
 (defn- granular-perm-rename [perm-key perm-value legacy-path]
@@ -61,7 +72,7 @@
     (cond
       (map? perm-value)
       (assoc-in {} legacy-path (api-table-perms perm-key perm-value))
-      (not= (data-perms/most-permissive-value perm-key) perm-value)
+      (not (ellide? perm-key perm-value))
       (assoc-in {} legacy-path ((->api-vals perm-key) perm-value))
       :else {})))
 
@@ -93,7 +104,9 @@
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it."
   [api-graph]
   (let [{admin-group-id :id} (perms-group/admin)
-        dbs (t2/select-fn-vec :id :model/Database)]
+        dbs (t2/select-fn-vec :id :model/Database {:where [:not= :id
+                                                           ;; perms/audit-db-id -> cyclic depdendency
+                                                           13371337]})]
     (assoc api-graph
            admin-group-id
            (zipmap dbs (repeat legacy-admin-perms)))))
