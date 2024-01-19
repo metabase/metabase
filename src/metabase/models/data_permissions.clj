@@ -35,12 +35,12 @@
 
 (def ^:private Permissions
   "Permissions which apply to individual databases or tables"
-  {:data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
-   :download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
-   :manage-table-metadata {:model :model/Table :values [:yes :no]}
+  {:perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
+   :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
+   :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
 
-   :native-query-editing  {:model :model/Database :values [:yes :no]}
-   :manage-database       {:model :model/Database :values [:yes :no]}})
+   :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
+   :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
 (def PermissionType
   "Malli spec for valid permission types."
@@ -114,7 +114,7 @@
                                                 [:data_permissions :p]   [:= :p.group_id :pg.id]]
                                          :where [:and
                                                  [:= :pgm.user_id user-id]
-                                                 [:= :p.perm_type (name perm-type)]
+                                                 [:= :p.perm_type (u/qualified-name perm-type)]
                                                  [:= :p.db_id database-id]]})]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
@@ -136,7 +136,7 @@
                                                 [:data_permissions :p]   [:= :p.group_id :pg.id]]
                                          :where [:and
                                                  [:= :pgm.user_id user-id]
-                                                 [:= :p.perm_type (name perm-type)]
+                                                 [:= :p.perm_type (u/qualified-name perm-type)]
                                                  [:= :p.db_id database-id]
                                                  [:or
                                                   [:= :table_id table-id]
@@ -151,7 +151,7 @@
   ;; General hierarchy of the data access permissions graph
   {#_:group-id 1
    {#_:db-id 1
-    {#_:perm-type :data-access
+    {#_:perm-type :perms/data-access
      {#_:schema-name "PUBLIC"
       {#_:table-id 1 :unrestricted}}}}})
 
@@ -170,7 +170,7 @@
                               {:where [:and
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
-                                       (when perm-type [:= :perm_type (name perm-type)])]})]
+                                       (when perm-type [:= :perm_type (u/qualified-name perm-type)])]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
@@ -211,10 +211,10 @@
 
 (mu/defn set-database-permission!
   "Sets a single permission to a specified value for a given group and database. If a permission value already exists
-   for the specified group and object, it will be updated to the new value.
+  for the specified group and object, it will be updated to the new value.
 
-   Block permissions (i.e. :data-access :block) can only be set at the database-level, despite :data-access being a
-   table-level permission."
+  Block permissions (i.e. :perms/data-access :block) can only be set at the database-level, despite :perms/data-access
+  being a table-level permission."
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
    perm-type   :- :keyword
@@ -227,8 +227,8 @@
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
-      (when (= [:data-access :block] [perm-type value])
-        (set-database-permission! group-or-id db-or-id :native-query-editing :no)))))
+      (when (= [:perms/data-access :block] [perm-type value])
+        (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)))))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified
@@ -272,7 +272,7 @@
             existing-db-perm       (t2/select-one :model/DataPermissions
                                                   {:where
                                                    [:and
-                                                    [:= :perm_type (name perm-type)]
+                                                    [:= :perm_type (u/qualified-name perm-type)]
                                                     [:= :group_id  group-id]
                                                     [:= :db_id     db-id]
                                                     [:= :table_id  nil]]})
@@ -295,7 +295,7 @@
               (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
               (t2/insert! :model/DataPermissions (concat other-new-perms new-perms))))
           (let [existing-table-perms (t2/select :model/DataPermissions
-                                                :perm_type (name perm-type)
+                                                :perm_type (u/qualified-name perm-type)
                                                 :group_id  group-id
                                                 :db_id     db-id
                                                 {:where [:and
