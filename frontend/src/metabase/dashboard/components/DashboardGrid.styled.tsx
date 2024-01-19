@@ -6,7 +6,7 @@ interface DashboardCardProps {
   isAnimationDisabled?: boolean;
 }
 
-export const DashboardCard = styled.div<DashboardCardProps>`
+export const DashboardCardContainer = styled.div<DashboardCardProps>`
   position: relative;
   z-index: 1;
 
