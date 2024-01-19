@@ -141,9 +141,9 @@
       (is
        (= {group-id
            {db-id
-            {:data-access :no-self-service,
-             :download-results :no,
-             :manage-table-metadata :no,
-             :native-query-editing :no,
-             :manage-database :no}}}
+            {:perms/data-access :no-self-service,
+             :perms/download-results :no,
+             :perms/manage-table-metadata :no,
+             :perms/native-query-editing :no,
+             :perms/manage-database :no}}}
           (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))

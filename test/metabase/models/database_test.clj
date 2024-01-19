@@ -42,15 +42,15 @@
       (let [all-users-group-id (u/the-id (perms-group/all-users))]
         (is (= {all-users-group-id
                 {db-id
-                 {:native-query-editing :yes
-                  :manage-database      :no}}}
+                 {:perms/native-query-editing :yes
+                  :perms/manage-database      :no}}}
                (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
 
       ;; Other groups should have no DB-level perms
       (is (= {group-id
               {db-id
-               {:native-query-editing :no
-                :manage-database      :no}}}
+               {:perms/native-query-editing :no
+                :perms/manage-database      :no}}}
              (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
 
 (deftest cleanup-permissions-after-delete-db-test
