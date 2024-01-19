@@ -13,12 +13,14 @@ import {
   setTokenFeatures,
   summarize,
   assertIsEllipsified,
+  main,
 } from "e2e/support/helpers";
 import {
   ADMIN_USER_ID,
   NORMAL_USER_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -206,6 +208,46 @@ describe("scenarios > search", () => {
       cy.findByTestId("result-description")
         .findByRole("img")
         .should("not.exist");
+    });
+
+    it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
+      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+      // Type as soon as possible, before the dashboard has finished loading
+      getSearchBar().type("ord");
+
+      // Once the dashboard is visible, the search results should not be dismissed
+      main().findByRole("heading", { name: "Loading..." }).should("not.exist");
+      cy.findByTestId("search-results-floating-container").should("exist");
+    });
+
+    it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
+      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
+        value: ORDERS_DASHBOARD_ID,
+      });
+      cy.intercept(
+        {
+          url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
+          method: "GET",
+          middleware: true,
+        },
+        req => {
+          req.continue(res => {
+            res.delay = 1000;
+            res.send();
+          });
+        },
+      );
+      cy.visit(`/`);
+
+      // Type as soon as possible, before the dashboard has finished loading
+      getSearchBar().type("ord");
+
+      // Once the dashboard is visible, the search results should not be dismissed
+      cy.findByTestId("dashboard-parameters-and-cards").should("exist");
+
+      cy.findByTestId("search-results-floating-container").should("exist");
     });
   });
   describe("accessing full page search with `Enter`", () => {

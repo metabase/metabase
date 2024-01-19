@@ -1235,7 +1235,7 @@
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
       (testing "The CSV file must not be empty"
-        (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
+        (is (= {:message "The CSV file is missing columns that are in the table: \"name\".",
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
       (testing "Uploads must be supported"
@@ -1286,7 +1286,7 @@
                  "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
 
                  [""]
-                 "The CSV file contains extra columns that are not in the table: \"id\", \"name\"."
+                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
 
                  ["_mb_row_id,extra 1, extra 2"]
                  "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]

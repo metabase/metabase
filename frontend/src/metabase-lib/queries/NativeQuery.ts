@@ -102,6 +102,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   /* Query superclass methods */
+
+  /**
+   * @deprecated use MLv2
+   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())

@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-// TODO: merge with metabase/dashboard/components/Dashboard.jsx
 
 import { Component } from "react";
 import cx from "classnames";

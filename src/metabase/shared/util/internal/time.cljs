@@ -362,16 +362,21 @@
                         :else                    "HH:mm")]
     (.format t format-string)))
 
+(defn- ->moment ^moment/Moment [t]
+  (if (instance? js/Date t)
+    (moment/utc t)
+    t))
+
 (defn unit-diff
   "Return the number of `unit`s between two temporal values `before` and `after`, e.g. maybe there are 32 `:day`s
   between Jan 1st and Feb 2nd."
   [unit before after]
   (let [^moment/Moment before (if (string? before)
                                 (first (iso-8601->moment+type before))
-                                before)
+                                (->moment before))
         ^moment/Moment after  (if (string? after)
                                 (first (iso-8601->moment+type after))
-                                after)]
+                                (->moment after))]
     (.diff after before (name unit))))
 
 (defn truncate
@@ -382,7 +387,8 @@
     (let [[t value-type] (iso-8601->moment+type t)
           t              (truncate t unit)]
       (moment+type->iso-8601 [t value-type]))
-    (.startOf ^moment/Moment t (name unit))))
+    (let [^moment/Moment t (->moment t)]
+      (.startOf t (name unit)))))
 
 (defn add
   "ClojureScript implementation of [[metabase.shared.util.time/add]]; supports both Moment.js instances and ISO-8601 strings."
@@ -391,4 +397,21 @@
     (let [[t value-type] (iso-8601->moment+type t)
           t              (add t unit amount)]
       (moment+type->iso-8601 [t value-type]))
-    (.add ^moment/Moment t amount (name unit))))
+    (let [^moment/Moment t (->moment t)]
+      (.add t amount (name unit)))))
+
+(defn format-for-base-type
+  "ClojureScript implementation of [[metabase.shared.util.time/format-for-base-type]]; format a temporal value as an
+  ISO-8601 string appropriate for a value of the given `base-type`, e.g. a `:type/Time` gets formatted as a
+  `HH:mm:ss.SSS` string."
+  [t base-type]
+  (if (string? t)
+    t
+    (let [t          (->moment t)
+          value-type (condp #(isa? %2 %1) base-type
+                       :type/TimeWithTZ     :offset-time
+                       :type/Time           :local-time
+                       :type/DateTimeWithTZ :offset-date-time
+                       :type/DateTime       :local-date-time
+                       :type/Date           :local-date)]
+      (moment+type->iso-8601 [t value-type]))))

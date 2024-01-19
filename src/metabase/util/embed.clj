@@ -6,8 +6,10 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [hiccup.core :refer [html]]
-   [metabase.models.setting :as setting]
+   [metabase.config :as config]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [ring.util.codec :as codec]))
@@ -55,7 +57,7 @@
 
 ;;; ----------------------------------------------- EMBEDDING UTIL FNS -----------------------------------------------
 
-(setting/defsetting embedding-secret-key
+(defsetting embedding-secret-key
   (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
   :visibility :admin
   :audit :no-value
@@ -105,3 +107,13 @@
   [unsigned-token keyseq]
   (or (get-in unsigned-token keyseq)
       (throw (ex-info (tru "Token is missing value for keypath {0}" keyseq) {:status-code 400}))))
+
+(defsetting show-static-embed-terms
+  (deferred-tru "Check if the static embedding licensing should be hidden in the static embedding flow")
+  :type    :boolean
+  :default true
+  :export? true
+  :getter  (fn []
+              (if-not (and config/ee-available? (:valid (premium-features/token-status)))
+                (setting/get-value-of-type :boolean :show-static-embed-terms)
+                false)))
