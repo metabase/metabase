@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.search.filter-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -130,7 +131,10 @@
            (:where (search.filter/build-filters
                     base-search-query "card" default-search-ctx))))
 
-    (is (= [:and [:= :table.active true] [:= :table.visibility_type nil]]
+    (is (= [:and
+            [:= :table.active true]
+            [:= :table.visibility_type nil]
+            [:not [:= :table.db_id perms/audit-db-id]]]
            (:where (search.filter/build-filters
                     base-search-query "table"  default-search-ctx))))))
 
