@@ -569,6 +569,11 @@
 
 ;;; ------------------------------------------- TESTS FOR UNSUBSCRIBING NONUSERS STUFF --------------------------------------------
 
+(deftest unsubscribe-hash-test
+  (with-redefs [public-settings/site-uuid-for-unsubscribing-url "08534993-94c6-4bac-a1ad-86c9668ee8f5"]
+    (is (= "691501b28502126a6f59636ce147d26afa9d8fe8e5d0bd41f0de609194c0d9ba0042276d9b23cf10b1c7a4b18b3f946707e511d3e95e08fbe2c456080f619e36"
+           (messages/generate-pulse-unsubscribe-hash :pulse-id "rasta@pasta.com")))))
+
 (deftest unsubscribe-test
   (reset-throttlers!)
   (testing "POST /pulse/unsubscribe"
