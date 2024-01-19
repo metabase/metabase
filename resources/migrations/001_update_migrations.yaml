@@ -5316,7 +5316,12 @@ databaseChangeLog:
       comment: Migrate data-access permissions from `permissions` to `data_permissions`
       changes:
         - sqlFile:
+            dbms: postgresql,h2
             path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_data_access.sql
             relativeToChangelogFile: true
       rollback:
 
@@ -5336,7 +5341,12 @@ databaseChangeLog:
       comment: Migrate download-results permissions from `permissions` to `data_permissions`
       changes:
         - sqlFile:
+            dbms: postgresql,h2
             path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_download_results.sql
             relativeToChangelogFile: true
       rollback:
 
@@ -5346,7 +5356,12 @@ databaseChangeLog:
       comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
       changes:
         - sqlFile:
+            dbms: postgresql,h2
             path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_manage_table_metadata.sql
             relativeToChangelogFile: true
       rollback:
 

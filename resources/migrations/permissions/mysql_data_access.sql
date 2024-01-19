@@ -55,15 +55,15 @@ WHERE pg.name != 'Administrators'
 
 -- Insert table-level permissions only where no DB-level permissions exist
 
+INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 WITH escaped_schema_table AS (
     SELECT
     mt.id,
     mt.db_id,
     mt.schema,
-    REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/') AS escaped_schema
+    REPLACE(REPLACE(mt.schema, '\\', '\\\\'), '/', '\\/') AS escaped_schema
     FROM metabase_table mt
 )
-INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT pg.id AS group_id,
        'data-access' AS perm_type,
        mt.db_id,
