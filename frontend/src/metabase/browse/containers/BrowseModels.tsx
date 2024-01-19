@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import _ from "underscore";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   getHowLongAgo,
@@ -20,6 +20,7 @@ import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
 import { Icon, Text } from "metabase/ui";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
   CenteredEmptyState,
   CollectionHeaderContainer,
@@ -85,6 +86,11 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
 
   const headingId = `heading-for-model-${model.id}`;
 
+  const formattedDate = formatDateTimeWithUnit(lastEdit.timestamp, "day", {});
+
+  const time = <time dateTime={lastEdit.timestamp}>{formattedDate}</time>;
+  const tooltipLabel = jt`Last edited by ${lastEditorName}${(<br />)}${time}`;
+
   return (
     <Link
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
@@ -109,10 +115,13 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
           </MultilineEllipsified>
         </Text>
         <LastEditInfoLabel
-          prefix={null}
           item={modelWithHistory}
           fullName={modelWithHistory["last-edit-info"].full_name}
           className={"last-edit-info-label-button"}
+          tooltipProps={{
+            label: tooltipLabel,
+            withArrow: true,
+          }}
           // TODO: Use first name and last initial
         >
           {lastEditorName}
