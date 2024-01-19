@@ -77,7 +77,7 @@
 
   For `archived`, we can either include all values (when `archived` is `nil`),
   or to include when `archived` is `true` or `false`.
-
+For archived, we can either include everthing (when archived is `nil`), only archived (when `archived` is true), or only non-archived (when `archived` is false).
   To select only personal collections, pass in `personal-only` as `true`. This is disregard other parameters."
   [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only]}]
   (if personal-only
