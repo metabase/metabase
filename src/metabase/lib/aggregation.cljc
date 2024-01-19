@@ -23,8 +23,9 @@
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
   "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
   [metadata :- lib.metadata/ColumnMetadata]
-  (let [options {:lib/uuid       (str (random-uuid))
-                 :effective-type ((some-fn :effective-type :base-type) metadata)}
+  (let [options {:lib/uuid        (str (random-uuid))
+                 :effective-type  ((some-fn :effective-type :base-type) metadata)
+                 :lib/source-name (:name metadata)}
         ag-uuid (:lib/source-uuid metadata)]
     (assert ag-uuid "Metadata for an aggregation reference should include :lib/source-uuid")
     [:aggregation options ag-uuid]))
