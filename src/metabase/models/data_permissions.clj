@@ -15,9 +15,10 @@
 (methodical/defmethod t2/table-name :model/DataPermissions [_model] :data_permissions)
 
 (t2/deftransforms :model/DataPermissions
-  {:type       mi/transform-keyword
+  {:perm_type  mi/transform-keyword
    :perm_value mi/transform-keyword
-   ;; define keyword transformation for :value as well so that we can use it as an alias for :perm_value
+   ;; define keyword transformation for :type and :value as well so that we can use them as aliases
+   :type       mi/transform-keyword
    :value      mi/transform-keyword})
 
 
@@ -38,8 +39,8 @@
    :download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :manage-table-metadata {:model :model/Table :values [:yes :no]}
 
-   :native-query-editing {:model :model/Database :values [:yes :no]}
-   :manage-database      {:model :model/Database :values [:yes :no]}})
+   :native-query-editing  {:model :model/Database :values [:yes :no]}
+   :manage-database       {:model :model/Database :values [:yes :no]}})
 
 (def PermissionType
   "Malli spec for valid permission types."
@@ -113,7 +114,7 @@
                                                 [:data_permissions :p]   [:= :p.group_id :pg.id]]
                                          :where [:and
                                                  [:= :pgm.user_id user-id]
-                                                 [:= :p.type (name perm-type)]
+                                                 [:= :p.perm_type (name perm-type)]
                                                  [:= :p.db_id database-id]]})]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
@@ -135,7 +136,7 @@
                                                 [:data_permissions :p]   [:= :p.group_id :pg.id]]
                                          :where [:and
                                                  [:= :pgm.user_id user-id]
-                                                 [:= :p.type (name perm-type)]
+                                                 [:= :p.perm_type (name perm-type)]
                                                  [:= :p.db_id database-id]
                                                  [:or
                                                   [:= :table_id table-id]
@@ -160,16 +161,16 @@
   for permission enforcement, as it will read much more data than necessary."
   [& {:keys [group-id db-id perm-type]}]
   (let [data-perms (t2/select [:model/DataPermissions
-                               :type
+                               [:perm_type :type]
                                [:group_id :group-id]
                                [:perm_value :value]
                                [:db_id :db-id]
-                               :schema
+                               [:schema_name :schema]
                                [:table_id :table-id]]
                               {:where [:and
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
-                                       (when perm-type [:= :type (name perm-type)])]})]
+                                       (when perm-type [:= :perm_type (name perm-type)])]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
@@ -189,10 +190,10 @@
 ;;; --------------------------------------------- Updating permissions ------------------------------------------------
 
 (defn- assert-valid-permission
-  [{:keys [type perm_value] :as permission}]
-  (when-not (mc/validate PermissionType type)
-    (throw (ex-info (str/join (mu/explain PermissionType type)) permission)))
-  (assert-value-matches-perm-type type perm_value))
+  [{:keys [perm_type perm_value] :as permission}]
+  (when-not (mc/validate PermissionType perm_type)
+    (throw (ex-info (str/join (mu/explain PermissionType perm_type)) permission)))
+  (assert-value-matches-perm-type perm_type perm_value))
 
 (t2/define-before-insert :model/DataPermissions
   [permission]
@@ -221,8 +222,8 @@
   (t2/with-transaction [_conn]
     (let [group-id (u/the-id group-or-id)
           db-id    (u/the-id db-or-id)]
-      (t2/delete! :model/DataPermissions :type perm-type :group_id group-id :db_id db-id)
-      (t2/insert! :model/DataPermissions {:type       perm-type
+      (t2/delete! :model/DataPermissions :perm_type perm-type :group_id group-id :db_id db-id)
+      (t2/insert! :model/DataPermissions {:perm_type  perm-type
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
@@ -256,12 +257,12 @@
                                                 (if (map? table)
                                                   table
                                                   (t2/select-one [:model/Table :id :db_id :schema] :id table))]
-                                            {:type       perm-type
-                                             :group_id   group-id
-                                             :perm_value value
-                                             :db_id      db_id
-                                             :table_id   id
-                                             :schema     schema}))
+                                            {:perm_type   perm-type
+                                             :group_id    group-id
+                                             :perm_value  value
+                                             :db_id       db_id
+                                             :table_id    id
+                                             :schema_name schema}))
                                         table-perms)
             _                      (when (not= (count (set (map :db_id new-perms))) 1)
                                      (throw (ex-info (tru "All tables must belong to the same database.")
@@ -271,10 +272,10 @@
             existing-db-perm       (t2/select-one :model/DataPermissions
                                                   {:where
                                                    [:and
-                                                    [:= :type (name perm-type)]
-                                                    [:= :group_id group-id]
-                                                    [:= :db_id db-id]
-                                                    [:= :table_id nil]]})
+                                                    [:= :perm_type (name perm-type)]
+                                                    [:= :group_id  group-id]
+                                                    [:= :db_id     db-id]
+                                                    [:= :table_id  nil]]})
             existing-db-perm-value (:perm_value existing-db-perm)]
         (if existing-db-perm
           (when (not= values #{existing-db-perm-value})
@@ -284,19 +285,19 @@
                                                                    [:= :db_id db-id]
                                                                    [:not [:in :id table-ids]]]})
                   other-new-perms (map (fn [table]
-                                         {:type       perm-type
-                                          :group_id   group-id
-                                          :perm_value existing-db-perm-value
-                                          :db_id      db-id
-                                          :table_id   (:id table)
-                                          :schema     (:schema table)})
+                                         {:perm_type   perm-type
+                                          :group_id    group-id
+                                          :perm_value  existing-db-perm-value
+                                          :db_id       db-id
+                                          :table_id    (:id table)
+                                          :schema_name (:schema table)})
                                        other-tables)]
               (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
               (t2/insert! :model/DataPermissions (concat other-new-perms new-perms))))
           (let [existing-table-perms (t2/select :model/DataPermissions
-                                                :type (name perm-type)
-                                                :group_id group-id
-                                                :db_id db-id
+                                                :perm_type (name perm-type)
+                                                :group_id  group-id
+                                                :db_id     db-id
                                                 {:where [:and
                                                          [:not= :table_id nil]
                                                          [:not [:in :table_id table-ids]]]})
@@ -308,7 +309,7 @@
               (set-database-permission! group-or-id db-id perm-type (first values))
               ;; Otherwise, just replace the rows for the individual table perm
               (do
-                (t2/delete! :model/DataPermissions :type perm-type :group_id group-id {:where [:in :table_id table-ids]})
+                (t2/delete! :model/DataPermissions :perm_type perm-type :group_id group-id {:where [:in :table_id table-ids]})
                 (t2/insert! :model/DataPermissions new-perms)))))))))
 
 (mu/defn set-table-permission!
