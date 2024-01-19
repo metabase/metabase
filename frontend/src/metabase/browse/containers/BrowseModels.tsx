@@ -161,7 +161,7 @@ export const BrowseModels = ({
 
   const getRowHeight = ({ index: rowIndex }: { index: number }) => {
     const cellIndex = rowIndex * columnCount;
-    return cellIsInHeaderRow(cells[cellIndex])
+    return isCellInHeaderRow(cells[cellIndex])
       ? headerHeight
       : defaultItemHeight;
   };
@@ -365,11 +365,19 @@ const makeCells = (models: SearchResult[], columnCount: number): Cell[] => {
       // So that the collection header appears at the start of the row,
       // add zero or more blank items to fill in the rest of the previous row
       if (columnIndex > 0) {
-        cells.push(...Array(columnCount - columnIndex).fill(<BlankCell />));
+        cells.push(
+          ...Array(columnCount - columnIndex).map(j => (
+            <BlankCell key={`blank-${i}-${j}`} />
+          )),
+        );
       }
       cells.push(header);
       // Fill in the rest of the header row with blank items
-      cells.push(...Array(columnCount - 1).fill(<BlankCellInHeader />));
+      cells.push(
+        ...Array(columnCount - 1).map(j => (
+          <BlankCellInHeader key={`header-blank-${i}-${j}`} />
+        )),
+      );
       columnIndex = 0;
     }
 
@@ -418,7 +426,7 @@ const getGridOptions = (
   };
 };
 
-const cellIsInHeaderRow = (item: Cell) =>
+const isCellInHeaderRow = (item: Cell) =>
   item?.type === CollectionHeader || item?.type === BlankCellInHeader;
 
 const renderItem: RenderItemFunction = ({
