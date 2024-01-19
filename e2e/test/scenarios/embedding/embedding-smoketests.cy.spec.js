@@ -340,7 +340,7 @@ function visitAndEnableSharing(object, acceptTerms = true) {
     visitDashboard(ORDERS_DASHBOARD_ID);
   }
 
-  openStaticEmbeddingModal({acceptTerms});
+  openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {
