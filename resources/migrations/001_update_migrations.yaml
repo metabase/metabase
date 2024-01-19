@@ -4206,7 +4206,7 @@ databaseChangeLog:
         # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
         # so just go ahead and skip the entire thing. This is a non-critical migration
         - onUpdateSQL: IGNORE
-        - or:
+        - and:
           - sqlCheck:
               expectedResult: 0
               sql: SELECT count(*) FROM (SELECT count(*) FROM DATABASECHANGELOG GROUP BY ID, AUTHOR, FILENAME HAVING count(*) > 1) t1
