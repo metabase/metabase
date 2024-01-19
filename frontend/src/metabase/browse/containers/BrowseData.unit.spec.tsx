@@ -117,8 +117,9 @@ describe("BrowseDataPage", () => {
   });
   it("displays models, organized by parent collection", async () => {
     setup({ models: 5, databases: 0 });
-    // Three <a> representing models have aria-labelledby="collection-1 model-$id",
-    // and "collection-1" is the id of an element containing text 'Collection 1'
+    // Three <a> tags representing models have aria-labelledby="collection-1 model-$id",
+    // and "collection-1" is the id of an element containing text 'Collection 1',
+    // so the following line finds those <a> tags.
     const modelsInCollection1 = await screen.findAllByLabelText("Collection 1");
     expect(modelsInCollection1).toHaveLength(3);
   });
