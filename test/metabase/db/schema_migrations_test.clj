@@ -797,3 +797,404 @@
                  ;; h2 has a strange way of naming constraint
                  :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
                            WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))
+
+(defn- clear-permissions!
+  []
+  (t2/delete! :model/Permissions {:where [:not= :object "/"]})
+  (t2/delete! :model/DataPermissions))
+
+(deftest data-access-permissions-schema-migration-basic-test
+  (testing "Data access permissions are correctly migrated from `permissions` to `permissions_v2`"
+    (impl/test-migrations "v49.2024-01-10T03:27:30" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 2"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC/with\\slash"
+                                                                               :active     true}))]
+        (testing "Unrestricted data access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/" db-id)})
+          (migrate!)
+          (is (= "unrestricted" (t2/select-one-fn :perm_value
+                                                  (t2/table-name :model/DataPermissions)
+                                                  :db_id db-id :table_id nil :group_id group-id)))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id))))
+
+        (testing "Unrestricted not-native data access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/" db-id)})
+          (migrate!)
+          (is (= "unrestricted" (t2/select-one-fn :perm_value
+                                                  (t2/table-name :model/DataPermissions)
+                                                  :db_id db-id :table_id nil :group_id group-id)))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id))))
+
+        (testing "Unrestricted data access for a schema"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC/" db-id)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id)))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id))))
+
+        (testing "Unrestricted data access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id)))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id))))
+
+        (testing "Query access to a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/query/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id)))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id))))
+
+        (testing "Segmented query access to a table - maps to unrestricted data access; sandboxing is determined by the
+                                     `sandboxes` table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id)))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id))))
+
+        (testing "No self service database access"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no-self-service"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id)))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id))))
+
+        (testing "Granular table permissions"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC\\/with\\\\slash/table/%d/" db-id table-id-2)})
+          (migrate!)
+          (is (nil?
+               (t2/select-one-fn :perm_value
+                                 (t2/table-name :model/DataPermissions)
+                                 :db_id db-id :table_id nil :group_id group-id)))
+          (is (= "no-self-service"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id)))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id))))
+
+        (testing "Block permissions for a database"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/block/db/%d/" db-id)})
+          (migrate!)
+          (is (= "block" (t2/select-one-fn :perm_value
+                                           (t2/table-name :model/DataPermissions)
+                                           :db_id db-id :table_id nil :group_id group-id)))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id))))))))
+
+(deftest native-query-editing-permissions-schema-migration-test
+  (testing "Native query editing permissions are correctly migrated from `permissions` to `permissions_v2`"
+    (impl/test-migrations "v49.2024-01-10T03:27:31" [migrate!]
+      (let [group-id (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                :engine     "postgres"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :details    "{}"}))]
+        (testing "Native query editing allowed"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))
+
+        (testing "Native query editing explicitly allowed"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/native/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))
+
+        (testing "Native query editing not allowed"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))))))
+
+(deftest download-results-permissions-schema-migration-test
+  (testing "Download results permissions are correctly migrated from `permissions` to `permissions_v2`"
+    (impl/test-migrations "v49.2024-01-10T03:27:32" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 2"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-3 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 3"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))]
+        (testing "One-million-rows download access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/" db-id)})
+          (migrate!)
+          (is (= "one-million-rows" (t2/select-one-fn :perm_value
+                                                      (t2/table-name :model/DataPermissions)
+                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results")))
+
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/" db-id)})
+          (migrate!)
+          (is (= "one-million-rows" (t2/select-one-fn :perm_value
+                                                      (t2/table-name :model/DataPermissions)
+                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "Ten-thousand-rows download access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/" db-id)})
+          (migrate!)
+          (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
+                                                       (t2/table-name :model/DataPermissions)
+                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results")))
+
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/schema/" db-id)})
+          (migrate!)
+          (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
+                                                       (t2/table-name :model/DataPermissions)
+                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "No download access for a DB"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+
+        (testing "One-million-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "One-million-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "Ten-thousand-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (= "ten-thousand-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "Granular table permissions"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) [{:group_id group-id
+                                                    :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)}
+                                                   {:group_id group-id
+                                                    :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-2)}])
+          (migrate!)
+          (is (nil?
+               (t2/select-one-fn :perm_value
+                                 (t2/table-name :model/DataPermissions)
+                                 :db_id db-id :table_id nil :group_id group-id)))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id)))
+          (is (= "ten-thousand-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id)))
+          (is (= "no"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-3 :group_id group-id))))))))
+
+
+(deftest manage-table-metadata-permissions-schema-migration-test
+  (testing "Manage table metadata permissions are correctly migrated from `permissions` to `permissions_v2`"
+    (impl/test-migrations "v49.2024-01-10T03:27:33" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))]
+        (testing "Manage table metadata access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/data-model/db/%d/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))
+
+        (testing "No manage table metadata access for a DB"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))
+
+        (testing "Manage table metadata access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/data-model/db/%d/schema/PUBLIC/table/%d/" db-id table-id)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+          (is (= "yes"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))))))
+
+(deftest manage-database-permissions-schema-migration-test
+  (testing "Manage database permissions are correctly migrated from `permissions` to `permissions_v2`"
+    (impl/test-migrations "v49.2024-01-10T03:27:34" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))]
+        (testing "Manage database permission"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/details/db/%d/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :group_id group-id :perm_type "manage-database"))))
+
+        (testing "No manage database permission"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :group_id group-id :perm_type "manage-database"))))))))
