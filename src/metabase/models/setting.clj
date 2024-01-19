@@ -570,9 +570,9 @@
                      env-var-value
                      db-or-cache-value
                      (when-not *disable-init*
-                       init!)
-                     default-value]]
-     (loop [[f & more] source-fns]
+                     (cond 
+                       (:default setting) default-value
+                       (:init setting) init!))]]
        (let [v (when f (f setting))]
          (cond
            (some? v)  v
