@@ -86,7 +86,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=oss&utm_media=static-embed-settings-overview",
         );
 
         if (resourceType === "dashboard") {
@@ -131,24 +131,54 @@ describe("Static Embed Setup phase", () => {
       });
     });
 
-    if (resourceType === "dashboard") {
-      describe("Parameters tab", () => {
-        it("should render Code preview mode by default", () => {
-          setup({
-            props: {
-              resourceType,
-              resource: getMockResource(resourceType),
-            },
-            activeTab: "Parameters",
-          });
-
-          expect(screen.getByLabelText("Code")).toBeChecked();
-
-          expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-            `// you will need to install via 'npm install jsonwebtoken' or in your package.json var jwt = require("jsonwebtoken"); var METABASE_SITE_URL = "http://localhost:3000"; var METABASE_SECRET_KEY = "my_super_secret_key"; var payload = { resource: { dashboard: 1 }, params: {}, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration }; var token = jwt.sign(payload, METABASE_SECRET_KEY); var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true";`,
-          );
+    describe("Parameters tab", () => {
+      it("should render Code preview mode by default", () => {
+        setup({
+          props: {
+            resourceType,
+            resource: getMockResource(resourceType),
+          },
+          activeTab: "Parameters",
         });
 
+        expect(screen.getByLabelText("Code")).toBeChecked();
+
+        expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+          `// you will need to install via 'npm install jsonwebtoken' or in your package.json var jwt = require("jsonwebtoken"); var METABASE_SITE_URL = "http://localhost:3000"; var METABASE_SECRET_KEY = "my_super_secret_key"; var payload = { resource: { ${resourceType}: 1 }, params: {}, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration }; var token = jwt.sign(payload, METABASE_SECRET_KEY); var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + "#bordered=true&titled=true";`,
+        );
+      });
+
+      it("should render preview iframe in Preview mode", () => {
+        const dashboard = createMockDashboard();
+        setup({
+          props: {
+            resource: dashboard,
+          },
+          activeTab: "Parameters",
+        });
+
+        userEvent.click(screen.getByText("Preview"));
+
+        expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
+      });
+
+      it("should render message if there are no parameters", () => {
+        setup({
+          props: {
+            resourceType,
+            resource: getMockResource(resourceType),
+          },
+          activeTab: "Parameters",
+        });
+
+        expect(
+          screen.getByText(
+            `This ${resourceType} doesn't have any parameters to configure yet.`,
+          ),
+        ).toBeVisible();
+      });
+
+      if (resourceType === "dashboard") {
         it("should render unsaved parameters", () => {
           setup({
             props: {
@@ -271,20 +301,6 @@ describe("Static Embed Setup phase", () => {
           );
         });
 
-        it("should render preview iframe in Preview mode", () => {
-          const dashboard = createMockDashboard();
-          setup({
-            props: {
-              resource: dashboard,
-            },
-            activeTab: "Parameters",
-          });
-
-          userEvent.click(screen.getByText("Preview"));
-
-          expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
-        });
-
         it("should highlight changed code on parameters change", () => {
           const dashboard = createMockDashboard();
           const dateParameter = {
@@ -315,38 +331,6 @@ describe("Static Embed Setup phase", () => {
           expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
             `params: { "${dateParameter.slug}": null }`,
           );
-        });
-
-        it("should switch to Preview mode if user changes locked parameter value", () => {
-          const dateParameter = {
-            id: "5cd742ef",
-            name: "Month and Year",
-            slug: "month_and_year",
-            type: "date/month-year",
-          };
-          setup({
-            props: {
-              resource: {
-                ...createMockDashboard(),
-                embedding_params: {
-                  month_and_year: "locked",
-                },
-              },
-              resourceParameters: [dateParameter],
-            },
-            activeTab: "Parameters",
-          });
-
-          userEvent.click(
-            within(
-              screen.getByLabelText("Previewing locked parameters"),
-            ).getByRole("button", { name: dateParameter.name }),
-          );
-
-          userEvent.click(screen.getByText("February"));
-
-          expect(screen.getByLabelText("Preview")).toBeChecked();
-          expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
         });
 
         it("should highlight changed code on locked parameter value change", () => {
@@ -388,25 +372,32 @@ describe("Static Embed Setup phase", () => {
             }": "${new Date().getFullYear()}-02" }`,
           );
         });
-      });
-    } else {
-      it("should not render Parameters tab", () => {
+      }
+    });
+
+    describe("Appearance tab", () => {
+      it("should render link to documentation", () => {
         setup({
           props: {
             resourceType,
-            resource: getMockResource(resourceType),
           },
+          activeTab: "Appearance",
         });
 
         expect(
-          screen.queryByRole("tab", {
-            name: "Parameters",
-          }),
-        ).not.toBeInTheDocument();
-      });
-    }
+          screen.getByText("Customizing your embed’s appearance"),
+        ).toBeVisible();
 
-    describe("Appearance tab", () => {
+        const link = screen.getByRole("link", {
+          name: "documentation",
+        });
+        expect(link).toBeVisible();
+        expect(link).toHaveAttribute(
+          "href",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=oss&utm_media=static-embed-settings-appearance#customizing-the-appearance-of-static-embeds",
+        );
+      });
+
       it("should render Code mode by default", () => {
         const resource = getMockResource(resourceType);
         setup({
@@ -462,42 +453,60 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      describe("OSS version", () => {
-        it("should not render Font selector", () => {
-          setup({
-            props: {
-              resourceType,
-            },
-            activeTab: "Appearance",
-          });
-
-          expect(
-            screen.getByText(
-              getBrokenUpTextMatcher(
-                "You can change the font with a paid plan.",
-              ),
-            ),
-          ).toBeVisible();
+      it("should not render Font selector", () => {
+        setup({
+          props: {
+            resourceType,
+          },
+          activeTab: "Appearance",
         });
 
-        it('should render "Powered by Metabase" banner caption', () => {
-          setup({
-            props: {},
-            activeTab: "Appearance",
-          });
+        expect(
+          screen.getByText(
+            getBrokenUpTextMatcher("You can change the font with a paid plan."),
+          ),
+        ).toBeVisible();
 
-          expect(
-            screen.getByText("Removing the “Powered by Metabase” banner"),
-          ).toBeVisible();
-
-          expect(
-            screen.getByText(
-              getBrokenUpTextMatcher(
-                "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to a paid plan to remove the banner.",
-              ),
-            ),
-          ).toBeVisible();
+        const link = within(
+          screen.getByLabelText("Playing with appearance options"),
+        ).getByRole("link", {
+          name: "a paid plan",
         });
+        expect(link).toBeVisible();
+        expect(link).toHaveAttribute(
+          "href",
+          "https://www.metabase.com/pricing/?utm_source=oss&utm_media=static-embed-settings-appearance",
+        );
+      });
+
+      it('should render "Powered by Metabase" banner caption', () => {
+        setup({
+          props: {},
+          activeTab: "Appearance",
+        });
+
+        expect(
+          screen.getByText("Removing the “Powered by Metabase” banner"),
+        ).toBeVisible();
+
+        expect(
+          screen.getByText(
+            getBrokenUpTextMatcher(
+              "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to a paid plan to remove the banner.",
+            ),
+          ),
+        ).toBeVisible();
+
+        const link = within(
+          screen.getByLabelText("Removing the “Powered by Metabase” banner"),
+        ).getByRole("link", {
+          name: "a paid plan",
+        });
+        expect(link).toBeVisible();
+        expect(link).toHaveAttribute(
+          "href",
+          "https://www.metabase.com/pricing/?utm_source=oss&utm_media=static-embed-settings-appearance",
+        );
       });
     });
   });

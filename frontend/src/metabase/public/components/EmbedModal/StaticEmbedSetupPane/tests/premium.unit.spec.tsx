@@ -13,6 +13,30 @@ describe("Static Embed Setup phase - EE, with token", () => {
       resourceType: "question" as const,
     },
   ])("$resourceType", ({ resourceType }) => {
+    describe("Overview tab", () => {
+      it("should render content", () => {
+        setup({
+          props: {
+            resourceType,
+          },
+          activeTab: "Overview",
+          hasEnterprisePlugins: true,
+          tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
+        });
+
+        expect(screen.getByText("Setting up a static embed")).toBeVisible();
+
+        const link = screen.getByRole("link", {
+          name: "documentation",
+        });
+        expect(link).toBeVisible();
+        expect(link).toHaveAttribute(
+          "href",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=pro-self-hosted&utm_media=static-embed-settings-overview",
+        );
+      });
+    });
+
     describe("Appearance tab", () => {
       it("should render Font selector", async () => {
         setup({
@@ -55,6 +79,30 @@ describe("Static Embed Setup phase - EE, with token", () => {
         expect(
           screen.queryByText("Removing the “Powered by Metabase” banner"),
         ).not.toBeInTheDocument();
+      });
+
+      it("should render link to documentation", () => {
+        setup({
+          props: {
+            resourceType,
+          },
+          activeTab: "Appearance",
+          hasEnterprisePlugins: true,
+          tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
+        });
+
+        expect(
+          screen.getByText("Customizing your embed’s appearance"),
+        ).toBeVisible();
+
+        const link = screen.getByRole("link", {
+          name: "documentation",
+        });
+        expect(link).toBeVisible();
+        expect(link).toHaveAttribute(
+          "href",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=pro-self-hosted&utm_media=static-embed-settings-appearance#customizing-the-appearance-of-static-embeds",
+        );
       });
 
       if (resourceType === "question") {

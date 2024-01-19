@@ -142,9 +142,7 @@ export const StaticEmbedSetupPane = ({
       <Tabs defaultValue={TABS.Overview} data-testid="embedding-preview">
         <Tabs.List p="0 1.5rem">
           <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>
-          {resourceType !== "question" && (
-            <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
-          )}
+          <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
           <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value={TABS.Overview}>

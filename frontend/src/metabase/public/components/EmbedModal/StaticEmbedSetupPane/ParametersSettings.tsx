@@ -129,10 +129,6 @@ export const ParametersSettings = ({
                         parameters={valuePopulatedLockedParameters}
                         setValue={(value: string) => {
                           onChangeParameterValue(parameter.id, value);
-
-                          if (!parameter.value && value) {
-                            onChangePane("preview");
-                          }
                         }}
                       />
                     ))}

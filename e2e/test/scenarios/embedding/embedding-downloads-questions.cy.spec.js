@@ -49,7 +49,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         cy.log(
           "Embedding settings page should not show option to disable downloads",
         );
-        cy.findByLabelText("Play with the options here")
+        cy.findByLabelText("Playing with appearance options")
           .should("not.contain", "Download data")
           .and("not.contain", "Enable users to download data from this embed");
 

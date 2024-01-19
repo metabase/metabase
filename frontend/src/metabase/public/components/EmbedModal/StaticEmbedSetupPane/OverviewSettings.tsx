@@ -3,13 +3,14 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Box, Center, Stack, Text } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDocsUrl } from "metabase/selectors/settings";
+import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
 import type {
   EmbedResourceType,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
 import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
+import { getPlan } from "metabase/common/utils/plan";
 
 import { ClientEmbedCodePane } from "./ClientEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
@@ -31,6 +32,9 @@ export const OverviewSettings = ({
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
 
   const [selectedClientCodeOptionName, setSelectedClientCodeOptionName] =
     useState(clientCodeOptions[0].name);
@@ -49,7 +53,10 @@ export const OverviewSettings = ({
   }, [selectedServerCodeOption]);
 
   const staticEmbedDocsLink = (
-    <ExternalLink key="doc" href={docsUrl}>{t`documentation`}</ExternalLink>
+    <ExternalLink
+      key="doc"
+      href={`${docsUrl}?utm_source=${plan}&utm_media=static-embed-settings-overview`}
+    >{t`documentation`}</ExternalLink>
   );
 
   return (

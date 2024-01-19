@@ -1,6 +1,5 @@
 import { jt, t } from "ttag";
 import type { ChangeEvent, ReactNode } from "react";
-
 import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
@@ -13,6 +12,7 @@ import type {
   EmbeddingDisplayOptions,
   EmbedResourceType,
 } from "metabase/public/lib/types";
+import { getPlan } from "metabase/common/utils/plan";
 
 import { PreviewModeSelector } from "./PreviewModeSelector";
 import type { ActivePreviewPane } from "./types";
@@ -29,6 +29,8 @@ const THEME_OPTIONS = [
   { label: t`Transparent`, value: "transparent" },
 ];
 const DEFAULT_THEME = THEME_OPTIONS[0].value;
+
+const PRICING_PAGE_URL = "https://www.metabase.com/pricing/";
 
 export interface AppearanceSettingsProps {
   activePane: ActivePreviewPane;
@@ -53,12 +55,18 @@ export const AppearanceSettings = ({
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
   const docsUrl = useSelector(state =>
-    getDocsUrl(state, { page: "embedding/static-embedding" }),
+    getDocsUrl(state, {
+      page: "embedding/static-embedding",
+    }),
+  );
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
   );
   const canWhitelabel = useSelector(getCanWhitelabel);
   const availableFonts = useSelector(state =>
     getSetting(state, "available-fonts"),
   );
+  const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
 
   const fontControlLabelId = useUniqueId("display-option");
 
@@ -72,12 +80,12 @@ export const AppearanceSettings = ({
             <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${(
               <ExternalLink
                 key="doc"
-                href={docsUrl}
+                href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
               >{t`documentation`}</ExternalLink>
             )} for more.`}</Text>
           </StaticEmbedSetupPaneSettingsContentSection>
           <StaticEmbedSetupPaneSettingsContentSection
-            title={t`Play with the options here`}
+            title={t`Playing with appearance options`}
             mt="2rem"
           >
             <Stack spacing="1rem">
@@ -155,7 +163,10 @@ export const AppearanceSettings = ({
                   />
                 ) : (
                   <Text>{jt`You can change the font with ${(
-                    <ExternalLink href="https://www.metabase.com/pricing/">{t`a paid plan`}</ExternalLink>
+                    <ExternalLink
+                      key="fontPlan"
+                      href={`${PRICING_PAGE_URL}${utmTags}`}
+                    >{t`a paid plan`}</ExternalLink>
                   )}.`}</Text>
                 )}
               </DisplayOptionSection>
@@ -189,8 +200,8 @@ export const AppearanceSettings = ({
               >
                 <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
                   <ExternalLink
-                    key="doc"
-                    href="https://www.metabase.com/pricing/"
+                    key="bannerPlan"
+                    href={`${PRICING_PAGE_URL}${utmTags}`}
                   >{t`a paid plan`}</ExternalLink>
                 )} to remove the banner.`}</Text>
               </StaticEmbedSetupPaneSettingsContentSection>
