@@ -9,12 +9,10 @@ import _ from "underscore";
 import cx from "classnames";
 
 import title from "metabase/hoc/Title";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
 
-import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import ErrorBoundary from "metabase/ErrorBoundary";
 
 import {
@@ -121,25 +119,10 @@ class SettingsEditor extends Component {
       }
 
       this.saveStatusRef.current.setSaved();
-
-      const value = prepareAnalyticsValue(setting);
-
-      MetabaseAnalytics.trackStructEvent(
-        "General Settings",
-        setting.display_name || setting.key,
-        value,
-        // pass the actual value if it's a number
-        typeof value === "number" && value,
-      );
     } catch (error) {
       const message =
         error && (error.message || (error.data && error.data.message));
       this.saveStatusRef.current.setSaveError(message);
-      MetabaseAnalytics.trackStructEvent(
-        "General Settings",
-        setting.display_name,
-        "error",
-      );
     }
   };
 
@@ -194,49 +177,47 @@ class SettingsEditor extends Component {
   renderSettingsSections() {
     const { sections, activeSectionName, newVersionAvailable } = this.props;
 
-    const renderedSections = Object.entries(sections).map(
-      ([slug, section], idx) => {
-        // HACK - This is used to hide specific items in the sidebar and is currently
-        // only used as a way to fake the multi page auth settings pages without
-        // requiring a larger refactor.
-        const isNestedSettingPage = Boolean(slug.split("/")[1]);
-        if (isNestedSettingPage) {
-          return null;
-        }
+    const renderedSections = Object.entries(sections).map(([slug, section]) => {
+      // HACK - This is used to hide specific items in the sidebar and is currently
+      // only used as a way to fake the multi page auth settings pages without
+      // requiring a larger refactor.
+      const isNestedSettingPage = Boolean(slug.split("/")[1]);
+      if (isNestedSettingPage) {
+        return null;
+      }
 
-        // The nested authentication routes should be matched just on the prefix:
-        // e.g. "authentication/google" => "authentication"
-        const [sectionNamePrefix] = activeSectionName.split("/");
+      // The nested authentication routes should be matched just on the prefix:
+      // e.g. "authentication/google" => "authentication"
+      const [sectionNamePrefix] = activeSectionName.split("/");
 
-        const classes = cx(
-          "AdminList-item",
-          "flex",
-          "align-center",
-          "justify-between",
-          "no-decoration",
-          { selected: slug === sectionNamePrefix },
-        );
+      const classes = cx(
+        "AdminList-item",
+        "flex",
+        "align-center",
+        "justify-between",
+        "no-decoration",
+        { selected: slug === sectionNamePrefix },
+      );
 
-        // if this is the Updates section && there is a new version then lets add a little indicator
-        const shouldDisplayNewVersionIndicator =
-          slug === "updates" &&
-          newVersionAvailable &&
-          !MetabaseSettings.isHosted();
+      // if this is the Updates section && there is a new version then lets add a little indicator
+      const shouldDisplayNewVersionIndicator =
+        slug === "updates" &&
+        newVersionAvailable &&
+        !MetabaseSettings.isHosted();
 
-        const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
-          <NewVersionIndicator>1</NewVersionIndicator>
-        ) : null;
+      const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
+        <NewVersionIndicator>1</NewVersionIndicator>
+      ) : null;
 
-        return (
-          <li key={slug}>
-            <Link to={"/admin/settings/" + slug} className={classes}>
-              <span>{section.name}</span>
-              {newVersionIndicator}
-            </Link>
-          </li>
-        );
-      },
-    );
+      return (
+        <li key={slug}>
+          <Link to={"/admin/settings/" + slug} className={classes}>
+            <span>{section.name}</span>
+            {newVersionIndicator}
+          </Link>
+        </li>
+      );
+    });
 
     return (
       <aside className="MetadataEditor-table-list AdminList flex-no-shrink">

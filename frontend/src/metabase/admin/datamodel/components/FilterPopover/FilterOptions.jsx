@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getFilterOptions,
   setFilterOptions,
@@ -79,12 +78,6 @@ export default class FilterOptions extends Component {
         ...options,
         [name]: !options[name],
       }),
-    );
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Filter",
-      "SetOption",
-      name,
     );
   }
 

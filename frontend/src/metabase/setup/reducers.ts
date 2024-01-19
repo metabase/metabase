@@ -6,19 +6,12 @@ import {
   loadUserDefaults,
   selectStep,
   submitDatabase,
-  submitUser,
-  submitUserInvite,
   updateDatabaseEngine,
   updateLocale,
   updateTracking,
   submitSetup,
 } from "./actions";
-import {
-  COMPLETED_STEP,
-  DATABASE_STEP,
-  PREFERENCES_STEP,
-  WELCOME_STEP,
-} from "./constants";
+import { COMPLETED_STEP, PREFERENCES_STEP, WELCOME_STEP } from "./constants";
 
 const initialState: SetupState = {
   step: WELCOME_STEP,
@@ -47,21 +40,12 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(updateLocale.fulfilled, state => {
     state.isLocaleLoaded = true;
   });
-  builder.addCase(submitUser.pending, (state, { meta }) => {
-    state.user = meta.arg;
-    state.step = DATABASE_STEP;
-  });
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
     state.databaseEngine = meta.arg;
   });
   builder.addCase(submitDatabase.fulfilled, (state, { payload: database }) => {
     state.database = database;
     state.invite = undefined;
-    state.step = PREFERENCES_STEP;
-  });
-  builder.addCase(submitUserInvite.pending, (state, { meta }) => {
-    state.database = undefined;
-    state.invite = meta.arg;
     state.step = PREFERENCES_STEP;
   });
   builder.addCase(skipDatabase.pending, state => {

@@ -26,7 +26,6 @@ import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -87,7 +86,6 @@ class AutomaticDashboardAppInner extends Component {
     );
 
     this.setState({ savedDashboardId: newDashboard.id });
-    MetabaseAnalytics.trackStructEvent("AutoDashboard", "Save");
   };
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -169,16 +167,7 @@ class AutomaticDashboardAppInner extends Component {
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">
-              <Link
-                to={more}
-                className="ml2"
-                onClick={() =>
-                  MetabaseAnalytics.trackStructEvent(
-                    "AutoDashboard",
-                    "ClickMore",
-                  )
-                }
-              >
+              <Link to={more} className="ml2">
                 <Button iconRight="chevronright">{t`Show more about this`}</Button>
               </Link>
             </div>

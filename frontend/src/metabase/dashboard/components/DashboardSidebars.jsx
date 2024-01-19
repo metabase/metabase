@@ -6,7 +6,6 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
@@ -81,7 +80,6 @@ export function DashboardSidebars({
         cardId: cardId,
         tabId: selectedTabId,
       });
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
     [addCardToDashboard, dashboard.id, selectedTabId],
   );

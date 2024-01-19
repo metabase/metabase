@@ -2,8 +2,6 @@ import { assoc } from "icepick";
 
 import { handleActions, createAction } from "metabase/lib/redux";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 
 export const SET_ERROR = "metabase/reference/SET_ERROR";
@@ -11,7 +9,6 @@ export const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
 export const START_LOADING = "metabase/reference/START_LOADING";
 export const END_LOADING = "metabase/reference/END_LOADING";
 export const START_EDITING = "metabase/reference/START_EDITING";
-export const END_EDITING = "metabase/reference/END_EDITING";
 export const EXPAND_FORMULA = "metabase/reference/EXPAND_FORMULA";
 export const COLLAPSE_FORMULA = "metabase/reference/COLLAPSE_FORMULA";
 export const SHOW_DASHBOARD_MODAL = "metabase/reference/SHOW_DASHBOARD_MODAL";
@@ -24,14 +21,6 @@ export const clearError = createAction(CLEAR_ERROR);
 export const startLoading = createAction(START_LOADING);
 
 export const endLoading = createAction(END_LOADING);
-
-export const startEditing = createAction(START_EDITING, () => {
-  MetabaseAnalytics.trackStructEvent("Data Reference", "Started Editing");
-});
-
-export const endEditing = createAction(END_EDITING, () => {
-  MetabaseAnalytics.trackStructEvent("Data Reference", "Ended Editing");
-});
 
 export const expandFormula = createAction(EXPAND_FORMULA);
 
@@ -221,7 +210,7 @@ export const rUpdateFields = (fields, formFields, props) => {
             fields[fieldId],
           ),
         }))
-        .filter(({ field, formField }) => !isEmptyObject(formField))
+        .filter(({ formField }) => !isEmptyObject(formField))
         .map(({ field, formField }) => ({ ...field, ...formField }));
 
       await Promise.all(updatedFields.map(props.updateField));
@@ -257,9 +246,6 @@ export default handleActions(
     },
     [START_EDITING]: {
       next: state => assoc(state, "isEditing", true),
-    },
-    [END_EDITING]: {
-      next: state => assoc(state, "isEditing", false),
     },
     [EXPAND_FORMULA]: {
       next: state => assoc(state, "isFormulaExpanded", true),

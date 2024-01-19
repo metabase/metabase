@@ -8,7 +8,6 @@ import _ from "underscore";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
 
@@ -269,16 +268,6 @@ class Visualization extends PureComponent {
 
   handleVisualizationClick = clicked => {
     const { handleVisualizationClick } = this.props;
-
-    if (clicked) {
-      MetabaseAnalytics.trackStructEvent(
-        "Actions",
-        "Clicked",
-        `${clicked.column ? "column" : ""} ${clicked.value ? "value" : ""} ${
-          clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""
-        }`,
-      );
-    }
 
     if (typeof handleVisualizationClick === "function") {
       handleVisualizationClick(clicked);

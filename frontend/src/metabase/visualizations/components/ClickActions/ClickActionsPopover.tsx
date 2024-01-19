@@ -1,7 +1,6 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import type * as tippy from "tippy.js";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
 import type { Dispatch } from "metabase-types/store";
@@ -12,13 +11,9 @@ import type {
   PopoverClickAction,
   OnChangeCardAndRun,
 } from "metabase/visualizations/types";
-import {
-  isPopoverClickAction,
-  isRegularClickAction,
-} from "metabase/visualizations/types";
+import { isPopoverClickAction } from "metabase/visualizations/types";
 
 import { ClickActionsView } from "./ClickActionsView";
-import { getGALabelForAction } from "./utils";
 import { FlexTippyPopover } from "./ClickActionsPopover.styled";
 
 interface ChartClickActionsProps {
@@ -55,11 +50,6 @@ export class ClickActionsPopover extends Component<
   handleClickAction = (action: RegularClickAction) => {
     const { dispatch, onChangeCardAndRun } = this.props;
     if (isPopoverClickAction(action)) {
-      MetabaseAnalytics.trackStructEvent(
-        "Actions",
-        "Open Click Action Popover",
-        getGALabelForAction(action),
-      );
       this.setState({ popoverAction: action });
     } else {
       const didPerform = performAction(action, {
@@ -67,14 +57,6 @@ export class ClickActionsPopover extends Component<
         onChangeCardAndRun,
       });
       if (didPerform) {
-        if (isRegularClickAction(action)) {
-          MetabaseAnalytics.trackStructEvent(
-            "Actions",
-            "Executed Click Action",
-            getGALabelForAction(action),
-          );
-        }
-
         this.close();
       } else {
         console.warn("No action performed", action);
@@ -120,21 +102,9 @@ export class ClickActionsPopover extends Component<
             this.instance?.popperInstance?.update();
           }}
           onChangeCardAndRun={({ nextCard }) => {
-            if (popoverAction) {
-              MetabaseAnalytics.trackStructEvent(
-                "Action",
-                "Executed Click Action",
-                getGALabelForAction(popoverAction),
-              );
-            }
             onChangeCardAndRun({ nextCard });
           }}
           onClose={() => {
-            MetabaseAnalytics.trackStructEvent(
-              "Action",
-              "Dismissed Click Action Menu",
-              getGALabelForAction(popoverAction),
-            );
             this.close();
           }}
           series={series}
@@ -153,10 +123,6 @@ export class ClickActionsPopover extends Component<
           this.instance = instance;
         }}
         onClose={() => {
-          MetabaseAnalytics.trackStructEvent(
-            "Action",
-            "Dismissed Click Action Menu",
-          );
           this.close();
         }}
         placement="bottom-start"

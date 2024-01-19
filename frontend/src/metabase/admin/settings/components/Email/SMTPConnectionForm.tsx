@@ -13,7 +13,6 @@ import { Flex, Stack } from "metabase/ui";
 import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   sendTestEmail,
   updateEmailSettings,
@@ -84,20 +83,10 @@ export const SMTPConnectionForm = ({
       try {
         await dispatch(sendTestEmail());
         setSendingEmail("success");
-        MetabaseAnalytics.trackStructEvent(
-          "Email Settings",
-          "Test Email",
-          "success",
-        );
 
         // show a confirmation for 3 seconds, then return to normal
         setTimeout(() => setSendingEmail("default"), 3000);
       } catch (error: any) {
-        MetabaseAnalytics.trackStructEvent(
-          "Email Settings",
-          "Test Email",
-          "error",
-        );
         setSendingEmail("default");
         // NOTE: reaching into form component is not ideal
         formRef.current?.setFormErrors(
