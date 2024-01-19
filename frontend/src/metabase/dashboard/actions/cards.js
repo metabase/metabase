@@ -36,15 +36,14 @@ function generateTemporaryDashcardId() {
 export const addCardToDashboard =
   ({ dashId, cardId, tabId }) =>
   async (dispatch, getState) => {
-    debugger
-    console.log(`dashId: ${dashId}`);
-    console.log(`cardId: ${cardId}`);
     await dispatch(Questions.actions.fetch({ id: cardId }));
     const card = Questions.selectors
       .getObject(getState(), { entityId: cardId })
       .card();
     const visualization = getVisualizationRaw([{ card }]);
-    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
+    // const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
+    // TODO: add by guoqy
+    const createdCardSize = DEFAULT_CARD_SIZE || visualization.defaultSize;
 
     const dashboardState = getState().dashboard;
 

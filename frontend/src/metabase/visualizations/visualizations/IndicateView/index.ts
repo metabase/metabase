@@ -63,11 +63,11 @@ const IndicateViewWrap = Object.assign(IndicateView, {
       },
       default: "left",
     },
-    "text.target_question" : {
+    "change.cardId" : {
       section: t`Display`,
       title: t`目标用例名称`,
       widget: "input",
-      default: "123",
+      default: -1,
     },
     "dashcard.background": {
       section: t`Display`,

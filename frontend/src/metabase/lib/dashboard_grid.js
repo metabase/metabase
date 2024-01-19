@@ -13,7 +13,7 @@ export const GRID_COLUMNS = {
   mobile: 1,
 };
 
-export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
+export const DEFAULT_CARD_SIZE = { width: 16, height: 8 };
 
 export const MIN_ROW_HEIGHT = 40;
 

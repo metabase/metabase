@@ -301,8 +301,9 @@ if (WEBPACK_BUNDLE === "hot") {
     },
     // if webpack doesn't reload UI after code change in development
     // watchOptions: {
-    //     aggregateTimeout: 300,
-    //     poll: 1000
+        // aggregateTimeout: 300,
+        // poll: 1000,
+        // ignored: /node_modules/
     // }
     // if you want to reduce stats noise
     // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose

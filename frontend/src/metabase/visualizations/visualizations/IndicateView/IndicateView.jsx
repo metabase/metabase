@@ -17,14 +17,8 @@ import {
   ReactMarkdownStyleWrapper,
   TextInput,
 } from "./IndicateView.styled";
-// import { useCallback } from "react";
-// import * as MetabaseAnalytics from "metabase/lib/analytics";
-// import PropTypes from "prop-types";
-import { getVisualizationRaw } from "metabase/visualizations";
-import Questions from "metabase/entities/questions";
-// import { cancelFetchCardData, fetchCardData } from "./data-fetching";
-import { ADD_CARD_TO_DASH, addCardToDashboard } from "metabase/dashboard/actions";
-import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { removeCardFromDashboard, addCardToDashboard } from "metabase/dashboard/actions";
+import { useDispatch } from "react-redux";
 
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
@@ -38,58 +32,7 @@ const REHYPE_PLUGINS = [
   [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
 ];
 
-export const handleReplaceDashCard =  ()=>{
-  debugger
-  addCardToDashboard()
-}
-export const addCardToDashboard =
-  ({ dashId, cardId, tabId }) =>
-  async (dispatch, getState) => {
-    debugger
-    console.log(`dashId: ${dashId}`);
-    console.log(`cardId: ${cardId}`);
-    await dispatch(Questions.actions.fetch({ id: cardId }));
-    const card = Questions.selectors
-      .getObject(getState(), { entityId: cardId })
-      .card();
-    const visualization = getVisualizationRaw([{ card }]);
-    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
-    const dashboardState = getState().dashboard;
-
-    const dashcardId = generateTemporaryDashcardId();
-    const dashcard = {
-      id: dashcardId,
-      dashboard_id: dashId,
-      dashboard_tab_id: tabId ?? null,
-      card_id: card.id,
-      card: card,
-      series: [],
-      ...getPositionForNewDashCard(
-        getExistingDashCards(
-          dashboardState.dashboards,
-          dashboardState.dashcards,
-          dashId,
-          tabId,
-        ),
-        createdCardSize.width,
-        createdCardSize.height,
-      ),
-      parameter_mappings: [],
-      visualization_settings: {},
-    };
-    dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
-    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-
-    await dispatch(loadMetadataForDashboard([dashcard]));
-
-    dispatch(
-      autoWireParametersToNewCard({
-        dashboard_id: dashId,
-        dashcard_id: dashcardId,
-      }),
-    );
-  };
 export function IndicateView({
   onUpdateVisualizationSettings,
   className,
@@ -102,6 +45,7 @@ export function IndicateView({
   isMobile,
 }) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
+  const dispatch = useDispatch();
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
     useToggle(justAdded);
@@ -124,59 +68,34 @@ export function IndicateView({
     [dashcard, dashboard, parameterValues, settings.text],
   );
 
-  let tempId = -1;
-      
-  function generateTemporaryDashcardId() {
-    return tempId--;
+
+  const handleReplaceDashCard = () => {
+    const _dashCard = findMaxSizeDashcard(dashboard);
+    dispatch(removeCardFromDashboard({
+      dashcardId: _dashCard.id,
+      cardId: _dashCard.cardId
+    }));
+    dispatch(addCardToDashboard({
+      dashId: dashboard.id,
+      cardId:settings['change.cardId'],
+      tabId:null
+    }));
+    console.log(1);
   }
 
-  // const handleReplaceDashCard = (dashId=1, cardId =1, tabId = null) => 
-  //   async (dispatch, getState) => {
-  //     debugger
-  //     console.log(`dashId: ${dashId}//////`);
-  //     console.log(`cardId: ${cardId}`);
-  //     await dispatch(Questions.actions.fetch({ id: cardId }));
-  //     const card = Questions.selectors
-  //       .getObject(getState(), { entityId: cardId })
-  //       .card();
-  //     const visualization = getVisualizationRaw([{ card }]);
-  //     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
-  
-  //     const dashboardState = getState().dashboard;
-  
-  //     const dashcardId = generateTemporaryDashcardId();
-  //     const dashcard = {
-  //       // id: dashcardId,
-  //       // dashboard_id: dashId,
-  //       // dashboard_tab_id: tabId ?? null,
-  //       // card_id: card.id,
-  //       // card: card,
-  //       // series: [],
-  //       // ...getPositionForNewDashCard(
-  //       //   getExistingDashCards(
-  //       //     dashboardState.dashboards,
-  //       //     dashboardState.dashcards,
-  //       //     dashId,
-  //       //     tabId,
-  //       //   ),
-  //       //   createdCardSize.width,
-  //       //   createdCardSize.height,
-  //       // ),
-  //       // parameter_mappings: [],
-  //       // visualization_settings: {},
-  //     };
-  //     dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
-  //     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-  
-  //     await dispatch(loadMetadataForDashboard([dashcard]));
-  
-  //     dispatch(
-  //       autoWireParametersToNewCard({
-  //         dashboard_id: dashId,
-  //         dashcard_id: dashcardId,
-  //       }),
-  //     );
-  //   };
+  const findMaxSizeDashcard = (dashboard) => {
+    let _maxSize = 0;
+    let _maxSizeDashcard = null;
+    for(let i =0 ; i<dashboard.dashcards.length; i++) {
+      let _dashcard = dashboard.dashcards[i];
+      if(_dashcard.size_x > _maxSize) {
+        _maxSize = _dashcard.size_x;
+        _maxSizeDashcard = _dashcard;
+      }
+    }
+    return _maxSizeDashcard;
+  }
+
   
   
 
