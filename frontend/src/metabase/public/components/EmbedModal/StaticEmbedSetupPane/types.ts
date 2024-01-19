@@ -5,8 +5,3 @@ export type ActivePreviewPane = "preview" | "code";
 export type EmbedResourceParameterWithValue = EmbedResourceParameter & {
   value: string;
 };
-
-export type TextHighlightConfig = {
-  text: string;
-  mode: "fullLine" | "text";
-};

@@ -60,8 +60,12 @@ export const OverviewSettings = ({
         >
           <Text>{t`To embed this ${resourceType} in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.`}</Text>
           <br />
-          <Text>{t`You can also hide or lock any of the dashboard’s parameters.`}</Text>
-          <br />
+          {resourceType === "dashboard" && (
+            <>
+              <Text>{t`You can also hide or lock any of the dashboard’s parameters.`}</Text>
+              <br />
+            </>
+          )}
           <Text>{jt`Check out the ${staticEmbedDocsLink} for more.`}</Text>
         </StaticEmbedSetupPaneSettingsContentSection>
       }

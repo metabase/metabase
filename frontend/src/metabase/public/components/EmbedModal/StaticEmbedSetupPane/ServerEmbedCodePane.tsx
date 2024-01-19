@@ -16,7 +16,6 @@ import "ace/mode-python";
 
 import { DEFAULT_DISPLAY_OPTIONS } from "./config";
 import { CodeSample } from "./CodeSample";
-import type { TextHighlightConfig } from "./types";
 
 type EmbedCodePaneProps = {
   siteUrl: string;
@@ -170,19 +169,13 @@ function getHighlightedCode({
     displayOptions,
   );
 
-  const highlightedText: TextHighlightConfig[] = [];
+  const highlightedText: string[] = [];
   if (hasParametersCodeDiff) {
-    highlightedText.push({
-      text: selectedServerCodeOption.parametersSource,
-      mode: "fullLine",
-    });
+    highlightedText.push(selectedServerCodeOption.parametersSource);
   }
 
   if (hasAppearanceCodeDiff) {
-    highlightedText.push({
-      text: selectedServerCodeOption.getIframeQuerySource,
-      mode: "text",
-    });
+    highlightedText.push(selectedServerCodeOption.getIframeQuerySource);
   }
 
   return {

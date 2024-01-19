@@ -98,10 +98,10 @@ export const StaticEmbedSetupPane = ({
     ({ name }) => name === selectedServerCodeOptionName,
   );
 
-  const hasSettingsChanges = !_.isEqual(
+  const hasSettingsChanges = getHasSettingsChanges({
     initialEmbeddingParams,
     embeddingParams,
-  );
+  });
 
   const iframeUrl = getSignedPreviewUrl(
     siteUrl,
@@ -152,7 +152,9 @@ export const StaticEmbedSetupPane = ({
       <Tabs defaultValue={TABS.Overview} data-testid="embedding-preview">
         <Tabs.List p="0 1.5rem">
           <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>
-          <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
+          {resourceType !== "question" && (
+            <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
+          )}
           <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value={TABS.Overview}>
@@ -269,7 +271,7 @@ function filterValidResourceParameters(
   return _.pick(embeddingParams, validParameters);
 }
 
-const getPreviewParamsBySlug = ({
+function getPreviewParamsBySlug({
   resourceParameters,
   embeddingParams,
   parameterValues,
@@ -277,7 +279,7 @@ const getPreviewParamsBySlug = ({
   resourceParameters: EmbedResourceParameter[];
   embeddingParams: EmbeddingParameters;
   parameterValues: EmbeddingParametersValues;
-}) => {
+}) {
   const lockedParameters = getLockedPreviewParameters(
     resourceParameters,
     embeddingParams,
@@ -289,7 +291,7 @@ const getPreviewParamsBySlug = ({
       parameterValues[parameter.id] ?? null,
     ]),
   );
-};
+}
 
 function getLockedPreviewParameters(
   resourceParameters: EmbedResourceParameter[],
@@ -298,4 +300,35 @@ function getLockedPreviewParameters(
   return resourceParameters.filter(
     parameter => embeddingParams[parameter.slug] === "locked",
   );
+}
+
+function getHasSettingsChanges({
+  initialEmbeddingParams,
+  embeddingParams,
+}: {
+  initialEmbeddingParams: EmbeddingParameters;
+  embeddingParams: EmbeddingParameters;
+}): boolean {
+  const nonDisabledInitialEmbeddingParams = getNonDisabledEmbeddingParams(
+    initialEmbeddingParams,
+  );
+  const nonDisabledEmbeddingParams =
+    getNonDisabledEmbeddingParams(embeddingParams);
+
+  return !_.isEqual(
+    nonDisabledInitialEmbeddingParams,
+    nonDisabledEmbeddingParams,
+  );
+}
+
+function getNonDisabledEmbeddingParams(
+  embeddingParams: EmbeddingParameters,
+): EmbeddingParameters {
+  return Object.keys(embeddingParams).reduce((result, key) => {
+    if (embeddingParams[key] !== "disabled") {
+      result[key] = embeddingParams[key];
+    }
+
+    return result;
+  }, {} as EmbeddingParameters);
 }

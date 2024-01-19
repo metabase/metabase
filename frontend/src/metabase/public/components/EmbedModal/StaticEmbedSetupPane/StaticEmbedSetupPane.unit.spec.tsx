@@ -10,7 +10,6 @@ import { getBrokenUpTextMatcher, renderWithProviders } from "__support__/ui";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 import * as whitelabelSelectors from "metabase/selectors/whitelabel";
 
-import type { TextHighlightConfig } from "./types";
 import type { StaticEmbedSetupPaneProps } from "./StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "./StaticEmbedSetupPane";
 
@@ -19,13 +18,13 @@ const TextEditorMock = ({
   highlightedText,
 }: {
   value: string;
-  highlightedText?: TextHighlightConfig[];
+  highlightedText?: string[];
 }) => (
   <div data-testid="text-editor-mock">
     {value}
     {highlightedText && (
       <div data-testid="text-editor-mock-highlighted-code">
-        {highlightedText.map(({ text }) => text)}
+        {highlightedText.map(text => text)}
       </div>
     )}
   </div>
