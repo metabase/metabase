@@ -41,6 +41,10 @@ export const ModelCard = styled(Card)`
   &:hover {
     color: ${color("brand")};
   }
+  .Button:hover {
+    color: ${color("text-medium")} !important;
+  }
+
   height: 9rem;
   display: flex;
   flex-flow: column nowrap;
