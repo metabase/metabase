@@ -1,7 +1,7 @@
 import type * as React from "react";
 import { t, jt } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 

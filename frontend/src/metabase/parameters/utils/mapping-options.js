@@ -1,30 +1,38 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { getColumnGroupName } from "metabase/common/utils/column-groups";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
-import { ExpressionDimension } from "metabase-lib/Dimension";
 import {
+  columnFilterForParameter,
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
 import {
+  buildColumnTarget,
   buildDimensionTarget,
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
 } from "metabase-lib/parameters/utils/targets";
 
-function buildStructuredQuerySectionOptions(section) {
-  return section.items.map(({ dimension }) => ({
-    sectionName: section.name,
-    name: dimension.displayName(),
-    icon: dimension.icon(),
-    target: buildDimensionTarget(dimension),
-    // these methods don't exist on instances of ExpressionDimension
-    isForeign: !!(dimension instanceof ExpressionDimension
-      ? false
-      : dimension.fk() || dimension.joinAlias()),
-  }));
+function buildStructuredQuerySectionOptions(query, stageIndex, group) {
+  const groupInfo = Lib.displayInfo(query, stageIndex, group);
+  const columns = Lib.getColumnsFromColumnGroup(group);
+
+  return columns.map(column => {
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
+    return {
+      sectionName: getColumnGroupName(groupInfo),
+      name: columnInfo.displayName,
+      icon: getColumnIcon(column),
+      target: buildColumnTarget(column),
+      isForeign: columnInfo.isFromJoin || columnInfo.isImplicitlyJoinable,
+    };
+  });
 }
 
 function buildNativeQuerySectionOptions(section) {
@@ -57,7 +65,7 @@ function buildTextTagOption(tagName) {
 /**
  *
  * @param {import("metabase-lib/metadata/Metadata").default} metadata
- * @param {import("metabase-types/api").ParameterTarget|null} parameter
+ * @param {import("metabase-types/api").Parameter|null} parameter
  * @param {import("metabase-types/api").Card} card
  * @param {import("metabase-types/store").DashboardCard|null} [dashcard]
  * @returns {*}
@@ -89,39 +97,33 @@ export function getParameterMappingOptions(
   }
 
   const question = new Question(card, metadata);
-  const query = question.legacyQuery();
   const options = [];
-  if (question.isDataset()) {
+  if (question.isStructured() || question.isDataset()) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
-    const composedDatasetQuery = question.composeDataset().legacyQuery();
-    options.push(
-      ...composedDatasetQuery
-        .dimensionOptions(
-          parameter ? dimensionFilterForParameter(parameter) : undefined,
-        )
-        .sections()
-        .flatMap(section => buildStructuredQuerySectionOptions(section)),
-    );
-  } else if (question.isStructured()) {
-    options.push(
-      ...query
-        .dimensionOptions(
-          parameter ? dimensionFilterForParameter(parameter) : undefined,
-        )
-        .sections()
-        .flatMap(section => buildStructuredQuerySectionOptions(section)),
+    const query = question.isDataset()
+      ? question.composeDataset().query()
+      : question.query();
+    const stageIndex = -1;
+    const availableColumns = Lib.filterableColumns(query, stageIndex);
+    const parameterColumns = parameter
+      ? availableColumns.filter(columnFilterForParameter(parameter))
+      : availableColumns;
+    const columnGroups = Lib.groupColumns(parameterColumns);
+    return columnGroups.flatMap(group =>
+      buildStructuredQuerySectionOptions(query, stageIndex, group),
     );
   } else {
+    const legacyQuery = question.legacyQuery();
     options.push(
-      ...query
+      ...legacyQuery
         .variables(
           parameter ? variableFilterForParameter(parameter) : undefined,
         )
         .map(buildVariableOption),
     );
     options.push(
-      ...query
+      ...legacyQuery
         .dimensionOptions(
           parameter ? dimensionFilterForParameter(parameter) : undefined,
           parameter ? getTagOperatorFilterForParameter(parameter) : undefined,

@@ -1,4 +1,4 @@
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";
@@ -75,7 +75,7 @@ export interface CollectionItem {
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean | null;
-  fully_parametrized?: boolean | null;
+  fully_parameterized?: boolean | null;
   collection?: Collection | null;
   display?: CardDisplayType;
   personal_owner_id?: UserId;

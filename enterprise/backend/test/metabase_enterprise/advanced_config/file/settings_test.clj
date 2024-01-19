@@ -3,11 +3,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]))
+   [metabase.test :as mt]))
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-                        (premium-features-test/with-premium-features #{:config-text-file}
+                        (mt/with-premium-features #{:config-text-file}
                           (thunk)))))
 
 (defsetting config-from-file-settings-test-setting

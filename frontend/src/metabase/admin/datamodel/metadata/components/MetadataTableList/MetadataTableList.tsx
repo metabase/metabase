@@ -9,7 +9,7 @@ import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Tables from "metabase/entities/tables";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import type {
   DatabaseId,
@@ -103,7 +103,7 @@ const MetadataTableList = ({
   }, [selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <div className="MetadataEditor-table-list AdminList flex-no-shrink">
+    <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
       {canGoBack && (
         <TableBreadcrumbs
@@ -148,7 +148,7 @@ const MetadataTableList = ({
           <TableEmptyState />
         )}
       </ul>
-    </div>
+    </aside>
   );
 };
 

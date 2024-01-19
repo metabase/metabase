@@ -5,13 +5,9 @@ export function getMaxLabelDimension(
   d3Arc: d3.svg.Arc<d3.svg.arc.Arc>,
   slice: d3.svg.arc.Arc,
 ) {
-  // Invalid typing
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
+  // @ts-expect-error Invalid library typings
   const innerRadius = d3Arc.innerRadius()();
-  // Invalid typing
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
+  // @ts-expect-error Invalid library typings
   const outerRadius = d3Arc.outerRadius()();
   const donutWidth = outerRadius - innerRadius;
 

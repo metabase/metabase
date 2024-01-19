@@ -5,8 +5,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -25,12 +23,12 @@
         (testing (format "\nSnippet in %s" collection-name)
           (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id collection)}]
             (testing "\nShould be allowed regardless if EE features aren't enabled"
-              (premium-features-test/with-premium-features #{}
+              (mt/with-premium-features #{}
                 (is (= true
                        (has-perms? snippet))
                     "allowed?")))
             (testing "\nWith EE features enabled"
-              (premium-features-test/with-premium-features #{:snippet-collections}
+              (mt/with-premium-features #{:snippet-collections}
                 (testing (format "\nShould not be allowed with no perms for %s" collection-name)
                   (is (= false
                          (has-perms? snippet))
@@ -116,10 +114,10 @@
                   (when-not (= source-collection dest-collection)
                     (testing (format "\nMove from %s -> %s should need write ('curate') perms for both" (:name source-collection) (:name dest-collection))
                       (testing "\nShould be allowed if EE perms aren't enabled"
-                        (premium-features-test/with-premium-features #{}
+                        (mt/with-premium-features #{}
                           (is (= true
                                  (has-perms?)))))
-                      (premium-features-test/with-premium-features #{:snippet-collections}
+                      (mt/with-premium-features #{:snippet-collections}
                         (doseq [c [source-collection dest-collection]]
                           (testing (format "\nPerms for only %s should fail" (:name c))
                             (try
@@ -142,7 +140,7 @@
   (testing "GET /api/collection/:id/items"
     (testing "Snippet collections should be returned on EE with the snippet-collections feature flag, rather than
              returning all nested snippets as a flat list"
-      (premium-features-test/with-premium-features #{:snippet-collections}
+      (mt/with-premium-features #{:snippet-collections}
         (mt/with-temp [Collection         collection {:namespace "snippets" :name "My Snippet Collection"}
                        Collection         sub-collection {:namespace "snippets"
                                                           :name      "Nested Snippet Collection"

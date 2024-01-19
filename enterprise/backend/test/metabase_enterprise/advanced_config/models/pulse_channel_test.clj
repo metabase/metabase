@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
    [metabase.models :refer [Pulse PulseChannel]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -24,7 +23,7 @@
                                     (not (every? (fn [email]
                                                    (contains? allowed-domains (u/email->domain email)))
                                                  emails)))]]
-      (premium-features-test/with-premium-features #{:email-allow-list}
+      (mt/with-premium-features #{:email-allow-list}
         (mt/with-temporary-setting-values [subscription-allowed-domains (str/join "," allowed-domains)]
           ;; `with-premium-features` and `with-temporary-setting-values` will add `testing` context for the other
           ;; stuff.
@@ -50,11 +49,11 @@
 
 (deftest subscription-allowed-domains!-test
   (testing "Should be able to set the subscription-allowed-domains setting with the email-allow-list feature"
-    (premium-features-test/with-premium-features #{:email-allow-list}
+    (mt/with-premium-features #{:email-allow-list}
       (is (= "metabase.com"
              (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
   (testing "Should be unable to set the subscription-allowed-domains setting without the email-allow-list feature"
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting subscription-allowed-domains is not enabled because feature :email-allow-list is not available"

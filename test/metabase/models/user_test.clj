@@ -17,7 +17,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -187,7 +186,7 @@
                      (select-keys ["crowberto@metabase.com" (:email user)])))))
 
         (testing "...or if setting is disabled"
-          (premium-features-test/with-premium-features #{:sso-ldap}
+          (mt/with-premium-features #{:sso-ldap}
             (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
               (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
                 (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
@@ -196,7 +195,7 @@
                            (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
-   (premium-features-test/with-premium-features #{:disable-password-login}
+   (mt/with-premium-features #{:disable-password-login}
      (mt/with-temporary-setting-values [enable-password-login false]
        (ldap.test/with-ldap-server
          (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)

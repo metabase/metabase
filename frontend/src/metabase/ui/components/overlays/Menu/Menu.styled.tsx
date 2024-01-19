@@ -14,17 +14,20 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         minWidth: "11.5rem",
       },
       item: {
-        color: theme.colors.text[2],
+        color: theme.fn.themeColor("text-dark"),
         fontSize: theme.fontSizes.md,
         lineHeight: "1.5rem",
         padding: theme.spacing.sm,
 
-        "&:hover, &:focus": {
-          color: theme.colors.brand[1],
-          backgroundColor: theme.colors.brand[0],
+        "&:disabled": {
+          color: theme.fn.themeColor("text-light"),
+        },
+        "&[data-hovered]": {
+          color: theme.fn.themeColor("brand"),
+          backgroundColor: theme.fn.themeColor("brand-lighter"),
 
           [`& .${getStylesRef("itemRightSection")}`]: {
-            color: theme.colors.brand[1],
+            color: theme.fn.themeColor("brand"),
           },
         },
       },
@@ -33,11 +36,11 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
       },
       itemRightSection: {
         ref: getStylesRef("itemRightSection"),
-        color: theme.colors.text[0],
+        color: theme.fn.themeColor("text-light"),
         marginLeft: theme.spacing.md,
       },
       label: {
-        color: theme.colors.text[0],
+        color: theme.fn.themeColor("text-light"),
         fontSize: theme.fontSizes.sm,
         lineHeight: theme.lineHeight,
         padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
@@ -47,7 +50,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         marginBottom: theme.spacing.xs,
         marginLeft: theme.spacing.sm,
         marginRight: theme.spacing.sm,
-        borderTopColor: theme.colors.border[0],
+        borderTopColor: theme.fn.themeColor("border"),
       },
     }),
   },

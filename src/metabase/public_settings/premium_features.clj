@@ -229,7 +229,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (mu/defn token-features :- [:set ms/NonBlankString]
+  (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -242,7 +242,7 @@
 (defn- has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
-  (boolean (seq (token-features))))
+  (boolean (seq (*token-features*))))
 
 (defn has-feature?
   "Does this instance's premium token have `feature`?
@@ -250,7 +250,7 @@
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (contains? (token-features) (name feature)))
+  (contains? (*token-features*) (name feature)))
 
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."
@@ -305,13 +305,15 @@
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
   :embedding
+  :export? true
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
-  :whitelabel)
+  :whitelabel
+  :export? true)
 
 (define-premium-feature enable-audit-app?
   "Should we enable the Audit Logs interface in the Admin UI?"
@@ -331,7 +333,8 @@
 
 (define-premium-feature enable-sandboxes?
   "Should we enable data sandboxes (row-level permissions)?"
-  :sandboxes)
+  :sandboxes
+  :export? true)
 
 (define-premium-feature enable-sso-jwt?
   "Should we enable JWT-based authentication?"
@@ -400,14 +403,14 @@
   :visibility :public
   :setter     :none
   :audit      :never
-  :getter     (fn [] (boolean ((token-features) "hosting")))
+  :getter     (fn [] (boolean ((*token-features*) "hosting")))
   :doc        false)
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
 ;; future.)
 ;;
-;; By checking whether `(token-features)` is non-empty we can see whether we have a valid EE token. If the token is
+;; By checking whether `(*token-features*)` is non-empty we can see whether we have a valid EE token. If the token is
 ;; valid, we can enable EE enhancements.
 ;;
 ;; DEPRECATED -- it should now be possible to use the new 0.41.0+ features for everything previously covered by

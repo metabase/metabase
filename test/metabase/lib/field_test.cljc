@@ -625,6 +625,7 @@
                :base-type                :type/*
                :id                       4
                :name                     "Field 4"
+               :fk-target-field-id       nil
                :lib/source               :source/card
                :lib/card-id              3
                :lib/source-column-alias  "Field 4"
@@ -635,6 +636,7 @@
               :effective-type          :type/Text
               :id                      4
               :name                    "Field 4"
+              :fk-target-field-id      nil
               :display-name            "Field 4"
               :lib/card-id             3
               :lib/source              :source/card
@@ -690,18 +692,6 @@
                query
                (lib/with-binning (m/find-first (comp #{"PRICE"} :name) breakoutables)
                  (first (lib.binning/numeric-binning-strategies)))))))))
-
-(deftest ^:parallel field-id-test
-  (let [id-meta (meta/field-metadata :venues :id)
-        query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                  (lib/with-fields [id-meta])
-                  (lib/expression "foo" (lib/+ id-meta 10)))
-        venues-id (:id id-meta)
-        cols (lib/orderable-columns query)]
-    (is (= venues-id (lib/field-id id-meta)))
-    (is (=? {"foo" nil
-             "ID" venues-id}
-           (into {} (map (juxt :lib/desired-column-alias lib/field-id)) cols)))))
 
 (defn- sorted-fields [fields]
   (sort-by (comp str last) fields))
@@ -1256,43 +1246,6 @@
                :display-name "User ID"}
               (lib/find-visible-column-for-ref query col-ref))))))
 
-(deftest ^:parallel find-visible-column-for-legacy-ref-field-test
-  (are [legacy-ref] (=? {:id   (meta/id :venues :name)
-                         :name "NAME"}
-                        (lib/find-visible-column-for-legacy-ref lib.tu/venues-query legacy-ref))
-    [:field (meta/id :venues :name) nil]
-    [:field (meta/id :venues :name) {}]
-    ;; should work with refs that need normalization
-    ["field" (meta/id :venues :name) nil]
-    ["field" (meta/id :venues :name)]
-    #?@(:cljs
-        [#js ["field" (meta/id :venues :name) nil]
-         #js ["field" (meta/id :venues :name) #js {}]])))
-
-(deftest ^:parallel find-visible-column-for-legacy-ref-expression-test
-  (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
-                        (lib/find-visible-column-for-legacy-ref lib.tu/query-with-expression legacy-ref))
-    [:expression "expr"]
-    ["expression" "expr"]
-    ["expression" "expr" nil]
-    ["expression" "expr" {}]
-    #?@(:cljs
-        [#js ["expression" "expr"]
-         #js ["expression" "expr" #js {}]])))
-
-(deftest ^:parallel find-visible-column-for-legacy-ref-aggregation-test
-  (let [query (-> lib.tu/venues-query
-                  (lib/aggregate (lib/count)))]
-    (are [legacy-ref] (=? {:name "count", :lib/source :source/aggregations}
-                          (lib/find-visible-column-for-legacy-ref query legacy-ref))
-      [:aggregation 0]
-      ["aggregation" 0]
-      ["aggregation" 0 nil]
-      ["aggregation" 0 {}]
-      #?@(:cljs
-          [#js ["aggregation" 0]
-           #js ["aggregation" 0 #js {}]]))))
-
 (deftest ^:parallel self-join-ambiguity-test
   (testing "Even when doing a tree-like self join, fields are matched correctly"
     (let [base     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -1496,35 +1449,6 @@
                    :lib/source :source/implicitly-joinable
                    :selected? true}
                   (get-state (mark-selected joined)))))))))
-
-(deftest ^:parallel legacycard-or-table-id-test
-  (testing "card query"
-    (let [card (:venues lib.tu/mock-cards)
-          query (lib/query lib.tu/metadata-provider-with-mock-cards card)]
-      (testing "simple"
-        (is (= (str "card__" (:id card))
-               (lib/legacy-card-or-table-id (first (lib/returned-columns query))))))
-      (testing "two stage"
-        (is (= (str "card__" (:id card))
-               (lib/legacy-card-or-table-id (first (lib/returned-columns (lib/append-stage query)))))))
-      (testing "breakout"
-        (is (= (str "card__" (:id card))
-               (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
-                                                                             (lib/breakout (first (lib/returned-columns query)))
-                                                                             lib/append-stage)))))))))
-  (testing "table query"
-    (let [query lib.tu/venues-query]
-      (testing "simple"
-        (is (= (meta/id :venues)
-               (lib/legacy-card-or-table-id (first (lib/returned-columns query))))))
-      (testing "two stage"
-        (is (= (meta/id :venues)
-               (lib/legacy-card-or-table-id (first (lib/returned-columns (lib/append-stage query)))))))
-      (testing "breakout"
-        (is (= (meta/id :venues)
-               (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
-                                                                             (lib/breakout (first (lib/returned-columns query)))
-                                                                             lib/append-stage))))))))))
 
 (deftest ^:parallel expression-ref-when-metadata-has-expression-name-test
   (testing (str "column metadata with :expression-name should generate :expression refs regardless of :lib/source. "

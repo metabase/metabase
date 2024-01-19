@@ -168,11 +168,8 @@
   filter-args-display-name]
  [lib.field
   add-field
-  field-id
-  legacy-card-or-table-id
   fieldable-columns
   fields
-  find-visible-column-for-legacy-ref
   find-visible-column-for-ref
   remove-field
   with-fields]
@@ -280,7 +277,8 @@
  [lib.stage
   append-stage
   drop-stage
-  drop-stage-if-empty]
+  drop-stage-if-empty
+  has-clauses?]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval

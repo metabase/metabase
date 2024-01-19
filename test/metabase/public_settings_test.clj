@@ -4,9 +4,6 @@
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as
-    premium-features.test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n :refer [tru]]))
@@ -187,7 +184,6 @@
             (is (= false
                    (public-settings/redirect-all-requests-to-https)))))))))
 
-
 (deftest cloud-gateway-ips-test
   (mt/with-temp-env-var-value [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
     (with-redefs [premium-features/is-hosted? (constantly true)]
@@ -220,30 +216,31 @@
                  (public-settings/start-of-week))))))))
 
 (deftest help-link-setting-test
-  (premium-features.test/with-premium-features #{:whitelabel}
-    (testing "When whitelabeling is enabled, help-link setting can be set to any valid value"
-      (public-settings/help-link! :metabase)
-      (is (= :metabase (public-settings/help-link)))
+  (mt/discard-setting-changes [help-link]
+    (mt/with-premium-features #{:whitelabel}
+      (testing "When whitelabeling is enabled, help-link setting can be set to any valid value"
+        (public-settings/help-link! :metabase)
+        (is (= :metabase (public-settings/help-link)))
 
-      (public-settings/help-link! :hidden)
-      (is (= :hidden (public-settings/help-link)))
+        (public-settings/help-link! :hidden)
+        (is (= :hidden (public-settings/help-link)))
 
-      (public-settings/help-link! :custom)
-      (is (= :custom (public-settings/help-link))))
+        (public-settings/help-link! :custom)
+        (is (= :custom (public-settings/help-link))))
 
-    (testing "help-link cannot be set to an invalid value"
-      (is (thrown-with-msg?
-           Exception #"Invalid help link option"
-           (public-settings/help-link! :invalid)))))
+      (testing "help-link cannot be set to an invalid value"
+        (is (thrown-with-msg?
+             Exception #"Invalid help link option"
+             (public-settings/help-link! :invalid)))))
 
-  (premium-features.test/with-premium-features #{}
-    (testing "When whitelabeling is not enabled, help-link setting cannot be set, and always returns :metabase"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Setting help-link is not enabled because feature :whitelabel is not available"
-           (public-settings/help-link! :hidden)))
+    (mt/with-premium-features #{}
+      (testing "When whitelabeling is not enabled, help-link setting cannot be set, and always returns :metabase"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting help-link is not enabled because feature :whitelabel is not available"
+             (public-settings/help-link! :hidden)))
 
-      (is (= :metabase (public-settings/help-link))))))
+        (is (= :metabase (public-settings/help-link)))))))
 
 (deftest validate-help-url-test
   (testing "validate-help-url accepts valid URLs with HTTP or HTTPS protocols"
@@ -272,7 +269,7 @@
          (#'public-settings/validate-help-url "mailto:help@metabase")))))
 
 (deftest help-link-custom-destination-setting-test
-  (premium-features.test/with-premium-features #{:whitelabel}
+  (mt/with-premium-features #{:whitelabel}
     (testing "When whitelabeling is enabled, help-link-custom-destination can be set to valid URLs"
       (public-settings/help-link-custom-destination! "http://www.metabase.com")
       (is (= "http://www.metabase.com" (public-settings/help-link-custom-destination)))
@@ -296,7 +293,7 @@
            #"Please make sure this is a valid URL"
            (public-settings/help-link-custom-destination! "mailto:help@metabase")))))
 
-  (premium-features.test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (testing "When whitelabeling is not enabled, help-link-custom-destination cannot be set, and always returns its default"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -304,3 +301,72 @@
            (public-settings/help-link-custom-destination! "http://www.metabase.com")))
 
       (is (= nil (public-settings/help-link-custom-destination))))))
+
+(deftest landing-page-setting-test
+    (testing "should return relative url for valid inputs"
+      (public-settings/landing-page! "")
+      (is (= "" (public-settings/landing-page)))
+
+      (public-settings/landing-page! "/")
+      (is (= "/" (public-settings/landing-page)))
+
+      (public-settings/landing-page! "/one/two/three/")
+      (is (= "/one/two/three/" (public-settings/landing-page)))
+
+      (public-settings/landing-page! "no-leading-slash")
+      (is (= "/no-leading-slash" (public-settings/landing-page)))
+
+      (public-settings/landing-page! "/pathname?query=param#hash")
+      (is (= "/pathname?query=param#hash" (public-settings/landing-page)))
+
+      (public-settings/landing-page! "#hash")
+      (is (= "/#hash" (public-settings/landing-page)))
+
+      (with-redefs [public-settings/site-url (constantly "http://localhost")]
+        (public-settings/landing-page! "http://localhost/absolute/same-origin")
+        (is (= "/absolute/same-origin" (public-settings/landing-page)))))
+
+    (testing "landing-page cannot be set to URLs with external origin"
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "https://google.com")))
+
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "sms://?&body=Hello")))
+
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "https://localhost/test")))
+
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "mailto:user@example.com")))
+
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "file:///path/to/resource")))))
+
+(deftest show-metabase-links-test
+  (mt/discard-setting-changes [show-metabase-links]
+    (mt/with-premium-features #{:whitelabel}
+      (testing "When whitelabeling is enabled, show-metabase-links setting can be set to boolean"
+        (public-settings/show-metabase-links! true)
+        (is (= true (public-settings/show-metabase-links)))
+
+        (public-settings/show-metabase-links! false)
+        (is (= false (public-settings/show-metabase-links)))))
+
+    (mt/with-premium-features #{}
+      (testing "When whitelabeling is not enabled, show-metabase-links setting cannot be set, and always returns true"
+        (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"Setting show-metabase-links is not enabled because feature :whitelabel is not available"
+            (public-settings/show-metabase-links! true)))
+
+        (is (= true (public-settings/show-metabase-links)))))))

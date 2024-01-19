@@ -13,7 +13,7 @@ export const ExpressionStep = ({
   readOnly,
   step,
 }: NotebookStepUiComponentProps): JSX.Element => {
-  const { topLevelQuery: query, stageIndex } = step;
+  const { query, stageIndex } = step;
   const expressions = Lib.expressions(query, stageIndex);
 
   const renderExpressionName = (expression: Lib.ExpressionClause) =>
@@ -25,10 +25,11 @@ export const ExpressionStep = ({
       items={expressions}
       renderName={renderExpressionName}
       readOnly={readOnly}
-      renderPopover={({ item }) => (
+      renderPopover={({ item, index: expressionPosition }) => (
         <ExpressionWidget
           query={query}
           stageIndex={stageIndex}
+          expressionPosition={expressionPosition}
           name={
             item
               ? Lib.displayInfo(query, stageIndex, item).displayName

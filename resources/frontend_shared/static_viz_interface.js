@@ -1,45 +1,57 @@
 const toJSArray = a => {
-  var jsArray = [];
-  for (var i = 0; i < a.length; i++) {
+  const jsArray = [];
+  for (let i = 0; i < a.length; i++) {
     jsArray[i] = a[i];
   }
   return jsArray;
 };
 
 function toJSMap(m) {
-  var o = {};
-  for (var i = 0; i < m.length; i++) {
+  const o = {};
+  for (let i = 0; i < m.length; i++) {
     o[m[i][0]] = m[i][1];
   }
   return o;
 }
 
+/**
+ * @deprecated use javascript_visualization instead
+ */
 function row_chart(settings, data, colors) {
-  return StaticViz.RenderChart("row", {
+  return StaticViz.LegacyRenderChart("row", {
     settings: JSON.parse(settings),
     data: JSON.parse(data),
     colors: JSON.parse(colors),
   });
 }
 
+/**
+ * @deprecated use javascript_visualization instead
+ */
 function combo_chart(series, settings, instanceColors) {
   // Thinking of combo as similar to multiple, although they're different in BE
-  return StaticViz.RenderChart("combo-chart", {
+  return StaticViz.LegacyRenderChart("combo-chart", {
     multipleSeries: JSON.parse(series),
     settings: JSON.parse(settings),
     colors: JSON.parse(instanceColors),
   });
 }
 
+/**
+ * @deprecated use javascript_visualization instead
+ */
 function gauge(card, data) {
-  return StaticViz.RenderChart("gauge", {
+  return StaticViz.LegacyRenderChart("gauge", {
     card: JSON.parse(card),
     data: JSON.parse(data),
   });
 }
 
+/**
+ * @deprecated use javascript_visualization instead
+ */
 function waterfall(data, labels, settings, waterfallType, instanceColors) {
-  return StaticViz.RenderChart("waterfall", {
+  return StaticViz.LegacyRenderChart("waterfall", {
     data: toJSArray(data),
     labels: toJSMap(labels),
     settings: JSON.parse(settings),
@@ -48,25 +60,48 @@ function waterfall(data, labels, settings, waterfallType, instanceColors) {
   });
 }
 
+/**
+ * @deprecated use javascript_visualization instead
+ */
 function funnel(data, settings) {
-  return StaticViz.RenderChart("funnel", {
+  return StaticViz.LegacyRenderChart("funnel", {
     data: JSON.parse(data),
     settings: JSON.parse(settings),
   });
 }
 
+/**
+ * @deprecated use javascript_visualization instead
+ */
 function categorical_donut(rows, legendColors, settings) {
-  return StaticViz.RenderChart("categorical/donut", {
+  return StaticViz.LegacyRenderChart("categorical/donut", {
     data: toJSArray(rows),
     colors: toJSMap(legendColors),
     settings: JSON.parse(settings),
   });
 }
 
+/**
+ * @deprecated use javascript_visualization instead
+ */
 function progress(data, settings, instanceColors) {
-  return StaticViz.RenderChart("progress", {
+  return StaticViz.LegacyRenderChart("progress", {
     data: JSON.parse(data),
     settings: JSON.parse(settings),
     colors: JSON.parse(instanceColors),
+  });
+}
+
+function javascript_visualization(rawSeries, dashcardSettings, colors) {
+  const content = StaticViz.RenderChart(
+    JSON.parse(rawSeries),
+    JSON.parse(dashcardSettings),
+    JSON.parse(colors),
+  );
+  const type = content.startsWith("<svg") ? "svg" : "html";
+
+  return JSON.stringify({
+    type,
+    content,
   });
 }

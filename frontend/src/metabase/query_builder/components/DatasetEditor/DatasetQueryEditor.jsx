@@ -20,14 +20,14 @@ const propTypes = {
 function DatasetQueryEditor({
   // See below, where we convert the dataset/model question back into a "normal" question
   // so that we can do question-y things and not dataset-y things within the Notebook editor
-  question: dataset_DO_NOT_USE,
+  question: dataset,
   isActive,
   height,
   ...props
 }) {
   // Datasets/models by default behave like they are already nested,
   // so we need to edit the dataset/model question like it is a normal question
-  const question = dataset_DO_NOT_USE.setDataset(false);
+  const question = dataset.setDataset(false);
 
   const [isResizing, setResizing] = useState(false);
 
@@ -68,6 +68,7 @@ function DatasetQueryEditor({
         <NativeQueryEditor
           {...props}
           question={question}
+          query={dataset.legacyQuery()} // memoized query
           isInitiallyOpen
           hasTopBar={isActive}
           hasEditingSidebar={isActive}

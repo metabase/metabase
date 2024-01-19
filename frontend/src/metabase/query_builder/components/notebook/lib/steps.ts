@@ -5,7 +5,6 @@ import { checkNotNull } from "metabase/lib/types";
 import type { Query } from "metabase-lib/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { NotebookStep, OpenSteps } from "../types";
 
@@ -121,7 +120,8 @@ const STEPS: NotebookStepDef[] = [
       }
 
       return (
-        hasData(query) && (stageIndex === 0 || hasAnyClauses(query, stageIndex))
+        hasData(query) &&
+        (stageIndex === 0 || Lib.hasClauses(query, stageIndex))
       );
     },
     active: (query, stageIndex) => {
@@ -142,7 +142,8 @@ const STEPS: NotebookStepDef[] = [
       }
 
       return (
-        hasData(query) && (stageIndex === 0 || hasAnyClauses(query, stageIndex))
+        hasData(query) &&
+        (stageIndex === 0 || Lib.hasClauses(query, stageIndex))
       );
     },
     active: (query, stageIndex) => {
@@ -159,28 +160,6 @@ const hasData = (query: Lib.Query): boolean => {
   return databaseId !== null;
 };
 
-const hasAnyClauses = (query: Lib.Query, stageIndex: number): boolean => {
-  const hasJoins = Lib.joins(query, stageIndex).length > 0;
-  const hasExpressions = Lib.expressions(query, stageIndex).length > 0;
-  const hasFilters = Lib.filters(query, stageIndex).length > 0;
-  const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
-  const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
-  const hasOrderBys = Lib.orderBys(query, stageIndex).length > 0;
-  const hasLimits = Lib.hasLimit(query, stageIndex);
-  const hasFields = Lib.fields(query, stageIndex).length > 0;
-
-  return (
-    hasJoins ||
-    hasExpressions ||
-    hasFilters ||
-    hasAggregations ||
-    hasBreakouts ||
-    hasOrderBys ||
-    hasLimits ||
-    hasFields
-  );
-};
-
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
@@ -191,11 +170,9 @@ export function getQuestionSteps(
 ) {
   const allSteps: NotebookStep[] = [];
 
-  let legacyQuery = question.legacyQuery() as StructuredQuery;
   let query = question.query();
 
   // strip empty source queries
-  legacyQuery = legacyQuery.cleanNesting();
   query = Lib.dropEmptyStages(query);
 
   const database = metadata.database(Lib.databaseID(query));
@@ -204,17 +181,13 @@ export function getQuestionSteps(
 
   // add a level of nesting, if valid
   if (allowsNesting && hasBreakouts) {
-    legacyQuery = legacyQuery.nest();
     query = Lib.appendStage(query);
   }
 
-  const stagedQueries = legacyQuery.queries();
-
   for (let stageIndex = 0; stageIndex < Lib.stageCount(query); ++stageIndex) {
-    const stageQuery = stagedQueries[stageIndex];
     const { steps, actions } = getStageSteps(
+      question,
       query,
-      stageQuery,
       stageIndex,
       metadata,
       openSteps,
@@ -239,8 +212,8 @@ export function getQuestionSteps(
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
 function getStageSteps(
+  question: Question,
   query: Query,
-  legacyQuery: StructuredQuery,
   stageIndex: number,
   metadata: Metadata,
   openSteps: OpenSteps,
@@ -266,8 +239,8 @@ function getStageSteps(
       type: STEP.type,
       stageIndex: stageIndex,
       itemIndex: itemIndex,
-      topLevelQuery: query,
-      query: legacyQuery,
+      question,
+      query,
       valid: STEP.valid(query, stageIndex, metadata),
       active,
       visible:

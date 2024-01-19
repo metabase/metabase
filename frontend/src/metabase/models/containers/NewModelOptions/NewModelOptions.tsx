@@ -12,6 +12,7 @@ import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 
 import { useSelector } from "metabase/lib/redux";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Database from "metabase-lib/metadata/Database";
 import {
   OptionsGridItem,
@@ -37,6 +38,8 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
   const collectionId = Urls.extractEntityId(
     props.location.query.collectionId as string,
   );
+
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (
@@ -89,13 +92,15 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
         )}
       </Grid>
 
-      <EducationalButton
-        target="_blank"
-        href={EDUCATIONAL_LINK}
-        className="mt4"
-      >
-        {t`What's a model?`}
-      </EducationalButton>
+      {showMetabaseLinks && (
+        <EducationalButton
+          target="_blank"
+          href={EDUCATIONAL_LINK}
+          className="mt4"
+        >
+          {t`What's a model?`}
+        </EducationalButton>
+      )}
     </OptionsRoot>
   );
 };

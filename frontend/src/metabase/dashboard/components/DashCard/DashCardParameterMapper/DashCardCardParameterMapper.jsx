@@ -9,16 +9,14 @@ import {
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import MetabaseSettings from "metabase/lib/settings";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import {
-  getNativeDashCardEmptyMappingText,
   isNativeDashCard,
   isVirtualDashCard,
   getVirtualCardType,
@@ -50,11 +48,8 @@ import {
   ChevrondownIcon,
   KeyIcon,
   Warning,
-  NativeCardDefault,
-  NativeCardIcon,
-  NativeCardText,
-  NativeCardLink,
 } from "./DashCardCardParameterMapper.styled";
+import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
 
 function formatSelected({ name, sectionName }) {
   if (sectionName == null) {
@@ -234,17 +229,7 @@ export function DashCardCardParameterMapper({
           </TextCardDefault>
         )
       ) : isNative && isDisabled ? (
-        <NativeCardDefault>
-          <NativeCardIcon name="info" />
-          <NativeCardText>
-            {getNativeDashCardEmptyMappingText(editingParameter)}
-          </NativeCardText>
-          <NativeCardLink
-            href={MetabaseSettings.docsUrl(
-              "questions/native-editor/sql-parameters",
-            )}
-          >{t`Learn how`}</NativeCardLink>
-        </NativeCardDefault>
+        <DisabledNativeCardHelpText parameter={editingParameter} />
       ) : (
         <>
           {headerContent && (

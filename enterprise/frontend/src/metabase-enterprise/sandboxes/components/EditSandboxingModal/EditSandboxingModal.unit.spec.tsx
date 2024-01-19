@@ -108,7 +108,10 @@ describe("EditSandboxingModal", () => {
         await waitFor(() =>
           expect(onSave).toHaveBeenCalledWith({
             attribute_remappings: {
-              foo: ["dimension", ["field", PEOPLE.ID, null]],
+              foo: [
+                "dimension",
+                ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+              ],
             },
             card_id: null,
             group_id: 1,

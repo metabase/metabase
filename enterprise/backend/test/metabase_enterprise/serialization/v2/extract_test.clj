@@ -1,11 +1,14 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.core :as mbc]
    [metabase.models
     :refer [Action
             Card
@@ -31,7 +34,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.time LocalDateTime OffsetDateTime)))
+   (java.time OffsetDateTime)))
 
 (defn- by-model [model-name extraction]
   (->> extraction
@@ -248,14 +251,14 @@
 
                        Card       {c4-id  :id
                                    c4-eid :entity_id}        {:name          "Referenced Question"
-                                   :database_id   db-id
-                                   :table_id      schema-id
-                                   :collection_id coll-id
-                                   :creator_id    mark-id
-                                   :dataset_query
-                                   {:query {:source-table no-schema-id
-                                            :filter [:>= [:field field-id nil] 18]}
-                                    :database db-id}}
+                                                              :database_id   db-id
+                                                              :table_id      schema-id
+                                                              :collection_id coll-id
+                                                              :creator_id    mark-id
+                                                              :dataset_query
+                                                              {:query {:source-table no-schema-id
+                                                                       :filter [:>= [:field field-id nil] 18]}
+                                                               :database db-id}}
                        Card
                        {c5-id  :id
                         c5-eid :entity_id}
@@ -353,7 +356,7 @@
                                                          :filter [:>= [:field ["My Database" nil "Schemaless Table" "Some Field"] nil] 18]
                                                          :aggregation [[:count]]}
                                                  :database "My Database"}
-                   :created_at                  LocalDateTime}
+                   :created_at                  OffsetDateTime}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -377,7 +380,7 @@
                                          :card_id      c1-eid
                                          :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
                                                               {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}]
-                   :created_at         LocalDateTime}
+                   :created_at         OffsetDateTime}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -424,7 +427,7 @@
                       :enabled true}]
                     :column_settings
                     {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                   :created_at    LocalDateTime}
+                   :created_at    OffsetDateTime}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -452,7 +455,7 @@
                    :dataset_query  {:query    {:source-table c4-eid
                                                :aggregation [[:count]]}
                                     :database "My Database"}
-                   :created_at     LocalDateTime}
+                   :created_at     OffsetDateTime}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -487,9 +490,9 @@
                                                 :enabled true}]
                                               :column_settings
                                               {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                     :created_at             LocalDateTime}
+                     :created_at             OffsetDateTime}
                     {:action_id action-eid}]
-                   :created_at             LocalDateTime}
+                   :created_at             OffsetDateTime}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -640,7 +643,7 @@
                                           {:model "Field", :id "email"}]]]
                        [:dimensions  [:sequential
                                       [:map
-                                       [:created_at (ms/InstanceOfClass LocalDateTime)]
+                                       [:created_at (ms/InstanceOfClass OffsetDateTime)]
                                        [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]]]]
                       ser))
           (is (not (contains? ser :id)))
@@ -666,13 +669,13 @@
                        [:dimensions         [:sequential
                                              [:map
                                               [:human_readable_field_id [:maybe [:sequential [:maybe :string]]]]
-                                              [:created_at              (ms/InstanceOfClass LocalDateTime)]]]]]
+                                              [:created_at              (ms/InstanceOfClass OffsetDateTime)]]]]]
                       ser))
           (is (not (contains? ser :id)))
 
           (testing "dimensions are properly inlined"
             (is (=? [{:human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]
-                      :created_at              LocalDateTime}]
+                      :created_at              OffsetDateTime}]
                     (:dimensions ser))))
 
           (testing "which depend on the Table and both real and human-readable foreign Fields"
@@ -716,7 +719,7 @@
                    :creator_id  "ann@heart.band"
                    :definition  {:source-table ["My Database" nil "Schemaless Table"]
                                  :aggregation [[:sum [:field ["My Database" nil "Schemaless Table" "Some Field"] nil]]]}
-                   :created_at  LocalDateTime}
+                   :created_at  OffsetDateTime}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -881,7 +884,7 @@
                                  :filter       [:< [:field ["My Database" nil
                                                             "Schemaless Table" "Some Field"]
                                                     nil] 18]}
-                   :created_at  LocalDateTime}
+                   :created_at  OffsetDateTime}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -1041,7 +1044,7 @@
                                  {:model "Table"    :id "Schemaless Table"}
                                  {:model "Field"    :id "Some Field"}
                                  {:model "FieldValues" :id "0"}] ; Always 0.
-                   :created_at  LocalDateTime
+                   :created_at  OffsetDateTime
                    :values      values}
                   ser))
           (is (not (contains? ser :id)))
@@ -1114,7 +1117,7 @@
                                                               :id    p-none-eid
                                                               :label "pulse_w_o_collection_or_dashboard"}]]]
                        [:creator_id                     [:= "ann@heart.band"]]
-                       [:created_at                     (ms/InstanceOfClass LocalDateTime)]
+                       [:created_at                     (ms/InstanceOfClass OffsetDateTime)]
                        [:dashboard_id {:optional true}  :nil]
                        [:collection_id {:optional true} :nil]]
                       ser))
@@ -1132,7 +1135,7 @@
                                              :label "pulse_with_only_collection"}]]]
                        [:creator_id    [:= "ann@heart.band"]]
                        [:collection_id [:= coll-eid]]
-                       [:created_at    (ms/InstanceOfClass LocalDateTime)]
+                       [:created_at    (ms/InstanceOfClass OffsetDateTime)]
                        [:dashboard_id {:optional true} :nil]]
                       ser))
           (is (not (contains? ser :id)))
@@ -1149,7 +1152,7 @@
                                             :label "pulse_with_only_dashboard"}]]]
                        [:creator_id   [:= "ann@heart.band"]]
                        [:dashboard_id [:= dash-eid]]
-                       [:created_at   (ms/InstanceOfClass LocalDateTime)]
+                       [:created_at   (ms/InstanceOfClass OffsetDateTime)]
                        [:collection_id {:optional true} :nil]]
                       ser))
           (is (not (contains? ser :id)))
@@ -1166,7 +1169,7 @@
                    :creator_id    "ann@heart.band"
                    :dashboard_id  dash-eid
                    :collection_id coll-eid
-                   :created_at    LocalDateTime}
+                   :created_at    OffsetDateTime}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -1496,14 +1499,23 @@
                                       clickdash-eid :entity_id} {:name          "Dashboard with click behavior"
                                                                  :collection_id coll5-id
                                                                  :creator_id    mark-id}
-                       DashboardCard _                          {:card_id c3-1-id
+                       DashboardCard _                          {:card_id      c3-1-id
                                                                  :dashboard_id clickdash-id
                                                                  :visualization_settings
                                                                  ;; Top-level click behavior for the card.
-                                                                 {:click_behavior {:type "link"
-                                                                                   :linkType "question"
-                                                                                   :targetId c3-2-id
-                                                                                   :parameterMappings {}}}}
+                                                                 (let [dimension  [:dimension [:field "something" {:base-type "type/Text"}]]
+                                                                       mapping-id (json/generate-string dimension)]
+                                                                   {:click_behavior {:type     "link"
+                                                                                     :linkType "question"
+                                                                                     :targetId c3-2-id
+                                                                                     :parameterMapping
+                                                                                     {mapping-id {:id     mapping-id
+                                                                                                  :source {:type "column"
+                                                                                                           :id   "whatever"
+                                                                                                           :name "Just to serialize"}
+                                                                                                  :target {:type      "dimension"
+                                                                                                           :id        mapping-id
+                                                                                                           :dimension dimension}}}}})}
                        ;;; stress-test that exporting various visualization_settings does not break
                        DashboardCard _                          {:card_id c3-1-id
                                                                  :dashboard_id clickdash-id
@@ -1711,3 +1723,14 @@
                (by-model "Collection" ser)))
         (is (= #{ncard-eid}
                (by-model "Card" ser)))))))
+
+(deftest skip-analytics-collections-test
+  (testing "Collections in 'analytics' namespace should not be extracted, see #37453"
+    (mt/with-empty-h2-app-db
+      (mbc/ensure-audit-db-installed!)
+      (testing "sanity check that the audit collection exists"
+        (is (some? (audit-db/default-audit-collection)))
+        (is (some? (audit-db/default-custom-reports-collection))))
+      (let [ser (extract/extract {:no-settings   true
+                                  :no-data-model true})]
+        (is (= #{} (by-model "Collection" ser)))))))

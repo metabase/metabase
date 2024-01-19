@@ -896,6 +896,30 @@
       (h value)]
      :render/text (str value)}))
 
+(s/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
+  [_ render-type _timezone-id card dashcard data]
+  (let [combined-cards-results (pu/execute-multi-card card dashcard)
+        cards-with-data        (map (fn [c d] {:card c :data d})
+                                    (cons card (map :card combined-cards-results))
+                                    (cons data (map #(get-in % [:result :data]) combined-cards-results)))
+        dashcard-viz-settings  (get dashcard :visualization_settings)
+        {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data dashcard-viz-settings)]
+    (case rendered-type
+      :svg
+      (let [image-bundle (image-bundle/make-image-bundle
+                           render-type
+                           (js-svg/svg-string->bytes content))]
+        {:attachments
+         (when image-bundle
+           (image-bundle/image-bundle->attachment image-bundle))
+
+         :content
+         [:div
+          [:img {:style (style/style {:display :block :width :100%})
+                 :src   (:image-src image-bundle)}]]})
+      :html
+      {:content [:div content] :attachments nil})))
+
 (s/defmethod render :smartscalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
@@ -984,8 +1008,12 @@
   [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
-        rows           (map (juxt x-axis-rowfn y-axis-rowfn)
+        funnel-rows    (:funnel.rows viz-settings)
+        raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        rows           (cond->> raw-rows
+                         funnel-rows (mapv (fn [[idx val]]
+                                             [(get-in funnel-rows [(dec idx) :key]) val])))
         [x-col y-col]  cols
         settings       (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
                          (assoc jsviz-settings :step    {:name   (:display_name x-col)

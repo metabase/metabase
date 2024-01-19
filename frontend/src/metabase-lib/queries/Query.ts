@@ -7,6 +7,7 @@ import type Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
 import type Variable from "metabase-lib/variables/Variable";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
@@ -32,7 +33,7 @@ class Query {
    * Can only be applied to query that is a direct child of the question.
    */
   question = _.once((): Question => {
-    return this._originalQuestion.setQuery(this);
+    return this._originalQuestion.setLegacyQuery(this);
   });
 
   /**
@@ -95,7 +96,7 @@ class Query {
   /**
    * Variables exposed by this query
    */
-  variables(_filter?: (variable: Variable) => boolean): Variable[] {
+  variables(_filter?: (variable: Variable) => boolean): TemplateTagVariable[] {
     return [];
   }
 
@@ -104,10 +105,6 @@ class Query {
    */
   dependentMetadata(): DependentMetadataItem[] {
     return [];
-  }
-
-  setDefaultQuery(): Query {
-    return this;
   }
 
   parseFieldReference(fieldRef, query = this): Dimension | null | undefined {

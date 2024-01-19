@@ -116,7 +116,6 @@ const QUERY_FILTER_CREATED_AT = [
     ORDERS.CREATED_AT,
     {
       "base-type": "type/DateTime",
-      "temporal-unit": "month",
     },
   ],
   "2022-08-01",
@@ -209,7 +208,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       editDashboard();
 
+      cy.log("doesn't throw when setting default behavior (metabase#35354)");
+      cy.on("uncaught:exception", err => {
+        expect(err.name.includes("TypeError")).to.be.false;
+      });
+
       getDashboardCard().realHover().icon("click").click();
+
+      // When the default menu is selected, it should've visual cue (metabase#34848)
+      cy.get("aside")
+        .findByText("Open the Metabase drill-through menu")
+        .parent()
+        .parent()
+        .should("have.attr", "aria-selected", "true")
+        .should("have.css", "background-color", "rgb(80, 158, 227)");
+
       addDashboardDestination();
       cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("exist");
@@ -1047,11 +1060,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         getCreatedAtToQuestionMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-        /**
-         * TODO: remove the next line when metabase#34845 is fixed
-         * @see https://github.com/metabase/metabase/issues/34845
-         */
-        cy.get("aside").findByText("Unknown").click();
         addSavedQuestionDestination();
         addSavedQuestionCreatedAtParameter();
         addSavedQuestionQuantityParameter();
@@ -1236,11 +1244,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         getCreatedAtToUrlMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-        /**
-         * TODO: remove the next line when metabase#34845 is fixed
-         * @see https://github.com/metabase/metabase/issues/34845
-         */
-        cy.get("aside").findByText("Unknown").click();
         addUrlDestination();
         modal().within(() => {
           const urlInput = cy.findAllByRole("textbox").eq(0);
@@ -1637,7 +1640,10 @@ const addSavedQuestionDestination = () => {
 };
 
 const addSavedQuestionCreatedAtParameter = () => {
-  cy.get("aside").findByText("Orders → Created At").click();
+  cy.get("aside")
+    .findByTestId("click-mappings")
+    .findByText("Created At")
+    .click();
   popover().within(() => {
     cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
     cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
@@ -1645,7 +1651,7 @@ const addSavedQuestionCreatedAtParameter = () => {
 };
 
 const addSavedQuestionQuantityParameter = () => {
-  cy.get("aside").findByText("Orders → Quantity").click();
+  cy.get("aside").findByTestId("click-mappings").findByText("Quantity").click();
   popover().within(() => {
     cy.findByText(CREATED_AT_COLUMN_NAME).should("not.exist");
     cy.findByText(COUNT_COLUMN_NAME).should("exist").click();

@@ -57,6 +57,15 @@ Default: `null`
 
 The email address users should be referred to if they encounter a problem.
 
+### `MB_AGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 10000
+
+Maximum number of rows to return for aggregated queries via the API. Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
+
+See also [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](#mb_unaggregated_query_row_limit).
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 Type: boolean<br>
@@ -184,6 +193,13 @@ Default: `50`<br>
 Since: v35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
+
+### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
+
+Type: integer<br>
+Default: `20`<br>
+
+Limits the number of rows Metabase will include in tables sent as attachments with dashboard subscriptions and alerts. Range: 1-100.
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
@@ -440,7 +456,7 @@ Secret key used to sign JSON Web Tokens for requests to /api/embed endpoints.
 
 The secret should be kept safe (treated like a password) and recommended to be a 64 character string.
 
-This is for Static embedding, and has nothing to do with JWT SSO authentication, which is [MB_JWT_*](#mb_jwt_enabled).
+This is for Static embedding, and has nothing to do with JWT SSO authentication (see [`MB_JWT_ENABLED`](#mb_jwt_enabled)).
 
 ### `MB_EMOJI_IN_LOGS`
 
@@ -1309,6 +1325,14 @@ Since: v42.0
 
 Set the system files channel used by Metabase to store images. This channel has to be public, and is not intended to be used by humans. The Slack App has to be invited into this channel.
 
+### `MB_JETTY_SKIP_SNI`
+
+Type: string<br>
+Default: `"true"`<br>
+Since: v48.4
+
+Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=false`, or use another SSL certificate that exactly matches the domain name of the server.
+
 ### `MB_SOURCE_ADDRESS_HEADER`
 
 Type: string<br>
@@ -1354,3 +1378,12 @@ Default: `null`<br>
 Since: v41.0
 
 Allowed email address domain(s) for new Subscriptions and Alerts. Specify multiple domain comma-separated. When not defined, all domains are allowed.
+
+### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 2000
+
+Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575, and less than the number configured in `MB_AGGREGATED_QUERY_ROW_LIMIT`. This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
+
+See also [`MB_AGGREGATED_QUERY_ROW_LIMIT`](#mb_aggregated_query_row_limit).

@@ -4,11 +4,11 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
-import { Group, Loader } from "metabase/ui";
+import { Group, Loader, Icon } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
 import type { WrappedResult } from "metabase/search/types";
-import { Icon } from "metabase/core/components/Icon";
+
 import { InfoText } from "../InfoText";
 import { ItemIcon } from "./components";
 
@@ -128,7 +128,7 @@ export function SearchResult({
           <Group noWrap spacing="sm" data-testid="result-description">
             <DescriptionDivider
               size="md"
-              color="focus.0"
+              color="focus"
               orientation="vertical"
             />
             <SearchResultDescription

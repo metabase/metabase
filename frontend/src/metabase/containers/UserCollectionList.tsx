@@ -2,7 +2,7 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, Box, Flex, Loader } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
 import Link from "metabase/core/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
@@ -10,7 +10,6 @@ import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import PaginationControls from "metabase/components/PaginationControls";
 
-import { Box, Flex, Loader } from "metabase/ui";
 import {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,

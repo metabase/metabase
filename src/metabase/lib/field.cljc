@@ -5,7 +5,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -421,6 +420,14 @@
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :base-type      (:base-type metadata)
                                   :effective-type (column-metadata-effective-type metadata)}
+                                 ;; This one deliberately comes first so it will be overwritten by current-join-alias.
+                                 ;; We don't want both :source-field and :join-alias, though.
+                                 (when-let [source-alias (and (not inherited-column?)
+                                                              (not (:fk-field-id metadata))
+                                                              (not= :source/implicitly-joinable
+                                                                    (:lib/source metadata))
+                                                              (:source-alias metadata))]
+                                   {:join-alias source-alias})
                                  (when-let [join-alias (lib.join.util/current-join-alias metadata)]
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
@@ -524,19 +531,6 @@
                (assoc col :selected? true))
              visible-columns)
        (lib.equality/mark-selected-columns query stage-number visible-columns selected-fields)))))
-
-(mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
-  "Find the field id for something or nil."
-  [field-metadata :- ::lib.schema.metadata/column]
-  (:id field-metadata))
-
-(mu/defn legacy-card-or-table-id :- [:maybe [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-  "Find the legacy card id or table id for a given ColumnMetadata or nil.
-   Returns a either `\"card__<id>\"` or integer table id."
-  [{card-id :lib/card-id table-id :table-id} :- ::lib.schema.metadata/column]
-  (cond
-    card-id (str "card__" card-id)
-    table-id table-id))
 
 (defn- populate-fields-for-stage
   "Given a query and stage, sets the `:fields` list to be the fields which would be selected by default.
@@ -708,19 +702,6 @@
                     lib.metadata.calculation/visible-columns)
                   query stage-number stage)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
-
-;; TODO: Refactor this away - handle legacy refs in lib.js and using `lib.equality` directly from there.
-(mu/defn find-visible-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]
-  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
-  only meant for use with `:field` clauses."
-  ([query legacy-ref]
-   (find-visible-column-for-legacy-ref query -1 legacy-ref))
-
-  ([query       :- ::lib.schema/query
-    stage-index :- :int
-    legacy-ref  :- some?]
-   (let [a-ref (lib.convert/legacy-ref->pMBQL query stage-index legacy-ref)]
-     (find-visible-column-for-ref query stage-index a-ref))))
 
 (defn json-field?
   "Return true if field is a JSON field, false if not."

@@ -71,10 +71,9 @@ function NotebookSteps({
 
   const handleQueryChange = useCallback(
     async (query: Query, step: INotebookStep) => {
-      const updatedLegacyQuery = Lib.toLegacyQuery(
+      const updatedQuestion = question.setQuery(
         Lib.dropStageIfEmpty(query, step.stageIndex),
       );
-      const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
       await updateQuestion(updatedQuestion);
 
       // mark the step as "closed" since we can assume

@@ -5,9 +5,8 @@ import { t } from "ttag";
 import cx from "classnames";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { copy } from "metabase/lib/utils";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
-import VisualizationError from "./VisualizationError";
+import { VisualizationError } from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
@@ -15,27 +14,13 @@ import RunButtonWithTooltip from "./RunButtonWithTooltip";
 export default class QueryVisualization extends Component {
   constructor(props, context) {
     super(props, context);
-    this.state = this._getStateFromProps(props);
+    this.state = {};
   }
 
   static defaultProps = {
     // NOTE: this should be more dynamic from the backend, it's set based on the query lang
     maxTableRows: HARD_ROW_LIMIT,
   };
-
-  _getStateFromProps(props) {
-    return {
-      lastRunDatasetQuery: copy(props.question.legacyQuery().datasetQuery()),
-      lastRunParameterValues: copy(props.parameterValues),
-    };
-  }
-
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    // whenever we are told that we are running a query lets update our understanding of the "current" query
-    if (nextProps.isRunning) {
-      this.setState(this._getStateFromProps(nextProps));
-    }
-  }
 
   runQuery = () => {
     const { isResultDirty } = this.props;
@@ -96,7 +81,6 @@ export default class QueryVisualization extends Component {
             <VisualizationResult
               {...this.props}
               className="spread"
-              lastRunDatasetQuery={this.state.lastRunDatasetQuery}
               onUpdateWarnings={this.handleUpdateWarnings}
             />
           ) : !isRunning ? (
