@@ -37,6 +37,7 @@ export const DatabaseGridItem = styled(GridItem)`
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
+  padding-bottom: 1rem;
 
   &:hover {
     color: ${color("brand")};
@@ -48,7 +49,7 @@ export const ModelCard = styled(Card)`
   height: 9rem;
   display: flex;
   flex-flow: column nowrap;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: flex-start;
 
   box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.06) !important;

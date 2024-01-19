@@ -101,7 +101,10 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
       data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
     >
       <ModelCard>
-        <h4 className="text-wrap" style={{ lineHeight: "16px" }}>
+        <h4
+          className="text-wrap"
+          style={{ lineHeight: "16px", marginBottom: ".5rem" }}
+        >
           <MultilineEllipsified id={headingId}>
             {model.name}
           </MultilineEllipsified>
@@ -115,6 +118,7 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
           </MultilineEllipsified>
         </Text>
         <LastEditInfoLabel
+          style={{ marginTop: "auto" }}
           item={modelWithHistory}
           fullName={modelWithHistory["last-edit-info"].full_name}
           className={"last-edit-info-label-button"}
