@@ -214,9 +214,7 @@
           price-id (meta/id :venues :price)]
       (is (=? [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} price-id] 3] expr))
       (is (= ["<" ["field" price-id {"base-type" "Integer"}] 3] (js->clj legacy-expr))))))
-(comment
-  (expression-clause-<->-legacy-expression-test)
-  0)
+
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"
     (testing "returns directly for most values"
@@ -285,9 +283,6 @@
         (let [metric-expr (lib.js/expression-clause-for-legacy-expression query -1 (first legacy-refs))]
           (is (=? [:metric {} metric-id] metric-expr))
           (is (= ["metric" metric-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 metric-expr)))))))))
-(comment
-  (legacy-ref-test)
-  0)
 
 (deftest ^:parallel source-table-or-card-id-test
   (testing "returns the table-id as a number"
