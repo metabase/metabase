@@ -1,6 +1,6 @@
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT pg.id AS group_id,
-       'native-query-editing' AS perm_type,
+       'perms/native-query-editing' AS perm_type,
        md.id AS db_id,
        NULL AS schema_name,
        NULL AS table_id,
@@ -21,4 +21,4 @@ WHERE pg.name != 'Administrators'
      FROM data_permissions dp
      WHERE dp.group_id = pg.id
        AND dp.db_id = md.id
-       AND dp.perm_type = 'native-query-editing' );
+       AND dp.perm_type = 'perms/native-query-editing' );
