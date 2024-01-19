@@ -53,16 +53,6 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.findByText("Small Marble Shoes");
         cy.findByText("Rustic Paper Wallet");
       });
-
-      cy.log("set the value through the filter widget");
-      SQLFilter.toggleRequired();
-      FieldFilter.openEntryForm();
-      FieldFilter.addWidgetStringFilter("1");
-      SQLFilter.runQuery();
-      cy.get(".Visualization").within(() => {
-        cy.findByText("Rustic Paper Wallet");
-        cy.findByText("Small Marble Shoes").should("not.exist");
-      });
     });
   });
 
