@@ -55,7 +55,7 @@
                              :all  :yes
                              :none :no)))
             (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (data-perms/set-table-permissions! group-id :manage-table-metadata new-table-perms)))
+    (data-perms/set-table-permissions! group-id :perms/manage-table-metadata new-table-perms)))
 
 (defn- update-schema-level-metadata-permissions!
   [group-id db-id schema new-schema-perms]
@@ -64,10 +64,10 @@
     (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
      (case new-schema-perms
        :all
-       (data-perms/set-table-permissions! group-id :manage-table-metadata (zipmap tables (repeat :yes)))
+       (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :yes)))
 
        :none
-       (data-perms/set-table-permissions! group-id :manage-table-metadata (zipmap tables (repeat :no)))))))
+       (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :no)))))))
 
 (defn- update-db-level-metadata-permissions!
   [group-id db-id new-db-perms]
@@ -77,10 +77,10 @@
         (update-schema-level-metadata-permissions! group-id db-id schema schema-changes))
       (case schemas
         :all
-        (data-perms/set-database-permission! group-id db-id :manage-table-metadata :yes)
+        (data-perms/set-database-permission! group-id db-id :perms/manage-table-metadata :yes)
 
         :none
-        (data-perms/set-database-permission! group-id db-id :manage-table-metadata :no)))))
+        (data-perms/set-database-permission! group-id db-id :perms/manage-table-metadata :no)))))
 
 (defn- update-table-level-download-permissions!
   [group-id db-id schema new-table-perms]
@@ -92,7 +92,7 @@
                              :limited :ten-thousand-rows
                              :none    :no)))
             (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (data-perms/set-table-permissions! group-id :download-results new-table-perms)))
+    (data-perms/set-table-permissions! group-id :perms/download-results new-table-perms)))
 
 (defn- update-schema-level-download-permissions!
   [group-id db-id schema new-schema-perms]
@@ -101,13 +101,13 @@
     (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
       (case new-schema-perms
         :full
-        (data-perms/set-table-permissions! group-id :download-results (zipmap tables (repeat :one-million-rows)))
+        (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :one-million-rows)))
 
         :limited
-        (data-perms/set-table-permissions! group-id :download-results (zipmap tables (repeat :ten-thousand-rows)))
+        (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :ten-thousand-rows)))
 
         :none
-        (data-perms/set-table-permissions! group-id :download-results (zipmap tables (repeat :no)))))))
+        (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :no)))))))
 
 ; ;; TODO: Make sure we update download perm enforcement to infer native download permissions, since
 ; ;; we'll no longer be setting them explicitly in the database.
@@ -121,19 +121,19 @@
         (update-schema-level-download-permissions! group-id db-id schema schema-changes))
       (case schemas
         :full
-        (data-perms/set-database-permission! group-id db-id :download-results :one-million-rows)
+        (data-perms/set-database-permission! group-id db-id :perms/download-results :one-million-rows)
 
         :limited
-        (data-perms/set-database-permission! group-id db-id :download-results :ten-thousand-rows)
+        (data-perms/set-database-permission! group-id db-id :perms/download-results :ten-thousand-rows)
 
         :none
-        (data-perms/set-database-permission! group-id db-id :download-results :no)))))
+        (data-perms/set-database-permission! group-id db-id :perms/download-results :no)))))
 
 (defn- update-native-data-access-permissions!
   [group-id db-id new-native-perms]
-  (data-perms/set-database-permission! group-id db-id :native-query-editing (case new-native-perms
-                                                                              :write :yes
-                                                                              :none  :no)))
+  (data-perms/set-database-permission! group-id db-id :perms/native-query-editing (case new-native-perms
+                                                                                    :write :yes
+                                                                                    :none  :no)))
 
 (defn- update-table-level-data-access-permissions!
   [group-id db-id schema new-table-perms]
@@ -142,7 +142,7 @@
             (update-vals (fn [table-perm]
                            (if (map? table-perm)
                              (if (#{:all :segmented} (table-perm :query))
-                               ;; `:segmented` indicates that the table is sandboxed, but we should set :data-access
+                               ;; `:segmented` indicates that the table is sandboxed, but we should set :perms/data-access
                                ;; permissions to :unrestricted and rely on the `sandboxes` table as the source of truth
                                ;; for sandboxing.
                                :unrestricted
@@ -151,7 +151,7 @@
                                :all  :unrestricted
                                :none :no-self-service))))
             (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (data-perms/set-table-permissions! group-id :data-access new-table-perms)))
+    (data-perms/set-table-permissions! group-id :perms/data-access new-table-perms)))
 
 (defn- update-schema-level-data-access-permissions!
   [group-id db-id schema new-schema-perms]
@@ -160,10 +160,10 @@
     (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
       (case new-schema-perms
         :all
-        (data-perms/set-table-permissions! group-id :data-access (zipmap tables (repeat :unrestricted)))
+        (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :unrestricted)))
 
         :none
-        (data-perms/set-table-permissions! group-id :data-access (zipmap tables (repeat :no-self-service)))))))
+        (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :no-self-service)))))))
 
 (defn- update-db-level-data-access-permissions!
   [group-id db-id new-db-perms]
@@ -175,17 +175,17 @@
         (update-schema-level-data-access-permissions! group-id db-id schema schema-changes))
       (case schemas
         (:all :impersonated)
-        (data-perms/set-database-permission! group-id db-id :data-access :unrestricted)
+        (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted)
 
         :none
-        (data-perms/set-database-permission! group-id db-id :data-access :no-self-service)
+        (data-perms/set-database-permission! group-id db-id :perms/data-access :no-self-service)
 
         :block
-        (data-perms/set-database-permission! group-id db-id :data-access :block)))))
+        (data-perms/set-database-permission! group-id db-id :perms/data-access :block)))))
 
 (defn- update-details-perms!
   [group-id db-id value]
-  (data-perms/set-database-permission! group-id db-id :manage-database value))
+  (data-perms/set-database-permission! group-id db-id :perms/manage-database value))
 
 (defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly."
