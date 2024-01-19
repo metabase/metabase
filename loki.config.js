@@ -10,4 +10,11 @@ module.exports = {
       mobile: false,
     },
   },
+  "looks-same": {
+    strict: false,
+    tolerance: 4,
+    antialiasingTolerance: 0,
+    ignoreAntialiasing: true,
+    ignoreCaret: true,
+  },
 };
