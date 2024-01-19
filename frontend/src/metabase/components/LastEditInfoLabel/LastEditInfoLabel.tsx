@@ -8,6 +8,7 @@ import { getUser } from "metabase/selectors/user";
 import type { NamedUser } from "metabase/lib/user";
 import { getFullName } from "metabase/lib/user";
 import { TextButton } from "metabase/components/Button.styled";
+import type { TooltipProps } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
 import DateTime from "metabase/components/DateTime";
 import type { User } from "metabase-types/api";
@@ -51,13 +52,15 @@ function LastEditInfoLabel({
   onClick,
   className,
   fullName = null,
+  tooltipProps,
   children,
 }: {
   item: ItemWithLastEditInfo;
   user: User;
-  onClick: MouseEventHandler<HTMLButtonElement>;
-  className: string;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  className?: string;
   fullName: string | null;
+  tooltipProps?: TooltipProps;
   children?: React.ReactNode;
 }) {
   const lastEditInfo = item["last-edit-info"];
@@ -68,11 +71,11 @@ function LastEditInfoLabel({
   fullName ||= formatEditorName(lastEditInfo) || null;
   const editorFullName = editorId === user.id ? t`you` : fullName;
 
+  tooltipProps ??= { children: null, label: null };
+  tooltipProps.label ??= timestamp ? <DateTime value={timestamp} /> : null;
+
   return (
-    <Tooltip
-      label={timestamp ? <DateTime value={timestamp} /> : null}
-      disabled={!timeLabel}
-    >
+    <Tooltip disabled={!timeLabel} {...tooltipProps}>
       <TextButton
         size="small"
         className={className}
