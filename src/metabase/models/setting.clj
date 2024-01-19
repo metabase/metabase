@@ -473,7 +473,6 @@
 (def ^:private ^:dynamic *disable-init* false)
 
 (declare get)
-
 (declare set!)
 
 (defn read-setting
