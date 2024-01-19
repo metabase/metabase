@@ -56,7 +56,7 @@ const MetadataHeader = ({
   }, [databases, selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <div className="MetadataEditor-header flex align-center flex-no-shrink pb2">
+    <div className="MetadataEditor-header flex align-center flex-no-shrink py4">
       <Icon
         className="flex align-center flex-no-shrink text-medium"
         name="database"

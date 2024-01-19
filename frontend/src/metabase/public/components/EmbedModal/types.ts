@@ -5,7 +5,7 @@ export type ActivePreviewPane = "preview" | "code";
 export type EmbedType = "application" | null;
 
 export type EmbedResource = (Card | Dashboard) & {
-  embedding_params?: EmbeddingParameters;
+  embedding_params?: EmbeddingParameters | null;
 };
 
 export type EmbedResourceType = "dashboard" | "question";

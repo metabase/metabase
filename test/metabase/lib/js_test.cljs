@@ -72,6 +72,36 @@
       (is (not= (js->clj join) (js->clj join-class)))
       (is (lib.js/query= basic-query classy-query)))))
 
+(defn- query-with-field-opts [opts]
+  #js {"type" "query"
+       "query" #js {"source-table" 1
+                    "filter" #js ["=" #js ["field" 12 opts] 7]}})
+
+(deftest ^:parallel query=-field-types-test
+  (testing "equal field types are equal"
+    (is (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                       (query-with-field-opts #js {"base-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Float"})
+                       (query-with-field-opts #js {"effective-type" "type/Float"}))))
+
+  (testing "mismatched field types are not equal"
+    (is (not (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                            (query-with-field-opts #js {"base-type" "type/Float"}))))
+    (is (not (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Text"})
+                            (query-with-field-opts #js {"effective-type" "type/Float"})))))
+
+  (testing "missing field types are equal"
+    (is (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                       (query-with-field-opts #js {})))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts #js {"base-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Text"})
+                       (query-with-field-opts nil)))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts #js {"effective-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts nil)))))
+
 (deftest ^:parallel available-join-strategies-test
   (testing "available-join-strategies returns an array of opaque strategy objects (#32089)"
     (let [strategies (lib.js/available-join-strategies lib.tu/query-with-join -1)]
@@ -186,8 +216,10 @@
           legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
           query-with-expr (lib/expression query 0 "expr" expr)
           expr-from-query (first (lib/expressions query-with-expr 0))
-          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)]
-      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query)))))
+          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)
+          named-expr (lib/with-expression-name expr "named")]
+      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query))
+      (is (= "named" (lib/display-name query named-expr))))))
 
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"

@@ -114,7 +114,7 @@ describe("scenarios > question > download", () => {
       assertOrdersExport(1);
     });
 
-    it("should allow downloading parametrized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
+    it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
       cy.createQuestion({
         name: "20868",
         query: {

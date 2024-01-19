@@ -175,3 +175,36 @@
                                               (lib/with-temporal-bucket :day))
                                           "2024-01-01"
                                           "2024-01-02"))))))
+
+#?(:cljs
+   (deftest ^:parallel update-temporal-filter-js-Date-test
+     (testing "Should work with native JavaScript Dates (#37304)"
+       (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
+         (is (=? {:stages [{:filters [[:between
+                                       {}
+                                       [:field {} (meta/id :checkins :date)]
+                                       "2024-01-02"
+                                       "2025-02-01"]]}]}
+                 (lib/update-temporal-filter query
+                                             (meta/field-metadata :checkins :date)
+                                             (js/Date. "2024-01-02")
+                                             (js/Date. "2025-02-01"))))))))
+
+#?(:cljs
+   (deftest ^:parallel update-temporal-filter-js-Date-unit-test
+     (testing "Add a new filter -- with temporal unit"
+       (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
+         (is (=? {:stages [{:filters [[:between
+                                       {}
+                                       [:field {} (meta/id :checkins :date)]
+                                       ;; since 2024-01-02T15:22 starts after 2024-01-02T00:00 we should round up to the
+                                       ;; next whole day.
+                                       "2024-01-03T00:00"
+                                       "2025-02-01T00:00"]]}]}
+                 (lib/update-temporal-filter query
+                                             (-> (meta/field-metadata :checkins :date)
+                                                 (lib/with-temporal-bucket :day)
+                                                 ;; make sure conversion of Date -> String is based on the effective-type
+                                                 (assoc :effective-type :type/DateTime))
+                                             (js/Date. "2024-01-02T15:22:00")
+                                             (js/Date. "2025-02-01T15:22:00"))))))))

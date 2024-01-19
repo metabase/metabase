@@ -60,10 +60,14 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { loading, value: apiKeys } = useAsync(
-    () => ApiKeysApi.list() as Promise<ApiKey[]>,
-    [group.id],
-  );
+  const { loading, value: apiKeys } = useAsync(async () => {
+    const apiKeys = await (ApiKeysApi.list() as Promise<ApiKey[]>);
+    const filteredApiKeys = apiKeys?.filter(
+      (apiKey: ApiKey) => apiKey.group.id === group.id,
+    );
+
+    return filteredApiKeys ?? [];
+  }, [group.id]);
 
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;

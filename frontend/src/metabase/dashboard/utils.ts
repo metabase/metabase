@@ -10,7 +10,6 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import type {
   Card,
   CardId,
-  DashCardId,
   Dashboard,
   DashboardCard,
   Database,
@@ -20,6 +19,8 @@ import type {
   StructuredDatasetQuery,
   ActionDashboardCard,
   EmbedDataset,
+  BaseDashboardCard,
+  DashCardDataMap,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import Question from "metabase-lib/Question";
@@ -77,7 +78,13 @@ export function expandInlineCard(card?: Card) {
   };
 }
 
-export function isVirtualDashCard(dashcard: DashboardCard) {
+export function isDashCardWithQuery(
+  dashcard: BaseDashboardCard,
+): dashcard is DashboardCard {
+  return "card_id" in dashcard && "card" in dashcard;
+}
+
+export function isVirtualDashCard(dashcard: BaseDashboardCard) {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
@@ -177,7 +184,7 @@ export function getDatasetQueryParams(
 
 export function isDashcardLoading(
   dashcard: DashboardCard,
-  dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
+  dashcardsData: DashCardDataMap,
 ) {
   if (isVirtualDashCard(dashcard)) {
     return false;
@@ -221,7 +228,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
 }
 
 const isDashcardDataLoaded = (
-  data?: Record<CardId, Dataset | null>,
+  data?: Record<CardId, Dataset | null | undefined>,
 ): data is Record<CardId, Dataset> => {
   return data != null && Object.values(data).every(result => result != null);
 };
@@ -240,8 +247,8 @@ const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
 };
 
 const shouldHideCard = (
-  dashcard: DashboardCard,
-  dashcardData: Record<CardId, Dataset | null>,
+  dashcard: BaseDashboardCard,
+  dashcardData: Record<CardId, Dataset | null | undefined>,
   wasVisible: boolean,
 ) => {
   const shouldHideEmpty = dashcard.visualization_settings?.["card.hide_empty"];
@@ -263,8 +270,8 @@ const shouldHideCard = (
 };
 
 export const getVisibleCardIds = (
-  cards: DashboardCard[],
-  dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
+  cards: BaseDashboardCard[],
+  dashcardsData: DashCardDataMap,
   prevVisibleCardIds = new Set<number>(),
 ) => {
   return new Set(

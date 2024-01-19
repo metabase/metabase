@@ -2,6 +2,8 @@ version: '3.9'
 
 services:
   postgres-sample:
+    environment:
+      - TZ=US/Pacific
     image: metabase/qa-databases:postgres-sample-12
     ports:
       - "5404:5432"
@@ -10,6 +12,8 @@ services:
     ports:
       - 27004:27017
   mysql-sample:
+    environment:
+      - TZ=US/Pacific
     image: metabase/qa-databases:mysql-sample-8
     ports:
       - 3304:3306

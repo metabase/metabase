@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 
@@ -18,18 +18,26 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
+import { formatMaskedKey } from "./utils";
 
 type Modal = null | "create" | "edit" | "delete";
 
-function formatMaskedKey(maskedKey: string) {
-  return maskedKey.substring(0, 4) + "...";
-}
-
-function EmptyTableWarning() {
+function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
   return (
     <Stack mt="xl" align="center" justify="center" spacing="sm">
       <Title>{t`No API keys here yet`}</Title>
       <Text color="text-medium">{t`You can create an API key to make API calls programatically.`}</Text>
+      <Text color="text.1">{jt`You can ${(
+        <Button
+          key="create-key-button"
+          variant="subtle"
+          onClick={onCreate}
+          p="0"
+          m="0"
+        >
+          {t`create an api key`}
+        </Button>
+      )} to make API calls programatically.`}</Text>
     </Stack>
   );
 }
@@ -55,8 +63,8 @@ function ApiKeysTable({
             <th>{t`Key name`}</th>
             <th>{t`Group`}</th>
             <th>{t`Key`}</th>
-            <th>{t`Last Modified By`}</th>
-            <th>{t`Last Modified On`}</th>
+            <th>{t`Last modified by`}</th>
+            <th>{t`Last modified on`}</th>
             <th />
           </tr>
         </thead>
@@ -99,7 +107,9 @@ function ApiKeysTable({
         </tbody>
       </table>
       <LoadingAndErrorWrapper loading={loading} error={error}>
-        {apiKeys?.length === 0 && <EmptyTableWarning />}
+        {apiKeys?.length === 0 && (
+          <EmptyTableWarning onCreate={() => setModal("create")} />
+        )}
       </LoadingAndErrorWrapper>
     </Stack>
   );
@@ -156,7 +166,7 @@ export const ManageApiKeys = () => {
         <ApiKeysTable
           loading={loading}
           error={error}
-          apiKeys={apiKeys}
+          apiKeys={apiKeys?.sort((a, b) => a.name.localeCompare(b.name))}
           setActiveApiKey={setActiveApiKey}
           setModal={setModal}
         />

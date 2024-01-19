@@ -140,9 +140,15 @@ function buildFieldFilterUiParameter(
   const mappedFields = mappingsForParameter.map(mapping => {
     const { target, card } = mapping;
     const question = new Question(card, metadata);
-    const field = getTargetFieldFromCard(target, card, metadata);
 
-    return { field, shouldResolveFkField: !question.isNative() };
+    try {
+      const field = getTargetFieldFromCard(target, card, metadata);
+
+      return { field, shouldResolveFkField: !question.isNative() };
+    } catch (e) {
+      console.error("Error getting a field from a card", { card });
+      throw e;
+    }
   });
 
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {

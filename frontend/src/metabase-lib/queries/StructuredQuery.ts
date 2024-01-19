@@ -402,6 +402,9 @@ class StructuredQuery extends AtomicQuery {
     }
   }
 
+  /**
+   * @deprecated use MLv2
+   */
   hasData() {
     return !!this.table();
   }
