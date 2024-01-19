@@ -169,8 +169,8 @@ export default class LeafletMap extends Component {
       const updatedQuery = Lib.updateLatLonFilter(
         query,
         stageIndex,
-        longitudeColumn,
         latitudeColumn,
+        longitudeColumn,
         filterBounds,
       );
       const updatedQuestion = question.setQuery(updatedQuery);
