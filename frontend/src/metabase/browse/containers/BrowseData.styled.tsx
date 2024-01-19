@@ -49,7 +49,6 @@ export const ModelCard = styled(Card)`
 
   box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.06) !important;
 
-  // TODO: This feels hacky, is this the right way to do this?
   & .last-edit-info-label-button div,
   & .last-edit-info-label-button span {
     white-space: wrap !important;
