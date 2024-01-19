@@ -1,6 +1,5 @@
 import { MetabaseApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
-import { trackStructEvent } from "metabase/lib/analytics";
 import type { FieldId, TableId } from "metabase-types/api";
 
 export const RESCAN_FIELD_VALUES = "metabase/admin/fields/RESCAN_FIELD_VALUES";
@@ -9,7 +8,6 @@ export const rescanFieldValues = createThunkAction(
   (fieldId: FieldId) => async () => {
     try {
       await MetabaseApi.field_rescan_values({ fieldId });
-      trackStructEvent("Data Model", "Manual Re-scan Field Values");
     } catch (error) {
       console.error("error manually re-scanning field values", error);
     }
@@ -23,7 +21,6 @@ export const discardFieldValues = createThunkAction(
   (fieldId: FieldId) => async () => {
     try {
       await MetabaseApi.field_discard_values({ fieldId });
-      trackStructEvent("Data Model", "Manual Discard Field Values");
     } catch (error) {
       console.error("error discarding field values", error);
     }
@@ -36,7 +33,6 @@ export const rescanTableFieldValues = createThunkAction(
   (tableId: TableId) => async () => {
     try {
       await MetabaseApi.table_rescan_values({ tableId });
-      trackStructEvent("Data Model", "Manual Re-scan Field Values for Table");
     } catch (error) {
       console.error("error manually re-scanning field values", error);
     }
@@ -50,7 +46,6 @@ export const discardTableFieldValues = createThunkAction(
   (tableId: TableId) => async () => {
     try {
       await MetabaseApi.table_discard_values({ tableId });
-      trackStructEvent("Data Model", "Manual Discard Field Values for Table");
     } catch (error) {
       console.error("error discarding field values", error);
     }
