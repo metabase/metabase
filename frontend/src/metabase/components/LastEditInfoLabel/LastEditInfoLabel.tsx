@@ -47,6 +47,7 @@ function formatEditorName(lastEditInfo: NamedUser) {
 }
 
 function LastEditInfoLabel({
+  prefix,
   item,
   user,
   onClick,
@@ -55,6 +56,7 @@ function LastEditInfoLabel({
   tooltipProps,
   children,
 }: {
+  prefix: string;
   item: ItemWithLastEditInfo;
   user: User;
   onClick?: MouseEventHandler<HTMLButtonElement>;
@@ -64,15 +66,33 @@ function LastEditInfoLabel({
   children?: React.ReactNode;
 }) {
   const lastEditInfo = item["last-edit-info"];
+
   const editorId = lastEditInfo?.id;
   const timestamp = lastEditInfo?.timestamp;
-  const timeLabel = getHowLongAgo(timestamp);
+  const timeLabel = timestamp ? getHowLongAgo(timestamp) : "";
 
   fullName ||= formatEditorName(lastEditInfo) || null;
   const editorFullName = editorId === user.id ? t`you` : fullName;
 
   tooltipProps ??= { children: null, label: null };
   tooltipProps.label ??= timestamp ? <DateTime value={timestamp} /> : null;
+
+  if (!children) {
+    if (prefix) {
+      // FIXME: The following two strings won't correctly translate.
+      if (editorFullName) {
+        children = `${prefix} ${timeLabel} by ${editorFullName}`;
+      } else {
+        children = `${prefix} ${timeLabel}`;
+      }
+    } else {
+      if (editorFullName) {
+        children = t`Edited ${timeLabel} by ${editorFullName}`;
+      } else {
+        children = t`Edited ${timeLabel}`;
+      }
+    }
+  }
 
   return (
     <Tooltip disabled={!timeLabel} {...tooltipProps}>
@@ -82,13 +102,7 @@ function LastEditInfoLabel({
         onClick={onClick}
         data-testid="revision-history-button"
       >
-        {children || (
-          <>
-            {editorFullName
-              ? t`Edited ${timeLabel} by ${editorFullName}`
-              : null}
-          </>
-        )}
+        {children}
       </TextButton>
     </Tooltip>
   );
