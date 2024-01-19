@@ -128,11 +128,6 @@ export const GridContainer = styled.div`
     padding-bottom: 3rem;
   }
 
-  // TODO: Check this applies in the expected way
-  > div {
-    height: unset !important;
-  }
-
   .ReactVirtualized__Grid,
   .ReactVirtualized__Grid__innerScrollContainer {
     overflow: visible !important;
