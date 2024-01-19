@@ -44,8 +44,7 @@ export const getYAxisRange = (
   const isAutoRangeEnabled = settings["graph.y_axis.auto_range"];
 
   if (isAutoRangeEnabled) {
-    const defaultRange = isNormalized ? NORMALIZED_RANGE : {};
-    return [defaultRange, defaultRange];
+    return isNormalized ? NORMALIZED_RANGE : {};
   }
 
   const customMin = settings["graph.y_axis.min"];
