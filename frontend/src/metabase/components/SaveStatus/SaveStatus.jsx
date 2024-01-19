@@ -1,6 +1,8 @@
+/* eslint-disable react/prop-types */
 import { Component } from "react";
 
 import { t } from "ttag";
+import cx from "classnames";
 import _ from "underscore";
 import { Icon } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -45,21 +47,33 @@ export default class SaveStatus extends Component {
   }
 
   render() {
+    const { className } = this.props;
+
     if (this.state.saving) {
       return (
-        <div className="SaveStatus mx2 px2 border-right">
+        <div className={cx(className, "SaveStatus mx2 px2 border-right")}>
           <LoadingSpinner size={24} />
         </div>
       );
     } else if (this.state.error) {
       return (
-        <div className="SaveStatus mx2 px2 border-right text-error">
+        <div
+          className={cx(
+            className,
+            "SaveStatus mx2 px2 border-right text-error",
+          )}
+        >
           {t`Error:`} {String(this.state.error.message || this.state.error)}
         </div>
       );
     } else if (this.state.recentlySavedTimeout != null) {
       return (
-        <div className="SaveStatus mx2 px2 border-right flex align-center text-success">
+        <div
+          className={cx(
+            className,
+            "SaveStatus mx2 px2 border-right flex align-center text-success",
+          )}
+        >
           <Icon name="check" size={16} />
           <div className="ml1 h3 text-bold">{t`Saved`}</div>
         </div>

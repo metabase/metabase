@@ -9,11 +9,10 @@
 
   Two different implementations are provided in this namespace: `fast-active-tables` (the default), and
   `post-filtered-active-tables`. You should be fine using the default, but refer to the documentation for those
-  functions for more details on the differences.
-
-  `metabase` is an instance of `DatabaseMetaData`."
+  functions for more details on the differences."
   {:added "0.37.1"
    :arglists '([driver
+                database
                 ^java.sql.Connection connection
                 ^String schema-inclusion-filters
                 ^String schema-exclusion-filters])}

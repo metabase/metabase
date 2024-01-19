@@ -631,7 +631,7 @@
                   :entity_id           (:entity_id card)
                   :moderated_status    "verified"
                   :model               "card"
-                  :fully_parametrized  true}])
+                  :fully_parameterized  true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
@@ -700,7 +700,7 @@
                                                  :collection_preview false,           :display     "table", :entity_id true}
                                                 {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
                                                 {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
-                            (assoc-in [1 :fully_parametrized] true))
+                            (assoc-in [1 :fully_parameterized] true))
                         (mt/boolean-ids-and-timestamps
                          (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -717,7 +717,7 @@
             (is (partial= [(-> {:name               "Birthday Card", :description nil,     :model     "card",
                                 :collection_preview false,           :display     "table", :entity_id true}
                                default-item
-                               (assoc :fully_parametrized true))
+                               (assoc :fully_parameterized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                           (mt/boolean-ids-and-timestamps
                            (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items")
@@ -1221,7 +1221,7 @@
       (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
                           :collection_preview false, :display "table"}
                          default-item
-                         (assoc :fully_parametrized true))
+                         (assoc :fully_parameterized true))
                      (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                      (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
                     (with-some-children-of-collection nil
@@ -1270,7 +1270,7 @@
             (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
                                 :collection_preview false,           :display     "table"}
                                default-item
-                               (assoc :fully_parametrized true))
+                               (assoc :fully_parameterized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                            (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
                           (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
@@ -1309,15 +1309,15 @@
                :moderated_status    nil
                :entity_id           (:entity_id card)
                :model               "card"
-               :fully_parametrized  true}]
+               :fully_parameterized  true}]
              (-> (mt/user-http-request :crowberto :get 200
                                        "collection/root/items?archived=true")
                  :data
                  (results-matching {:name "Business Card", :model "card"}))))))))
 
-(deftest fetch-root-items-fully-parametrized-test ; [sic]
+(deftest fetch-root-items-fully-parameterized-test
   (testing "GET /api/collection/root/items"
-    (testing "fully_parametrized of a card"
+    (testing "fully_parameterized of a card"
       (testing "can be false"
         (t2.with-temp/with-temp [Card card {:name          "Business Card"
                                             :dataset_query {:native {:template-tags {:param0 {:default 0}
@@ -1327,7 +1327,7 @@
           (is (partial= [{:name               "Business Card"
                           :entity_id          (:entity_id card)
                           :model              "card"
-                          :fully_parametrized false}]
+                          :fully_parameterized false}]
                         (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                             :data
                             (results-matching {:name "Business Card", :model "card"}))))))
@@ -1340,7 +1340,7 @@
           (is (partial= [{:name               "Business Card"
                           :entity_id          (:entity_id card)
                           :model              "card"
-                          :fully_parametrized false}]
+                          :fully_parameterized false}]
                         (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                             :data
                             (results-matching {:name "Business Card", :model "card"}))))))
@@ -1353,7 +1353,7 @@
           (is (partial= [{:name               "Business Card"
                           :entity_id          (:entity_id card)
                           :model              "card"
-                          :fully_parametrized false}]
+                          :fully_parameterized false}]
                         (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                             :data
                             (results-matching {:name "Business Card", :model "card"}))))))
@@ -1364,7 +1364,7 @@
           (is (partial= [{:name               "Business Card"
                           :entity_id          (:entity_id card)
                           :model              "card"
-                          :fully_parametrized true}]
+                          :fully_parameterized true}]
                         (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                             :data
                             (results-matching {:name "Business Card", :model "card"}))))))
@@ -1379,7 +1379,7 @@
           (is (partial= [{:name               "Business Card"
                           :entity_id          (:entity_id card)
                           :model              "card"
-                          :fully_parametrized true}]
+                          :fully_parameterized true}]
                         (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                             :data
                             (results-matching {:name "Business Card", :model "card"}))))))
@@ -1399,10 +1399,32 @@
           (is (partial= [{:name               "Business Card"
                           :entity_id          (:entity_id card)
                           :model              "card"
-                          :fully_parametrized true}]
+                          :fully_parameterized true}]
                         (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                             :data
-                            (results-matching {:name "Business Card", :model "card"})))))))))
+                            (results-matching {:name "Business Card", :model "card"})))))))
+
+    (testing "a card with only a reference to another card is considered fully parameterized (#25022)"
+      (t2.with-temp/with-temp [Card card-1 {:dataset_query (mt/mbql-query venues)}]
+        (let [card-tag (format "#%d" (u/the-id card-1))]
+          (t2.with-temp/with-temp [Card card-2 {:name "Business Card"
+                                                :dataset_query
+                                                (mt/native-query {:template-tags
+                                                                  {card-tag
+                                                                   {:id (str (random-uuid))
+                                                                    :name card-tag
+                                                                    :display-name card-tag
+                                                                    :type :card
+                                                                    :card-id (u/the-id card-1)}}
+                                                                  :query (format "SELECT * FROM {{#%d}}" (u/the-id card-1))})}]
+            (is (partial= [{:name               "Business Card"
+                            :entity_id          (:entity_id card-2)
+                            :model              "card"
+                            :fully_parameterized true}]
+                          (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
+                              :data
+                              (results-matching {:name "Business Card", :model "card"}))))))))))
+
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 

@@ -102,6 +102,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   /* Query superclass methods */
+
+  /**
+   * @deprecated use MLv2
+   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -363,7 +367,9 @@ export default class NativeQuery extends AtomicQuery {
     });
   }
 
-  variables(variableFilter: VariableFilter = () => true): Variable[] {
+  variables(
+    variableFilter: VariableFilter = () => true,
+  ): TemplateTagVariable[] {
     return this.templateTags()
       .filter(tag => tag.type !== "dimension")
       .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))

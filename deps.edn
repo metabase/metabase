@@ -95,7 +95,7 @@
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  metosin/malli                             {:mvn/version "0.13.0"}             ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:mvn/version "0.14.0"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.clojars.wkok/openai-clojure           {:mvn/version "0.14.0"
@@ -130,7 +130,8 @@
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.77"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.77"}
-  org.clj-commons/hickory                   {:mvn/version "0.7.3"}              ; Parse HTML into Clojure data structures
+  org.clj-commons/hickory                   {:mvn/version "0.7.3"               ; Parse HTML into Clojure data structures
+                                             :exclusions [org.jsoup/jsoup]}
   org.clojure/clojure                       {:mvn/version "1.11.1"}
   org.clojure/core.async                    {:mvn/version "1.6.681"
                                              :exclusions  [org.clojure/tools.reader]}
@@ -153,6 +154,7 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.17"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.4"}             ; JavaScript engine
+  org.jsoup/jsoup                           {:mvn/version "1.17.2"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.25.1"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
@@ -226,14 +228,17 @@
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.51.0"}                    ; ui for inspecting values
+    hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:sha "539eefaa31a43d52d7c9b5731f471bb6742e7131"}
+    io.github.metabase/hawk      {:sha "46835a0b808e86894f598472351c08d81aeb1910"}
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
     lambdaisland/deep-diff2      {:mvn/version "2.10.211"}                  ; way better diffs
     methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
     org.clojure/algo.generic     {:mvn/version "0.1.3"}
+    peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
+                                  :sha "999d0a02425c906c35bace749654dc095ecf3e6a"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
@@ -341,7 +346,7 @@
   {:extra-paths ["test"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
-    cider/cider-nrepl                  {:mvn/version "0.44.0"}
+    cider/cider-nrepl                  {:mvn/version "0.45.0"}
     cider/piggieback                   {:mvn/version "0.5.3"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
@@ -352,7 +357,7 @@
     ;; It fixes an issue where TypeScript can't parse the `cljs_env.js` output file.
     org.clojure/google-closure-library {:mvn/version "0.0-20230227-c7c0a541"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.9.1"}
-    thheller/shadow-cljs               {:mvn/version "2.26.2"}}}
+    thheller/shadow-cljs               {:mvn/version "2.26.5"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -599,21 +604,6 @@
   ;;    clojure -X:build:build/i18n
   :build/i18n
   {:exec-fn i18n.create-artifacts/create-all-artifacts!}
-
-  ;; Build everything, and run the release steps.
-  ;;
-  ;;    clojure -X:drivers:build:build/release
-  ;;    clojure -X:drivers:build:build/release :steps '[:build-uberjar :upload-uberjar]'
-  ;;
-  ;; Available steps:
-  ;;
-  ;;    :build-uberjar
-  ;;    :upload-uberjar
-  ;;    :push-git-tags
-  ;;    :publish-draft-release
-  ;;    :update-version-info
-  :build/release
-  {:exec-fn release/release}
 
   ;; extra paths and deps for working on build scripts, or running the tests.
   :build-dev

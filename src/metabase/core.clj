@@ -12,7 +12,7 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.events :as events]
-   [metabase.logger :as mb.logger]
+   [metabase.logger :as logger]
    [metabase.models.setting :as settings]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
@@ -38,7 +38,7 @@
   metabase.driver.mysql/keep-me
   metabase.driver.postgres/keep-me
   ;; Make sure the custom Metabase logger code gets loaded up so we use our custom logger for performance reasons.
-  mb.logger/keep-me)
+  logger/keep-me)
 
 ;; don't i18n this, it's legalese
 (log/info

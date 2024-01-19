@@ -25,7 +25,7 @@ export const getMultiSelectOverrides =
         dropdownComponent: SelectDropdown,
         itemComponent: SelectItem,
         clearButtonProps: {
-          color: "text.2",
+          color: "text-dark",
         },
       },
       styles: (
@@ -33,7 +33,7 @@ export const getMultiSelectOverrides =
         { invalid }: MultiSelectStylesParams,
         { size = "md" },
       ) => ({
-        ...getSelectInputOverrides(theme),
+        ...getSelectInputOverrides(theme, size),
         ...getSelectItemsOverrides(theme, size),
         values: {
           minHeight: getSize({ size, sizes: SIZES }),

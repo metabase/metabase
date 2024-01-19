@@ -1,9 +1,10 @@
-import { assoc, assocIn, chain } from "icepick";
+import { assoc } from "icepick";
 
 import { titleize, humanize } from "metabase/lib/formatting";
-import { startNewCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
+import * as Lib from "metabase-lib";
 import { isTypePK } from "metabase-lib/types/utils/isa";
+import Question from "metabase-lib/Question";
 
 export const idsToObjectMap = (ids, objects) =>
   ids
@@ -46,9 +47,8 @@ export const databaseToForeignKeys = database =>
         .reduce((map, foreignKey) => assoc(map, foreignKey.id, foreignKey), {})
     : {};
 
-// TODO Atte Keinänen 7/3/17: Construct question with Question of metabase-lib instead of this using function
 export const getQuestion = ({
-  dbId,
+  dbId: databaseId,
   tableId,
   fieldId,
   metricId,
@@ -57,44 +57,78 @@ export const getQuestion = ({
   visualization,
   metadata,
 }) => {
-  const newQuestion = startNewCard("query", dbId, tableId);
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  let question = Question.create({ databaseId, metadata });
 
-  // consider taking a look at Ramda as a possible underscore alternative?
-  // http://ramdajs.com/0.21.0/index.html
-  const question = chain(newQuestion)
-    .updateIn(["dataset_query", "query", "aggregation"], aggregation =>
-      getCount ? [["count"]] : aggregation,
-    )
-    .updateIn(["display"], display => visualization || display)
-    .updateIn(["dataset_query", "query", "breakout"], oldBreakout => {
-      if (fieldId && metadata && metadata.field(fieldId)) {
-        return [metadata.field(fieldId).getDefaultBreakout()];
-      }
-      if (fieldId) {
-        return [["field", fieldId, null]];
-      }
-      return oldBreakout;
-    })
-    .value();
+  if (table) {
+    let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
 
-  if (metricId) {
-    return assocIn(
-      question,
-      ["dataset_query", "query", "aggregation"],
-      [["metric", metricId]],
-    );
+    if (getCount) {
+      query = Lib.aggregateByCount(query);
+    }
+
+    if (fieldId) {
+      query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
+    }
+
+    if (metricId) {
+      query = aggregateByMetricId(query, metricId);
+    }
+
+    if (segmentId) {
+      query = filterBySegmentId(query, segmentId);
+    }
+
+    question = question.setQuery(query);
   }
 
-  if (segmentId) {
-    return assocIn(
-      question,
-      ["dataset_query", "query", "filter"],
-      ["segment", segmentId],
-    );
+  if (visualization) {
+    question = question.setDisplay(visualization);
   }
 
-  return question;
+  return question.card();
 };
+
+function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {
+  const stageIndex = -1;
+  const field = metadata.field(fieldId);
+
+  if (!field) {
+    return query;
+  }
+
+  const column = Lib.fromLegacyColumn(query, stageIndex, field);
+
+  if (!column) {
+    return query;
+  }
+
+  const newColumn = Lib.withDefaultBucket(query, stageIndex, column);
+  return Lib.replaceBreakouts(query, -1, newColumn);
+}
+
+function filterBySegmentId(query, segmentId) {
+  const stageIndex = -1;
+  const segmentMetadata = Lib.segmentMetadata(query, segmentId);
+
+  if (!segmentMetadata) {
+    return query;
+  }
+
+  return Lib.filter(query, stageIndex, segmentMetadata);
+}
+
+function aggregateByMetricId(query, metricId) {
+  const stageIndex = -1;
+  const metricMetadata = Lib.metricMetadata(query, metricId);
+
+  if (!metricMetadata) {
+    return query;
+  }
+
+  return Lib.aggregate(query, stageIndex, metricMetadata);
+}
 
 export const getQuestionUrl = getQuestionArgs =>
   Urls.question(null, { hash: getQuestion(getQuestionArgs) });

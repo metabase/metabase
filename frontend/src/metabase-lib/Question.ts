@@ -47,11 +47,6 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import {
-  aggregate,
-  breakout,
-  filter,
-} from "metabase-lib/queries/utils/actions";
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
@@ -194,7 +189,13 @@ class Question {
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
 
-  legacyQuery({ useStructuredQuery }: { useStructuredQuery?: boolean } = {}) {
+  legacyQuery<UseStructuredQuery extends boolean>({
+    useStructuredQuery,
+  }: {
+    useStructuredQuery?: UseStructuredQuery;
+  } = {}): UseStructuredQuery extends true
+    ? StructuredQuery
+    : AtomicQuery | StructuredQuery {
     const query = this._legacyQuery();
     if (query instanceof StructuredQuery && !useStructuredQuery) {
       throw new Error("StructuredQuery usage is forbidden. Use MLv2");
@@ -427,9 +428,7 @@ class Question {
   }
 
   setDefaultQuery() {
-    return this.legacyQuery({ useStructuredQuery: true })
-      .setDefaultQuery()
-      .question();
+    return this.legacyQuery({ useStructuredQuery: true }).question();
   }
 
   settings(): VisualizationSettings {
@@ -491,7 +490,6 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
-    const legacyQuery = this.legacyQuery({ useStructuredQuery: true });
     const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
@@ -501,7 +499,7 @@ class Question {
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return this.isStructured() && !legacyQuery.hasAnyClauses() && hasSinglePk;
+    return this.isStructured() && !Lib.hasClauses(query, -1) && hasSinglePk;
   }
 
   canAutoRun(): boolean {
@@ -559,18 +557,6 @@ class Question {
    * Although most of these are essentially a way to modify the current query, having them as a part
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
-  aggregate(a): Question {
-    return aggregate(this, a) || this;
-  }
-
-  breakout(b): Question | null | undefined {
-    return breakout(this, b) || this;
-  }
-
-  filter(operator, column, value): Question {
-    return filter(this, operator, column, value) || this;
-  }
-
   usesMetric(metricId): boolean {
     return (
       this.isStructured() &&
@@ -1009,14 +995,13 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean
-      ? this.legacyQuery({ useStructuredQuery: true }).clean()
-      : this.legacyQuery({ useStructuredQuery: true });
+    const query = clean ? Lib.dropStageIfEmpty(this.query()) : this.query();
+
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
       collection_id: this._card.collection_id,
-      dataset_query: query.datasetQuery(),
+      dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
       dataset: this._card.dataset,
@@ -1101,6 +1086,7 @@ class Question {
     if (process.env.NODE_ENV === "development") {
       window.__MLv2_metadata = metadata;
       window.__MLv2_query = this.__mlv2Query;
+      window.Lib = Lib;
     }
 
     return this.__mlv2Query;

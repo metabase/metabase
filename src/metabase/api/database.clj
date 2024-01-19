@@ -590,6 +590,7 @@
          "Larger instances can have performance issues matching using substring, so can use prefix matching, "
          " or turn autocompletions off."))
   :visibility :public
+  :export?    true
   :type       :keyword
   :default    :substring
   :audit      :raw-value
