@@ -108,7 +108,9 @@
       (.transcode transcoder in out))
     (.toByteArray os)))
 
-(defn- svg-string->bytes [s]
+(defn svg-string->bytes
+  "Convert a string (from svg rendering) an svg document then return the bytes"
+  [s]
   (-> s parse-svg-string render-svg))
 
 (defn waterfall
@@ -129,6 +131,17 @@
   (let [svg-string (.asString (js/execute-fn-name (context) "funnel" (json/generate-string data)
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
+
+(defn javascript-visualization
+  "Clojure entrypoint to render javascript visualizations."
+  [cards-with-data dashcard-viz-settings]
+  (let [response (.asString (js/execute-fn-name (context) "javascript_visualization"
+                                                (json/generate-string cards-with-data)
+                                                (json/generate-string dashcard-viz-settings)
+                                                (json/generate-string (public-settings/application-colors))))]
+    (-> response
+        (json/parse-string true)
+        (update :type (fnil keyword "unknown")))))
 
 (defn combo-chart
   "Clojure entrypoint to render a combo or multiple chart.

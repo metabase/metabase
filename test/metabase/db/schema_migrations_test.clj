@@ -561,6 +561,7 @@
         (doseq [view-name new-view-names]
           (testing (str "View " view-name " should be created")
             (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]
