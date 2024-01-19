@@ -4212,17 +4212,35 @@ databaseChangeLog:
               sql: SELECT count(*) FROM (SELECT count(*) FROM DATABASECHANGELOG GROUP BY ID, AUTHOR, FILENAME HAVING count(*) > 1) t1
           - or:
             - and:
-              - dbms: h2
-              - not:
-                - indexExists:
-                    tableName: ${databasechangelog.name}
-                    indexName: IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME
+              - dbms:
+                  type: postgresql
+              - sqlCheck:
+                  expectedResult: 0
+                  sql: >-
+                    SELECT COUNT(*)
+                    FROM pg_indexes
+                    WHERE tablename = 'databasechangelog' AND
+                          indexname = 'idx_databasechangelog_id_author_filename';
             - and:
-              - dbms: mysql,mariadb,postgresql
-              - not:
-                - indexExists:
-                    tableName: ${databasechangelog.name}
-                    indexName: idx_databasechangelog_id_author_filename
+              - dbms:
+                  type: h2
+              - sqlCheck:
+                  expectedResult: 0
+                  sql: >-
+                    SELECT COUNT(*)
+                    FROM INFORMATION_SCHEMA.INDEXES
+                    WHERE TABLE_NAME = 'DATABASECHANGELOG' AND
+                          INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';
+            - and:
+              - dbms:
+                  type: mysql,mariadb
+              - sqlCheck:
+                  expectedResult: 0
+                  sql: >-
+                    SELECT COUNT(*)
+                    FROM INFORMATION_SCHEMA.STATISTICS
+                    WHERE TABLE_NAME = 'DATABASECHANGELOG' AND
+                          INDEX_NAME = 'idx_databasechangelog_id_author_filename';
 
       changes:
         - addUniqueConstraint:
