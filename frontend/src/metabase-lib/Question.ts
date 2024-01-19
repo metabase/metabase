@@ -184,7 +184,7 @@ class Question {
     }
 
     const isVirtualDashcard = !this._card.id;
-    // `dataset_query` is null for questions on a dashboard the user don't have access to
+    // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
     !isVirtualDashcard &&
       console.warn("Unknown query type: " + datasetQuery?.type);
   });

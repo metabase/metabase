@@ -96,7 +96,7 @@ export function isLinkDashCard(dashcard: DashboardCard) {
 }
 
 export function isNativeDashCard(dashcard: DashboardCard) {
-  // The `dataset_query` is null for dashboard cards for users without data permissions
+  // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
   return dashcard.card.dataset_query?.type === "native";
 }
 
