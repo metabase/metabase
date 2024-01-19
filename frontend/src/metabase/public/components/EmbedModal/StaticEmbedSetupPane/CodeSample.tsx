@@ -32,7 +32,7 @@ export const CodeSample = ({
   onChangeOption,
 }: CodeSampleProps): JSX.Element => {
   return (
-    <div className={className}>
+    <div className={className} data-testid={dataTestId}>
       {(title || languageOptions.length > 1) && (
         <div className="flex align-center">
           {title && <h4>{title}</h4>}
