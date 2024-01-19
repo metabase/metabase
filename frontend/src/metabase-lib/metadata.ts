@@ -191,15 +191,13 @@ export function fromLegacyColumn(
   return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }
 
-/**
- * Even though it seems weird to pass the same query two times,
- * this function follows the same pattern as the other displayInfo functions.
- * The first two parameters are always a query, and a stage.
- * The third parameter is what you would like to have info about.
- * It just only happens that the thing we're examining is (again) the query itself.
- *
- * Rather than adding another overload, we're introducing a special-case, named abstraction.
- */
 export function queryDisplayInfo(query: Query): QueryDisplayInfo {
+  /**
+   * Even though it seems weird to pass the same query two times,
+   * this function follows the same pattern as the other display_info overloads.
+   * The first two parameters are always a query, and a stage index.
+   * The third parameter is what you would like to have the info about.
+   * It just only happens that the thing we're examining is (again) the query itself.
+   */
   return ML.display_info(query, -1, query);
 }
