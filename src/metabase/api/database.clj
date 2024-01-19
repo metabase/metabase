@@ -551,6 +551,7 @@
              :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
              :table.db_id                    db-id
+             :table.active                   true
              {:order-by  [[[:lower :metabase_field.name] :asc]
                           [[:lower :table.name] :asc]]
               :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
