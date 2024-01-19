@@ -67,3 +67,34 @@ export function formatTimeWithUnit(
 
   return m.format(timeFormat);
 }
+
+interface TimeOnlyOptions {
+  local?: boolean;
+  time_enabled?: "minutes" | "milliseconds" | "seconds" | null;
+  time_format?: string;
+  time_style?: string;
+}
+
+export function formatTimeWithOptions(
+  time: Moment,
+  unit: DatetimeUnit,
+  options: TimeOnlyOptions = {},
+) {
+  const parsedTime = parseTime(time);
+
+  const timeStyle = options.time_style
+    ? options.time_style
+    : DEFAULT_TIME_STYLE;
+
+  const timeEnabled = options.time_enabled
+    ? options.time_enabled
+    : hasHour(unit)
+    ? "minutes"
+    : null;
+
+  const timeFormat = options.time_format
+    ? options.time_format
+    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
+
+  return parsedTime.format(timeFormat);
+}
