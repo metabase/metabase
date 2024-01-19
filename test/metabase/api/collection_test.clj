@@ -330,7 +330,8 @@
           (testing "Make sure we get the expected collections when collection-id is nil"
             (let [collections (#'api.collection/select-collections {:archived                       false
                                                                     :exclude-other-user-collections false
-                                                                    :shallow                        true})]
+                                                                    :shallow                        true
+                                                                    :permissions-set                #{"/"}})]
               (is (= #{{:name "A"}
                        {:name "B"}
                        {:name "C"}
@@ -343,7 +344,8 @@
             (let [collections (#'api.collection/select-collections {:archived                       false
                                                                     :exclude-other-user-collections false
                                                                     :shallow                        true
-                                                                    :collection-id                  (:id a)})]
+                                                                    :collection-id                  (:id a)
+                                                                    :permissions-set                #{"/"}})]
               ;; E & G are too deep to show up
               (is (= #{{:name "C"}
                        {:name "B"}
@@ -356,7 +358,8 @@
             (let [collections (#'api.collection/select-collections {:archived                       false
                                                                     :exclude-other-user-collections false
                                                                     :shallow                        true
-                                                                    :collection-id                  (:id b)})]
+                                                                    :collection-id                  (:id b)
+                                                                    :permissions-set                #{"/"}})]
               (is (= #{}
                      (->> collections
                           (filter (fn [coll] (contains? ids (:id coll))))
