@@ -118,7 +118,7 @@ iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
   ${ruby.getIframeQuerySource(displayOptions)}`,
 };
 
-export const closure = {
+export const clojure = {
   getParametersSource: (params: EmbeddingParameters) =>
     `:params   {${Object.entries(params)
       .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
@@ -142,13 +142,13 @@ export const closure = {
 
 (def payload
   {:resource {:${resourceType} ${resourceId}}
-   ${closure.getParametersSource(params)}
+   ${clojure.getParametersSource(params)}
    :exp      (+ (int (/ (System/currentTimeMillis) 1000)) (* 60 10))}) ; 10 minute expiration
 
 (def token (jwt/sign payload metabase-secret-key))
 
 (def iframe-url (str metabase-site-url "/embed/${resourceType}/" token
-  ${closure.getIframeQuerySource(displayOptions)}))`,
+  ${clojure.getIframeQuerySource(displayOptions)}))`,
 };
 
 export const getHtmlSource = ({ iframeUrl }: { iframeUrl: string }) =>

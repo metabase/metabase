@@ -114,24 +114,14 @@ export const StaticEmbedSetupPane = ({
   );
 
   const handleSave = async () => {
-    try {
-      if (!resource.enable_embedding) {
-        await onUpdateEnableEmbedding(true);
-      }
-      await onUpdateEmbeddingParams(embeddingParams);
-    } catch (e) {
-      console.error(e);
-      throw e;
+    if (!resource.enable_embedding) {
+      await onUpdateEnableEmbedding(true);
     }
+    await onUpdateEmbeddingParams(embeddingParams);
   };
 
   const handleUnpublish = async () => {
-    try {
-      await onUpdateEnableEmbedding(false);
-    } catch (e) {
-      console.error(e);
-      throw e;
-    }
+    await onUpdateEnableEmbedding(false);
   };
 
   const handleDiscard = () => {

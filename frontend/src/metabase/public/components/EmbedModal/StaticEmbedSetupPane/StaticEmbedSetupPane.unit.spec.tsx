@@ -27,9 +27,7 @@ const TextEditorMock = ({
 }) => (
   <>
     <div data-testid="text-editor-mock">{value}</div>
-    <div data-testid="text-editor-mock-highlighted-code">
-      {highlightedText?.map(text => text)}
-    </div>
+    <div data-testid="text-editor-mock-highlighted-code">{highlightedText}</div>
   </>
 );
 

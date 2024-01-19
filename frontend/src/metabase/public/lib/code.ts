@@ -4,7 +4,7 @@ import type {
   ServerCodeSampleConfig,
 } from "./types";
 import {
-  closure,
+  clojure,
   getHtmlSource,
   getJsxSource,
   getPugSource,
@@ -72,9 +72,9 @@ export const getEmbedServerCodeExampleOptions = (
   },
   {
     name: "Clojure",
-    source: closure.getServerSource(codeSampleParameters),
-    parametersSource: closure.getParametersSource(codeSampleParameters.params),
-    getIframeQuerySource: closure.getIframeQuerySource(
+    source: clojure.getServerSource(codeSampleParameters),
+    parametersSource: clojure.getParametersSource(codeSampleParameters.params),
+    getIframeQuerySource: clojure.getIframeQuerySource(
       codeSampleParameters.displayOptions,
     ),
     mode: "ace/mode/clojure",
