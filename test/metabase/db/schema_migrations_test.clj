@@ -834,7 +834,7 @@
                                                   :db_id db-id :table_id nil :group_id group-id)))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id))))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
 
         (testing "Unrestricted not-native data access for a DB"
           (clear-permissions!)
@@ -843,10 +843,10 @@
           (migrate!)
           (is (= "unrestricted" (t2/select-one-fn :perm_value
                                                   (t2/table-name :model/DataPermissions)
-                                                  :db_id db-id :table_id nil :group_id group-id)))
+                                                  :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id))))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
 
         (testing "Unrestricted data access for a schema"
           (clear-permissions!)
@@ -855,11 +855,11 @@
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id nil :group_id group-id)))
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
           (is (= "unrestricted"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-1 :group_id group-id))))
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
 
         (testing "Unrestricted data access for a table"
           (clear-permissions!)
@@ -868,11 +868,11 @@
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id nil :group_id group-id)))
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
           (is (= "unrestricted"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-1 :group_id group-id))))
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
 
         (testing "Query access to a table"
           (clear-permissions!)
@@ -881,11 +881,11 @@
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id nil :group_id group-id)))
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
           (is (= "unrestricted"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-1 :group_id group-id))))
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
 
         (testing "Segmented query access to a table - maps to unrestricted data access; sandboxing is determined by the
                                      `sandboxes` table"
@@ -895,11 +895,11 @@
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id nil :group_id group-id)))
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
           (is (= "unrestricted"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-1 :group_id group-id))))
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
 
         (testing "No self service database access"
           (clear-permissions!)
@@ -907,10 +907,10 @@
           (is (= "no-self-service"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id nil :group_id group-id)))
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id))))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
 
         (testing "Granular table permissions"
           (clear-permissions!)
@@ -920,15 +920,15 @@
           (is (nil?
                (t2/select-one-fn :perm_value
                                  (t2/table-name :model/DataPermissions)
-                                 :db_id db-id :table_id nil :group_id group-id)))
+                                 :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
           (is (= "no-self-service"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-1 :group_id group-id)))
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access")))
           (is (= "unrestricted"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-2 :group_id group-id))))
+                                   :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/data-access"))))
 
         (testing "Block permissions for a database"
           (clear-permissions!)
@@ -937,10 +937,10 @@
           (migrate!)
           (is (= "block" (t2/select-one-fn :perm_value
                                            (t2/table-name :model/DataPermissions)
-                                           :db_id db-id :table_id nil :group_id group-id)))
+                                           :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id))))))))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))))))
 
 (deftest native-query-editing-permissions-schema-migration-test
   (testing "Native query editing permissions are correctly migrated from `permissions` to `permissions_v2`"
@@ -958,7 +958,7 @@
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
-                                         :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "perms/native-query-editing"))))
 
         (testing "Native query editing explicitly allowed"
           (clear-permissions!)
@@ -967,14 +967,14 @@
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
-                                         :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "perms/native-query-editing"))))
 
         (testing "Native query editing not allowed"
           (clear-permissions!)
           (migrate!)
           (is (= "no" (t2/select-one-fn :perm_value
                                         (t2/table-name :model/DataPermissions)
-                                        :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))))))
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "perms/native-query-editing"))))))))
 
 (deftest download-results-permissions-schema-migration-test
   (testing "Download results permissions are correctly migrated from `permissions` to `permissions_v2`"
@@ -1010,10 +1010,10 @@
           (migrate!)
           (is (= "one-million-rows" (t2/select-one-fn :perm_value
                                                       (t2/table-name :model/DataPermissions)
-                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results")))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results")))
 
           (clear-permissions!)
           (t2/insert! (t2/table-name Permissions) {:group_id group-id
@@ -1021,10 +1021,10 @@
           (migrate!)
           (is (= "one-million-rows" (t2/select-one-fn :perm_value
                                                       (t2/table-name :model/DataPermissions)
-                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
 
         (testing "Ten-thousand-rows download access for a DB"
           (clear-permissions!)
@@ -1033,10 +1033,10 @@
           (migrate!)
           (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
                                                        (t2/table-name :model/DataPermissions)
-                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results")))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results")))
 
           (clear-permissions!)
           (t2/insert! (t2/table-name Permissions) {:group_id group-id
@@ -1044,20 +1044,20 @@
           (migrate!)
           (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
                                                        (t2/table-name :model/DataPermissions)
-                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
 
         (testing "No download access for a DB"
           (clear-permissions!)
           (migrate!)
           (is (= "no" (t2/select-one-fn :perm_value
                                         (t2/table-name :model/DataPermissions)
-                                        :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
 
 
         (testing "One-million-rows download access for a table"
@@ -1067,11 +1067,11 @@
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
           (is (= "one-million-rows"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
 
         (testing "One-million-rows download access for a table"
           (clear-permissions!)
@@ -1080,11 +1080,11 @@
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
           (is (= "one-million-rows"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
 
         (testing "Ten-thousand-rows download access for a table"
           (clear-permissions!)
@@ -1093,11 +1093,11 @@
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
           (is (= "ten-thousand-rows"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
 
         (testing "Granular table permissions"
           (clear-permissions!)
@@ -1146,20 +1146,20 @@
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
-                                         :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "perms/manage-table-metadata")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))
+                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))
 
         (testing "No manage table metadata access for a DB"
           (clear-permissions!)
           (migrate!)
           (is (= "no" (t2/select-one-fn :perm_value
                                         (t2/table-name :model/DataPermissions)
-                                        :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "perms/manage-table-metadata")))
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))
+                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))
 
         (testing "Manage table metadata access for a table"
           (clear-permissions!)
@@ -1168,11 +1168,11 @@
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
-                                      :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/manage-table-metadata")))
           (is (= "yes"
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
-                                   :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))))))
+                                   :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))))))
 
 (deftest manage-database-permissions-schema-migration-test
   (testing "Manage database permissions are correctly migrated from `permissions` to `permissions_v2`"
@@ -1190,11 +1190,11 @@
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
-                                         :db_id db-id :group_id group-id :perm_type "manage-database"))))
+                                         :db_id db-id :group_id group-id :perm_type "perms/manage-database"))))
 
         (testing "No manage database permission"
           (clear-permissions!)
           (migrate!)
           (is (= "no" (t2/select-one-fn :perm_value
                                         (t2/table-name :model/DataPermissions)
-                                        :db_id db-id :group_id group-id :perm_type "manage-database"))))))))
+                                        :db_id db-id :group_id group-id :perm_type "perms/manage-database"))))))))
