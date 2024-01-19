@@ -6,6 +6,7 @@ import lineShowDotsOff from "./line-show-dots-off.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
+import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
@@ -40,6 +41,7 @@ export const data = {
   barTwoAxesStackedWithNegativeValues,
   barBreakoutWithLineSeriesStackedRightAxisOnly,
   barStackedTotalFormattedValues,
+  barStackedNormalizedEmptySpace37880,
   barsBreakoutSortedWithNegativeValuesPowerYAxis,
   autoYSplit,
   messedUpAxis,

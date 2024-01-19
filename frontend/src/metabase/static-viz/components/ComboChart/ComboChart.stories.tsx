@@ -91,6 +91,13 @@ BarStackedTotalFormattedValues.args = {
   renderingContext,
 };
 
+export const BarStackedNormalizedEmptySpace37880 = Template.bind({});
+BarStackedNormalizedEmptySpace37880.args = {
+  rawSeries: data.barStackedNormalizedEmptySpace37880 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarTwoAxesStackedWithNegativeValues = Template.bind({});
 BarTwoAxesStackedWithNegativeValues.args = {
   rawSeries: data.barTwoAxesStackedWithNegativeValues as any,
