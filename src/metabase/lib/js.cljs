@@ -1217,18 +1217,22 @@
 (defn ^:export update-lat-lon-filter
   "Add or update a filter against a `latitude-column` and `longitude-column`."
   [a-query stage-number latitude-column longitude-column bounds]
-  (let [bounds (js->clj bounds :keywordize-keys true)]
+  (let [bounds           (js->clj bounds :keywordize-keys true)
+        latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
+        longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
     (lib.core/update-lat-lon-filter a-query stage-number latitude-column longitude-column bounds)))
 
 (defn ^:export update-numeric-filter
   "Add or update a filter against `numeric-column`."
   [a-query numeric-column stage-number start end]
-  (lib.core/update-numeric-filter a-query numeric-column stage-number start end))
+  (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
+    (lib.core/update-numeric-filter a-query numeric-column stage-number start end)))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts."
   [a-query temporal-column stage-number start end]
-  (lib.core/update-temporal-filter a-query temporal-column stage-number start end))
+  (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
+    (lib.core/update-temporal-filter a-query temporal-column stage-number start end)))
 
 (defn ^:export valid-filter-for?
   "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`."
