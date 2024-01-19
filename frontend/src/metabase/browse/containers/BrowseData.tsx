@@ -79,6 +79,8 @@ export const BrowseDataPage = () => {
   );
 };
 
+const emptyArray: Database[] = [];
+
 const BrowseDatabases = ({
   data: databases = [],
   error,
