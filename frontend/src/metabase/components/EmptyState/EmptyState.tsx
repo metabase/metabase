@@ -78,7 +78,7 @@ const EmptyState = ({
         </h2>
       )}
       {message && (
-        <Text color="medium" className="empty-state-message">
+        <Text role="status" color="medium" className="empty-state-message">
           {message}
         </Text>
       )}
