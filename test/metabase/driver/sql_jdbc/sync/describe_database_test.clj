@@ -76,7 +76,7 @@
           (mt/db)
           nil
           (fn [^java.sql.Connection conn]
-            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 (mt/db) conn nil nil))
+            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
                  (map :name)
                  sort))))))
 
