@@ -12,7 +12,6 @@
   functions for more details on the differences."
   {:added "0.37.1"
    :arglists '([driver
-                database
                 ^java.sql.Connection connection
                 ^String schema-inclusion-filters
                 ^String schema-exclusion-filters])}
