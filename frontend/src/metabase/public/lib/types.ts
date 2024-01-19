@@ -3,7 +3,7 @@ import type { Card, Dashboard } from "metabase-types/api";
 export type EmbedType = "application" | null;
 
 export type EmbedResource = (Card | Dashboard) & {
-  embedding_params?: EmbeddingParameters;
+  embedding_params?: EmbeddingParameters | null;
 };
 
 export type EmbedResourceType = "dashboard" | "question";
