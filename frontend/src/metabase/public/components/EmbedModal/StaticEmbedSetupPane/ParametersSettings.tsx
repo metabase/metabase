@@ -16,10 +16,9 @@ import type {
   EmbeddingParametersValues,
   EmbeddingDisplayOptions,
   EmbedResource,
-  EmbedModalStep,
   EmbedResourceParameterWithValue,
 } from "../types";
-import EmbedCodePane from "./EmbedCodePane";
+import { EmbedCodePane } from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
@@ -35,10 +34,7 @@ export interface ParametersSettingsProps {
   lockedParameters: EmbedResourceParameter[];
   parameterValues: EmbeddingParametersValues;
 
-  embedType: EmbedModalStep;
-
   iframeUrl: string;
-  token: string;
   siteUrl: string;
   secretKey: string;
   params: EmbeddingParameters;
@@ -59,9 +55,7 @@ export const ParametersSettings = ({
   lockedParameters,
   parameterValues,
   displayOptions,
-  embedType,
   iframeUrl,
-  token,
   siteUrl,
   secretKey,
   params,
@@ -171,11 +165,8 @@ export const ParametersSettings = ({
           ) : activePane === "code" ? (
             <EmbedCodePane
               className="flex-full w-full"
-              embedType={embedType}
               resource={resource}
               resourceType={resourceType}
-              iframeUrl={iframeUrl}
-              token={token}
               siteUrl={siteUrl}
               secretKey={secretKey}
               params={params}

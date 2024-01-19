@@ -8,19 +8,15 @@ import type {
   EmbeddingParameters,
   EmbedResource,
   EmbedResourceType,
-  EmbedModalStep,
   EmbeddingDisplayOptions,
 } from "../types";
-import EmbedCodePane from "./EmbedCodePane";
+import { EmbedCodePane } from "./EmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 export interface OverviewSettingsProps {
-  embedType: EmbedModalStep;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
-  iframeUrl: string;
-  token: string;
   siteUrl: string;
   secretKey: string;
   params: EmbeddingParameters;
@@ -28,11 +24,8 @@ export interface OverviewSettingsProps {
 }
 
 export const OverviewSettings = ({
-  embedType,
   resource,
   resourceType,
-  iframeUrl,
-  token,
   siteUrl,
   secretKey,
   params,
@@ -62,11 +55,8 @@ export const OverviewSettings = ({
       previewSlot={
         <EmbedCodePane
           className="flex-full w-full"
-          embedType={embedType}
           resource={resource}
           resourceType={resourceType}
-          iframeUrl={iframeUrl}
-          token={token}
           siteUrl={siteUrl}
           secretKey={secretKey}
           params={params}

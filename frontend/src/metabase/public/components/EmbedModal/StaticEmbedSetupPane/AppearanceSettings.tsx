@@ -17,7 +17,7 @@ import type {
   EmbedResourceType,
   EmbedModalStep,
 } from "../types";
-import EmbedCodePane from "./EmbedCodePane";
+import { EmbedCodePane } from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import {
   DisplayOptionSection,
@@ -51,16 +51,13 @@ export interface AppearanceSettingsProps {
 
 export const AppearanceSettings = ({
   activePane,
-  embedType,
   resource,
   resourceType,
   iframeUrl,
-  token,
   siteUrl,
   secretKey,
   params,
   displayOptions,
-
   onChangePane,
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
@@ -223,11 +220,8 @@ export const AppearanceSettings = ({
           ) : activePane === "code" ? (
             <EmbedCodePane
               className="flex-full w-full"
-              embedType={embedType}
               resource={resource}
               resourceType={resourceType}
-              iframeUrl={iframeUrl}
-              token={token}
               siteUrl={siteUrl}
               secretKey={secretKey}
               params={params}

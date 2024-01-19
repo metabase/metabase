@@ -47,11 +47,8 @@ export const StaticEmbedSetupPane = ({
       </Tabs.List>
       <Tabs.Panel value={TABS.Overview}>
         <OverviewSettings
-          embedType={embedType}
           resource={resource}
           resourceType={resourceType}
-          iframeUrl={iframeUrl}
-          token={token}
           siteUrl={siteUrl}
           secretKey={secretKey}
           params={params}
@@ -67,9 +64,7 @@ export const StaticEmbedSetupPane = ({
           embeddingParams={embeddingParams}
           lockedParameters={lockedParameters}
           parameterValues={parameterValues}
-          embedType={embedType}
           iframeUrl={iframeUrl}
-          token={token}
           siteUrl={siteUrl}
           secretKey={secretKey}
           params={params}
