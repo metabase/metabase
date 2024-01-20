@@ -171,7 +171,7 @@
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
   [driver connection schema-inclusion-filters schema-exclusion-filters]
-  (fast-active-tables driver *describing-database* connection nil schema-inclusion-filters schema-exclusion-filters))
+  (fast-active-tables driver connection nil schema-inclusion-filters schema-exclusion-filters))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
