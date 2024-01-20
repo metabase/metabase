@@ -104,6 +104,8 @@ export const getDefaultYAxisTitle = (metricNames: string[]) => {
 
 export const getIsYAxisLabelEnabledDefault = () => true;
 
+export const getYAxisAutoRangeDefault = () => true;
+
 export const getDefaultXAxisTitle = (
   dimensionColumn: DatasetColumn | undefined,
 ) => {

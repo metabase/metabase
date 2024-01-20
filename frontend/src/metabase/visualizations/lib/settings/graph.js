@@ -33,6 +33,7 @@ import {
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
+  getYAxisAutoRangeDefault,
   isStackingValueValid,
   STACKABLE_DISPLAY_TYPES,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
@@ -521,7 +522,7 @@ export const GRAPH_AXIS_SETTINGS = {
     title: t`Auto y-axis range`,
     inline: true,
     widget: "toggle",
-    default: true,
+    getDefault: getYAxisAutoRangeDefault,
   },
   "graph.y_axis.min": {
     section: t`Axes`,
