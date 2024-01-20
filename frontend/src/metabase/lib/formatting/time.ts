@@ -96,5 +96,5 @@ export function formatTimeWithOptions(
     ? options.time_format
     : getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
 
-  return parsedTime.format(timeFormat);
+return parsedTime.isValid() ? parsedTime.format("LT") : String(time);
 }
