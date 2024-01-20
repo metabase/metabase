@@ -3,7 +3,10 @@ import type { RegisteredSeriesOption } from "echarts";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 
 import type { CallbackDataParams } from "echarts/types/dist/shared";
-import type { LabelLayoutOptionCallbackParams } from "echarts/types/dist/echarts";
+import type {
+  LabelLayoutOptionCallbackParams,
+  SeriesOption,
+} from "echarts/types/dist/echarts";
 import type {
   SeriesModel,
   CartesianChartModel,
@@ -25,9 +28,36 @@ import { getObjectValues } from "metabase/lib/objects";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { buildEChartsScatterSeries } from "../scatter/series";
-import { buildEChartsWaterfallSeries } from "../waterfall/series";
-import { checkWaterfallChartModel } from "../waterfall/utils";
 import { getSeriesYAxisIndex } from "./utils";
+import { buildEChartsWaterfallSeries } from "metabase/visualizations/echarts/cartesian/waterfall/option";
+
+export const getBarLabelLayout =
+  (
+    dataset: ChartDataset,
+    settings: ComputedVisualizationSettings,
+    seriesDataKey: DataKey,
+  ): SeriesOption["labelLayout"] =>
+  params => {
+    const { dataIndex, rect } = params;
+    if (dataIndex == null) {
+      return {};
+    }
+
+    const labelValue = dataset[dataIndex][seriesDataKey];
+    if (typeof labelValue !== "number") {
+      return {};
+    }
+
+    const barHeight = rect.height;
+    const labelOffset =
+      barHeight / 2 +
+      CHART_STYLE.seriesLabels.size / 2 +
+      CHART_STYLE.seriesLabels.offset;
+    return {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+      dy: labelValue < 0 ? labelOffset : -labelOffset,
+    };
+  };
 
 export function getDataLabelFormatter(
   seriesModel: SeriesModel,
@@ -134,27 +164,7 @@ const buildEChartsBarSeries = (
       renderingContext,
       settings["graph.show_values"] && settings["stackable.stack_type"] == null,
     ),
-    labelLayout: params => {
-      const { dataIndex, rect } = params;
-      if (dataIndex == null) {
-        return {};
-      }
-
-      const labelValue = dataset[dataIndex][seriesModel.dataKey];
-      if (typeof labelValue !== "number") {
-        return {};
-      }
-
-      const barHeight = rect.height;
-      const labelOffset =
-        barHeight / 2 +
-        CHART_STYLE.seriesLabels.size / 2 +
-        CHART_STYLE.seriesLabels.offset;
-      return {
-        hideOverlap: settings["graph.label_value_frequency"] === "fit",
-        dy: labelValue < 0 ? labelOffset : -labelOffset,
-      };
-    },
+    labelLayout: getBarLabelLayout(dataset, settings, seriesModel.dataKey),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -434,9 +444,11 @@ export const buildEChartsSeries = (
         case "waterfall":
           return buildEChartsWaterfallSeries(
             seriesModel,
-            chartModel.dataset,
+            chartModel.transformedDataset,
             settings,
-            checkWaterfallChartModel(chartModel).total,
+            chartModel.dimensionModel.dataKey,
+            yAxisIndex,
+            chartModel.xAxisModel,
             renderingContext,
           );
       }

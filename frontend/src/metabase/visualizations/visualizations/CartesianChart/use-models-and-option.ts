@@ -11,8 +11,6 @@ import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesia
 import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
-import { getWaterfallOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
-import { checkWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/utils";
 
 export function useModelsAndOption({
   rawSeries,
@@ -22,6 +20,7 @@ export function useModelsAndOption({
   card,
   fontFamily,
   width,
+  height,
   timelineEvents,
   selectedTimelineEventIds,
 }: VisualizationProps) {
@@ -70,26 +69,14 @@ export function useModelsAndOption({
   );
 
   const option = useMemo(() => {
-    switch (card.display) {
-      case "waterfall":
-        return getWaterfallOption(
-          checkWaterfallChartModel(chartModel),
-          timelineEventsModel,
-          selectedTimelineEventIds ?? [],
-          settings,
-          width,
-          renderingContext,
-        );
-      default:
-        return getCartesianChartOption(
-          chartModel,
-          timelineEventsModel,
-          selectedTimelineEventIds ?? [],
-          settings,
-          width,
-          renderingContext,
-        );
-    }
+    return getCartesianChartOption(
+      chartModel,
+      timelineEventsModel,
+      selectedTimelineEventIds ?? [],
+      settings,
+      width,
+      renderingContext,
+    );
   }, [
     card.display,
     chartModel,

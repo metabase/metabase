@@ -24,7 +24,6 @@ import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
-import { getSeriesIdFromECharts } from "metabase/visualizations/echarts/cartesian/utils/id";
 import { useModelsAndOption } from "./use-models-and-option";
 import { useChartDebug } from "./use-chart-debug";
 
@@ -199,9 +198,7 @@ export function CartesianChart(props: VisualizationProps) {
       // is different from one in chartModel.seriesModels
       const eChartsSeriesIndex = (
         option?.series as LineSeriesOption[]
-      ).findIndex(
-        series => getSeriesIdFromECharts(series.id, card.display) === seriesId,
-      );
+      ).findIndex(series => series.id === seriesId);
 
       chart.dispatchAction({
         type: "highlight",
