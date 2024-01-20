@@ -4,6 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import { serializeCardForUrl } from "metabase/lib/card";
 import type { Card } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 
 interface GetPathNameFromQueryBuilderModeOptions {
@@ -104,7 +105,9 @@ export const isNavigationAllowed = ({
     return isRunningModel || allowedPathnames.includes(pathname);
   }
 
-  if (question.isNative()) {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
+  if (isNative) {
     const isRunningQuestion = pathname === "/question" && hash.length > 0;
     return isRunningQuestion;
   }
