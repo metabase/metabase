@@ -618,6 +618,17 @@ describe("formatting", () => {
         expect(result).toBe(resultStr);
       },
     );
+
+    it("should use options when formatting times", () => {
+      const value = "20:34:56";
+      const t12 = formatTimeWithOptions(value, "default", {});
+      expect(t12).toBe("8:34 PM");
+      const t24 = formatTimeWithOptions(value, "default", {
+        time_enabled: "minutes",
+        time_style: "HH:mm",
+      });
+      expect(t24).toBe("20:34");
+    });
   });
 
   describe("formatTimeWithUnit", () => {
