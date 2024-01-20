@@ -28,12 +28,6 @@ export function duration(milliseconds: number) {
   return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
 }
 
-export function formatTime(time: Moment) {
-  const parsedTime = parseTime(time);
-
-  return parsedTime.isValid() ? parsedTime.format("LT") : String(time);
-}
-
 interface TimeWithUnitType {
   local?: boolean;
   time_enabled?: "minutes" | "milliseconds" | "seconds" | boolean;
@@ -77,24 +71,25 @@ interface TimeOnlyOptions {
 
 export function formatTimeWithOptions(
   time: Moment,
-  unit: DatetimeUnit,
+  unit: DatetimeUnit = "default",
   options: TimeOnlyOptions = {},
 ) {
   const parsedTime = parseTime(time);
 
-  const timeStyle = options.time_style
-    ? options.time_style
-    : DEFAULT_TIME_STYLE;
+  const timeStyle = options.time_style ?? DEFAULT_TIME_STYLE;
 
-  const timeEnabled = options.time_enabled
-    ? options.time_enabled
-    : hasHour(unit)
-    ? "minutes"
-    : null;
+  let timeEnabled;
+  if (options.time_enabled) {
+    timeEnabled = options.time_enabled;
+  } else if (hasHour(unit)) {
+    timeEnabled = "minute";
+  } else {
+    timeEnabled = null;
+  }
 
-  const timeFormat = options.time_format
-    ? options.time_format
-    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
+  const timeFormat =
+    options.time_format ??
+    getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
 
-return parsedTime.isValid() ? parsedTime.format("LT") : String(time);
+  return parsedTime.isValid() ? parsedTime.format(timeFormat) : String(time);
 }

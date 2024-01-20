@@ -8,7 +8,7 @@ import type {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import { formatTime } from "metabase/lib/formatting/time";
+import { formatTimeWithOptions } from "metabase/lib/formatting/time";
 import {
   formatDateTimeWithUnit,
   formatRange,
@@ -57,7 +57,11 @@ export const formatStaticValue = (value: unknown, options: OptionsType) => {
   if (value == null) {
     formattedValue = JSON.stringify(null);
   } else if (isTime(column)) {
-    formattedValue = formatTime(value as Moment);
+    formattedValue = formatTimeWithOptions(
+      value as Moment,
+      column.unit,
+      options,
+    );
   } else if (column?.unit != null) {
     formattedValue = formatDateTimeWithUnit(
       value as string | number,

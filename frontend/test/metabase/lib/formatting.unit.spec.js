@@ -8,7 +8,7 @@ import {
   formatValue,
   formatUrl,
   formatDateTimeWithUnit,
-  formatTime,
+  formatTimeWithOptions,
   formatTimeWithUnit,
   slugify,
   getCurrencySymbol,
@@ -598,8 +598,8 @@ describe("formatting", () => {
     );
   });
 
-  describe("formatTime", () => {
-    const FORMAT_TIME_TESTS = [
+  describe("formatTimeWithOptions", () => {
+    const FORMAT_TIME_WITH_OPTIONS_TESTS = [
       ["01:02:03.456+07:00", "1:02 AM"],
       ["01:02", "1:02 AM"],
       ["22:29:59.26816+01:00", "10:29 PM"],
@@ -611,10 +611,10 @@ describe("formatting", () => {
       ["17:01:23+01:00", "5:01 PM"],
     ];
 
-    test.each(FORMAT_TIME_TESTS)(
-      `parseTime(%p) to be %p`,
+    test.each(FORMAT_TIME_WITH_OPTIONS_TESTS)(
+      `formatTimeWithOptions(%p) to be %p`,
       (value, resultStr) => {
-        const result = formatTime(value);
+        const result = formatTimeWithOptions(value);
         expect(result).toBe(resultStr);
       },
     );
