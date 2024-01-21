@@ -41,7 +41,7 @@ export function getClickBehaviorDescription(dashcard) {
 export function hasActionsMenu(dashcard) {
   // This seems to work, but it isn't the right logic.
   // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
-  return !dashcard.card.dataset_query?.type === "native";
+  return dashcard.card.dataset_query?.type !== "native";
 }
 
 export function isTableDisplay(dashcard) {
