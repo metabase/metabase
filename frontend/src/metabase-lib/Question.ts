@@ -206,16 +206,9 @@ class Question {
   /**
    * @deprecated use MLv2
    */
-  isNative(): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative;
-  }
-
-  /**
-   * @deprecated use MLv2
-   */
   isStructured(): boolean {
-    return !this.isNative();
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+    return !isNative;
   }
 
   /**
@@ -1115,9 +1108,10 @@ class Question {
    */
   canExploreResults() {
     const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
+    const { isNative } = Lib.queryDisplayInfo(this.query());
 
     return (
-      this.isNative() &&
+      isNative &&
       this.isSaved() &&
       this.parameters().length === 0 &&
       canNest &&
