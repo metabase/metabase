@@ -69,7 +69,7 @@ interface TimeOnlyOptions {
   time_style?: string;
 }
 
-export function formatTimeWithOptions(
+export function formatTime(
   time: Moment,
   unit: DatetimeUnit = "default",
   options: TimeOnlyOptions = {},
