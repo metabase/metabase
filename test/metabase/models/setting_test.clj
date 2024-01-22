@@ -187,6 +187,7 @@
 (deftest init-requires-db-test
   (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
     (mt/discard-setting-changes [:test-setting-custom-init]
+      (clear-setting-if-leak!)
       (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
         (is (= false (mdb/db-is-set-up?)))
         (is (thrown-with-msg?

@@ -568,11 +568,10 @@
                      database-local-value
                      env-var-value
                      db-or-cache-value
-                     (when-not *disable-init*
                      (cond
                        (:default setting) default-value
                        (:init setting)    (when-not *disable-init*
-                                            init!)))]]
+                                            init!))]]
      (loop [[f & more] source-fns]
        (let [v (when f (f setting))]
          (cond
@@ -667,7 +666,8 @@
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
   if any.
 
-  Note: If the setting has an initializer, and this is the first time accessing, a value will be generated and saved."
+  Note: If the setting has an initializer, and this is the first time accessing, a value will be generated and saved
+  unless *disable-init* has been bound to a truthy value."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
         disable-cache?                                   (or *disable-cache* (not cache?))]
