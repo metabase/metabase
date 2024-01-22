@@ -167,7 +167,7 @@ export const createDatabase = function (database) {
 };
 
 export const updateDatabase = function (database) {
-  return async function (dispatch) {
+  return async function (dispatch, getState) {
     try {
       dispatch({ type: UPDATE_DATABASE_STARTED, payload: { database } });
       const action = await dispatch(Databases.actions.update(database));
@@ -195,7 +195,7 @@ export const saveDatabase = function (database) {
 };
 
 export const deleteDatabase = function (databaseId, isDetailView = true) {
-  return async function (dispatch) {
+  return async function (dispatch, getState) {
     try {
       dispatch({ type: DELETE_DATABASE_STARTED, payload: databaseId });
       await dispatch(Databases.actions.delete({ id: databaseId }));
