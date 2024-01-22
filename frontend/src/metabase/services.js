@@ -2,6 +2,7 @@ import _ from "underscore";
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
@@ -50,6 +51,7 @@ export const StoreApi = {
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   function wrap(api) {
     return (params, ...rest) => {
@@ -59,7 +61,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   }
   if (
     question.display() !== "pivot" ||
-    !question.isStructured() ||
+    isNative ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
   ) {

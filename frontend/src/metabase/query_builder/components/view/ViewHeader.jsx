@@ -93,12 +93,17 @@ export function ViewTitleHeader(props) {
   const previousQuery = usePrevious(query);
 
   useEffect(() => {
-    if (!question.isStructured() || !previousQuestion?.isStructured()) {
+    const { isNative } = Lib.queryDisplayInfo(query);
+    const isPreviousQuestionNative =
+      previousQuery && Lib.queryDisplayInfo(previousQuery).isNative;
+
+    if (isNative || isPreviousQuestionNative) {
       return;
     }
 
     const filtersCount = Lib.filters(query, -1).length;
-    const previousFiltersCount = Lib.filters(previousQuery, -1).length;
+    const previousFiltersCount =
+      previousQuery && Lib.filters(previousQuery, -1).length;
 
     if (filtersCount > previousFiltersCount) {
       expandFilters();
