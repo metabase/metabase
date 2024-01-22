@@ -10,43 +10,39 @@
    [medley.core :as m]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 ;; See also: [[data-perms/Permissions]]
 (def ^:private ->api-keys
-  {:data-access           :data
-   :download-results      :download
-   :manage-table-metadata :data-model
+  {:perms/data-access           :data
+   :perms/download-results      :download
+   :perms/manage-table-metadata :data-model
 
-   :native-query-editing  :native
-   :manage-database       :details})
+   :perms/native-query-editing  :native
+   :perms/manage-database       :details})
 
 (def ^:private ->api-vals
-  {:data-access           {:unrestricted    :all
-                           :no-self-service nil
-                           :block           :block}
-   :download-results      {:one-million-rows  :full
-                           :ten-thousand-rows :partial
-                           :no                nil}
-   :manage-table-metadata {:yes :all :no nil}
-   :native-query-editing  {:yes :write :no nil}
-   :manage-database       {:yes :yes :no :no}})
+  {:perms/data-access           {:unrestricted    :all
+                                 :no-self-service nil
+                                 :block           :block}
+   :perms/download-results      {:one-million-rows  :full
+                                 :ten-thousand-rows :partial
+                                 :no                nil}
+   :perms/manage-table-metadata {:yes :all :no nil}
+   :perms/native-query-editing  {:yes :write :no nil}
+   :perms/manage-database       {:yes :yes :no :no}})
 
 (mu/defn ellide? :- :boolean
   "If a table has the least permissive value for a perm type, leave it out,
    Unless it's :data perms, in which case, leave it out only if it's no-self-service"
   [type :- data-perms/Type
    value :- data-perms/Value]
-  (if (= type :data-access)
-    ;; for `:data-access`, `:no-self-service` is the default (block  is a 'negative' permission),  so we should ellide
+  (if (= type :perms/data-access)
+    ;; for `:perms/data-access`, `:no-self-service` is the default (block  is a 'negative' permission),  so we should ellide
     (= value :no-self-service)
     (= (data-perms/least-permissive-value type) value)))
-
-(assert (ellide?         :data-access :no-self-service))
-(assert (false? (ellide? :data-access :block)))
 
 (defn- rename-or-ellide-kv
   "Renames a kv pair from the data-permissions-graph to an API-style data permissions graph (which we send to the client)."
@@ -67,49 +63,54 @@
                            [table-id ((->api-vals type) perm-val)])))
                       (into {})))))
 
-(defn- granular-perm-rename [perm-key perm-value legacy-path]
-  (when perm-value
-    (cond
-      (map? perm-value)
-      (assoc-in {} legacy-path (api-table-perms perm-key perm-value))
-      (not (ellide? perm-key perm-value))
-      (assoc-in {} legacy-path ((->api-vals perm-key) perm-value))
-      :else {})))
+(defn- granular-perm-rename [perms perm-key legacy-path]
+  (let [perm-value (get perms perm-key)]
+    (when perm-value
+      (cond
+        (map? perm-value)
+        (assoc-in {} legacy-path (api-table-perms perm-key perm-value))
+        (not (ellide? perm-key perm-value))
+        (assoc-in {} legacy-path ((->api-vals perm-key) perm-value))
+        :else {}))))
 
 (defn- rename-perm
   "Transforms a 'leaf' value with db-level or table-level perms in the data permissions graph into an API-style data permissions value.
   There's some tricks in here that ellide table-level and table-level permissions values that are the most-permissive setting."
   [perm-map]
-  (let [{:keys [native-query-editing  data-access  download-results  manage-table-metadata]} perm-map
-        granular-keys [:native-query-editing :data-access :download-results :manage-table-metadata]]
+  (let [granular-keys [:perms/native-query-editing
+                       :perms/data-access
+                       :perms/download-results
+                       :perms/manage-table-metadata]]
     (m/deep-merge
      (into {} (keep rename-or-ellide-kv (apply dissoc perm-map granular-keys)))
-     (granular-perm-rename :native-query-editing native-query-editing [:data :native])
-     (granular-perm-rename :data-access data-access [:data :schemas])
-     (granular-perm-rename :download-results download-results [:download :schemas])
-     (granular-perm-rename :manage-table-metadata manage-table-metadata [:data-model :schemas]))))
+     (granular-perm-rename perm-map :perms/data-access [:data :schemas])
+     (granular-perm-rename perm-map :perms/native-query-editing [:data :native])
+     (granular-perm-rename perm-map :perms/download-results [:download :schemas])
+     (granular-perm-rename perm-map :perms/manage-table-metadata [:data-model :schemas]))))
 
 (defn- rename-perms [graph]
   (update-vals graph
                (fn [db-id->perms]
                  (update-vals db-id->perms rename-perm))))
 
-(def ^:private legacy-admin-perms
-  {:data {:native :write, :schemas :all},
-   :download {:native :full, :schemas :full},
-   :data-model {:schemas :all},
-   :details :yes})
+;; TODO: needed or not?
+;; (def ^:private legacy-admin-perms
+;;   {:data {:native :write, :schemas :all},
+;;    :download {:native :full, :schemas :full},
+;;    :data-model {:schemas :all},
+;;    :details :yes})
 
-(defn- add-admin-group-perms
-  "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it."
-  [api-graph]
-  (let [{admin-group-id :id} (perms-group/admin)
-        dbs (t2/select-fn-vec :id :model/Database {:where [:not= :id
-                                                           ;; perms/audit-db-id -> cyclic depdendency
-                                                           13371337]})]
-    (assoc api-graph
-           admin-group-id
-           (zipmap dbs (repeat legacy-admin-perms)))))
+;; TODO: needed or not?
+;; (defn- add-admin-group-perms
+;;   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it."
+;;   [api-graph]
+;;   (let [{admin-group-id :id} (perms-group/admin)
+;;         dbs (t2/select-fn-vec :id :model/Database {:where [:not= :id
+;;                                                            ;; perms/audit-db-id -> cyclic depdendency
+;;                                                            13371337]})]
+;;     (assoc api-graph
+;;            admin-group-id
+;;            (zipmap dbs (repeat legacy-admin-perms)))))
 
 (mu/defn db-graph->api-graph :- api.permission-graph/StrictData
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
@@ -117,17 +118,15 @@
 
   - Converts DB key names to API key names
   - Converts DB value names to API value names
-  - Nests
-    :native-query-editing -> [:data :native]
-    :data-access -> [:data :schemas]
-    :download-results -> [:download :schemas]
-    :manage-table-metadata -> [:data-model]
+  - Nesting: see [[rename-perms]] to see which keys in `graph` affect which paths in the api permission-graph
 
-  TODO: Add sandboxed entries to graph(?)
+  TODO: Add sandboxed entries to graph
   "
-  [graph]
-  {:groups (-> graph rename-perms add-admin-group-perms)
-   :revision (perms-revision/latest-id)})
+  [graph :- [:map-of [:int {:title "group-id"}]
+             [:map-of [:int {:title "db-id"}]
+              [:map-of data-perms/Type [:or data-perms/Value :map]]]]]
+  {:revision (perms-revision/latest-id)
+   :groups (-> graph rename-perms #_add-admin-group-perms)})
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
