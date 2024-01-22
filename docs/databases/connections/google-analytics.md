@@ -1,4 +1,3 @@
-TODO: Remove this file related to Google Analytics?
 ---
 title: Working with Google Analytics in Metabase
 redirect_from:

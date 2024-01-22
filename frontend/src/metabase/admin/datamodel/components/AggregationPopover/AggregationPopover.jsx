@@ -286,7 +286,6 @@ export class AggregationPopover extends Component {
     // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
     // retired metric then we include it in the list to maintain continuity
 
-    // TODO: Amend this code related to Google Analytics? If not, fix the spelling of "analytics" here
     const filter = metric =>
       maybeOverriddenShowMetrics
         ? !metric.archived ||

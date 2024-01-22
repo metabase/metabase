@@ -454,7 +454,6 @@
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
 
-; TODO: Remove code related to Google Analytics?
 (defn ga-id?
   "Is this ID (presumably of a Metric or Segment) a GA one?"
   [id]

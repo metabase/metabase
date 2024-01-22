@@ -9,7 +9,6 @@ export function getSegmentOrMetricQuestion(query, table, metadata) {
 export function getDefaultSegmentOrMetricQuestion(table, metadata) {
   const question = metadata.table(table.id).question();
 
-  // TODO: Remove this code related to Google Analytics?
   if (table.entity_type === "entity/GoogleAnalyticsTable") {
     const dateField = table.fields.find(f => f.name === "ga:date");
     if (dateField) {

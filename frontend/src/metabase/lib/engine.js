@@ -12,7 +12,6 @@ export function getEngineNativeType(engine) {
       return "json";
     case "druid":
       return "json";
-    // TODO: Remove this code related to Google Analytics?
     case "googleanalytics":
       return "json";
     default:
@@ -30,7 +29,6 @@ export function getEngineNativeAceMode(engine) {
       return "ace/mode/json";
     case "druid":
       return "ace/mode/json";
-    // TODO: Remove this code related to Google Analytics?
     case "googleanalytics":
       return "ace/mode/json";
     default:
@@ -46,7 +44,6 @@ export function getEngineLogo(engine) {
       return `${path}/${engine}.svg`;
     case "druid":
       return `${path}/${engine}.svg`;
-    // TODO: Remove this code related to Google Analytics?
     case "googleanalytics":
       return `${path}/${engine}.svg`;
     case "h2":
@@ -94,12 +91,10 @@ export function getElevatedEngines() {
 }
 
 export function getEngineSupportsFirewall(engine) {
-  // TODO: Amend this code related to Google Analytics?
   return engine !== "googleanalytics";
 }
 
 export function formatJsonQuery(query, engine) {
-  // TODO: Amend this code related to Google Analytics?
   if (engine === "googleanalytics") {
     return formatGAQuery(query);
   }
@@ -118,7 +113,6 @@ export function isDeprecatedEngine(engine) {
   return engines[engine] != null && engines[engine]["superseded-by"] != null;
 }
 
-// TODO: Remove this code related to Google Analytics?
 const GA_ORDERED_PARAMS = [
   "ids",
   "start-date",
@@ -134,7 +128,6 @@ const GA_ORDERED_PARAMS = [
   "max-results",
 ];
 
-// TODO: Remove this code related to Google Analytics?
 // does 3 things: removes null values, sorts the keys by the order in the documentation, and formats with 2 space indents
 function formatGAQuery(query) {
   if (!query) {

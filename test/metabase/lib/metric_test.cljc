@@ -172,7 +172,6 @@
     (is (= :type/Integer
            (lib/type-of query [:metric {:lib/uuid (str (random-uuid))} 100])))))
 
-; TODO: Remove this code related to Google Analytics?
 (deftest ^:parallel ga-metric-metadata-test
   (testing "Make sure we can calculate metadata for FAKE Google Analytics metric clauses"
     (let [query (-> lib.tu/venues-query

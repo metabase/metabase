@@ -875,7 +875,6 @@
     {{:database 1, :type :query, :query {:filter []}}
      {:database 1, :type :query, :query {:filter []}}}
 
-    ; TODO: Remove stuff related to Google Analytics?
     "make sure we can handle GA segments"
     {{:database 1
       :type     :query

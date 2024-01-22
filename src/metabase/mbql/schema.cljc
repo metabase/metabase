@@ -864,7 +864,6 @@
 ;; A segment is a special `macro` that saves some pre-definied filter clause, e.g. [:segment 1]
 ;; this gets replaced by a normal Filter clause in MBQL macroexpansion
 ;;
-;; TODO: Remove the rest of this comment, which is related to Google Analytics?
 ;; It can also be used for GA, which looks something like `[:segment "gaid::-11"]`. GA segments aren't actually MBQL
 ;; segments and pass-thru to GA.
 (def ^:private SegmentID

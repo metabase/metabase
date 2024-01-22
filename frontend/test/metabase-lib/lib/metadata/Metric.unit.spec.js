@@ -55,7 +55,6 @@ describe("Metric", () => {
     });
   });
 
-  // TODO: Remove this code related to Google Analytics?
   describe("Google Analytics database", () => {
     const metric = metadata.metric("ga:users");
     describe("displayName", () => {
