@@ -18,7 +18,6 @@ import {
 
 import NoResults from "assets/img/no_results.svg";
 import type { SearchResult } from "metabase-types/api";
-import type Database from "metabase-lib/metadata/Database";
 import BrowseHeader from "../components/BrowseHeader";
 import {
   DatabaseCard,
@@ -30,17 +29,13 @@ import {
 } from "./BrowseData.styled";
 import { BrowseModels } from "./BrowseModels";
 
-interface BrowseDataTab {
-  label: string;
-  component: JSX.Element;
-}
+type BrowseTabId = "models" | "databases";
 
-type BrowseDataTabId = "models" | "databases";
-const isValidTabId = (value: string | null): value is BrowseDataTabId =>
-  ["models", "databases"].includes(value);
+const isValidTabId = (value: string | null): value is BrowseTabId =>
+  value === "models" || value === "databases";
 
 export const BrowseDataPage = () => {
-  const [currentTabId, setTabId] = useState<BrowseDataTabId>("models");
+  const [currentTabId, setTabId] = useState<BrowseTabId>("models");
 
   const models = useSearchListQuery<SearchResult>({
     query: {
@@ -50,18 +45,6 @@ export const BrowseDataPage = () => {
   });
 
   const databases = useDatabaseListQuery();
-
-  const tabs: Record<string, BrowseDataTab> = {
-    models: {
-      label: t`Models`,
-      component: <BrowseModels {...models} />,
-    },
-    databases: {
-      label: t`Databases`,
-      component: <BrowseDatabases {...databases} />,
-    },
-  };
-  const currentTab = currentTabId ? tabs[currentTabId] : null;
 
   return (
     <BrowseContainer data-testid="data-browser">
@@ -83,23 +66,20 @@ export const BrowseDataPage = () => {
           </Tabs.Tab>
         </Tabs.List>
         <Divider />
-        {
-          // TODO: Don't use the Tabs object
-          currentTab && (
-            <BrowseTabsPanel key={currentTabId} value={currentTabId ?? ""}>
-              {currentTab.component}
-            </BrowseTabsPanel>
-          )
-        }
+        <BrowseTabsPanel key={currentTabId} value={currentTabId ?? ""}>
+          {currentTabId === "models" ? (
+            <BrowseModels key="models" {...models} />
+          ) : (
+            <BrowseDatabases key="databases" {...databases} />
+          )}
+        </BrowseTabsPanel>
       </BrowseTabs>
     </BrowseContainer>
   );
 };
 
-const emptyArray: Database[] = [];
-
 const BrowseDatabases = ({
-  data: databases = emptyArray,
+  data: databases = [],
   error,
   isLoading,
 }: ReturnType<typeof useDatabaseListQuery>) => {

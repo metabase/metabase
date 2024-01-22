@@ -13,21 +13,20 @@ const databases = [...Array(100)].map((_, index) =>
   createMockDatabase({ id: index, name: `Database ${index}` }),
 );
 
-let collectionId;
-const models = [...Array(100)].map(
-  (_, index) =>
-    ({
-      id: index,
-      name: `Model ${index}`,
-      collection: {
-        // Put 3 models in each collection
-        id: (collectionId = Math.ceil(index / 3)),
-        name: `Collection ${collectionId}`,
-      },
-      last_editor_common_name: "Nicole Oresme",
-      last_edited_at: `${2000 - index}-01-01T00:00:00.000Z`,
-    } as SearchResult),
-);
+const models = [...Array(100)].map((_, index) => {
+  const collectionId = Math.floor(index / 3);
+  return {
+    id: index,
+    name: `Model ${index}`,
+    collection: {
+      // Put 3 models in each collection
+      id: collectionId,
+      name: `Collection ${collectionId}`,
+    },
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: `${2000 - index}-01-01T00:00:00.000Z`,
+  } as SearchResult;
+});
 
 const setDatabaseCount = (count: number) => {
   setupDatabasesEndpoints(
@@ -70,37 +69,29 @@ describe("BrowseDataPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
+  it("has the models tab selected by default", async () => {
+    setup({ models: 1, databases: 0 });
+    expect(
+      await screen.findByRole("tab", { name: "Models", selected: true }),
+    ).toBeInTheDocument();
+  });
   it("displays models in the models tab", async () => {
     const modelCount = 10;
     setup({ models: modelCount, databases: 0 });
     // Exercise the tabs a little
     (await screen.findByRole("tab", { name: "Databases" })).click();
     (await screen.findByRole("tab", { name: "Models" })).click();
-    expect(await screen.findByText("Model 0")).toBeInTheDocument();
-    expect(await screen.findByText("Model 1")).toBeInTheDocument();
-    expect(await screen.findByText("Model 2")).toBeInTheDocument();
-    expect(await screen.findByText("Model 3")).toBeInTheDocument();
-    expect(await screen.findByText("Model 4")).toBeInTheDocument();
-    expect(await screen.findByText("Model 5")).toBeInTheDocument();
-    expect(await screen.findByText("Model 6")).toBeInTheDocument();
-    expect(await screen.findByText("Model 7")).toBeInTheDocument();
-    expect(await screen.findByText("Model 8")).toBeInTheDocument();
-    expect(await screen.findByText("Model 9")).toBeInTheDocument();
+    for (let i = 0; i < modelCount; i++) {
+      expect(await screen.findByText(`Model ${i}`)).toBeInTheDocument();
+    }
   });
   it("displays databases in the databases tab", async () => {
     const databaseCount = 10;
     setup({ models: 0, databases: databaseCount });
     (await screen.findByRole("tab", { name: "Databases" })).click();
-    expect(await screen.findByText("Database 0")).toBeInTheDocument();
-    expect(await screen.findByText("Database 1")).toBeInTheDocument();
-    expect(await screen.findByText("Database 2")).toBeInTheDocument();
-    expect(await screen.findByText("Database 3")).toBeInTheDocument();
-    expect(await screen.findByText("Database 4")).toBeInTheDocument();
-    expect(await screen.findByText("Database 5")).toBeInTheDocument();
-    expect(await screen.findByText("Database 6")).toBeInTheDocument();
-    expect(await screen.findByText("Database 7")).toBeInTheDocument();
-    expect(await screen.findByText("Database 8")).toBeInTheDocument();
-    expect(await screen.findByText("Database 9")).toBeInTheDocument();
+    for (let i = 0; i < databaseCount; i++) {
+      expect(await screen.findByText(`Database ${i}`)).toBeInTheDocument();
+    }
   });
   it("displays a 'no models' message in the Models tab when no models exist", async () => {
     setup({ models: 0, databases: 10 });
@@ -116,12 +107,14 @@ describe("BrowseDataPage", () => {
     ).toBeInTheDocument();
   });
   it("displays models, organized by parent collection", async () => {
-    setup({ models: 5, databases: 0 });
+    setup({ models: 10, databases: 0 });
     // Three <a> tags representing models have aria-labelledby="collection-1 model-$id",
     // and "collection-1" is the id of an element containing text 'Collection 1',
     // so the following line finds those <a> tags.
     const modelsInCollection1 = await screen.findAllByLabelText("Collection 1");
     expect(modelsInCollection1).toHaveLength(3);
+    const modelsInCollection2 = await screen.findAllByLabelText("Collection 2");
+    expect(modelsInCollection2).toHaveLength(3);
   });
   it("displays last edited information about models", async () => {
     setup({ models: 3, databases: 0 });
