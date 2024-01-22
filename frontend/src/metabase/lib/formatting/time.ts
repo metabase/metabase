@@ -4,6 +4,7 @@ import type { Moment } from "moment-timezone";
 import { parseTime, parseTimestamp } from "metabase/lib/time";
 
 import type { DatetimeUnit } from "metabase-types/api/query";
+import type { TimeOnlyOptions } from "metabase/lib/formatting/types";
 import {
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,
@@ -60,13 +61,6 @@ export function formatTimeWithUnit(
     : getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
 
   return m.format(timeFormat);
-}
-
-interface TimeOnlyOptions {
-  local?: boolean;
-  time_enabled?: "minutes" | "milliseconds" | "seconds" | null;
-  time_format?: string;
-  time_style?: string;
 }
 
 export function formatTime(
