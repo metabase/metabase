@@ -1223,11 +1223,11 @@
               (#'setting/realize x)))))))
 
 (deftest valid-json-setting-test
-  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2]"]
+  (mt/with-temp-env-var-value! ["MB_TEST_JSON_SETTING" "[1, 2]"]
     (is (nil? (setting/validate-settings-formatting!)))))
 
 (defn- get-parse-exception [raw-value]
-  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" raw-value]
+  (mt/with-temp-env-var-value! ["MB_TEST_JSON_SETTING" raw-value]
     (try
       (setting/validate-settings-formatting!)
       (throw (java.lang.RuntimeException. "This code should never be reached."))
