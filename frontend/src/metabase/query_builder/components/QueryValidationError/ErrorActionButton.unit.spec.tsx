@@ -1,4 +1,3 @@
-import userEvent from "@testing-library/user-event";
 import { render, screen } from "__support__/ui";
 
 import ValidationError, {
@@ -14,18 +13,12 @@ function setup({
     VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
   ),
   uiControls = { isShowingTemplateTagsEditor: false },
-  toggleTemplateTagsEditor = jest.fn(),
   ...props
 }: Partial<ErrorActionButtonProps> = {}) {
   render(
-    <ErrorActionButton
-      error={error}
-      uiControls={uiControls}
-      toggleTemplateTagsEditor={toggleTemplateTagsEditor}
-      {...props}
-    />,
+    <ErrorActionButton error={error} uiControls={uiControls} {...props} />,
   );
-  return { toggleTemplateTagsEditor };
+  return {};
 }
 
 describe("ErrorActionButton", () => {
@@ -46,46 +39,6 @@ describe("ErrorActionButton", () => {
       setup();
       const button = screen.getByRole("button", { name: buttonLabel });
       expect(button).toBeInTheDocument();
-    });
-  });
-
-  describe("when clicking an ErrorActionButton mapped to the MISSING_TAG_DIMENSION validation error", () => {
-    const validationError = new ValidationError(
-      "oof",
-      VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
-    );
-    const [buttonLabel] =
-      BUTTON_ACTIONS[VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION];
-
-    describe("when `isShowingTemplateTagsEditor` is falsy", () => {
-      it("should call the toggleTemplateTagsEditor action", () => {
-        const { toggleTemplateTagsEditor } = setup({ error: validationError });
-
-        userEvent.click(
-          screen.getByRole("button", {
-            name: buttonLabel,
-          }),
-        );
-
-        expect(toggleTemplateTagsEditor).toHaveBeenCalled();
-      });
-    });
-
-    describe("when `isShowingTemplateTagsEditor` is true", () => {
-      it("should not call the toggleTemplateTagsEditor action", () => {
-        const { toggleTemplateTagsEditor } = setup({
-          error: validationError,
-          uiControls: { isShowingTemplateTagsEditor: true },
-        });
-
-        userEvent.click(
-          screen.getByRole("button", {
-            name: buttonLabel,
-          }),
-        );
-
-        expect(toggleTemplateTagsEditor).not.toHaveBeenCalled();
-      });
     });
   });
 });
