@@ -2,6 +2,7 @@ import getGAMetadata from "promise-loader?global!metabase-lib/metadata/utils/ga-
 
 export async function injectTableMetadata(table) {
   // HACK: inject GA metadata that we don't have intergrated on the backend yet
+  // TODO: Remove GA stuff here?
   if (table && table.db && table.db.engine === "googleanalytics") {
     const GA = await getGAMetadata();
     table.fields = table.fields.map(field => ({
@@ -12,6 +13,7 @@ export async function injectTableMetadata(table) {
       ...GA.metrics.map(metric => ({
         ...metric,
         table_id: table.id,
+        // TODO: Fix spelling (if we're not removing all this)?
         googleAnalyics: true,
       })),
     );
@@ -19,6 +21,7 @@ export async function injectTableMetadata(table) {
       ...GA.segments.map(segment => ({
         ...segment,
         table_id: table.id,
+        // TODO: Fix spelling (if we're not removing all this)?
         googleAnalyics: true,
       })),
     );

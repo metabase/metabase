@@ -6,11 +6,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Group, Text, Anchor, Stack } from "metabase/ui";
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Link from "metabase/core/components/Link";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 
-import type { EmbedResource, EmbedResourceType } from "../types";
+import type { EmbedResource } from "../types";
 import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
 import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
@@ -18,7 +17,6 @@ import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 
 interface SelectEmbedTypePaneProps {
   resource: EmbedResource;
-  resourceType: EmbedResourceType;
   onCreatePublicLink: () => void;
   onDeletePublicLink: () => void;
   getPublicUrl: (publicUuid: string, extension?: ExportFormatType) => string;
@@ -27,7 +25,6 @@ interface SelectEmbedTypePaneProps {
 
 export function SelectEmbedTypePane({
   resource,
-  resourceType,
   onCreatePublicLink,
   onDeletePublicLink,
   getPublicUrl,
@@ -45,11 +42,6 @@ export function SelectEmbedTypePane({
     e.stopPropagation();
     if (!isLoadingLink && !hasPublicLink) {
       setIsLoadingLink(true);
-      MetabaseAnalytics.trackStructEvent(
-        "Sharing Modal",
-        "Public Link Enabled",
-        resourceType,
-      );
       await onCreatePublicLink();
       setIsLoadingLink(false);
     }
@@ -59,11 +51,6 @@ export function SelectEmbedTypePane({
     e.stopPropagation();
     if (!isLoadingLink && hasPublicLink) {
       setIsLoadingLink(true);
-      MetabaseAnalytics.trackStructEvent(
-        "Sharing Modal",
-        "Public Link Disabled",
-        resourceType,
-      );
       await onDeletePublicLink();
       setIsLoadingLink(false);
     }

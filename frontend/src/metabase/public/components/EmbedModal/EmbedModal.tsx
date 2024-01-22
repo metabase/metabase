@@ -9,7 +9,6 @@ import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import Modal from "metabase/components/Modal";
 import { Box, Divider, Text } from "metabase/ui";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import type { EmbedModalStep } from "./types";
 
 type EmbedModalProps = {
@@ -65,7 +64,6 @@ export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
   };
 
   const onEmbedClose = () => {
-    MetabaseAnalytics.trackStructEvent("Sharing Modal", "Modal Closed");
     onClose();
     setEmbedType(null);
   };

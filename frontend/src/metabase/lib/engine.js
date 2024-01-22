@@ -9,7 +9,10 @@ export function getDefaultEngine() {
 export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
+      return "json";
     case "druid":
+      return "json";
+    // TODO: Remove this code related to Google Analytics?
     case "googleanalytics":
       return "json";
     default:
@@ -24,7 +27,10 @@ export function getNativeQueryLanguage(engine) {
 export function getEngineNativeAceMode(engine) {
   switch (engine) {
     case "mongo":
+      return "ace/mode/json";
     case "druid":
+      return "ace/mode/json";
+    // TODO: Remove this code related to Google Analytics?
     case "googleanalytics":
       return "ace/mode/json";
     default:
@@ -37,18 +43,32 @@ export function getEngineLogo(engine) {
 
   switch (engine) {
     case "bigquery":
+      return `${path}/${engine}.svg`;
     case "druid":
+      return `${path}/${engine}.svg`;
+    // TODO: Remove this code related to Google Analytics?
     case "googleanalytics":
+      return `${path}/${engine}.svg`;
     case "h2":
+      return `${path}/${engine}.svg`;
     case "mongo":
+      return `${path}/${engine}.svg`;
     case "mysql":
+      return `${path}/${engine}.svg`;
     case "oracle":
+      return `${path}/${engine}.svg`;
     case "postgres":
+      return `${path}/${engine}.svg`;
     case "redshift":
+      return `${path}/${engine}.svg`;
     case "snowflake":
+      return `${path}/${engine}.svg`;
     case "sparksql":
+      return `${path}/${engine}.svg`;
     case "sqlite":
+      return `${path}/${engine}.svg`;
     case "sqlserver":
+      return `${path}/${engine}.svg`;
     case "vertica":
       return `${path}/${engine}.svg`;
     case "bigquery-cloud-sdk":
@@ -74,10 +94,12 @@ export function getElevatedEngines() {
 }
 
 export function getEngineSupportsFirewall(engine) {
+  // TODO: Amend this code related to Google Analytics?
   return engine !== "googleanalytics";
 }
 
 export function formatJsonQuery(query, engine) {
+  // TODO: Amend this code related to Google Analytics?
   if (engine === "googleanalytics") {
     return formatGAQuery(query);
   }
@@ -96,6 +118,7 @@ export function isDeprecatedEngine(engine) {
   return engines[engine] != null && engines[engine]["superseded-by"] != null;
 }
 
+// TODO: Remove this code related to Google Analytics?
 const GA_ORDERED_PARAMS = [
   "ids",
   "start-date",
@@ -111,6 +134,7 @@ const GA_ORDERED_PARAMS = [
   "max-results",
 ];
 
+// TODO: Remove this code related to Google Analytics?
 // does 3 things: removes null values, sorts the keys by the order in the documentation, and formats with 2 space indents
 function formatGAQuery(query) {
   if (!query) {

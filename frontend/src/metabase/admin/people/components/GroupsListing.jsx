@@ -7,7 +7,6 @@ import cx from "classnames";
 import { jt, t } from "ttag";
 import { useAsync } from "react-use";
 import Link from "metabase/core/components/Link";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import {
@@ -342,8 +341,6 @@ export default class GroupsListing extends Component {
 
   // TODO: move this to Redux
   async onAddGroupCreateButtonClicked() {
-    MetabaseAnalytics.trackStructEvent("People Groups", "Group Added");
-
     try {
       await this.props.create({ name: this.state.text.trim() });
       this.setState({
@@ -403,7 +400,6 @@ export default class GroupsListing extends Component {
       this.setState({ groupBeingEdited: null });
     } else {
       // ok, fire off API call to change the group
-      MetabaseAnalytics.trackStructEvent("People Groups", "Group Updated");
       try {
         await this.props.update({ id: group.id, name: group.name.trim() });
         this.setState({ groupBeingEdited: null });
@@ -418,7 +414,6 @@ export default class GroupsListing extends Component {
 
   // TODO: move this to Redux
   async onDeleteGroupClicked(group) {
-    MetabaseAnalytics.trackStructEvent("People Groups", "Group Deleted");
     try {
       await this.props.delete(group);
     } catch (error) {

@@ -27,7 +27,6 @@ import {
   SortableElement,
 } from "metabase/components/sortable";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isNumeric, isString, isBoolean } from "metabase-lib/types/utils/isa";
 
 const COMMON_OPERATOR_NAMES = {
@@ -153,21 +152,11 @@ export default class ChartSettingsTableFormatting extends Component {
           }}
           onRemove={index => {
             onChange([...value.slice(0, index), ...value.slice(index + 1)]);
-            MetabaseAnalytics.trackStructEvent(
-              "Chart Settings",
-              "Table Formatting",
-              "Remove Rule",
-            );
           }}
           onMove={(from, to) => {
             const newValue = [...value];
             newValue.splice(to, 0, newValue.splice(from, 1)[0]);
             onChange(newValue);
-            MetabaseAnalytics.trackStructEvent(
-              "Chart Settings",
-              "Table Formatting",
-              "Move Rule",
-            );
           }}
         />
       );
@@ -460,12 +449,6 @@ const RuleEditor = ({
           <ColorRangeSelector
             value={rule.colors}
             onChange={colors => {
-              MetabaseAnalytics.trackStructEvent(
-                "Chart Settings",
-                "Table Formatting",
-                "Select Range  Colors",
-                colors,
-              );
               onChange({ ...rule, colors });
             }}
             colors={COLORS}

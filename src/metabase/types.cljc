@@ -65,6 +65,7 @@
 (derive :entity/ProductTable :entity/GenericTable)
 (derive :entity/SubscriptionTable :entity/GenericTable)
 (derive :entity/EventTable :entity/GenericTable)
+; TODO: Remove code related to Google Analytics?
 (derive :entity/GoogleAnalyticsTable :entity/GenericTable)
 
 

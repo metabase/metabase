@@ -230,6 +230,7 @@ class MetabaseSettings {
     return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
   }
 
+  // TODO: Remove this code related to Google Analytics?
   /**
    * @deprecated use getSetting(state, "ga-enabled")
    */
