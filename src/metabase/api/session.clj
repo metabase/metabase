@@ -360,7 +360,7 @@
   (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
     (let [emails (get-in pulse-channel [:details :emails])]
       (if (some #{email} emails)
-        (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #{email} emails)))
+        (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
@@ -375,9 +375,8 @@
    hash     :string}
   (check-hash pulse-id email hash (request.u/ip-address request))
   (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-    (let [emails       (get-in pulse-channel [:details :emails])
-          given-email? #(= % email)]
-      (if (some given-email? emails)
+    (let [emails       (get-in pulse-channel [:details :emails])]
+      (if (some #{email} emails)
         (throw (ex-info (tru "Email for pulse-id already exists.")
                         {:type        type
                          :status-code 400}))
