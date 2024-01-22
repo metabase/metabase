@@ -1,5 +1,6 @@
 (ns metabase.models.table
   (:require
+   [metabase.api.common :as api]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
@@ -90,21 +91,28 @@
   [{:keys [db_id schema id]}]
   (t2/delete! Permissions :object [:like (str "%" (perms/data-perms-path db_id schema id) "%")]))
 
-(defmethod mi/perms-objects-set :model/Table
-  [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
-  ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
-  ;; permissions for the Table (detailed below). `can-read?` checks the former, while `can-write?` checks the latter;
-  ;; the permission-checking function to call when reading a Table depends on the context of the request. When reading
-  ;; Tables to power the admin data model page; `can-write?` should be called; in other contexts, `can-read?` should
-  ;; be called. (TODO: is there a way to clear up the semantics here?)
-  ;;
-  ;; To write a Table (e.g. update its metadata):
-  ;;   * If Enterprise Edition code is available and the :advanced-permissions feature is enabled, you must have
-  ;;     data-model permissions for othe table
-  ;;   * Else, you must be an admin
-  #{(case read-or-write
-      :read  (perms/table-read-path table)
-      :write (perms/data-model-write-perms-path db-id schema table-id))})
+(defmethod mi/can-read? :model/Table
+  ([instance]
+   (contains? #{:unrestricted :no-self-service}
+              (data-perms/table-permission-for-user
+               api/*current-user-id*
+               :perms/data-access
+               (:db_id instance)
+               (:id instance))))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Table pk))))
+
+(defmethod mi/can-write? :model/Table
+  ([instance]
+   (contains? #{:unrestricted :no-self-service}
+              (data-perms/table-permission-for-user
+               api/*current-user-id*
+               :perms/manage-table-metadata
+               (:db_id instance)
+               (:id instance))))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Table pk))))
+
 
 (defmethod serdes/hash-fields :model/Table
   [_table]
