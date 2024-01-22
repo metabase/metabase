@@ -7,10 +7,7 @@ import Modal from "metabase/components/Modal";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import type { EmbedModalStep } from "metabase/public/lib/types";
 
-import {
-  EmbedModalHeader,
-  EmbedModalHeaderBackIcon,
-} from "./EmbedModal.styled";
+import { EmbedModalHeader } from "./EmbedModal.styled";
 
 interface EmbedModalProps {
   isOpen?: boolean;
@@ -62,11 +59,7 @@ export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
       formModal={false}
     >
       {!isEmbeddingSetupStage && (
-        <EmbedModalHeader onClose={onEmbedClose}>
-          <EmbedModalHeaderBackIcon
-            name="chevronleft"
-            onClick={goBackToEmbedModal}
-          />
+        <EmbedModalHeader onClose={onEmbedClose} onBack={goBackToEmbedModal}>
           {t`Static embedding`}
         </EmbedModalHeader>
       )}

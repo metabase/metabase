@@ -103,7 +103,7 @@ describe("EmbedModal", () => {
     userEvent.click(screen.getByText("Next"));
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
 
-    userEvent.click(screen.getByLabelText("chevronleft icon"));
+    userEvent.click(screen.getByText("Static embedding"));
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent(
       "Embed Landing",
     );
