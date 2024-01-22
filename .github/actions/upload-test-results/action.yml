@@ -50,3 +50,4 @@ runs:
         org-slug: metabase 
         token: ${{ secrets.TRUNK_API_TOKEN }}
       continue-on-error: true
+
