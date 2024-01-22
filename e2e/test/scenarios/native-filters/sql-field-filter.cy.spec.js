@@ -20,6 +20,37 @@ describe("scenarios > filters > sql filters > field filter", () => {
     cy.signInAsAdmin();
   });
 
+  it("should need the default value for a required filter", () => {
+    openNativeEditor();
+    SQLFilter.enterParameterizedQuery(
+      "SELECT * FROM products WHERE {{filter}}",
+    );
+
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
+
+    FieldFilter.mapTo({
+      table: "Products",
+      field: "ID",
+    });
+
+    FieldFilter.setWidgetType("ID");
+
+    SQLFilter.toggleRequired();
+    SQLFilter.getQueryRunButton().should("be.disabled");
+    SQLFilter.getQuerySaveButton().should("have.attr", "disabled");
+
+    cy.findByTestId("sidebar-content")
+      .findByText("Enter a default value…")
+      .click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a default value…").type(4);
+      cy.button("Add filter").click();
+    });
+    SQLFilter.getQueryRunButton().should("not.be.disabled");
+    SQLFilter.getQuerySaveButton().should("not.have.attr", "disabled");
+  });
+
   context("ID filter", () => {
     beforeEach(() => {
       openNativeEditor();

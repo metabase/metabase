@@ -89,3 +89,11 @@ export function enterParameterizedQuery(query, options = {}) {
     ...options,
   });
 }
+
+export function getQueryRunButton() {
+  return cy.findByTestId("native-query-editor-sidebar").button("Get Answer");
+}
+
+export function getQuerySaveButton() {
+  return cy.findByRole("button", { name: "Save" });
+}

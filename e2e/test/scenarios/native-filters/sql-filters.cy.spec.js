@@ -46,6 +46,16 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         cy.findAllByText("Doohickey").should("not.exist");
       });
     });
+
+    it("needs a default value for a required filter", () => {
+      SQLFilter.toggleRequired();
+      SQLFilter.getQueryRunButton().should("be.disabled");
+      SQLFilter.getQuerySaveButton().should("have.attr", "disabled");
+
+      SQLFilter.setDefaultValue("Some text");
+      SQLFilter.getQueryRunButton().should("not.be.disabled");
+      SQLFilter.getQuerySaveButton().should("not.have.attr", "disabled");
+    });
   });
 
   describe("should work for number", () => {
@@ -79,6 +89,16 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
+    });
+
+    it("needs a default value for a required filter", () => {
+      SQLFilter.toggleRequired();
+      SQLFilter.getQueryRunButton().should("be.disabled");
+      SQLFilter.getQuerySaveButton().should("have.attr", "disabled");
+
+      SQLFilter.setDefaultValue("5.0");
+      SQLFilter.getQueryRunButton().should("not.be.disabled");
+      SQLFilter.getQuerySaveButton().should("not.have.attr", "disabled");
     });
   });
 
@@ -123,6 +143,23 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       cy.get(".Visualization").within(() => {
         cy.findByText("No results!");
       });
+    });
+
+    it("needs a default value for a required filter", () => {
+      SQLFilter.toggleRequired();
+      SQLFilter.getQueryRunButton().should("be.disabled");
+      SQLFilter.getQuerySaveButton().should("have.attr", "disabled");
+
+      cy.findByTestId("sidebar-content")
+        .findByText("Select a default value…")
+        .click();
+      popover().within(() => {
+        cy.findByText("22").click();
+        cy.findByText("Update filter").click();
+      });
+
+      SQLFilter.getQueryRunButton().should("not.be.disabled");
+      SQLFilter.getQuerySaveButton().should("not.have.attr", "disabled");
     });
   });
 
