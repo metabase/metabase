@@ -144,7 +144,8 @@
 
 (defn- non-thread-safe-form-should-end-with-exclamation*
   [{[defn-or-defmacro form-name] :children, :as node}]
-  (when-not (end-with-exclamation? (:string-value form-name))
+  (when-not (and (:string-value form-name)
+                 (end-with-exclamation? (:string-value form-name)))
     (letfn [(walk [f form]
               (f form)
               (doseq [child (:children form)]
