@@ -398,6 +398,8 @@
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
 
+  If `skip-init`?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
+
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
   [setting-k value thunk & {:keys [raw-setting? skip-init?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
