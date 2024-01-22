@@ -76,7 +76,7 @@
       (binding [api/*current-user-permissions-set* (atom
                                                     (set/union
                                                      @api/*current-user-permissions-set*
-                                                     (mi/perms-objects-set table :read)))]
+                                                     (mi/can-read? :model/Table table)))]
         (thunk))
       (thunk))))
 
