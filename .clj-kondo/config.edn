@@ -637,17 +637,17 @@
  :config-in-ns
  {test-namespaces
   {:linters
-   {:inline-def                                                 {:level :off}
-    :missing-docstring                                          {:level :off}
-    :private-call                                               {:level :off}
-    :metabase/defsetting-must-specify-export                    {:level :off}
-    :hooks.metabase.test.data/mbql-query-first-arg              {:level :error}
-    :metabase/defmacro-in-test-contains-unthread-safe-functions {:level :warning}}
+   {:inline-def                                          {:level :off}
+    :missing-docstring                                   {:level :off}
+    :private-call                                        {:level :off}
+    :metabase/defsetting-must-specify-export             {:level :off}
+    :hooks.metabase.test.data/mbql-query-first-arg       {:level :error}
+    :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}}
    :hooks
    {:analyze-call
-    {clojure.core/defmacro hooks.clojure.core/unsafe-forms-should-end-with-exclamation
-     clojure.core/defn     hooks.clojure.core/unsafe-forms-should-end-with-exclamation
-     clojure.core/defn-    hooks.clojure.core/unsafe-forms-should-end-with-exclamation}}}
+    {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
 
   source-namespaces
   {:linters
