@@ -388,7 +388,7 @@ class TagEditorParamInner extends Component<Props> {
               onChange={this.setRequired}
             />
             <div>
-              <ToggleLabel for={`tag-editor-required_${tag.id}`}>
+              <ToggleLabel htmlFor={`tag-editor-required_${tag.id}`}>
                 {t`Always require a value`}
               </ToggleLabel>
               <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>

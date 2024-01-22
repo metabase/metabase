@@ -54,7 +54,7 @@ export const ToggleContainer = styled.div`
   margin: 0.5rem 0;
 `;
 
-export const ToggleLabel = styled.label<{ for: string }>`
+export const ToggleLabel = styled.label<{ htmlFor: string }>`
   display: block;
   margin-top: 0.35rem;
   font-weight: 700;
