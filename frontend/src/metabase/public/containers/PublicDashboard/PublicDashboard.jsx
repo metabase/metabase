@@ -35,7 +35,7 @@ import {
   setEmbedDashboardEndpoints,
 } from "metabase/services";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import EmbedFrame from "../components/EmbedFrame";
+import EmbedFrame from "../../components/EmbedFrame";
 
 import {
   DashboardContainer,
