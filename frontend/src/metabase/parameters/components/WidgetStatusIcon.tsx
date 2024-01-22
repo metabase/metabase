@@ -7,10 +7,9 @@ type Props = {
 };
 
 export function WidgetStatusIcon({ name, onClick }: Props) {
-  const classes = cx(
-    "flex-align-right flex-no-shrink",
-    ["close", "refresh"].includes(name) && "cursor-pointer",
-  );
+  const classes = cx("flex-align-right flex-no-shrink", {
+    "cursor-pointer": ["close", "refresh"].includes(name),
+  });
 
   const handleOnClick = (e: React.MouseEvent) => {
     if (onClick) {
