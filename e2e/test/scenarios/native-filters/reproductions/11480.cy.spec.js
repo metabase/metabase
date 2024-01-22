@@ -33,9 +33,8 @@ describe("issue 11480", () => {
     cy.location("search").should("eq", "?x=");
 
     // We cannot run the query unless the default value for a required parameter is set.
-    cy.findByTestId("native-query-editor-container")
-      .icon("play")
-      .parents("button")
+    cy.findByTestId("native-query-editor-sidebar")
+      .button("Get Answer")
       .should("be.disabled");
   });
 });
