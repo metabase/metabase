@@ -217,10 +217,10 @@ const CollectionHeader = ({
   return (
     <CollectionHeaderContainer id={id} role="heading" style={style}>
       <MaybeLink>
-        <Icon name="folder" color={"text-dark"} size={16} />
-        <Title ml=".33rem" order={4}>
-          {collection?.name || "Untitled collection"}
-        </Title>
+        <Group spacing=".33rem">
+          <Icon name="folder" color={"text-dark"} size={16} />
+          <Text>{collection?.name || "Untitled collection"}</Text>
+        </Group>
       </MaybeLink>
     </CollectionHeaderContainer>
   );

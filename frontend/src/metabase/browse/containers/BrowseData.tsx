@@ -6,7 +6,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import { Divider, Flex, Tabs, Icon, Box } from "metabase/ui";
+import { Divider, Tabs, Icon, Box } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -15,8 +15,6 @@ import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
-
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
 import type { SearchResult } from "metabase-types/api";
@@ -37,8 +35,12 @@ interface BrowseDataTab {
   component: JSX.Element;
 }
 
+type BrowseDataTabId = "models" | "databases";
+const isValidTabId = (value: string | null): value is BrowseDataTabId =>
+  ["models", "databases"].includes(value);
+
 export const BrowseDataPage = () => {
-  const [currentTabId, setTabId] = useState<string | null>("models");
+  const [currentTabId, setTabId] = useState<BrowseDataTabId>("models");
 
   const models = useSearchListQuery<SearchResult>({
     query: {
@@ -64,16 +66,21 @@ export const BrowseDataPage = () => {
   return (
     <BrowseContainer data-testid="data-browser">
       <BrowseHeader />
-      <BrowseTabs value={currentTabId} onTabChange={setTabId}>
-        <Flex>
-          <Tabs.List>
-            {Object.entries(tabs).map(([tabId, tab]) => (
-              <Tabs.Tab key={tabId} value={tabId}>
-                {tab.label}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Flex>
+      <BrowseTabs
+        value={currentTabId}
+        onTabChange={value => {
+          if (isValidTabId(value)) {
+            setTabId(value);
+          }
+        }}
+      >
+        <Tabs.List>
+          {Object.entries(tabs).map(([tabId, tab]) => (
+            <Tabs.Tab key={tabId} value={tabId}>
+              {tab.label}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
         <Divider />
         {currentTab && (
           <BrowseTabsPanel key={currentTabId} value={currentTabId ?? ""}>
@@ -103,10 +110,7 @@ const BrowseDatabases = ({
     <Grid data-testid="database-browser">
       {databases.map(database => (
         <DatabaseGridItem key={database.id}>
-          <Link
-            to={Urls.browseDatabase(database)}
-            data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
-          >
+          <Link to={Urls.browseDatabase(database)}>
             <DatabaseCard>
               <Icon
                 name="database"
