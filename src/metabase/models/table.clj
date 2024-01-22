@@ -70,9 +70,14 @@
           non-magic-groups (perms-group/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
-      (data-perms/set-table-permission! all-users-group table :perms/data-access :unrestricted)
-      (doseq [group non-magic-groups]
-        (data-perms/set-table-permission! group table :perms/data-access :no-self-service))
+      (if (= (:db_id table) perms/audit-db-id)
+        ;; Tables in audit DB should start out with no-self-service in all groups
+        (doseq [group non-admin-groups]
+         (data-perms/set-table-permission! group table :perms/data-access :no-self-service))
+        (do
+          (data-perms/set-table-permission! all-users-group table :perms/data-access :unrestricted)
+          (doseq [group non-magic-groups]
+            (data-perms/set-table-permission! group table :perms/data-access :no-self-service))))
       ;; Download permissions
       (data-perms/set-table-permission! all-users-group table :perms/download-results :one-million-rows)
       (doseq [group non-magic-groups]
