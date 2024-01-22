@@ -4,15 +4,18 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
+   [metabase.public-settings.premium-features
+    :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -123,8 +126,6 @@
 
 (doto :model/Field
   (derive :metabase/model)
-  (derive ::mi/read-policy.partial-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?))
 
 (t2/define-before-insert :model/Field
@@ -147,14 +148,8 @@
 ;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
 ;;     number of DB calls that are made. See discussion below for more details.
 
-(defn- perms-objects-set*
-  [db-id schema table-id read-or-write]
-  #{(case read-or-write
-      :read  (perms/data-perms-path db-id schema table-id)
-      :write (perms/data-model-write-perms-path db-id schema table-id))})
-
-(def ^:private ^{:arglists '([table-id read-or-write])} cached-perms-object-set
-  "Cached lookup for the permissions set for a table with `table-id`. This is done so a single API call or other unit of
+(def ^:private ^{:arglists '([table-id])} cached-db-id
+  "Cached lookup for the database ID for a table with `table-id`. This is done so a single API call or other
   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
   permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
 
@@ -166,22 +161,38 @@
   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
   seconds."
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[table-id read-or-write]]
-                         [(mdb.connection/unique-identifier) table-id read-or-write])}
-   (fn [table-id read-or-write]
-     (let [{schema :schema, db-id :db_id} (t2/select-one ['Table :schema :db_id] :id table-id)]
-       (perms-objects-set* db-id schema table-id read-or-write)))
+   ^{::memoize/args-fn (fn [[table-id]]
+                         [(mdb.connection/unique-identifier) table-id])}
+   (fn [table-id]
+     (:db_id (t2/select-one [:model/Table :db_id] :id table-id)))
    :ttl/threshold 5000))
 
-;;; Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
-;;; same as permissions to access its parent Table.
-(defmethod mi/perms-objects-set :model/Field
-  [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
-  (if db-id
-    ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
-    (perms-objects-set* db-id schema table-id read-or-write)
-    ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
-    (cached-perms-object-set table-id read-or-write)))
+(defn- field->db-id
+  [{table-id :table_id, {db-id :db_id} :table}]
+  (or db-id (cached-db-id table-id)))
+
+(defmethod mi/can-read? :model/Field
+  ([instance]
+   (contains? #{:unrestricted :no-self-service}
+              (data-perms/table-permission-for-user
+               api/*current-user-id*
+               :perms/data-access
+               (field->db-id instance)
+               (:table_id instance))))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
+
+(defmethod mi/can-write? :model/Field
+  ([instance]
+   (if (premium-features/enable-advanced-permissions?)
+     (= :yes (data-perms/table-permission-for-user
+              api/*current-user-id*
+              :perms/manage-table-metadata
+              (field->db-id instance)
+              (:table_id instance)))
+     (mi/superuser?)))
+  ([model pk]
+   (mi/can-write? (t2/select-one model pk))))
 
 (defmethod serdes/hash-fields :model/Field
   [_field]

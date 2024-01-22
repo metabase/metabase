@@ -31,7 +31,7 @@
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
     (mt/with-additional-premium-features #{:advanced-permissions}
-      (memoize/memo-clear! @#'field/cached-perms-object-set)
+      (memoize/memo-clear! @#'field/cached-db-id)
       (perms.test-util/with-restored-perms!
         (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
         (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
