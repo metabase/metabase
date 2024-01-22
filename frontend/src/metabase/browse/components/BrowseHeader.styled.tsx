@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const BrowseHeaderRoot = styled.div`
-  margin-top: 0rem;
   margin-bottom: 1rem;
 `;
 

@@ -19,7 +19,7 @@ import type { useSearchListQuery } from "metabase/common/hooks";
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
-import { Icon, Text } from "metabase/ui";
+import { Box, Icon, Text, Title } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
   CenteredEmptyState,
@@ -65,9 +65,15 @@ export const BrowseModels = ({
     <GridContainer role="grid">{cells}</GridContainer>
   ) : (
     <CenteredEmptyState
-      title={t`No models here yet`}
-      message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
-      illustrationElement={<img src={NoResults} />}
+      title={<Box mb=".5rem">{t`No models here yet`}</Box>}
+      message={
+        <Box maw="24rem">{t`Models help curate data to make it easier to find answers to questions all in one place.`}</Box>
+      }
+      illustrationElement={
+        <Box mb=".5rem">
+          <img src={NoResults} />
+        </Box>
+      }
     />
   );
 };
@@ -101,15 +107,12 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
       data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
     >
       <ModelCard>
-        <h4
-          className="text-wrap"
-          style={{ lineHeight: "16px", marginBottom: ".5rem" }}
-        >
+        <Title order={4} className="text-wrap" lh="1rem" mb=".5rem">
           <MultilineEllipsified id={headingId}>
             {model.name}
           </MultilineEllipsified>
-        </h4>
-        <Text size="xs" style={{ height: "32px" }}>
+        </Title>
+        <Text h="2rem" size="xs" mb="auto">
           <MultilineEllipsified
             tooltipMaxWidth="100%"
             className={model.description ? "" : "text-light"}
@@ -118,7 +121,6 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
           </MultilineEllipsified>
         </Text>
         <LastEditInfoLabel
-          style={{ marginTop: "auto" }}
           item={modelWithHistory}
           fullName={modelWithHistory["last-edit-info"].full_name}
           className={"last-edit-info-label-button"}
@@ -213,13 +215,10 @@ const CollectionHeader = ({
   return (
     <CollectionHeaderContainer id={id} role="heading" style={style}>
       <MaybeLink>
-        <Icon
-          name="folder"
-          color={"text-dark"}
-          size={16}
-          style={{ marginRight: "0.33rem" }}
-        />
-        <h4>{collection?.name || "Untitled collection"}</h4>
+        <Icon name="folder" color={"text-dark"} size={16} />
+        <Title ml=".33rem" order={4}>
+          {collection?.name || "Untitled collection"}
+        </Title>
       </MaybeLink>
     </CollectionHeaderContainer>
   );

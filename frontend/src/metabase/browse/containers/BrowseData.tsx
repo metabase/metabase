@@ -6,7 +6,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import { Divider, Flex, Tabs, Icon } from "metabase/ui";
+import { Divider, Flex, Tabs, Icon, Box } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -122,8 +122,12 @@ const BrowseDatabases = ({
     </Grid>
   ) : (
     <CenteredEmptyState
-      title={t`No databases here yet`}
-      illustrationElement={<img src={NoResults} />}
+      title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
+      illustrationElement={
+        <Box mb=".5rem">
+          <img src={NoResults} />
+        </Box>
+      }
     />
   );
 };
