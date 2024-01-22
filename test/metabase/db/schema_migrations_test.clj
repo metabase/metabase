@@ -764,3 +764,18 @@
              (t2/query
               (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
                       (-> (mdb.connection/data-source) .getConnection .getCatalog))))))))
+
+(deftest index-database-changelog-test
+  (testing "we should have an unique constraint on databasechangelog.(id,author,filename)"
+    (impl/test-migrations "v49.00-000" [migrate!]
+      (migrate!)
+      (is (pos?
+             (:count
+              (t2/query-one
+               (case (mdb.connection/db-type)
+                 :postgres "SELECT COUNT(*) as count FROM pg_indexes WHERE
+                           tablename = 'databasechangelog' AND indexname = 'idx_databasechangelog_id_author_filename';"
+                 :mysql    "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'idx_databasechangelog_id_author_filename';"
+                 ;; h2 has a strange way of naming constraint
+                 :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
+                           WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))

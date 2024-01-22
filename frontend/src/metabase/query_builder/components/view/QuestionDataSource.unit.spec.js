@@ -7,20 +7,21 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  createSampleDatabase,
-  ORDERS,
   ORDERS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
+  ORDERS,
   SAMPLE_DB_ID,
+  PRODUCTS,
+  PEOPLE,
+  PRODUCTS_ID,
+  PEOPLE_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import { setupCardEndpoints } from "__support__/server-mocks/card";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 import QuestionDataSource from "./QuestionDataSource";
 
 const MULTI_SCHEMA_DB_ID = 2;
@@ -56,6 +57,24 @@ const SAVED_QUESTION = {
   name: "Q1",
   description: null,
   collection_id: null,
+};
+
+const ORDERS_QUERY = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: { "source-table": ORDERS_ID },
+};
+
+const PRODUCTS_QUERY = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: { "source-table": PRODUCTS_ID },
+};
+
+const PEOPLE_QUERY = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: { "source-table": PEOPLE_ID },
 };
 
 const QUERY_IN_MULTI_SCHEMA_DB = {
@@ -178,6 +197,18 @@ function getSavedNativeQuestion(overrides) {
     ...SAVED_QUESTION,
     ...overrides,
   });
+}
+
+function getAdHocOrdersQuestion() {
+  return getAdHocQuestion({ dataset_query: ORDERS_QUERY });
+}
+
+function getAdHocProductsQuestion() {
+  return getAdHocQuestion({ dataset_query: PRODUCTS_QUERY });
+}
+
+function getAdHocPeopleQuestion() {
+  return getAdHocQuestion({ dataset_query: PEOPLE_QUERY });
 }
 
 function getNestedQuestionTableMock(isMultiSchemaDB) {
@@ -368,7 +399,7 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays database name", () => {
           setup({ question });
-          const node = screen.getByText(question.database().displayName());
+          const node = screen.queryByText(question.database().displayName());
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
@@ -402,9 +433,33 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays table name", () => {
           setup({ question });
-          expect(
-            screen.getByText(new RegExp(question.table().displayName())),
-          ).toBeInTheDocument();
+          const node = screen.queryByText(
+            new RegExp(question.table().displayName()),
+          );
+          expect(node).toBeInTheDocument();
+          expect(node.closest("a")).not.toBeInTheDocument();
+        });
+
+        it("displays table link in subhead variant", () => {
+          setup({ question, subHead: true });
+          const node = screen.queryByText(
+            new RegExp(question.table().displayName()),
+          );
+          expect(node.closest("a")).toHaveAttribute(
+            "href",
+            ML_Urls.getUrl(question.table().newQuestion()),
+          );
+        });
+
+        it("displays table link in object detail view", () => {
+          setup({ question, isObjectDetail: true });
+          const node = screen.queryByText(
+            new RegExp(question.table().displayName()),
+          );
+          expect(node.closest("a")).toHaveAttribute(
+            "href",
+            ML_Urls.getUrl(question.table().newQuestion()),
+          );
         });
       });
     });
@@ -442,11 +497,19 @@ describe("QuestionDataSource", () => {
         it("displays 2 joined tables (metabase#17961)", () => {
           setup({ question, subHead: true });
 
-          const orders = screen.getByText(/Orders/);
-          const products = screen.getByText(/Products/);
+          const orders = screen.queryByText(/Orders/);
+          const products = screen.queryByText(/Products/);
 
           expect(orders).toBeInTheDocument();
+          expect(orders.closest("a")).toHaveAttribute(
+            "href",
+            ML_Urls.getUrl(getAdHocOrdersQuestion()),
+          );
           expect(products).toBeInTheDocument();
+          expect(products.closest("a")).toHaveAttribute(
+            "href",
+            ML_Urls.getUrl(getAdHocProductsQuestion()),
+          );
         });
       });
     });
@@ -460,9 +523,26 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays > 2 joined tables (metabase#17961)", () => {
           setup({ question, subHead: true });
-          expect(screen.getByText(/Orders/)).toBeInTheDocument();
-          expect(screen.getByText(/Products/)).toBeInTheDocument();
-          expect(screen.getByText(/People/)).toBeInTheDocument();
+
+          const orders = screen.queryByText(/Orders/);
+          const products = screen.queryByText(/Products/);
+          const people = screen.queryByText(/People/);
+
+          expect(orders).toBeInTheDocument();
+          expect(orders.closest("a")).toHaveAttribute(
+            "href",
+            ML_Urls.getUrl(getAdHocOrdersQuestion()),
+          );
+          expect(products).toBeInTheDocument();
+          expect(products.closest("a")).toHaveAttribute(
+            "href",
+            ML_Urls.getUrl(getAdHocProductsQuestion()),
+          );
+          expect(people).toBeInTheDocument();
+          expect(people.closest("a")).toHaveAttribute(
+            "href",
+            ML_Urls.getUrl(getAdHocPeopleQuestion()),
+          );
         });
       });
     });
