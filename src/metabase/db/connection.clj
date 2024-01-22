@@ -58,6 +58,8 @@
 (alter-meta! #'->ApplicationDB assoc :private true)
 (alter-meta! #'map->ApplicationDB assoc :private true)
 
+(def ^:private initial-db-status nil)
+
 (defn application-db
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
   with [[*application-db*]]:
@@ -79,7 +81,7 @@
     :data-source (if create-pool?
                    (connection-pool-setup/connection-pool-data-source db-type data-source)
                    data-source)
-    :status      (atom nil)
+    :status      (atom initial-db-status)
     ;; for memoization purposes. See [[unique-identifier]] for more information.
     :id          (swap! application-db-counter inc)
     :lock        (ReentrantReadWriteLock.)}))
