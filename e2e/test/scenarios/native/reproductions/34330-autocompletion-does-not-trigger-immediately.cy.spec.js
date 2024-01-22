@@ -17,7 +17,6 @@ describe("issue 34330", () => {
     // can't use cy.type because it does not simulate the bug
     editor.type("USER_");
 
-    // autocomplete_suggestions?prefix=USER_
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
       expect(url.searchParams.get("substring")).to.equal("USER_");
@@ -33,7 +32,6 @@ describe("issue 34330", () => {
     // can't use cy.type because it does not simulate the bug
     editor.type("U");
 
-    // autocomplete_suggestions?prefix=USER_
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
       expect(url.searchParams.get("substring")).to.equal("U");
