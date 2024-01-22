@@ -75,18 +75,22 @@ export const BrowseDataPage = () => {
         }}
       >
         <Tabs.List>
-          {Object.entries(tabs).map(([tabId, tab]) => (
-            <Tabs.Tab key={tabId} value={tabId}>
-              {tab.label}
-            </Tabs.Tab>
-          ))}
+          <Tabs.Tab key={"models"} value={"models"}>
+            {t`Models`}
+          </Tabs.Tab>
+          <Tabs.Tab key={"databases"} value={"databases"}>
+            {t`Databases`}
+          </Tabs.Tab>
         </Tabs.List>
         <Divider />
-        {currentTab && (
-          <BrowseTabsPanel key={currentTabId} value={currentTabId ?? ""}>
-            {currentTab.component}
-          </BrowseTabsPanel>
-        )}
+        {
+          // TODO: Don't use the Tabs object
+          currentTab && (
+            <BrowseTabsPanel key={currentTabId} value={currentTabId ?? ""}>
+              {currentTab.component}
+            </BrowseTabsPanel>
+          )
+        }
       </BrowseTabs>
     </BrowseContainer>
   );
