@@ -91,9 +91,10 @@
   (when (str/starts-with? tag-name "snippet:")
     (str/trim (subs tag-name (count "snippet:")))))
 
-(defn- fresh-tag [tag-name]
+(defn- fresh-tag [tag]
   {:type :text
-   :name tag-name
+   :name (:name tag)
+   :optional (:optional tag)
    :id   (str (random-uuid))})
 
 (defn- finish-tag [{tag-name :name :as tag}]
@@ -108,8 +109,9 @@
            {:display-name (u.humanization/name->human-readable-name :simple tag-name)})))
 
 (defn- rename-template-tag
-  [existing-tags old-name new-name]
-  (let [old-tag       (get existing-tags old-name)
+  [existing-tags old-tag new-tag]
+  (let [new-name      (:name new-tag)
+        old-name      (:name old-tag)
         display-name  (if (= (:display-name old-tag)
                              (u.humanization/name->human-readable-name :simple old-name))
                         ;; Replace the display name if it was the default; keep it if customized.
@@ -118,20 +120,25 @@
         new-tag       (-> old-tag
                           (dissoc :snippet-name :card-id :snippet-id)
                           (assoc :display-name display-name
-                                 :name         new-name))]
+                                 :name         new-name
+                                 :optional     (:optional new-tag)))]
     (-> existing-tags
         (dissoc old-name)
         (assoc new-name new-tag))))
 
 (defn- unify-template-tags
-  [query-tag-names existing-tags existing-tag-names]
-  (let [new-tags (set/difference query-tag-names existing-tag-names)
-        old-tags (set/difference existing-tag-names query-tag-names)
-        tags     (if (= 1 (count new-tags) (count old-tags))
+  [query-tags existing-tags]
+  (let [tag-names (set (map :name query-tags))
+        existing-tag-names (set (keys (or existing-tags {})))
+        new-tag-names (set/difference tag-names existing-tag-names)
+        old-tag-names (set/difference existing-tag-names tag-names)
+        new-tags (filter #(contains? new-tag-names (:name %)) query-tags)
+        old-tags (filter #(contains? old-tag-names (:name %)) (vals existing-tags))
+        tags     (if (= 1 (count new-tag-names) (count old-tag-names))
                    ;; With exactly one change, we treat it as a rename.
                    (rename-template-tag existing-tags (first old-tags) (first new-tags))
                    ;; With more than one change, just drop the old ones and add the new.
-                   (merge (m/remove-keys old-tags existing-tags)
+                   (merge (m/remove-keys old-tag-names existing-tags)
                           (m/index-by :name (map fresh-tag new-tags))))]
     (update-vals tags finish-tag)))
 
@@ -152,11 +159,11 @@
    (extract-template-tags query-text nil))
   ([query-text    :- ::common/non-blank-string
     existing-tags :- [:maybe ::lib.schema.template-tag/template-tag-map]]
-   (let [query-tag-names    (not-empty (recognize-template-tags query-text))
+   (let [query-tags    (not-empty (recognize-template-tags query-text))
          existing-tag-names (not-empty (set (keys existing-tags)))]
-     (if (or query-tag-names existing-tag-names)
+     (if (or query-tags existing-tag-names)
        ;; If there's at least some tags, unify them.
-       (unify-template-tags query-tag-names existing-tags existing-tag-names)
+       (unify-template-tags query-tags existing-tags)
        ;; Otherwise just an empty map, no tags.
        {}))))
 
