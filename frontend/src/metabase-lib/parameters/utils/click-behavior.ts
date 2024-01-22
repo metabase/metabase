@@ -134,15 +134,11 @@ function notRelativeDateOrRange({ type }: Parameter) {
 export function getTargetsForQuestion(question: Question): Target[] {
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  if (!isNative) {
-    return getTargetsForStructuredQuestion(question);
-  }
-
   if (isNative) {
     return getTargetsForNativeQuestion(question);
   }
 
-  return [];
+  return getTargetsForStructuredQuestion(question);
 }
 
 function getTargetsForStructuredQuestion(question: Question): Target[] {
