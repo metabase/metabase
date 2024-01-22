@@ -62,6 +62,7 @@ class EntityMenu extends Component {
     const { open, menuItemContent } = this.state;
     return (
       <Popover
+        opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
         transitionProps={{ transition: "scale" }}
         position="bottom-end"
