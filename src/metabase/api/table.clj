@@ -516,10 +516,14 @@
       {:status 200
        :body   (:id model)})
     (catch Throwable e
-      {:status (or (-> e ex-data :status-code)
-                   500)
-       :body   {:message (or (ex-message e)
-                             (tru "There was an error uploading the file"))}})
+      (if (::upload/schema-mismatch? (ex-data e))
+        {:status (-> e ex-data :status-code)
+         :body   (merge {:message (ex-message e)}
+                        (select-keys (ex-data e) [:extra-columns :missing-columns]))}
+        {:status (or (-> e ex-data :status-code)
+                     500)
+         :body   {:message (or (ex-message e)
+                               (tru "There was an error uploading the file"))}}))
     (finally (io/delete-file file :silently))))
 
 (api/defendpoint ^:multipart POST "/:id/append-csv"

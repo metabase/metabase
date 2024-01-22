@@ -1281,15 +1281,16 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should fail if there are extra or missing columns in the CSV file"
-        (doseq [[csv-rows error-message]
+        (doseq [[csv-rows exception-data]
                 {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
+                 {:extra-columns #{"extra_column_two" "extra_column_one"}}
 
                  [""]
-                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
+                 {:missing-columns #{"id" "name"}}
 
                  ["_mb_row_id,extra 1, extra 2"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
+                 {:extra-columns   #{"extra_2" "extra_1"}
+                  :missing-columns #{"id" "name"}}}]
           (mt/with-empty-db
             (let [table (create-upload-table!
                          {:col->upload-type (ordered-map/ordered-map
@@ -1297,8 +1298,10 @@
                                              :name       ::upload/varchar-255)
                           :rows [[1,"some_text"]]})
                   file  (csv-file-with csv-rows (mt/random-name))]
-              (is (= {:message error-message
-                      :data {:status-code 422}}
+              (is (= {:message "There were some error uploading your CSV file."
+                      :data    (merge {:status-code 422
+                                       ::upload/schema-mismatch? true}
+                                      exception-data)}
                      (catch-ex-info (append-csv! {:file     file
                                                   :table-id (:id table)}))))
               (testing "Check the data was not uploaded into the table"

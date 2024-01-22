@@ -590,19 +590,11 @@
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when (or extra missing)
-      (let [format-columns (fn [cols]
-                             (str/join ", " (map #(str "\"" % "\"") cols)))
-            error-message (cond
-                            (and extra missing)
-                            (tru "The CSV file contains extra columns that are not in the table: {0}. The CSV file is missing columns that are in the table: {1}."
-                                 (format-columns extra) (format-columns missing))
-                            extra
-                            (tru "The CSV file contains extra columns that are not in the table: {0}."
-                                 (format-columns extra))
-                            missing
-                            (tru "The CSV file is missing columns that are in the table: {0}."
-                                 (format-columns missing)))]
-        (throw (ex-info error-message {:status-code 422}))))))
+      (throw (ex-info "There were some error uploading your CSV file."
+                      (-> {:status-code 422
+                           ::schema-mismatch? true}
+                          (m/assoc-some :extra-columns extra)
+                          (m/assoc-some :missing-columns missing)))))))
 
 (defn- append-csv!*
   [database table file]

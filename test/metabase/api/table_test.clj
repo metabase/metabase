@@ -937,3 +937,5 @@
               (@#'api.table/append-csv! {:id   (:id table)
                                          :file file}))
             (is (not (.exists file)) "File should be deleted after append-csv!")))))))
+
+;; TODO: add test for ::upload/schema-mismatch? handling
