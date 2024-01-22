@@ -22,9 +22,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-;; TODO: it would be nice to detect and discard the changes to *all* settings defined in this namespace
-(use-fixtures :each (fn [thunk] (mt/discard-setting-changes [:test-setting-custom-init] (thunk))))
-
 ;; ## TEST SETTINGS DEFINITIONS
 
 (defsetting test-setting-1
@@ -144,8 +141,6 @@
     (is (= "[Default Value]"
            (test-setting-2)))))
 
-(def custom-init-setting (setting/resolve-setting :test-setting-custom-init))
-
 (deftest user-facing-value-test
   (testing "`user-facing-value` should return `nil` for a Setting that is using the default value"
     (test-setting-2! nil)
@@ -158,7 +153,8 @@
            (setting/user-facing-value :test-setting-calculated-getter))))
 
   (testing "`user-facing-value` will initialize pending values"
-    (is (some? (setting/user-facing-value custom-init-setting)))))
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (is (some? (setting/user-facing-value :test-setting-custom-init))))))
 
 (deftest do-not-define-setter-function-for-setter-none-test
   (testing "Settings with `:setter` `:none` should not have a setter function defined"
@@ -166,42 +162,41 @@
       (is (some? (resolve `test-setting-calculated-getter))))
     (is (not (resolve `test-setting-calculated-getter!)))))
 
-(defn- get-setting-via-db []
-  (#'setting/read-setting :test-setting-custom-init))
-
 ;; TODO: I suspect we're seeing stale values in CI due to parallel tests or state persisting between runs
 ;;  We should at least make this an error when running locally without parallelism.
 (defn- clear-setting-if-leak! []
-  (when-let [existing-value (some? (get-setting-via-db))]
+  (when-let [existing-value (some? (#'setting/read-setting :test-setting-custom-init))]
     (log/warn "Test environment corrupted, perhaps due to parallel tests or state kept between runs" existing-value)
     (setting/set! :test-setting-custom-init nil :bypass-read-only? true)))
 
 (deftest setting-initialization-test
   (testing "The value will be initialized and saved"
     (clear-setting-if-leak!)
-    (let [val (setting/get custom-init-setting)]
-      (is (some? val))
-      (is (= val (test-setting-custom-init)))
-      (is (= val (get-setting-via-db))))))
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (let [val (setting/get :test-setting-custom-init)]
+        (is (some? val))
+        (is (= val (test-setting-custom-init)))
+        (is (= val (#'setting/read-setting :test-setting-custom-init)))))))
 
 (deftest validate-without-initialization-test
   (testing "Validation does not initialize the setting"
     (clear-setting-if-leak!)
     (setting/validate-settings-formatting!)
-    (is (= nil (get-setting-via-db)))))
+    (is (= nil (#'setting/read-setting :test-setting-custom-init)))))
 
 (deftest init-requires-db-test
   (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
-    (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
-      (is (= false (mdb/db-is-set-up?)))
-      (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Cannot initialize setting before the db is set up"
-            (test-setting-custom-init)))
-      (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Cannot initialize setting before the db is set up"
-            (setting/get :test-setting-custom-init))))))
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
+        (is (= false (mdb/db-is-set-up?)))
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Cannot initialize setting before the db is set up"
+              (test-setting-custom-init)))
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Cannot initialize setting before the db is set up"
+              (setting/get :test-setting-custom-init)))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
