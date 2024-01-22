@@ -398,8 +398,10 @@
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
 
+  If `skip-init`?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
+
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
-  [setting-k value thunk & {:keys [raw-setting?]}]
+  [setting-k value thunk & {:keys [raw-setting? skip-init?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
   (initialize/initialize-if-needed! :db :plugins)
@@ -413,14 +415,16 @@
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
-                             (#'setting/get setting-k))]
+                             (if skip-init?
+                               (setting/read-setting setting-k)
+                               (setting/get setting-k)))]
         (try
           (try
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
               (with-redefs [setting/has-feature? (constantly true)]
-                (setting/set! setting-k value)))
+                (setting/set! setting-k value :bypass-read-only? true)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
                               {:setting  setting-k
@@ -435,7 +439,7 @@
                 (restore-raw-setting! original-value setting-k)
                 ;; bypass the feature check when reset settings to the original value
                 (with-redefs [setting/has-feature? (constantly true)]
-                  (setting/set! setting-k original-value)))
+                  (setting/set! setting-k original-value :bypass-read-only? true)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
                                 {:setting        setting-k
@@ -479,7 +483,8 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (do-with-temporary-setting-value setting-k (setting/get setting-k) thunk)))
+        (let [value (setting/read-setting setting-k)]
+          (do-with-temporary-setting-value setting-k value thunk :skip-init? true))))
     thunk
     settings)))
 
