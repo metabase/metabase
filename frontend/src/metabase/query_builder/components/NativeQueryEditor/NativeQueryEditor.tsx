@@ -89,6 +89,7 @@ type LastAutoComplete = {
   timestamp: number;
   prefix: string | null;
   results: AutocompleteItem[];
+  first: boolean;
 };
 
 type OwnProps = typeof NativeQueryEditor.defaultProps & {
@@ -445,6 +446,7 @@ export class NativeQueryEditor extends Component<
       timestamp: 0,
       prefix: "",
       results: [],
+      first: true,
     };
 
     const resultsForAce = (results: [string, string][]) =>
@@ -467,7 +469,7 @@ export class NativeQueryEditor extends Component<
         }
 
         try {
-          if (prefix.length <= 1 && prefix !== lastAutoComplete.prefix) {
+          if (lastAutoComplete.first && prefix !== lastAutoComplete.prefix) {
             // ACE triggers an autocomplete immediately when the user starts typing that is
             // not debounced by debouncing _retriggerAutocomplete.
             // Here we prevent it from actually calling the autocomplete endpoint.
@@ -476,6 +478,7 @@ export class NativeQueryEditor extends Component<
             lastAutoComplete = {
               timestamp: 0,
               prefix,
+              first: false,
               results: lastAutoComplete.results,
             };
 
@@ -495,6 +498,7 @@ export class NativeQueryEditor extends Component<
             lastAutoComplete = {
               timestamp: Date.now(),
               prefix,
+              first: false,
               results: apiResults,
             };
 
