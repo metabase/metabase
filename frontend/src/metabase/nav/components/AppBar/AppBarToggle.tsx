@@ -37,11 +37,7 @@ export function AppBarToggle({
         data-testid="sidebar-toggle"
         aria-label={t`Toggle sidebar`}
       >
-        <SidebarIcon
-          isLogoVisible={isLogoVisible}
-          size={20}
-          name="hamburger_menu"
-        />
+        <SidebarIcon isLogoVisible={isLogoVisible} size={20} name="burger" />
       </SidebarButton>
     </Tooltip>
   );

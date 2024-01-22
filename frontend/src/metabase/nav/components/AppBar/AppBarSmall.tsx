@@ -87,6 +87,7 @@ const AppBarSmall = ({
           </AppBarMainContainer>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
             <AppBarLogo
+              isSmallAppBar
               isLogoVisible={isLogoVisible}
               onLogoClick={onCloseNavbar}
             />
