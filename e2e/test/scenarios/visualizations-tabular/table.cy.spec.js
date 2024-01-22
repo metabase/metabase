@@ -186,7 +186,7 @@ describe("scenarios > visualizations > table", () => {
           // semantic type
           cy.contains("No special type");
           // fingerprint
-          cy.findByText(/-0\d:00/);
+          cy.findByText("Timezone");
           cy.findByText("April 26, 1958, 12:00 AM");
           cy.findByText("April 3, 2000, 12:00 AM");
         },
@@ -228,9 +228,17 @@ describe("scenarios > visualizations > table", () => {
     cy.wait("@dataset");
 
     cy.get(".Visualization").within(() => {
-      // Make sure new table results loaded with Custom column and Count columns
-      cy.contains(ccName);
       cy.contains("Count").trigger("mouseenter");
+    });
+
+    popover().within(() => {
+      cy.contains("Quantity");
+      cy.findByText("No description");
+    });
+
+    cy.get(".Visualization").within(() => {
+      // Make sure new table results loaded with Custom column and Count columns
+      cy.contains(ccName).trigger("mouseenter");
     });
 
     popover().within(() => {

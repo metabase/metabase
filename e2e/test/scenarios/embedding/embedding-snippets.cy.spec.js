@@ -5,6 +5,7 @@ import {
   visitQuestion,
   setTokenFeatures,
   openStaticEmbeddingModal,
+  modal,
 } from "e2e/support/helpers";
 import {
   ORDERS_QUESTION_ID,
@@ -25,50 +26,30 @@ features.forEach(feature => {
 
     it("dashboard should have the correct embed snippet", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      openStaticEmbeddingModal();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Code").click();
+      console.log("feature", feature);
+      openStaticEmbeddingModal({ acceptTerms: false });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("To embed this dashboard in your application:");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Insert this code snippet in your server code to generate the signed embedding URL",
-      );
-
-      cy.get(".ace_content")
-        .first()
-        .invoke("text")
-        .should(
-          "match",
-          JS_CODE({ type: "dashboard", id: ORDERS_DASHBOARD_ID }),
+      modal().within(() => {
+        cy.findByText(
+          "To embed this dashboard in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.",
         );
 
-      // set transparent background metabase#23477
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Transparent").click();
-      cy.get(".ace_content")
-        .first()
-        .invoke("text")
-        .should(
-          "match",
-          JS_CODE({
-            type: "dashboard",
-            id: ORDERS_DASHBOARD_ID,
-            theme: "transparent",
-          }),
+        cy.findByText(
+          "Insert this code snippet in your server code to generate the signed embedding URL",
         );
 
-      // No download button for dashboards even for pro/enterprise users metabase#23477
-      cy.findByLabelText(
-        "Enable users to download data from this embed?",
-      ).should("not.exist");
+        cy.get(".ace_content")
+          .first()
+          .invoke("text")
+          .should(
+            "match",
+            JS_CODE({ type: "dashboard", id: ORDERS_DASHBOARD_ID }),
+          );
 
-      cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
-
-      cy.findAllByTestId("embed-backend-select-button")
-        .should("contain", "Node.js")
-        .click();
+        cy.findAllByTestId("embed-backend-select-button")
+          .should("contain", "Node.js")
+          .click();
+      });
 
       popover()
         .should("contain", "Node.js")
@@ -76,56 +57,64 @@ features.forEach(feature => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      cy.findAllByTestId("embed-frontend-select-button")
-        .should("contain", "Mustache")
-        .click();
+      modal().within(() => {
+        cy.findAllByTestId("embed-frontend-select-button")
+          .should("contain", "Mustache")
+          .click();
+      });
 
       popover()
         .should("contain", "Mustache")
         .and("contain", "Pug / Jade")
         .and("contain", "ERB")
         .and("contain", "JSX");
+
+      modal().within(() => {
+        cy.findByRole("tab", { name: "Appearance" }).click();
+
+        // set transparent background metabase#23477
+        cy.findByText("Transparent").click();
+        cy.get(".ace_content")
+          .first()
+          .invoke("text")
+          .should(
+            "match",
+            JS_CODE({
+              type: "dashboard",
+              id: ORDERS_DASHBOARD_ID,
+              theme: "transparent",
+            }),
+          );
+
+        cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+      });
     });
 
     it("question should have the correct embed snippet", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      openStaticEmbeddingModal();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Code").click();
+      console.log("feature", feature);
+      openStaticEmbeddingModal({ acceptTerms: false });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("To embed this question in your application:");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Insert this code snippet in your server code to generate the signed embedding URL",
-      );
-
-      cy.get(".ace_content")
-        .first()
-        .invoke("text")
-        .should("match", JS_CODE({ type: "question", id: ORDERS_QUESTION_ID }));
-
-      // set transparent background metabase#23477
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Transparent").click();
-      cy.get(".ace_content")
-        .first()
-        .invoke("text")
-        .should(
-          "match",
-          JS_CODE({
-            type: "question",
-            id: ORDERS_QUESTION_ID,
-            theme: "transparent",
-          }),
+      modal().within(() => {
+        cy.findByText(
+          "To embed this question in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.",
+        );
+        cy.findByText(
+          "Insert this code snippet in your server code to generate the signed embedding URL",
         );
 
-      // hide download button for pro/enterprise users metabase#23477
-      if (feature === "all") {
-        cy.findByLabelText(
-          "Enable users to download data from this embed?",
-        ).click();
+        cy.get(".ace_content")
+          .first()
+          .invoke("text")
+          .should(
+            "match",
+            JS_CODE({ type: "question", id: ORDERS_QUESTION_ID }),
+          );
 
+        cy.findByRole("tab", { name: "Appearance" }).click();
+
+        // set transparent background metabase#23477
+        cy.findByText("Transparent").click();
         cy.get(".ace_content")
           .first()
           .invoke("text")
@@ -135,16 +124,35 @@ features.forEach(feature => {
               type: "question",
               id: ORDERS_QUESTION_ID,
               theme: "transparent",
-              hideDownloadButton: true,
             }),
           );
-      }
 
-      cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+        // hide download button for pro/enterprise users metabase#23477
+        if (feature === "all") {
+          cy.findByText(
+            "Enable users to download data from this embed?",
+          ).click();
 
-      cy.findAllByTestId("embed-backend-select-button")
-        .should("contain", "Node.js")
-        .click();
+          cy.get(".ace_content")
+            .first()
+            .invoke("text")
+            .should(
+              "match",
+              JS_CODE({
+                type: "question",
+                id: ORDERS_QUESTION_ID,
+                theme: "transparent",
+                hideDownloadButton: true,
+              }),
+            );
+        }
+
+        cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+
+        cy.findAllByTestId("embed-backend-select-button")
+          .should("contain", "Node.js")
+          .click();
+      });
 
       popover()
         .should("contain", "Node.js")

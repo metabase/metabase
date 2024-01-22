@@ -23,8 +23,8 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
 `;
 
 const selectedStyles = ({ theme }: { theme: Theme }) => css`
-  color: ${theme.colors.brand[1]};
-  background-color: ${theme.colors.brand[0]};
+  color: ${theme.fn.themeColor("brand")};
+  background-color: ${theme.fn.themeColor("brand-lighter")};
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 `;
@@ -32,7 +32,7 @@ const selectedStyles = ({ theme }: { theme: Theme }) => css`
 export const SearchDropdownFooter = styled(Group, {
   shouldForwardProp: propName => propName !== "isSelected",
 })<{ isSelected?: boolean } & GroupProps>`
-  border-top: 1px solid ${({ theme }) => theme.colors.border[0]};
+  border-top: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
 
   ${({ theme, isSelected }) => isSelected && selectedStyles({ theme })}
   &:hover {

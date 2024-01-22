@@ -60,7 +60,7 @@ function setupDashcardAndDrillToQuestion({
       name: "Q1 - 17879",
       query: {
         "source-table": ORDERS_ID,
-        limit: 3,
+        limit: 5,
       },
     });
   } else {
@@ -72,7 +72,7 @@ function setupDashcardAndDrillToQuestion({
         breakout: [
           ["field", ORDERS.CREATED_AT, { "temporal-unit": targetDateUnit }],
         ],
-        limit: 3,
+        limit: 5,
       },
     });
   }
@@ -89,7 +89,7 @@ function setupDashcardAndDrillToQuestion({
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": sourceDateUnit }],
           ],
-          limit: 3,
+          limit: 5,
         },
       },
     ],
@@ -103,14 +103,12 @@ function setupDashcardAndDrillToQuestion({
     editDashboard(dashboard.id);
 
     showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
+    cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
 
     cy.findByText("Go to a custom destination").click();
     cy.findByText("Saved question").click();
     cy.findByText("Q1 - 17879").click();
-    cy.findByText("Orders → Created At").click();
+    cy.findByText("Created At").click();
 
     popover().within(() => {
       cy.findByText("Created At").click();

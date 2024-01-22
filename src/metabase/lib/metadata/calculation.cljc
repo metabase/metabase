@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata.calculation
   (:require
+   #?(:clj [metabase.config :as config])
    [clojure.string :as str]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -97,10 +98,15 @@
 
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
-  (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-             (pr-str x)
-             `display-name-method
-             (lib.dispatch/dispatch-value x))
+  ;; This was suspected as hurting performance, going to skip it in prod for now
+  (when #?(:clj          (not config/is-prod?)
+           :cljs         true ;; the linter complains when :cljs is not here(?)
+           :cljs-dev     true
+           :cljs-release false)
+    (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
+               (pr-str x)
+               `display-name-method
+               (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause: just use the name of the clause.
@@ -358,15 +364,14 @@
      (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]
        {:effective-type effective-type})
      (when-let [table-id (:table-id x-metadata)]
-       {:table (display-info
-                query
-                stage-number
-                ;; TODO: only ColumnMetadatas should possibly have legacy `card__<id>` `:table-id`s... we should
-                ;; probably move this special casing into [[metabase.lib.field]] instead of having it be part of the
-                ;; `:default` method.
-                (cond
-                  (integer? table-id) (lib.metadata/table query table-id)
-                  (string? table-id)  (lib.metadata/card query (lib.util/legacy-string-table-id->card-id table-id))))})
+       ;; TODO: only ColumnMetadatas should possibly have legacy `card__<id>` `:table-id`s... we should
+       ;; probably move this special casing into [[metabase.lib.field]] instead of having it be part of the
+       ;; `:default` method.
+       (when-let [inner-metadata (cond
+                                   (integer? table-id) (lib.metadata/table query table-id)
+                                   (string? table-id)  (lib.metadata/card
+                                                         query (lib.util/legacy-string-table-id->card-id table-id)))]
+         {:table (display-info query stage-number inner-metadata)}))
      (when-let [source (:lib/source x-metadata)]
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
@@ -376,6 +381,8 @@
         :is-breakout            (= source :source/breakouts)})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
+     (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
+       {:is-temporal-extraction (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)})
      (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
@@ -546,9 +553,9 @@
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
-  have appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field. (I think we only include
-  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
-  check here.)
+  have (1) appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field, and (2) have a numeric
+  `:id`, i.e. be a real database column that can be used in a JOIN condition. (I think we only include this information
+  for Databases that support FKs and joins, so I don't think we need to do an additional DB feature check here.)
 
   Does not include columns from any Tables that are already explicitly joined.
 
@@ -557,6 +564,8 @@
   (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
     (into []
           (comp (filter :fk-target-field-id)
+                (filter :id)
+                (filter (comp number? :id))
                 (map (fn [{source-field-id :id, :keys [fk-target-field-id] :as source}]
                        (-> (lib.metadata/field query fk-target-field-id)
                            (assoc ::source-field-id source-field-id
@@ -575,3 +584,17 @@
                               (assoc field :lib/desired-column-alias (unique-name-fn
                                                                       (lib.join.util/desired-alias query field))))))))
           column-metadatas)))
+
+(mu/defn default-columns-for-stage :- ColumnsWithUniqueAliases
+  "Given a query and stage, returns the columns which would be selected by default.
+
+  This is exactly [[lib.metadata.calculation/returned-columns]] filtered by the `:lib/source`.
+  (Fields from explicit joins are listed on the join itself and should not be listed in `:fields`.)
+
+  If there is already a `:fields` list on that stage, it is ignored for this calculation."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [no-fields (lib.util/update-query-stage query stage-number dissoc :fields)]
+    (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
+                           :lib/source))
+          (returned-columns no-fields stage-number (lib.util/query-stage no-fields stage-number)))))

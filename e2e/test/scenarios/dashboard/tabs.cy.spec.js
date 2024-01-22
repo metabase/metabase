@@ -27,6 +27,9 @@ import {
   moveDashCardToTab,
   addTextBoxWhileEditing,
   expectGoodSnowplowEvent,
+  selectDashboardFilter,
+  filterWidget,
+  popover,
 } from "e2e/support/helpers";
 
 import {
@@ -351,6 +354,121 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
   });
+
+  it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    createNewTab();
+    saveDashboard();
+
+    goToTab("Tab 2");
+    editDashboard();
+    openQuestionsSidebar();
+    sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+
+    cy.findByTestId("dashboard-header").within(() => {
+      cy.icon("filter").click();
+    });
+
+    popover().within(() => {
+      cy.contains("Time").click();
+      cy.findByText("Relative Date").click();
+    });
+
+    // Auto-connection happens here
+    selectDashboardFilter(getDashboardCard(0), "Created At");
+    saveDashboard();
+
+    cy.intercept(
+      "POST",
+      "/api/dashboard/*/dashcard/*/card/*/query",
+      delayResponse(500),
+    ).as("saveCard");
+
+    filterWidget().contains("Relative Date").click();
+    popover().within(() => {
+      cy.findByText("Today").click();
+    });
+
+    // Loader in the 2nd tab
+    getDashboardCard(0).within(() => {
+      cy.findByTestId("loading-spinner").should("exist");
+      cy.wait("@saveCard");
+      cy.findAllByTestId("table-row").should("exist");
+    });
+
+    // Loader in the 1st tab
+    goToTab("Tab 1");
+    getDashboardCard(0).within(() => {
+      cy.findByTestId("loading-spinner").should("exist");
+      cy.wait("@saveCard");
+      cy.findAllByTestId("table-row").should("exist");
+    });
+  });
+
+  it("should allow me to rearrange long tabs (#34970)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    createNewTab();
+    createNewTab();
+
+    // Assert initial tab order
+    cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText("Tab 1");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 2");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 3");
+
+    // Prior to this bugfix, tab containing this text would be too long to drag to the left of either of the other tabs.
+    const longName =
+      "This is a really, really, really, really, really long tab name";
+
+    // Set the long tab name
+    cy.findByRole("tab", { name: "Tab 3" })
+      .dblclick()
+      .type(`${longName}{enter}`);
+
+    // Drag the long tab to the beginning of the tab row
+    cy.findByRole("button", { name: "Tab 1" }).as("Tab 1");
+    cy.findByRole("button", { name: longName }).as("LongTab");
+
+    cy.get("@LongTab").then(target => {
+      cy.get("@Tab 1").then(tab1Element => {
+        const coordsDrag = tab1Element[0].getBoundingClientRect();
+        cy.wrap(target)
+          .should("exist")
+          .trigger("mousedown", { button: 0, force: true })
+          // You have to move the mouse at least 10 pixels to satisfy the
+          // activationConstraint: { distance: 10 } in the mouseSensor.
+          // If you remove that activationConstraint while still having the
+          // mouseSensor (required to make this pass), then the tests in
+          // DashboardTabs.unit.spec.tsx will fail.
+          .trigger("mousemove", {
+            button: 0,
+            clientX: 11,
+            clientY: 0,
+            force: true,
+          })
+          .trigger("mousemove", {
+            button: 0,
+            clientX: coordsDrag.x,
+            clientY: 0,
+            force: true,
+          })
+          .trigger("mouseup");
+      });
+    });
+
+    // Ensure the tab name has reverted to the long name after the drag has completed
+    cy.findByRole("button", { name: longName });
+
+    saveDashboard();
+
+    // After the long tab is dragged, it is now in the first position
+    cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText(longName);
+    cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 1");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
+  });
 });
 
 describeWithSnowplow("scenarios > dashboard > tabs", () => {
@@ -410,3 +528,19 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
     );
   });
 });
+
+/**
+ * When you need to postpone a response (to check for loading spinners or alike),
+ * use this:
+ *
+ * `cy.intercept('POST', path, delayResponse(1000)).as('delayed')`
+ *
+ * `cy.wait('@delayed')` - you'll have 1000 ms until this resolves
+ */
+function delayResponse(delayMs) {
+  return function (req) {
+    req.on("response", res => {
+      res.setDelay(delayMs);
+    });
+  };
+}

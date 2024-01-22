@@ -5,8 +5,8 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type { ColorName } from "metabase/lib/colors/types";
 
 import * as Lib from "metabase-lib";

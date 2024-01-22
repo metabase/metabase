@@ -56,10 +56,8 @@ export const PublicLinkCopyPanel = ({
               }
             >
               <RemoveLinkAnchor
-                inline
-                lh="1"
                 fz="sm"
-                c="error.0"
+                c="error"
                 fw={700}
                 onClick={onRemoveLink}
               >
@@ -76,7 +74,7 @@ export const PublicLinkCopyPanel = ({
                 data-testid="extension-option"
                 key={extension}
                 tt="uppercase"
-                c={extension === selectedExtension ? "brand.1" : "text.0"}
+                c={extension === selectedExtension ? "brand" : "text-light"}
                 fw={700}
                 onClick={() =>
                   onChangeExtension?.(

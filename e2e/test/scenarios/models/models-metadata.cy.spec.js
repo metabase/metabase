@@ -6,6 +6,7 @@ import {
   visitDashboard,
   popover,
   openQuestionActions,
+  queryBuilderHeader,
   questionInfoButton,
   addOrUpdateDashboardCard,
   openColumnOptions,
@@ -15,6 +16,7 @@ import {
   setModelMetadata,
   sidebar,
   saveMetadataChanges,
+  main,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -192,7 +194,7 @@ describe("scenarios > models metadata", () => {
     // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
 
-  it("should keep metadata in sync with the query", { tags: "@flaky" }, () => {
+  it("should keep metadata in sync with the query", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
@@ -207,9 +209,12 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
     popover().findByTextEnsureVisible("Edit query definition").click();
 
-    cy.get(".ace_content").type(
-      "{selectAll}{backspace}SELECT TOTAL FROM ORDERS LIMIT 5",
-    );
+    main().within(() => {
+      cy.get("textarea")
+        .focus()
+        .invoke("val", "")
+        .type("SELECT TOTAL FROM ORDERS LIMIT 5");
+    });
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     cy.wait("@dataset");
@@ -286,7 +291,7 @@ describe("scenarios > models metadata", () => {
           name: "Native Model",
           dataset: true,
           native: {
-            query: "select * from orders limit 10",
+            query: "select * from orders limit 100",
           },
         },
         { wrapId: true, idAlias: "modelId" },
@@ -343,6 +348,40 @@ describe("scenarios > models metadata", () => {
           cy.findAllByText("7");
           cy.findAllByText("perry.ruecker");
         });
+      });
+    });
+
+    it("should show implicit joins on FK columns with real DB columns (#37067)", () => {
+      cy.get("@modelId").then(modelId => {
+        cy.visit(`/model/${modelId}`);
+        cy.wait("@dataset");
+
+        // Drill to People table
+        // FK column is mapped to real DB column
+        queryBuilderHeader().button("Filter").click();
+
+        modal().within(() => {
+          cy.findByRole("tablist").within(() => {
+            cy.get("button").should("have.length", 2); // Just the two we're expecting and not the other fake FK.
+            cy.findByText("Native Model").should("exist");
+
+            const userTab = cy.findByText("User");
+            userTab.should("exist");
+            userTab.click();
+          });
+
+          cy.findByTestId("filter-column-Source").findByText("Twitter").click();
+          cy.findByTestId("apply-filters").click();
+        });
+
+        cy.wait("@dataset");
+        cy.findByTestId("question-row-count")
+          .invoke("text")
+          .should("match", /Showing \d+ rows/);
+        cy.findByTestId("question-row-count").should(
+          "not.contain",
+          "Showing 100 rows",
+        );
       });
     });
 

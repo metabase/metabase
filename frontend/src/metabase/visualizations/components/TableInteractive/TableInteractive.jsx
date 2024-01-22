@@ -10,7 +10,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 
 import "./TableInteractive.css";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -30,11 +30,9 @@ import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
-import Dimension from "metabase-lib/Dimension";
 import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
 import MiniBar from "../MiniBar";
@@ -132,7 +130,7 @@ class TableInteractive extends Component {
 
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
-    this._showDetailShortcut(this.props.query, this.props.isPivoted);
+    this._showDetailShortcut(this.props.data, this.props.isPivoted);
   }
 
   componentWillUnmount() {
@@ -165,7 +163,7 @@ class TableInteractive extends Component {
 
     if (isDataChange) {
       this._findIDColumn(nextData, newProps.isPivoted);
-      this._showDetailShortcut(this.props.query, this.props.isPivoted);
+      this._showDetailShortcut(this.props.data, this.props.isPivoted);
     }
   }
 
@@ -182,8 +180,10 @@ class TableInteractive extends Component {
     document.addEventListener("keydown", this.onKeyDown);
   };
 
-  _showDetailShortcut = (query, isPivoted) => {
-    const hasAggregation = !!query?.aggregations?.()?.length;
+  _showDetailShortcut = (data, isPivoted) => {
+    const hasAggregation = data.cols.some(
+      column => column.source === "aggregation",
+    );
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
     const newShowDetailState = !(
       isPivoted ||
@@ -417,9 +417,9 @@ class TableInteractive extends Component {
     );
   }
 
-  getHeaderClickedObject(data, columnIndex, isPivoted, query) {
+  getHeaderClickedObject(data, columnIndex, isPivoted) {
     try {
-      return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
+      return getTableHeaderClickedObject(data, columnIndex, isPivoted);
     } catch (e) {
       console.error(e);
     }
@@ -665,14 +665,6 @@ class TableInteractive extends Component {
     return style.left;
   }
 
-  getDimension(column, query) {
-    if (!query) {
-      return undefined;
-    }
-
-    return query.parseFieldReference(column.field_ref);
-  }
-
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
   // After the measurements are done, invisible columns get unmounted.
   // Because table headers are wrapped into react-draggable, it can trigger
@@ -684,38 +676,27 @@ class TableInteractive extends Component {
   tableHeaderRenderer = ({ key, style, columnIndex, isVirtual = false }) => {
     const {
       data,
-      sort,
       isPivoted,
       hasMetadataPopovers,
       getColumnTitle,
+      getColumnSortDirection,
       renderTableHeaderWrapper,
-      query,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
     const columnTitle = getColumnTitle(columnIndex);
-    const clicked = this.getHeaderClickedObject(
-      data,
-      columnIndex,
-      isPivoted,
-      query,
-    );
+    const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 
-    // TODO MBQL: use query lib to get the sort field
-    const fieldRef = fieldRefForColumn(column);
-    const sortIndex = _.findIndex(
-      sort,
-      sort => sort[1] && Dimension.isEqual(sort[1], fieldRef),
-    );
-    const isSorted = sortIndex >= 0;
-    const isAscending = isSorted && sort[sortIndex][0] === "asc";
+    const sortDirection = getColumnSortDirection(columnIndex);
+    const isSorted = sortDirection != null;
+    const isAscending = sortDirection === "asc";
 
     return (
       <TableDraggable
@@ -799,14 +780,11 @@ class TableInteractive extends Component {
               : undefined
           }
         >
-          <DimensionInfoPopover
+          <FieldInfoPopover
             placement="bottom-start"
-            dimension={
-              hasMetadataPopovers
-                ? this.getDimension(column, this.props.query)
-                : null
-            }
-            disabled={this.props.clicked != null}
+            field={column}
+            timezone={data.results_timezone}
+            disabled={this.props.clicked != null || !hasMetadataPopovers}
           >
             {renderTableHeaderWrapper(
               <Ellipsified tooltip={columnTitle}>
@@ -829,7 +807,7 @@ class TableInteractive extends Component {
               column,
               columnIndex,
             )}
-          </DimensionInfoPopover>
+          </FieldInfoPopover>
           <TableDraggable
             enableUserSelectHack={false}
             enableCustomUserSelectHack={!isVirtual}
@@ -1152,7 +1130,6 @@ export default _.compose(
     "_visualizationIsClickableCached",
     "getCellBackgroundColor",
     "getCellFormattedValue",
-    "getDimension",
     "getHeaderClickedObject",
   ),
 )(TableInteractive);

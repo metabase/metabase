@@ -4,15 +4,17 @@ import PropTypes from "prop-types";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
+import { isNotNull } from "metabase/lib/types";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
-
 import Tooltip from "metabase/core/components/Tooltip";
-
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+
+import * as Lib from "metabase-lib";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
+  getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/urls";
 
@@ -27,8 +29,9 @@ QuestionDataSource.propTypes = {
 };
 
 function isMaybeBasedOnDataset(question) {
-  const tableId = question.query().sourceTableId();
-  return isVirtualCardId(tableId);
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  return isVirtualCardId(sourceTableId);
 }
 
 function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
@@ -44,8 +47,9 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
     );
   }
 
-  const sourceTable = question.query().sourceTableId();
-  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTable);
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTableId);
 
   if (originalQuestion?.id() === sourceQuestionId) {
     return (
@@ -160,19 +164,17 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     return [];
   }
 
-  const isStructuredQuery = question.isStructured();
-  const query = isStructuredQuery
-    ? question.query().rootQuery()
-    : question.query();
-
-  const hasDataPermission = query.isEditable();
+  const hasDataPermission = question.isQueryEditable();
   if (!hasDataPermission) {
     return [];
   }
 
   const parts = [];
+  const query = question.query();
+  const metadata = question.metadata();
+  const isStructured = question.isStructured();
 
-  const database = query.database();
+  const database = metadata.database(Lib.databaseID(query));
   if (database) {
     parts.push({
       icon: !subHead ? "database" : undefined,
@@ -181,7 +183,9 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     });
   }
 
-  const table = query.table();
+  const table = isStructured
+    ? metadata.table(Lib.sourceTableOrCardId(query))
+    : question.legacyQuery().table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (!isBasedOnSavedQuestion) {
@@ -194,7 +198,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
   if (table) {
     const hasTableLink = subHead || isObjectDetail;
-    if (!isStructuredQuery) {
+    if (!isStructured) {
       return {
         name: table.displayName(),
         link: hasTableLink ? getTableURL() : "",
@@ -203,8 +207,20 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
     const allTables = [
       table,
-      ...query.joins().map(j => j.joinedTable()),
-    ].filter(Boolean);
+      ...Lib.joins(query, -1)
+        .map(join => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
+        .map(pickerInfo => {
+          if (pickerInfo?.tableId != null) {
+            return metadata.table(pickerInfo.tableId);
+          }
+
+          if (pickerInfo?.cardId != null) {
+            return metadata.table(getQuestionVirtualTableId(pickerInfo.cardId));
+          }
+
+          return undefined;
+        }),
+    ].filter(isNotNull);
 
     parts.push(
       <QuestionTableBadges

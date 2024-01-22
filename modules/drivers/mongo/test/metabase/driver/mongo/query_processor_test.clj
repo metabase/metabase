@@ -15,6 +15,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel query->collection-name-test
   (testing "query->collection-name"
     (testing "should be able to extract :collection from :source-query")
@@ -532,3 +534,38 @@
 
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
+
+(deftest uniqe-alias-index-test
+  (mt/test-driver
+   :mongo
+   (testing "Field aliases have deterministic unique indices"
+     (let [query (mt/mbql-query
+                  nil
+                  {:joins [{:alias "Products"
+                            :source-table $$products
+                            :condition [:= &Products.products.id $orders.product_id]
+                            :fields :all}
+                           {:alias "People"
+                            :source-table $$people
+                            :condition [:= &People.people.id $orders.user_id]
+                            :fields :all}]
+                   :source-query {:source-table $$orders
+                                  :joins [{:alias "Products"
+                                           :source-table $$products
+                                           :condition [:= &Products.products.id $orders.product_id]
+                                           :fields :all}
+                                          {:alias "People"
+                                           :source-table $$people
+                                           :condition [:= &People.people.id $orders.user_id]
+                                           :fields :all}]}})
+           compiled (qp/compile query)
+           indices (reduce (fn [acc lookup-stage]
+                             (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
+                                   ;; Following expression ensures index is an integer.
+                                   index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                               ;; Following expression tests that index is unique.
+                               (is (not (contains? acc index)))
+                               (conj acc index)))
+                           #{}
+                           (filter #(contains? % "$lookup") (:query compiled)))]
+       (is (= #{1 2 3 4} indices))))))

@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-import ErrorMessage from "metabase/components/ErrorMessage";
+import { ErrorMessage } from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
@@ -108,7 +108,7 @@ export default class VisualizationResult extends Component {
         this.props,
         ...ALLOWED_VISUALIZATION_PROPS,
       );
-      const hasDrills = this.props.query.isEditable();
+      const hasDrills = question.isQueryEditable();
       return (
         <>
           <Visualization
@@ -134,7 +134,6 @@ export default class VisualizationResult extends Component {
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
-            query={this.props.query}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (

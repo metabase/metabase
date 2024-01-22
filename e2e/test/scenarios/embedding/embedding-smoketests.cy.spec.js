@@ -15,7 +15,7 @@ import {
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
   "/admin/settings/embedding-in-other-applications/standalone";
-const pricingUrl = "https://www.metabase.com/pricing";
+const upgradeUrl = "https://www.metabase.com/upgrade";
 const embeddingDescription =
   "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.";
 
@@ -74,7 +74,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.findByTestId("-static-embedding-setting").within(() => {
         // FE unit tests are making sure this section doesn't exist when a valid token is provided,
         // so we don't have to do it here usign a conditional logic
-        assertLinkMatchesUrl("upgrade to a paid plan", pricingUrl);
+        assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
 
         cy.findByRole("link", { name: "Manage" })
           .should("have.attr", "href")
@@ -115,7 +115,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=embed-settings",
           );
       });
     });
@@ -137,102 +137,107 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       dashboard: ORDERS_DASHBOARD_ID,
     };
     ["question", "dashboard"].forEach(object => {
-      it(
-        `should be able to publish/embed and then unpublish a ${object} without filters`,
-        { tags: "@flaky" },
-        () => {
-          const embeddableObject = object === "question" ? "card" : "dashboard";
-          const objectName =
-            object === "question" ? "Orders" : "Orders in a dashboard";
+      it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
+        const embeddableObject = object === "question" ? "card" : "dashboard";
+        const objectName =
+          object === "question" ? "Orders" : "Orders in a dashboard";
 
-          cy.intercept("PUT", `/api/${embeddableObject}/${ids[object]}`).as(
-            "embedObject",
+        cy.intercept("PUT", `/api/${embeddableObject}/${ids[object]}`).as(
+          "embedObject",
+        );
+        cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
+          "currentlyEmbeddedObject",
+        );
+
+        visitAndEnableSharing(object);
+
+        modal().within(() => {
+          cy.findByRole("tab", { name: "Appearance" }).click();
+
+          cy.findByText("Background");
+          cy.findByText("Dashboard title");
+          cy.findByText("Border");
+          cy.findByText(
+            (_, element) =>
+              element.textContent ===
+              "You can change the font with a paid plan.",
           );
-          cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
-            "currentlyEmbeddedObject",
-          );
+          cy.findByText("Download data").should("not.exist");
 
-          visitAndEnableSharing(object);
+          cy.findByRole("tab", { name: "Parameters" }).click();
 
-          cy.findByTestId("embedding-settings").within(() => {
-            cy.findByRole("heading", { name: "Style" });
-            cy.findByRole("heading", { name: "Appearance" });
-            cy.findByRole("heading", { name: "Font" }).should("not.exist");
-            cy.findByRole("heading", { name: "Download data" }).should(
-              "not.exist",
-            );
-
-            cy.findByText("Parameters");
-            cy.findByText(
-              /This (question|dashboard) doesn't have any parameters to configure yet./,
-            );
-            cy.findByText("Parameters");
-          });
-
-          cy.findByTestId("embedding-preview").within(() => {
-            cy.findByText(
-              /You will need to publish this (question|dashboard) before you can embed it in another application./,
-            );
-
-            cy.button("Publish").click();
-            cy.wait("@embedObject");
-          });
-
-          visitIframe();
-
-          cy.findByTestId("embed-frame").within(() => {
-            cy.findByRole("heading", { name: objectName });
-            cy.get(".cellData").contains("37.65");
-          });
-
-          cy.findByRole("contentinfo").within(() => {
-            cy.findByRole("link")
-              .should("have.text", "Powered by Metabase")
-              .and("have.attr", "href")
-              .and("eq", "https://metabase.com/");
-          });
-
-          cy.log(
-            `Make sure the ${object} shows up in the standalone embeds page`,
-          );
-          cy.signInAsAdmin();
-          cy.visit(standalonePath);
-          cy.wait("@currentlyEmbeddedObject");
-
-          const sectionTestId = {
-            dashboard: "-embedded-dashboards-setting",
-            question: "-embedded-questions-setting",
-          }[object];
-
-          cy.findByTestId(sectionTestId)
-            .find("tbody tr")
-            .should("have.length", 1)
-            .and("contain", objectName);
-
-          cy.log(`Unpublish ${object}`);
-          visitAndEnableSharing(object);
-
-          cy.findByTestId("embedding-settings").within(() => {
-            cy.findByRole("heading", { name: "Danger zone" });
-            cy.findByText(`This will disable embedding for this ${object}.`);
-            cy.button("Unpublish").click();
-            cy.wait("@embedObject");
-          });
-
-          visitIframe();
-          cy.findByTestId("embed-frame").findByText(
-            "Embedding is not enabled for this object.",
+          cy.findByText(
+            `This ${object} doesn't have any parameters to configure yet.`,
           );
 
-          cy.signInAsAdmin();
-          cy.visit(standalonePath);
-          cy.wait("@currentlyEmbeddedObject");
+          cy.findByText(
+            `You will need to publish this ${object} before you can embed it in another application.`,
+          );
 
-          mainPage()
-            .findAllByText(/No (questions|dashboards) have been embedded yet./)
-            .should("have.length", 2);
-        },
-      );
+          cy.button("Publish changes").click();
+
+          cy.wait("@embedObject");
+        });
+
+        visitIframe();
+
+        cy.findByTestId("embed-frame").within(() => {
+          cy.findByRole("heading", { name: objectName });
+          cy.get(".cellData").contains("37.65");
+        });
+
+        cy.findByRole("contentinfo").within(() => {
+          cy.findByRole("link")
+            .should("have.text", "Powered by Metabase")
+            .and("have.attr", "href")
+            .and("eq", "https://metabase.com/");
+        });
+
+        cy.log(
+          `Make sure the ${object} shows up in the standalone embeds page`,
+        );
+        cy.signInAsAdmin();
+        cy.visit(standalonePath);
+        cy.wait("@currentlyEmbeddedObject");
+
+        const sectionTestId = {
+          dashboard: "-embedded-dashboards-setting",
+          question: "-embedded-questions-setting",
+        }[object];
+
+        cy.findByTestId(sectionTestId)
+          .find("tbody tr")
+          .should("have.length", 1)
+          .and("contain", objectName);
+
+        cy.log(`Unpublish ${object}`);
+        visitAndEnableSharing(object, false);
+
+        modal().within(() => {
+          cy.findByText(
+            `This ${object} is published and ready to be embedded.`,
+          );
+          cy.button("Unpublish").click();
+
+          cy.wait("@embedObject");
+
+          cy.findByRole("tab", { name: "Parameters" }).click();
+        });
+
+        visitIframe();
+
+        cy.findByTestId("embed-frame").findByText(
+          "Embedding is not enabled for this object.",
+        );
+
+        cy.signInAsAdmin();
+        cy.visit(standalonePath);
+        cy.wait("@currentlyEmbeddedObject");
+
+        mainPage()
+          .findAllByText(/No (questions|dashboards) have been embedded yet./)
+          .should("have.length", 2);
+      });
     });
 
     it("should regenerate embedding token and invalidate previous embed url", () => {
@@ -240,6 +245,12 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         enable_embedding: true,
       });
       visitAndEnableSharing("question");
+
+      modal().within(() => {
+        cy.findByRole("tab", { name: "Parameters" }).click();
+
+        cy.findByText("Preview").click();
+      });
 
       cy.document().then(doc => {
         const iframe = doc.querySelector("iframe");
@@ -320,7 +331,7 @@ function ensureEmbeddingIsDisabled() {
   });
 }
 
-function visitAndEnableSharing(object) {
+function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "question") {
     visitQuestion(ORDERS_QUESTION_ID);
   }
@@ -329,13 +340,13 @@ function visitAndEnableSharing(object) {
     visitDashboard(ORDERS_DASHBOARD_ID);
   }
 
-  openStaticEmbeddingModal();
+  openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {
-  return cy.get(".AdminList");
+  return cy.findByTestId("admin-layout-sidebar");
 }
 
 function mainPage() {
-  return sidebar().next();
+  return cy.findByTestId("admin-layout-content");
 }

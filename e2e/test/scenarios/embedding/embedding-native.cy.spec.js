@@ -23,7 +23,7 @@ describe("scenarios > embedding > native questions", () => {
         visitQuestion: true,
       });
 
-      openStaticEmbeddingModal();
+      openStaticEmbeddingModal({ activeTab: "parameters" });
     });
 
     it("should not display disabled parameters", () => {
@@ -52,7 +52,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // We must enter a value for a locked parameter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview Locked Parameters")
+      cy.findByText("Preview locked parameters")
         .parent()
         .within(() => {
           cy.findByText("Total").click();
@@ -266,7 +266,9 @@ describe("scenarios > embedding > native questions with default parameters", () 
     cy.createNativeQuestion(questionDetailsWithDefaults, {
       visitQuestion: true,
     });
-    openStaticEmbeddingModal();
+
+    openStaticEmbeddingModal({ activeTab: "parameters" });
+
     // Note: ID is disabled
     setParameter("Source", "Locked");
     setParameter("Name", "Editable");
@@ -276,7 +278,9 @@ describe("scenarios > embedding > native questions with default parameters", () 
         name: "enabled",
       });
     });
+
     visitIframe();
+
     // Remove default filter value
     clearFilterWidget();
     // The ID default (1, 2) should apply, because it is disabled.
@@ -288,7 +292,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
 });
 
 function setParameter(name, filter) {
-  cy.findByText("Which parameters can users of this embed use?")
+  cy.findByLabelText("Enable or lock parameters")
     .parent()
     .within(() => {
       cy.findByText(name).siblings("a").click();
@@ -300,7 +304,7 @@ function setParameter(name, filter) {
 function publishChanges(callback) {
   cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
-  cy.button("Publish").click();
+  cy.button("Publish changes").click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.

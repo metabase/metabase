@@ -17,6 +17,8 @@ import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import { css } from "@emotion/react";
+import { useSortable } from "@dnd-kit/sortable";
+import type { UniqueIdentifier } from "@dnd-kit/core";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 
 import { color, lighten } from "metabase/lib/colors";
@@ -52,7 +54,7 @@ export interface TabButtonProps<T> extends HTMLAttributes<HTMLDivElement> {
   label: string;
   value: T;
   showMenu?: boolean;
-  menuItems?: TabButtonMenuItem<T>[];
+  menuItems?: TabButtonMenuItem<any>[];
   onRename?: ChangeEventHandler<HTMLInputElement>;
   onFinishRenaming?: () => void;
   isRenaming?: boolean;
@@ -179,12 +181,13 @@ const _TabButton = forwardRef(function TabButton<T>(
 export interface RenameableTabButtonProps<T>
   extends Omit<
     TabButtonProps<T>,
-    "onRename" | "onFinishRenaming" | "isRenaming"
+    "onRename" | "onFinishRenaming" | "isRenaming" | "value"
   > {
   onRename: (newLabel: string) => void;
   renameMenuLabel?: string;
   renameMenuIndex?: number;
   canRename?: boolean;
+  value: UniqueIdentifier;
 }
 
 // These styles need to be here instead of .styled to avoid circular dependency
@@ -212,10 +215,11 @@ export function RenameableTabButton<T>({
   renameMenuLabel = t`Rename`,
   renameMenuIndex = 0,
   canRename = true,
+  value,
   ...props
 }: RenameableTabButtonProps<T>) {
   const { value: selectedValue } = useContext(TabContext);
-  const isSelected = props.value === selectedValue;
+  const isSelected = value === selectedValue;
 
   const [label, setLabel] = useState(labelProp);
   const [prevLabel, setPrevLabel] = useState(label);
@@ -254,9 +258,19 @@ export function RenameableTabButton<T>({
     ...originalMenuItems.slice(renameMenuIndex),
   ];
 
+  const dragLabel = (s: string) => {
+    if (s.length < 20) {
+      return s;
+    } else {
+      return `${s.slice(0, 17)}...`;
+    }
+  };
+
+  const { isDragging } = useSortable({ id: value });
+
   return (
     <RenameableTabButtonStyled
-      label={label}
+      label={isDragging ? dragLabel(label) : label}
       isSelected={isSelected}
       isRenaming={canRename && isRenaming}
       canRename={canRename}
@@ -267,6 +281,7 @@ export function RenameableTabButton<T>({
         menuItems as TabButtonMenuItem<unknown>[] /* workaround for styled component swallowing generic type */
       }
       ref={inputRef}
+      value={value}
       {...props}
     />
   );

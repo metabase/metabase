@@ -34,18 +34,27 @@ describeEE("issue 26988", () => {
       visitDashboard(card.dashboard_id);
     });
 
-    openStaticEmbeddingModal();
-    cy.wait("@dashboard");
+    openStaticEmbeddingModal({
+      activeTab: "appearance",
+      previewMode: "preview",
+      acceptTerms: false,
+    });
 
+    cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);
 
-    cy.findByTestId("embedding-settings").findByLabelText("Font").click();
+    cy.findByLabelText("Play with the options here")
+      .findByLabelText("Font")
+      .as("font-control")
+      .click();
     popover().findByText("Oswald").click();
+
     cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Oswald, sans-serif`);
 
-    cy.findByTestId("embedding-settings").findByLabelText("Font").click();
+    cy.get("@font-control").click();
     popover().findByText("Slabo 27px").click();
+
     cy.wait("@dashboard");
     getIframeBody().should(
       "have.css",

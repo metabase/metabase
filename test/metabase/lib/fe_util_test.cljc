@@ -12,22 +12,23 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
                                                  [(lib/=
-                                                    (meta/field-metadata :checkins :user-id)
-                                                    (meta/field-metadata :users :id))])
+                                                   (meta/field-metadata :checkins :user-id)
+                                                   (meta/field-metadata :users :id))])
                                 (lib/with-join-fields :all)))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
                                                  [(lib/=
-                                                    (meta/field-metadata :checkins :venue-id)
-                                                    (meta/field-metadata :venues :id))])
+                                                   (meta/field-metadata :checkins :venue-id)
+                                                   (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))]
     (doseq [col (lib/filterable-columns query)
             op (lib/filterable-column-operators col)
             :let [short-op (:short op)
                   expression-clause (case short-op
-                                      :between (lib/expression-clause short-op [col 123 456] {})
+                                      :between (lib/expression-clause short-op [col col col] {})
                                       (:contains :does-not-contain :starts-with :ends-with) (lib/expression-clause short-op [col "123"] {})
                                       (:is-null :not-null :is-empty :not-empty) (lib/expression-clause short-op [col] {})
                                       :inside (lib/expression-clause short-op [col 12 34 56 78 90] {})
+                                      (:< :>) (lib/expression-clause short-op [col col] {})
                                       (lib/expression-clause short-op [col 123] {}))]]
       (testing (str short-op " with " (lib.types.isa/field-type col))
         (is (=? {:lib/type :mbql/expression-parts
@@ -123,6 +124,8 @@
         date-arg-2 "2024-01-03"]
     (are [expected clause] (=? expected (lib/filter-args-display-name lib.tu/venues-query -1 clause))
       "Nov 2, 2023" (lib/= created-at date-arg-1)
+      "Excludes Nov 2, 2023" (lib/!= created-at date-arg-1)
+      "Excludes Q4" (lib/!= (lib/with-temporal-bucket created-at :quarter-of-year) date-arg-1)
       "Nov 2, 2023 – Jan 3, 2024" (lib/between created-at date-arg-1 date-arg-2)
       "After Nov 2, 2023" (lib/> created-at date-arg-1)
       "Before Nov 2, 2023" (lib/< created-at date-arg-1)

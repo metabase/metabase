@@ -1,7 +1,7 @@
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
 
-import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {
@@ -129,6 +129,7 @@ export const PLUGIN_SELECTORS = {
   getLoadingMessage: (_state: State) => t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   getApplicationName: (_state: State) => "Metabase",
+  getShowMetabaseLinks: (_state: State) => true,
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};

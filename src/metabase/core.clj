@@ -12,7 +12,8 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.events :as events]
-   [metabase.logger :as mb.logger]
+   [metabase.logger :as logger]
+   [metabase.models.setting :as settings]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -37,7 +38,7 @@
   metabase.driver.mysql/keep-me
   metabase.driver.postgres/keep-me
   ;; Make sure the custom Metabase logger code gets loaded up so we use our custom logger for performance reasons.
-  mb.logger/keep-me)
+  logger/keep-me)
 
 ;; don't i18n this, it's legalese
 (log/info
@@ -106,6 +107,7 @@
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
+  (settings/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
   (mdb/setup-db!)

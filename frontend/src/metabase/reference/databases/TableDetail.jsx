@@ -15,6 +15,7 @@ import Detail from "metabase/reference/components/Detail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as actions from "metabase/reference/reference";
 import { getQuestionUrl } from "../utils";
 
@@ -30,7 +31,7 @@ import {
   getForeignKeys,
 } from "../selectors";
 
-const interestingQuestions = table => {
+const interestingQuestions = (table, metadata) => {
   return [
     {
       text: t`Count of ${table.display_name}`,
@@ -39,6 +40,7 @@ const interestingQuestions = table => {
         dbId: table.db_id,
         tableId: table.id,
         getCount: true,
+        metadata,
       }),
     },
     {
@@ -47,6 +49,7 @@ const interestingQuestions = table => {
       link: getQuestionUrl({
         dbId: table.db_id,
         tableId: table.id,
+        metadata,
       }),
     },
   ];
@@ -59,6 +62,7 @@ const mapStateToProps = (state, props) => {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
+    metadata: getMetadata(state),
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
@@ -95,6 +99,7 @@ const propTypes = {
   hasSingleSchema: PropTypes.bool,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
+  metadata: PropTypes.object.isRequired,
   onSubmit: PropTypes.func.isRequired,
 };
 
@@ -110,6 +115,7 @@ const TableDetail = props => {
     startEditing,
     endEditing,
     hasSingleSchema,
+    metadata,
     onSubmit,
   } = props;
 
@@ -149,6 +155,7 @@ const TableDetail = props => {
         headerLink={getQuestionUrl({
           dbId: entity.db_id,
           tableId: entity.id,
+          metadata,
         })}
         name={t`Details`}
         user={user}
@@ -210,7 +217,7 @@ const TableDetail = props => {
                 {!isEditing && (
                   <li className="relative">
                     <UsefulQuestions
-                      questions={interestingQuestions(props.table)}
+                      questions={interestingQuestions(table, metadata)}
                     />
                   </li>
                 )}
