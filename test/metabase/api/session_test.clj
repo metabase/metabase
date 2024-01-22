@@ -570,9 +570,20 @@
 ;;; ------------------------------------------- TESTS FOR UNSUBSCRIBING NONUSERS STUFF --------------------------------------------
 
 (deftest unsubscribe-hash-test
-  (with-redefs [public-settings/site-uuid-for-unsubscribing-url (constantly "08534993-94c6-4bac-a1ad-86c9668ee8f5")]
-    (is (= "691501b28502126a6f59636ce147d26afa9d8fe8e5d0bd41f0de609194c0d9ba0042276d9b23cf10b1c7a4b18b3f946707e511d3e95e08fbe2c456080f619e36"
-           (messages/generate-pulse-unsubscribe-hash :pulse-id "rasta@pasta.com")))))
+  (let [email         "rasta@pasta.com"
+        pulse-id      12345678
+        expected-hash "37bc76b4a24279eb90a71c129a629fb8626ad0089f119d6d095bc5135377f2e2884ad80b037495f1962a283cf57cdbad031fd1f06a21d86a40bba7fe674802dd"]
+    (mt/with-temporary-setting-values [site-uuid-for-unsubscribing-url "08534993-94c6-4bac-a1ad-86c9668ee8f5"]
+      (testing "We generate a cryptographic hash to validate unsubscribe URLs"
+        (is (= expected-hash (messages/generate-pulse-unsubscribe-hash pulse-id email))))
+
+      (testing "The hash value depends on the pulse-id, email, and site-uuid"
+        (let [alternate-site-uuid "aa147515-ade9-4298-ac5f-c7e42b69286d"
+              alternate-hashes [(messages/generate-pulse-unsubscribe-hash 87654321 email)
+                                (messages/generate-pulse-unsubscribe-hash pulse-id "hasta@lavista.com")
+                                (mt/with-temporary-setting-values [site-uuid-for-unsubscribing-url alternate-site-uuid]
+                                  (messages/generate-pulse-unsubscribe-hash pulse-id email))]]
+          (is (= 3 (count (distinct (remove #{expected-hash} alternate-hashes))))))))))
 
 (deftest unsubscribe-test
   (reset-throttlers!)
