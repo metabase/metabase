@@ -16,7 +16,6 @@ type QueryBuilderUiControls = {
 
 export type ErrorActionButtonProps = QueryValidationErrorProps & {
   uiControls: QueryBuilderUiControls;
-  toggleTemplateTagsEditor: () => void;
 };
 
 const mapStateToProps = (state: any) => ({
@@ -29,9 +28,9 @@ export const BUTTON_ACTIONS: Record<
 > = {
   [VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION]: [
     t`Edit variables`,
-    ({ uiControls, toggleTemplateTagsEditor }) => {
+    ({ uiControls }) => {
       if (!uiControls.isShowingTemplateTagsEditor) {
-        toggleTemplateTagsEditor();
+        // TODO: This originally just called trackStructEvent. Can this be removed?
       }
     },
   ],
