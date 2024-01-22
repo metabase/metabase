@@ -32,7 +32,7 @@ Note that there are some kinds of saved questions that can't be used as source d
 
 ## The query builder
 
-Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample database** > **Orders**, then you'll see something like this:
+Once you select your data, Metabase will take you to the query builder. Say you selected **Raw data** > **Sample database** > **Orders**, then you'll see something like this:
 
 ![Metabase query builder](../images/notebook-editor.png)
 
@@ -42,7 +42,7 @@ This is the query builder's notebook editor. It has three default steps.
 - [Filtering](#filtering)
 - [Summarizing and grouping by](#summarizing-and-grouping-by)
 
-To the right of completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
+To the right of each completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
 
 ![Previewing results](../images/preview-table.png)
 

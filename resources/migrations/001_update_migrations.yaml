@@ -4186,6 +4186,59 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'Hash of normalized query, calculated in middleware.cache'
 
+  # this index was added in migration 95, but during our split migration work in #34400 we didn't include this index
+  # in the sql initialization, so we need to recreate one here for new instances running 48+
+  - changeSet:
+      id: v48.00-067
+      author: qnkhuat
+      comment: 'Add unique constraint idx_databasechangelog_id_author_filename'
+      preConditions:
+        - onFail: MARK_RAN
+        # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
+        # so just go ahead and skip the entire thing. This is a non-critical migration
+        - onUpdateSQL: IGNORE
+        - and:
+          - sqlCheck:
+              expectedResult: 0
+              sql: SELECT count(*) FROM (SELECT count(*) FROM DATABASECHANGELOG GROUP BY ID, AUTHOR, FILENAME HAVING count(*) > 1) t1
+          - or:
+            - and:
+              - dbms:
+                  type: postgresql
+              - sqlCheck:
+                  expectedResult: 0
+                  sql: >-
+                    SELECT COUNT(*)
+                    FROM pg_indexes
+                    WHERE tablename = 'databasechangelog' AND
+                          indexname = 'idx_databasechangelog_id_author_filename';
+            - and:
+              - dbms:
+                  type: h2
+              - sqlCheck:
+                  expectedResult: 0
+                  sql: >-
+                    SELECT COUNT(*)
+                    FROM INFORMATION_SCHEMA.INDEXES
+                    WHERE TABLE_NAME = 'DATABASECHANGELOG' AND
+                          INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';
+            - and:
+              - dbms:
+                  type: mysql,mariadb
+              - not:
+                - indexExists:
+                    tableName: ${databasechangelog.name}
+                    indexName: idx_databasechangelog_id_author_filename
+      changes:
+        - addUniqueConstraint:
+            constraintName: idx_databasechangelog_id_author_filename
+            tableName: ${databasechangelog.name}
+            columnNames: id, author, filename
+      rollback:
+        - dropUniqueConstraint:
+            tableName: ${databasechangelog.name}
+            constraintName: idx_databasechangelog_id_author_filename
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
