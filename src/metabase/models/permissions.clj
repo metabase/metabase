@@ -655,6 +655,7 @@
                 (filter (fn [path] (mc/validate [:re perms.u/path-regex-v1] path)) paths))
               group-id->permissions))
 
+;; TODO deprecate:
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code. Keeps v1 paths, hence implictly removes v2 paths.
