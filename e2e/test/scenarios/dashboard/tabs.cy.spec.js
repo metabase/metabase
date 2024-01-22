@@ -125,8 +125,8 @@ describe("scenarios > dashboard > tabs", () => {
       tabs: [TAB_1, TAB_2],
       parameters: [
         DASHBOARD_DATE_FILTER,
-        DASHBOARD_NUMBER_FILTER,
-        DASHBOARD_TEXT_FILTER,
+        { ...DASHBOARD_NUMBER_FILTER, default: 20 },
+        { ...DASHBOARD_TEXT_FILTER, default: "fa" },
         DASHBOARD_LOCATION_FILTER,
       ],
       dashcards: [
@@ -156,12 +156,26 @@ describe("scenarios > dashboard > tabs", () => {
       hidden: [DASHBOARD_NUMBER_FILTER, DASHBOARD_LOCATION_FILTER],
     });
 
+    assertFilterValues([
+      [DASHBOARD_DATE_FILTER, undefined],
+      [DASHBOARD_TEXT_FILTER, "fa"],
+      [DASHBOARD_NUMBER_FILTER, 20],
+      [DASHBOARD_LOCATION_FILTER, undefined],
+    ]);
+
     goToTab(TAB_2.name);
 
     assertFiltersVisibility({
       visible: [DASHBOARD_DATE_FILTER, DASHBOARD_NUMBER_FILTER],
       hidden: [DASHBOARD_TEXT_FILTER, DASHBOARD_LOCATION_FILTER],
     });
+
+    assertFilterValues([
+      [DASHBOARD_DATE_FILTER, undefined],
+      [DASHBOARD_TEXT_FILTER, "fa"],
+      [DASHBOARD_NUMBER_FILTER, 20],
+      [DASHBOARD_LOCATION_FILTER, undefined],
+    ]);
   });
 
   it("should allow undoing a tab deletion", () => {
@@ -698,4 +712,12 @@ function assertFiltersVisibility({ visible = [], hidden = [] }) {
   });
 
   cy.findByTestId("edit-bar").button("Cancel").click();
+}
+
+function assertFilterValues(filterValues) {
+  filterValues.forEach(([filter, value]) => {
+    const displayValue = value === undefined ? "" : value.toString();
+    const filterQueryParameter = `${filter.slug}=${displayValue}`;
+    cy.location("search").should("contain", filterQueryParameter);
+  });
 }
