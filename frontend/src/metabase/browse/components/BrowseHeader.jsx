@@ -8,7 +8,7 @@ import Link from "metabase/core/components/Link";
 import {
   BrowseHeaderContent,
   BrowseHeaderRoot,
-  BrowserHeaderIconContainer,
+  BrowseHeaderIconContainer,
 } from "./BrowseHeader.styled";
 
 export default function BrowseHeader({ crumbs = [] }) {
@@ -26,12 +26,12 @@ export default function BrowseHeader({ crumbs = [] }) {
             to="reference"
             data-metabase-event="NavBar;Reference"
           >
-            <BrowserHeaderIconContainer>
+            <BrowseHeaderIconContainer>
               <Icon className="flex align-center" size={14} name="reference" />
               <span className="ml1 flex align-center text-bold">
                 {t`Learn about our data`}
               </span>
-            </BrowserHeaderIconContainer>
+            </BrowseHeaderIconContainer>
           </Link>
         </div>
       </BrowseHeaderContent>

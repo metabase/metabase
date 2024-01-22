@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import cx from "classnames";
 
 import _ from "underscore";
 import { jt, t } from "ttag";
@@ -16,11 +17,10 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
-
 import NoResults from "assets/img/no_results.svg";
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { sortModels } from "metabase/browse/utils";
 import {
   CenteredEmptyState,
   CollectionHeaderContainer,
@@ -104,8 +104,6 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
       key={model.id}
       style={style}
       to={Urls.model(model as unknown as Partial<Card>)}
-      // FIXME: Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
-      data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
     >
       <ModelCard>
         <Title order={4} className="text-wrap" lh="1rem" mb=".5rem">
@@ -116,7 +114,7 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
         <Text h="2rem" size="xs" mb="auto">
           <MultilineEllipsified
             tooltipMaxWidth="100%"
-            className={model.description ? "" : "text-light"}
+            className={cx({ "text-light": !model.description })}
           >
             {model.description || "No description."}{" "}
           </MultilineEllipsified>
@@ -129,7 +127,6 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
             label: tooltipLabel,
             withArrow: true,
           }}
-          // TODO: Use first name and last initial
         >
           {lastEditorName}
           {lastEditorName && howLongAgo ? (
@@ -140,64 +137,6 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
       </ModelCard>
     </Link>
   );
-};
-
-// TODO: Put into a utils file and independently test it
-
-/** Sort models firstly by collection name,
- * secondly by collection id,
- * thirdly by model name, and
- * lastly by model id. */
-const sortModels = (a: SearchResult, b: SearchResult) => {
-  const fallbackSortValue = Number.MAX_SAFE_INTEGER;
-
-  // Sort first on the name of the model's parent collection, case insensitive
-  const collectionNameA =
-    a.collection?.name?.toLowerCase() || fallbackSortValue;
-  const collectionNameB =
-    b.collection?.name?.toLowerCase() || fallbackSortValue;
-
-  if (collectionNameA < collectionNameB) {
-    return -1;
-  }
-  if (collectionNameA > collectionNameB) {
-    return 1;
-  }
-
-  // If the two models' parent collections have the same name, sort on the id of the collection
-  const collectionIdA = a.collection?.id ?? fallbackSortValue;
-  const collectionIdB = b.collection?.id ?? fallbackSortValue;
-
-  if (collectionIdA < collectionIdB) {
-    return -1;
-  }
-  if (collectionIdA > collectionIdB) {
-    return 1;
-  }
-
-  const nameA = a.name.toLowerCase() || fallbackSortValue;
-  const nameB = b.name.toLowerCase() || fallbackSortValue;
-
-  // If the two collection ids are the same, sort on the names of the models
-  if (nameA < nameB) {
-    return -1;
-  }
-  if (nameA > nameB) {
-    return 1;
-  }
-
-  // If the two models have the same name, sort on id
-  const idA = a.id ?? fallbackSortValue;
-  const idB = b.id ?? fallbackSortValue;
-
-  if (idA < idB) {
-    return -1;
-  }
-  if (idA > idB) {
-    return 1;
-  }
-
-  return 0;
 };
 
 const CollectionHeader = ({
