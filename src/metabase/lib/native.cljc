@@ -15,25 +15,73 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(mu/defn ^:private tokenize-query :- [:sequential :string]
+  "Tokenize the query for easier parsing.
+   This splits the string at the following tokens: {{ }} [[ ]],
+   and keeps the tokens in the result."
+  [query-text :- ::common/non-blank-string]
+  (str/split query-text #"(?<=(\{\{|\}\}|\[\[|\]\]))|(?=(\{\{|\}\}|\[\[|\]\]))"))
+
+(mr/def ::template-tag-with-context
+   [:map
+    [:name [:maybe :string]]
+    [:optional :boolean]])
+
+(mu/defn ^:private parse-template-tags :- [:sequential ::template-tag-with-context]
+  "Parse the tokenized query into a sequence of tags, possibly with invalid content."
+  [tokens :- [:sequential :string]]
+  (loop [tags []
+         [token & tail] tokens
+         in-optional-block false
+         in-template-tag false
+         current-template-text ""]
+    (if (nil? token)
+      tags
+      (case token
+        "{{" (recur tags tail in-optional-block true "")
+        "}}" (if in-template-tag
+              ;; close the current template tag
+              (recur (conj tags {:name current-template-text :optional in-optional-block}) tail in-optional-block false "")
+              (recur tags tail in-optional-block in-template-tag current-template-text))
+        "[[" (recur tags tail (not in-template-tag) in-template-tag current-template-text)
+        "]]" (recur tags tail (if in-template-tag in-optional-block false) in-template-tag current-template-text)
+        (if in-template-tag
+          (recur tags tail in-optional-block in-template-tag (str current-template-text token))
+          (recur tags tail in-optional-block in-template-tag current-template-text))))))
+
 (def ^:private variable-tag-regex
-  #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
+  #"^([A-Za-z0-9_\.]+)$")
 
 (def ^:private snippet-tag-regex
-  #"\{\{\s*(snippet:\s*[^}]+)\s*\}\}")
+  #"^(snippet:\s*[^}]+)$")
 
 (def ^:private card-tag-regex
-  #"\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}")
+  #"^#[0-9]+(-[a-z0-9-]*)?$")
 
 (def ^:private tag-regexes
-  [variable-tag-regex snippet-tag-regex card-tag-regex])
+  [snippet-tag-regex card-tag-regex variable-tag-regex])
 
-(mu/defn ^:private recognize-template-tags :- [:set ::common/non-blank-string]
-  "Given the text of a native query, extract a possibly-empty set of template tag strings from it."
+(mu/defn ^:private parse-template-tag :- [:maybe :string]
+  "Parse and validate a template tag's content."
+  [content :- :string]
+  (first (first
+    (mapcat #(re-seq % (str/trim content)) tag-regexes))))
+
+(mu/defn ^:private format-template-tag :- ::template-tag-with-context
+  "Format a template tags name."
+  [tag :- ::template-tag-with-context]
+  (update tag :name parse-template-tag))
+
+(mu/defn ^:private format-template-tags :- [:sequential ::template-tag-with-context]
+  "Format all template tags and filter out invalid ones."
+  [tags :- [:sequential ::template-tag-with-context]]
+  (remove (comp nil? :name)
+  (map format-template-tag tags)))
+
+(mu/defn ^:private recognize-template-tags :- [:sequential ::template-tag-with-context]
+  "Find all template tags and test if they are optional."
   [query-text :- ::common/non-blank-string]
-  (into #{}
-        (comp (mapcat #(re-seq % query-text))
-              (map second))
-        tag-regexes))
+  (format-template-tags (parse-template-tags (tokenize-query query-text))))
 
 (defn- tag-name->card-id [tag-name]
   (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
