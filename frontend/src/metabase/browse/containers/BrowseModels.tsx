@@ -19,7 +19,7 @@ import type { useSearchListQuery } from "metabase/common/hooks";
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
-import { Box, Icon, Text, Title } from "metabase/ui";
+import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
   CenteredEmptyState,
@@ -208,7 +208,9 @@ const CollectionHeader = ({
 }) => {
   const MaybeLink = ({ children }: { children: React.ReactNode }) =>
     collection ? (
-      <Link to={Urls.collection(collection)}>{children}</Link>
+      <Group grow noWrap>
+        <Link to={Urls.collection(collection)}>{children}</Link>
+      </Group>
     ) : (
       <>{children}</>
     );
