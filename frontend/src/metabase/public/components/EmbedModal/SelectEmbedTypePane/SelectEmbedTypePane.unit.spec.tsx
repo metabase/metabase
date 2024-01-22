@@ -37,7 +37,6 @@ const setup = ({
       component={() => (
         <SelectEmbedTypePane
           resource={TEST_DASHBOARD}
-          resourceType="dashboard"
           onCreatePublicLink={onCreatePublicLink}
           onDeletePublicLink={onDeletePublicLink}
           getPublicUrl={getPublicUrl}

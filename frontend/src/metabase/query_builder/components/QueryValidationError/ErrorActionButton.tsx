@@ -2,7 +2,6 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { getUiControls } from "metabase/query_builder/selectors";
-import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
 import type { ErrorType } from "metabase-lib/ValidationError";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
@@ -23,10 +22,6 @@ export type ErrorActionButtonProps = QueryValidationErrorProps & {
 const mapStateToProps = (state: any) => ({
   uiControls: getUiControls(state),
 });
-
-const mapDispatchToProps = {
-  toggleTemplateTagsEditor,
-};
 
 export const BUTTON_ACTIONS: Record<
   ErrorType,
@@ -60,4 +55,4 @@ export function ErrorActionButton(props: ErrorActionButtonProps) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(ErrorActionButton);
+export default connect(mapStateToProps)(ErrorActionButton);

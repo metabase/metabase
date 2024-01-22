@@ -130,7 +130,6 @@ export const EmbedModalContent = (
     return (
       <SelectEmbedTypePane
         resource={resource}
-        resourceType={resourceType}
         onCreatePublicLink={onCreatePublicLink}
         onDeletePublicLink={onDeletePublicLink}
         getPublicUrl={getPublicUrl}
