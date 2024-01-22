@@ -495,7 +495,7 @@ export class NativeQueryEditor extends Component<
             lastAutoComplete = {
               timestamp: Date.now(),
               prefix,
-              results,
+              results: apiResults,
             };
 
             // Get referenced questions
