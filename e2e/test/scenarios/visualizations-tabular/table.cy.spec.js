@@ -387,7 +387,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     cy.signInAsNormalUser();
   });
 
-  it("should work with boolean columns", { tags: ["@external"] }, () => {
+  it("should work with time columns", { tags: ["@external"] }, () => {
     cy.createNativeQuestion(
       {
         name: "11398",
@@ -399,7 +399,8 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     );
 
     // Open the formatting menu
-    cy.icon("chevrondown").click();
+    cy.findByTestId("field-info-popover").click();
+
     cy.findByTestId("drill-through-section").within(() => {
       cy.icon("gear").click();
     });
