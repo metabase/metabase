@@ -4,6 +4,8 @@ title: API keys
 
 # API keys
 
+Metabase can create API keys to authenticate programmatic requests to the API.
+
 ## Fair warning about Metabase's API
 
 We don't version the [Metabase API](../api-documentation.md). We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.
