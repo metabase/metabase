@@ -27,7 +27,7 @@ describe("issue 34330", () => {
     cy.get("@autocomplete.all").should("have.length", 1);
   });
 
-  it("should call the autocompleter eventually, even when only character was typed (metabase#34330)", async () => {
+  it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", async () => {
     const editor = openNativeEditor();
 
     // can't use cy.type because it does not simulate the bug
