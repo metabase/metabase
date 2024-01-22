@@ -2,6 +2,7 @@ import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
+import * as Lib from "metabase-lib";
 
 import {
   getParameterIconName,
@@ -127,7 +128,12 @@ class ParameterValueWidget extends Component {
   };
 
   isInsideNativeQuery() {
-    return Boolean(this.props.question?.isNative());
+    const query = this.props.question?.query();
+    if (query) {
+      const { isNative } = Lib.queryDisplayInfo(query);
+      return isNative;
+    }
+    return false;
   }
 
   render() {
