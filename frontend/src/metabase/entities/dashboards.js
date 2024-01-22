@@ -1,11 +1,6 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
-import {
-  compose,
-  withAction,
-  withAnalytics,
-  withRequestState,
-} from "metabase/lib/redux";
+import { compose, withAction, withRequestState } from "metabase/lib/redux";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls/dashboards";
@@ -86,7 +81,6 @@ const Dashboards = createEntity({
         dashboard.id,
         "copy",
       ]),
-      withAnalytics("entities", "dashboard", "copy"),
     )(
       (entityObject, overrides, { notify } = {}) =>
         async (dispatch, getState) => {
