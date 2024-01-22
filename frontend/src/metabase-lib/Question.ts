@@ -184,7 +184,7 @@ class Question {
     }
 
     const isVirtualDashcard = !this._card.id;
-    // `dataset_query` is null for questions on a dashboard the user don't have access to
+    // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
     !isVirtualDashcard &&
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
@@ -203,16 +203,12 @@ class Question {
     return query;
   }
 
-  isNative(): boolean {
-    return (
-      this.legacyQuery({ useStructuredQuery: true }) instanceof NativeQuery
-    );
-  }
-
+  /**
+   * @deprecated use MLv2
+   */
   isStructured(): boolean {
-    return (
-      this.legacyQuery({ useStructuredQuery: true }) instanceof StructuredQuery
-    );
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+    return !isNative;
   }
 
   /**
@@ -1112,9 +1108,10 @@ class Question {
    */
   canExploreResults() {
     const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
+    const { isNative } = Lib.queryDisplayInfo(this.query());
 
     return (
-      this.isNative() &&
+      isNative &&
       this.isSaved() &&
       this.parameters().length === 0 &&
       canNest &&

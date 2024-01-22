@@ -249,7 +249,7 @@
            ["is set to 20 when the value doesn't make sense." -20 20]
            ["is limited to a max. of 100 rows." 200 100]]]
     (testing (format "The `metabase.public-settings/attachment-rows-limit` %s" test-explanation)
-      (mt/with-temp-env-var-value ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
+      (mt/with-temp-env-var-value! ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
         (is (= expected
                (count (-> (render-table
                            {:visualization_settings {:table.columns
