@@ -5205,6 +5205,74 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v49.2024-01-22T11:50:00
+      author: qnkhuat
+      comment: Add `report_card.type`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  remarks: The type of card, could be 'question', 'model', 'metric'
+                  name: type
+                  type: varchar(16)
+                  constraints:
+                    # nullable for now so we can backfill it, will be not-nullable later on
+                    nullable: true
+
+
+  - changeSet:
+      id: v49.2024-01-22T11:51:00
+      author: qnkhuat
+      comment: Backfill `report_card.type`
+      rollback: # no need because the column will be dropped
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET type = CASE
+                          WHEN dataset IS TRUE THEN 'model'
+                          ELSE 'question'
+                        END
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET dataset = true
+              WHERE type = 'model';
+
+  - changeSet:
+      id: v49.2024-01-22T11:52:00
+      author: qnkhuat
+      comment: Add not null constraint on `report_card.type`
+      rollback: # no need because the column will be dropped
+      changes:
+        - addNotNullConstraint:
+            tableName: report_card
+            columnName: type
+            columnDataType: varchar(16)
+
+  - changeSet:
+      id: v49.2024-01-22T11:53:00
+      author: qnkhuat
+      comment: Add not null constraint on `report_card.type`
+      rollback: # no need because the column will be dropped
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: dataset
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  type: ${boolean.type}
+                  remarks: "Indicate whether question is a dataset"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
