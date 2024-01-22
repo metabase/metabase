@@ -488,12 +488,10 @@
 (defn- db-value [setting-definition-or-name]
   (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name)))
 
-(defn- call-me-maybe [f]
-  (when f (f)))
-
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
-  (call-me-maybe (requiring-resolve 'metabase.db/db-is-set-up?)))
+  (let [f (requiring-resolve 'metabase.db/db-is-set-up?)]
+    (if f (f) false)))
 
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
@@ -527,8 +525,9 @@
           (u/or-with some?
             ;; perhaps another process initialized this setting while we were waiting for the lock
             (read-setting setting)
-            (when-let [init-value (call-me-maybe init)]
-              (metabase.models.setting/set! setting init-value :bypass-read-only? true)))
+            (when init
+              (when-let [init-value (init)]
+                (metabase.models.setting/set! setting init-value :bypass-read-only? true))))
           (finally
             (.unlock init-lock)))))))
 
