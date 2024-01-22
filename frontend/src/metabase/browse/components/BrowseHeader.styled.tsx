@@ -11,7 +11,7 @@ export const BrowseHeaderContent = styled.div`
   margin-top: 0.5rem;
 `;
 
-export const BrowserHeaderIconContainer = styled.div`
+export const BrowseHeaderIconContainer = styled.div`
   display: flex;
   align-items: center;
   color: ${color("text-medium")};
