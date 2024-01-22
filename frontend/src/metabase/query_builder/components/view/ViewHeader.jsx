@@ -434,6 +434,20 @@ function ViewTitleHeaderRightSide(props) {
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "E" && !isShowingNotebook) {
+        setQueryBuilderMode("notebook");
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const getRunButtonLabel = useCallback(
     () => (isRunning ? t`Cancel` : t`Refresh`),
     [isRunning],
