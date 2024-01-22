@@ -44,9 +44,6 @@
   (data-perms.graph/db-graph->api-graph
    (data-perms/data-permissions-graph {:audit? false})))
 
-[(data-perms/data-permissions-graph {:audit? false})
- (perms/data-perms-graph)]
-
 (api/defendpoint GET "/graph/db/:db-id"
   "Fetch a graph of all v1 Permissions for db-id `db-id` (excludes v2 query and data permissions)."
   [db-id]
