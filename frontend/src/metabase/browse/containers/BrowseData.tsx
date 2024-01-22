@@ -1,8 +1,7 @@
-import { useState } from "react";
-
 import _ from "underscore";
 import { t } from "ttag";
 
+import { push } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
@@ -18,6 +17,7 @@ import {
 
 import NoResults from "assets/img/no_results.svg";
 import type { SearchResult } from "metabase-types/api";
+import { useDispatch } from "metabase/lib/redux";
 import BrowseHeader from "../components/BrowseHeader";
 import {
   DatabaseCard,
@@ -29,13 +29,10 @@ import {
 } from "./BrowseData.styled";
 import { BrowseModels } from "./BrowseModels";
 
-type BrowseTabId = "models" | "databases";
+export type BrowseTabId = "models" | "databases";
 
-const isValidTabId = (value: string | null): value is BrowseTabId =>
-  value === "models" || value === "databases";
-
-export const BrowseDataPage = () => {
-  const [currentTabId, setTabId] = useState<BrowseTabId>("models");
+export const BrowseDataPage = ({ tab = "models" }: { tab: BrowseTabId }) => {
+  const dispatch = useDispatch();
 
   const models = useSearchListQuery<SearchResult>({
     query: {
@@ -51,12 +48,8 @@ export const BrowseDataPage = () => {
     <BrowseContainer data-testid="data-browser">
       <BrowseHeader />
       <BrowseTabs
-        value={currentTabId}
-        onTabChange={value => {
-          if (isValidTabId(value)) {
-            setTabId(value);
-          }
-        }}
+        value={tab}
+        onTabChange={value => dispatch(push(`/browse-${value}`))}
       >
         <Tabs.List>
           <Tabs.Tab key={"models"} value={"models"}>
@@ -67,8 +60,8 @@ export const BrowseDataPage = () => {
           </Tabs.Tab>
         </Tabs.List>
         <Divider />
-        <BrowseTabsPanel key={currentTabId} value={currentTabId ?? ""}>
-          {currentTabId === "models" ? (
+        <BrowseTabsPanel key={tab} value={tab ?? ""}>
+          {tab === "models" ? (
             <BrowseModels key="models" {...models} />
           ) : (
             <BrowseDatabases key="databases" {...databases} />
