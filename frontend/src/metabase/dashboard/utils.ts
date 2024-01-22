@@ -215,7 +215,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   const errors = datasets.map(s => s.error).filter(Boolean);
   if (errors.length > 0) {
     const tokenExpired = errors.some(error =>
-      error?.data?.startsWith("Token is expired"),
+      error?.data?.startsWith?.("Token is expired"),
     );
     if (tokenExpired) {
       return {
