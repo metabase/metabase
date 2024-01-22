@@ -7,7 +7,7 @@ import {
 import Card from "metabase/components/Card";
 import { GridItem } from "metabase/components/Grid";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-
+import Link from "metabase/core/components/Link";
 import { Tabs } from "metabase/ui";
 import EmptyState from "metabase/components/EmptyState";
 
@@ -39,11 +39,8 @@ export const ModelCard = styled(Card)`
   padding: 1.5rem;
   padding-bottom: 1rem;
 
-  &:hover {
+  &:hover h4 {
     color: ${color("brand")};
-  }
-  .Button:hover {
-    color: ${color("text-medium")} !important;
   }
 
   height: 9rem;
@@ -54,6 +51,10 @@ export const ModelCard = styled(Card)`
 
   box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.06) !important;
 
+  // TODO: Don't use LastEditInfoLabel and so don't use these rules
+  .Button:hover {
+    color: ${color("text-medium")} !important;
+  }
   & .last-edit-info-label-button div,
   & .last-edit-info-label-button span {
     white-space: wrap !important;
@@ -124,16 +125,20 @@ export const GridContainer = styled.div`
 `;
 
 export const CollectionHeaderContainer = styled.div`
+  grid-column: 1 / -1;
+  align-items: center;
+  padding-top: 0.5rem;
+  margin-right: 1rem;
   &:not(:first-of-type) {
     border-top: 1px solid #f0f0f0;
   }
-  grid-column: 1 / -1;
-  align-items: center;
-  padding-top: 1rem;
-  margin-right: 1rem;
-  a {
-    &:hover h4 {
-      color: ${color("brand")};
-    }
+  // Kludge so we can use grid-gap: 1rem
+  position: relative;
+  top: 0.5rem;
+`;
+
+export const CollectionHeaderLink = styled(Link)`
+  &:hover * {
+    color: ${color("brand")};
   }
 `;

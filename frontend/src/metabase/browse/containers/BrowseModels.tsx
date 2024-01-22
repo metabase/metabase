@@ -24,6 +24,7 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
   CenteredEmptyState,
   CollectionHeaderContainer,
+  CollectionHeaderLink,
   GridContainer,
   LastEditedInfoSeparator,
   ModelCard,
@@ -209,7 +210,9 @@ const CollectionHeader = ({
   const MaybeLink = ({ children }: { children: React.ReactNode }) =>
     collection ? (
       <Group grow noWrap>
-        <Link to={Urls.collection(collection)}>{children}</Link>
+        <CollectionHeaderLink to={Urls.collection(collection)}>
+          {children}
+        </CollectionHeaderLink>
       </Group>
     ) : (
       <>{children}</>
