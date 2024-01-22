@@ -57,11 +57,21 @@
   [{:keys [id] :as _metric}]
   (t2/delete! :model/Revision :model "Metric" :model_id id))
 
-(defmethod mi/perms-objects-set Metric
-  [metric read-or-write]
-  (let [table (or (:table metric)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
-    (mi/perms-objects-set table read-or-write)))
+(defn- metric->table [metric]
+  (or (:table metric)
+      (t2/select-one [:model/Table :db_id :schema :id] :id (u/the-id (:table_id metric)))))
+
+(defmethod mi/can-read? :model/Segment
+  ([instance]
+   (mi/can-read? :model/Table (metric->table instance)))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Segment pk))))
+
+(defmethod mi/can-write? :model/Segment
+  ([instance]
+   (mi/can-write? :model/Table (metric->table instance)))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Segment pk))))
 
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."

@@ -4,6 +4,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -13,6 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -52,11 +54,21 @@
       (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Segment :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
-(defmethod mi/perms-objects-set Segment
-  [segment read-or-write]
-  (let [table (or (:table segment)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
-    (mi/perms-objects-set table read-or-write)))
+(defn- segment->table [segment]
+  (or (:table segment)
+      (t2/select-one [:model/Table :db_id :schema :id] :id (u/the-id (:table_id segment)))))
+
+(defmethod mi/can-read? :model/Segment
+  ([instance]
+   (mi/can-read? :model/Table (segment->table instance)))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Segment pk))))
+
+(defmethod mi/can-write? :model/Segment
+  ([instance]
+   (mi/can-write? :model/Table (segment->table instance)))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Segment pk))))
 
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."
