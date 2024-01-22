@@ -671,3 +671,10 @@
         database (table/database table)]
     (check-can-append database table)
     (append-csv!* database table file)))
+
+(defn alter-column-type!
+  [field database-type]
+  ;; 1. check that user can upload to table
+  ;; 2. alter-column-type! using driver method
+  ;; 3. sync the table again (TODO: sync field only)
+  )

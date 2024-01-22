@@ -24,7 +24,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.upload :as upload])
   (:import
    (java.text NumberFormat)))
 
@@ -493,5 +494,12 @@
   [id]
   {id ms/PositiveInt}
   (-> (t2/select-one Field :id id) api/read-check related/related))
+
+(api/defendpoint PUT "/:id/alter-database-type"
+  "Changes the database type of a field"
+  [id :as {{:keys [target-type]} :body}]
+  {id ms/PositiveInt
+   target-type ms/NonBlankString}
+  (upload/alter-column-type! id target-type))
 
 (api/define-routes)

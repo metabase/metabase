@@ -928,6 +928,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti alter-column-type!
+  "Alter the type of a column named `column-name` in a table named `table-name` from `source-type` to `target-type`.
+  If the table or column doesn't exist it will throw an error. It will throw an error if the values in the column cannot be
+  coerced into the target type."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-name source-type target-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti add-columns!
   "Add columns given by `col->type` to a table named `table-name`. If the table doesn't exist it will throw an error."
   {:added "0.49.0", :arglists '([driver db-id table-name col->type])}
