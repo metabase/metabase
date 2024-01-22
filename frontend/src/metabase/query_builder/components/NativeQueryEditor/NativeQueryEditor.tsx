@@ -85,6 +85,12 @@ type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
 
 type AutocompleteItem = [string, string];
 
+type LastAutoComplete = {
+  timestamp: number;
+  prefix: string | null;
+  results: AutocompleteItem[];
+};
+
 type OwnProps = typeof NativeQueryEditor.defaultProps & {
   question: Question;
   query: NativeQuery;
@@ -435,10 +441,10 @@ export class NativeQueryEditor extends Component<
       showLineNumbers: true,
     });
 
-    let lastAutoComplete = {
+    let lastAutoComplete: LastAutoComplete = {
       timestamp: 0,
       prefix: "",
-      results: [] as AutocompleteItem[],
+      results: [],
     };
 
     aceLanguageTools.addCompleter({
