@@ -145,7 +145,7 @@ function buildFieldFilterUiParameter(
       return {
         field,
         // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-        shouldResolveFkField: Boolean(card.dataset_query?.type !== "native"),
+        shouldResolveFkField: card.dataset_query?.type === "query",
       };
     } catch (e) {
       console.error("Error getting a field from a card", { card });
