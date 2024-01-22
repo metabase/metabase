@@ -1161,6 +1161,19 @@
                                       (t2/table-name :model/DataPermissions)
                                       :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))
 
+        (testing "Manage table metadata access for a schema"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/data-model/db/%d/schema/PUBLIC/" db-id)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/manage-table-metadata")))
+          (is (= "yes"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))
+
         (testing "Manage table metadata access for a table"
           (clear-permissions!)
           (t2/insert! (t2/table-name Permissions) {:group_id group-id
