@@ -89,7 +89,7 @@
                                :join [[:metabase_table :t] [:= :s.table_id :t.id]]})]
      (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
                (assoc-in acc
-                         [group_id db_id :data :schemas schema table_id]
+                         [group_id db_id :data :schemas (or schema "") table_id]
                          {:query :segmented
                           :read :all}))
              {}
