@@ -111,7 +111,7 @@
   [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (when (= perms/audit-db-id database-id)
+    (when (= config/audit-db-id database-id)
      (check-audit-db-permissions outer-query))
     (cond
       *card-id*

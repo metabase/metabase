@@ -5,10 +5,10 @@
    [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
-   [metabase.models.permissions :as perms]
    [metabase.models.setting :refer [defsetting]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -212,7 +212,7 @@
       (nil? audit-db)
       (u/prog1 ::installed
        (log/info "Installing Audit DB...")
-       (install-database! mdb.env/db-type perms/audit-db-id))
+       (install-database! mdb.env/db-type config/audit-db-id))
 
       (not= mdb.env/db-type (:engine audit-db))
       (u/prog1 ::updated

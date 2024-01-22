@@ -628,18 +628,6 @@
             {}
             permissions)))
 
-(defenterprise add-impersonations-to-permissions-graph
-  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.advanced-permissions.models.connection-impersonation
-  [graph]
-  graph)
-
-(defenterprise add-sandboxes-to-permissions-graph
-  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.sandbox.models.group-table-access-policy
-  [graph]
-  graph)
-
 (defn- post-process-graph [graph]
   (->>
    graph
@@ -657,8 +645,8 @@
               (all-permissions db-ids)
               (:db permissions-graph)))))
        post-process-graph
-       add-sandboxes-to-permissions-graph
-       add-impersonations-to-permissions-graph))
+       data-perms.graph/add-sandboxes-to-permissions-graph
+       data-perms.graph/add-impersonations-to-permissions-graph))
 
 (defn ->v1-paths
   "keep v1 paths, implicitly remove v2"
@@ -868,10 +856,6 @@
 
 ; Audit Permissions helper fns
 
-(def audit-db-id
-  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
-  13371337)
-
 (defenterprise default-audit-collection
   "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
   version."
@@ -890,7 +874,7 @@
                          vals
                          (map keys)
                          (apply concat))]
-    (when (some #{audit-db-id} changes-ids)
+    (when (some #{config/audit-db-id} changes-ids)
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))

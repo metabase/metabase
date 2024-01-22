@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -171,9 +172,7 @@
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
                                        (when perm-type [:= :perm_type (u/qualified-name perm-type)])
-                                       (when-not audit? [:not [:= :db_id
-                                                               ;; perms/audit-db-id -> cyclic depdendency
-                                                               13371337]])]})]
+                                       (when-not audit? [:not [:= :db_id config/audit-db-id]])]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type

@@ -1,7 +1,7 @@
 (ns ^:mb/once metabase.search.filter-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.permissions :as perms]
+   [metabase.config :as config]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -134,7 +134,7 @@
     (is (= [:and
             [:= :table.active true]
             [:= :table.visibility_type nil]
-            [:not [:= :table.db_id perms/audit-db-id]]]
+            [:not [:= :table.db_id config/audit-db-id]]]
            (:where (search.filter/build-filters
                     base-search-query "table"  default-search-ctx))))))
 
@@ -142,7 +142,7 @@
   (is (contains?
          (set (:where (search.filter/build-filters
                        base-search-query "table"  default-search-ctx)))
-         [:not [:= :table.db_id perms/audit-db-id]])))
+         [:not [:= :table.db_id config/audit-db-id]])))
 
 (deftest ^:parallel build-filter-with-search-string-test
   (testing "with search string"

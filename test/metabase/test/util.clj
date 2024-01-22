@@ -665,7 +665,7 @@
 (defmethod with-model-cleanup-additional-conditions :model/Database
   [_]
   ;; Don't delete the audit database
-  [:not= :id perms/audit-db-id])
+  [:not= :id config/audit-db-id])
 
 (defmulti with-max-model-id-additional-conditions
   "Additional conditions applied to the query to find the max ID for a model prior to a test run. This can be used to
@@ -683,7 +683,7 @@
 
 (defmethod with-max-model-id-additional-conditions :model/Database
  [_]
- [:not= :id perms/audit-db-id])
+ [:not= :id config/audit-db-id])
 
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}

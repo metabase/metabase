@@ -6,10 +6,10 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
@@ -40,18 +40,18 @@
       (with-redefs [audit-db/analytics-dir-resource nil]
         (is (nil? @#'audit-db/analytics-dir-resource))
         (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
-        (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+        (is (= config/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
-        (is (= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
+        (is (= 0 (t2/count :model/Card {:where [:= :database_id config/audit-db-id]}))
             "No cards created for Audit DB."))
       (t2/delete! :model/Database :is_audit true))
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
-      (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+      (is (= config/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
-      (is (not= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
+      (is (not= 0 (t2/count :model/Card {:where [:= :database_id config/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
 
     (testing "Audit DB starts with no permissions for all users"
@@ -60,8 +60,8 @@
               :perms/data-access           :no-self-service
               :perms/download-results      :one-million-rows
               :perms/manage-table-metadata :no}
-             (-> (data-perms/data-permissions-graph :db-id perms/audit-db-id)
-                 (get-in [(u/the-id (perms-group/all-users)) perms/audit-db-id])))))
+             (-> (data-perms/data-permissions-graph :db-id config/audit-db-id)
+                 (get-in [(u/the-id (perms-group/all-users)) config/audit-db-id])))))
 
     (testing "Audit DB does not have scheduled syncs"
       (let [db-has-sync-job-trigger? (fn [db-id]
@@ -69,7 +69,7 @@
                                         (set (map #(-> % :data (get "db-id"))
                                                   (task/job-info "metabase.task.sync-and-analyze.job")))
                                         db-id))]
-        (is (not (db-has-sync-job-trigger? perms/audit-db-id)))))
+        (is (not (db-has-sync-job-trigger? config/audit-db-id)))))
 
     (testing "Audit DB doesn't get re-installed unless the engine changes"
       (with-redefs [audit-db/load-analytics-content (constantly nil)]
@@ -103,7 +103,7 @@
 
 (defn- get-audit-db-trigger-keys []
   (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))
-        audit-db? #(str/includes? % (str perms/audit-db-id))]
+        audit-db? #(str/includes? % (str config/audit-db-id))]
     (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
@@ -111,7 +111,7 @@
     (audit-db/ensure-audit-db-installed!)
     (is (= 0 (count (get-audit-db-trigger-keys))) "no sync scheduled after installation")
 
-    (with-redefs [task.sync-databases/job-context->database-id (constantly perms/audit-db-id)]
+    (with-redefs [task.sync-databases/job-context->database-id (constantly config/audit-db-id)]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Cannot sync Database: It is the audit db."

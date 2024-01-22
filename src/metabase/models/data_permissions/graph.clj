@@ -11,6 +11,7 @@
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-revision :as perms-revision]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -33,6 +34,18 @@
    :perms/manage-table-metadata {:yes :all :no nil}
    :perms/native-query-editing  {:yes :write :no nil}
    :perms/manage-database       {:yes :yes :no :no}})
+
+(defenterprise add-impersonations-to-permissions-graph
+  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
+  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  [graph]
+  graph)
+
+(defenterprise add-sandboxes-to-permissions-graph
+  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
+  metabase-enterprise.sandbox.models.group-table-access-policy
+  [graph]
+  graph)
 
 (mu/defn ellide? :- :boolean
   "If a table has the least permissive value for a perm type, leave it out,
@@ -77,10 +90,8 @@
   "Transforms a 'leaf' value with db-level or table-level perms in the data permissions graph into an API-style data permissions value.
   There's some tricks in here that ellide table-level and table-level permissions values that are the most-permissive setting."
   [perm-map]
-  (let [granular-keys [:perms/native-query-editing
-                       :perms/data-access
-                       :perms/download-results
-                       :perms/manage-table-metadata]]
+  (let [granular-keys [:perms/native-query-editing :perms/data-access
+                       :perms/download-results :perms/manage-table-metadata]]
     (m/deep-merge
      (into {} (keep rename-or-ellide-kv (apply dissoc perm-map granular-keys)))
      (granular-perm-rename perm-map :perms/data-access [:data :schemas])
@@ -93,25 +104,6 @@
                (fn [db-id->perms]
                  (update-vals db-id->perms rename-perm))))
 
-;; TODO: needed or not?
-;; (def ^:private legacy-admin-perms
-;;   {:data {:native :write, :schemas :all},
-;;    :download {:native :full, :schemas :full},
-;;    :data-model {:schemas :all},
-;;    :details :yes})
-
-;; TODO: needed or not?
-;; (defn- add-admin-group-perms
-;;   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it."
-;;   [api-graph]
-;;   (let [{admin-group-id :id} (perms-group/admin)
-;;         dbs (t2/select-fn-vec :id :model/Database {:where [:not= :id
-;;                                                            ;; perms/audit-db-id -> cyclic depdendency
-;;                                                            13371337]})]
-;;     (assoc api-graph
-;;            admin-group-id
-;;            (zipmap dbs (repeat legacy-admin-perms)))))
-
 (mu/defn db-graph->api-graph :- api.permission-graph/StrictData
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
@@ -119,14 +111,16 @@
   - Converts DB key names to API key names
   - Converts DB value names to API value names
   - Nesting: see [[rename-perms]] to see which keys in `graph` affect which paths in the api permission-graph
-
-  TODO: Add sandboxed entries to graph
+  - Adds sandboxed entries, and impersonations to graph
   "
   [graph :- [:map-of [:int {:title "group-id"}]
              [:map-of [:int {:title "db-id"}]
               [:map-of data-perms/Type [:or data-perms/Value :map]]]]]
   {:revision (perms-revision/latest-id)
-   :groups (-> graph rename-perms #_add-admin-group-perms)})
+   :groups (-> graph
+               rename-perms
+               add-sandboxes-to-permissions-graph
+               add-impersonations-to-permissions-graph)})
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 

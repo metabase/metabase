@@ -17,7 +17,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.schedules :as sync.schedules]
@@ -101,7 +100,7 @@
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (if (= perms/audit-db-id database-id)
+    (if (= config/audit-db-id database-id)
       (do
         (log/warn "Cannot sync Database: It is the audit db.")
         (when-not config/is-prod?
@@ -261,7 +260,7 @@
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf Database)]
-  (if (= perms/audit-db-id (:id database))
+  (if (= config/audit-db-id (:id database))
     (log/info (u/format-color :red "Not scheduling tasks for audit database"))
     (let [sync-job (task/job-info (job-key sync-analyze-task-info))
           fv-job   (task/job-info (job-key field-values-task-info))
