@@ -68,7 +68,7 @@
 
 (def ^:private SchemaGraph
   [:map-of
-   [:string {:decode/perm-graph name}]
+   [:maybe {:decode/perm-graph (fn [n] (if n (name n) ""))} :string]
    SchemaPerms])
 
 (def ^:private Schemas
@@ -136,7 +136,6 @@
   [:map
    [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
    [:revision int?]])
-
 
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 

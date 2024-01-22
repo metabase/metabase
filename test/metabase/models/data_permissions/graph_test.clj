@@ -263,7 +263,7 @@
   (is (= (#'data-perms.graph/rename-perm {:perms/data-access :no-self-service})        {}))
   (is (= (#'data-perms.graph/rename-perm {:perms/data-access :block})                  {:data {:schemas :block}}))
   (is (= (#'data-perms.graph/rename-perm {:perms/download-results :one-million-rows})  {:download {:schemas :full}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/download-results :ten-thousand-rows}) {:download {:schemas :partial}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/download-results :ten-thousand-rows}) {:download {:schemas :limited}}))
   (is (= (#'data-perms.graph/rename-perm {:perms/download-results :no})                {}))
   (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata :yes})          {:data-model {:schemas :all}}))
   (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata :no})           {}))

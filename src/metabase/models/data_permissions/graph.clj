@@ -29,7 +29,7 @@
                                  :no-self-service nil
                                  :block           :block}
    :perms/download-results      {:one-million-rows  :full
-                                 :ten-thousand-rows :partial
+                                 :ten-thousand-rows :limited
                                  :no                nil}
    :perms/manage-table-metadata {:yes :all :no nil}
    :perms/native-query-editing  {:yes :write :no nil}
