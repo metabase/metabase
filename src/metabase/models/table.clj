@@ -1,5 +1,6 @@
 (ns metabase.models.table
   (:require
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -70,7 +71,7 @@
           non-magic-groups (perms-group/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
-      (if (= (:db_id table) perms/audit-db-id)
+      (if (= (:db_id table) config/audit-db-id)
         ;; Tables in audit DB should start out with no-self-service in all groups
         (doseq [group non-admin-groups]
          (data-perms/set-table-permission! group table :perms/data-access :no-self-service))

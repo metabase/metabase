@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit-app.permissions
   (:require
    [metabase-enterprise.audit-db :refer [default-audit-collection]]
+   [metabase.config :as config]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -68,6 +69,6 @@
                                     :none  perms/delete-related-permissions!
                                     :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
                                                            {:status-code 400})))
-              view-tables         (t2/select :model/Table :db_id perms/audit-db-id :name [:in audit-db-view-names])]
+              view-tables         (t2/select :model/Table :db_id config/audit-db-id :name [:in audit-db-view-names])]
           (doseq [table view-tables]
             (change-permissions! group-id (perms/table-query-path table)))))))

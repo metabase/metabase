@@ -1,6 +1,7 @@
 (ns metabase.models.permissions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -398,7 +399,7 @@
     (mt/with-temp [PermissionsGroup group    {}
                    Database         database {}
                    Table            table    {:db_id (u/the-id database)}]
-      (with-redefs [perms/audit-db-id (u/the-id database)]
+      (with-redefs [config/audit-db-id (u/the-id database)]
         (is (thrown-with-msg?
              Exception
              #"Audit database permissions can only be changed by updating audit collection permissions."

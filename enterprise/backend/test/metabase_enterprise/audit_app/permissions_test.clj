@@ -6,6 +6,7 @@
    [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.audit-db-test :as audit-db-test]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.collection.graph :refer [update-graph!]]
@@ -40,20 +41,20 @@
       (mt/with-premium-features #{:audit-app}
         (mt/with-test-user :crowberto
           (testing "A query using a saved audit model as the source table runs succesfully"
-            (let [audit-card (t2/select-one :model/Card :database_id perms/audit-db-id :dataset true)]
+            (let [audit-card (t2/select-one :model/Card :database_id config/audit-db-id :dataset true)]
               (is (partial=
                    {:status :completed}
                    (qp/process-query
-                    {:database perms/audit-db-id
+                    {:database config/audit-db-id
                      :type     :query
                      :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
 
           (testing "A non-native query can be run on views in the audit DB"
-            (let [audit-view (t2/select-one :model/Table :db_id perms/audit-db-id)]
+            (let [audit-view (t2/select-one :model/Table :db_id config/audit-db-id)]
               (is (partial=
                    {:status :completed}
                    (qp/process-query
-                    {:database perms/audit-db-id
+                    {:database config/audit-db-id
                      :type     :query
                      :query    {:source-table (u/the-id audit-view)}}))))))))))
 
@@ -67,7 +68,7 @@
                  clojure.lang.ExceptionInfo
                  #"Native queries are not allowed on the audit database"
                  (qp/process-query
-                  {:database perms/audit-db-id
+                  {:database config/audit-db-id
                    :type     :native
                    :native   {:query "SELECT * FROM v_audit_log;"}}))))
 
@@ -75,25 +76,25 @@
             ;; Nothing should be synced directly from the audit DB, just loaded via serialization, so only the views
             ;; should have metadata present in the app DB in the first place. But in case this changes, we want to
             ;; explicitly block other tables from being queried.
-            (t2.with-temp/with-temp [:model/Table table {:db_id perms/audit-db-id}
+            (t2.with-temp/with-temp [:model/Table table {:db_id config/audit-db-id}
                                      :model/Field _     {:table_id (u/the-id table)}]
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"Audit queries are only allowed on audit views"
                    (qp/process-query
-                    {:database perms/audit-db-id
+                    {:database config/audit-db-id
                      :type     :query
                      :query   {:source-table (u/the-id table)}})))))
 
           (testing "Users without access to the audit collection cannot run any queries on the audit DB, even if they
                    have data perms for the audit DB"
-            (binding [api/*current-user-permissions-set* (delay #{(perms/data-perms-path perms/audit-db-id)})]
-              (let [audit-view (t2/select-one :model/Table :db_id perms/audit-db-id)]
+            (binding [api/*current-user-permissions-set* (delay #{(perms/data-perms-path config/audit-db-id)})]
+              (let [audit-view (t2/select-one :model/Table :db_id config/audit-db-id)]
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have access to the audit database"
                      (qp/process-query
-                      {:database perms/audit-db-id
+                      {:database config/audit-db-id
                        :type     :query
                        :query    {:source-table (u/the-id audit-view)}})))))))))))
 
@@ -103,7 +104,7 @@
                    Database         {database-id :id} {}
                    Table            view-table        {:db_id database-id :name "v_users"}
                    Collection       collection        {}]
-      (with-redefs [perms/audit-db-id                 database-id
+      (with-redefs [config/audit-db-id                 database-id
                     audit-db/default-audit-collection (constantly collection)]
         (testing "Adding instance analytics adds audit db permissions"
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
