@@ -291,6 +291,29 @@ describe("scenarios > visualizations > bar chart", () => {
 
       cy.get("g.axis.yr").should("not.exist");
     });
+
+    it("should not split the y-axis on native queries with two numeric columns", () => {
+      visitQuestionAdhoc({
+        display: "bar",
+        dataset_query: {
+          type: "native",
+          native: {
+            query:
+              `SELECT products.category AS "x", COUNT(*) AS "m1", AVG(orders.discount) AS "m2" ` +
+              "FROM orders " +
+              "JOIN products ON orders.product_id = products.id " +
+              "GROUP BY products.category",
+          },
+          database: SAMPLE_DB_ID,
+        },
+        visualization_settings: {
+          "graph.dimensions": ["x"],
+          "graph.metrics": ["m1", "m2"],
+        },
+      });
+
+      cy.get("g.axis.yr").should("be.visible");
+    });
   });
 
   describe("with stacked bars", () => {
