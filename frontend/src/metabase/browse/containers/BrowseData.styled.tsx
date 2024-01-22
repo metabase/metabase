@@ -96,32 +96,16 @@ export const BrowseContainer = styled.div`
   height: 100%;
 `;
 
-export const SimpleBrowseHeader = styled.h2`
-  margin-bottom: 0.35rem;
-  margin-right: 1rem;
-`;
-
 export const CenteredEmptyState = styled(EmptyState)`
   display: flex;
   flex: 1;
-  flex-direction: column;
+  flex-flow: column nowrap;
   align-items: center;
   justify-content: center;
-  width: 100%;
   height: 100%;
-  h2 {
-    margin-bottom: 0.5rem;
-  }
-  .empty-state-illustration {
-    margin-bottom: 0.5rem;
-  }
-  .empty-state-message {
-    max-width: 24rem;
-  }
 `;
 
 export const GridContainer = styled.div`
-  flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   gap: 1rem;
@@ -144,8 +128,6 @@ export const CollectionHeaderContainer = styled.div`
     border-top: 1px solid #f0f0f0;
   }
   grid-column: 1 / -1;
-  display: flex;
-  flex-flow: row nowrap;
   align-items: center;
   padding-top: 1rem;
   margin-right: 1rem;
