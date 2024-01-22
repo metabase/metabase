@@ -5,6 +5,7 @@ import {
   getDashboardCard,
   editDashboard,
   showDashboardCardActions,
+  modal,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -24,8 +25,10 @@ describe("scenarios > dashboard cards > visualization options", () => {
     showDashboardCardActions();
     cy.icon("palette").click();
 
-    cy.findByDisplayValue("Orders").click().clear();
-    cy.get("[data-metabase-event='Chart Settings;Done']").click();
+    modal().within(() => {
+      cy.findByDisplayValue("Orders").click().clear();
+      cy.button("Done").click();
+    });
 
     cy.findByTestId("legend-caption").should("not.exist");
   });
