@@ -23,7 +23,7 @@ describe("issue 34330", () => {
       expect(url.searchParams.get("substring")).to.equal("USER_");
     });
 
-    // only one call to the autocompleter can be made
+    // only one call to the autocompleter should have been made
     cy.get("@autocomplete.all").should("have.length", 1);
   });
 
@@ -39,7 +39,7 @@ describe("issue 34330", () => {
       expect(url.searchParams.get("substring")).to.equal("U");
     });
 
-    // only one call to the autocompleter can be made
+    // only one call to the autocompleter should have been made
     cy.get("@autocomplete.all").should("have.length", 1);
   });
 });
