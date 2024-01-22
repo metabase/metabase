@@ -447,6 +447,13 @@ export class NativeQueryEditor extends Component<
       results: [],
     };
 
+    const resultsForAce = (results: [string, string][]) =>
+      results.map(([name, meta]) => ({
+        name: name,
+        value: name,
+        meta: meta,
+      })) ?? [];
+
     aceLanguageTools.addCompleter({
       getCompletions: async (
         _editor: Ace.Editor,
@@ -472,7 +479,7 @@ export class NativeQueryEditor extends Component<
               results: lastAutoComplete.results,
             };
 
-            callback(null, []);
+            callback(null, resultsForAce(lastAutoComplete.results));
             return;
           }
 
@@ -527,12 +534,7 @@ export class NativeQueryEditor extends Component<
           }
 
           // transform results into what ACE expects
-          const resultsForAce = results?.map(([name, meta]) => ({
-            name: name,
-            value: name,
-            meta: meta,
-          }));
-          callback(null, resultsForAce || []);
+          callback(null, resultsForAce(results));
         } catch (error) {
           console.error("error getting autocompletion data", error);
           callback(null, []);
