@@ -67,9 +67,7 @@
    [:map-of Id TablePerms]])
 
 (def ^:private SchemaGraph
-  [:map-of
-   [:maybe {:decode/perm-graph (fn [n] (if n (name n) ""))} :string]
-   SchemaPerms])
+  [:map-of [:string {:decode/perm-graph name}] SchemaPerms])
 
 (def ^:private Schemas
   [:maybe
