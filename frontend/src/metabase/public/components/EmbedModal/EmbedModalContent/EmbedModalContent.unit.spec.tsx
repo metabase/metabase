@@ -18,11 +18,13 @@ describe("EmbedModalContent", () => {
     });
 
     it("should switch to StaticEmbedSetupPane", () => {
-      const { setEmbedType } = setup();
+      const { goToNextStep } = setup();
+
+      expect(goToNextStep).toHaveBeenCalledTimes(0);
 
       userEvent.click(screen.getByText("Set this up"));
 
-      expect(setEmbedType).toHaveBeenLastCalledWith("application");
+      expect(goToNextStep).toHaveBeenCalledTimes(1);
     });
 
     it("should render StaticEmbedSetupPane when embedType=application", () => {
@@ -44,7 +46,7 @@ function setup(
       resource = {} as EmbedResource,
       resourceType = "dashboard",
       resourceParameters = [],
-      setEmbedType = jest.fn(),
+      goToNextStep = jest.fn(),
       getPublicUrl = jest.fn(_resource => "some URL"),
       onUpdateEmbeddingParams = jest.fn(),
       onUpdateEnableEmbedding = jest.fn(),
@@ -60,7 +62,7 @@ function setup(
   const view = renderWithProviders(
     <EmbedModalContent
       embedType={embedType}
-      setEmbedType={setEmbedType}
+      goToNextStep={goToNextStep}
       resource={resource}
       resourceType={resourceType}
       resourceParameters={resourceParameters}
@@ -83,7 +85,7 @@ function setup(
 
   return {
     ...view,
-    setEmbedType,
+    goToNextStep,
     getPublicUrl,
     onUpdateEmbeddingParams,
     onUpdateEnableEmbedding,

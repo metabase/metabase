@@ -26,7 +26,8 @@ features.forEach(feature => {
 
     it("dashboard should have the correct embed snippet", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      openStaticEmbeddingModal();
+      console.log("feature", feature);
+      openStaticEmbeddingModal({ acceptTerms: false });
 
       modal().within(() => {
         cy.findByText(
@@ -95,7 +96,8 @@ features.forEach(feature => {
 
     it("question should have the correct embed snippet", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      openStaticEmbeddingModal();
+      console.log("feature", feature);
+      openStaticEmbeddingModal({ acceptTerms: false });
 
       modal().within(() => {
         cy.findByText(

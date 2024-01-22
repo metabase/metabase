@@ -4,14 +4,15 @@ import type {
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
-  EmbedType,
+  EmbedModalStep,
 } from "metabase/public/lib/types";
+import { LegaleseStep } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
 
 export interface EmbedModalContentProps {
-  embedType: EmbedType;
-  setEmbedType: (type: EmbedType) => void;
+  embedType: EmbedModalStep;
+  goToNextStep: () => void;
 
   resource: EmbedResource;
   resourceType: EmbedResourceType;
@@ -27,19 +28,23 @@ export interface EmbedModalContentProps {
   className?: string;
 }
 
-export const EmbedModalContent = ({
-  embedType,
-  setEmbedType,
-  resource,
-  resourceType,
-  resourceParameters,
-  onUpdateEnableEmbedding,
-  onUpdateEmbeddingParams,
-  onCreatePublicLink,
-  onDeletePublicLink,
-  getPublicUrl,
-}: EmbedModalContentProps): JSX.Element => {
-  if (!embedType) {
+export const EmbedModalContent = (
+  props: EmbedModalContentProps,
+): JSX.Element => {
+  const {
+    embedType,
+    goToNextStep,
+    resource,
+    resourceType,
+    resourceParameters,
+    onUpdateEnableEmbedding,
+    onUpdateEmbeddingParams,
+    onCreatePublicLink,
+    onDeletePublicLink,
+    getPublicUrl,
+  } = props;
+
+  if (embedType == null) {
     return (
       <SelectEmbedTypePane
         resource={resource}
@@ -47,9 +52,13 @@ export const EmbedModalContent = ({
         onCreatePublicLink={onCreatePublicLink}
         onDeletePublicLink={onDeletePublicLink}
         getPublicUrl={getPublicUrl}
-        onChangeEmbedType={setEmbedType}
+        goToNextStep={goToNextStep}
       />
     );
+  }
+
+  if (embedType === "legalese") {
+    return <LegaleseStep goToNextStep={goToNextStep} />;
   }
 
   return (

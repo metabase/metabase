@@ -54,7 +54,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      openStaticEmbeddingModal({ activeTab: "parameters" });
+      openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
 
       cy.findByLabelText("Configuring parameters").as("allParameters");
 
@@ -137,7 +137,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      openStaticEmbeddingModal({ activeTab: "parameters" });
+      openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
 
       cy.get("@allParameters").findByText("Locked").click();
       popover().contains("Disabled").click();

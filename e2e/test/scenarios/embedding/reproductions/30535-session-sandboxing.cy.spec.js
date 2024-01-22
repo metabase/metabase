@@ -41,6 +41,7 @@ describeEE("issue 30535", () => {
     openStaticEmbeddingModal({
       activeTab: "parameters",
       previewMode: "preview",
+      acceptTerms: false,
     });
 
     cy.document().then(doc => {

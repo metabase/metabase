@@ -9,11 +9,7 @@ import { getPublicEmbedHTML } from "metabase/public/lib/code";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Link from "metabase/core/components/Link";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
-import type {
-  EmbedResource,
-  EmbedResourceType,
-  EmbedType,
-} from "metabase/public/lib/types";
+import type { EmbedResource, EmbedResourceType } from "metabase/public/lib/types";
 
 import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
@@ -26,7 +22,7 @@ interface SelectEmbedTypePaneProps {
   onCreatePublicLink: () => void;
   onDeletePublicLink: () => void;
   getPublicUrl: (publicUuid: string, extension?: ExportFormatType) => string;
-  onChangeEmbedType: (embedType: EmbedType) => void;
+  goToNextStep: () => void;
 }
 
 export function SelectEmbedTypePane({
@@ -35,7 +31,7 @@ export function SelectEmbedTypePane({
   onCreatePublicLink,
   onDeletePublicLink,
   getPublicUrl,
-  onChangeEmbedType,
+  goToNextStep,
 }: SelectEmbedTypePaneProps) {
   const hasPublicLink = resource.public_uuid != null;
 
@@ -119,12 +115,11 @@ export function SelectEmbedTypePane({
           header={t`Static embed`}
           description={t`Securely embed this dashboard in your own application’s server code.`}
           illustration={<StaticEmbedIcon />}
-          onClick={() => onChangeEmbedType("application")}
+          onClick={goToNextStep}
         >
           <SharingPaneActionButton
             data-testid="sharing-pane-static-embed-button"
             fullWidth
-            onClick={() => onChangeEmbedType("application")}
           >
             {resource.enable_embedding ? t`Edit settings` : t`Set this up`}
           </SharingPaneActionButton>

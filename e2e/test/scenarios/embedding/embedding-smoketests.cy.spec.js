@@ -211,7 +211,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           .and("contain", objectName);
 
         cy.log(`Unpublish ${object}`);
-        visitAndEnableSharing(object);
+        visitAndEnableSharing(object, false);
 
         modal().within(() => {
           cy.findByText(
@@ -331,7 +331,7 @@ function ensureEmbeddingIsDisabled() {
   });
 }
 
-function visitAndEnableSharing(object) {
+function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "question") {
     visitQuestion(ORDERS_QUESTION_ID);
   }
@@ -340,7 +340,7 @@ function visitAndEnableSharing(object) {
     visitDashboard(ORDERS_DASHBOARD_ID);
   }
 
-  openStaticEmbeddingModal();
+  openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {

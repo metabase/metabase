@@ -303,10 +303,10 @@
       u/lower-case-en
       keyword))
 
-(defn do-with-temp-env-var-value
-  "Impl for [[with-temp-env-var-value]] macro."
+(defn do-with-temp-env-var-value!
+  "Impl for [[with-temp-env-var-value!]] macro."
   [env-var-keyword value thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value!")
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
@@ -319,20 +319,20 @@
           ;; flush the cache again so the original value of any env var Settings get restored
           (setting.cache/restore-cache!))))))
 
-(defmacro with-temp-env-var-value
+(defmacro with-temp-env-var-value!
   "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
   any env var Settings will see the updated value, and resets the cache again at the conclusion of `body` so the
   original values are restored.
 
-    (with-temp-env-var-value [mb-send-email-on-first-login-from-new-device \"FALSE\"]
+    (with-temp-env-var-value! [mb-send-email-on-first-login-from-new-device \"FALSE\"]
       ...)"
   [[env-var value & more :as bindings] & body]
   {:pre [(vector? bindings) (even? (count bindings))]}
-  `(do-with-temp-env-var-value
+  `(do-with-temp-env-var-value!
     ~(->lisp-case-keyword env-var)
     ~value
     (fn [] ~@(if (seq more)
-               [`(with-temp-env-var-value ~(vec more) ~@body)]
+               [`(with-temp-env-var-value! ~(vec more) ~@body)]
                body))))
 
 (setting/defsetting with-temp-env-var-value-test-setting
@@ -344,7 +344,7 @@
 (deftest with-temp-env-var-value-test
   (is (= "abc"
          (with-temp-env-var-value-test-setting)))
-  (with-temp-env-var-value [mb-with-temp-env-var-value-test-setting "def"]
+  (with-temp-env-var-value! [mb-with-temp-env-var-value-test-setting "def"]
     (testing "env var value"
       (is (= "def"
              (env/env :mb-with-temp-env-var-value-test-setting))))
@@ -360,7 +360,7 @@
              (with-temp-env-var-value-test-setting)))))
 
   (testing "override multiple env vars"
-    (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
+    (with-temp-env-var-value! [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
       (testing "Should convert values to strings"
         (is (= "123"
                (:some-fake-env-var env/env))))
@@ -372,8 +372,8 @@
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException
                  (macroexpand form))
-      (list `with-temp-env-var-value '[a])
-      (list `with-temp-env-var-value '[a b c]))))
+      (list `with-temp-env-var-value! '[a])
+      (list `with-temp-env-var-value! '[a b c]))))
 
 (defn- upsert-raw-setting!
   [original-value setting-k value]
@@ -393,7 +393,7 @@
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as [[binding]].
 
-  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
+  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value!]].
 
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
@@ -410,7 +410,7 @@
                           (when-not raw-setting?
                             (throw e))))]
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
-      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
+      (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
@@ -451,7 +451,7 @@
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
   If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
-  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
+  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value!]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
