@@ -17,6 +17,14 @@ title: Driver interface changelog
   `metabase.driver.sql.query-processor/honey-sql-version` is now deprecated and no longer called. All drivers are
   assumed to use Honey SQL 2.
 
+- The method `metabase.driver.sql-jdbc.sync.interface/active-tables` that we added in 47 has been updated to require
+  an additional argument: `database`.
+  The new function arglist is `[driver database connection schema-inclusion-filters schema-exclusion-filters]`.
+
+- The method `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type` is now deprecated.
+  Use `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type-and-value` instead,
+  which has access to `value` and therefore provides more flexibility for choosing the right conversion unit.
+
 ## Metabase 0.48.0
 
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of

@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { DatabaseId, DatasetColumn, TableId } from "metabase-types/api";
+import type Field from "./metadata/Field";
 import type Metadata from "./metadata/Metadata";
 import type {
   AggregationClause,
@@ -37,6 +38,7 @@ import type {
   SegmentDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
+  QueryDisplayInfo,
 } from "./types";
 
 export function metadataProvider(
@@ -179,4 +181,23 @@ export function returnedColumns(
   stageIndex: number,
 ): ColumnMetadata[] {
   return ML.returned_columns(query, stageIndex);
+}
+
+export function fromLegacyColumn(
+  query: Query,
+  stageIndex: number,
+  columnOrField: DatasetColumn | Field,
+): ColumnMetadata {
+  return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
+}
+
+export function queryDisplayInfo(query: Query): QueryDisplayInfo {
+  /**
+   * Even though it seems weird to pass the same query two times,
+   * this function follows the same pattern as the other display_info overloads.
+   * The first two parameters are always a query, and a stage index.
+   * The third parameter is what you would like to have the info about.
+   * It just only happens that the thing we're examining is (again) the query itself.
+   */
+  return ML.display_info(query, -1, query);
 }

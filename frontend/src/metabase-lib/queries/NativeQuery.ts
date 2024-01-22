@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import * as ML from "cljs/metabase.lib.js";
+import * as Lib from "metabase-lib";
 import type {
   Card,
   DatabaseId,
@@ -102,6 +102,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   /* Query superclass methods */
+
+  /**
+   * @deprecated use MLv2
+   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -211,12 +215,6 @@ export default class NativeQuery extends AtomicQuery {
 
   table(): Table | null {
     return getNativeQueryTable(this);
-  }
-
-  sourceTable(): null {
-    // Source tables are only available in structured queries,
-    // this method exists to keep query API consistent
-    return null;
   }
 
   queryText(): string {
@@ -369,7 +367,9 @@ export default class NativeQuery extends AtomicQuery {
     });
   }
 
-  variables(variableFilter: VariableFilter = () => true): Variable[] {
+  variables(
+    variableFilter: VariableFilter = () => true,
+  ): TemplateTagVariable[] {
     return this.templateTags()
       .filter(tag => tag.type !== "dimension")
       .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
@@ -437,7 +437,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     return queryText && this.supportsNativeParameters()
-      ? ML.extract_template_tags(queryText, this.templateTagsMap())
+      ? Lib.extractTemplateTags(queryText, this.templateTagsMap())
       : {};
   }
 

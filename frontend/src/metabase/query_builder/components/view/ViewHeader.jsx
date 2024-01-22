@@ -417,12 +417,10 @@ function ViewTitleHeaderRightSide(props) {
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !question.legacyQuery().hasData();
-  const hasSaveButton =
-    !isDataset &&
-    !!isDirty &&
-    (isNewQuery || canEditQuery) &&
-    isActionListVisible;
+  // Models can't be saved. But changing anything about the model will prompt the user
+  // to save it as a new question (based on that model). In other words, at this point
+  // the `dataset` field is set to false.
+  const hasSaveButton = !isDataset && !!isDirty && isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =

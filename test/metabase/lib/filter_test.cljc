@@ -7,8 +7,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.matrix :as matrix]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]))
 
@@ -319,10 +321,11 @@
     (doseq [col (lib/filterable-columns query)
             op (lib/filterable-column-operators col)
             :let [filter-clause (case (:short op)
-                                  :between (lib/filter-clause op col 123 456)
+                                  :between (lib/filter-clause op col col col)
                                   (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
                                   (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
                                   :inside (lib/filter-clause op col 12 34 56 78 90)
+                                  (:< :>) (lib/filter-clause op col col)
                                   (lib/filter-clause op col 123))]]
       (testing (str (:short op) " with " (lib.types.isa/field-type col))
         (is (= op
@@ -729,3 +732,24 @@
                  (map (comp signature-fn
                             #(lib/display-info filtered-query %))
                       filtered-query-cols))))))))
+
+(deftest ^:parallel matrix-can-filter
+  (doseq [{:keys [column-type v]} #{{:column-type :type/DateTimeWithLocalTZ :v "2014-01-01"}
+                                    {:column-type :type/Integer :v 1}
+                                    {:column-type :type/Text :v "str"}
+                                    {:column-type :type/Boolean :v true}
+                                    {:column-type :type/Coordinate :v 1}}
+          [query desired] (matrix/test-queries column-type)]
+    (let [col (matrix/find-first desired (lib/filterable-columns query))
+          query' (lib/filter query (lib/= col v))
+          parts (lib/expression-parts query' (first (lib/filters query')))]
+      (is (=? (lib.filter.operator/filter-operators {:lib/type :metadata/column :name "expected" :base-type column-type})
+              (lib/filterable-column-operators col)))
+      (is (=? [[:= {} (lib.options/update-options (lib/ref col) dissoc :lib/uuid) v]]
+              (lib/filters query')))
+      (is (=? {:operator :=
+               :args [{:lib/type :metadata/column
+                       :name (:name col)} v]}
+              parts))
+      (is (=? [:= {} (lib.options/update-options (lib/ref col) dissoc :lib/uuid) v]
+              (lib/expression-clause (:operator parts) (:args parts) nil))))))

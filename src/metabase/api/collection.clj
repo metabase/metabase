@@ -93,7 +93,7 @@
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -389,11 +389,11 @@
   [_ collection options]
   (card-query false collection options))
 
-(defn- fully-parametrized-text?
-  "Decide if `text`, usually (a part of) a query, is fully parametrized given the parameter types
+(defn- fully-parameterized-text?
+  "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
   described by `template-tags` (usually the template tags of a native query).
 
-  The rules to consider a piece of text fully parametrized is as follows:
+  The rules to consider a piece of text fully parameterized is as follows:
 
   1. All parameters not in an optional block are field-filters or snippets or have a default value.
   2. All required parameters have a default value.
@@ -412,7 +412,7 @@
                                   (comp (filter params/Param?)
                                         (map :k))
                                   (params.parse/parse text))]
-      (and (every? #(or (#{:dimension :snippet} (:type %))
+      (and (every? #(or (#{:dimension :snippet :card} (:type %))
                         (:default %))
                    (map template-tags obligatory-params))
            (every? #(or (not (:required %))
@@ -423,17 +423,17 @@
       ;; true so that we still can try to generate a preview for the query and display an error.
       false)))
 
-(defn- fully-parametrized-query? [row]
+(defn- fully-parameterized-query? [row]
   (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
     (if-let [template-tags (:template-tags native-query)]
-      (fully-parametrized-text? (:query native-query) template-tags)
+      (fully-parameterized-text? (:query native-query) template-tags)
       true)))
 
 (defn- post-process-card-row [row]
   (-> row
       (dissoc :authority_level :icon :personal_owner_id :dataset_query)
       (update :collection_preview api/bit->boolean)
-      (assoc :fully_parametrized (fully-parametrized-query? row))))
+      (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
   [_ rows]

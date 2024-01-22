@@ -20,7 +20,7 @@ export function queryDrill(
 
   const applyDrill = (drill: Lib.DrillThru, ...args: unknown[]) => {
     const newQuery = Lib.drillThru(query, stageIndex, drill, ...args);
-    return question._setMLv2Query(newQuery);
+    return question.setQuery(newQuery);
   };
 
   return drills.flatMap(drill => {

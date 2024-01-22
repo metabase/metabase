@@ -1,5 +1,6 @@
-import querystring from "querystring";
 import type { LocationDescriptorObject } from "history";
+import querystring from "querystring";
+import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
@@ -15,7 +16,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
 
-import type { Card } from "metabase-types/api";
+import type { Card, MetricId, SegmentId } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
@@ -23,13 +24,14 @@ import type {
 } from "metabase-types/store";
 import { isSavedCard } from "metabase-types/guards";
 import { isNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
 
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
 
@@ -68,31 +70,54 @@ const NOT_FOUND_ERROR = {
   context: "query-builder",
 };
 
-function getCardForBlankQuestion({
-  db,
-  table,
-  segment,
-  metric,
-}: BlankQueryOptions) {
-  const databaseId = db ? parseInt(db) : undefined;
-  const tableId = table ? parseInt(table) : undefined;
+function getCardForBlankQuestion(
+  metadata: Metadata,
+  options: BlankQueryOptions,
+) {
+  const databaseId = options.db ? parseInt(options.db) : undefined;
+  const tableId = options.table ? parseInt(options.table) : undefined;
+  const segmentId = options.segment ? parseInt(options.segment) : undefined;
+  const metricId = options.metric ? parseInt(options.metric) : undefined;
 
-  let question = Question.create({ databaseId, tableId });
+  let question = Question.create({ databaseId, tableId, metadata });
 
   if (databaseId && tableId) {
-    if (segment) {
-      question = (question.legacyQuery() as StructuredQuery)
-        .filter(["segment", parseInt(segment)])
-        .question();
+    if (typeof segmentId === "number") {
+      question = filterBySegmentId(question, segmentId);
     }
-    if (metric) {
-      question = (question.legacyQuery() as StructuredQuery)
-        .aggregate(["metric", parseInt(metric)])
-        .question();
+
+    if (typeof metricId === "number") {
+      question = aggregateByMetricId(question, metricId);
     }
   }
 
   return question.card();
+}
+
+function filterBySegmentId(question: Question, segmentId: SegmentId) {
+  const stageIndex = -1;
+  const query = question.query();
+  const segmentMetadata = Lib.segmentMetadata(query, segmentId);
+
+  if (!segmentMetadata) {
+    return question;
+  }
+
+  const newQuery = Lib.filter(query, stageIndex, segmentMetadata);
+  return question.setQuery(newQuery);
+}
+
+function aggregateByMetricId(question: Question, metricId: MetricId) {
+  const stageIndex = -1;
+  const query = question.query();
+  const metricMetadata = Lib.metricMetadata(query, metricId);
+
+  if (!metricMetadata) {
+    return question;
+  }
+
+  const newQuery = Lib.aggregate(query, stageIndex, metricMetadata);
+  return question.setQuery(newQuery);
 }
 
 function deserializeCard(serializedCard: string) {
@@ -166,8 +191,10 @@ async function resolveCards({
   getState: GetState;
 }): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
+    const metadata = getMetadata(getState());
+
     return {
-      card: getCardForBlankQuestion(options),
+      card: getCardForBlankQuestion(metadata, options),
     };
   }
   return cardId
@@ -222,6 +249,7 @@ export async function updateTemplateTagNames(
       }),
     )
   ).filter(isNotNull);
+
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
     await dispatch(Snippets.actions.fetchList());
@@ -322,7 +350,7 @@ async function handleQBInit(
   if (question.isNative() && question.isQueryEditable()) {
     const query = question.legacyQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setQuery(newQuery);
+    question = question.setLegacyQuery(newQuery);
   }
 
   const finalCard = question.card();

@@ -135,25 +135,33 @@ describe("StructuredQuery", () => {
 
       it("should remove unnecessary layers of nesting via legacyQuery()", () => {
         const q = ordersTable.legacyQuery().nest();
-        expect(q.clean().legacyQuery()).toEqual({ "source-table": ORDERS_ID });
+        expect(q.clean().legacyQuery()).toEqual({
+          "source-table": ORDERS_ID,
+        });
       });
 
       it("should remove unnecessary layers of nesting via question()", () => {
         const q = ordersTable.legacyQuery().nest();
-        expect(q.clean().legacyQuery()).toEqual({ "source-table": ORDERS_ID });
+        expect(q.clean().legacyQuery()).toEqual({
+          "source-table": ORDERS_ID,
+        });
       });
     });
   });
 
   describe("cleanNesting", () => {
     it("should not modify empty queries with no source-query", () => {
-      expect(db.question().legacyQuery().cleanNesting().datasetQuery()).toEqual(
-        {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: { "source-table": undefined },
-        },
-      );
+      expect(
+        db
+          .question()
+          .legacyQuery({ useStructuredQuery: true })
+          .cleanNesting()
+          .datasetQuery(),
+      ).toEqual({
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": undefined },
+      });
     });
   });
 });

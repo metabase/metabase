@@ -10,7 +10,7 @@ import "leaflet-draw";
 import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { updateLatLonFilter } from "metabase-lib/queries/utils/actions";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 
 export default class LeafletMap extends Component {
@@ -147,6 +147,7 @@ export default class LeafletMap extends Component {
       ],
       settings,
       onChangeCardAndRun,
+      metadata,
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
@@ -156,16 +157,26 @@ export default class LeafletMap extends Component {
       name: settings["map.longitude_column"],
     });
 
-    const question = new Question(card);
+    const question = new Question(card, metadata);
     if (question.isStructured()) {
-      const nextCard = updateLatLonFilter(
-        question.legacyQuery(),
+      const query = question.query();
+      const stageIndex = -1;
+      const filterBounds = {
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        west: bounds.getWest(),
+        east: bounds.getEast(),
+      };
+      const updatedQuery = Lib.updateLatLonFilter(
+        query,
+        stageIndex,
         latitudeColumn,
         longitudeColumn,
-        bounds,
-      )
-        .question()
-        .card();
+        filterBounds,
+      );
+      const updatedQuestion = question.setQuery(updatedQuery);
+      const nextCard = updatedQuestion.card();
+
       onChangeCardAndRun({ nextCard });
     }
 

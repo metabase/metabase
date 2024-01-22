@@ -11,8 +11,7 @@
    [metabase.email :as email]
    [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.pulse]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (defmacro with-metadata-data-cards
   "Provide a fixture that includes:
@@ -36,7 +35,7 @@
                                                :dataset         true
                                                :dataset_query   {:type     :query
                                                                  :database (mt/id)
-                                                                 :query    {:source-table (format "card__%s" ~'base-card-id)}}
+                                                                 :query    {:source-table (format "card__%s" ~base-card-id)}}
                                                :result_metadata [{:name         "TAX"
                                                                   :display_name "Tax"
                                                                   :base_type    :type/Float}
@@ -51,7 +50,7 @@
                     Card {~question-card-id :id} {:name          "Query based on model"
                                                   :dataset_query {:type     :query
                                                                   :database (mt/id)
-                                                                  :query    {:source-table (format "card__%s" ~'model-card-id)}}}]
+                                                                  :query    {:source-table (format "card__%s" ~model-card-id)}}}]
        ~@body)))
 
 (defn- run-pulse-and-return-last-data-columns
@@ -307,68 +306,68 @@
 (deftest consistent-date-formatting-test
   (mt/with-temporary-setting-values [custom-formatting nil]
     (let [q (sql-time-query "2023-12-11 15:30:45.123" 20)]
-      (t2.with-temp/with-temp [Card {native-card-id :id} {:name          "NATIVE"
-                                                          :dataset_query {:database (mt/id)
-                                                                          :type     :native
-                                                                          :native   {:query q}}}
-                               Card {model-card-id  :id
-                                     model-metadata :result_metadata} {:name          "MODEL"
-                                                                       :dataset       true
-                                                                       :dataset_query {:database (mt/id)
-                                                                                       :type     :query
-                                                                                       :query    (model-query native-card-id)}}
-                               Card {meta-model-card-id :id} {:name                   "METAMODEL"
-                                                              :dataset                true
-                                                              :dataset_query          {:database (mt/id)
-                                                                                       :type     :query
-                                                                                       :query    {:source-table
-                                                                                                  (format "card__%s" model-card-id)}}
-                                                              :result_metadata        (mapv
-                                                                                        (fn [{column-name :name :as col}]
-                                                                                          (cond-> col
-                                                                                            (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
-                                                                                            (assoc :settings {:date_separator "-"
-                                                                                                              :date_style "YYYY/M/D"
-                                                                                                              :time_style "HH:mm"})
-                                                                                            (= "EXAMPLE_TIMESTAMP" column-name)
-                                                                                            (assoc :settings {:time_enabled "seconds"})))
-                                                                                        model-metadata)
-                                                              :visualization_settings {:column_settings    {"[\"name\",\"FULL_DATETIME_UTC\"]"
-                                                                                                            {:date_abbreviate true
-                                                                                                             :time_enabled    "milliseconds"
-                                                                                                             :time_style      "HH:mm"}
-                                                                                                            "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
-                                                                                                            {:time_enabled    "milliseconds"}
-                                                                                                            "[\"name\",\"EXAMPLE_TIME\"]"
-                                                                                                            {:time_enabled    nil}
-                                                                                                            "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
-                                                                                                            {:time_enabled    nil}}}}
-                               Dashboard {dash-id :id} {:name "The Dashboard"}
-                               DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                                      :card_id      native-card-id}
-                               DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
-                                                                       :card_id      model-card-id}
-                               DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
-                                                                           :card_id      meta-model-card-id}
-                               Pulse {pulse-id :id
-                                      :as      pulse} {:name "Consistent Time Formatting Pulse"}
-                               PulseCard _ {:pulse_id          pulse-id
-                                            :card_id           native-card-id
-                                            :dashboard_card_id base-dash-card-id
-                                            :include_csv       true}
-                               PulseCard _ {:pulse_id          pulse-id
-                                            :card_id           model-card-id
-                                            :dashboard_card_id model-dash-card-id
-                                            :include_csv       true}
-                               PulseCard _ {:pulse_id          pulse-id
-                                            :card_id           meta-model-card-id
-                                            :dashboard_card_id metamodel-dash-card-id
-                                            :include_csv       true}
-                               PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                                    :pulse_id     pulse-id
-                                                                    :enabled      true}
-                               PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                        :user_id          (mt/user->id :rasta)}]
+      (mt/with-temp [Card {native-card-id :id} {:name          "NATIVE"
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query q}}}
+                     Card {model-card-id  :id
+                           model-metadata :result_metadata} {:name          "MODEL"
+                                                             :dataset       true
+                                                             :dataset_query {:database (mt/id)
+                                                                             :type     :query
+                                                                             :query    (model-query native-card-id)}}
+                     Card {meta-model-card-id :id} {:name                   "METAMODEL"
+                                                    :dataset                true
+                                                    :dataset_query          {:database (mt/id)
+                                                                             :type     :query
+                                                                             :query    {:source-table
+                                                                                        (format "card__%s" model-card-id)}}
+                                                    :result_metadata        (mapv
+                                                                              (fn [{column-name :name :as col}]
+                                                                                (cond-> col
+                                                                                  (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
+                                                                                  (assoc :settings {:date_separator "-"
+                                                                                                    :date_style     "YYYY/M/D"
+                                                                                                    :time_style     "HH:mm"})
+                                                                                  (= "EXAMPLE_TIMESTAMP" column-name)
+                                                                                  (assoc :settings {:time_enabled "seconds"})))
+                                                                              model-metadata)
+                                                    :visualization_settings {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
+                                                                                               {:date_abbreviate true
+                                                                                                :time_enabled    "milliseconds"
+                                                                                                :time_style      "HH:mm"}
+                                                                                               "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
+                                                                                               {:time_enabled "milliseconds"}
+                                                                                               "[\"name\",\"EXAMPLE_TIME\"]"
+                                                                                               {:time_enabled nil}
+                                                                                               "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
+                                                                                               {:time_enabled nil}}}}
+                     Dashboard {dash-id :id} {:name "The Dashboard"}
+                     DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                            :card_id      native-card-id}
+                     DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
+                                                             :card_id      model-card-id}
+                     DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
+                                                                 :card_id      meta-model-card-id}
+                     Pulse {pulse-id :id
+                            :as      pulse} {:name "Consistent Time Formatting Pulse"}
+                     PulseCard _ {:pulse_id          pulse-id
+                                  :card_id           native-card-id
+                                  :dashboard_card_id base-dash-card-id
+                                  :include_csv       true}
+                     PulseCard _ {:pulse_id          pulse-id
+                                  :card_id           model-card-id
+                                  :dashboard_card_id model-dash-card-id
+                                  :include_csv       true}
+                     PulseCard _ {:pulse_id          pulse-id
+                                  :card_id           meta-model-card-id
+                                  :dashboard_card_id metamodel-dash-card-id
+                                  :include_csv       true}
+                     PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                          :pulse_id     pulse-id
+                                                          :enabled      true}
+                     PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                              :user_id          (mt/user->id :rasta)}]
         (let [attached-data     (run-pulse-and-return-attached-csv-data pulse)
               get-res           #(-> attached-data (get %)
                                      (update-vals first)
@@ -454,85 +453,85 @@
                                               {:column_title "Amount Ordered"}
                                               "[\"ref\",[\"expression\",\"Tax Rate\"]]"
                                               {:column_title "Effective Tax Rate"}}}]
-        (t2.with-temp/with-temp [Card {base-card-name :name
-                                       base-card-id   :id} {:name                   "RENAMED"
-                                                            :dataset_query          {:database (mt/id)
-                                                                                     :type     :query
-                                                                                     :query    query}
-                                                            :visualization_settings viz-settings}
-                                 Card {model-card-name :name
-                                       model-card-id   :id
-                                       model-metadata  :result_metadata} {:name          "MODEL"
-                                                                          :dataset       true
-                                                                          :dataset_query {:database (mt/id)
-                                                                                          :type     :query
-                                                                                          :query    {:source-table
-                                                                                                     (format "card__%s" base-card-id)}}}
-                                 Card {meta-model-card-name :name
-                                       meta-model-card-id   :id} {:name            "MODEL_WITH_META"
-                                                                  :dataset         true
-                                                                  :dataset_query   {:database (mt/id)
-                                                                                    :type     :query
-                                                                                    :query    {:source-table
-                                                                                               (format "card__%s" model-card-id)}}
-                                                                  :result_metadata (mapv
-                                                                                     (fn [{column-name :name :as col}]
-                                                                                       (cond-> col
-                                                                                         (= "DISCOUNT" column-name)
-                                                                                         (assoc :display_name "Amount of Discount")
-                                                                                         (= "TOTAL" column-name)
-                                                                                         (assoc :display_name "Grand Total")
-                                                                                         (= "QUANTITY" column-name)
-                                                                                         (assoc :display_name "N")))
-                                                                                     model-metadata)}
-                                 Card {question-card-name :name
-                                       question-card-id   :id} {:name                   "FINAL_QUESTION"
-                                                                :dataset_query          {:database (mt/id)
-                                                                                         :type     :query
-                                                                                         :query    {:source-table
-                                                                                                    (format "card__%s" meta-model-card-id)}}
-                                                                :visualization_settings {:table.pivot_column "DISCOUNT",
-                                                                                         :table.cell_column  "TAX",
-                                                                                         :column_settings    {(format
-                                                                                                                "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
-                                                                                                                (mt/id :orders :quantity))
-                                                                                                              {:column_title "Count"}
-                                                                                                              (format
-                                                                                                                "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
-                                                                                                                (mt/id :orders :id))
-                                                                                                              {:column_title "IDENTIFIER"}}}}
-                                 Dashboard {dash-id :id} {:name "The Dashboard"}
-                                 DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                                        :card_id      base-card-id}
-                                 DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
-                                                                         :card_id      model-card-id}
-                                 DashboardCard {meta-model-dash-card-id :id} {:dashboard_id dash-id
-                                                                              :card_id      meta-model-card-id}
-                                 DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
-                                                                            :card_id      question-card-id}
-                                 Pulse {pulse-id :id
-                                        :as      pulse} {:name "Consistent Column Names"}
-                                 PulseCard _ {:pulse_id          pulse-id
-                                              :card_id           base-card-id
-                                              :dashboard_card_id base-dash-card-id
-                                              :include_csv       true}
-                                 PulseCard _ {:pulse_id          pulse-id
-                                              :card_id           model-card-id
-                                              :dashboard_card_id model-dash-card-id
-                                              :include_csv       true}
-                                 PulseCard _ {:pulse_id          pulse-id
-                                              :card_id           meta-model-card-id
-                                              :dashboard_card_id meta-model-dash-card-id
-                                              :include_csv       true}
-                                 PulseCard _ {:pulse_id          pulse-id
-                                              :card_id           question-card-id
-                                              :dashboard_card_id question-dash-card-id
-                                              :include_csv       true}
-                                 PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                                      :pulse_id     pulse-id
-                                                                      :enabled      true}
-                                 PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                          :user_id          (mt/user->id :rasta)}]
+        (mt/with-temp [Card {base-card-name :name
+                             base-card-id   :id} {:name                   "RENAMED"
+                                                  :dataset_query          {:database (mt/id)
+                                                                           :type     :query
+                                                                           :query    query}
+                                                  :visualization_settings viz-settings}
+                       Card {model-card-name :name
+                             model-card-id   :id
+                             model-metadata  :result_metadata} {:name          "MODEL"
+                                                                :dataset       true
+                                                                :dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table
+                                                                                           (format "card__%s" base-card-id)}}}
+                       Card {meta-model-card-name :name
+                             meta-model-card-id   :id} {:name            "MODEL_WITH_META"
+                                                        :dataset         true
+                                                        :dataset_query   {:database (mt/id)
+                                                                          :type     :query
+                                                                          :query    {:source-table
+                                                                                     (format "card__%s" model-card-id)}}
+                                                        :result_metadata (mapv
+                                                                           (fn [{column-name :name :as col}]
+                                                                             (cond-> col
+                                                                               (= "DISCOUNT" column-name)
+                                                                               (assoc :display_name "Amount of Discount")
+                                                                               (= "TOTAL" column-name)
+                                                                               (assoc :display_name "Grand Total")
+                                                                               (= "QUANTITY" column-name)
+                                                                               (assoc :display_name "N")))
+                                                                           model-metadata)}
+                       Card {question-card-name :name
+                             question-card-id   :id} {:name                   "FINAL_QUESTION"
+                                                      :dataset_query          {:database (mt/id)
+                                                                               :type     :query
+                                                                               :query    {:source-table
+                                                                                          (format "card__%s" meta-model-card-id)}}
+                                                      :visualization_settings {:table.pivot_column "DISCOUNT",
+                                                                               :table.cell_column  "TAX",
+                                                                               :column_settings    {(format
+                                                                                                      "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                      (mt/id :orders :quantity))
+                                                                                                    {:column_title "Count"}
+                                                                                                    (format
+                                                                                                      "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                      (mt/id :orders :id))
+                                                                                                    {:column_title "IDENTIFIER"}}}}
+                       Dashboard {dash-id :id} {:name "The Dashboard"}
+                       DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                              :card_id      base-card-id}
+                       DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
+                                                               :card_id      model-card-id}
+                       DashboardCard {meta-model-dash-card-id :id} {:dashboard_id dash-id
+                                                                    :card_id      meta-model-card-id}
+                       DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
+                                                                  :card_id      question-card-id}
+                       Pulse {pulse-id :id
+                              :as      pulse} {:name "Consistent Column Names"}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           base-card-id
+                                    :dashboard_card_id base-dash-card-id
+                                    :include_csv       true}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           model-card-id
+                                    :dashboard_card_id model-dash-card-id
+                                    :include_csv       true}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           meta-model-card-id
+                                    :dashboard_card_id meta-model-dash-card-id
+                                    :include_csv       true}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           question-card-id
+                                    :dashboard_card_id question-dash-card-id
+                                    :include_csv       true}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
           (let [attachment-name->cols (mt/with-fake-inbox
                                         (with-redefs [email/bcc-enabled? (constantly false)]
                                           (mt/with-test-user nil
@@ -620,3 +619,111 @@
           ;; Second value is the scalar returned from card2 (scalar field specified only in viz-settings, not the query)
           (is (= ["2.07" "2.07"]
                  (run-pulse-and-return-scalars pulse))))))))
+
+(defn- run-pulse-and-return-data-tables
+  "Run the pulse and return the sequence of inlined html tables as data. Empty tables will be [].
+  If not pulse is sent, return `nil`."
+  [pulse]
+  (mt/with-fake-inbox
+    (with-redefs [email/bcc-enabled? (constantly false)]
+      (mt/with-test-user nil
+        (metabase.pulse/send-pulse! pulse)))
+    (when-some [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+      (let [doc         (-> html-body hik/parse hik/as-hickory)
+            data-tables (hik.s/select
+                          (hik.s/class "pulse-body")
+                          doc)]
+        (mapv
+          (fn [data-table]
+            (->> (hik.s/select
+                   (hik.s/child
+                     (hik.s/tag :tbody)
+                     (hik.s/tag :tr))
+                   data-table)
+                 (mapv (comp (partial mapv (comp first :content)) :content))))
+          data-tables)))))
+
+(defmacro with-skip-if-empty-pulse-result
+  "Provide a fixture that runs body using the provided pulse results (symbol), the value of `:skip_if_empty` for the
+  pulse, and the queries for two cards. This enables a variety of cases to test the behavior of `:skip_if_empty` based
+  on the presence or absence of card data."
+  [[result skip-if-empty? query1 query2] & body]
+  `(mt/with-temp [Card {~'base-card-id :id} {:name          "Card1"
+                                             :dataset_query {:database (mt/id)
+                                                             :type     :query
+                                                             :query    ~query1}}
+                  Card {~'empty-card-id :id} {:name          "Card2"
+                                              :dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    ~query2}}
+                  Dashboard {~'dash-id :id} {:name "The Dashboard"}
+                  DashboardCard {~'base-dash-card-id :id} {:dashboard_id ~'dash-id
+                                                           :card_id      ~'base-card-id}
+                  DashboardCard {~'empty-dash-card-id :id} {:dashboard_id ~'dash-id
+                                                            :card_id      ~'empty-card-id}
+                  Pulse {~'pulse-id :id :as ~'pulse} {:name          "Only populated pulse"
+                                                      :dashboard_id  ~'dash-id
+                                                      :skip_if_empty ~skip-if-empty?}
+                  PulseCard ~'_ {:pulse_id          ~'pulse-id
+                                 :card_id           ~'base-card-id
+                                 :dashboard_card_id ~'base-dash-card-id
+                                 :include_csv       true}
+                  PulseCard ~'_ {:pulse_id          ~'pulse-id
+                                 :card_id           ~'empty-card-id
+                                 :dashboard_card_id ~'empty-dash-card-id
+                                 :include_csv       true}
+                  PulseChannel {~'pulse-channel-id :id} {:channel_type :email
+                                                         :pulse_id     ~'pulse-id
+                                                         :enabled      true}
+                  PulseChannelRecipient ~'_ {:pulse_channel_id ~'pulse-channel-id
+                                             :user_id          (mt/user->id :rasta)}]
+     (let [~result (run-pulse-and-return-data-tables ~'pulse)]
+       ~@body)))
+
+(deftest skip-if-empty-test
+  #_{:clj-kondo/ignore [:unresolved-symbol]}
+  (testing "Only send non-empty cards when 'Don't send if there aren't results is enabled' (#34777)"
+    (mt/dataset test-data
+      (let [query       {:source-table (mt/id :orders)
+                         :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                        [:field (mt/id :orders :tax) {:base-type :type/Float}]]
+                         :limit        2}
+            query2      (merge query {:limit 3})
+            empty-query (merge query
+                               {:filter [:= [:field (mt/id :orders :tax) {:base-type :type/Float}] -1]})]
+        (testing "Cases for when 'Don't send if there aren't results is enabled' is false"
+          (let [skip-if-empty? false]
+            (testing "Everything has results"
+              (with-skip-if-empty-pulse-result [result skip-if-empty? query query2]
+                (testing "Show all the data"
+                  (is (= [[["1" "2.07"] ["2" "6.1"]]
+                          [["1" "2.07"] ["2" "6.1"] ["3" "2.9"]]]
+                         result)))))
+            (testing "Not everything has results"
+              (with-skip-if-empty-pulse-result [result skip-if-empty? query empty-query]
+                (testing "The second table is empty since there are no results"
+                  (is (= [[["1" "2.07"] ["2" "6.1"]] []] result)))))
+            (testing "No results"
+              (with-skip-if-empty-pulse-result [result skip-if-empty? empty-query empty-query]
+                (testing "We send the email anyways, despite everything being empty due to no results"
+                  (is (= [[] []] result)))))))
+        (testing "Cases for when 'Don't send if there aren't results is enabled' is true"
+          (let [skip-if-empty? true]
+            (testing "Everything has results"
+              (with-skip-if-empty-pulse-result [result skip-if-empty? query query2]
+                (testing "When everything has results, we see everything"
+                  (is (= 2 (count result))))
+                (testing "Show all the data"
+                  (is (= [[["1" "2.07"] ["2" "6.1"]]
+                          [["1" "2.07"] ["2" "6.1"] ["3" "2.9"]]]
+                         result)))))
+            (testing "Not everything has results"
+              (with-skip-if-empty-pulse-result [result skip-if-empty? query empty-query]
+                (testing "We should only see a single data table in the result"
+                  (is (= 1 (count result))))
+                (testing "The single result should contain the card with data in it"
+                  (is (= [[["1" "2.07"] ["2" "6.1"]]] result)))))
+            (testing "No results"
+              (with-skip-if-empty-pulse-result [result skip-if-empty? empty-query empty-query]
+                (testing "Don't send a pulse if no results at all"
+                  (is (nil? result)))))))))))

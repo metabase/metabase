@@ -19,7 +19,10 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         lineHeight: "1.5rem",
         padding: theme.spacing.sm,
 
-        "&:hover, &:focus": {
+        "&:disabled": {
+          color: theme.fn.themeColor("text-light"),
+        },
+        "&[data-hovered]": {
           color: theme.fn.themeColor("brand"),
           backgroundColor: theme.fn.themeColor("brand-lighter"),
 

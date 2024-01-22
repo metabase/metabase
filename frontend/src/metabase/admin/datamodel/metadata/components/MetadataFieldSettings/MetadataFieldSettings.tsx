@@ -7,7 +7,7 @@ import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
-import AdminLayout from "metabase/components/AdminLayout";
+import { AdminLayout } from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";

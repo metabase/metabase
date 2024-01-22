@@ -38,7 +38,6 @@
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -81,15 +80,8 @@
 (defn- list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
   (^Iterable [details]
-   (list-tables details {:validate-dataset? false}))
-  (^Iterable [details {:keys [validate-dataset?]}]
    (let [client (database-details->client details)
          dataset-iter (list-datasets details)]
-     (when (and (not= (:dataset-filters-type details) "all")
-                validate-dataset?
-                (zero? (count dataset-iter)))
-       (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
-                       {::driver/can-connect-message? true})))
      (apply concat (for [^DatasetId dataset-id dataset-iter]
                      (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
                          .iterateAll
@@ -97,14 +89,22 @@
                          iterator-seq))))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ details-map]
-  ;; check whether we can connect by seeing whether listing tables succeeds
-  (try (some? (list-tables details-map {:validate-dataset? true}))
-       (catch Exception e
-         (when (::driver/can-connect-message? (ex-data e))
-           (throw e))
-         (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
-         false)))
+  [_ details]
+  ;; check whether we can connect by seeing whether listing datasets succeeds
+  (let [[success? datasets] (try [true (list-datasets details)]
+                                 (catch Exception e
+                                   (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
+                                   [false nil]))]
+    (cond
+      (not success?)
+      false
+      ;; if the datasets are filtered and we don't find any matches, throw an exception with a message that we can show
+      ;; to the user
+      (and (not= (:dataset-filters-type details) "all")
+           (nil? (first datasets)))
+      (throw (Exception. (tru "Looks like we cannot find any matching datasets.")))
+      :else
+      true)))
 
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
@@ -188,6 +188,17 @@
        :base-type         (bigquery-type->base-type f-mode type-name)
        :database-position idx})))
 
+(def ^:private partitioned-time-field-name
+  "The name of pseudo-column for tables that are partitioned by ingestion time.
+  See https://cloud.google.com/bigquery/docs/partitioned-tables#ingestion_time"
+  "_PARTITIONTIME")
+
+(def ^:private partitioned-date-field-name
+  "This is also a pseudo-column, similiar to [[partitioned-time-field-name]].
+  In fact _PARTITIONDATE is _PARTITIONTIME truncated to DATE.
+  See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
+  "_PARTITIONDATE")
+
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
   (let [table                  (get-table database dataset-id table-name)
@@ -211,12 +222,12 @@
                     (some? (.getTimePartitioning tabledef))
                     (nil? partitioned-field-name))
                (conj
-                {:name                 "_PARTITIONTIME"
+                {:name                 partitioned-time-field-name
                  :database-type        "TIMESTAMP"
                  :base-type            (bigquery-type->base-type nil "TIMESTAMP")
                  :database-position    (count fields)
                  :database-partitioned true}
-                {:name                 "_PARTITIONDATE"
+                {:name                 partitioned-date-field-name
                  :database-type        "DATE"
                  :base-type            (bigquery-type->base-type nil "DATE")
                  :database-position    (inc (count fields))
@@ -228,7 +239,7 @@
           (map (fn [^Field field]
                  (let [column-type (.. field getType name)
                        column-mode (.getMode field)
-                       method (get-method bigquery.qp/parse-result-of-type column-type)]
+                       method      (get-method bigquery.qp/parse-result-of-type column-type)]
                    (when (= method default-parser)
                      (let [column-name (.getName field)]
                        (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
@@ -273,17 +284,24 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
+(defn- ingestion-time-partitioned-table?
+  [table-id]
+  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name :database_partitioned true :active true))
+
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
   (let [database (table/database table)
         bq-table (get-table database dataset-id table-name)]
-    (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
-           ;; We couldn't easily test if the following two can show up as
-           ;; tables and if `.list` is supported for them, so they are here
-           ;; to make sure we don't break existing instances.
-           TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
-         (.. bq-table getDefinition getType))
-      (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
+    (if (or (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
+               ;; We couldn't easily test if the following two can show up as
+               ;; tables and if `.list` is supported for them, so they are here
+               ;; to make sure we don't break existing instances.
+               TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+             (.. bq-table getDefinition getType))
+            ;; if the table is partitioned by ingestion time, using .list or .listTableData won't return values for
+            ;; the _PARTITIONTIME field, so we need to fall back to using sql
+            (ingestion-time-partitioned-table? (:id table)))
+      (do (log/debugf "%s.%s is a view or a table partitioned by ingestion time, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
           ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
       (sample-table bq-table fields rff))))

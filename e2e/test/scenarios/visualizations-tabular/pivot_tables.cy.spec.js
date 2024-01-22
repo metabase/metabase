@@ -32,8 +32,8 @@ const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
 
 const TEST_CASES = [
-  { case: "question", subject: QUESTION_NAME },
-  { case: "dashboard", subject: DASHBOARD_NAME },
+  { case: "question", subject: QUESTION_NAME, confirmSave: true },
+  { case: "dashboard", subject: DASHBOARD_NAME, confirmSave: false },
 ];
 
 /**
@@ -700,10 +700,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
-          openStaticEmbeddingModal();
+          openStaticEmbeddingModal({
+            activeTab: "parameters",
+            confirmSave: test.confirmSave
+          });
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Publish").click();
+          cy.findByText("Publish changes").click();
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
           visitIframe();
@@ -1156,8 +1159,16 @@ const testQuery = {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
     breakout: [
-      ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
-      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      [
+        "field",
+        PEOPLE.SOURCE,
+        { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+      ],
+      [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ],
     ],
   },
   database: SAMPLE_DB_ID,

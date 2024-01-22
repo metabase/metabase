@@ -72,6 +72,36 @@
       (is (not= (js->clj join) (js->clj join-class)))
       (is (lib.js/query= basic-query classy-query)))))
 
+(defn- query-with-field-opts [opts]
+  #js {"type" "query"
+       "query" #js {"source-table" 1
+                    "filter" #js ["=" #js ["field" 12 opts] 7]}})
+
+(deftest ^:parallel query=-field-types-test
+  (testing "equal field types are equal"
+    (is (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                       (query-with-field-opts #js {"base-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Float"})
+                       (query-with-field-opts #js {"effective-type" "type/Float"}))))
+
+  (testing "mismatched field types are not equal"
+    (is (not (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                            (query-with-field-opts #js {"base-type" "type/Float"}))))
+    (is (not (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Text"})
+                            (query-with-field-opts #js {"effective-type" "type/Float"})))))
+
+  (testing "missing field types are equal"
+    (is (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
+                       (query-with-field-opts #js {})))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts #js {"base-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Text"})
+                       (query-with-field-opts nil)))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts #js {"effective-type" "type/Text"})))
+    (is (lib.js/query= (query-with-field-opts #js {})
+                       (query-with-field-opts nil)))))
+
 (deftest ^:parallel available-join-strategies-test
   (testing "available-join-strategies returns an array of opaque strategy objects (#32089)"
     (let [strategies (lib.js/available-join-strategies lib.tu/query-with-join -1)]
@@ -160,8 +190,11 @@
       (testing "from pMBQL expression"
         (is (= (js->clj legacy-expr) (js->clj legacy-expr'))))
       (testing "from legacy filter"
-        (is (=? [:< {} [:field {} (meta/id :venues :price)] 100]
-                pmbql-filter)))
+        (let [filter-expr [:< {} [:field {} (meta/id :venues :price)] 100]]
+          (is (=? filter-expr pmbql-filter))
+          (testing "created expression can be used to add a filter to a query (#37173)"
+            (is (=? {:stages [{:filters [filter-expr]}]}
+                    (lib/filter query pmbql-filter))))))
       (testing "from pMBQL filter"
         (is (= (js->clj legacy-filter) (js->clj legacy-filter'))))))
   (testing "conversion drops aggregation-options (#36120)"
@@ -183,8 +216,36 @@
     (let [query lib.tu/venues-query
           legacy-expr 0
           expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
-          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)]
-      (is (= legacy-expr expr legacy-expr')))))
+          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
+          query-with-expr (lib/expression query 0 "expr" expr)
+          expr-from-query (first (lib/expressions query-with-expr 0))
+          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)
+          named-expr (lib/with-expression-name expr "named")]
+      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query))
+      (is (= "named" (lib/display-name query named-expr)))))
+  (testing "simple expressions can be converted properly (#37173)"
+    (let [query lib.tu/venues-query
+          legacy-expr #js ["+" 1 2]
+          expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
+          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
+          query-with-expr (lib/expression query 0 "expr" expr)
+          expr-from-query (first (lib/expressions query-with-expr 0))
+          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)]
+      (is (=? [:+ {} 1 2] expr))
+      (is (= (js->clj legacy-expr) (js->clj legacy-expr') (js->clj legacy-expr-from-query)))
+      (testing "created expression can be aggregated in a query (#37173)"
+        (is (=? {:stages [{:aggregation [[:+ {} 1 2]]}]}
+                (lib/aggregate query -1 expr))))
+      (testing "created expression can be added as an expression to a query (#37173)"
+        (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "expr"} 1 2]]}]}
+                (lib/expression query -1 "expr" expr))))))
+  (testing "filters from queries can be converted to legacy clauses (#37173)"
+    (let [query (lib/filter lib.tu/venues-query (lib/< (meta/field-metadata :venues :price) 3))
+          expr (first (lib/filters query))
+          legacy-expr (lib.js/legacy-expression-for-expression-clause query 0 expr)
+          price-id (meta/id :venues :price)]
+      (is (=? [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} price-id] 3] expr))
+      (is (= ["<" ["field" price-id {"base-type" "Integer"}] 3] (js->clj legacy-expr))))))
 
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"
@@ -240,12 +301,20 @@
               ["field" (meta/id :venues :longitude) {"base-type" "type/Float"}]
               ["field" (meta/id :venues :price) {"base-type" "type/Integer"}]]
              (->> query lib/returned-columns (map to-legacy-refs)))))
-    (testing "segment refs come without options"
-      (is (= [["segment" segment-id]]
-             (->> query lib/available-segments (map to-legacy-refs)))))
-    (testing "metric refs come without options"
-      (is (= [["metric" metric-id]]
-             (->> query lib/available-metrics (map to-legacy-refs)))))))
+    (let [legacy-refs (->> query lib/available-segments (map lib.js/legacy-ref))]
+      (testing "legacy segment refs come without options"
+        (is (= [["segment" segment-id]] (map array-checker legacy-refs))))
+      (testing "segment legacy ref can be converted to an expression and back (#37173)"
+        (let [segment-expr (lib.js/expression-clause-for-legacy-expression query -1 (first legacy-refs))]
+          (is (=? [:segment {} segment-id] segment-expr))
+          (is (= ["segment" segment-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 segment-expr)))))))
+    (let [legacy-refs (->> query lib/available-metrics (map lib.js/legacy-ref))]
+      (testing "metric refs come without options"
+        (is (= [["metric" metric-id]] (map array-checker legacy-refs))))
+      (testing "metric legacy ref can be converted to an expression and back (#37173)"
+        (let [metric-expr (lib.js/expression-clause-for-legacy-expression query -1 (first legacy-refs))]
+          (is (=? [:metric {} metric-id] metric-expr))
+          (is (= ["metric" metric-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 metric-expr)))))))))
 
 (deftest ^:parallel source-table-or-card-id-test
   (testing "returns the table-id as a number"

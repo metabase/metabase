@@ -113,6 +113,7 @@ export type BucketDisplayInfo = {
   displayName: string;
   default?: boolean;
   selected?: boolean;
+  isTemporalExtraction?: boolean;
 };
 
 export type TableDisplayInfo = {
@@ -138,6 +139,8 @@ export type ColumnDisplayInfo = {
   isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  isAggregation: boolean;
+  isBreakout: boolean;
   table?: TableInlineDisplayInfo;
 
   breakoutPosition?: number;
@@ -186,7 +189,9 @@ export type ClauseDisplayInfo = Pick<
 
 export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
-export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
+export type BreakoutClauseDisplayInfo = ClauseDisplayInfo & {
+  isTemporalExtraction?: boolean;
+};
 
 export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
@@ -505,3 +510,8 @@ export interface FieldValuesSearchInfo {
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }
+
+export type QueryDisplayInfo = {
+  isNative: boolean;
+  isEditable: boolean;
+};

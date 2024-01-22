@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createMockSettingDefinition } from "metabase-types/api/mocks";
 import type { AuthSetting, AuthCardProps } from "./AuthCard";
 import AuthCard from "./AuthCard";
 
@@ -54,12 +55,30 @@ describe("AuthCard", () => {
 
     expect(props.onDeactivate).toHaveBeenCalled();
   });
+
+  it("should handle settings set with env vars", () => {
+    const props = getProps({
+      setting: getSetting({
+        value: null,
+        env_name: "MB_JWT_ENABLED",
+        is_env_setting: true,
+      }),
+      isConfigured: true,
+    });
+
+    render(<AuthCard {...props} />);
+
+    expect(screen.getByRole("link")).toHaveTextContent("$MB_JWT_ENABLED");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("card-badge")).not.toBeInTheDocument();
+  });
 });
 
-const getSetting = (opts?: Partial<AuthSetting>): AuthSetting => ({
-  value: false,
-  ...opts,
-});
+const getSetting = (opts?: Partial<AuthSetting>): AuthSetting =>
+  createMockSettingDefinition({
+    value: false,
+    ...opts,
+  }) as AuthSetting;
 
 const getProps = (opts?: Partial<AuthCardProps>): AuthCardProps => ({
   setting: getSetting(),

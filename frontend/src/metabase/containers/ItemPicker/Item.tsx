@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import type { IconName, IconProps } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import type { PickerItem } from "./types";
 

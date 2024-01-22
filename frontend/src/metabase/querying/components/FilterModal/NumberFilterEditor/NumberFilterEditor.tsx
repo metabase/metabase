@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { isNumber } from "metabase/lib/types";
-import { Flex, Grid, NumberInput, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, Grid, NumberInput, Text, Icon } from "metabase/ui";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
@@ -74,7 +74,7 @@ export function NumberFilterEditor({
   };
 
   return (
-    <Grid mih="4.5rem" grow>
+    <Grid grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />

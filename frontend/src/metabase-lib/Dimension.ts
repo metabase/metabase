@@ -253,7 +253,7 @@ export default class Dimension {
    * Does this dimension have the same underlying base dimension, typically a field
    */
   isSameBaseDimension(
-    other: Dimension | null | undefined | ConcreteFieldReference,
+    other: Dimension | null | undefined | FieldReference,
   ): boolean {
     if (other == null) {
       return false;
@@ -383,7 +383,9 @@ export default class Dimension {
     return null;
   }
 
-  legacyQuery(): StructuredQuery | null | undefined {
+  legacyQuery(
+    _opts: { useStructuredQuery: true } = {},
+  ): StructuredQuery | null | undefined {
     return this._query;
   }
 
@@ -1213,7 +1215,7 @@ export class ExpressionDimension extends Dimension {
 
     if (!baseTypeOption) {
       if (query) {
-        const datasetQuery = query.legacyQuery();
+        const datasetQuery = query.legacyQuery({ useStructuredQuery: true });
         const expressions = datasetQuery?.expressions ?? {};
         const expr = expressions[this.name()];
 

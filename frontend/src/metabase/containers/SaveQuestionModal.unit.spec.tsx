@@ -152,7 +152,9 @@ function getQuestion({
 const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
 
 function getDirtyQuestion(originalQuestion: Question) {
-  const query = originalQuestion.legacyQuery() as StructuredQuery;
+  const query = originalQuestion.legacyQuery({
+    useStructuredQuery: true,
+  }) as StructuredQuery;
   return query.breakout(["field", ORDERS.TOTAL, null]).question().markDirty();
 }
 
@@ -634,7 +636,7 @@ describe("SaveQuestionModal", () => {
       databaseId: SAMPLE_DB_ID,
       tableId: ORDERS_ID,
       metadata,
-    }).legacyQuery() as StructuredQuery;
+    }).legacyQuery({ useStructuredQuery: true }) as StructuredQuery;
 
     const question = query.aggregate(["count"]).question();
 

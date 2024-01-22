@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 

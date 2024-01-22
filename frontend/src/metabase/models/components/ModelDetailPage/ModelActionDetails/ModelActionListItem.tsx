@@ -3,7 +3,7 @@ import { t } from "ttag";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";

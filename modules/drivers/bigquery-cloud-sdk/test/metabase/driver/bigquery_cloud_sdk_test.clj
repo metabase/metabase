@@ -1,5 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk-test
   (:require
+   [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -13,7 +14,6 @@
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
-   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -174,7 +174,7 @@
 
 (defn- do-with-temp-obj [name-fmt-str create-args-fn drop-args-fn f]
   (driver/with-driver :bigquery-cloud-sdk
-    (let [obj-name (format name-fmt-str (tu.random/random-name))]
+    (let [obj-name (format name-fmt-str (mt/random-name))]
       ;; TODO: do we still need to make a copy of db everytime we use this helper?
       (mt/with-temp-copy-of-db
         (try
@@ -309,37 +309,92 @@
             (doall (map drop-table-if-exists! (keys table-name->is-filter-required?)))
             nil)))))))
 
-(deftest sync-pseudocolumn-for-ingestion-time-partitioned-table-test
-  (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME AND _PARTITIONDATE"
-    (mt/test-driver :bigquery-cloud-sdk
+(deftest full-sync-partitioned-table-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Partitioned tables that require a partition filter can be synced"
       (mt/with-model-cleanup [:model/Table]
-        (let [table-name "partition_by_ingestion_time"]
+        (let [table-names  ["partition_by_range" "partition_by_time" "partitioned_by_datetime"
+                            "partition_by_ingestion_time" "partition_by_ingestion_time_not_required"]]
           (try
-           (doseq [sql [(format "CREATE TABLE %s (transaction_id INT64)
+           (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
+                                PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
+                                OPTIONS (require_partition_filter = TRUE);"
+                                (fmt-table-name "partition_by_range"))
+                        (format "INSERT INTO %s (customer_id)
+                                VALUES (1), (2), (3);"
+                                (fmt-table-name "partition_by_range"))
+                        (format "CREATE TABLE %s (company STRING, founded DATETIME)
+                                PARTITION BY DATE(founded)
+                                OPTIONS (require_partition_filter = TRUE);"
+                                (fmt-table-name "partitioned_by_datetime"))
+                        (format "INSERT INTO %s (company, founded)
+                                VALUES ('Metabase', DATETIME('2014-10-10 00:00:00')),
+                                ('Tesla', DATETIME('2003-07-01 00:00:00')),
+                                ('Apple', DATETIME('1976-04-01 00:00:00'));"
+                                (fmt-table-name "partitioned_by_datetime"))
+                        (format "CREATE TABLE %s (name STRING, birthday TIMESTAMP)
+                                PARTITION BY DATE(birthday)
+                                OPTIONS (require_partition_filter = TRUE);"
+                                (fmt-table-name "partition_by_time"))
+                        (format "INSERT INTO %s (name, birthday)
+                                VALUES ('Ngoc', TIMESTAMP('1998-04-17 00:00:00+00:00')),
+                                ('Quang', TIMESTAMP('1999-04-17 00:00:00+00:00')),
+                                ('Khuat', TIMESTAMP('1997-04-17 00:00:00+00:00'));"
+                                (fmt-table-name "partition_by_time"))
+                        (format "CREATE TABLE %s (is_awesome BOOL)
+                                PARTITION BY _PARTITIONDATE
+                                OPTIONS (require_partition_filter = TRUE);"
+                                (fmt-table-name "partition_by_ingestion_time"))
+                        (format "INSERT INTO %s (is_awesome)
+                                VALUES (true), (false);"
+                                (fmt-table-name "partition_by_ingestion_time"))
+                        (format "CREATE TABLE %s (is_opensource BOOL)
                                 PARTITION BY _PARTITIONDATE;"
-                                (fmt-table-name table-name))
-                        (format "INSERT INTO %s(transaction_id) VALUES(1);"
-                                (fmt-table-name table-name))]]
+                                (fmt-table-name "partition_by_ingestion_time_not_required"))
+                        (format "INSERT INTO %s (is_opensource)
+                                VALUES (true), (false);"
+                                (fmt-table-name "partition_by_ingestion_time_not_required"))]]
              (bigquery.tx/execute! sql))
-           (sync/sync-database! (mt/db) {:scan :schema})
+           (sync/sync-database! (mt/db))
+           (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in table-names])
+                 all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
+             (testing "all fields are fingerprinted"
+               (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
+             (testing "Field values are correctly synced"
+               (is (= {"customer_id"   #{1 2 3}
+                       "name"          #{"Khuat" "Quang" "Ngoc"}
+                       "company"       #{"Metabase" "Tesla" "Apple"}
+                       "is_awesome"    #{true false}
+                       "is_opensource" #{true false}}
+                      (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
+                                      :from   [[:metabase_field :field]]
+                                      :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
+                                      :where  [:and [:in :field.table_id table-ids]
+                                               [:in :field.name ["customer_id" "name" "is_awesome" "is_opensource" "company"]]]})
+                           (map #(update % :values (comp set json/parse-string)))
+                           (map (juxt :field-name :values))
+                           (into {}))))))
 
-           (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)]
-             (is (=? [{:name           "_PARTITIONTIME"
-                       :database_type "TIMESTAMP"
-                       :base_type     :type/DateTimeWithLocalTZ
-                       :database_position 1}
-                      {:name           "_PARTITIONDATE"
-                       :database_type "DATE"
-                       :base_type     :type/Date
-                       :database_position 2}]
-                     (t2/select :model/Field :table_id partitioned-by-ingestion-time-table-id
-                                :database_partitioned true {:order-by [[:name :desc]]}))))
-           (testing "and query this table should return the column pseudocolumn as well"
-             (is (malli=
-                  [:tuple :int ms/TemporalString ms/TemporalString]
-                  (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time {:limit 1}))))))
+           (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
+             (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
+                                                                         :name "partition_by_ingestion_time_not_required")]
+               (is (=? [{:name           "_PARTITIONTIME"
+                         :database_type "TIMESTAMP"
+                         :base_type     :type/DateTimeWithLocalTZ
+                         :database_position 1}
+                        {:name           "_PARTITIONDATE"
+                         :database_type "DATE"
+                         :base_type     :type/Date
+                         :database_position 2}]
+                       (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
+                                  :database_partitioned true {:order-by [[:name :desc]]}))))
+             (testing "and query this table should return the column pseudocolumn as well"
+               (is (malli=
+                    [:tuple :boolean ms/TemporalString ms/TemporalString]
+                    (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required {:limit 1})))))))
            (finally
-            (drop-table-if-exists! table-name))))))))
+            (doall (map drop-table-if-exists! table-names))
+            nil)))))))
 
 (deftest sync-update-require-partition-option-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -561,13 +616,10 @@
               (is (= max-rows (count rows)))
               (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
 
-(defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (t2.with-temp/with-temp [Database db-filtered database]
-    (sync/sync-database! db-filtered {:scan :schema})
-    (let [tables (t2/select Table :db_id (u/the-id db-filtered))]
-      (assert (not-empty tables))
-      (doseq [table tables]
-        (assert-table-fn table)))))
+(defn- synced-tables [db-attributes]
+  (t2.with-temp/with-temp [Database db db-attributes]
+    (sync/sync-database! db {:scan :schema})
+    (t2/select Table :db_id (u/the-id db))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -582,33 +634,42 @@
                                                      (dissoc :dataset-filters-type
                                                              :dataset-filters-patterns)))
               dataset-ids (map #(.getDataset %) datasets)
-              ;; get the first 4 characters of each dataset-id
+              ;; get the first 4 characters of each dataset-id. The first 4 characters are used because the first 3 are
+              ;; often used for bigquery dataset names e.g. `v4_test_data`
               prefixes (->> dataset-ids
                             (map (fn [dataset-id]
                                    (apply str (take 4 dataset-id)))))
-              ;; inclusion-patterns selects the first dataset
-              ;; exclusion-patterns excludes almost everything else
               include-prefix (first prefixes)
+              exclude-prefixes (rest prefixes)
+              ;; inclusion-patterns selects the first dataset
               inclusion-patterns (str include-prefix "*")
-              exclusion-patterns (str/join "," (map #(str % "*") (set (rest prefixes))))]
+              ;; exclusion-patterns excludes every dataset with exclude prefixes. It would exclude all other datasets
+              ;; except ones that match the include-prefix, except there could be other tests creating new datasets for
+              ;; the same test DB while this test is running, so we can't guarantee that the include-prefix will match all the
+              ;; datasets
+              exclusion-patterns (str/join "," (map #(str % "*") (set exclude-prefixes)))]
           (testing " with an inclusion filter"
-            (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
-                                              :engine  :bigquery-cloud-sdk
-                                              :details (-> (mt/db)
-                                                           :details
-                                                           (assoc :dataset-filters-type "inclusion"
-                                                                  :dataset-filters-patterns inclusion-patterns))}
-                                             (fn [{dataset-id :schema}]
-                                               (is (str/starts-with? dataset-id include-prefix)))))
+            (let [tables (synced-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                         :engine  :bigquery-cloud-sdk
+                                         :details (-> (mt/db)
+                                                      :details
+                                                      (assoc :dataset-filters-type "inclusion"
+                                                             :dataset-filters-patterns inclusion-patterns))})]
+              (is (seq tables))
+              (doseq [{dataset-id :schema} tables]
+                (is (str/starts-with? dataset-id include-prefix)))))
           (testing " with an exclusion filter"
-            (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
-                                              :engine  :bigquery-cloud-sdk
-                                              :details (-> (mt/db)
-                                                           :details
-                                                           (assoc :dataset-filters-type "exclusion"
-                                                                  :dataset-filters-patterns exclusion-patterns))}
-                                             (fn [{dataset-id :schema}]
-                                               (is (str/starts-with? dataset-id include-prefix))))))))))
+            (let [tables (synced-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                         :engine  :bigquery-cloud-sdk
+                                         :details (-> (mt/db)
+                                                      :details
+                                                      (assoc :dataset-filters-type "exclusion"
+                                                             :dataset-filters-patterns exclusion-patterns))})]
+              (testing "\ncheck that all synced tables do not start with any of the exclude prefixes"
+                (doseq [{dataset-id :schema} tables]
+                  (is (not (some #(str/starts-with? dataset-id %) exclude-prefixes)))))
+              (testing "\ncheck that the dataset with the include prefix is not excluded"
+                (is (some #(str/starts-with? (:schema %) include-prefix) tables))))))))))
 
 (deftest normalize-away-dataset-id-test
   (mt/test-driver :bigquery-cloud-sdk

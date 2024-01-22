@@ -59,7 +59,8 @@ const metadata = createMockMetadata({
 });
 
 const ordersTable = metadata.table(ORDERS_ID);
-const productsTable = metadata.table(PRODUCTS_ID);
+
+const ordersIdField = ["field", ORDERS.ID, { "base-type": "type/BigInteger" }];
 
 function makeDatasetQuery(query = {}) {
   return {
@@ -114,7 +115,9 @@ function makeQueryWithoutNumericFields() {
     ],
   });
 
-  return new Question(questionDetail, metadata).legacyQuery();
+  return new Question(questionDetail, metadata).legacyQuery({
+    useStructuredQuery: true,
+  });
 }
 
 // no numeric fields, but have linked table (FK) with a numeric field
@@ -171,7 +174,9 @@ function makeQueryWithLinkedTable() {
     ],
   });
 
-  return new Question(questionDetail, metadata).legacyQuery();
+  return new Question(questionDetail, metadata).legacyQuery({
+    useStructuredQuery: true,
+  });
 }
 
 const getShortName = aggregation => aggregation.short;
@@ -295,7 +300,9 @@ describe("StructuredQuery", () => {
     });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
-        expect(query.legacyQuery()["source-table"]).toBe(ORDERS_ID);
+        expect(
+          query.legacyQuery({ useStructuredQuery: true })["source-table"],
+        ).toBe(ORDERS_ID);
       });
     });
     describe("setDatabase", () => {
@@ -304,20 +311,9 @@ describe("StructuredQuery", () => {
         expect(query.setDatabase(db)._database().id).toBe(db.id);
       });
     });
-    describe("setTable", () => {
-      it("allows you to set a new table", () => {
-        expect(query.setTable(productsTable).tableId()).toBe(PRODUCTS_ID);
-      });
-
-      it("retains the correct database id when setting a new table", () => {
-        expect(query.setTable(productsTable).table().database.id).toBe(
-          SAMPLE_DB_ID,
-        );
-      });
-    });
-    describe("tableId", () => {
+    describe("_sourceTableId", () => {
       it("Return the right table id", () => {
-        expect(query.tableId()).toBe(ORDERS_ID);
+        expect(query._sourceTableId()).toBe(ORDERS_ID);
       });
     });
   });
@@ -337,11 +333,6 @@ describe("StructuredQuery", () => {
         const q = makeQuery();
         q._database = () => null;
         expect(q.isEditable()).toBe(false);
-      });
-    });
-    describe("isEmpty", () => {
-      it("tells that a non-empty query is not empty", () => {
-        expect(query.isEmpty()).toBe(false);
       });
     });
   });
@@ -443,7 +434,9 @@ describe("StructuredQuery", () => {
 
     describe("addAggregation", () => {
       it("adds an aggregation", () => {
-        expect(query.aggregate(["count"]).legacyQuery()).toEqual({
+        expect(
+          query.aggregate(["count"]).legacyQuery({ useStructuredQuery: true }),
+        ).toEqual({
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });
@@ -497,7 +490,7 @@ describe("StructuredQuery", () => {
           const query = makeQueryWithoutNumericFields().addExpression(
             "custom_numeric_field",
             // Expression: case([ID] = 1, 11, 99)
-            ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
+            ["case", [[["=", ordersIdField, 1], 11]], { default: 99 }],
           );
 
           expect(
@@ -566,7 +559,7 @@ describe("StructuredQuery", () => {
         const query = makeQueryWithoutNumericFields().addExpression(
           "custom_numeric_field",
           // Expression: case([ID] = 1, 11, 99)
-          ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
+          ["case", [[["=", ordersIdField, 1], 11]], { default: 99 }],
         );
         const short = "avg";
 
