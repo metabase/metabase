@@ -132,8 +132,6 @@ export const CollectionHeaderContainer = styled.div`
   padding-top: 1rem;
   margin-right: 1rem;
   a {
-    display: flex;
-    flex-flow: row nowrap;
     &:hover h4 {
       color: ${color("brand")};
     }
