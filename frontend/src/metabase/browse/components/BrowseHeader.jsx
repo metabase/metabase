@@ -5,7 +5,6 @@ import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import { Icon } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import {
   BrowseHeaderContent,
   BrowseHeaderRoot,
@@ -17,7 +16,7 @@ export default function BrowseHeader({ crumbs = [] }) {
     <BrowseHeaderRoot>
       <BrowseHeaderContent>
         {crumbs.length > 0 ? (
-          <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
+          <BrowserCrumbs crumbs={crumbs} />
         ) : (
           <h2 className="text-dark">{t`Browse data`}</h2>
         )}
