@@ -234,7 +234,7 @@
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (tu/do-with-temporary-setting-value setting db-value
     (fn []
-      (tu/do-with-temp-env-var-value
+      (tu/do-with-temp-env-var-value!
        (setting/setting-env-map-name (keyword setting))
        env-var-value
        (fn []
@@ -717,7 +717,7 @@
                                                (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
-                                         (tu/do-with-temp-env-var-value
+                                         (tu/do-with-temp-env-var-value!
                                           (setting/setting-env-map-name setting-name)
                                           site-wide-value
                                           thunk))]]
@@ -1223,11 +1223,11 @@
               (#'setting/realize x)))))))
 
 (deftest valid-json-setting-test
-  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2]"]
+  (mt/with-temp-env-var-value! ["MB_TEST_JSON_SETTING" "[1, 2]"]
     (is (nil? (setting/validate-settings-formatting!)))))
 
 (defn- get-parse-exception [raw-value]
-  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" raw-value]
+  (mt/with-temp-env-var-value! ["MB_TEST_JSON_SETTING" raw-value]
     (try
       (setting/validate-settings-formatting!)
       (throw (java.lang.RuntimeException. "This code should never be reached."))
