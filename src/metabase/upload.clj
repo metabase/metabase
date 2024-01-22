@@ -258,6 +258,10 @@
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
   "_mb_row_id")
 
+(def auto-pk-column-keyword
+  "The keyword of the auto-incrementing PK column."
+  (keyword auto-pk-column-name))
+
 (defn- table-id->auto-pk-column [table-id]
   (first (filter (fn [field]
                    (= (normalize-column-name (:name field)) auto-pk-column-name))
@@ -297,7 +301,7 @@
                                  (column-types-from-rows settings column-count)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
-     :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)}))
+     :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::auto-incrementing-int-pk)}))
 
 
 ;;;; +------------------+
@@ -397,7 +401,11 @@
           csv-col-names           (keys extant-columns)
           col-upload-types        (vals extant-columns)
           parsed-rows             (vec (parse-rows col-upload-types rows))]
-      (driver/create-table! driver db-id table-name col-to-create->col-spec)
+      (driver/create-table! {:driver      driver
+                             :database-id db-id
+                             :table-name  table-name
+                             :col->type   col-to-create->col-spec
+                             :primary-key auto-pk-column-keyword})
       (try
         (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
         {:num-rows          (count rows)
@@ -630,7 +638,7 @@
         (driver/add-columns! driver
                              (:id database)
                              (table-identifier table)
-                             {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
+                             {auto-pk-column-keyword (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
       (scan-and-sync-table! database table)
       (when create-auto-pk?
         (let [auto-pk-field (table-id->auto-pk-column (:id table))]

@@ -274,7 +274,7 @@
 
 (defn- with-ai-id
   [col->type]
-  {:generated-columns {(keyword @#'upload/auto-pk-column-name) auto-pk-type}
+  {:generated-columns {@#'upload/auto-pk-column-keyword auto-pk-type}
    :extant-columns    col->type})
 
 (defn- detect-schema-with-csv-rows
@@ -1151,7 +1151,7 @@
   [& {:keys [schema-name table-name col->upload-type rows]
       :or {table-name       (mt/random-name)
            col->upload-type (ordered-map/ordered-map
-                             (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                             upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
                              :name ::upload/varchar-255)
            rows             [["Obi-Wan Kenobi"]]}}]
   (let [driver driver/*driver*
@@ -1159,9 +1159,13 @@
         schema+table-name (if schema-name
                             (str schema-name "." table-name)
                             table-name)
-        insert-col-names (remove #{(keyword upload/auto-pk-column-name)} (keys col->upload-type))
+        insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
         col->database-type (#'upload/upload-type->col-specs driver col->upload-type)
-        _ (driver/create-table! driver db-id schema+table-name col->database-type)
+        _ (driver/create-table! {:driver       driver/*driver*
+                                 :database-id  db-id
+                                 :table-name   schema+table-name
+                                 :column->type col->database-type
+                                 :primary-key  upload/auto-pk-column-keyword})
         _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)]
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
 
@@ -1510,7 +1514,7 @@
                                                                :test_column upload-type
                                                                :name        ::upload/varchar-255)
                                                         auto-pk-column?
-                                                        (assoc (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk))
+                                                        (assoc upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk))
                                     :rows             [[valid "Obi-Wan Kenobi"]]})
                             ;; The CSV contains 50 valid rows and 1 invalid row
                             csv-rows `["test_column,name" ~@(repeat 50 (str valid ",Darth Vadar")) ~(str invalid ",Luke Skywalker")]
@@ -1544,7 +1548,7 @@
             (binding [driver/*insert-chunk-rows* 1]
               (let [table (create-upload-table!
                            {:col->upload-type (ordered-map/ordered-map
-                                               (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                                               upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
                                                :test_column ::upload/varchar-255)
                             :rows             [["valid"]]})
                     csv-rows `["test_column" ~@(repeat 50 "valid too") ~(apply str (repeat 256 "x"))]
@@ -1575,7 +1579,7 @@
                                  uncoerced (name upload-type) coerced)
                   (let [table (create-upload-table!
                                {:col->upload-type (ordered-map/ordered-map
-                                                   (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                                                   upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
                                                    :test_column upload-type)
                                 :rows             []})
                         csv-rows ["test_column" uncoerced]
@@ -1608,7 +1612,7 @@
                                  uncoerced (name upload-type) coerced)
                   (let [table (create-upload-table!
                                {:col->upload-type (ordered-map/ordered-map
-                                                   (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                                                   upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
                                                    :test_column upload-type)
                                 :rows             []})
                         csv-rows ["test_column" uncoerced]
