@@ -124,7 +124,7 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
         <LastEditInfoLabel
           item={modelWithHistory}
           fullName={modelWithHistory["last-edit-info"].full_name}
-          className={"last-edit-info-label-button"}
+          className="last-edit-info-label-button"
           tooltipProps={{
             label: tooltipLabel,
             withArrow: true,
@@ -141,6 +141,8 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
     </Link>
   );
 };
+
+// TODO: Put into a utils file and independently test it
 
 /** Sort models firstly by collection name,
  * secondly by collection id,
