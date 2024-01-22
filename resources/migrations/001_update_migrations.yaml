@@ -5701,6 +5701,23 @@ databaseChangeLog:
             sql: INSERT INTO setting ("KEY", "VALUE") VALUES ('enable-public-sharing', 'false');
       rollback: # not needed
 
+  - changeSet:
+      id: v49.2024-01-10T03:27:35
+      author: noahmoss
+      comment: Drop foreign key constraint on sandboxes.permissions_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sandboxes
+            constraintName: fk_sandboxes_ref_permissions
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            onDelete: CASCADE
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
