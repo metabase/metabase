@@ -37,7 +37,6 @@ const setup = options => {
       card={createMockCard()}
       dashcard={createMockDashboardCard()}
       editingParameter={{}}
-      target={undefined}
       mappingOptions={[]}
       metadata={metadata}
       setParameterMapping={jest.fn()}
