@@ -627,7 +627,10 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       return isDirty || isMetadataDirty;
     }
 
-    if (question?.isNative()) {
+    const isNative =
+      question && Lib.queryDisplayInfo(question.query()).isNative;
+
+    if (isNative) {
       const isNewQuestion = !originalQuestion;
 
       if (isNewQuestion) {
@@ -710,7 +713,7 @@ export const getVisualizationSettings = createSelector(
  */
 export const getIsNative = createSelector(
   [getQuestion],
-  question => question && question.isNative(),
+  question => question && Lib.queryDisplayInfo(question.query()).isNative,
 );
 
 /**

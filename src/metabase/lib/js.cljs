@@ -266,6 +266,11 @@
   [a-query stage-number x]
   (lib.core/breakout a-query stage-number (lib.core/ref x)))
 
+(defn ^:export breakout-column
+  "Returns the `:metadata/column` corresponding to this breakout clause."
+  [a-query stage-number breakout-clause]
+  (lib.core/breakout-column a-query stage-number breakout-clause))
+
 (defn ^:export binning
   "Retrieve the current binning state of a `:field` clause, field metadata, etc. as an opaque object, or `nil` if it
   does not have binning options set."
@@ -340,6 +345,41 @@
                                     ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
                                     (assoc inner-query :fields (frequencies fields)))))))
 
+(defn- compare-legacy-field-refs
+  [[key1 id1 opts1]
+   [key2 id2 opts2]]
+  ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
+  ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
+  (letfn [(clean-opts [o1 o2]
+            (not-empty
+              (cond-> o1
+                (not (:base-type o2))      (dissoc :base-type)
+                (not (:effective-type o2)) (dissoc :effective-type))))]
+    (= [key1 id1 (clean-opts opts1 opts2)]
+       [key2 id2 (clean-opts opts2 opts1)])))
+
+(defn- query=* [x y]
+  (cond
+    (and (vector? x)
+         (vector? y)
+         (= (first x) (first y) :field))
+    (compare-legacy-field-refs x y)
+
+    ;; Otherwise this is a duplicate of clojure.core/=.
+    (and (map? x) (map? y))
+    (and (= (set (keys x)) (set (keys y)))
+         (every? (fn [[k v]]
+                   (query=* v (get y k)))
+                 x))
+
+    (and (sequential? x) (sequential? y))
+    (and (= (count x) (count y))
+         (every? true? (map query=* x y)))
+
+    ;; Either mismatched map/sequence/nil/etc., or primitives like strings.
+    ;; Either way, = does the right thing.
+    :else (= x y)))
+
 (defn ^:export query=
   "Returns whether the provided queries should be considered equal.
 
@@ -354,7 +394,7 @@
   ([query1 query2 field-ids]
    (let [n1 (prep-query-for-equals query1 field-ids)
          n2 (prep-query-for-equals query2 field-ids)]
-     (= n1 n2))))
+     (query=* n1 n2))))
 
 (defn ^:export group-columns
   "Given a group of columns returned by a function like [[metabase.lib.js/orderable-columns]], group the columns
@@ -416,6 +456,11 @@
   "Get the aggregations in a given stage of a query."
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
+
+(defn ^:export aggregation-column
+  "Returns the `:metadata/column` corresponding to this aggregation clause."
+  [a-query stage-number aggregation-clause]
+  (lib.core/aggregation-column a-query stage-number aggregation-clause))
 
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and
@@ -1132,6 +1177,11 @@
   [a-query stage-number a-ref columns]
   (lib.core/find-matching-column a-query stage-number a-ref columns))
 
+(defn ^:export has-clauses
+  "Does given query stage have any clauses?"
+  [a-query stage-number]
+  (lib.core/has-clauses? a-query stage-number))
+
 (defn ^:export stage-count
   "Returns the count of stages in query"
   [a-query]
@@ -1177,18 +1227,22 @@
 (defn ^:export update-lat-lon-filter
   "Add or update a filter against a `latitude-column` and `longitude-column`."
   [a-query stage-number latitude-column longitude-column bounds]
-  (let [bounds (js->clj bounds :keywordize-keys true)]
+  (let [bounds           (js->clj bounds :keywordize-keys true)
+        latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
+        longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
     (lib.core/update-lat-lon-filter a-query stage-number latitude-column longitude-column bounds)))
 
 (defn ^:export update-numeric-filter
   "Add or update a filter against `numeric-column`."
-  [a-query numeric-column stage-number start end]
-  (lib.core/update-numeric-filter a-query numeric-column stage-number start end))
+  [a-query stage-number numeric-column start end]
+  (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
+    (lib.core/update-numeric-filter a-query stage-number numeric-column start end)))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts."
-  [a-query temporal-column stage-number start end]
-  (lib.core/update-temporal-filter a-query temporal-column stage-number start end))
+  [a-query stage-number temporal-column start end]
+  (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
+    (lib.core/update-temporal-filter a-query stage-number temporal-column start end)))
 
 (defn ^:export valid-filter-for?
   "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`."

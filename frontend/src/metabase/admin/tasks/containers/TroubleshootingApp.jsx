@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 
-import AdminLayout from "metabase/components/AdminLayout";
+import { AdminLayout } from "metabase/components/AdminLayout";
 
 export default class TroubleshootingApp extends Component {
   static propTypes = {

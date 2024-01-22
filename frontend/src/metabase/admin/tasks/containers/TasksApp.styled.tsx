@@ -3,7 +3,7 @@ import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 
 export const SectionRoot = styled.div`
-  padding: 2rem;
+  padding-left: 1rem;
 `;
 
 export const SectionHeader = styled.div`

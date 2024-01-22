@@ -120,7 +120,8 @@ const STEPS: NotebookStepDef[] = [
       }
 
       return (
-        hasData(query) && (stageIndex === 0 || hasAnyClauses(query, stageIndex))
+        hasData(query) &&
+        (stageIndex === 0 || Lib.hasClauses(query, stageIndex))
       );
     },
     active: (query, stageIndex) => {
@@ -141,7 +142,8 @@ const STEPS: NotebookStepDef[] = [
       }
 
       return (
-        hasData(query) && (stageIndex === 0 || hasAnyClauses(query, stageIndex))
+        hasData(query) &&
+        (stageIndex === 0 || Lib.hasClauses(query, stageIndex))
       );
     },
     active: (query, stageIndex) => {
@@ -156,28 +158,6 @@ const STEPS: NotebookStepDef[] = [
 const hasData = (query: Lib.Query): boolean => {
   const databaseId = Lib.databaseID(query);
   return databaseId !== null;
-};
-
-const hasAnyClauses = (query: Lib.Query, stageIndex: number): boolean => {
-  const hasJoins = Lib.joins(query, stageIndex).length > 0;
-  const hasExpressions = Lib.expressions(query, stageIndex).length > 0;
-  const hasFilters = Lib.filters(query, stageIndex).length > 0;
-  const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
-  const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
-  const hasOrderBys = Lib.orderBys(query, stageIndex).length > 0;
-  const hasLimits = Lib.hasLimit(query, stageIndex);
-  const hasFields = Lib.fields(query, stageIndex).length > 0;
-
-  return (
-    hasJoins ||
-    hasExpressions ||
-    hasFilters ||
-    hasAggregations ||
-    hasBreakouts ||
-    hasOrderBys ||
-    hasLimits ||
-    hasFields
-  );
 };
 
 /**

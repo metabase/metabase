@@ -8,7 +8,7 @@ import type {
   EmbeddingParameters,
   EmbedResource,
   EmbedResourceType,
-  EmbedType,
+  EmbedModalStep,
   EmbeddingDisplayOptions,
 } from "../types";
 import EmbedCodePane from "./EmbedCodePane";
@@ -16,7 +16,7 @@ import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 export interface OverviewSettingsProps {
-  embedType: EmbedType;
+  embedType: EmbedModalStep;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
   iframeUrl: string;
