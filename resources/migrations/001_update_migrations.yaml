@@ -5217,24 +5217,18 @@ databaseChangeLog:
                   remarks: The type of card, could be 'question', 'model', 'metric'
                   name: type
                   type: varchar(16)
-                  constraints:
-                    # nullable for now so we can backfill it, will be not-nullable later on
-                    nullable: true
-
+                  defaultValue: "question"
 
   - changeSet:
       id: v49.2024-01-22T11:51:00
       author: qnkhuat
       comment: Backfill `report_card.type`
-      rollback: # no need because the column will be dropped
       changes:
         - sql:
             sql: >-
               UPDATE report_card
-              SET type = CASE
-                          WHEN dataset IS TRUE THEN 'model'
-                          ELSE 'question'
-                        END
+              SET type = 'model'
+              WHERE datset is true
       rollback:
         - sql:
             sql: >-
@@ -5246,12 +5240,12 @@ databaseChangeLog:
       id: v49.2024-01-22T11:52:00
       author: qnkhuat
       comment: Add not null constraint on `report_card.type`
-      rollback: # no need because the column will be dropped
       changes:
         - addNotNullConstraint:
             tableName: report_card
             columnName: type
             columnDataType: varchar(16)
+      rollback: # no need because the column will be dropped
 
   - changeSet:
       id: v49.2024-01-22T11:53:00
