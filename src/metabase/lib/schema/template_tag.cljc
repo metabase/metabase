@@ -113,7 +113,8 @@
 (mr/def ::template-tag
   [:and
    [:map
-    [:type [:ref ::type]]]
+    [:type [:ref ::type]]
+    [:optional :boolean]]
    [:multi {:dispatch :type}
     [:dimension   [:ref ::field-filter]]
     [:snippet     [:ref ::snippet]]
