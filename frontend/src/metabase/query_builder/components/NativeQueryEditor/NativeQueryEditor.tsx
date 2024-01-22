@@ -462,10 +462,11 @@ export class NativeQueryEditor extends Component<
         try {
           let skip = false;
           if (prefix.length <= 1 && prefix !== lastAutoComplete.prefix) {
-            // ACE triggers an autocomplete when the user starts typing that is
-            // not caught by debouncing _retriggerAutocomplete.
-            // Here we prevent it from running initially (iff the prefix is just on character).
-            // It will run eventually, even if the prefix is only on character, after the user stops typing.
+            // ACE triggers an autocomplete immediately when the user starts typing that is
+            // not debounced by debouncing _retriggerAutocomplete.
+            // Here we prevent it from actually calling the autocomplete endpoint.
+            // It will run eventually even if the prefix is only one character,
+            // after the user stops typing, because _retriggerAutocomplete will get called with the same prefix.
             skip = true;
             lastAutoComplete = {
               timestamp: 0,
