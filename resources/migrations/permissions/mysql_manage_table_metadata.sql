@@ -58,7 +58,8 @@ SELECT pg.id AS group_id,
                   (SELECT 1
                    FROM permissions p
                    WHERE p.group_id = pg.id
-                     AND p.object = concat('/data-model/db/', mt.db_id, '/schema/', mt.escaped_schema, '/table/', mt.id, '/')) THEN 'yes'
+                     AND (p.object = concat('/data-model/db/', mt.db_id, '/schema/', mt.escaped_schema, '/')
+                          OR p.object = concat('/data-model/db/', mt.db_id, '/schema/', mt.escaped_schema, '/table/', mt.id, '/'))) THEN 'yes'
            ELSE 'no'
        END AS perm_value
 FROM permissions_group pg
