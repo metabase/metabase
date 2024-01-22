@@ -9,6 +9,12 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
+   [metabase.driver.mongo.operators :refer [$add $addToSet $and $avg $concat $cond
+                                            $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
+                                            $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute
+                                            $mod $month $multiply $ne $not $or $project $regexMatch $second $size $skip $sort
+                                            $strcasecmp $subtract $sum $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
@@ -25,12 +31,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [monger.operators :refer [$add $addToSet $and $avg $concat $cond
-                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute
-                             $mod $month $multiply $ne $not $or $project $regexMatch $second $size $skip $sort
-                             $strcasecmp $subtract $sum $toLower $unwind $year]])
+   [metabase.util.malli.schema :as ms])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -1370,8 +1371,10 @@
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
   (try
-    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument com.mongodb.BasicDBObject.))
+    #_(mapv (fn [^org.bson.BsonValue v] (-> v .asDocument com.mongodb.BasicDBObject.))
           (org.bson.BsonArray/parse s))
+    ;; TODO: Verify this!
+    (mapv mongo.jdw/to-document (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
                {:type  qp.error-type/invalid-query

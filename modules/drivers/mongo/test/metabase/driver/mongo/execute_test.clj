@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.driver.mongo.execute :as mongo.execute]
+   [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.test :as mt])
@@ -20,7 +21,8 @@
       (next [_] (let [i @counter]
                   (vswap! counter inc)
                   (if (< i (count rows))
-                    (BasicDBObject. ^java.util.Map (get rows i))
+                    (mongo.jdw/to-document (get rows i))
+                    #_(BasicDBObject. ^java.util.Map (get rows i))
                     (throw (NoSuchElementException. (str "no element at " i))))))
       (close [_]))))
 

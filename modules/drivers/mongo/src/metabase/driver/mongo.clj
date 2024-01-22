@@ -5,43 +5,31 @@
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [java-time.api :as t]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mongo.execute :as mongo.execute]
+   [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.driver.mongo.util :refer [with-mongo-connection] :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [monger.command :as cmd]
-   [monger.conversion :as m.conversion]
-   [monger.core :as mg]
-   [monger.db :as mdb]
-   [monger.json]
    [taoensso.nippy :as nippy])
   (:import
-   (com.mongodb DB DBObject)
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (org.bson.types ObjectId)))
 
 (set! *warn-on-reflection* true)
-
-;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
-;; integrations with Cheshire.
-(comment monger.json/keep-me)
 
 ;; JSON Encoding (etc.)
 
 ;; Encode BSON undefined like `nil`
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
 
+;; TODO: Test! (How?)
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
                      [^ObjectId oid data-output]
                      (.writeUTF data-output (.toHexString oid)))
@@ -52,19 +40,21 @@
 
 (driver/register! :mongo)
 
+;; TODO: that's different notion of details to what I thought
+;; TODO: database vs database details
 (defmethod driver/can-connect? :mongo
-  [_ details]
-  (with-mongo-connection [^DB conn, details]
-    (let [db-stats (-> (cmd/db-stats conn)
-                       (m.conversion/from-db-object :keywordize))
-          db-names (mg/get-db-names mongo.util/*mongo-client*)]
-      (and
-       ;; 1. check db.dbStats command completes successfully
-       (= (float (:ok db-stats))
-          1.0)
-       ;; 2. check the database is actually on the server
-       ;; (this is required because (1) is true even if the database doesn't exist)
-       (contains? db-names (:db db-stats))))))
+  [_ db-details]
+  (mongo.jdw/with-mongo-client [^com.mongodb.client.MongoClient c db-details]
+    (let [db-names (mongo.jdw/list-database-names c)]
+      (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db db-details]
+        (let [db-stats (mongo.jdw/run-command db {:dbStats 1})]
+          (and
+           ;; 1. check db.dbStats command completes successfully
+           (= (float (:ok db-stats))
+              1.0)
+           ;; 2. check the database is actually on the serve
+           ;; (this is required because (1) is true even if the database doesn't exist)
+           (contains? (set db-names) (:db db-stats))))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
@@ -104,9 +94,10 @@
 
 (declare update-field-attrs)
 
+;; TODO: Test! (How?)
 (defmethod driver/sync-in-context :mongo
   [_ database do-sync-fn]
-  (with-mongo-connection [_ database]
+  (mongo.jdw/with-mongo-client [_ database]
     (do-sync-fn)))
 
 (defn- val->semantic-type [field-value]
@@ -158,6 +149,7 @@
   (when (seq field-types)
     (first (apply max-key second field-types))))
 
+;; TODO: Test this!
 (defn- class->base-type [^Class klass]
   (if (isa? klass org.bson.types.ObjectId)
     :type/MongoBSONID
@@ -186,10 +178,11 @@
                                                              first))
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
+;; TODO: make it use keywordized version?
 (defmethod driver/dbms-version :mongo
   [_driver database]
-  (with-mongo-connection [^com.mongodb.DB conn database]
-    (let [build-info (mg/command conn {:buildInfo 1})
+  (mongo.jdw/with-mongo-database [db database]
+    (let [build-info (mongo.jdw/run-command db {:buildInfo 1} :keywordize false)
           version-array (get build-info "versionArray")
           sanitized-version-array (into [] (take-while nat-int?) version-array)]
       (when (not= (take 3 version-array) (take 3 sanitized-version-array))
@@ -200,18 +193,20 @@
 
 (defmethod driver/describe-database :mongo
   [_ database]
-  (with-mongo-connection [^com.mongodb.DB conn database]
-    {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
+  (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db database]
+    {:tables (set (for [collection (disj (into #{} (mongo.jdw/list-collection-names db)) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
+;; TODO: Verify We are using ~ordered correctly!
+;; TODO: Comments!
 (defmethod driver/describe-table-indexes :mongo
   [_ database table]
-  (with-mongo-connection [^com.mongodb.DB conn database]
+  (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db database]
     ;; using raw DBObject instead of calling `monger/indexes-on`
     ;; because in case a compound index has more than 8 keys, the `key` returned by
     ;;`monger/indexes-on` will be a hash-map, and with a hash map we can't determine
     ;; which key is the first key.
-    (->> (.getIndexInfo (.getCollection conn (:name table)))
+    (->> (mongo.jdw/list-indexes db (:name table))
          (map (fn [index]
                 ;; for text indexes, column names are specified in the weights
                 (if (contains? index "textIndexVersion")
@@ -227,30 +222,14 @@
                   :value %}))
          set)))
 
-(defn- from-db-object
-  "This is mostly a copy of the monger library's own function of the same name with the
-  only difference that it uses an ordered map to represent the document. This ensures that
-  the order of the top level fields of the table is preserved. For anything that's not a
-  DBObject, it falls back to the original function."
-  [input]
-  (if (instance? DBObject input)
-    (let [^DBObject dbobj input]
-      (reduce (fn [m ^String k]
-                (assoc m (keyword k) (m.conversion/from-db-object (.get dbobj k) true)))
-              (ordered-map/ordered-map)
-              (.keySet dbobj)))
-    (m.conversion/from-db-object input true)))
-
-(defn- sample-documents [^com.mongodb.DB conn table sort-direction]
-  (let [collection (.getCollection conn (:name table))]
-    (with-open [cursor (doto (.find collection
-                                    (m.conversion/to-db-object {})
-                                    (m.conversion/as-field-selector []))
-                         (.limit metadata-queries/nested-field-sample-limit)
-                         (.skip 0)
-                         (.sort (m.conversion/to-db-object {:_id sort-direction}))
-                         (.batchSize 256))]
-      (map from-db-object cursor))))
+;; TODO: orderd map for sort-criteria?
+;; TODO: find returning cursor or what?
+(defn- sample-documents [^com.mongodb.client.MongoDatabase db table sort-direction]
+  (let [coll (mongo.jdw/collection db (:name table))]
+    (mongo.jdw/do-find coll {:limit metadata-queries/nested-field-sample-limit
+                             :skip 0
+                             :sort-criteria {:_id sort-direction}
+                             :batch-size 256})))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
@@ -258,7 +237,7 @@
 
       {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil},
        :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
-  [^com.mongodb.DB conn, table]
+  [^com.mongodb.client.MongoDatabase db table]
   (try
     (reduce
      (fn [field-defs row]
@@ -267,14 +246,14 @@
            fields
            (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
      (ordered-map/ordered-map)
-     (concat (sample-documents conn table 1) (sample-documents conn table -1)))
+     (concat (sample-documents db table 1) (sample-documents db table -1)))
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
 
 (defmethod driver/describe-table :mongo
   [_ database table]
-  (with-mongo-connection [^com.mongodb.DB conn database]
-    (let [column-info (table-sample-column-info conn table)]
+  (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db database]
+    (let [column-info (table-sample-column-info db table)]
       {:schema nil
        :name   (:name table)
        :fields (first
@@ -342,52 +321,12 @@
 
 (defmethod driver/execute-reducible-query :mongo
   [_ query context respond]
-  (with-mongo-connection [_ (lib.metadata/database (qp.store/metadata-provider))]
+  (mongo.jdw/with-mongo-client [_ (lib.metadata/database (qp.store/metadata-provider))]
     (mongo.execute/execute-reducible-query query context respond)))
 
 (defmethod driver/substitute-native-parameters :mongo
   [driver inner-query]
   (mongo.params/substitute-native-parameters driver inner-query))
-
-;; It seems to be the case that the only thing BSON supports is DateTime which is basically the equivalent of Instant;
-;; for the rest of the types, we'll have to fake it
-(extend-protocol m.conversion/ConvertToDBObject
-  Instant
-  (to-db-object [t]
-    (org.bson.BsonDateTime. (t/to-millis-from-epoch t)))
-
-  LocalDate
-  (to-db-object [t]
-    (m.conversion/to-db-object (t/local-date-time t (t/local-time 0))))
-
-  LocalDateTime
-  (to-db-object [t]
-    ;; QP store won't be bound when loading test data for example.
-    (m.conversion/to-db-object (t/instant t (t/zone-id (try
-                                                         (qp.timezone/results-timezone-id)
-                                                         (catch Throwable _
-                                                           "UTC"))))))
-
-  LocalTime
-  (to-db-object [t]
-    (m.conversion/to-db-object (t/local-date-time (t/local-date "1970-01-01") t)))
-
-  OffsetDateTime
-  (to-db-object [t]
-    (m.conversion/to-db-object (t/instant t)))
-
-  OffsetTime
-  (to-db-object [t]
-    (m.conversion/to-db-object (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t))))
-
-  ZonedDateTime
-  (to-db-object [t]
-    (m.conversion/to-db-object (t/instant t))))
-
-(extend-protocol m.conversion/ConvertFromDBObject
-  java.util.Date
-  (from-db-object [t _]
-    (t/instant t)))
 
 (defmethod driver/db-start-of-week :mongo
   [_]
@@ -406,7 +345,7 @@
                       :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
       (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
-(comment
+#_(comment
   (require '[clojure.java.io :as io]
            '[monger.credentials :as mcred])
   (import javax.net.ssl.SSLSocketFactory)
