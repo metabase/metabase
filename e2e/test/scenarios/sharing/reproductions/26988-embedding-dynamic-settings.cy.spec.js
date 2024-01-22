@@ -37,7 +37,7 @@ describeEE("issue 26988", () => {
     openStaticEmbeddingModal({
       activeTab: "appearance",
       previewMode: "preview",
-      acceptTerms: false
+      acceptTerms: false,
     });
 
     cy.wait("@dashboard");

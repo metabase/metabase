@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 
+import * as Lib from "metabase-lib";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
@@ -171,7 +172,9 @@ export const queryCompleted = (question, queryResults) => {
       question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      if (question.isNative()) {
+      const { isNative } = Lib.queryDisplayInfo(question.query());
+
+      if (isNative) {
         question = question.syncColumnsAndSettings(
           originalQuestion,
           queryResults[0],

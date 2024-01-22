@@ -103,7 +103,10 @@ describeEE("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
 
-        openStaticEmbeddingModal({ activeTab: "appearance", acceptTerms: false });
+        openStaticEmbeddingModal({
+          activeTab: "appearance",
+          acceptTerms: false,
+        });
 
         cy.log("Disable downloads");
         cy.findByLabelText("Enable users to download data from this embed?")

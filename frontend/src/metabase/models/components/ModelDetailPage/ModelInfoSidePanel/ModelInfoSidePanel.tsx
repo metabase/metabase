@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { Card } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
 import type Table from "metabase-lib/metadata/Table";
@@ -26,6 +27,7 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
 
   const canWrite = model.canWrite();
   const description = model.description();
+  const { isNative } = Lib.queryDisplayInfo(model.query());
 
   return (
     <ModelInfoPanel>
@@ -43,9 +45,7 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
           onChange={onChangeDescription}
         />
       </ModelInfoSection>
-      {!model.isNative() && (
-        <ModelRelationships model={model} mainTable={mainTable} />
-      )}
+      {!isNative && <ModelRelationships model={model} mainTable={mainTable} />}
       {modelCard.creator && (
         <ModelInfoSection>
           <ModelInfoTitle>{t`Created by`}</ModelInfoTitle>
