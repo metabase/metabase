@@ -60,7 +60,7 @@ class ParameterValueWidget extends Component {
     parameters: PropTypes.array,
     dashboard: PropTypes.object,
     question: PropTypes.object,
-    setQBDefaultParameterValue: PropTypes.func,
+    setDefaultParameterValue: PropTypes.func,
   };
 
   state = { isFocused: false };
@@ -104,7 +104,7 @@ class ParameterValueWidget extends Component {
         <WidgetStatusIcon
           name="refresh"
           onClick={() =>
-            this.props.setQBDefaultParameterValue(this.props.parameter.id)
+            this.props.setDefaultParameterValue(this.props.parameter.id)
           }
         />
       );

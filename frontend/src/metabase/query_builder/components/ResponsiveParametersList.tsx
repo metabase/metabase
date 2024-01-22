@@ -17,7 +17,7 @@ interface ResponsiveParametersListProps {
   question: Question;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;
-  setQBDefaultParameterValue: (parameterId: ParameterId) => void;
+  setDefaultParameterValue: (parameterId: ParameterId) => void;
   setParameterIndex: (parameterId: string, parameterIndex: number) => void;
 }
 
@@ -26,7 +26,7 @@ export const ResponsiveParametersList = ({
   parameters,
   setParameterValue,
   setParameterIndex,
-  setQBDefaultParameterValue,
+  setDefaultParameterValue,
 }: ResponsiveParametersListProps) => {
   const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
   const isSmallScreen = useIsSmallScreen();
@@ -80,7 +80,7 @@ export const ResponsiveParametersList = ({
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}
-          setQBDefaultParameterValue={setQBDefaultParameterValue}
+          setDefaultParameterValue={setDefaultParameterValue}
           isEditing
           commitImmediately
         />

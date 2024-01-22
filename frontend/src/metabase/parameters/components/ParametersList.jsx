@@ -45,7 +45,7 @@ function ParametersList({
   vertical,
   commitImmediately,
 
-  setQBDefaultParameterValue,
+  setDefaultParameterValue,
   setParameterValue,
   setParameterIndex,
   setEditingParameter,
@@ -106,7 +106,7 @@ function ParametersList({
             setParameterValue &&
             (value => setParameterValue(valuePopulatedParameter.id, value))
           }
-          setQBDefaultParameterValue={setQBDefaultParameterValue}
+          setDefaultParameterValue={setDefaultParameterValue}
           commitImmediately={commitImmediately}
           dragHandle={
             isEditing && setParameterIndex ? <SortableParameterHandle /> : null
