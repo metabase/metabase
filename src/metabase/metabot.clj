@@ -3,6 +3,7 @@
   where X is the thing we want to extract from the bot response."
   (:require
     [cheshire.core :as json]
+    [clojure.set :refer [rename-keys]]
     [metabase.lib.native :as lib-native]
     [metabase.metabot.client :as metabot-client]
     [metabase.metabot.settings :as metabot-settings]
@@ -143,24 +144,28 @@
                      :column_descriptions (zipmap
                                             (map (some-fn :display_name :name) result_metadata)
                                             (map (some-fn :semantic_type :effective_type) result_metadata))
-                     :friendly_summary "%%FILL_THIS_IN%%"}
+                     :friendly_title "%%FILL_THIS_TITLE_IN%%"
+                     :friendly_summary "%%FILL_THIS_SUMMARY_IN%%"}
         json-str (json/generate-string description)]
     {:summary
        (metabot-util/find-result
-         identity
+         (fn [rsp] (-> rsp
+                       (json/parse-string true)
+                       (rename-keys {:friendly_title :title
+                                     :friendly_summary :description})))
          (metabot-client/invoke-metabot
            {:messages [{:role    "system"
                         :content "You are an exceptionally friendly and helpful assistant that fills in the missing
-                        friendly_summary key in a json fragment.
+                        friendly_title and friendly_summary keys in a json fragment.
                         You like to use emojis to express yourself and you like to sound clever."}
                        {:role    "assistant"
                         :content "The display key is how I intend to present the final data."}
                        {:role    "assistant"
-                        :content "The part you replace is \"%%FILL_THIS_IN%%\"."}
+                        :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
                        {:role    "assistant"
-                        :content "Just return the replacement text and nothing else."}
+                        :content "Just return a json map with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
                        {:role    "assistant"
-                        :content "The response must be less than 128 characters."}
+                        :content "The \"friendly_title\" must be no more than 64 characters long."}
                        {:role    "user"
                         :content json-str}]}))}))
 
