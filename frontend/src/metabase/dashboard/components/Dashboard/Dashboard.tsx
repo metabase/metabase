@@ -243,7 +243,8 @@ function DashboardInner(props: DashboardProps) {
 
   const hiddenParameterSlugs = useMemo(() => {
     if (isEditing) {
-      return ""; // All filters should be visible in edit mode
+      // All filters should be visible in edit mode
+      return undefined;
     }
 
     const currentTabParameterIds = currentTabDashcards.flatMap(
