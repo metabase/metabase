@@ -143,6 +143,6 @@
    cache_ttl              [:maybe ms/PositiveInt]}
   ;; check that we have permissions to run the query that we're trying to save
   ;(check-data-permissions-for-query dataset_query)
-  {:summary "This is a summary"})
+  (metabot/infer-card-summary body))
 
 (api/define-routes)
