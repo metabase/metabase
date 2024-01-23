@@ -16,9 +16,8 @@ import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import type { useSearchListQuery } from "metabase/common/hooks";
-
 import { Box, Group, Icon, Text, Title, Tooltip } from "metabase/ui";
+
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { sortModels } from "metabase/browse/utils";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
@@ -94,23 +93,17 @@ dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
 //   };
 // });
 
-
-type RenderItemFunction = (
-  props: GridCellProps & {
-    columnCount: number;
-    gridGapSize?: number;
-    groupLabel?: string;
-    cells: Cell[];
-  },
-) => JSX.Element | null;
-
 const emptyArray: SearchResult[] = [];
 
 export const BrowseModels = ({
   data: models = emptyArray,
   error,
   isLoading,
-}: ReturnType<typeof useSearchListQuery<SearchResult>>) => {
+}: {
+  data: SearchResult[];
+  error: any;
+  isLoading: boolean;
+}) => {
   /** This provides a ref to the <main> rendered by AppContent in App.tsx */
   const contentViewport = useContext(ContentViewportContext);
 
@@ -428,6 +421,15 @@ const getGridOptions = (
   };
 };
 
+type RenderItemFunction = (
+  props: GridCellProps & {
+    columnCount: number;
+    gridGapSize?: number;
+    groupLabel?: string;
+    cells: Cell[];
+  },
+) => JSX.Element | null;
+
 const renderItem: RenderItemFunction = ({
   columnCount,
   columnIndex,
@@ -438,7 +440,7 @@ const renderItem: RenderItemFunction = ({
   const index = rowIndex * columnCount + columnIndex;
   const cell = cells[index];
   return cell
-    ? // Render the component with the style prop provided by the grid
+    ? // Render the component with the style prop provided by VirtualizedGrid
       cloneElement(cell as React.ReactElement, { style })
     : null;
 };
