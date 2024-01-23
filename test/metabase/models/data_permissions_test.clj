@@ -7,33 +7,6 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn do-with-restored-perms!
-  "Implementation of `with-restored-perms` and related helper functions. Optionally takes `group-ids` to restore only the
-  permissions for a set of groups."
-  [group-ids thunk]
-  (let [select-condition [(when group-ids [:in :group_id group-ids])]
-        original-perms (t2/select :model/DataPermissions {:where select-condition})]
-    (try
-      (thunk)
-      (finally
-        (t2/delete! :model/DataPermissions {:where select-condition})
-        (t2/insert! :model/DataPermissions original-perms)))))
-
-(defmacro with-restored-perms!
-  "Runs `body`, and restores all permissions to their original state afterwards."
-  [& body]
-  `(do-with-restored-perms! nil (fn [] ~@body)))
-
-(defmacro with-restored-perms-for-group!
-  "Runs `body`, and restores all permissions for `group-id` to their original state afterwards."
-  [group-id & body]
-  `(do-with-restored-perms! [~group-id] (fn [] ~@body)))
-
-(defmacro with-restored-perms-for-groups!
-  "Runs `body`, and restores all permissions for `group-ids` to their original state afterwards."
-  [group-ids & body]
-  `(do-with-restored-perms! ~group-ids (fn [] ~@body)))
-
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
     (are [expected args] (= expected (apply data-perms/coalesce args))
@@ -50,7 +23,7 @@
                                                        :db_id     database-id
                                                        :group_id  group-id
                                                        :perm_type perm-type))]
-     (with-restored-perms-for-group! group-id
+     (mt/with-restored-data-perms-for-group! group-id
        (testing "`set-database-permission!` correctly updates an individual database's permissions"
          (data-perms/set-database-permission! group-id database-id :perms/native-query-editing :no)
          (is (= :no (perm-value :perms/native-query-editing)))
@@ -82,7 +55,7 @@
                                                                   :group_id  group-id
                                                                   :table_id  table-id
                                                                   :perm_type :perms/data-access))]
-      (with-restored-perms-for-group! group-id
+      (mt/with-restored-data-perms-for-group! group-id
         (testing "`set-table-permissions!` can set individual table permissions to different values"
           (data-perms/set-table-permissions! group-id :perms/data-access {table-id-1 :no-self-service
                                                                           table-id-2 :unrestricted
@@ -153,7 +126,7 @@
                                                                         :group_id group-id-2}
                  :model/Database                   {database-id-1 :id} {}
                  :model/Database                   {database-id-2 :id} {}]
-    (with-restored-perms-for-groups! [group-id-1 group-id-2]
+    (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
       (testing "`database-permission-for-user` coalesces permissions from all groups a user is in"
         (data-perms/set-database-permission! group-id-1 database-id-1 :perms/native-query-editing :yes)
         (data-perms/set-database-permission! group-id-2 database-id-1 :perms/native-query-editing :no)
@@ -177,7 +150,7 @@
                  :model/Database                   {database-id :id} {}
                  :model/Table                      {table-id-1 :id}  {:db_id database-id}
                  :model/Table                      {table-id-2 :id}  {:db_id database-id}]
-    (with-restored-perms-for-groups! [group-id-1 group-id-2]
+    (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
       (testing "`table-permission-for-user` coalesces permissions from all groups a user is in"
         (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :unrestricted)
         (data-perms/set-table-permission! group-id-2 table-id-1 :perms/data-access :no-self-service)
@@ -201,7 +174,7 @@
                                                                 :schema "PUBLIC"}
                  :model/Table            {table-id-3 :id}      {:db_id database-id-2
                                                                 :schema nil}]
-    (with-restored-perms-for-groups! [group-id-1 group-id-2]
+    (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
       ;; Clear the default permissions for the groups
       (t2/delete! :model/DataPermissions :group_id group-id-1)
       (t2/delete! :model/DataPermissions :group_id group-id-2)
