@@ -114,6 +114,7 @@
               :dataset_query          {}
               :display                :table
               :name                   (u.random/random-name)
+              :type                   :question
               :visualization_settings {}}))
 
    :model/Collection

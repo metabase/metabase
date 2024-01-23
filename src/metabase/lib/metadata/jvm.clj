@@ -228,7 +228,7 @@
    (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
                 :card/database_id
-                :card/dataset
+                :card/type
                 :card/dataset_query
                 :card/id
                 :card/name

@@ -204,8 +204,8 @@
                          (qp-runner query info rff context))))
         dash-viz  (when (not= context :question)
                     (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card      (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
-                                                  :dataset :result_metadata :visualization_settings]
+        card      (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :cache_ttl :collection_id
+                                                  :type :result_metadata :visualization_settings :archived]
                                                  :id card-id))
         query     (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                       (update :viz-settings (fn [viz] (merge viz dash-viz)))
@@ -220,7 +220,7 @@
                            :card-name              (:name card)
                            :dashboard-id           dashboard-id
                            :visualization-settings (:visualization_settings card)}
-                    (and (:dataset card) (seq (:result_metadata card)))
+                    (and (card/card-of-type? :model card) (seq (:result_metadata card)))
                     (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
     (when (seq parameters)

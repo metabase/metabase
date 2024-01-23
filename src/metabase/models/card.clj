@@ -44,6 +44,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -66,6 +67,7 @@
 
 (t2/deftransforms :model/Card
   {:dataset_query          mi/transform-metabase-query
+   :type                   mi/transform-keyword
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword
@@ -100,6 +102,27 @@
    (perms/can-read-audit-helper :model/Card instance))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Card :id pk))))
+
+(def card-types
+  "Enum of all card types"
+  #{:model :question :metric
+    "model" "question" "metric"})
+
+(def card-types-enum
+  "Enum schema for card type."
+  (into [:enum] card-types))
+
+(mu/defn card-of-type?
+  "Check if the card is type `ttype`."
+  [ttype         :- card-types-enum
+   type-or-card  :- [:or
+                     [:maybe card-types-enum]
+                     [:map
+                      [:type {:optional true} card-types-enum]]]]
+  (when-let [card-type (if (map? type-or-card)
+                         (:type type-or-card)
+                         type-or-card)]
+    (= (name ttype) (name card-type))))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -155,8 +178,8 @@
    (revision/serialize-instance Card nil instance))
   ([_model _id instance]
    (cond-> (apply dissoc instance excluded-columns-for-card-revision)
-     ;; datasets should preserve edits to metadata
-     (not (:dataset instance))
+     ;; models should preserve edits to metadata
+     (not (card-of-type? :model instance))
      (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -308,8 +331,8 @@
 
 (defn- assert-valid-model
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{:keys [dataset dataset_query]}]
-  (when dataset
+  [{:keys [dataset_query] :as card}]
+  (when (card-of-type? :model card)
     (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
                                   (map (comp keyword :type)))]
       (when (some (complement #{:card :snippet}) template-tag-types)
@@ -319,7 +342,8 @@
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
-                  :parameter_mappings []}
+                  :parameter_mappings []
+                  :type               :question}
         card     (merge defaults card)]
     (u/prog1 card
       ;; make sure this Card doesn't have circular source query references
@@ -401,10 +425,10 @@
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (contains? changes :dataset)
+          old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (t2/select-one [:model/Card :dataset_query :dataset] :id id))]
+                          (t2/select-one [:model/Card :dataset_query :type] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
         (t2/delete! 'DashboardCard :card_id id))
@@ -426,12 +450,12 @@
         (check-for-circular-source-query-references changes))
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
-                 (:dataset old-card-info)
+                 (card-of-type? :model old-card-info)
                  (not (model-supports-implicit-actions? changes)))
         (disable-implicit-action-for-model! id))
-      ;; Archive associated actions
-      (when (and (false? (:dataset changes))
-                 (:dataset old-card-info))
+      ;; Archive associated actions if card is changed from model to question
+      (when (and (card-of-type? :question changes)
+                 (card-of-type? :model old-card-info))
         (t2/update! 'Action {:model_id id :type [:not= :implicit]} {:archived true})
         (t2/delete! 'Action :model_id id, :type :implicit))
       ;; Make sure any native query template tags match the DB in the query.
@@ -499,15 +523,15 @@
 
 (s/defn result-metadata-async :- ManyToManyChannel
   "Return a channel of metadata for the passed in `query`. Takes the `original-query` so it can determine if existing
-  `metadata` might still be valid. Takes `dataset?` since existing metadata might need to be \"blended\" into the
-  fresh metadata to preserve metadata edits from the dataset.
+  `metadata` might still be valid. Takes `model?` since existing metadata might need to be \"blended\" into the
+  fresh metadata to preserve metadata edits from the model
 
   Note this condition is possible for new cards and edits to cards. New cards can be created from existing cards by
-  copying, and they could be datasets, have edited metadata that needs to be blended into a fresh run.
+  copying, and they could be models, have edited metadata that needs to be blended into a fresh run.
 
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
-  might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata dataset?]}]
+  might need to save a metadata edit, or might need to use db-saved metadata on a modified model"
+  [{:keys [original-query query metadata original-metadata model?]}]
   (let [valid-metadata? (and metadata (mc/validate qr/ResultsMetadata metadata))]
     (cond
       (or
@@ -534,9 +558,9 @@
         (log/debug (trs "No query provided so not querying for metadata"))
         (doto (a/chan) a/close!))
 
-      ;; datasets need to incorporate the metadata either passed in or already in the db. Query has changed so we
+      ;; models need to incorporate the metadata either passed in or already in the db. Query has changed so we
       ;; re-run and blend the saved into the new metadata
-      (and dataset? (or valid-metadata? (seq original-metadata)))
+      (and model? (or valid-metadata? (seq original-metadata)))
       (do
         (log/debug (trs "Querying for metadata and blending model metadata"))
         (a/go (let [metadata' (if valid-metadata?
@@ -594,19 +618,19 @@ saved later when it is ready."
   the transaction yet. If you pass true here it is important to call the event after the cards are successfully
   created."
   ([card creator] (create-card! card creator false))
-  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} creator delay-event?]
+  ([{:keys [dataset_query result_metadata parameters parameter_mappings], :as card-data} creator delay-event?]
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
-   (let [data-keys            [:dataset_query :description :display :name :visualization_settings
+   (let [data-keys            [:dataset_query :description :display :name :visualization_settings :type
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                      :creator_id (:id creator)
-                                     :dataset (boolean (:dataset card-data))
+                                     :type       (or (:type card-data) "question")
                                      :parameters (or parameters [])
                                      :parameter_mappings (or parameter_mappings []))
          result-metadata-chan (result-metadata-async {:query    dataset_query
                                                       :metadata result_metadata
-                                                      :dataset? dataset})
+                                                      :model?   (card-of-type? :model card-data)})
          metadata-timeout     (a/timeout metadata-sync-wait-ms)
          [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
          timed-out?           (= port metadata-timeout)
@@ -774,7 +798,7 @@ saved later when it is ready."
      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
      ;; modified if they're passed in as non-nil
      (u/select-keys-when card-updates
-       :present #{:collection_id :collection_position :description :cache_ttl :dataset}
+       :present #{:collection_id :collection_position :description :cache_ttl :type}
        :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
                   :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
   ;; Fetch the updated Card from the DB

@@ -143,9 +143,9 @@
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either
-  `dataset` or `card`, pass in the `question-type` of `:dataset` or `:card`"
+  `model` or `question`, pass in the `question-type` of `:model` or `:question`"
   [question-type & {:keys [additional-constraints xform], :or {xform identity}}]
-  {:pre [(#{:card :dataset} question-type)]}
+  {:pre [(#{:question :model} question-type)]}
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial mi/do-after-select Card))
@@ -167,7 +167,7 @@
                                  :where    (into [:and
                                                   [:not= :result_metadata nil]
                                                   [:= :archived false]
-                                                  [:= :dataset (= question-type :dataset)]
+                                                  [:= :type (name question-type)]
                                                   [:in :database_id ids-of-dbs-that-support-source-queries]
                                                   (collection/visible-collection-ids->honeysql-filter-clause
                                                    (collection/permissions-set->visible-collection-ids
@@ -199,10 +199,10 @@
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-saved-questions-virtual-database [dbs & options]
-  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :card options)]
+  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :question options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
-      (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
+      (and (source-query-cards-exist? :question) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- filter-databases-by-data-model-perms
   "Filters the provided list of databases by data model perms, returning only the databases for which the current user
@@ -368,6 +368,7 @@
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
+  ;; TODO: dataset should be called :model
   [:question :dataset :metric :segment])
 
 (def ^:private always-false-hsql-expr
@@ -388,7 +389,7 @@
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :dataset false]]})
+            [:= :type "question"]]})
 
 (defmethod database-usage-query :dataset
   [_ db-id _table-ids]
@@ -396,7 +397,7 @@
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :dataset true]]})
+            [:= :type "dataset"]]})
 
 (defmethod database-usage-query :metric
   [_ _db-id table-ids]
@@ -440,7 +441,7 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
+  (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
   (let [db (-> (if include-editable-data-model?
@@ -519,7 +520,7 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (t2/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
+    (t2/select [:modelCard :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
@@ -1123,7 +1124,7 @@
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
-    (->> (cards-virtual-tables :card)
+    (->> (cards-virtual-tables :question)
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
@@ -1133,7 +1134,7 @@
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
-    (->> (cards-virtual-tables :dataset)
+    (->> (cards-virtual-tables :model)
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
@@ -1195,7 +1196,7 @@
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
-          :card
+          :question
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
@@ -1207,7 +1208,7 @@
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
-          :dataset
+          :model
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
