@@ -182,16 +182,14 @@
                                 (lib/available-drill-thrus query -1 context))]
       (is (=? {:lib/type  :metabase.lib.drill-thru/drill-thru
                :type      :drill-thru/quick-filter
-               :operators [{:name "="}
-                           {:name "≠"}
-                           {:name "contains"}
+               :operators [{:name "contains"}
                            {:name "does-not-contain"}]
                :value     "text"
                :column    {:name "BODY"}}
               drill))
       (testing "Should include :value in the display info (#33560)"
         (is (=? {:type      :drill-thru/quick-filter
-                 :operators ["=" "≠" "contains" "does-not-contain"]
+                 :operators ["contains" "does-not-contain"]
                  :value     "text"}
                 (lib/display-info query drill))))
       (testing "apply drills"
