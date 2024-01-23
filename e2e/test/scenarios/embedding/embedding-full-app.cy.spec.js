@@ -100,6 +100,18 @@ describeEE("scenarios > embedding > full app", () => {
       sideNav().should("not.exist");
     });
 
+    it("should disable home link when top nav is enabeld but side nav is disabled", () => {
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+        qs: { top_nav: true, side_nav: false },
+      });
+      cy.findByTestId("main-logo-link").should(
+        "have.attr",
+        "disabled",
+        "disabled",
+      );
+    });
+
     it("should show question creation controls by a param", () => {
       visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
       appBar().within(() => {
