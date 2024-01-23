@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
-import ParameterSettings from "../ParameterSettings";
+import { ParameterSettings } from "../ParameterSettings";
 
 interface SetupOpts {
   parameter?: UiParameter;

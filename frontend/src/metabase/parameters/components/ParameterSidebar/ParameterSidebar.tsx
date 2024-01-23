@@ -11,7 +11,7 @@ import type {
 } from "metabase-types/api";
 import { slugify } from "metabase/lib/formatting";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
-import ParameterSettings from "../ParameterSettings";
+import { ParameterSettings } from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
@@ -169,5 +169,4 @@ const getTabs = (parameter: Parameter) => {
   return tabs;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ParameterSidebar;
+export { ParameterSidebar };
