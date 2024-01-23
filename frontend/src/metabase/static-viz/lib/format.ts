@@ -70,7 +70,7 @@ export const formatStaticValue = (
   if (value == null) {
     formattedValue = JSON.stringify(null);
   } else if (isTime(column)) {
-    formattedValue = formatTime(value as Moment);
+    formattedValue = formatTime(value as Moment, column.unit, options);
   } else if (column?.unit != null) {
     formattedValue = formatDateTimeWithUnit(
       value as string | number,
