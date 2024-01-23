@@ -99,7 +99,7 @@ const useDashboardPage = () => {
       dispatch(
         replace({
           pathname: `/dashboard/${dashboardId}`,
-          state: { isHomePageRedirect: true },
+          state: { preserveNavbarState: true },
         }),
       );
 

@@ -79,15 +79,15 @@ const isNavbarOpen = handleActions(
     [OPEN_NAVBAR]: () => true,
     [TOGGLE_NAVBAR]: isOpen => !isOpen,
     [CLOSE_NAVBAR]: () => false,
-    ["@@router/LOCATION_CHANGE"]: (
-      prevState,
+    [LOCATION_CHANGE]: (
+      prevState: boolean,
       { payload }: LocationChangeAction,
     ) => {
-      const { pathname, state } = payload;
-      if (state?.isHomePageRedirect) {
+      if (payload.state?.preserveNavbarState) {
         return prevState;
       }
-      return isNavbarOpenForPathname(pathname, prevState);
+
+      return isNavbarOpenForPathname(payload.pathname, prevState);
     },
   },
   true,
