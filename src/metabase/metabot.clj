@@ -134,39 +134,35 @@
 
 (defn infer-card-summary
   "...."
-  [{:keys [dataset_query]}]
+  [{card-name :name
+    :keys     [display visualization_settings dataset_query result_metadata]}]
   (let [{:keys [] :as res} (qp/process-query dataset_query)
-        sql (get-in res [:data :native_form :query])]
+        sql         (get-in res [:data :native_form :query])
+        description {:sql_query           sql
+                     :display_type        display
+                     :column_descriptions (zipmap
+                                            (map (some-fn :display_name :name) result_metadata)
+                                            (map (some-fn :semantic_type :effective_type) result_metadata))
+                     :friendly_summary "%%FILL_THIS_IN%%"}
+        json-str (json/generate-string description)]
     {:summary
-     (metabot-util/find-result
-       identity
-       (metabot-client/invoke-metabot
-         {:messages [{:role    "system"
-                      :content "You are a helpful assistant that writes a short, human-friendly description of the provided SQL query."}
-                     {:role    "assistant"
-                      :content "The description must be non-technical and contain no more than 128 characters."}
-                     {:role    "assistant"
-                      :content "It will be used as a label on a chart or table, so use the proper wording."}
-                     {:role    "assistant"
-                      :content "Don't say things like \"this query\"."}
-                     {:role    "user"
-                      :content (format "This is my SQL query %s" sql)}]}))})
-  #_(if (metabot-settings/is-metabot-enabled)
-    (let [prompt-objects (->> (t2/select [Table :name :schema :id] :db_id database-id)
-                              (map metabot-util/memoized-create-table-embedding)
-                              (filter identity))
-          ddl            (metabot-util/generate-prompt prompt-objects user_prompt)
-          context        (assoc-in context [:database :create_database_ddl] ddl)
-          {:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
-      (if-some [sql (metabot-util/find-result
-                      metabot-util/extract-sql
-                      (metabot-client/invoke-metabot prompt))]
-        {:sql                      sql
-         :prompt_template_versions (conj
-                                     (vec prompt_template_versions)
-                                     (format "%s:%s" prompt_template version))}
-        (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt)))
-    (log/warn "Metabot is not enabled")))
+       (metabot-util/find-result
+         identity
+         (metabot-client/invoke-metabot
+           {:messages [{:role    "system"
+                        :content "You are an exceptionally friendly and helpful assistant that fills in the missing
+                        friendly_summary key in a json fragment.
+                        You like to use emojis to express yourself and you like to sound clever."}
+                       {:role    "assistant"
+                        :content "The display key is how I intend to present the final data."}
+                       {:role    "assistant"
+                        :content "The part you replace is \"%%FILL_THIS_IN%%\"."}
+                       {:role    "assistant"
+                        :content "Just return the replacement text and nothing else."}
+                       {:role    "assistant"
+                        :content "The response must be less than 128 characters."}
+                       {:role    "user"
+                        :content json-str}]}))}))
 
 (comment
   (infer-card-summary
