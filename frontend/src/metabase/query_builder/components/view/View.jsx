@@ -47,6 +47,16 @@ import {
 } from "./View.styled";
 
 class View extends Component {
+  constructor(init) {
+    super(init);
+    this.state = {
+      viewMode: "cozy",
+    };
+  }
+
+  setViewMode = mode => {
+    this.setState({ viewMode: mode });
+  };
   getLeftSidebar = () => {
     const {
       isShowingChartSettingsSidebar,
@@ -215,7 +225,11 @@ class View extends Component {
       >
         {({ opacity }) => (
           <QueryBuilderViewHeaderContainer>
-            <BorderedViewTitleHeader {...this.props} style={{ opacity }} />
+            <BorderedViewTitleHeader
+              {...this.props}
+              setViewMode={this.setViewMode}
+              style={{ opacity }}
+            />
             {opacity < 1 && (
               <NewQuestionHeader
                 className="spread"
@@ -289,6 +303,7 @@ class View extends Component {
             <QueryVisualization
               {...this.props}
               noHeader
+              viewMode={this.state.viewMode}
               className="spread"
               mode={queryMode}
             />
@@ -341,7 +356,7 @@ class View extends Component {
     if (question.isDataset() && queryBuilderMode === "dataset") {
       return (
         <>
-          <DatasetEditor {...this.props} />
+          <DatasetEditor {...this.props} viewMode={this.state.viewMode} />
           <QueryModals {...this.props} />
         </>
       );

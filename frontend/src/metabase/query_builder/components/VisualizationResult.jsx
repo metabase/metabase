@@ -134,6 +134,7 @@ export default class VisualizationResult extends Component {
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
+            viewMode={this.props.viewMode}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (

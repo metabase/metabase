@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { usePrevious } from "react-use";
+import { Menu, Icon } from "metabase/ui";
 
 import * as Lib from "metabase-lib";
 import * as Urls from "metabase/lib/urls";
@@ -17,6 +18,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
+
 import QuestionActions from "../QuestionActions";
 import { ExploreResultsLink } from "./ExploreResultsLink";
 import { FilterHeaderButton } from "./FilterHeaderButton";
@@ -378,6 +380,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
+  setViewMode: PropTypes.func,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -410,6 +413,7 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
+    setViewMode,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const canEditQuery = question.isQueryEditable();
@@ -513,6 +517,15 @@ function ViewTitleHeaderRightSide(props) {
           onModelPersistenceChange={onModelPersistenceChange}
         />
       )}
+      <Menu>
+        <Menu.Target>
+          <Icon name="ellipsis" />
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item onClick={() => setViewMode("compact")}>Compact</Menu.Item>
+          <Menu.Item onClick={() => setViewMode("cozy")}>Cozy</Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
       {hasSaveButton && (
         <SaveButton
           role="button"

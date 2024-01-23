@@ -500,6 +500,7 @@ function DatasetEditor(props) {
                 {...props}
                 className="spread"
                 noHeader
+                viewMode={this.props.viewMode}
                 queryBuilderMode="dataset"
                 isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
                 hasMetadataPopovers={false}
