@@ -235,7 +235,7 @@ class View extends Component {
       height,
       isDirty,
       isNativeEditorOpen,
-      setDefaultParameterValue,
+      setParameterValueToDefault,
     } = this.props;
     const legacyQuery = question.legacyQuery();
 
@@ -260,7 +260,7 @@ class View extends Component {
           isOpen={legacyQuery.isEmpty() || isDirty}
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
-          setDefaultParameterValue={setDefaultParameterValue}
+          setParameterValueToDefault={setParameterValueToDefault}
         />
       </NativeQueryEditorContainer>
     );

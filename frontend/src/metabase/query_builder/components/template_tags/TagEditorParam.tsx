@@ -283,7 +283,7 @@ class TagEditorParamInner extends Component<Props> {
           <InputContainer>
             <ContainerLabel>
               {t`Filter widget type`}
-              {hasNoWidgetType && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+              {hasNoWidgetType && <ErrorSpan>({t`required`})</ErrorSpan>}
             </ContainerLabel>
             <Select
               className="block"

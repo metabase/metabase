@@ -33,7 +33,7 @@ export class ParameterWidget extends Component {
       editingParameter,
       commitImmediately,
       parameters,
-      setDefaultParameterValue,
+      setParameterValueToDefault,
     } = this.props;
 
     const isEditingParameter = editingParameter?.id === parameter.id;
@@ -52,7 +52,7 @@ export class ParameterWidget extends Component {
         focusChanged={this.focusChanged}
         isFullscreen={isFullscreen}
         commitImmediately={commitImmediately}
-        setDefaultParameterValue={setDefaultParameterValue}
+        setParameterValueToDefault={setParameterValueToDefault}
       />
     );
   }

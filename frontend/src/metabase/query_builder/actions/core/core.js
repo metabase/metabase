@@ -306,10 +306,10 @@ export const setParameterValue = createAction(
   },
 );
 
-export const SET_DEFAULT_PARAMETER_VALUE =
-  "metabase/qb/SET_DEFAULT_PARAMETER_VALUE";
-export const setDefaultParameterValue = createThunkAction(
-  SET_DEFAULT_PARAMETER_VALUE,
+export const SET_PARAMETER_VALUE_TO_DEFAULT =
+  "metabase/qb/SET_PARAMETER_VALUE_TO_DEFAULT";
+export const setParameterValueToDefault = createThunkAction(
+  SET_PARAMETER_VALUE_TO_DEFAULT,
   parameterId => (dispatch, getState) => {
     const parameter = getParameters(getState()).find(
       ({ id }) => id === parameterId,

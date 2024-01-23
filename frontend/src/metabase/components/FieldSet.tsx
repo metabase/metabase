@@ -1,12 +1,12 @@
 import cx from "classnames";
-import type React from "react";
+import type { ReactNode } from "react";
 
 interface FieldSetProps {
   className?: string;
   legend?: string;
   required?: boolean;
   noPadding?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function FieldSet({
