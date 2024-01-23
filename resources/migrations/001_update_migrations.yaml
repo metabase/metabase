@@ -5395,8 +5395,10 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-01-10T03:27:36
       author: noahmoss
-      comment: Rollback migrations for permissions
-      changes: # rollback-only
+      comment: Rollback migration for permissions
+      changes:
+        - sql:
+            sql: SELECT 1; # No-op migration; only rollback is relevant
       rollback:
         - sqlFile:
             dbms: postgresql,h2
