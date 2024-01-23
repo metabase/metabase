@@ -15,6 +15,7 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import { CardMenuRoot } from "./DashCardMenu.styled";
 
@@ -130,7 +131,8 @@ interface QueryDownloadWidgetOpts {
 }
 
 const canEditQuestion = (question: Question) => {
-  return question.canWrite() && question.isQueryEditable();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  return question.canWrite() && isEditable;
 };
 
 const canDownloadResults = (result?: Dataset) => {

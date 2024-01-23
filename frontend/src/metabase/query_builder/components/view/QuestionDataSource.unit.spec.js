@@ -408,19 +408,15 @@ describe("QuestionDataSource", () => {
         });
 
         it("shows nothing if a user doesn't have data permissions", () => {
-          const originalMethod = question.legacyQuery({
-            useStructuredQuery: true,
-          })._database;
-          question.legacyQuery({ useStructuredQuery: true })._database = () =>
-            null;
+          const databaseId = question.card().dataset_query.database;
+          question.card().dataset_query.database = null;
 
           setup({ question });
           expect(
             screen.getByTestId("head-crumbs-container"),
           ).toBeEmptyDOMElement();
 
-          question.legacyQuery({ useStructuredQuery: true })._database =
-            originalMethod;
+          question.card().dataset_query.database = databaseId;
         });
       });
     });

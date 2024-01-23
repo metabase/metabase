@@ -1108,14 +1108,14 @@ class Question {
    */
   canExploreResults() {
     const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
-    const { isNative } = Lib.queryDisplayInfo(this.query());
+    const { isNative, isEditable } = Lib.queryDisplayInfo(this.query());
 
     return (
       isNative &&
       this.isSaved() &&
       this.parameters().length === 0 &&
       canNest &&
-      this.isQueryEditable() // originally "canRunAdhocQuery"
+      isEditable // originally "canRunAdhocQuery"
     );
   }
 
