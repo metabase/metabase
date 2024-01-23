@@ -10,6 +10,7 @@
    [metabase.core :as mbc]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
