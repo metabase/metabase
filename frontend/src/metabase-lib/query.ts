@@ -14,7 +14,7 @@ import type {
 } from "./types";
 
 export function fromLegacyQuery(
-  databaseId: DatabaseId,
+  databaseId: DatabaseId | null,
   metadata: MetadataProvider | LegacyMetadata,
   datasetQuery: DatasetQuery,
 ): Query {
