@@ -89,15 +89,6 @@ describe("Static Embed Setup phase", () => {
           "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=oss&utm_media=static-embed-settings-overview",
         );
 
-        if (resourceType === "dashboard") {
-          // eslint-disable-next-line jest/no-conditional-expect
-          expect(
-            screen.getByText(
-              "You can also hide or lock any of the dashboard’s parameters.",
-            ),
-          ).toBeVisible();
-        }
-
         expect(
           screen.getByText(
             "Insert this code snippet in your server code to generate the signed embedding URL",
@@ -110,6 +101,23 @@ describe("Static Embed Setup phase", () => {
           ),
         ).toBeVisible();
       });
+
+      if (resourceType === "dashboard") {
+        it("should render dashboard-specific content", () => {
+          setup({
+            props: {
+              resourceType,
+            },
+            activeTab: "Overview",
+          });
+
+          expect(
+            screen.getByText(
+              "You can also hide or lock any of the dashboard’s parameters.",
+            ),
+          ).toBeVisible();
+        });
+      }
 
       it("should select proper client code language on server code option change", async () => {
         setup({

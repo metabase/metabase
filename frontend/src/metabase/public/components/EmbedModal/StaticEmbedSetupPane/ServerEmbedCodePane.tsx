@@ -14,13 +14,14 @@ import "ace/mode-javascript";
 import "ace/mode-ruby";
 import "ace/mode-python";
 
+import type { EmbedCodePaneVariant } from "./types";
 import { DEFAULT_DISPLAY_OPTIONS } from "./config";
 import { CodeSample } from "./CodeSample";
 
 type EmbedCodePaneProps = {
   siteUrl: string;
   secretKey: string;
-  variant: "overview" | "parameters" | "appearance";
+  variant: EmbedCodePaneVariant;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
   params: EmbeddingParameters;
@@ -58,7 +59,7 @@ export const ServerEmbedCodePane = ({
   }
 
   const { hasParametersCodeDiff, hasAppearanceCodeDiff, highlightedText } =
-    getHighlightedCode({
+    getHighlightedText({
       initialPreviewParameters,
       params,
       selectedServerCodeOption,
@@ -70,66 +71,28 @@ export const ServerEmbedCodePane = ({
       displayOptions,
     });
 
-  if (variant === "overview") {
-    return (
-      <CodeSample
-        dataTestId="embed-backend"
-        className={className}
-        title={t`Insert this code snippet in your server code to generate the signed embedding URL `}
-        selectedOptionName={selectedServerCodeOptionName}
-        languageOptions={serverCodeOptions.map(({ name }) => name)}
-        source={selectedServerCodeOption.source}
-        textHighlightMode={selectedServerCodeOption.mode}
-        highlightedText={highlightedText}
-        onChangeOption={setSelectedServerCodeOptionName}
-      />
-    );
-  }
+  const title = getTitle({
+    variant,
+    hasParametersCodeDiff,
+    hasAppearanceCodeDiff,
+  });
 
-  if (variant === "parameters") {
-    return (
-      <CodeSample
-        dataTestId="embed-backend"
-        className={className}
-        title={
-          hasParametersCodeDiff
-            ? t`In addition to publishing changes, update the params in the payload, like this:`
-            : undefined
-        }
-        selectedOptionName={selectedServerCodeOptionName}
-        languageOptions={serverCodeOptions.map(({ name }) => name)}
-        source={selectedServerCodeOption.source}
-        textHighlightMode={selectedServerCodeOption.mode}
-        highlightedText={highlightedText}
-        onChangeOption={setSelectedServerCodeOptionName}
-      />
-    );
-  }
-
-  if (variant === "appearance") {
-    return (
-      <CodeSample
-        dataTestId="embed-backend"
-        className={className}
-        title={
-          hasAppearanceCodeDiff
-            ? t`Here’s the code you’ll need to alter:`
-            : undefined
-        }
-        selectedOptionName={selectedServerCodeOptionName}
-        languageOptions={serverCodeOptions.map(({ name }) => name)}
-        source={selectedServerCodeOption.source}
-        textHighlightMode={selectedServerCodeOption.mode}
-        highlightedText={highlightedText}
-        onChangeOption={setSelectedServerCodeOptionName}
-      />
-    );
-  }
-
-  return null;
+  return (
+    <CodeSample
+      dataTestId="embed-backend"
+      className={className}
+      title={title}
+      selectedOptionName={selectedServerCodeOptionName}
+      languageOptions={serverCodeOptions.map(({ name }) => name)}
+      source={selectedServerCodeOption.source}
+      textHighlightMode={selectedServerCodeOption.mode}
+      highlightedText={highlightedText}
+      onChangeOption={setSelectedServerCodeOptionName}
+    />
+  );
 };
 
-function getHighlightedCode({
+function getHighlightedText({
   initialPreviewParameters,
   params,
   selectedServerCodeOption,
@@ -183,4 +146,30 @@ function getHighlightedCode({
     hasAppearanceCodeDiff,
     highlightedText: highlightedText.length ? highlightedText : undefined,
   };
+}
+
+function getTitle({
+  variant,
+  hasParametersCodeDiff,
+  hasAppearanceCodeDiff,
+}: {
+  variant: EmbedCodePaneVariant;
+  hasParametersCodeDiff: boolean;
+  hasAppearanceCodeDiff: boolean;
+}) {
+  if (variant === "overview") {
+    return t`Insert this code snippet in your server code to generate the signed embedding URL`;
+  }
+
+  if (variant === "parameters") {
+    return hasParametersCodeDiff
+      ? t`In addition to publishing changes, update the params in the payload, like this:`
+      : undefined;
+  }
+
+  if (variant === "appearance") {
+    return hasAppearanceCodeDiff
+      ? t`Here’s the code you’ll need to alter:`
+      : undefined;
+  }
 }

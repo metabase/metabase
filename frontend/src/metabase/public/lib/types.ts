@@ -15,13 +15,9 @@ export type EmbedResourceParameter = {
   type: string;
 };
 
-export type EmbeddingParameters = {
-  [key: string]: string;
-};
+export type EmbeddingParameters = Record<string, string>;
 
-export type EmbeddingParametersValues = {
-  [key: string]: string;
-};
+export type EmbeddingParametersValues = Record<string, string>;
 
 export type EmbeddingDisplayOptions = {
   font: null | string;

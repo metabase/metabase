@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
 
 export const HeaderContainer = styled.div`
   padding: 2rem;
@@ -42,12 +41,12 @@ export const ActionsWrapper = styled.div`
 `;
 
 export const ModalContentActionIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: ${({ theme }) => theme.fn.themeColor("text-light")};
   cursor: pointer;
   padding: 0.5rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: ${({ theme }) => theme.fn.themeColor("text-medium")};
   }
 `;
 
@@ -57,7 +56,7 @@ export const ModalHeaderBackIcon = styled(ModalContentActionIcon)`
   margin: -0.5rem 0 -0.5rem -0.5rem;
 
   :hover {
-    color: ${color("brand")};
+    color: ${({ theme }) => theme.fn.themeColor("brand")};
   }
 `;
 
@@ -69,11 +68,11 @@ export const HeaderTextContainer = styled.div<{
   flex-direction: row;
   flex-grow: 1;
 
-  ${({ onClick }) =>
+  ${({ onClick, theme }) =>
     onClick &&
     css`
       &:hover > * {
-        color: ${color("brand")};
+        color: ${theme.fn.themeColor("brand")};
         cursor: pointer;
       }
     `}

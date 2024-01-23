@@ -58,15 +58,13 @@ export default class TextEditor extends Component {
     this._editor.getSession().setMode(this.props.mode);
     this._editor.setTheme(this.props.theme);
 
-    // read only
     this._editor.setReadOnly(this.props.readOnly);
     element.classList[this.props.readOnly ? "add" : "remove"]("read-only");
 
-    // highlightedText
     this._removeTextHighlight();
     const { highlightedText } = this.props;
     if (highlightedText != null) {
-      highlightedText.forEach(text => this._addTextHighlight(text));
+      highlightedText.forEach(this._addTextHighlight);
     }
 
     this._updateSize();
@@ -86,7 +84,7 @@ export default class TextEditor extends Component {
     this._editor.resize();
   }
 
-  _addTextHighlight(textToHighlight) {
+  _addTextHighlight = textToHighlight => {
     const textRange = this._editor.find(textToHighlight);
     this._editor.selection.clearSelection();
 
@@ -106,7 +104,7 @@ export default class TextEditor extends Component {
         );
       }
     }
-  }
+  };
 
   _removeTextHighlight() {
     this.highlightedTextMarkerIds.forEach(highlightedTextMarkerId => {

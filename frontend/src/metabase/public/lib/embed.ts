@@ -15,7 +15,7 @@ export function getSignedToken(
   secretKey: string,
   previewEmbeddingParams: EmbeddingParameters,
 ) {
-  const unsignedToken: { [key: string]: any } = {
+  const unsignedToken: Record<string, any> = {
     resource: { [resourceType]: resourceId },
     params: params,
     iat: Math.round(new Date().getTime() / 1000),
@@ -50,7 +50,9 @@ export function getSignedPreviewUrl(
   )}`;
 }
 
-export function optionsToHashParams(options: { [key: string]: any } = {}) {
+export function optionsToHashParams(
+  options: Record<string, string | boolean | null> = {},
+) {
   options = { ...options };
   // filter out null, undefined, ""
   for (const name in options) {

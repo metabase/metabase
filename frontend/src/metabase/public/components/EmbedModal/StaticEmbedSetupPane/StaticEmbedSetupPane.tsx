@@ -22,12 +22,12 @@ import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { ParametersSettings } from "./ParametersSettings";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { OverviewSettings } from "./OverviewSettings";
-import type { ActivePreviewPane } from "./types";
+import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 
 const TABS = {
-  Overview: "overview",
-  Parameters: "parameters",
-  Appearance: "appearance",
+  Overview: "overview" as const,
+  Parameters: "parameters" as const,
+  Appearance: "appearance" as const,
 };
 
 export interface StaticEmbedSetupPaneProps {
@@ -128,6 +128,23 @@ export const StaticEmbedSetupPane = ({
     setEmbeddingParams(getDefaultEmbeddingParams(resource, resourceParameters));
   };
 
+  const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => (
+    <ServerEmbedCodePane
+      className="flex-full w-full"
+      variant={variant}
+      initialPreviewParameters={initialPreviewParameters}
+      resource={resource}
+      resourceType={resourceType}
+      siteUrl={siteUrl}
+      secretKey={secretKey}
+      params={previewParametersBySlug}
+      displayOptions={displayOptions}
+      serverCodeOptions={serverCodeOptions}
+      selectedServerCodeOptionName={selectedServerCodeOptionName}
+      setSelectedServerCodeOptionName={setSelectedServerCodeOptionName}
+    />
+  );
+
   return (
     <Stack spacing={0}>
       <EmbedModalContentStatusBar
@@ -149,24 +166,7 @@ export const StaticEmbedSetupPane = ({
           <OverviewSettings
             resourceType={resourceType}
             selectedServerCodeOption={selectedServerCodeOption}
-            serverEmbedCodeSlot={
-              <ServerEmbedCodePane
-                className="flex-full w-full"
-                variant="overview"
-                initialPreviewParameters={initialPreviewParameters}
-                resource={resource}
-                resourceType={resourceType}
-                siteUrl={siteUrl}
-                secretKey={secretKey}
-                params={previewParametersBySlug}
-                displayOptions={displayOptions}
-                serverCodeOptions={serverCodeOptions}
-                selectedServerCodeOptionName={selectedServerCodeOptionName}
-                setSelectedServerCodeOptionName={
-                  setSelectedServerCodeOptionName
-                }
-              />
-            }
+            serverEmbedCodeSlot={getServerEmbedCodePane(TABS.Overview)}
           />
         </Tabs.Panel>
         <Tabs.Panel value={TABS.Parameters}>
@@ -179,24 +179,7 @@ export const StaticEmbedSetupPane = ({
             parameterValues={parameterValues}
             iframeUrl={iframeUrl}
             displayOptions={displayOptions}
-            serverEmbedCodeSlot={
-              <ServerEmbedCodePane
-                className="flex-full w-full"
-                variant="parameters"
-                initialPreviewParameters={initialPreviewParameters}
-                resource={resource}
-                resourceType={resourceType}
-                siteUrl={siteUrl}
-                secretKey={secretKey}
-                params={previewParametersBySlug}
-                displayOptions={displayOptions}
-                serverCodeOptions={serverCodeOptions}
-                selectedServerCodeOptionName={selectedServerCodeOptionName}
-                setSelectedServerCodeOptionName={
-                  setSelectedServerCodeOptionName
-                }
-              />
-            }
+            serverEmbedCodeSlot={getServerEmbedCodePane(TABS.Parameters)}
             onChangeEmbeddingParameters={setEmbeddingParams}
             onChangeParameterValue={(id: string, value: string) =>
               setParameterValues(state => ({
@@ -213,24 +196,7 @@ export const StaticEmbedSetupPane = ({
             resourceType={resourceType}
             iframeUrl={iframeUrl}
             displayOptions={displayOptions}
-            serverEmbedCodeSlot={
-              <ServerEmbedCodePane
-                className="flex-full w-full"
-                variant="appearance"
-                initialPreviewParameters={initialPreviewParameters}
-                resource={resource}
-                resourceType={resourceType}
-                siteUrl={siteUrl}
-                secretKey={secretKey}
-                params={previewParametersBySlug}
-                displayOptions={displayOptions}
-                serverCodeOptions={serverCodeOptions}
-                selectedServerCodeOptionName={selectedServerCodeOptionName}
-                setSelectedServerCodeOptionName={
-                  setSelectedServerCodeOptionName
-                }
-              />
-            }
+            serverEmbedCodeSlot={getServerEmbedCodePane(TABS.Appearance)}
             onChangePane={setActivePane}
             onChangeDisplayOptions={setDisplayOptions}
           />
