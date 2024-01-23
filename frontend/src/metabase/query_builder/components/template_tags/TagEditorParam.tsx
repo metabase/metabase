@@ -325,7 +325,7 @@ class TagEditorParamInner extends Component<Props> {
           <InputContainer>
             <ContainerLabel>
               {t`Filter widget label`}
-              {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+              {hasNoWidgetLabel && <ErrorSpan>({t`required`})</ErrorSpan>}
             </ContainerLabel>
             <InputBlurChange
               id={`tag-editor-display-name_${tag.id}`}
