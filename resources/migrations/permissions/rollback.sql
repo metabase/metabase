@@ -26,8 +26,10 @@ INSERT INTO permissions (object, group_id)
 SELECT concat('/db/',
               dp.db_id,
               '/schema/',
-              replace(replace(dp.schema_name,
-                              '\', '\\'), '/', '\/'), '/table/', dp.table_id, '/'),
+              replace(replace(dp.schema_name, '\', '\\'), '/', '\/'),
+              '/table/',
+              dp.table_id,
+              '/'),
        dp.group_id
 FROM data_permissions dp
 WHERE dp.perm_type = 'perms/data-access'
@@ -67,8 +69,10 @@ INSERT INTO permissions (object, group_id)
 SELECT concat('/download/db/',
               dp.db_id,
               '/schema/',
-              replace(replace(dp.schema_name,
-                              '\\', '\\\\'), '/', '\\/'), '/table/', dp.table_id, '/'),
+              replace(replace(dp.schema_name, '\', '\\'), '/', '\/'),
+              '/table/',
+              dp.table_id,
+              '/'),
        dp.group_id
 FROM data_permissions dp
 WHERE dp.perm_type = 'perms/download-results'
@@ -79,8 +83,10 @@ INSERT INTO permissions (object, group_id)
 SELECT concat('/download/limited/db/',
               dp.db_id,
               '/schema/',
-              replace(replace(dp.schema_name,
-                              '\\', '\\\\'), '/', '\\/'), '/table/', dp.table_id, '/'),
+              replace(replace(dp.schema_name, '\', '\\'), '/', '\/'),
+              '/table/',
+              dp.table_id,
+              '/'),
        dp.group_id
 FROM data_permissions dp
 WHERE dp.perm_type = 'perms/download-results'
@@ -128,12 +134,14 @@ INSERT INTO permissions (object, group_id)
 SELECT concat('/data-model/db/',
               dp.db_id,
               '/schema/',
-              replace(replace(dp.schema_name,
-                              '\\', '\\\\'), '/', '\\/'), '/table/', dp.table_id, '/'),
+              replace(replace(dp.schema_name, '\', '\\'), '/', '\/'),
+              '/table/',
+              dp.table_id,
+              '/'),
        dp.group_id
 FROM data_permissions dp
 WHERE dp.perm_type = 'perms/manage-table-metadata'
-  AND dp.perm_value = 'no'
+  AND dp.perm_value = 'yes'
 AND dp.table_id IS NOT NULL;
 
 -- MANAGE DATABASE
