@@ -44,6 +44,7 @@ import type {
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import { DashCardRoot } from "./DashCard.styled";
+import { DashCardContextMenu } from "./DashCardContextMenu";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -251,69 +252,71 @@ function DashCardInner({
 
   return (
     <ErrorBoundary>
-      <DashCardRoot
-        data-testid="dashcard"
-        className="Card rounded flex flex-column hover-parent hover--visibility"
-        hasHiddenBackground={hasHiddenBackground}
-        shouldForceHiddenBackground={shouldForceHiddenBackground}
-        isNightMode={isNightMode}
-        isUsuallySlow={isSlow === "usually-slow"}
-        ref={cardRootRef}
-      >
-        {isEditingDashboardLayout && (
-          <DashCardActionsPanel
-            onMouseDown={preventDragging}
-            onLeftEdge={dashcard.col === 0}
-            series={series}
+      <DashCardContextMenu>
+        <DashCardRoot
+          data-testid="dashcard"
+          className="Card rounded flex flex-column hover-parent hover--visibility"
+          hasHiddenBackground={hasHiddenBackground}
+          shouldForceHiddenBackground={shouldForceHiddenBackground}
+          isNightMode={isNightMode}
+          isUsuallySlow={isSlow === "usually-slow"}
+          ref={cardRootRef}
+        >
+          {isEditingDashboardLayout && (
+            <DashCardActionsPanel
+              onMouseDown={preventDragging}
+              onLeftEdge={dashcard.col === 0}
+              series={series}
+              dashboard={dashboard}
+              dashcard={dashcard}
+              isLoading={isLoading}
+              isPreviewing={isPreviewingCard}
+              hasError={hasError}
+              onAddSeries={onAddSeries}
+              onRemove={onRemove}
+              onReplaceCard={onReplaceCard}
+              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+              onReplaceAllVisualizationSettings={
+                onReplaceAllVisualizationSettings
+              }
+              showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
+              onPreviewToggle={handlePreviewToggle}
+            />
+          )}
+          <DashCardVisualization
             dashboard={dashboard}
             dashcard={dashcard}
-            isLoading={isLoading}
+            series={series}
+            parameterValues={parameterValues}
+            parameterValuesBySlug={parameterValuesBySlug}
+            metadata={metadata}
+            mode={mode}
+            gridSize={gridSize}
+            gridItemWidth={gridItemWidth}
+            totalNumGridCols={totalNumGridCols}
+            headerIcon={headerIcon}
+            expectedDuration={expectedDuration}
+            error={error}
+            isEmbed={isEmbed}
+            isXray={isXray}
+            isEditing={isEditing}
+            isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
+            isEditingDashboardLayout={isEditingDashboardLayout}
+            isEditingParameter={isEditingParameter}
+            isClickBehaviorSidebarOpen={isClickBehaviorSidebarOpen}
+            isSlow={isSlow}
             isPreviewing={isPreviewingCard}
-            hasError={hasError}
-            onAddSeries={onAddSeries}
-            onRemove={onRemove}
-            onReplaceCard={onReplaceCard}
+            isFullscreen={isFullscreen}
+            isNightMode={isNightMode}
+            isMobile={isMobile}
+            isPublic={isPublic}
+            showClickBehaviorSidebar={showClickBehaviorSidebar}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-            onReplaceAllVisualizationSettings={
-              onReplaceAllVisualizationSettings
-            }
-            showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
-            onPreviewToggle={handlePreviewToggle}
+            onChangeCardAndRun={changeCardAndRunHandler}
+            onChangeLocation={onChangeLocation}
           />
-        )}
-        <DashCardVisualization
-          dashboard={dashboard}
-          dashcard={dashcard}
-          series={series}
-          parameterValues={parameterValues}
-          parameterValuesBySlug={parameterValuesBySlug}
-          metadata={metadata}
-          mode={mode}
-          gridSize={gridSize}
-          gridItemWidth={gridItemWidth}
-          totalNumGridCols={totalNumGridCols}
-          headerIcon={headerIcon}
-          expectedDuration={expectedDuration}
-          error={error}
-          isEmbed={isEmbed}
-          isXray={isXray}
-          isEditing={isEditing}
-          isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
-          isEditingDashboardLayout={isEditingDashboardLayout}
-          isEditingParameter={isEditingParameter}
-          isClickBehaviorSidebarOpen={isClickBehaviorSidebarOpen}
-          isSlow={isSlow}
-          isPreviewing={isPreviewingCard}
-          isFullscreen={isFullscreen}
-          isNightMode={isNightMode}
-          isMobile={isMobile}
-          isPublic={isPublic}
-          showClickBehaviorSidebar={showClickBehaviorSidebar}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onChangeCardAndRun={changeCardAndRunHandler}
-          onChangeLocation={onChangeLocation}
-        />
-      </DashCardRoot>
+        </DashCardRoot>
+      </DashCardContextMenu>
     </ErrorBoundary>
   );
 }
