@@ -16,11 +16,11 @@ const defaultRenderer = (row: Row) => {
 const getRowHeightForViewMode = (viewMode: string) => {
   switch (viewMode) {
     case "cozy":
-      return 40;
+      return 36;
     case "compact":
-      return 20;
+      return 24;
     default:
-      return 20;
+      return 28;
   }
 };
 
