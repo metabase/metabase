@@ -134,10 +134,11 @@
     (log/warn "Metabot is not enabled")))
 
 (defn infer-card-summary
-  "...."
-  [{:keys     [display visualization_settings dataset_query result_metadata]}]
-  (let [{:keys [] :as res} (qp/process-query dataset_query)
-        sql         (get-in res [:data :native_form :query])
+  "Create a human-friendly summary of a card. Returns a map of the form:
+  {:summary {:title \"Some inferred title\"
+             :description \"Some inferred description\"}}"
+  [{:keys [display visualization_settings dataset_query result_metadata]}]
+  (let [{:keys [query]} (qp/compile-and-splice-parameters dataset_query)
         visualization_settings (reduce-kv
                                  (fn [acc k v]
                                    (cond-> acc
@@ -145,37 +146,37 @@
                                      (assoc k v)))
                                  {}
                                  visualization_settings)
-        description (cond->
-                      {:sql_query           sql
-                       :display_type        display
-                       :column_descriptions (zipmap
-                                              (map (some-fn :display_name :name) result_metadata)
-                                              (map (some-fn :semantic_type :effective_type) result_metadata))
-                       :friendly_title      "%%FILL_THIS_TITLE_IN%%"
-                       :friendly_summary    "%%FILL_THIS_SUMMARY_IN%%"}
-                      (seq visualization_settings)
-                      (assoc :visualization_settings visualization_settings))
-        json-str (json/generate-string description)]
+        description            (cond->
+                                 {:sql_query           query
+                                  :display_type        display
+                                  :column_descriptions (zipmap
+                                                         (map (some-fn :display_name :name) result_metadata)
+                                                         (map (some-fn :semantic_type :effective_type) result_metadata))
+                                  :friendly_title      "%%FILL_THIS_TITLE_IN%%"
+                                  :friendly_summary    "%%FILL_THIS_SUMMARY_IN%%"}
+                                 (seq visualization_settings)
+                                 (assoc :visualization_settings visualization_settings))
+        json-str               (json/generate-string description)]
     {:summary
-       (metabot-util/find-result
-         (fn [rsp] (-> rsp
-                       (json/parse-string true)
-                       (rename-keys {:friendly_title :title
-                                     :friendly_summary :description})))
-         (metabot-client/invoke-metabot
-           {:messages [{:role    "system"
-                        :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
+     (metabot-util/find-result
+       (fn [rsp] (-> rsp
+                     (json/parse-string true)
+                     (rename-keys {:friendly_title   :title
+                                   :friendly_summary :description})))
+       (metabot-client/invoke-metabot
+         {:messages [{:role    "system"
+                      :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
                         \"friendly_summary\" keys in a json fragment. You like to occasionally use emojis to express
                         yourself but are otherwise very serious and professional."}
-                       {:role    "assistant"
-                        :content (cond-> "The \"display\" key is how I intend to present the final data."
-                                   (seq visualization_settings)
-                                   (str " The \"visualization_settings key has chart settings."))}
-                       {:role    "assistant"
-                        :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
-                       {:role    "assistant"
-                        :content "Just return a json map with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
-                       {:role    "assistant"
-                        :content "The \"friendly_title\" must be no more than 64 characters long."}
-                       {:role    "user"
-                        :content json-str}]}))}))
+                     {:role    "assistant"
+                      :content (cond-> "The \"display\" key is how I intend to present the final data."
+                                 (seq visualization_settings)
+                                 (str " The \"visualization_settings key has chart settings."))}
+                     {:role    "assistant"
+                      :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
+                     {:role    "assistant"
+                      :content "Just return a json map with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
+                     {:role    "assistant"
+                      :content "The \"friendly_title\" must be no more than 64 characters long."}
+                     {:role    "user"
+                      :content json-str}]}))}))
