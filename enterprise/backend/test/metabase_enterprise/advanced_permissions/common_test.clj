@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models
     :refer [Dashboard DashboardCard Database Field FieldValues Table]]
+   [metabase.models.data-permissions-test :as data-perms.test-util]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
@@ -29,13 +30,14 @@
 (defn- do-with-all-user-data-perms!
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
-  (let [all-users-group-id  (u/the-id (perms-group/all-users))]
+  (let [all-users-group-id (u/the-id (perms-group/all-users))]
     (mt/with-additional-premium-features #{:advanced-permissions}
       (memoize/memo-clear! @#'field/cached-perms-object-set)
       (perms.test-util/with-restored-perms!
         (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
-        (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
-        (f)))))
+        (data-perms.test-util/with-restored-perms-for-group! all-users-group-id
+          (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
+          (f))))))
 
 (defmacro ^:private with-all-users-data-perms!
   "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
@@ -455,7 +457,18 @@
                (mt/user-http-request :rasta :get 403 (format "field/%d?include_editable_data_model=true" (mt/id :users :name)))))))))
 
 (deftest update-table-test
-  (t2.with-temp/with-temp [Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+  (t2.with-temp/with-temp [Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}
+                           Table {other-table-id :id} {}]
+    (testing "PUT /api/table/:id"
+      (let [endpoint (format "table/%d" table-id)]
+        (testing "a non-admin cannot update table metadata if they only have data model permissions for other schemas"
+          (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC"           :none
+                                                                       "different schema" :all}}}}
+            (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))))))
+
+(deftest update-table-test
+  (t2.with-temp/with-temp [Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}
+                           Table {other-table-id :id} {}]
     (testing "PUT /api/table/:id"
       (let [endpoint (format "table/%d" table-id)]
         (testing "a non-admin cannot update table metadata if the advanced-permissions feature flag is not present"
@@ -474,7 +487,7 @@
 
         (testing "a non-admin cannot update table metadata if they only have data model permissions for other tables"
           (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id       :none
-                                                                                 (inc table-id) :all}}}}}
+                                                                                 other-table-id :all}}}}}
             (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
 
         (testing "a non-admin can update table metadata if they have data model perms for the DB"

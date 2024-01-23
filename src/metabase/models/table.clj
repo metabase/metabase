@@ -14,6 +14,7 @@
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -109,11 +110,13 @@
 
 (defmethod mi/can-write? :model/Table
   ([instance]
-   (= :yes (data-perms/table-permission-for-user
-            api/*current-user-id*
-            :perms/manage-table-metadata
-            (:db_id instance)
-            (:id instance))))
+   (if (premium-features/enable-advanced-permissions?)
+     (= :yes (data-perms/table-permission-for-user
+              api/*current-user-id*
+              :perms/manage-table-metadata
+              (:db_id instance)
+              (:id instance)))
+     (mi/superuser?)))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
 

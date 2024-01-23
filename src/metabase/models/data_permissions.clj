@@ -250,67 +250,69 @@
     (when (values :block)
       (throw (ex-info (tru "Block permissions must be set at the database-level only.")
                       {})))
-    (t2/with-transaction [_conn]
-      (let [group-id               (u/the-id group-or-id)
-            new-perms              (map (fn [[table value]]
-                                          (let [{:keys [id db_id schema]}
-                                                (if (map? table)
-                                                  table
-                                                  (t2/select-one [:model/Table :id :db_id :schema] :id table))]
-                                            {:perm_type   perm-type
-                                             :group_id    group-id
-                                             :perm_value  value
-                                             :db_id       db_id
-                                             :table_id    id
-                                             :schema_name schema}))
-                                        table-perms)
-            _                      (when (not= (count (set (map :db_id new-perms))) 1)
-                                     (throw (ex-info (tru "All tables must belong to the same database.")
-                                                     {:new-perms new-perms})))
-            table-ids              (map :table_id new-perms)
-            db-id                  (:db_id (first new-perms))
-            existing-db-perm       (t2/select-one :model/DataPermissions
-                                                  {:where
-                                                   [:and
-                                                    [:= :perm_type (u/qualified-name perm-type)]
-                                                    [:= :group_id  group-id]
-                                                    [:= :db_id     db-id]
-                                                    [:= :table_id  nil]]})
-            existing-db-perm-value (:perm_value existing-db-perm)]
-        (if existing-db-perm
-          (when (not= values #{existing-db-perm-value})
-            ;; If we're setting any table permissions to a value that is different from the database-level permission,
-            ;; we need to replace it with individual permission rows for every table in the database instead.
-            (let [other-tables    (t2/select :model/Table {:where [:and
-                                                                   [:= :db_id db-id]
-                                                                   [:not [:in :id table-ids]]]})
-                  other-new-perms (map (fn [table]
-                                         {:perm_type   perm-type
-                                          :group_id    group-id
-                                          :perm_value  existing-db-perm-value
-                                          :db_id       db-id
-                                          :table_id    (:id table)
-                                          :schema_name (:schema table)})
-                                       other-tables)]
-              (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
-              (t2/insert! :model/DataPermissions (concat other-new-perms new-perms))))
-          (let [existing-table-perms (t2/select :model/DataPermissions
-                                                :perm_type (u/qualified-name perm-type)
-                                                :group_id  group-id
-                                                :db_id     db-id
-                                                {:where [:and
-                                                         [:not= :table_id nil]
-                                                         [:not [:in :table_id table-ids]]]})
-                existing-table-values (set (map :perm_value existing-table-perms))]
-            (if (and (= (count existing-table-values) 1)
-                     (= values existing-table-values))
-              ;; If all tables would have the same permissions after we update these ones, we can replace all of the table
-              ;; perms with a DB-level perm instead.
-              (set-database-permission! group-or-id db-id perm-type (first values))
-              ;; Otherwise, just replace the rows for the individual table perm
-              (do
-                (t2/delete! :model/DataPermissions :perm_type perm-type :group_id group-id {:where [:in :table_id table-ids]})
-                (t2/insert! :model/DataPermissions new-perms)))))))))
+    ;; if `table-perms` is empty, there's nothing to do
+    (when (seq table-perms)
+      (t2/with-transaction [_conn]
+        (let [group-id               (u/the-id group-or-id)
+              new-perms              (map (fn [[table value]]
+                                            (let [{:keys [id db_id schema]}
+                                                  (if (map? table)
+                                                    table
+                                                    (t2/select-one [:model/Table :id :db_id :schema] :id table))]
+                                              {:perm_type   perm-type
+                                               :group_id    group-id
+                                               :perm_value  value
+                                               :db_id       db_id
+                                               :table_id    id
+                                               :schema_name schema}))
+                                          table-perms)
+              _                      (when (not= (count (set (map :db_id new-perms))) 1)
+                                       (throw (ex-info (tru "All tables must belong to the same database.")
+                                                       {:new-perms new-perms})))
+              table-ids              (map :table_id new-perms)
+              db-id                  (:db_id (first new-perms))
+              existing-db-perm       (t2/select-one :model/DataPermissions
+                                                    {:where
+                                                     [:and
+                                                      [:= :perm_type (u/qualified-name perm-type)]
+                                                      [:= :group_id  group-id]
+                                                      [:= :db_id     db-id]
+                                                      [:= :table_id  nil]]})
+              existing-db-perm-value (:perm_value existing-db-perm)]
+          (if existing-db-perm
+            (when (not= values #{existing-db-perm-value})
+              ;; If we're setting any table permissions to a value that is different from the database-level permission,
+              ;; we need to replace it with individual permission rows for every table in the database instead.
+              (let [other-tables    (t2/select :model/Table {:where [:and
+                                                                     [:= :db_id db-id]
+                                                                     [:not [:in :id table-ids]]]})
+                    other-new-perms (map (fn [table]
+                                           {:perm_type   perm-type
+                                            :group_id    group-id
+                                            :perm_value  existing-db-perm-value
+                                            :db_id       db-id
+                                            :table_id    (:id table)
+                                            :schema_name (:schema table)})
+                                         other-tables)]
+                (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
+                (t2/insert! :model/DataPermissions (concat other-new-perms new-perms))))
+            (let [existing-table-perms (t2/select :model/DataPermissions
+                                                  :perm_type (u/qualified-name perm-type)
+                                                  :group_id  group-id
+                                                  :db_id     db-id
+                                                  {:where [:and
+                                                           [:not= :table_id nil]
+                                                           [:not [:in :table_id table-ids]]]})
+                  existing-table-values (set (map :perm_value existing-table-perms))]
+              (if (and (= (count existing-table-values) 1)
+                       (= values existing-table-values))
+                ;; If all tables would have the same permissions after we update these ones, we can replace all of the table
+                ;; perms with a DB-level perm instead.
+                (set-database-permission! group-or-id db-id perm-type (first values))
+                ;; Otherwise, just replace the rows for the individual table perm
+                (do
+                  (t2/delete! :model/DataPermissions :perm_type perm-type :group_id group-id {:where [:in :table_id table-ids]})
+                  (t2/insert! :model/DataPermissions new-perms))))))))))
 
 (mu/defn set-table-permission!
   "Sets permissions for a single table to the specified value for a given group."
