@@ -85,7 +85,6 @@ describe("issue 32444", () => {
 
   it("should not reload dashboard cards not connected to a filter (metabase#32444)", () => {
     cy.createDashboardWithQuestions({
-      dashboardName: "Dashboard with a card and filter",
       questions: [question1Details, questionWithFilter],
     }).then(({ dashboard }) => {
       cy.intercept(
