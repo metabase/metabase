@@ -228,6 +228,7 @@ class DashboardInner extends Component {
       setEditingParameter,
       isHeaderVisible,
       isAutoApplyFilters,
+      isAdmin,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;

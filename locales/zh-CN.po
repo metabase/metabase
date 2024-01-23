@@ -27614,7 +27614,7 @@ msgstr "你们好"
 #: frontend/src/metabase/modes/components/drill/PivotDrill/PivotDrill.tsx:140
 #: frontend/src/metabase/visualizations/components/ChartClickActions/utils.ts:138
 msgid "Break out by…"
-msgstr "通过..."
+msgstr "通过1..."
 
 #: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:36
 #: frontend/src/metabase/nav/components/AppBar/AppBar.tsx:29
@@ -27806,7 +27806,7 @@ msgstr "询问 Metabot"
 
 #: frontend/src/metabase-lib/queries/drills/zoom-drill.ts:65
 msgid "See this {0} by {1}"
-msgstr "请看这个 {0} by {1}"
+msgstr "点击查看明细 {0} by {1}"
 
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:126
 msgid "Surface individual records in search by matching against this column"
@@ -29370,5 +29370,5 @@ msgstr "输入无效：{0}"
 #: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 msgid "See this {0}{1}"
 msgid_plural "See these {0}"
-msgstr[0] "请看这个 {0}{1}"
+msgstr[0] "点击查看明细 {0}{1}"
 

@@ -117,7 +117,7 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
+  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route, isAdmin} =
     props;
 
   const options = parseHashOptions(window.location.hash);
@@ -192,6 +192,7 @@ const DashboardApp = props => {
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
+        isAdmin={isAdmin}
         {...props}
       />
       {/* For rendering modal urls */}

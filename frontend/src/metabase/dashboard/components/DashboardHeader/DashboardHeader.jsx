@@ -303,6 +303,7 @@ class DashboardHeaderContainer extends Component {
       closeSidebar,
       databases,
       collection,
+      isAdmin,
     } = this.props;
 
     const canEdit = dashboard.can_write;
@@ -436,7 +437,7 @@ class DashboardHeaderContainer extends Component {
       );
     }
 
-    if (!isFullscreen && !isEditing && canEdit) {
+    if (!isFullscreen && !isEditing && canEdit && isAdmin) {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <DashboardHeaderButton
@@ -459,7 +460,7 @@ class DashboardHeaderContainer extends Component {
         event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
       });
 
-      extraButtons.push({
+      isAdmin && extraButtons.push({
         title: t`Duplicate`,
         icon: "clone",
         link: `${location.pathname}/copy`,
@@ -476,7 +477,7 @@ class DashboardHeaderContainer extends Component {
         },
       });
 
-      if (canEdit) {
+      if (canEdit && isAdmin) {
         extraButtons.push({
           title: t`Move`,
           icon: "move",
@@ -496,7 +497,7 @@ class DashboardHeaderContainer extends Component {
     buttons.push(...getDashboardActions(this, this.props));
 
     if (!isEditing) {
-      buttons.push(
+      isAdmin && buttons.push(
         ...[
           <DashboardHeaderActionDivider key="dashboard-button-divider" />,
           <DashboardBookmark

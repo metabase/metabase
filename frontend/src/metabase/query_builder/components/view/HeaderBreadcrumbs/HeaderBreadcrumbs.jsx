@@ -40,7 +40,7 @@ export function HeadBreadcrumbs({
               part
             ) : (
               <HeaderBadge
-                to={part.href}
+                // to={part.href} comment by guoqy cancel click to database
                 icon={part.icon}
                 inactiveColor={badgeInactiveColor}
               >

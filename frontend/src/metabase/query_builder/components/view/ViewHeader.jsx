@@ -79,7 +79,7 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style, isNavBarOpen, updateQuestion } = props;
+  const { question, className, style, isNavBarOpen, updateQuestion, isAdmin } = props;
 
   const [
     areFiltersExpanded,
@@ -134,19 +134,21 @@ export function ViewTitleHeader(props) {
             isSummarized={isSummarized}
           />
         )}
-        <ViewTitleHeaderRightSide
-          {...props}
-          isSaved={isSaved}
-          isDataset={isDataset}
-          isNative={isNative}
-          isSummarized={isSummarized}
-          areFiltersExpanded={areFiltersExpanded}
-          onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
-          onQueryChange={onQueryChange}
-        />
+        {isAdmin && (
+          <ViewTitleHeaderRightSide
+            {...props}
+            isSaved={isSaved}
+            isDataset={isDataset}
+            isNative={isNative}
+            isSummarized={isSummarized}
+            areFiltersExpanded={areFiltersExpanded}
+            onExpandFilters={expandFilters}
+            onCollapseFilters={collapseFilters}
+            onQueryChange={onQueryChange}
+          />
+        )}
       </ViewHeaderContainer>
-      {FilterHeader.shouldRender(props) && (
+      {FilterHeader.shouldRender(props) && isAdmin && (
         <FilterHeader
           {...props}
           expanded={areFiltersExpanded}
