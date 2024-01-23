@@ -1,4 +1,8 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addOrUpdateDashboardCard,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -34,28 +38,28 @@ describe("issue 16663", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { dashboard_id } = dashboardCard;
-        cy.request("PUT", `api/dashboard/${dashboard_id}`, {
-          dashcards: [
-            {
-              ...dashboardCard,
-              parameter_mappings: [
-                {
-                  parameter_id: FILTER.id,
-                  card_id: dashboardCard.card_id,
-                  target: [
-                    "dimension",
-                    [
-                      "field",
-                      ORDERS.CREATED_AT,
-                      {
-                        "base-type": "type/DateTime",
-                      },
-                    ],
+
+        addOrUpdateDashboardCard({
+          dashboard_id: dashboardCard.dashboard_id,
+          card_id: dashboardCard.card_id,
+          card: {
+            parameter_mappings: [
+              {
+                parameter_id: FILTER.id,
+                card_id: dashboardCard.card_id,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    {
+                      "base-type": "type/DateTime",
+                    },
                   ],
-                },
-              ],
-            },
-          ],
+                ],
+              },
+            ],
+          },
         });
         visitDashboard(dashboard_id);
       },

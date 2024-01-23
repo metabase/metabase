@@ -838,15 +838,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashcard }) => {
-          cy.request("PUT", `/api/dashboard/${dashcard.dashboard_id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  createTextFilterMapping({ card_id: dashcard.card_id }),
-                ],
-              },
-            ],
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
           });
           visitDashboard(dashcard.dashboard_id);
         },
@@ -910,15 +909,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashcard }) => {
-          cy.request("PUT", `/api/dashboard/${dashcard.dashboard_id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  createNumberFilterMapping({ card_id: dashcard.card_id }),
-                ],
-              },
-            ],
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createNumberFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
           });
           visitDashboard(dashcard.dashboard_id);
           cy.location().then(({ pathname }) => {
@@ -959,16 +957,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashcard }) => {
-          cy.request("PUT", `/api/dashboard/${dashcard.dashboard_id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  createTextFilterMapping({ card_id: dashcard.card_id }),
-                  createTimeFilterMapping({ card_id: dashcard.card_id }),
-                ],
-              },
-            ],
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashcard.card_id }),
+                createTimeFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
           });
           visitDashboard(dashcard.dashboard_id);
           cy.location().then(({ pathname }) => {
@@ -1026,16 +1023,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashcard }) => {
-          cy.request("PUT", `/api/dashboard/${dashcard.dashboard_id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  createTextFilterMapping({ card_id: dashcard.card_id }),
-                  createTimeFilterMapping({ card_id: dashcard.card_id }),
-                ],
-              },
-            ],
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashcard.card_id }),
+                createTimeFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
           });
           visitDashboard(dashcard.dashboard_id);
           cy.location().then(({ pathname }) => {
@@ -1334,15 +1330,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashcard }) => {
-          cy.request("PUT", `/api/dashboard/${dashcard.dashboard_id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  createTextFilterMapping({ card_id: dashcard.card_id }),
-                ],
-              },
-            ],
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
           });
           visitDashboard(dashcard.dashboard_id);
           cy.location().then(({ pathname }) => {
