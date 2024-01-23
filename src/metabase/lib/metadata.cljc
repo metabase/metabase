@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata
   (:require
+   [clojure.string :as str]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -93,17 +94,35 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
+(defn- field-nesting-path
+  [metadata-provider {:keys [display-name parent-id] :as _field-metadata}]
+  (loop [field-id parent-id, path (list display-name)]
+    (if field-id
+      (let [{:keys [display-name parent-id]} (lib.metadata.protocols/field metadata-provider field-id)]
+        (recur parent-id (conj path display-name)))
+      path)))
+
+(defn- nest-display-name
+  [metadata-provider field-metadata]
+  (let [path (field-nesting-path metadata-provider field-metadata)]
+    (cond-> field-metadata
+      (next path) (assoc :display-name (str/join ": " path)))))
+
 (mu/defn fields :- [:sequential ColumnMetadata]
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- MetadataProviderable
    table-id              :- ::lib.schema.id/table]
-  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
+  (let [metadata-provider (->metadata-provider metadata-providerable)]
+    (->> (lib.metadata.protocols/fields metadata-provider table-id)
+         (mapv #(nest-display-name metadata-provider %)))))
 
 (mu/defn field :- [:maybe ColumnMetadata]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- MetadataProviderable
    field-id              :- ::lib.schema.id/field]
-  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
+  (let [metadata-provider (->metadata-provider metadata-providerable)
+        field-metadata (lib.metadata.protocols/field metadata-provider field-id)]
+    (nest-display-name metadata-provider field-metadata)))
 
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."
