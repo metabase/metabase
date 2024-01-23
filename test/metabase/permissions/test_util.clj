@@ -87,8 +87,3 @@
   group for the duration of the test."
   [group-or-id perm-type value & body]
   `(do-with-perm-for-group! ~group-or-id ~perm-type ~value (fn [] ~@body)))
-
-(comment
-  (with-no-data-perms-for-all-users!
-    (with-perm-for-group! (perms-group/all-users) :perms/data-access :unrestricted
-     (data-perms/data-permissions-graph :db-id (:id (data/db)) :group-id (u/the-id (perms-group/all-users))))))
