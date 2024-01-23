@@ -5228,7 +5228,7 @@ databaseChangeLog:
             sql: >-
               UPDATE report_card
               SET type = 'model'
-              WHERE datset is true
+              WHERE dataset is true
       rollback:
         - sql:
             sql: >-
@@ -5250,8 +5250,39 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-01-22T11:53:00
       author: qnkhuat
-      comment: Add not null constraint on `report_card.type`
+      comment: Recreate v_content views
       rollback: # no need because the column will be dropped
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v2/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v2/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v2/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v1/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v1/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v1/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-01-22T11:54:00
+      author: qnkhuat
+      comment: Drop `report_card.dataset`
       changes:
         - dropColumn:
             tableName: report_card
@@ -5261,6 +5292,7 @@ databaseChangeLog:
             tableName: report_card
             columns:
               - column:
+                  name: dataset
                   type: ${boolean.type}
                   remarks: "Indicate whether question is a dataset"
                   constraints:
