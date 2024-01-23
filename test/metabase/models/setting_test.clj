@@ -199,6 +199,28 @@
               #"Cannot initialize setting before the db is set up"
               (setting/get :test-setting-custom-init)))))))
 
+(def base-options
+  {:setter   :none
+   :type     :csv
+   :default "base-default"})
+
+(defsetting test-base-setting
+  "Setting to test the `:feature` property of settings. This only shows up in dev."
+  (assoc base-options
+    :visibility :internal
+    :default "my,default"))
+
+(deftest defsetting-with-base-test
+  (testing "A setting which specifies some base options"
+    (let [setting (setting/resolve-setting :test-base-setting)]
+      (testing "Uses non-overridden base options"
+        (is (= :csv (:type setting)))
+        (is (= :none (:setter setting)))
+        (is (nil? (resolve 'test-base-setting!)))
+      (testing "Can override base options"
+        (is (= "my,default" (:default setting)))
+        (is (= ["my" "default"] (test-base-setting))))))))
+
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
   (is (= "FANCY NEW VALUE <3"

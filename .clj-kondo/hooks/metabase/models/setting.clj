@@ -169,6 +169,9 @@
 
 (defn- defsetting-lint [node setting-name docstring options-list]
   (let [anon-binding (common/with-macro-meta (hooks/token-node '_) node)
+        [options-list base-opts] (if (even? (count options-list))
+                                   [options-list nil]
+                                   [(butlast options-list) (last options-list)])
         ;; (defn my-setting [] ...)
         getter-node (-> (list
                          (hooks/token-node 'defn)
@@ -199,7 +202,8 @@
                  ;; include description and the options map so they can get validated as well.
                 (hooks/vector-node
                  [anon-binding docstring
-                  anon-binding (hooks/map-node options-list)])
+                  anon-binding (hooks/map-node options-list)
+                  anon-binding base-opts])
                 getter-node
                 setter-node)
                hooks/list-node
