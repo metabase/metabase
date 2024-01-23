@@ -33,7 +33,7 @@
 ;;    fallback.
 
 
-(def ^:private Permissions
+(def Permissions
   "Permissions which apply to individual databases or tables"
   {:perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
@@ -55,13 +55,13 @@
 
 ;;; ------------------------------------------- Misc Utils ------------------------------------------------------------
 
-(defn- least-permissive-value
+(defn least-permissive-value
   "The *least* permissive value for a given perm type. This value is used as a fallback when a user does not have a
   value for the permission in the database."
   [perm-type]
   (-> Permissions perm-type :values last))
 
-(defn- most-permissive-value
+(defn most-permissive-value
   "The *most* permissive value for a given perm type. This is the default value for superusers."
   [perm-type]
   (-> Permissions perm-type :values first))
