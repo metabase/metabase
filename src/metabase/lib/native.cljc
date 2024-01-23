@@ -15,12 +15,31 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(def tokens
+  "The tokens used for template tags."
+  ["{{" "}}" "[[" "]]"])
+
+(defn- next-token [text start]
+  (let [indexes (map #(or (str/index-of text % start) ##Inf) tokens)
+        index   (apply min indexes)]
+    (if (infinite? index)
+      [nil nil]
+      [index (subs text index (+ 2 index))])))
+
 (mu/defn ^:private tokenize-query :- [:sequential :string]
   "Tokenize the query for easier parsing.
    This splits the string at the following tokens: {{ }} [[ ]],
    and keeps the tokens in the result."
   [query-text :- ::common/non-blank-string]
-  (str/split query-text #"(?<=(\{\{|\}\}|\[\[|\]\]))|(?=(\{\{|\}\}|\[\[|\]\]))"))
+  (let [cnt (count query-text)]
+    (loop [idx 0
+          res []]
+      (if (>= idx cnt)
+        res
+        (let [[jdx tok] (next-token query-text idx)]
+          (if (nil? jdx)
+            (recur cnt (conj res (subs query-text idx cnt)))
+            (recur (+ 2 jdx) (conj res (subs query-text idx jdx) tok))))))))
 
 (mr/def ::template-tag-with-context
    [:map
@@ -29,9 +48,9 @@
 
 (mu/defn ^:private parse-template-tags :- [:sequential ::template-tag-with-context]
   "Parse the tokenized query into a sequence of tags, possibly with invalid content."
-  [tokens :- [:sequential :string]]
+  [toks :- [:sequential :string]]
   (loop [tags []
-         [token & tail] tokens
+         [token & tail] toks
          in-optional-block false
          in-template-tag false
          current-template-text ""]
@@ -82,8 +101,8 @@
 (mu/defn ^:private recognize-template-tags :- [:sequential ::template-tag-with-context]
   "Find all template tags and test if they are optional."
   [query-text :- ::common/non-blank-string]
-  (let [tokens        (tokenize-query query-text)
-        tags          (parse-template-tags tokens)
+  (let [toks          (tokenize-query query-text)
+        tags          (parse-template-tags toks)
         template-tags (format-template-tags tags)]
     template-tags))
 
