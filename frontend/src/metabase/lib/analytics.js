@@ -43,18 +43,14 @@ export const trackStructEvent = (category, action, label, value) => {
 export const trackSchemaEvent = (schema, version, data) => {
   // eslint-disable-next-line no-undef
   if (process.env.MB_LOG_ANALYTICS === "true") {
-    try {
-      const { event, ...other } = data;
-      // eslint-disable-next-line no-console
-      console.log(
-        `%c[SNOWPLOW EVENT]%c, ${event}`,
-        "background: #222; color: #bada55",
-        "color: ",
-        other,
-      );
-    } catch (e) {
-      console.error("error while printing snowplow event");
-    }
+    const { event, ...other } = data;
+    // eslint-disable-next-line no-console
+    console.log(
+      `%c[SNOWPLOW EVENT]%c, ${event}`,
+      "background: #222; color: #bada55",
+      "color: ",
+      other,
+    );
   }
 
   if (!schema || !Settings.trackingEnabled()) {
