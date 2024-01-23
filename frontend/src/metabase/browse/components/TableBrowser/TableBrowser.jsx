@@ -1,5 +1,7 @@
 import { Fragment } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
+import _ from "underscore";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
@@ -8,12 +10,17 @@ import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import { Icon } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
+
+import Tables from "metabase/entities/tables";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
-
+import * as ML_Urls from "metabase-lib/urls";
 import BrowseHeader from "../BrowseHeader";
+import { RELOAD_INTERVAL } from "../../constants";
 import {
   TableActionLink,
   TableCard,
@@ -78,13 +85,12 @@ const TableBrowser = ({
 TableBrowser.propTypes = propTypes;
 
 const itemPropTypes = {
-  database: PropTypes.object,
   table: PropTypes.object.isRequired,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
 };
 
-const TableBrowserItem = ({ database, table, dbId, xraysEnabled }) => {
+const TableBrowserItem = ({ table, dbId, xraysEnabled }) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
 
@@ -156,4 +162,47 @@ const getDatabaseCrumbs = dbId => {
   }
 };
 
-export default TableBrowser;
+const getDatabaseId = (props, { includeVirtual } = {}) => {
+  const { params } = props;
+  const dbId =
+    parseInt(props.dbId) ||
+    parseInt(params.dbId) ||
+    Urls.extractEntityId(params.slug);
+
+  if (!Number.isSafeInteger(dbId)) {
+    return undefined;
+  } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID && !includeVirtual) {
+    return undefined;
+  } else {
+    return dbId;
+  }
+};
+
+const getSchemaName = props => {
+  return props.schemaName || props.params.schemaName;
+};
+
+const getReloadInterval = (_state, _props, tables = []) =>
+  tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
+
+const getTableUrl = (table, metadata) => {
+  const metadataTable = metadata?.table(table.id);
+  return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
+};
+
+export default _.compose(
+  Tables.loadList({
+    query: (state, props) => ({
+      dbId: getDatabaseId(props, { includeVirtual: true }),
+      schemaName: getSchemaName(props),
+    }),
+    reloadInterval: getReloadInterval,
+  }),
+  connect((state, props) => ({
+    dbId: getDatabaseId(props, { includeVirtual: true }),
+    schemaName: getSchemaName(props),
+    metadata: getMetadata(state),
+    xraysEnabled: getSetting(state, "enable-xrays"),
+    getTableUrl,
+  })),
+)(TableBrowser);
