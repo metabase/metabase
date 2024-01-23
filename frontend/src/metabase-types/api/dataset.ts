@@ -144,6 +144,7 @@ export interface TemplateTag {
   dimension?: LocalFieldReference;
   "widget-type"?: string;
   required?: boolean;
+  optional: boolean;
   default?: string | null;
   options?: ParameterOptions;
 
