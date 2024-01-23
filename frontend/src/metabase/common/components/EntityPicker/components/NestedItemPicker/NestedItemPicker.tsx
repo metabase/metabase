@@ -7,33 +7,29 @@ import type { PickerState, PickerStateItem } from "../../types";
 import { HorizontalScrollBox, ListBox } from "./NestedItemPicker.styled";
 
 interface NestedItemPickerProps<T> {
-  onFolderSelect: (folder?: Partial<T>) => PickerStateItem<T>;
-  onItemSelect: (item: T) => void;
+  onFolderSelect: ({
+    folder,
+    level,
+  }: {
+    folder?: Partial<T>;
+    level: number;
+  }) => void;
+  onItemSelect: ({ item, level }: { item: T; level: number }) => void;
   folderModel: string;
   itemModel: string;
-  initialState?: PickerState<T>;
+  path: PickerState<T>;
 }
 
 export const NestedItemPicker = ({
   onFolderSelect,
   onItemSelect,
   folderModel,
-  initialState = [],
+  path,
 }: NestedItemPickerProps<SearchResult>) => {
-  const [stack, setStack] = useState(initialState ?? []);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleFolderSelect = async (
-    folder: SearchResult,
-    levelIndex: number,
-  ) => {
-    const nextLevel = await onFolderSelect(folder);
-
-    // FIXME do better
-    const restOfStack = stack.slice(0, levelIndex + 1);
-    restOfStack[restOfStack.length - 1].selectedItem = folder;
-
-    setStack([...restOfStack, nextLevel]);
+  const handleFolderSelect = (folder: SearchResult, levelIndex: number) => {
+    onFolderSelect({ folder, level: levelIndex });
 
     const intervalId = setInterval(() => {
       if (
@@ -59,35 +55,22 @@ export const NestedItemPicker = ({
     }
   }, [containerRef]);
 
-  const handleItemSelect = (item: SearchResult, levelIndex: number) => {
-    const restOfStack = stack.slice(0, levelIndex + 1);
-    restOfStack[restOfStack.length - 1].selectedItem = item;
-    setStack(restOfStack);
-    onItemSelect(item);
-  };
-
   const handleClick = (item: SearchResult, levelIndex: number) => {
     if (folderModel.includes(item.model)) {
       handleFolderSelect(item, levelIndex);
     } else {
-      handleItemSelect(item, levelIndex);
+      onItemSelect({ item, level: levelIndex });
     }
   };
 
   return (
     <HorizontalScrollBox h="100%" ref={containerRef}>
       <Flex h="100%" w="fit-content">
-        {stack.map((level, levelIndex) => {
+        {path.map((level, levelIndex) => {
           const { ListComponent, ...rest } = level;
 
           return (
             <ListBox key={JSON.stringify(level).slice(0, 255)}>
-              {/* <ItemList
-              items={level?.items}
-              onClick={item => handleClick(item, levelIndex)}
-              selectedItem={level?.selectedItem}
-              folderModel={folderModel}
-            /> */}
               <ListComponent
                 {...rest}
                 onClick={item => handleClick(item, levelIndex)}

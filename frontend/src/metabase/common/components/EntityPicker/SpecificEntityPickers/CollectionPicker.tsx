@@ -51,157 +51,103 @@ export const CollectionPicker = ({
   value,
   options = defaultOptions,
 }: CollectionPickerProps) => {
-  const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
-  const isAdmin = useSelector(getUserIsAdmin);
+  const [path, setPath] = useState<PickerState<SearchResult>>(() => {
+    const dataFn = async () => {
+      const collectionsData = [];
 
-  const { data: rootCollection, isLoading: loadingRootCollection } =
-    useCollectionQuery({ id: "root" });
-  const { data: currentCollection, isLoading: loadingCurrentCollection } =
-    useCollectionQuery({ id: value?.id, enabled: !!value?.id });
-
-  const onFolderSelect = useCallback(
-    (folder?: Partial<SearchResult>): PickerStateItem<SearchResult> => {
-      if (!folder?.id) {
-        console.log("No Folder ID");
-        const dataFn = async () => {
-          const collectionsData = [];
-
-          if (options.showRootCollection || options.namespace === "snippets") {
-            const ourAnalytics = await CollectionsApi.getRoot({
-              namespace: options.namespace,
-            });
-            collectionsData.push({
-              ...ourAnalytics,
-              model: "collection",
-              id: "root",
-            });
-
-            // default to selecting our analytics
-            onItemSelect(ourAnalytics);
-          }
-
-          if (
-            options.showPersonalCollections &&
-            options.namespace !== "snippets"
-          ) {
-            const currentUser = await UserApi.current();
-            const personalCollection = await CollectionsApi.get({
-              id: currentUser.personal_collection_id,
-            });
-            collectionsData.push({
-              ...personalCollection,
-              model: "collection",
-            });
-
-            if (isAdmin) {
-              collectionsData.push(personalCollectionsRoot);
-            }
-          }
-
-          return collectionsData;
-        };
-
-        return {
-          ListComponent: ItemList,
-          dataFn,
-          selectedItem: null,
-        };
+      if (options.showRootCollection || options.namespace === "snippets") {
+        const ourAnalytics = await CollectionsApi.getRoot({
+          namespace: options.namespace,
+        });
+        collectionsData.push({
+          ...ourAnalytics,
+          model: "collection",
+          id: "root",
+        });
       }
 
-      if (
-        isAdmin &&
-        folder.id === (PERSONAL_COLLECTIONS.id as unknown as number)
-      ) {
-        console.log("Personal Collections");
-        const dataFn = async () => {
-          const allCollections = await CollectionsApi.list();
+      if (options.showPersonalCollections && options.namespace !== "snippets") {
+        const currentUser = await UserApi.current();
+        const personalCollection = await CollectionsApi.get({
+          id: currentUser.personal_collection_id,
+        });
+        collectionsData.push({
+          ...personalCollection,
+          model: "collection",
+        });
 
-          const allRootPersonalCollections = allCollections
-            .filter(
-              (collection: Collection) =>
-                collection?.is_personal && collection?.location === "/",
-            )
-            .map((collection: Collection) => ({
-              ...collection,
-              model: "collection",
-            }));
-
-          onItemSelect(personalCollectionsRoot);
-
-          return allRootPersonalCollections;
-        };
-
-        return {
-          ListComponent: ItemList,
-          dataFn,
-          selectedItem: null,
-        };
+        if (isAdmin) {
+          collectionsData.push(personalCollectionsRoot);
+        }
       }
 
-      // because folders are also selectable items in the collection picker, we always select the folder
-      if (folder) {
-        onItemSelect(folder as SearchResult);
-      }
+      return collectionsData;
+    };
 
-      console.log("got a folder", folder);
-      return {
+    return [
+      {
+        ListComponent: ItemList,
+        dataFn,
+        selectedItem: { model: "collection", id: "root" },
+      },
+      {
         ListComponent: EntityItemList,
         query: {
-          collection: folder.id,
+          collection: "root",
           models: ["collection"],
           namespace: options.namespace,
         },
         selectedItem: null,
-      };
-    },
-    [onItemSelect, isAdmin, options],
-  );
+      },
+    ];
+  });
+
+  //console.log(path);
+
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  const { data: currentCollection, isLoading: loadingCurrentCollection } =
+    useCollectionQuery({ id: value?.id, enabled: !!value?.id });
+
+  const onFolderSelect = ({
+    folder,
+    level,
+  }: {
+    folder: Partial<SearchResult>;
+    level: number;
+  }) => {
+    setPath(
+      generatePath({
+        path,
+        folder,
+        index: level,
+        options,
+        isAdmin,
+      }),
+    );
+  };
 
   useEffect(() => {
+    console.log("effectin", [currentCollection, value?.id, options.namespace]);
     if (value?.id && currentCollection) {
-      const [firstStep, ...path] = getCollectionIdPath(currentCollection);
-      console.log(firstStep, path);
+      const [firstStep, ...steps] = getCollectionIdPath(currentCollection);
+      console.log(firstStep, steps);
+      let _path = [...path];
+      steps.forEach((p, i) => {
+        _path = generatePath({
+          folder: { id: p, model: "collection" },
+          index: i,
+          isAdmin,
+          options,
+          path: _path,
+        });
+      });
 
-      setInitialState([
-        {
-          ...onFolderSelect(),
-          selectedItem: {
-            model: "collection",
-            id: path[0],
-          },
-        },
-        ...path.map((step, index, arr) => ({
-          ListComponent: EntityItemList,
-          query: {
-            collection: step,
-            models: "collection",
-            namespace: options.namespace,
-          },
-          selectedItem: {
-            model: "collection",
-            id: index + 1 < arr.length ? arr[index + 1] : undefined,
-          },
-        })),
-      ]);
-    } else {
-      // default to showing our analytics selected
-      setInitialState([
-        {
-          ...onFolderSelect(),
-          selectedItem: { model: "collection", id: "root" },
-        },
-        { ...onFolderSelect(rootCollection as SearchResult) },
-      ]);
+      setPath(_path);
     }
-  }, [
-    currentCollection,
-    rootCollection,
-    onFolderSelect,
-    onItemSelect,
-    options.namespace,
-  ]);
+  }, [loadingCurrentCollection, value?.id, options.namespace]);
 
-  if (!initialState) {
+  if (loadingCurrentCollection) {
     return <LoadingSpinner />;
   }
 
@@ -211,7 +157,50 @@ export const CollectionPicker = ({
       folderModel="collection"
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
-      initialState={initialState}
+      path={path}
     />
   );
+};
+
+const generatePath = ({ path, folder, index, isAdmin, options }) => {
+  const restOfPath = path.slice(0, index + 1);
+
+  restOfPath[restOfPath.length - 1].selectedItem = {
+    id: folder.id,
+    model: folder.model,
+  };
+
+  if (isAdmin && folder.id === (PERSONAL_COLLECTIONS.id as unknown as number)) {
+    const dataFn = async () => {
+      const allCollections = await CollectionsApi.list();
+
+      const allRootPersonalCollections = allCollections
+        .filter(
+          (collection: Collection) =>
+            collection?.is_personal && collection?.location === "/",
+        )
+        .map((collection: Collection) => ({
+          ...collection,
+          model: "collection",
+        }));
+
+      return allRootPersonalCollections;
+    };
+
+    return restOfPath.concat({
+      ListComponent: ItemList,
+      dataFn,
+      selectedItem: null,
+    });
+  } else {
+    return restOfPath.concat({
+      ListComponent: EntityItemList,
+      query: {
+        collection: folder.id,
+        models: ["collection"],
+        namespace: options.namespace,
+      },
+      selectedItem: null,
+    });
+  }
 };
