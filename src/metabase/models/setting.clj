@@ -618,8 +618,15 @@
       (throw (Exception.
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
-(defn ^{:doc "The string representation of a type 4 random uuid"} random-uuid-str []
+(defn- random-uuid-str []
   (str (random-uuid)))
+
+;; This var-type allows the bundling of a number of attributes together. In some sense it is defining a subtype / mixin.
+(def ^{:doc "A random uuid value that should never change again"} uuid-nonce-type
+  {:type   :string
+   :setter :none
+   :audit  :never
+   :init   random-uuid-str})
 
 ;; Strings are parsed as follows:
 ;;
@@ -1079,6 +1086,23 @@
        (not= (:setter setting-definition) :none)
        (not (ns-in-test? (:namespace setting-definition)))))
 
+(defn- merge-type-map [base-options child-options]
+  ;; we currently allow base-options to define any of the parameters, we may want to restrict this.
+  (merge base-options
+         ;; we currently allow the child options to override of the base-options, we may want to restrict this.
+         child-options
+         ;; ... except for type, we need to replace this of course.
+         (select-keys base-options [:type])))
+
+(defn- expand-setting-type
+  "If the :type of a setting corresponds to a map, use it like a mix-in"
+  [setting-options]
+  (let [setting-type (:type setting-options)]
+    ;; it's not a keyword or a map we just leave it as is - the schema validation will give a good error message
+    (if (map? setting-type)
+      (merge-type-map (expand-setting-type setting-type) setting-options)
+      setting-options)))
+
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
   Conveniently can be used as a getter/setter as well
@@ -1208,7 +1232,7 @@
         setting-setter-fn-symbol (-> (symbol (str (name setting-symbol) \!))
                                      (with-meta (meta setting-symbol)))
         setting-definition-symbol (gensym "setting-")]
-    `(let [setting-options#          (merge ~options ~setting-metadata)
+    `(let [setting-options#          (merge (expand-setting-type ~options) ~setting-metadata)
            ~setting-definition-symbol (register-setting! setting-options#)]
        ~(when maybe-i18n-exception
           `(when (#'requires-i18n? ~setting-definition-symbol)
