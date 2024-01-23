@@ -254,6 +254,7 @@ function DashCardInner({
     <ErrorBoundary>
       <DashCardContextMenu
         dashboard={dashboard}
+        dashcard={dashcard}
         onRemove={onRemove}
         onReplaceCard={onReplaceCard}
       >
