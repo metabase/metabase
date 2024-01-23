@@ -876,18 +876,11 @@
   [setting]
   (not= (:audit setting) :never))
 
-(defn- underlying-setter
-  "In the case of a read-only setting, this gives raw access to write a new value. Useful for initialization."
-  [{:keys [setter] setting-type :type :as setting}]
-  (if (= :none setter)
-    (partial set-value-of-type! setting-type setting)
-    setter))
-
 (defn- set-with-audit-logging!
   "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."
-  [{:keys [getter audit setter] :as setting} new-value bypass-read-only?]
-  (let [setter (if bypass-read-only?
-                 (underlying-setter setting)
+  [{:keys [getter audit setter] setting-type :type :as setting} new-value bypass-read-only?]
+  (let [setter (if (and bypass-read-only? (= :none setter))
+                 (partial set-value-of-type! setting-type setting)
                  setter)]
     (if (should-audit? setting)
       (let [audit-value-fn #(condp = audit
