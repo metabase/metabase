@@ -4,6 +4,7 @@ import _ from "underscore";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import testAcrossTimezones from "__support__/timezones";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   NumberColumn,
   DateTimeColumn,
@@ -232,10 +233,10 @@ const DEFAULT_SETTINGS = {
 function renderTimeseries(element, unit, timezone, rows, props = {}) {
   const series = [
     {
-      card: {
+      card: createMockCard({
         display: "bar",
         visualization_settings: { ...DEFAULT_SETTINGS },
-      },
+      }),
       data: {
         results_timezone: timezone,
         cols: [

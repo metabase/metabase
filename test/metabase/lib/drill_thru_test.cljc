@@ -44,7 +44,7 @@
             [:created-at "2018-05-15T08:04:04.58Z"]
             [:quantity   3]]))
 
- (def ^:private products-query
+(def ^:private products-query
   (lib/query meta/metadata-provider (meta/table-metadata :products)))
 
 (def ^:private products-row
@@ -57,6 +57,18 @@
             [:price      38.42]
             [:rating     3.5]
             [:created-at "2016-10-19T12:34:56.789Z"]]))
+
+(def ^:private reviews-query
+  (lib/query meta/metadata-provider (meta/table-metadata :reviews)))
+
+(def ^:private reviews-row
+  (row-for :reviews
+           [[:id         4]
+            [:product-id 1]
+            [:reviewer   "barbara-shields"]
+            [:rating     4]
+            [:body       "lorem ipsum"]
+            [:created-at "2023-11-13T10:29:43.394Z"]]))
 
 (defn- drill-thru-test-args [drill]
   (case (:type drill)
@@ -281,9 +293,7 @@
                  {:lib/type  :metabase.lib.drill-thru/drill-thru
                   :type      :drill-thru/quick-filter
                   :operators (for [[op label] [[:=  "="]
-                                               [:!= "≠"]
-                                               [:contains "contains"]
-                                               [:does-not-contain "does-not-contain"]]]
+                                               [:!= "≠"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
                                          [:field {:lib/uuid string?} (meta/id :products :category)]
@@ -304,15 +314,34 @@
                  {:lib/type  :metabase.lib.drill-thru/drill-thru
                   :type      :drill-thru/quick-filter
                   :operators (for [[op label] [[:=  "="]
-                                               [:!= "≠"]
-                                               [:contains "contains"]
-                                               [:does-not-contain "does-not-contain"]]]
+                                               [:!= "≠"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
                                          [:field {:lib/uuid string?} (meta/id :products :vendor)]
                                          "Herta Skiles and Sons"]})}]
                 (lib/available-drill-thrus products-query -1 context)))
         (test-drill-applications products-query context)))))
+
+(deftest ^:parallel table-view-available-drill-thrus-description-value-test
+  (testing "table values: click on"
+    (testing "description value - filter contains, does-not-contain, and object details *for the PK column*"
+      (let [context (merge (basic-context (meta/field-metadata :reviews :body) "lorem ipsum")
+                           {:row reviews-row})]
+        (is (=? [{:lib/type  :metabase.lib.drill-thru/drill-thru
+                  :type      :drill-thru/zoom
+                  :column    (meta/field-metadata :reviews :id) ; It should correctly find the PK column
+                  :object-id (-> reviews-row first :value)      ; And its value
+                  :many-pks? false}
+                 {:lib/type  :metabase.lib.drill-thru/drill-thru
+                  :type      :drill-thru/quick-filter
+                  :operators (for [[op label] [[:contains "contains"]
+                                               [:does-not-contain "does-not-contain"]]]
+                               {:name   label
+                                :filter [op {:lib/uuid string?}
+                                         [:field {:lib/uuid string?} (meta/id :reviews :body)]
+                                         "lorem ipsum"]})}]
+                (lib/available-drill-thrus reviews-query -1 context)))
+        (test-drill-applications reviews-query context)))))
 
 (deftest ^:parallel table-view-available-drill-thrus-null-value-test
   (testing "table values: click on"
