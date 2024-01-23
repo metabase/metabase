@@ -1,0 +1,92 @@
+.ContextMenuTrigger {
+  display: block;
+  border: 2px white dashed;
+  color: white;
+  border-radius: 4px;
+  font-size: 15px;
+  user-select: none;
+  padding: 45px 0;
+  width: 300px;
+  text-align: center;
+}
+
+.ContextMenuContent,
+.ContextMenuSubContent {
+  min-width: 220px;
+  background-color: white;
+  border-radius: 6px;
+  overflow: hidden;
+  padding: 5px;
+  box-shadow: 0px 10px 38px -10px rgba(22, 23, 24, 0.35),
+    0px 10px 20px -15px rgba(22, 23, 24, 0.2);
+}
+
+.ContextMenuItem,
+.ContextMenuCheckboxItem,
+.ContextMenuRadioItem,
+.ContextMenuSubTrigger {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-brand);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  height: 25px;
+  padding: 0 5px;
+  position: relative;
+  padding-left: 25px;
+  user-select: none;
+  outline: none;
+}
+.ContextMenuSubTrigger[data-state="open"] {
+  background-color: var(--color-brand);
+  color: var(--color-bg-white);
+}
+.ContextMenuItem[data-disabled],
+.ContextMenuCheckboxItem[data-disabled],
+.ContextMenuRadioItem[data-disabled],
+.ContextMenuSubTrigger[data-disabled] {
+  color: var(--color-bg-medium);
+  pointer-events: "none";
+}
+.ContextMenuItem[data-highlighted],
+.ContextMenuCheckboxItem[data-highlighted],
+.ContextMenuRadioItem[data-highlighted],
+.ContextMenuSubTrigger[data-highlighted] {
+  background-color: var(--color-brand);
+  color: var(--color-bg-white);
+}
+
+.ContextMenuLabel {
+  padding-left: 25px;
+  font-size: 12px;
+  line-height: 25px;
+  color: var(--mauve-11);
+}
+
+.ContextMenuSeparator {
+  height: 1px;
+  background-color: var(--violet-6);
+  margin: 5px;
+}
+
+.ContextMenuItemIndicator {
+  position: absolute;
+  left: 0;
+  width: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.RightSlot {
+  margin-left: auto;
+  padding-left: 20px;
+  color: var(--mauve-11);
+}
+[data-highlighted] > .RightSlot {
+  color: white;
+}
+[data-disabled] .RightSlot {
+  color: var(--mauve-8);
+}

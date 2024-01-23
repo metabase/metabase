@@ -1,6 +1,9 @@
 import * as RadixMenu from "@radix-ui/react-context-menu";
 import type { ReactNode } from "react";
 
+import "./ContextMenu.styles.css";
+import { Icon } from "../../icons";
+
 export type MenuItem =
   | {
       name: string;
@@ -22,7 +25,7 @@ export function ContextMenu({
     <RadixMenu.Root>
       <RadixMenu.Trigger>{children}</RadixMenu.Trigger>
       <RadixMenu.Portal>
-        <RadixMenu.Content>
+        <RadixMenu.Content className="ContextMenuContent">
           {menuItems.map(item => (
             <MenuItemComponent key={item.name} item={item} />
           ))}
@@ -35,15 +38,22 @@ export function ContextMenu({
 function MenuItemComponent({ item }: { item: MenuItem }) {
   if (!("children" in item)) {
     return (
-      <RadixMenu.Item onSelect={item.onSelect}>{item.name}</RadixMenu.Item>
+      <RadixMenu.Item onSelect={item.onSelect} className="ContextMenuItem">
+        {item.name}
+      </RadixMenu.Item>
     );
   }
 
   return (
     <RadixMenu.Sub>
-      <RadixMenu.SubTrigger>{item.name}</RadixMenu.SubTrigger>
+      <RadixMenu.SubTrigger className="ContextMenuSubTrigger">
+        {item.name}
+        <div className="RightSlot">
+          <Icon name="chevronright" />
+        </div>
+      </RadixMenu.SubTrigger>
       <RadixMenu.Portal>
-        <RadixMenu.SubContent>
+        <RadixMenu.SubContent className="ContextMenuSubContent">
           {item.children.map(child => (
             <MenuItemComponent key={child.name} item={child} />
           ))}
