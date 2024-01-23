@@ -104,6 +104,7 @@
                        :type :dimension
                        :dimension [:field 866 nil]
                        :widget-type :string/=
+                       :optional true
                        :default nil}}}
                     :database 76}
           converted (lib.convert/->pMBQL original)]

@@ -138,6 +138,7 @@
                     {:type :snippet
                      :name "snippet: my snippet"
                      :id "fd5e96f7-08f8-486b-9919-b2ab72857db4"
+                     :optional true
                      :display-name "Snippet: My Snippet"
                      :snippet-name "my snippet"
                      :snippet-id 1}}
@@ -155,10 +156,12 @@
           tags {tag-name {:type         :text
                           :name         tag-name
                           :display-name "Foo"
+                          :optional      false
                           :id           (str (random-uuid))}}]
       (is (= {"bar" {"type"         "text"
                      "name"         "bar"
                      "display-name" "Bar"
+                     "optional"     false
                      "id"           (get-in tags [tag-name :id])}}
              (-> (lib.js/extract-template-tags "SELECT * FROM table WHERE {{bar}}"
                                                (add-undefined-params (clj->js tags) tag-name))
