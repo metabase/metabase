@@ -12,6 +12,8 @@ import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
+import { MetabotApi } from "metabase/services";
+
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -190,6 +192,25 @@ export const setDatasetQuery =
     const question = getQuestion(getState());
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
   };
+
+export const apiGetCardSummary = async (question, state) => {
+  // Needed for persisting visualization columns for pulses/alerts, see #6749
+  const series = getTransformedSeries(state);
+  const questionWithVizSettings = series
+    ? getQuestionWithDefaultVisualizationSettings(question, series)
+    : question;
+
+  const resultsMetadata = getResultsMetadata(state);
+  const isResultDirty = getIsResultDirty(state);
+  const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
+  const newQuestion = questionWithVizSettings
+    .setQuery(cleanQuery)
+    .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+
+  const response = await MetabotApi.summarizeCard(newQuestion.card());
+
+  return response;
+};
 
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = question => {
