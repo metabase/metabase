@@ -16,10 +16,11 @@ import type { useSearchListQuery } from "metabase/common/hooks";
 import { Box, Group, Icon, Text, Title, Tooltip } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { sortModels } from "metabase/browse/utils";
-import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { CenteredEmptyState } from "./BrowseApp.styled";
+import NoResults from "assets/img/no_results.svg";
+import { trackModelClick } from "../analytics";
 import {
   CollectionHeaderContainer,
   CollectionHeaderLink,
@@ -199,6 +200,7 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
       key={model.id}
       style={style}
       to={Urls.model(model as unknown as Partial<Card>)}
+      onClick={() => trackModelClick(model.id)}
     >
       <ModelCard>
         <Title order={4} className="text-wrap" lh="1rem" mb=".5rem">

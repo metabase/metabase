@@ -8,6 +8,7 @@ import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import { Icon } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
+import { trackTableClick } from "metabase/browse/analytics";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -59,6 +60,7 @@ const TableBrowser = ({
                 to={
                   !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
                 }
+                onClick={() => trackTableClick(table.id)}
               >
                 <TableBrowserItem
                   database={database}
