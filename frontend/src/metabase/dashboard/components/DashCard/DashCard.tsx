@@ -252,7 +252,11 @@ function DashCardInner({
 
   return (
     <ErrorBoundary>
-      <DashCardContextMenu onRemove={onRemove}>
+      <DashCardContextMenu
+        dashboard={dashboard}
+        onRemove={onRemove}
+        onReplaceCard={onReplaceCard}
+      >
         <DashCardRoot
           data-testid="dashcard"
           className="Card rounded flex flex-column hover-parent hover--visibility"
