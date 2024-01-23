@@ -41,7 +41,7 @@ import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/data
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
-import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
+import { TableInteractive } from "../components/TableInteractive/TableInteractive.tsx";
 
 export default class Table extends Component {
   static uiName = t`Table`;
