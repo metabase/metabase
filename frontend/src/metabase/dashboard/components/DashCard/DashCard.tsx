@@ -32,6 +32,7 @@ import type {
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { ContextMenu } from "metabase/ui/components/overlays/ContextMenu";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -44,7 +45,6 @@ import type {
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import { DashCardRoot } from "./DashCard.styled";
-import { DashCardContextMenu } from "./DashCardContextMenu";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -252,7 +252,7 @@ function DashCardInner({
 
   return (
     <ErrorBoundary>
-      <DashCardContextMenu>
+      <ContextMenu menuItems={[{ name: "Delete", onSelect: onRemove }]}>
         <DashCardRoot
           data-testid="dashcard"
           className="Card rounded flex flex-column hover-parent hover--visibility"
@@ -316,7 +316,7 @@ function DashCardInner({
             onChangeLocation={onChangeLocation}
           />
         </DashCardRoot>
-      </DashCardContextMenu>
+      </ContextMenu>
     </ErrorBoundary>
   );
 }
