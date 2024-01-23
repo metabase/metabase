@@ -10,6 +10,7 @@ import type {
   CollectionEssentials,
 } from "metabase-types/api";
 
+import { trackModelClick } from "../analytics";
 import { getCollectionName, sortModels, getIcon } from "../utils";
 
 import {
@@ -190,6 +191,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
       key={model.id}
       to={Urls.model(model as unknown as Partial<Card>)}
+      onClick={() => trackModelClick(model.id)}
     >
       <ModelCard>
         <Box mb="auto">
