@@ -1,15 +1,19 @@
 (ns metabase.api.metabot-test
   (:require
-   [cheshire.core :as json]
-   [clojure.string :as str]
-   [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
-   [metabase.metabot-test :as metabot-test]
-   [metabase.metabot.client :as metabot-client]
-   [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card]]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+    [cheshire.core :as json]
+    [clojure.string :as str]
+    [clojure.test :refer :all]
+    [metabase.config :as config]
+    [metabase.db.query :as mdb.query]
+    [metabase.metabot-test :as metabot-test]
+    [metabase.metabot.client :as metabot-client]
+    [metabase.metabot.util :as metabot-util]
+    [metabase.models :refer [Card Collection]]
+    [metabase.models.permissions :as perms]
+    [metabase.models.permissions-group :as perms-group]
+    [metabase.test :as mt]
+    [metabase.util :as u]
+    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest metabot-only-works-on-models-test
   (testing "POST /api/metabot/model/:model-id won't work for a table endpoint"
@@ -236,3 +240,64 @@
                     {:keys [sql]} response]
                 (is (= (mdb.query/format-sql bot-message)
                        (mdb.query/format-sql sql)))))))))))
+
+(def card-defaults
+  "The default card params."
+  {:archived            false
+   :collection_id       nil
+   :collection_position nil
+   :collection_preview  true
+   :dataset_query       {}
+   :dataset             false
+   :description         nil
+   :display             "scalar"
+   :enable_embedding    false
+   :entity_id           nil
+   :embedding_params    nil
+   :made_public_by_id   nil
+   :parameters          []
+   :parameter_mappings  []
+   :moderation_reviews  ()
+   :public_uuid         nil
+   :query_type          nil
+   :cache_ttl           nil
+   :average_query_time  nil
+   :last_query_start    nil
+   :result_metadata     nil})
+
+(defn mbql-count-query
+  ([]
+   (mbql-count-query (mt/id) (mt/id :venues)))
+
+  ([db-or-id table-or-id]
+   {:database (u/the-id db-or-id)
+    :type     :query
+    :query    {:source-table (u/the-id table-or-id), :aggregation [[:count]]}}))
+
+(defn card-with-name-and-query
+  ([]
+   (card-with-name-and-query (mt/random-name)))
+
+  ([card-name]
+   (card-with-name-and-query card-name (mbql-count-query)))
+
+  ([card-name query]
+   {:name                   card-name
+    :display                "scalar"
+    :dataset_query          query
+    :visualization_settings {:global {:title nil}}}))
+
+(deftest summarize-card-test
+  (testing "POST /api/card"
+    (testing "Test that we can create a new Card"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (t2.with-temp/with-temp [Collection collection]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (mt/with-model-cleanup [:model/Card]
+                                 (let [card (assoc (card-with-name-and-query (mt/random-name)
+                                                                             (mbql-count-query (mt/id) (mt/id :venues)))
+                                              :collection_id (u/the-id collection)
+                                              :parameters [{:id "abc123", :name "test", :type "date"}]
+                                              :parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                                                    :target       [:dimension [:template-tags "category"]]}])]
+                                   (mt/user-http-request :rasta :post 200 "metabot/card/summarize" card))))))))

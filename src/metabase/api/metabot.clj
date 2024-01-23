@@ -1,16 +1,17 @@
 (ns metabase.api.metabot
   "These Metabot endpoints are for an experimental feature."
   (:require
-   [clojure.string :as str]
-   [compojure.core :refer [POST]]
-   [metabase.api.common :as api]
-   [metabase.metabot :as metabot]
-   [metabase.metabot.feedback :as metabot-feedback]
-   [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Database]]
-   [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+    [clojure.string :as str]
+    [compojure.core :refer [POST]]
+    [metabase.api.common :as api]
+    [metabase.metabot :as metabot]
+    [metabase.metabot.feedback :as metabot-feedback]
+    [metabase.metabot.util :as metabot-util]
+    [metabase.models :refer [Card Database]]
+    [metabase.sync.analyze.query-results :as qr]
+    [metabase.util.log :as log]
+    [metabase.util.malli.schema :as ms]
+    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -123,5 +124,25 @@
         message
         {:status-code 500
          :message     message})))))
+
+(api/defendpoint POST "/card/summarize"
+  "Summarize a question."
+  [:as {{:keys [collection_id collection_position dataset dataset_query description display name
+                parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
+  {name                   ms/NonBlankString
+   dataset                [:maybe :boolean]
+   dataset_query          ms/Map
+   parameters             [:maybe [:sequential ms/Parameter]]
+   parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
+   description            [:maybe ms/NonBlankString]
+   display                ms/NonBlankString
+   visualization_settings ms/Map
+   collection_id          [:maybe ms/PositiveInt]
+   collection_position    [:maybe ms/PositiveInt]
+   result_metadata        [:maybe qr/ResultsMetadata]
+   cache_ttl              [:maybe ms/PositiveInt]}
+  ;; check that we have permissions to run the query that we're trying to save
+  ;(check-data-permissions-for-query dataset_query)
+  {:summary "This is a summary"})
 
 (api/define-routes)
