@@ -164,9 +164,9 @@
                                      :friendly_summary :description})))
          (metabot-client/invoke-metabot
            {:messages [{:role    "system"
-                        :content "You are an exceptionally friendly and helpful assistant that fills in the missing
-                        friendly_title and friendly_summary keys in a json fragment.
-                        You like to occasionally use emojis to express yourself but are otherwise very serious and professional."}
+                        :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
+                        \"friendly_summary\" keys in a json fragment. You like to occasionally use emojis to express
+                        yourself but are otherwise very serious and professional."}
                        {:role    "assistant"
                         :content (cond-> "The \"display\" key is how I intend to present the final data."
                                    (seq visualization_settings)
