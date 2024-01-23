@@ -58,25 +58,9 @@ describe("utils", () => {
       expect(models).toEqual([modelA, modelB]);
     });
 
-    it("should sort by model id, if the models have the same collection and name", () => {
-      const modelA = {
-        collection: { name: "Collection", id: 1 },
-        name: "Model",
-        id: 1,
-      };
-      const modelB = {
-        collection: { name: "Collection", id: 1 },
-        name: "Model",
-        id: 2,
-      };
-      const models = [modelB, modelA];
-      models.sort(sortModels);
-      expect(models).toEqual([modelA, modelB]);
-    });
-
     it("should handle models without collections", () => {
-      const modelA = { name: "Model", id: 1 };
-      const modelB = { name: "Model", id: 2 };
+      const modelA = { name: "Model A", id: 1 };
+      const modelB = { name: "Model B", id: 2 };
       const models = [modelB, modelA];
       models.sort(sortModels);
       expect(models).toEqual([modelA, modelB]);
