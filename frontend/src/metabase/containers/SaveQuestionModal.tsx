@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { apiGetCardSummary } from "metabase/query_builder/actions";
 import ModalContent from "metabase/components/ModalContent";
 import { Form, FormProvider } from "metabase/forms";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
@@ -84,6 +85,8 @@ export const SaveQuestionModal = ({
   multiStep,
   initialCollectionId,
 }: SaveQuestionModalProps) => {
+  const state = useSelector(state => state);
+  const [suggestedTitle, setSuggestedTitle] = useState("");
   const { data: collections } = useCollectionListQuery();
 
   const handleOverwrite = useCallback(
@@ -102,6 +105,30 @@ export const SaveQuestionModal = ({
       await onSave(newQuestion.setId(originalQuestion.id()));
     },
     [question, onSave],
+  );
+
+  const suggestCardTitle = useCallback(
+    async (details: FormValues) => {
+      if (details.saveType !== "create") {
+        return;
+      }
+
+      const collectionId = canonicalCollectionId(details.collection_id);
+      const displayName = details.name.trim();
+      const description = details.description
+        ? details.description.trim()
+        : null;
+
+      const newQuestion = question
+        .setDisplayName(displayName)
+        .setDescription(description)
+        .setCollectionId(collectionId);
+
+      const response = await apiGetCardSummary(newQuestion, state);
+      const { title } = response.summary;
+      setSuggestedTitle(title);
+    },
+    [question, setSuggestedTitle, state],
   );
 
   const handleCreate = useCallback(
@@ -154,7 +181,7 @@ export const SaveQuestionModal = ({
   }
 
   const initialValues: FormValues = {
-    name: question.generateQueryDescription() || "",
+    name: suggestedTitle || question.generateQueryDescription() || "",
     description: question.description() || "",
     collection_id:
       question.collectionId() === undefined ||
@@ -238,6 +265,10 @@ export const SaveQuestionModal = ({
                           title={t`Name`}
                           placeholder={nameInputPlaceholder}
                         />
+                        <Button
+                          type="button"
+                          onClick={() => suggestCardTitle(values)}
+                        >{t`Suggest Title`}</Button>
                         <FormTextArea
                           name="description"
                           title={t`Description`}
