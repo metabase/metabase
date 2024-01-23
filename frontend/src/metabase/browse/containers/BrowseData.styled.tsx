@@ -132,9 +132,6 @@ export const CollectionHeaderContainer = styled.div`
   &:not(:first-of-type) {
     border-top: 1px solid #f0f0f0;
   }
-  // Kludge so we can use grid-gap: 1rem
-  position: relative;
-  top: 0.5rem;
 `;
 
 export const CollectionHeaderLink = styled(Link)`

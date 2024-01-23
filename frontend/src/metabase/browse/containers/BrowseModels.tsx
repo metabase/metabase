@@ -103,6 +103,7 @@ type RenderItemFunction = (
     cells: Cell[];
   },
 ) => JSX.Element | null;
+
 const emptyArray: SearchResult[] = [];
 
 export const BrowseModels = ({
@@ -110,11 +111,11 @@ export const BrowseModels = ({
   error,
   isLoading,
 }: ReturnType<typeof useSearchListQuery<SearchResult>>) => {
-  // This provides a ref to the <main> rendered by AppContent in App.tsx
+  /** This provides a ref to the <main> rendered by AppContent in App.tsx */
   const contentViewport = useContext(ContentViewportContext);
 
   const rem = parseInt(space(2));
-  const gridGapSize = rem;
+  const gridGapSize = 1 * rem;
   const itemMinWidth = 15 * rem;
   const defaultItemHeight = 10 * rem;
   const headerHeight = 3 * rem;
@@ -426,9 +427,6 @@ const getGridOptions = (
     width,
   };
 };
-
-const cellIsInHeaderRow = (item: Cell) =>
-  item?.type === CollectionHeader || item?.type === BlankCellInHeader;
 
 const renderItem: RenderItemFunction = ({
   columnCount,
