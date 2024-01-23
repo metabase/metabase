@@ -10,7 +10,7 @@ type TableInteractiveProps = {
 };
 
 const defaultRenderer = (row: Row) => {
-  return <div>{row.row[row.column.idx]}</div>;
+  return <div>{String(row.row[row.column.idx])}</div>;
 };
 
 const getRowHeightForViewMode = (viewMode: string) => {
