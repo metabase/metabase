@@ -51,5 +51,4 @@ runs:
         junit-paths: ${{ inputs.input-path }}
         org-slug: metabase
         token: ${{ inputs.trunk-api-token }}
-      continue-on-error: true
-
+        continue-on-error: true
