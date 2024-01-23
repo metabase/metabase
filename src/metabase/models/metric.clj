@@ -61,17 +61,17 @@
   (or (:table metric)
       (t2/select-one [:model/Table :db_id :schema :id] :id (u/the-id (:table_id metric)))))
 
-(defmethod mi/can-read? :model/Segment
+(defmethod mi/can-read? :model/Metric
   ([instance]
    (mi/can-read? :model/Table (metric->table instance)))
   ([_ pk]
-   (mi/can-read? (t2/select-one :model/Segment pk))))
+   (mi/can-read? (t2/select-one :model/Metric pk))))
 
-(defmethod mi/can-write? :model/Segment
+(defmethod mi/can-write? :model/Metric
   ([instance]
    (mi/can-write? :model/Table (metric->table instance)))
   ([_ pk]
-   (mi/can-write? (t2/select-one :model/Segment pk))))
+   (mi/can-write? (t2/select-one :model/Metric pk))))
 
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."

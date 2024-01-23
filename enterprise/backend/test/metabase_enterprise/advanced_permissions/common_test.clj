@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models
     :refer [Dashboard DashboardCard Database Field FieldValues Table]]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
    [metabase.models.permissions :as perms]
@@ -25,7 +26,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; TODO: change this namespace to use the version in metabase.test
-(defn- do-with-all-user-data-perms
+(defn- do-with-all-user-data-perms!
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
@@ -33,6 +34,7 @@
       (memoize/memo-clear! @#'field/cached-perms-object-set)
       (perms.test-util/with-restored-perms!
         (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
+        (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
         (f)))))
 
 (defmacro ^:private with-all-users-data-perms!
@@ -40,7 +42,7 @@
   permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
   {:style/indent 1}
   [graph & body]
-  `(do-with-all-user-data-perms ~graph (fn [] ~@body)))
+  `(do-with-all-user-data-perms! ~graph (fn [] ~@body)))
 
 (deftest current-user-test
   (testing "GET /api/user/current returns additional fields if advanced-permissions is enabled"
