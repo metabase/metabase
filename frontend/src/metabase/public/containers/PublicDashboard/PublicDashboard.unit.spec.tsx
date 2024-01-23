@@ -40,7 +40,7 @@ function setup({ token = MOCK_TOKEN, dashboard }: SetupOpts) {
 
 describe("PublicDashboard", () => {
   describe("when an endpoint of a card returns 'Token is expired' (metabase#11728)", () => {
-    it("should return prompt the user to refresh the page", async () => {
+    it("should prompt the user to refresh the page", async () => {
       const mockDashcard = createMockDashboardCard({
         id: 3,
         card: createMockCard({ id: 8 }),
