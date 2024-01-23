@@ -37,8 +37,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
     FieldFilter.setWidgetType("ID");
 
     SQLFilter.toggleRequired();
-    SQLFilter.getQueryRunButton().should("be.disabled");
-    SQLFilter.getQuerySaveButton().should("have.attr", "disabled");
+    SQLFilter.getRunQueryButton().should("be.disabled");
+    SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
     cy.findByTestId("sidebar-content")
       .findByText("Enter a default value…")
@@ -47,8 +47,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.findByPlaceholderText("Enter a default value…").type(4);
       cy.button("Add filter").click();
     });
-    SQLFilter.getQueryRunButton().should("not.be.disabled");
-    SQLFilter.getQuerySaveButton().should("not.have.attr", "disabled");
+    SQLFilter.getRunQueryButton().should("not.be.disabled");
+    SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
   });
 
   context("ID filter", () => {
