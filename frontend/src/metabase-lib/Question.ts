@@ -503,11 +503,6 @@ class Question {
     return (db && db.auto_run_queries) || false;
   }
 
-  isQueryEditable(): boolean {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-    return query ? query.isEditable() : false;
-  }
-
   /**
    * Returns the type of alert that current question supports
    *

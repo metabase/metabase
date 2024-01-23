@@ -141,14 +141,6 @@ class StructuredQuery extends AtomicQuery {
     return metadata != null && metadata.table(this._sourceTableId()) != null;
   }
 
-  /**
-   * @deprecated use MLv2
-   */
-  isEditable(): boolean {
-    const { isEditable } = Lib.queryDisplayInfo(this.getMLv2Query());
-    return isEditable;
-  }
-
   /* AtomicQuery superclass methods */
 
   /**
