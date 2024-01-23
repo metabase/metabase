@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { MouseEvent } from "react";
 import { Icon } from "metabase/ui";
 
 type Props = {
@@ -11,7 +12,7 @@ export function WidgetStatusIcon({ name, onClick }: Props) {
     "cursor-pointer": ["close", "refresh"].includes(name),
   });
 
-  const handleOnClick = (e: React.MouseEvent) => {
+  const handleOnClick = (e: MouseEvent) => {
     if (onClick) {
       e.stopPropagation();
       onClick();
