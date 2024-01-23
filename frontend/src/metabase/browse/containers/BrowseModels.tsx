@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import cx from "classnames";
 
 import _ from "underscore";
@@ -38,33 +37,29 @@ export const BrowseModels = ({
   error,
   isLoading,
 }: ReturnType<typeof useSearchListQuery<SearchResult>>) => {
-  useEffect(() => {
-    const configureGrid = () => {
-      const gridOptions = getGridOptions(models);
-      setGridOptions(gridOptions);
-    };
-    configureGrid();
-    window.addEventListener("resize", configureGrid);
-    return () => window.removeEventListener("resize", configureGrid);
-  }, [models]);
+  const groupedModels = _.groupBy(models, model => model.collection.id);
 
-  const [gridOptions, setGridOptions] = useState<{
-    cells: Cell[];
-  } | null>(null);
-
-  if (error) {
-    return <LoadingAndErrorWrapper error />;
-  } else if (isLoading || !gridOptions) {
+  if (error || isLoading) {
     return (
-      <LoadingAndErrorWrapper loading style={{ display: "flex", flex: 1 }} />
+      <LoadingAndErrorWrapper
+        error={error}
+        loading={isLoading}
+        style={{ display: "flex", flex: 1 }}
+      />
     );
   }
 
-  const { cells = [] } = gridOptions;
+  if (models.length) {
+    return (
+      <GridContainer role="grid">
+        {Object.values(groupedModels).map((models, index) => (
+          <ModelGroup models={models} key={`modelgroup-${index}`} />
+        ))}
+      </GridContainer>
+    );
+  }
 
-  return cells.length ? (
-    <GridContainer role="grid">{cells}</GridContainer>
-  ) : (
+  return (
     <CenteredEmptyState
       title={<Box mb=".5rem">{t`No models here yet`}</Box>}
       message={
@@ -76,6 +71,31 @@ export const BrowseModels = ({
         </Box>
       }
     />
+  );
+};
+
+const ModelGroup = ({ models }: { models: SearchResult[] }) => {
+  models = models.sort(sortModels);
+  const collection = models[0].collection;
+
+  /** This id is used by aria-labelledby */
+  const collectionHtmlId = `collection-${collection?.id}`;
+
+  return (
+    <>
+      <CollectionHeader
+        collection={models[0].collection}
+        key={collectionHtmlId}
+        id={collectionHtmlId}
+      />
+      {models.map(model => (
+        <ModelCell
+          model={model}
+          collectionHtmlId={collectionHtmlId}
+          key={`model-${model.id}`}
+        />
+      ))}
+    </>
   );
 };
 
@@ -168,54 +188,6 @@ const CollectionHeader = ({
       </MaybeLink>
     </CollectionHeaderContainer>
   );
-};
-
-type Cell = React.ReactElement | null;
-
-const makeCells = (models: SearchResult[]): Cell[] => {
-  const cells: Cell[] = [];
-  for (let i = 0; i < models.length; i++) {
-    const model = models[i];
-
-    const collectionIdChanged =
-      models[i - 1]?.collection?.id !== model.collection?.id;
-
-    const firstModelInItsCollection =
-      i === 0 || collectionIdChanged || model.collection?.id === undefined;
-
-    /** This id is used by aria-labelledby */
-    const collectionHtmlId = model?.collection?.id
-      ? `collection-${model.collection?.id}`
-      : `item-${cells.length}`;
-
-    // Before the first model in a given collection,
-    // add an item that represents the header of the collection
-    if (firstModelInItsCollection) {
-      const header = (
-        <CollectionHeader
-          collection={model.collection}
-          key={collectionHtmlId}
-          id={collectionHtmlId}
-        />
-      );
-      cells.push(header);
-    }
-
-    cells.push(
-      <ModelCell
-        collectionHtmlId={collectionHtmlId}
-        key={`model-${model.id}`}
-        model={model}
-      />,
-    );
-  }
-  return cells;
-};
-
-const getGridOptions = (models: SearchResult[]) => {
-  const sortedModels = models.sort(sortModels);
-  const cells = makeCells(sortedModels);
-  return { cells };
 };
 
 const addLastEditInfo = (model: SearchResult): ItemWithLastEditInfo => ({

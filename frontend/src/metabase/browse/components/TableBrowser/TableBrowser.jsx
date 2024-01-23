@@ -13,7 +13,6 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-import { ANALYTICS_CONTEXT } from "../../constants";
 import BrowseHeader from "../BrowseHeader";
 import {
   TableActionLink,
@@ -60,7 +59,6 @@ const TableBrowser = ({
                 to={
                   !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
                 }
-                data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
               >
                 <TableBrowserItem
                   database={database}
@@ -124,10 +122,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
   return (
     <Fragment>
       {xraysEnabled && (
-        <TableActionLink
-          to={`/auto/dashboard/table/${tableId}`}
-          data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
-        >
+        <TableActionLink to={`/auto/dashboard/table/${tableId}`}>
           <Icon
             name="bolt_filled"
             tooltip={t`X-ray this table`}
@@ -135,10 +130,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
           />
         </TableActionLink>
       )}
-      <TableActionLink
-        to={`/reference/databases/${dbId}/tables/${tableId}`}
-        data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
-      >
+      <TableActionLink to={`/reference/databases/${dbId}/tables/${tableId}`}>
         <Icon
           name="reference"
           tooltip={t`Learn about this table`}
