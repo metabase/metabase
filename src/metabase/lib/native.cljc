@@ -78,10 +78,14 @@
   (remove (comp nil? :name)
   (map format-template-tag tags)))
 
+
 (mu/defn ^:private recognize-template-tags :- [:sequential ::template-tag-with-context]
   "Find all template tags and test if they are optional."
   [query-text :- ::common/non-blank-string]
-  (format-template-tags (parse-template-tags (tokenize-query query-text))))
+  (let [tokens        (tokenize-query query-text)
+        tags          (parse-template-tags tokens)
+        template-tags (format-template-tags tags)]
+    template-tags))
 
 (defn- tag-name->card-id [tag-name]
   (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
