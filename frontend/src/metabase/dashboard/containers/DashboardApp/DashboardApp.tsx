@@ -7,6 +7,8 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 import { t } from "ttag";
+import { useHotkeys } from "react-hotkeys-hook";
+import { SHORTCUTS } from "metabase/shortcuts";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 
@@ -179,6 +181,13 @@ const DashboardApp = (props: DashboardAppProps) => {
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
+
+  useHotkeys(SHORTCUTS.global.edit, () => {
+    alert("edit");
+  });
+  useHotkeys(SHORTCUTS.dashboard.save, () => {
+    alert("saved");
+  });
 
   const dispatch = useDispatch();
 
