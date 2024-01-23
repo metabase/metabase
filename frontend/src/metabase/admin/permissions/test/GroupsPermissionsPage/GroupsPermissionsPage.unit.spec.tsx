@@ -82,8 +82,8 @@ describe("GroupsPermissionsPage", function () {
 
       await editDatabasePermission();
 
-      await expect(screen.getByText("Cancel")).toBeInTheDocument();
-      await expect(screen.getByText("Save changes")).toBeInTheDocument();
+      expect(screen.getByText("Cancel")).toBeInTheDocument();
+      expect(screen.getByText("Save changes")).toBeInTheDocument();
     });
   });
 
