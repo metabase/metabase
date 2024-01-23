@@ -31,5 +31,5 @@ export const TableInteractive: FunctionComponent<TableInteractiveProps> = ({
   const { rows, cols } = data;
 
   const columns = prepareColumns(cols);
-  return <DataGrid columns={columns} rows={rows} />;
+  return <DataGrid columns={columns} rows={rows} style={{ height: 532 }} />;
 };
