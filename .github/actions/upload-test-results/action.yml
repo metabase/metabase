@@ -16,6 +16,8 @@ inputs:
     default: us-east-1
   bucket:
     required: true
+  trunk-api-token:
+    required: true
 
 runs:
   using: "composite"
@@ -46,8 +48,8 @@ runs:
       if: ${{ always() }}
       uses: trunk-io/analytics-uploader@main
       with:
-        junit-paths: ${{ inputs.input-path }} 
-        org-slug: metabase 
-        token: ${{ secrets.TRUNK_API_TOKEN }}
+        junit-paths: ${{ inputs.input-path }}
+        org-slug: metabase
+        token: ${{ inputs.trunk-api-token }}
       continue-on-error: true
 
