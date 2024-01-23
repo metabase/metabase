@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -132,7 +133,7 @@
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
           ;; Only check this for dbs with permissions
           (when (contains? dbs-in-perms db-id)
-            (is (= #{db-id} (->> graph :groups vals (mapcat keys) set)))))))))
+            (is (= #{db-id} (:db-ids (data-perms.graph/get-dbs-and-groups graph))))))))))
 
 (deftest set-default-permission-values!-test
   (testing "A new group has no permissions for any DBs by default"

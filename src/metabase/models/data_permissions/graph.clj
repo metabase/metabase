@@ -48,6 +48,12 @@
   [graph & [_opts]]
   graph)
 
+(defn get-dbs-and-groups
+  "Given an api permission graph, this returns the groups and db-ids"
+  [graph]
+  {:group-ids (->> graph :groups keys set)
+   :db-ids (->> graph :groups vals (mapcat keys) set)})
+
 (mu/defn ellide? :- :boolean
   "If a table has the least permissive value for a perm type, leave it out,
    Unless it's :data perms, in which case, leave it out only if it's no-self-service"
@@ -120,7 +126,9 @@
     (= group-id (:id (perms-group/admin)))
     ((fn [api-graph]
        (let [{admin-group-id :id} (perms-group/admin)
-             dbs (if db-id [db-id] (->> api-graph vals (mapcat keys) set))]
+             dbs (if db-id
+                   [db-id]
+                   (:db-ids (get-dbs-and-groups api-graph)))]
          (assoc api-graph
                 admin-group-id
                 (zipmap dbs (repeat legacy-admin-perms))))))))
