@@ -349,7 +349,7 @@ class TagEditorParamInner extends Component<Props> {
           </InputContainer>
         )}
 
-        <InputContainer lessBottomPadding>
+        <div>
           <ContainerLabel>
             {t`Default filter widget value`}
             {hasNoDefaultValue && tag.required && (
@@ -394,7 +394,7 @@ class TagEditorParamInner extends Component<Props> {
               <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
             </div>
           </ToggleContainer>
-        </InputContainer>
+        </div>
       </TagContainer>
     );
   }
