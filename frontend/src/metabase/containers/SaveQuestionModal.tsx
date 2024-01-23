@@ -108,7 +108,7 @@ export const SaveQuestionModal = ({
     [question, onSave],
   );
 
-  const suggestCardTitle = useCallback(
+  const suggestCardInfo = useCallback(
     async (details: FormValues) => {
       if (details.saveType !== "create") {
         return;
@@ -126,34 +126,12 @@ export const SaveQuestionModal = ({
         .setCollectionId(collectionId);
 
       const response = await apiGetCardSummary(newQuestion, state);
-      const { title } = response.summary;
-      setSuggestedTitle(title);
-    },
-    [question, setSuggestedTitle, state],
-  );
-
-  const suggestCardDescription = useCallback(
-    async (details: FormValues) => {
-      if (details.saveType !== "create") {
-        return;
-      }
-
-      const collectionId = canonicalCollectionId(details.collection_id);
-      const displayName = details.name.trim();
-      const description = details.description
-        ? details.description.trim()
-        : null;
-
-      const newQuestion = question
-        .setDisplayName(displayName)
-        .setDescription(description)
-        .setCollectionId(collectionId);
-
-      const response = await apiGetCardSummary(newQuestion, state);
-      const { description: suggestedDescription } = response.summary;
+      const { description: suggestedDescription, title: suggestedTitle } =
+        response.summary;
+      setSuggestedTitle(suggestedTitle);
       setSuggestedDescription(suggestedDescription);
     },
-    [question, setSuggestedDescription, state],
+    [question, setSuggestedTitle, state],
   );
 
   const handleCreate = useCallback(
@@ -290,21 +268,18 @@ export const SaveQuestionModal = ({
                           title={t`Name`}
                           placeholder={nameInputPlaceholder}
                         />
-                        <Button
-                          type="button"
-                          onClick={() => suggestCardTitle(values)}
-                          primary
-                        >{t`Suggest Title`}</Button>
+                        <FormFooter>
+                          <Button
+                            type="button"
+                            onClick={() => suggestCardInfo(values)}
+                            primary
+                          >{t`Suggest Title and Description`}</Button>
+                        </FormFooter>
                         <FormTextArea
                           name="description"
                           title={t`Description`}
                           placeholder={t`It's optional but oh, so helpful`}
                         />
-                        <Button
-                          type="button"
-                          onClick={() => suggestCardDescription(values)}
-                          primary
-                        >{t`Suggest Description`}</Button>
                         <FormCollectionPicker
                           name="collection_id"
                           title={t`Which collection should this go in?`}
