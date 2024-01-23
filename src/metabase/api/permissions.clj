@@ -11,7 +11,6 @@
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.db.query :as mdb.query]
    [metabase.models :refer [PermissionsGroupMembership User]]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -40,27 +39,21 @@
   "Fetch a graph of all v1 Permissions (excludes v2 query and data permissions)."
   []
   (api/check-superuser)
-
-  (data-perms.graph/db-graph->api-graph
-   (data-perms/data-permissions-graph {:audit? false})))
+  (data-perms.graph/db-graph->api-graph {:audit? false}))
 
 (api/defendpoint GET "/graph/db/:db-id"
   "Fetch a graph of all v1 Permissions for db-id `db-id` (excludes v2 query and data permissions)."
   [db-id]
   {db-id ms/PositiveInt}
   (api/check-superuser)
-  (data-perms.graph/db-graph->api-graph
-   (data-perms/data-permissions-graph {:audit? false
-                                       :db-id db-id})))
+  (data-perms.graph/db-graph->api-graph {:audit? false :db-id db-id}))
 
 (api/defendpoint GET "/graph/group/:group-id"
   "Fetch a graph of all v1 Permissions for group-id `group-id` (excludes v2 query and data permissions)."
   [group-id]
   {group-id ms/PositiveInt}
   (api/check-superuser)
-  (data-perms.graph/db-graph->api-graph
-   (data-perms/data-permissions-graph {:audit? false
-                                       :group-id group-id})))
+  (data-perms.graph/db-graph->api-graph {:audit? false :group-id group-id}))
 
 (api/defendpoint GET "/graph-v2"
   "Fetch a graph of all v2 Permissions (excludes v1 data permissions)."

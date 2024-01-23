@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.malli :as mu]
@@ -38,13 +39,13 @@
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
   metabase-enterprise.advanced-permissions.models.connection-impersonation
-  [graph]
+  [graph & [_opts]]
   graph)
 
 (defenterprise add-sandboxes-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
   metabase-enterprise.sandbox.models.group-table-access-policy
-  [graph]
+  [graph & [_opts]]
   graph)
 
 (mu/defn ellide? :- :boolean
@@ -104,6 +105,26 @@
                (fn [db-id->perms]
                  (update-vals db-id->perms rename-perm))))
 
+(def ^:private legacy-admin-perms
+   {:data {:native :write, :schemas :all},
+    :download {:native :full, :schemas :full},
+    :data-model {:schemas :all},
+    :details :yes})
+
+(defn- add-admin-perms-to-permissions-graph
+  "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
+
+  For every db in the incoming graph, adds on admin permissions."
+  [api-graph {:keys [db-id group-id]}]
+  (cond-> api-graph
+    (= group-id (:id (perms-group/admin)))
+    ((fn [api-graph]
+       (let [{admin-group-id :id} (perms-group/admin)
+             dbs (if db-id [db-id] (->> api-graph vals (mapcat keys) set))]
+         (assoc api-graph
+                admin-group-id
+                (zipmap dbs (repeat legacy-admin-perms))))))))
+
 (mu/defn db-graph->api-graph :- api.permission-graph/StrictData
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
@@ -112,15 +133,16 @@
   - Converts DB value names to API value names
   - Nesting: see [[rename-perms]] to see which keys in `graph` affect which paths in the api permission-graph
   - Adds sandboxed entries, and impersonations to graph
-  "
-  [graph :- [:map-of [:int {:title "group-id"}]
-             [:map-of [:int {:title "db-id"}]
-              [:map-of data-perms/Type [:or data-perms/Value :map]]]]]
-  {:revision (perms-revision/latest-id)
-   :groups (-> graph
-               rename-perms
-               add-sandboxes-to-permissions-graph
-               add-impersonations-to-permissions-graph)})
+ "
+  [& {:as opts} :- [:map [:group-id {:optional true} [:maybe pos-int?]] [:db-id {:optional true} [:maybe pos-int?]]
+              [:audit? {:optional true} [:maybe :boolean]] [:perm-type {:optional true} [:maybe data-perms/Type]]]]
+  (let [graph (data-perms/data-permissions-graph opts)]
+    {:revision (perms-revision/latest-id)
+     :groups (-> graph
+                 rename-perms
+                 (add-sandboxes-to-permissions-graph opts)
+                 (add-impersonations-to-permissions-graph opts)
+                 (add-admin-perms-to-permissions-graph opts))}))
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
