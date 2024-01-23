@@ -20,7 +20,10 @@
     ;; Duplicates are flattened.
     #{"foo" "bar"} "SELECT * FROM table WHERE {{foo}} AND some_field = {{bar  }} OR {{  foo}}"
     ;; Ignoring non-alphanumeric vars
-    #{} "SELECT * FROM table WHERE {{&foo}}"))
+    #{} "SELECT * FROM table WHERE {{&foo}}")
+    ;; also find optional template tags
+    #{"foo" "bar"} "SELECT * FROM table WHERE {{foo}} AND some_field = {{bar  }} [[ OR {{  foo}} ]]"
+  )
 
 (deftest ^:parallel snippet-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
@@ -37,7 +40,33 @@
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
     #{"#123" "#123-with-slug"} "SELECT * FROM table WHERE {{ #123 }} AND {{  #123-with-slug  }}"
     #{"#123"} "SELECT * FROM table WHERE {{ #not-this }} AND {{#123}}"
+    #{"#123"} "SELECT * FROM table WHERE [[ {{ #not-this }} AND ]] {{#123}}"
     #{} "{{ #123foo }}"))
+
+(deftest ^:parallel optional-template-tags-test
+  (let [foo {:type      :text
+             :name      "foo"
+             :optional  false
+             :id        string?}
+        bar {:type :text
+             :name      "bar"
+             :optional  true
+             :id        string?}]
+    (testing "valid optional tags"
+      (are [exp input] (=? exp input)
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo }}")
+        {"bar" bar} (lib.native/extract-template-tags "SELECT * FROM table [[ WHERE {{ bar }} ]] ")
+        {"foo" foo "bar" bar} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo }} [[ AND {{ bar }} ]] ")))
+    (testing "badly nested tags"
+      (are [exp input] (=? exp input)
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar ]] }} AND ]] {{ foo }}")
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar [[ }} AND ]] {{ foo }}")
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar {{ }} AND ]] {{ foo }}")
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar {{ }} AND ]] {{ foo }}")
+        {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo [[ }}")
+        {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo ]] }}")
+        {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo {{ }}")
+        {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo }} }}")))))
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
