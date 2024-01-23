@@ -46,8 +46,7 @@ runs:
       if: ${{ always() }}
       uses: trunk-io/analytics-uploader@main
       with:
-        junit-paths: ${{ inputs.input-path }} 
-        org-slug: metabase 
+        junit-paths: ${{ inputs.input-path }}
+        org-slug: metabase
         token: ${{ secrets.TRUNK_API_TOKEN }}
       continue-on-error: true
-
