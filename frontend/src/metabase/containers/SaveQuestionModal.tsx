@@ -87,6 +87,7 @@ export const SaveQuestionModal = ({
 }: SaveQuestionModalProps) => {
   const state = useSelector(state => state);
   const [suggestedTitle, setSuggestedTitle] = useState("");
+  const [suggestedDescription, setSuggestedDescription] = useState("");
   const { data: collections } = useCollectionListQuery();
 
   const handleOverwrite = useCallback(
@@ -129,6 +130,30 @@ export const SaveQuestionModal = ({
       setSuggestedTitle(title);
     },
     [question, setSuggestedTitle, state],
+  );
+
+  const suggestCardDescription = useCallback(
+    async (details: FormValues) => {
+      if (details.saveType !== "create") {
+        return;
+      }
+
+      const collectionId = canonicalCollectionId(details.collection_id);
+      const displayName = details.name.trim();
+      const description = details.description
+        ? details.description.trim()
+        : null;
+
+      const newQuestion = question
+        .setDisplayName(displayName)
+        .setDescription(description)
+        .setCollectionId(collectionId);
+
+      const response = await apiGetCardSummary(newQuestion, state);
+      const { description: suggestedDescription } = response.summary;
+      setSuggestedDescription(suggestedDescription);
+    },
+    [question, setSuggestedDescription, state],
   );
 
   const handleCreate = useCallback(
@@ -182,7 +207,7 @@ export const SaveQuestionModal = ({
 
   const initialValues: FormValues = {
     name: suggestedTitle || question.generateQueryDescription() || "",
-    description: question.description() || "",
+    description: suggestedDescription || question.description() || "",
     collection_id:
       question.collectionId() === undefined ||
       isReadonly ||
@@ -268,12 +293,18 @@ export const SaveQuestionModal = ({
                         <Button
                           type="button"
                           onClick={() => suggestCardTitle(values)}
+                          primary
                         >{t`Suggest Title`}</Button>
                         <FormTextArea
                           name="description"
                           title={t`Description`}
                           placeholder={t`It's optional but oh, so helpful`}
                         />
+                        <Button
+                          type="button"
+                          onClick={() => suggestCardDescription(values)}
+                          primary
+                        >{t`Suggest Description`}</Button>
                         <FormCollectionPicker
                           name="collection_id"
                           title={t`Which collection should this go in?`}
