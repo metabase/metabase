@@ -25,7 +25,6 @@ Cypress.Commands.add(
           Array.isArray(dashcards)
         ) {
           cy.request("PUT", `/api/dashboard/${body.id}`, {
-            ...body,
             auto_apply_filters,
             enable_embedding,
             embedding_params,
