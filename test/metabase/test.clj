@@ -18,6 +18,7 @@
    [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -71,6 +72,7 @@
   mb.hawk.parallel/keep-me
   test.redefs/keep-me
   mw.session/keep-me
+  perms.test-util/keep-me
   qp.store/keep-me
   qp.test-util/keep-me
   qp/keep-me
@@ -89,7 +91,8 @@
   u.random/keep-me
   tu/keep-me
   tx.env/keep-me
-  tx/keep-me)
+  tx/keep-me
+  schema-migrations-test.impl/keep-me)
 
 ;; Add more stuff here as needed
 #_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
@@ -160,6 +163,13 @@
 
  [mw.session
   with-current-user]
+
+ [perms.test-util
+  with-restored-data-perms!
+  with-restored-data-perms-for-group!
+  with-restored-data-perms-for-groups!
+  with-no-data-perms-for-all-users!
+  with-perm-for-group!]
 
  [qp
   compile
@@ -305,6 +315,7 @@
  [tx.env
   set-test-drivers!
   with-test-drivers]
+
  [schema-migrations-test.impl
   with-temp-empty-app-db])
 
