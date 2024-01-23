@@ -49,12 +49,12 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     it("needs a default value for a required filter", () => {
       SQLFilter.toggleRequired();
-      SQLFilter.getQueryRunButton().should("be.disabled");
-      SQLFilter.getQuerySaveButton().should("have.attr", "disabled");
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
       SQLFilter.setDefaultValue("Some text");
-      SQLFilter.getQueryRunButton().should("not.be.disabled");
-      SQLFilter.getQuerySaveButton().should("not.have.attr", "disabled");
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
     });
   });
 
@@ -93,12 +93,12 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     it("needs a default value for a required filter", () => {
       SQLFilter.toggleRequired();
-      SQLFilter.getQueryRunButton().should("be.disabled");
-      SQLFilter.getQuerySaveButton().should("have.attr", "disabled");
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
       SQLFilter.setDefaultValue("5.0");
-      SQLFilter.getQueryRunButton().should("not.be.disabled");
-      SQLFilter.getQuerySaveButton().should("not.have.attr", "disabled");
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
     });
   });
 
@@ -147,8 +147,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     it("needs a default value for a required filter", () => {
       SQLFilter.toggleRequired();
-      SQLFilter.getQueryRunButton().should("be.disabled");
-      SQLFilter.getQuerySaveButton().should("have.attr", "disabled");
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
       cy.findByTestId("sidebar-content")
         .findByText("Select a default value…")
@@ -158,8 +158,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         cy.findByText("Update filter").click();
       });
 
-      SQLFilter.getQueryRunButton().should("not.be.disabled");
-      SQLFilter.getQuerySaveButton().should("not.have.attr", "disabled");
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
     });
   });
 

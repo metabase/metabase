@@ -73,7 +73,7 @@ export function toggleRequired() {
  * @param {string} [xhrAlias ="dataset"]
  */
 export function runQuery(xhrAlias = "dataset") {
-  cy.findByTestId("native-query-editor-container").icon("play").click();
+  getRunQueryButton.click();
   cy.wait("@" + xhrAlias);
   cy.icon("play").should("not.exist");
 }
@@ -90,10 +90,10 @@ export function enterParameterizedQuery(query, options = {}) {
   });
 }
 
-export function getQueryRunButton() {
+export function getRunQueryButton() {
   return cy.findByTestId("native-query-editor-sidebar").button("Get Answer");
 }
 
-export function getQuerySaveButton() {
+export function getSaveQueryButton() {
   return cy.findByRole("button", { name: "Save" });
 }
