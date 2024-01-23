@@ -511,13 +511,6 @@
                 (db-value setting)
                 (core/get cache (setting-name setting-definition-or-name))))))))))
 
-(defn- underlying-setter
-  "In the case of a read-only setting, this gives raw access to write a new value. Useful for initialization."
-  [{:keys [setter] setting-type :type :as setting}]
-  (if (= :none setter)
-    (partial set-value-of-type! setting-type setting)
-    setter))
-
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
 (defn- init! [setting-definition-or-name]
@@ -534,11 +527,7 @@
             (read-setting setting)
             (when init
               (when-let [init-value (init)]
-                ;; We use the underlying setter to avoid triggering the audit logs.
-                ;; This is currently needed to avoid a deadlock when the database is first initialized via a config file.
-                (let [setter (underlying-setter setting)]
-                  (setter init-value))
-                #_(metabase.models.setting/set! setting init-value :bypass-read-only? true))))
+                (metabase.models.setting/set! setting init-value :bypass-read-only? true))))
           (finally
             (.unlock init-lock)))))))
 
@@ -886,6 +875,13 @@
   "Returns true if the setting change should be written to the `audit_log`."
   [setting]
   (not= (:audit setting) :never))
+
+(defn- underlying-setter
+  "In the case of a read-only setting, this gives raw access to write a new value. Useful for initialization."
+  [{:keys [setter] setting-type :type :as setting}]
+  (if (= :none setter)
+    (partial set-value-of-type! setting-type setting)
+    setter))
 
 (defn- set-with-audit-logging!
   "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."
