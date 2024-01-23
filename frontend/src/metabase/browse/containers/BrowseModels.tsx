@@ -75,7 +75,7 @@ export const BrowseModels = ({
 };
 
 const ModelGroup = ({ models }: { models: SearchResult[] }) => {
-  models = models.sort(sortModels);
+  const sortedModels = models.sort(sortModels);
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
@@ -88,7 +88,7 @@ const ModelGroup = ({ models }: { models: SearchResult[] }) => {
         key={collectionHtmlId}
         id={collectionHtmlId}
       />
-      {models.map(model => (
+      {sortedModels.map(model => (
         <ModelCell
           model={model}
           collectionHtmlId={collectionHtmlId}
