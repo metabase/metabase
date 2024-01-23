@@ -127,10 +127,9 @@
 
 (api/defendpoint POST "/card/summarize"
   "Summarize a question."
-  [:as {{:keys [collection_id collection_position dataset dataset_query description display name
+  [:as {{:keys [collection_id collection_position dataset dataset_query description display
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
-  {name                   ms/NonBlankString
-   dataset                [:maybe :boolean]
+  {dataset                [:maybe :boolean]
    dataset_query          ms/Map
    parameters             [:maybe [:sequential ms/Parameter]]
    parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
