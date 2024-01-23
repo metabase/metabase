@@ -114,6 +114,7 @@ WHERE dp.perm_type = 'perms/download-results'
   );
 
 -- MANAGE TABLE METADATA
+
 INSERT INTO permissions (object, group_id)
 SELECT concat('/data-model/db/', dp.db_id, '/'),
        dp.group_id
@@ -136,6 +137,7 @@ WHERE dp.perm_type = 'perms/manage-table-metadata'
 AND dp.table_id IS NOT NULL;
 
 -- MANAGE DATABASE
+
 INSERT INTO permissions (object, group_id)
 SELECT concat('/details/db/', dp.db_id, '/'),
        dp.group_id
