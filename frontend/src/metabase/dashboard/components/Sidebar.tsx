@@ -1,12 +1,14 @@
 import { t } from "ttag";
 import type { ReactNode } from "react";
 import Button from "metabase/core/components/Button";
+import { RemoveButton } from "./Sidebar.styled";
 
 interface SidebarProps {
   closeIsDisabled?: boolean;
   children: ReactNode;
   onClose?: () => void;
   onCancel?: () => void;
+  onRemove?: () => void;
   "data-testid"?: string;
 }
 
@@ -15,6 +17,7 @@ export function Sidebar({
   children,
   onClose,
   onCancel,
+  onRemove,
   "data-testid": dataTestId,
 }: SidebarProps) {
   const WIDTH = 384;
@@ -27,7 +30,7 @@ export function Sidebar({
       <div className="flex flex-column flex-auto overflow-y-auto">
         {children}
       </div>
-      {(onClose || onCancel) && (
+      {(onClose || onCancel || onRemove) && (
         <div
           className="flex align-center border-top"
           style={{
@@ -35,8 +38,12 @@ export function Sidebar({
             paddingBottom: 12,
             paddingRight: 32,
             paddingLeft: 32,
+            gap: 20,
           }}
         >
+          {onRemove && (
+            <RemoveButton onClick={onRemove}>{t`Remove`}</RemoveButton>
+          )}
           {onCancel && (
             <Button small borderless onClick={onCancel}>{t`Cancel`}</Button>
           )}

@@ -124,7 +124,7 @@ const ParameterSidebar = ({
   );
 
   return (
-    <Sidebar onClose={onClose}>
+    <Sidebar onClose={onClose} onRemove={handleRemove}>
       <SidebarHeader>
         <Radio
           value={tab}
@@ -144,7 +144,6 @@ const ParameterSidebar = ({
             onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
-            onRemoveParameter={handleRemove}
           />
         ) : (
           <ParameterLinkedFilters
