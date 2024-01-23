@@ -55,3 +55,8 @@ th {
 .ComparisonTable td {
   border-bottom: 1px solid var(--color-border);
 }
+
+/* rdg overrides */
+
+.rdg-cell {
+}
