@@ -13,7 +13,6 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import { SchemaGridItem, SchemaLink } from "./SchemaBrowser.styled";
 
 function SchemaBrowser(props) {
@@ -48,7 +47,6 @@ function SchemaBrowser(props) {
                     to={`/browse/${dbId}/schema/${encodeURIComponent(
                       schema.name,
                     )}`}
-                    data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
                   >
                     <Card hoverable className="px1">
                       <EntityItem
