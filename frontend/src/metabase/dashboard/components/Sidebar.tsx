@@ -1,16 +1,14 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
+import type { ReactNode } from "react";
 import Button from "metabase/core/components/Button";
 
-const WIDTH = 384;
-
-const propTypes = {
-  closeIsDisabled: PropTypes.bool,
-  children: PropTypes.node,
-  onClose: PropTypes.func,
-  onCancel: PropTypes.func,
-  "data-testid": PropTypes.string,
-};
+interface SidebarProps {
+  closeIsDisabled?: boolean;
+  children: ReactNode;
+  onClose?: () => void;
+  onCancel?: () => void;
+  "data-testid"?: string;
+}
 
 export function Sidebar({
   closeIsDisabled,
@@ -18,7 +16,8 @@ export function Sidebar({
   onClose,
   onCancel,
   "data-testid": dataTestId,
-}) {
+}: SidebarProps) {
+  const WIDTH = 384;
   return (
     <aside
       data-testid={dataTestId}
@@ -55,5 +54,3 @@ export function Sidebar({
     </aside>
   );
 }
-
-Sidebar.propTypes = propTypes;
