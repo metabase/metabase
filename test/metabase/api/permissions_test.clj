@@ -172,10 +172,6 @@
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
           (is (= #{group-id} (set (keys (:groups graph))))))))))
 
-(defn- get-dbs-and-groups [graph]
-  {:groups (->> graph :groups keys)
-   :dbs (->> graph :groups vals (mapcat keys) set)})
-
 (deftest fetch-perms-graph-by-db-id-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
@@ -185,7 +181,7 @@
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/db/%s" db-id))]
           (is (mc/validate nat-int? (:revision graph)))
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
-          (is (= #{db-id} (:dbs (get-dbs-and-groups graph)))))))))
+          (is (= #{db-id} (:db-ids (data-perms.graph/get-dbs-and-groups graph)))))))))
 
 (deftest fetch-perms-graph-v2-test
   (testing "GET /api/permissions/graph-v2"
