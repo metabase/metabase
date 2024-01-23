@@ -420,9 +420,9 @@ const getGridOptions = (
   const rowCount = Math.ceil(cells.length / columnCount);
 
   return {
+    cells,
     columnCount,
     columnWidth,
-    cells,
     rowCount,
     width,
   };
