@@ -135,17 +135,26 @@
 
 (defn infer-card-summary
   "...."
-  [{card-name :name
-    :keys     [display visualization_settings dataset_query result_metadata]}]
+  [{:keys     [display visualization_settings dataset_query result_metadata]}]
   (let [{:keys [] :as res} (qp/process-query dataset_query)
         sql         (get-in res [:data :native_form :query])
-        description {:sql_query           sql
-                     :display_type        display
-                     :column_descriptions (zipmap
-                                            (map (some-fn :display_name :name) result_metadata)
-                                            (map (some-fn :semantic_type :effective_type) result_metadata))
-                     :friendly_title "%%FILL_THIS_TITLE_IN%%"
-                     :friendly_summary "%%FILL_THIS_SUMMARY_IN%%"}
+        visualization_settings (reduce-kv
+                                 (fn [acc k v]
+                                   (cond-> acc
+                                     (some? v)
+                                     (assoc k v)))
+                                 {}
+                                 visualization_settings)
+        description (cond->
+                      {:sql_query           sql
+                       :display_type        display
+                       :column_descriptions (zipmap
+                                              (map (some-fn :display_name :name) result_metadata)
+                                              (map (some-fn :semantic_type :effective_type) result_metadata))
+                       :friendly_title      "%%FILL_THIS_TITLE_IN%%"
+                       :friendly_summary    "%%FILL_THIS_SUMMARY_IN%%"}
+                      (seq visualization_settings)
+                      (assoc :visualization_settings visualization_settings))
         json-str (json/generate-string description)]
     {:summary
        (metabot-util/find-result
@@ -159,7 +168,9 @@
                         friendly_title and friendly_summary keys in a json fragment.
                         You like to use emojis to express yourself and you like to sound clever."}
                        {:role    "assistant"
-                        :content "The display key is how I intend to present the final data."}
+                        :content (cond-> "The \"display\" key is how I intend to present the final data."
+                                   (seq visualization_settings)
+                                   (str " The \"visualization_settings key has chart settings."))}
                        {:role    "assistant"
                         :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
                        {:role    "assistant"
