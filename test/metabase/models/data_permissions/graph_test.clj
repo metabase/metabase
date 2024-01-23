@@ -318,33 +318,3 @@
         (is (api-graph=
              (:groups api-perms)
              (:groups data-perms)))))))
-
-(comment
-
-  (defn sample [& [n]] ((cond
-                          (number? n) #(nth % n)
-                          (fn? n) n
-                          :else rand-nth)
-                        (samples)))
-  (samples)
-
-  (:data-perms (sample last))
-
-  (remove-download:native (:api-perms (sample last)))
-
-  (defn api-graph= [a b]
-    (= (remove-download:native a)
-       (remove-download:native b)))
-
-  (defn fmt [pg] (into (sorted-map) (remove-download:native (get pg 1))))
-
-  (defn check-sample [{:keys [api-perms data-perms]}]
-    [[::data-perms (fmt data-perms)]
-     [::data->api (fmt (:groups (data-perms.graph/db-graph->api-graph data-perms)))]
-     [::api (fmt (:groups api-perms))]
-     [::equal? (api-graph=
-                (:groups (data-perms.graph/db-graph->api-graph data-perms))
-                (:groups api-perms))]])
-
-  (check-sample (sample last))
-  )

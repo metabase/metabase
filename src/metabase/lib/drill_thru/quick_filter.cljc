@@ -76,10 +76,10 @@
         {:name   label
          :filter (operator op field-ref value)})
 
-      (lib.types.isa/string? column)
-      (for [[op label] [[:=  "="]
-                        [:!= "≠"]
-                        [:contains "contains"]
+      (and (lib.types.isa/string? column)
+           (or (lib.types.isa/comment? column)
+               (lib.types.isa/description? column)))
+      (for [[op label] [[:contains "contains"]
                         [:does-not-contain "does-not-contain"]]]
         {:name   label
          :filter (operator op field-ref value)})
