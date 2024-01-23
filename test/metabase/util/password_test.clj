@@ -72,7 +72,7 @@
 (deftest is-valid?-weak-test
   (testing "Do some tests with password complexity requirements set to :weak.
             Common password list should not be checked."
-    (mt/with-temp-env-var-value [:mb-password-complexity "weak"]
+    (mt/with-temp-env-var-value! [:mb-password-complexity "weak"]
       (doseq [[input expected] {"ABC"      false
                                 "ABCDEF"   true
                                 "ABCDE1"   true
@@ -83,8 +83,8 @@
 
 (deftest passsword-length-test
   (testing "Password length can be set by the env variable MB_PASSWORD_LENGTH"
-    (mt/with-temp-env-var-value [:mb-password-length 3
-                                 :mb-password-complexity "weak"] ;; Don't confuse the issue with other complexity requirements
+    (mt/with-temp-env-var-value! [:mb-password-length 3
+                                  :mb-password-complexity "weak"] ;; Don't confuse the issue with other complexity requirements
       (doseq [[input expected] {"A"     false
                                 "AB"    false
                                 "ABC"   true

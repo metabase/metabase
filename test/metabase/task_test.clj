@@ -113,11 +113,11 @@
     (testing (format "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set")
       (testing "Sanity check"
         (is (not (qs/started? (#'task/scheduler)))))
-      (mt/with-temp-env-var-value ["MB_DISABLE_SCHEDULER" "TRUE"]
+      (mt/with-temp-env-var-value! ["MB_DISABLE_SCHEDULER" "TRUE"]
         (task/start-scheduler!)
         (is (not (qs/started? (#'task/scheduler)))))
       (testing "Should still be able to 'schedule' tasks even if scheduler is unstarted"
         (is (some? (task/schedule-task! (job) (trigger-1)))))
-      (mt/with-temp-env-var-value ["MB_DISABLE_SCHEDULER" "FALSE"]
+      (mt/with-temp-env-var-value! ["MB_DISABLE_SCHEDULER" "FALSE"]
         (task/start-scheduler!)
         (is (qs/started? (#'task/scheduler))))))))

@@ -17,6 +17,8 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getQuestionUrl } from "../utils";
@@ -29,7 +31,7 @@ import {
   getMetric,
 } from "../selectors";
 
-const emptyStateData = (table, metric) => {
+const emptyStateData = (table, metric, metadata) => {
   return {
     message: t`Questions about this metric will appear here as they're added`,
     icon: "all",
@@ -38,6 +40,7 @@ const emptyStateData = (table, metric) => {
       dbId: table && table.db_id,
       tableId: metric.table_id,
       metricId: metric.id,
+      metadata,
     }),
   };
 };
@@ -45,6 +48,7 @@ const emptyStateData = (table, metric) => {
 const mapStateToProps = (state, props) => ({
   metric: getMetric(state, props),
   table: getTable(state, props),
+  metadata: getMetadata(state),
   entities: getMetricQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),
@@ -62,10 +66,12 @@ class MetricQuestions extends Component {
     loadingError: PropTypes.object,
     metric: PropTypes.object,
     table: PropTypes.object,
+    metadata: PropTypes.object.isRequired,
   };
 
   render() {
-    const { entities, style, loadingError, loading } = this.props;
+    const { entities, style, loadingError, loading, table, metric, metadata } =
+      this.props;
 
     return (
       <div style={style} className="full">
@@ -103,7 +109,7 @@ class MetricQuestions extends Component {
             ) : (
               <div className={S.empty}>
                 <AdminAwareEmptyState
-                  {...emptyStateData(this.props.table, this.props.metric)}
+                  {...emptyStateData(table, metric, metadata)}
                 />
               </div>
             )

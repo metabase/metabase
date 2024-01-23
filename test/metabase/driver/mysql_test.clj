@@ -711,7 +711,8 @@
                                      [spec [:mysql new-connection-details]]
                                      (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                        (driver/current-user-table-privileges driver/*driver*
-                                                                             (assoc (mt/db) :name "table_privileges_test"))))))]
+                                                                             (assoc (mt/db) :name "test table privileges db"
+                                                                                    :details new-connection-details))))))]
           (try
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"

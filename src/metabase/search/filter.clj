@@ -14,6 +14,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.util :as search.util]
@@ -278,7 +279,7 @@
       (true? search-native-query) (set/intersection (:search-native-query feature->supported-models))
       (true? verified)            (set/intersection (:verified feature->supported-models)))))
 
-(mu/defn build-filters :- map?
+(mu/defn build-filters :- :map
   "Build the search filters for a model."
   [honeysql-query :- :map
    model          :- SearchableModel
@@ -312,4 +313,8 @@
       (#(build-optional-filter-query :last-edited-by model % last-edited-by))
 
       (some? verified)
-      (#(build-optional-filter-query :verified model % verified)))))
+      (#(build-optional-filter-query :verified model % verified))
+
+      (= "table" model)
+      (sql.helpers/where
+       [:not [:= (search.config/column-with-model-alias "table" :db_id) perms/audit-db-id]]))))

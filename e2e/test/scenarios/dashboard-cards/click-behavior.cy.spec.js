@@ -116,7 +116,6 @@ const QUERY_FILTER_CREATED_AT = [
     ORDERS.CREATED_AT,
     {
       "base-type": "type/DateTime",
-      "temporal-unit": "month",
     },
   ],
   "2022-08-01",
@@ -1641,7 +1640,10 @@ const addSavedQuestionDestination = () => {
 };
 
 const addSavedQuestionCreatedAtParameter = () => {
-  cy.get("aside").findByText("Orders → Created At").click();
+  cy.get("aside")
+    .findByTestId("click-mappings")
+    .findByText("Created At")
+    .click();
   popover().within(() => {
     cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
     cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
@@ -1649,7 +1651,7 @@ const addSavedQuestionCreatedAtParameter = () => {
 };
 
 const addSavedQuestionQuantityParameter = () => {
-  cy.get("aside").findByText("Orders → Quantity").click();
+  cy.get("aside").findByTestId("click-mappings").findByText("Quantity").click();
   popover().within(() => {
     cy.findByText(CREATED_AT_COLUMN_NAME).should("not.exist");
     cy.findByText(COUNT_COLUMN_NAME).should("exist").click();

@@ -35,8 +35,6 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
-import Dimension from "metabase-lib/Dimension";
 import MiniBar from "../MiniBar";
 import {
   TableDraggable,
@@ -419,9 +417,9 @@ class TableInteractive extends Component {
     );
   }
 
-  getHeaderClickedObject(data, columnIndex, isPivoted, query) {
+  getHeaderClickedObject(data, columnIndex, isPivoted) {
     try {
-      return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
+      return getTableHeaderClickedObject(data, columnIndex, isPivoted);
     } catch (e) {
       console.error(e);
     }
@@ -678,38 +676,29 @@ class TableInteractive extends Component {
   tableHeaderRenderer = ({ key, style, columnIndex, isVirtual = false }) => {
     const {
       data,
-      sort,
       isPivoted,
       hasMetadataPopovers,
       getColumnTitle,
+      getColumnSortDirection,
       renderTableHeaderWrapper,
-      query,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
     const columnTitle = getColumnTitle(columnIndex);
-    const clicked = this.getHeaderClickedObject(
-      data,
-      columnIndex,
-      isPivoted,
-      query,
-    );
+    const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 
-    // TODO MBQL: use query lib to get the sort field
-    const fieldRef = fieldRefForColumn(column);
-    const sortIndex = _.findIndex(
-      sort,
-      sort => sort[1] && Dimension.isEqual(sort[1], fieldRef),
-    );
-    const isSorted = sortIndex >= 0;
-    const isAscending = isSorted && sort[sortIndex][0] === "asc";
+    const sortDirection = getColumnSortDirection(columnIndex);
+    const isSorted = sortDirection != null;
+    const isAscending = sortDirection === "asc";
+
+    const fieldInfoPopoverTestId = "field-info-popover";
 
     return (
       <TableDraggable
@@ -806,6 +795,7 @@ class TableInteractive extends Component {
                     className="Icon mr1"
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
+                    data-testid={fieldInfoPopoverTestId}
                   />
                 )}
                 {columnTitle}
@@ -814,6 +804,7 @@ class TableInteractive extends Component {
                     className="Icon ml1"
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
+                    data-testid={fieldInfoPopoverTestId}
                   />
                 )}
               </Ellipsified>,
