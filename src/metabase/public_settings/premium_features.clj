@@ -133,21 +133,23 @@
     (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
       (try (fetch-token-and-parse-body token token-check-url site-uuid)
            (catch Exception e1
-             (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-             ;; Try the fallback URL, which was the default URL prior to 45.2
-             (try (fetch-token-and-parse-body token store-url site-uuid)
-                  ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                  ;; first error and return a generic message about the token being invalid. This message
-                  ;; will get displayed in the Settings page in the admin panel so we do not want something
-                  ;; complicated
-                  (catch Exception e2
-                    (log/error e2 (trs "Error fetching token status from {0}:" store-url))
-                    (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                      (or
-                        body
-                        {:valid         false
-                         :status        (tru "Unable to validate token")
-                         :error-details (.getMessage e1)})))))))))
+             ;; Unwrap exception from inside the future
+             (let [e1 (ex-cause e1)]
+               (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+               ;; Try the fallback URL, which was the default URL prior to 45.2
+               (try (fetch-token-and-parse-body token store-url site-uuid)
+                    ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                    ;; first error and return a generic message about the token being invalid. This message
+                    ;; will get displayed in the Settings page in the admin panel so we do not want something
+                    ;; complicated
+                    (catch Exception e2
+                      (log/error (ex-cause e2) (trs "Error fetching token status from {0}:" store-url))
+                      (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                        (or
+                          body
+                          {:valid         false
+                           :status        (tru "Unable to validate token")
+                           :error-details (.getMessage e1)}))))))))))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
