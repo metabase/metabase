@@ -187,47 +187,71 @@
            {:role    "user"
             :content json-str}]}))}))
 
+(defn dashboard-summary [dashboard-id]
+  (let [{dashboard-name :name :keys [parameters dashcards]}
+        (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) [:dashcards
+                                                                   :card
+                                                                   :series
+                                                                   :dashcard/action
+                                                                   :dashcard/linkcard-info]
+                    :tabs
+                    :param_fields
+                    :param_values)
+        param-id->param (zipmap
+                          (map :id parameters)
+                          (map (fn [param]
+                                 (-> (select-keys param [:name :type])
+                                     (rename-keys {:name :parameter-name :type :filter-type})
+                                     (update :filter-type name)))
+                               parameters))]
+    {:dashboard-name    dashboard-name
+     :charts            (for [{:keys [card parameter_mappings] :as dcs} dashcards
+                              :let [{card-name :name
+                                     :keys     [display
+                                                visualization_settings
+                                                result_metadata]} card
+                                    field-name->display-name (zipmap
+                                                               (map :name result_metadata)
+                                                               (mapv (some-fn :display_name :name) result_metadata))
+                                    visualization_settings   (->> visualization_settings
+                                                                  remove-nil-vals
+                                                                  (walk/prewalk (fn [v] (field-name->display-name v v))))]]
+                          {:chart-name        card-name
+                           :chart-type        display
+                           :chart-settings    visualization_settings
+                           :data-column-names (vals field-name->display-name)
+                           :chart-parameters  (mapv
+                                                (comp :parameter-name param-id->param :parameter_id)
+                                                parameter_mappings)})
+     :global-parameters (vals param-id->param)}))
+
 (defn infer-dashboard-summary
   "Create a human-friendly summary of a dashboard. Returns a map of the form:
   {:summary {:description \"Some inferred description\"}}"
   [dashboard-id]
-  (let [{dashboard-name :name :keys [parameters dashcards] :as dashboard}
-        (t2/hydrate (t2/select-one :model/Dashboard 54) [:dashcards
-                                                         :card
-                                                         :series
-                                                         :dashcard/action
-                                                         :dashcard/linkcard-info]
-                    :tabs
-                    :param_fields
-                    :param_values)
-        dashboard-summary
-                 {:dashboard-name dashboard-name
-                  :charts         (for [{:keys [card]} dashcards
-                                        :let [{card-name :name
-                                               :keys     [display visualization_settings parameter_mappings result_metadata]} card
-                                              field-name->display-name (zipmap
-                                                                         (map :name result_metadata)
-                                                                         (map (some-fn :display_name :name) result_metadata))
-                                              visualization_settings   (->> visualization_settings
-                                                                            remove-nil-vals
-                                                                            (walk/prewalk (fn [v] (field-name->display-name v v))))]]
-                                    {:chart-name        card-name
-                                     :chart-type        display
-                                     :chart-settings    visualization_settings
-                                     :data-column-names (vals field-name->display-name)})}
-        json-str (json/generate-string dashboard-summary)]
+  (let [dashboard-summary (dashboard-summary dashboard-id)
+        summary-with-prompts (merge dashboard-summary
+                                    {:description "%%FILL_THIS_DESCRIPTION_IN%%"
+                                     :questions "%%FILL_THESE_QUESTIONS_IN%%"})
+        json-str (json/generate-string summary-with-prompts)]
     {:summary
-     {:description
-      (metabot-util/find-result
-        identity
-        (metabot-client/invoke-metabot
-          {:messages
-           [{:role    "system"
-             :content "You are a helpful assistant that summarizes dashboards I am generating for my customers.
-            I will provide you a json-encoded description of the dashboard and you will give me a one
-            paragraph summary of what it does. Provide only the summary and nothing else"}
-            {:role    "user"
-             :content json-str}]}))}}))
+     (metabot-util/find-result
+       (fn [rsp] (json/parse-string rsp true))
+       (metabot-client/invoke-metabot
+         {:messages
+          [{:role    "system"
+            :content "You are a helpful assistant that summarizes dashboards I am generating for my customers by
+             filling in the missing \"description\" and \"questions\" keys in a json fragment."}
+           {:role    "assistant"
+            :content "The \"description\" key is a user friendly description of the dashboard, generally 1-3 paragraphs."}
+           {:role    "assistant"
+            :content "The \"questions\" key contains a markdown formatted list of questions this dashboard might help a user answer."}
+           {:role    "assistant"
+            :content "The parts you replace are \"%%FILL_THIS_DESCRIPTION_IN%%\" and \"%%FILL_THESE_QUESTIONS_IN%%\"."}
+           {:role    "assistant"
+            :content "Just return a json map with the \"description\" and \"questions\" fields and nothing else."}
+           {:role    "user"
+            :content json-str}]}))}))
 
 (comment
   (infer-dashboard-summary 54)
@@ -242,7 +266,11 @@
                     :param_values)
         param-id->param (zipmap
                           (map :id parameters)
-                          (map #(select-keys % [:name :type]) parameters))]
+                          (map (fn [param]
+                                 (-> (select-keys param [:name :type])
+                                     (rename-keys {:name :parameter-name :type :filter-type})
+                                     (update :filter-type name)))
+                               parameters))]
     {:dashboard-name    dashboard-name
      :charts            (for [{:keys [card parameter_mappings] :as dcs} dashcards
                               :let [{card-name :name
@@ -251,7 +279,7 @@
                                                 result_metadata]} card
                                     field-name->display-name (zipmap
                                                                (map :name result_metadata)
-                                                               (map (some-fn :display_name :name) result_metadata))
+                                                               (mapv (some-fn :display_name :name) result_metadata))
                                     visualization_settings   (->> visualization_settings
                                                                   remove-nil-vals
                                                                   (walk/prewalk (fn [v] (field-name->display-name v v))))]]
@@ -259,5 +287,7 @@
                            :chart-type        display
                            :chart-settings    visualization_settings
                            :data-column-names (vals field-name->display-name)
-                           :param-mapping     parameter_mappings})
+                           :chart-parameters  (mapv
+                                                (comp :parameter-name param-id->param :parameter_id)
+                                                parameter_mappings)})
      :global-parameters (vals param-id->param)}))
