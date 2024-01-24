@@ -255,8 +255,8 @@
             two sentences. This description may not be more than 256 characters."}
            {:role    "assistant"
             :content "The \"keywords\" key is 3-5 single-quoted, comma-separated key words
-            describing the dashboard. Keywords might be used to categorize, concisely describe, or label
-            the entire dashboard. Example: 'keyword1', 'key word'"}
+            describing the dashboard (e.g. 'keyword1', 'key word'). Keywords might be used to categorize, concisely
+            describe, or label the entire dashboard."}
            {:role    "assistant"
             :content "The \"questions\" key contains a markdown-formatted hyphenated list of up to 5 questions this
             dashboard might help a user answer. Each question should be on its own line."}
