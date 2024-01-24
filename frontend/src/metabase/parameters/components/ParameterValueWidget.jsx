@@ -103,26 +103,25 @@ class ParameterValueWidget extends Component {
     return this.trigger.current;
   };
 
-  getWidgetStatusIcon = () => {
+  getActionIcon() {
     if (this.props.isFullscreen) {
       return null;
     }
 
-    const canReset =
-      this.props.parameter.required &&
-      this.props.parameter.default &&
-      this.props.value !== this.props.parameter.default;
-    if (this.isInsideNativeQuery() && canReset) {
-      return (
-        <WidgetStatusIcon
-          name="refresh"
-          onClick={() =>
-            this.props.setParameterValueToDefault(this.props.parameter.id)
-          }
-        />
-      );
+    const icon =
+      this.isInsideNativeQuery() && this.props.parameter.required
+        ? this.getRequiredActionIcon()
+        : this.getOptionalActionIcon();
+
+    if (!icon) {
+      // This is required to keep input width constant
+      return <WidgetStatusIcon name="empty" />;
     }
 
+    return icon;
+  }
+
+  getOptionalActionIcon() {
     if (this.props.value != null) {
       return (
         <WidgetStatusIcon
@@ -135,10 +134,21 @@ class ParameterValueWidget extends Component {
     if (!hasNoPopover(this.props.parameter)) {
       return <WidgetStatusIcon name="chevrondown" />;
     }
+  }
 
-    // This is required to keep input width constant
-    return <WidgetStatusIcon name="empty" />;
-  };
+  getRequiredActionIcon() {
+    const { required, default: defaultValue } = this.props.parameter;
+    const { value, setParameterValueToDefault } = this.props;
+
+    if (required && defaultValue && value !== defaultValue) {
+      return (
+        <WidgetStatusIcon
+          name="refresh"
+          onClick={() => setParameterValueToDefault(this.props.parameter.id)}
+        />
+      );
+    }
+  }
 
   isInsideNativeQuery() {
     const query = this.props.question?.query();
@@ -178,7 +188,7 @@ class ParameterValueWidget extends Component {
             onFocusChanged={this.onFocusChanged}
             onPopoverClose={this.onPopoverClose}
           />
-          {this.getWidgetStatusIcon()}
+          {this.getActionIcon()}
         </div>
       );
     } else {
@@ -215,7 +225,7 @@ class ParameterValueWidget extends Component {
                   placeholder={placeholderText}
                 />
               </div>
-              {this.getWidgetStatusIcon()}
+              {this.getActionIcon()}
             </div>
           }
           target={this.getTargetRef}
