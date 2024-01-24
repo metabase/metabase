@@ -286,7 +286,6 @@ export const SaveQuestionModal = ({
                           title={t`Name`}
                           placeholder={nameInputPlaceholder}
                         />
-                        <FormFooter></FormFooter>
                         <FormTextArea
                           name="description"
                           title={t`Description`}
