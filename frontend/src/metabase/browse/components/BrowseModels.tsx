@@ -19,8 +19,8 @@ import { sortModels } from "metabase/browse/utils";
 import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
+import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
-  CenteredEmptyState,
   CollectionHeaderContainer,
   CollectionHeaderLink,
   GridContainer,

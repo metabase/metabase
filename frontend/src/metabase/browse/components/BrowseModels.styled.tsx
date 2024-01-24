@@ -6,6 +6,7 @@ import {
 } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Link from "metabase/core/components/Link";
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;

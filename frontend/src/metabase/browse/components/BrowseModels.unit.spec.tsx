@@ -1,7 +1,7 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Collection, SearchResult } from "metabase-types/api";
 import { createMockSetupState } from "metabase-types/store/mocks";
-import { groupModels, BrowseModels } from "../containers/BrowseModels";
+import { groupModels, BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
   const models = mockModels.slice(0, modelCount);
