@@ -49,8 +49,9 @@
     :column-name  "count"
     :custom-query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :orders))
                       (lib/aggregate (lib/count))
-                      (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
-                                                        (meta/id :orders :created-at))))
+                      (lib/breakout (lib.metadata/field-with-nesting
+                                     lib.tu/metadata-provider-with-mock-cards
+                                     (meta/id :orders :created-at))))
     :custom-row   {"CREATED_AT" "2023-12-01"
                    "count"      9}
     :expected     {:type :drill-thru/underlying-records, :row-count 9, :table-name "Mock orders card"}}))
@@ -347,8 +348,9 @@
   (testing "should use the default row count for aggregations with negative values (#36143)"
     (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                         (lib/aggregate (lib/count))
-                        (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
-                                                          (meta/id :orders :created-at))))
+                        (lib/breakout (lib.metadata/field-with-nesting
+                                       lib.tu/metadata-provider-with-mock-cards
+                                       (meta/id :orders :created-at))))
           count-col (m/find-first #(= (:name %) "count")
                                   (lib/returned-columns query))
           _         (is (some? count-col))

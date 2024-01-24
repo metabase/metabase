@@ -214,7 +214,7 @@
                                                    :query    {:source-table table-id}})}
                                 (when metadata?
                                   {:result-metadata
-                                   (->> (lib.metadata/fields metadata-provider table-id)
+                                   (->> (lib.metadata/fields-with-nesting metadata-provider table-id)
                                         (sort-by :id)
                                         (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
         table-key-and-ids))

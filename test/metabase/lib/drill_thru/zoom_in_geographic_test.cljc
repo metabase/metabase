@@ -23,7 +23,7 @@
                                         :semantic-type  :type/Country}]})
           query             (-> (lib/query metadata-provider (meta/table-metadata :people))
                                 (lib/aggregate (lib/count))
-                                (lib/breakout (lib.metadata/field metadata-provider 1)))]
+                                (lib/breakout (lib.metadata/field-with-nesting metadata-provider 1)))]
       (testing "sanity check: make sure COUNTRY has :type/Country semantic type"
         (testing `lib/returned-columns
           (let [[country _count] (lib/returned-columns query)]

@@ -115,7 +115,7 @@
          (m/find-first #(clojure.core/= (:id %) field-id)
                        card-metadata))))
    (try
-     (lib.metadata/field query field-id)
+     (lib.metadata/field-with-nesting query field-id)
      (catch #?(:clj Throwable :cljs :default) _
        nil))))
 

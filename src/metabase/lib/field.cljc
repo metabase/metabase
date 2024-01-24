@@ -131,7 +131,7 @@
   "If this is a nested column, add metadata about the parent column."
   [query    :- ::lib.schema/query
    metadata :- ::lib.schema.metadata/column]
-  (let [parent-metadata     (lib.metadata/field query (:parent-id metadata))
+  (let [parent-metadata     (lib.metadata/field-with-nesting query (:parent-id metadata))
         {parent-name :name} (cond->> parent-metadata
                               (:parent-id parent-metadata) (add-parent-column-metadata query))]
     (update metadata :name (fn [field-name]
@@ -219,7 +219,7 @@
                                  ;; This is very intentional: one table might have several FKs to one foreign table, each with different
                                  ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
                                  ;; See #30109 for more details.
-                                (if-let [field (lib.metadata/field query fk-field-id)]
+                                (if-let [field (lib.metadata/field-with-nesting query fk-field-id)]
                                   (-> (lib.metadata.calculation/display-info query stage-number field)
                                       :display-name
                                       lib.util/strip-id)
@@ -747,7 +747,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
   (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
-    (lib.metadata/field metadata-providerable remap-field-id)))
+    (lib.metadata/field-with-nesting metadata-providerable remap-field-id)))
 
 (mu/defn ^:private search-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

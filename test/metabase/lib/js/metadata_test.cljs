@@ -38,7 +38,8 @@
                                  :id       72
                                  :name     "Category ID [external remap]"
                                  :field-id 67}}
-           (lib.metadata/field metadata-provider 36)))))
+           (lib.metadata/field metadata-provider 36)
+           (lib.metadata/field-with-nesting metadata-provider 36)))))
 
 (def ^:private mock-field-metadata-with-internal-remap
   #js {"id"               33
@@ -68,4 +69,5 @@
                                  :name     "ID [internal remap]"
                                  :values                [1 4 3 2]
                                  :human-readable-values ["African" "BBQ" "Artisan" "American"]}}
-           (lib.metadata/field metadata-provider 33)))))
+           (lib.metadata/field metadata-provider 33)
+           (lib.metadata/field-with-nesting metadata-provider 33)))))

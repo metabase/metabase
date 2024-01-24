@@ -112,11 +112,23 @@
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- MetadataProviderable
    table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
+
+(mu/defn fields-with-nesting :- [:sequential ColumnMetadata]
+  "Get metadata about all the Fields belonging to a specific Table."
+  [metadata-providerable :- MetadataProviderable
+   table-id              :- ::lib.schema.id/table]
   (let [metadata-provider (->metadata-provider metadata-providerable)]
     (->> (lib.metadata.protocols/fields metadata-provider table-id)
          (mapv #(nest-display-name metadata-provider %)))))
 
 (mu/defn field :- [:maybe ColumnMetadata]
+  "Get metadata about a specific Field in the Database we're querying."
+  [metadata-providerable :- MetadataProviderable
+   field-id              :- ::lib.schema.id/field]
+  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
+
+(mu/defn field-with-nesting :- [:maybe ColumnMetadata]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- MetadataProviderable
    field-id              :- ::lib.schema.id/field]
