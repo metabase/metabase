@@ -44,6 +44,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -66,6 +67,7 @@
 
 (t2/deftransforms :model/Card
   {:dataset_query          mi/transform-metabase-query
+   :type                   mi/transform-keyword
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword
@@ -100,6 +102,17 @@
    (perms/can-read-audit-helper :model/Card instance))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Card :id pk))))
+
+(def card-types #{:model :question #_:metric})
+
+;; we want the :keyword as part of schema so it'll be automatically transformed to keyword in API
+(def CardTypes
+  [:and :keyword (into [:enum] card-types)])
+
+(mu/defn is-model? :- :boolean
+  "Check if card is a model?"
+  [{:keys [type] :as _card} :- [:map [:type CardTypes]]]
+  (= :model type))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -156,7 +169,7 @@
   ([_model _id instance]
    (cond-> (apply dissoc instance excluded-columns-for-card-revision)
      ;; datasets should preserve edits to metadata
-     (not (:dataset instance))
+     (not (is-model? instance))
      (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -306,27 +319,50 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(defn- assert-valid-model
+(defn- ensure-type-and-dataset-are-aligned
+  [{:keys [type dataset] :as card}]
+  (cond-> card
+    ;; if none of the 2 keys presents, do nothing
+    (and (nil? type) (nil? dataset))
+    identity
+
+    ;; if both type and dataset presents, make sure value of dataset align with type
+    (and type dataset)
+    (assoc :dataset (= type :model))
+
+    ;; if only types exists, we make sure dataset follows
+    (some? type)
+    (assoc :dataset (= type :model))
+
+    ;; if dataset presents, make sure type follows
+    (some? dataset)
+    (assoc :type (if dataset
+                   :model
+                   :question))))
+
+(defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{:keys [dataset dataset_query]}]
-  (when dataset
-    (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
-                                  (map (comp keyword :type)))]
-      (when (some (complement #{:card :snippet}) template-tag-types)
-        (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
-                        {:status-code 400}))))))
+  [{:keys [type dataset_query]}]
+  (case type
+    :model (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
+                                         (map (comp keyword :type)))]
+             (when (some (complement #{:card :snippet}) template-tag-types)
+               (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
+                               {:status-code 400}))))
+    nil))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
-                  :parameter_mappings []}
-        card     (merge defaults card)]
+                  :parameter_mappings []
+                  :type               :question}
+        card     (ensure-type-and-dataset-are-aligned (merge defaults card))]
     (u/prog1 card
       ;; make sure this Card doesn't have circular source query references
       (check-for-circular-source-query-references card)
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
-      (assert-valid-model card)
+      (assert-valid-type card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace Card (:collection_id card)))))
@@ -444,7 +480,7 @@
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
-      (assert-valid-model (merge old-card-info changes)))))
+      (assert-valid-type (merge old-card-info changes)))))
 
 (t2/define-after-select :model/Card
   [card]
@@ -474,7 +510,7 @@
   ;;
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
-  (-> (into {:id (:id card)} (t2/changes card))
+  (-> (into {:id (:id card)} (ensure-type-and-dataset-are-aligned (t2/changes card)))
       maybe-normalize-query
       populate-result-metadata
       pre-update
@@ -598,10 +634,11 @@ saved later when it is ready."
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
+                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                      :creator_id (:id creator)
-                                     :dataset (boolean (:dataset card-data))
+                                     :type       (or (:type card-data) :question)
+                                     :dataset    (boolean (:dataset card-data))
                                      :parameters (or parameters [])
                                      :parameter_mappings (or parameter_mappings []))
          result-metadata-chan (result-metadata-async {:query    dataset_query
@@ -614,9 +651,9 @@ saved later when it is ready."
                                 ;; Adding a new card at `collection_position` could cause other cards in this
                                 ;; collection to change position, check that and fix it if needed
                                 (api/maybe-reconcile-collection-position! card-data)
-                                (first (t2/insert-returning-instances! Card (cond-> card-data
-                                                                              (and metadata (not timed-out?))
-                                                                              (assoc :result_metadata metadata)))))]
+                                (t2/insert-returning-instance! Card (cond-> card-data
+                                                                      (and metadata (not timed-out?))
+                                                                      (assoc :result_metadata metadata))))]
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when timed-out?
@@ -757,26 +794,27 @@ saved later when it is ready."
   included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [card-before-update card-updates actor]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (t2/with-transaction [_conn]
-   (api/maybe-reconcile-collection-position! card-before-update card-updates)
+  (let [card-updates (ensure-type-and-dataset-are-aligned card-updates)]
+    (t2/with-transaction [_conn]
+      (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
-   (when (and (card-is-verified? card-before-update)
-              (changed? card-compare-keys card-before-update card-updates))
-     ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
-     ;; to remove it regardless if enterprise edition is present at the moment.
-     (moderation-review/create-review! {:moderated_item_id   (:id card-before-update)
-                                        :moderated_item_type "card"
-                                        :moderator_id        (:id actor)
-                                        :status              nil
-                                        :text                (tru "Unverified due to edit")}))
-   ;; ok, now save the Card
-   (t2/update! Card (:id card-before-update)
-     ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
-     ;; modified if they're passed in as non-nil
-     (u/select-keys-when card-updates
-       :present #{:collection_id :collection_position :description :cache_ttl :dataset}
-       :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                  :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
+      (when (and (card-is-verified? card-before-update)
+                 (changed? card-compare-keys card-before-update card-updates))
+        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+        ;; to remove it regardless if enterprise edition is present at the moment.
+        (moderation-review/create-review! {:moderated_item_id   (:id card-before-update)
+                                           :moderated_item_type "card"
+                                           :moderator_id        (:id actor)
+                                           :status              nil
+                                           :text                (tru "Unverified due to edit")}))
+      ;; ok, now save the Card
+      (t2/update! Card (:id card-before-update)
+                  ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
+                  ;; modified if they're passed in as non-nil
+                  (u/select-keys-when card-updates
+                                      :present #{:collection_id :collection_position :description :cache_ttl :dataset :type}
+                                      :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                                                 :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview}))))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
@@ -792,7 +830,7 @@ saved later when it is ready."
   (serdes/extract-query-collections Card opts))
 
 (defn- export-result-metadata [card metadata]
-  (when (and metadata (:dataset card))
+  (when (and metadata (= :model (:type card)))
     (for [m metadata]
       (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)

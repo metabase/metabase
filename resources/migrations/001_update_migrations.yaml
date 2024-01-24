@@ -5205,6 +5205,33 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v49.2024-01-22T11:50:00
+      author: qnkhuat
+      comment: Add `report_card.type`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  remarks: The type of card, could be 'question', 'model', 'metric'
+                  name: type
+                  type: varchar(16)
+                  defaultValue: "question"
+
+  - changeSet:
+      id: v49.2024-01-22T11:51:00
+      author: qnkhuat
+      comment: Backfill `report_card.type`
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET type = 'model'
+              WHERE dataset is true
+
+# TODO: we might need a revision migration here
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
