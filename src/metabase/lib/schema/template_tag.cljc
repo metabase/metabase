@@ -56,7 +56,7 @@
     ;; are allowed to be specified for it.
     [:widget-type [:ref ::widget-type]]
     ;; optional map to be appended to filter clause
-    [:options {:optional true} :map]]])
+    [:options {:optional true} [:maybe :map]]]])
 
 ;; Example:
 ;;

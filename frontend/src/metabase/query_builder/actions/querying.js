@@ -179,9 +179,8 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
-    const isDirty =
-      question.isQueryEditable() &&
-      question.isDirtyComparedTo(originalQuestion);
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
       const { isNative } = Lib.queryDisplayInfo(question.query());
