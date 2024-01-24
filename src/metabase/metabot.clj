@@ -4,6 +4,7 @@
   (:require
     [cheshire.core :as json]
     [clojure.set :refer [rename-keys]]
+    [clojure.walk :as walk]
     [metabase.lib.native :as lib-native]
     [metabase.metabot.client :as metabot-client]
     [metabase.metabot.settings :as metabot-settings]
@@ -133,19 +134,23 @@
         (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
 
+(defn remove-nil-vals [m]
+  (let [m' (reduce-kv
+             (fn [acc k v]
+               (cond-> acc
+                 (some? v)
+                 (assoc k v)))
+             {}
+             m)]
+    (when (seq m') m')))
+
 (defn infer-card-summary
   "Create a human-friendly summary of a card. Returns a map of the form:
   {:summary {:title \"Some inferred title\"
              :description \"Some inferred description\"}}"
   [{:keys [display visualization_settings dataset_query result_metadata]}]
   (let [{:keys [query]} (qp/compile-and-splice-parameters dataset_query)
-        visualization_settings (reduce-kv
-                                 (fn [acc k v]
-                                   (cond-> acc
-                                     (some? v)
-                                     (assoc k v)))
-                                 {}
-                                 visualization_settings)
+        visualization_settings (remove-nil-vals visualization_settings)
         description            (cond->
                                  {:sql_query           query
                                   :display_type        display
@@ -154,7 +159,7 @@
                                                          (map (some-fn :semantic_type :effective_type) result_metadata))
                                   :friendly_title      "%%FILL_THIS_TITLE_IN%%"
                                   :friendly_summary    "%%FILL_THIS_SUMMARY_IN%%"}
-                                 (seq visualization_settings)
+                                 visualization_settings
                                  (assoc :visualization_settings visualization_settings))
         json-str               (json/generate-string description)]
     {:summary
@@ -164,19 +169,51 @@
                      (rename-keys {:friendly_title   :title
                                    :friendly_summary :description})))
        (metabot-client/invoke-metabot
-         {:messages [{:role    "system"
-                      :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
+         {:messages
+          [{:role    "system"
+            :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
                         \"friendly_summary\" keys in a json fragment. You like to occasionally use emojis to express
                         yourself but are otherwise very serious and professional."}
-                     {:role    "assistant"
-                      :content (cond-> "The \"display\" key is how I intend to present the final data."
-                                 (seq visualization_settings)
-                                 (str " The \"visualization_settings\" key has chart settings."))}
-                     {:role    "assistant"
-                      :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
-                     {:role    "assistant"
-                      :content "Just return a json map with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
-                     {:role    "assistant"
-                      :content "The \"friendly_title\" must be no more than 64 characters long."}
-                     {:role    "user"
-                      :content json-str}]}))}))
+           {:role    "assistant"
+            :content (cond-> "The \"display\" key is how I intend to present the final data."
+                       (seq visualization_settings)
+                       (str " The \"visualization_settings\" key has chart settings."))}
+           {:role    "assistant"
+            :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
+           {:role    "assistant"
+            :content "Just return a json map with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
+           {:role    "assistant"
+            :content "The \"friendly_title\" must be no more than 64 characters long."}
+           {:role    "user"
+            :content json-str}]}))}))
+
+(defn infer-dashboard-summary
+  "Create a human-friendly summary of a dashboard. Returns a map of the form:
+  {:summary {:description \"Some inferred description\"}}"
+  [dashboard-id]
+  {:summary {:description "THIS IS A DASHBOARD"}})
+
+(comment
+  (let [{:keys [name parameters dashcards] :as dashboard}
+        (t2/hydrate (t2/select-one :model/Dashboard 54) [:dashcards
+                                                         [:card [:moderation_reviews :moderator_details]]
+                                                         [:card :can_write]
+                                                         :series
+                                                         :dashcard/action
+                                                         :dashcard/linkcard-info]
+                    :tabs
+                    :param_fields
+                    :param_values)]
+    (for [{:keys [card]} dashcards
+          :let [{card-name :name
+                 :keys     [display visualization_settings parameter_mappings result_metadata]} card
+                field-name->display-name (zipmap
+                                           (map :name result_metadata)
+                                           (map (some-fn :display_name :name) result_metadata))
+                visualization_settings   (remove-nil-vals visualization_settings)
+                visualization_settings   (walk/prewalk (fn [v] (field-name->display-name v v)) visualization_settings)]
+          ]
+      {:chart-name        card-name
+       :chart-type        display
+       :viz               visualization_settings
+       :data-column-names (vals field-name->display-name)})))
