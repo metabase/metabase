@@ -22,7 +22,7 @@ SELECT pg.id AS group_id,
                   (SELECT 1
                    FROM permissions p
                    WHERE p.group_id = pg.id
-                     AND p.object LIKE concat('/db/', md.id, '/%') ) THEN 'no-self-service'
+                     AND p.object LIKE concat('/db/', md.id, '/schema/%') ) THEN 'no-self-service'
        END AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_database md
