@@ -129,6 +129,32 @@
                                     (str/includes? collection-name "Personal Collection"))))
                       (map :name)))))))))
 
+(deftest list-collections-personal-only-test
+  (testing "GET /api/collection?personal-only=true check that we don't see collections that you don't have access to or aren't personal."
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (t2.with-temp/with-temp [Collection collection-1 {:name "Collection 1"}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+        (is (= ["Rasta Toucan's Personal Collection"]
+               (->> (mt/user-http-request :rasta :get 200 "collection" :personal-only true)
+                    (filter (fn [{collection-name :name}]
+                              (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
+                                  (str/includes? collection-name "Personal Collection"))))
+                    (map :name))))))))
+
+(deftest list-collections-personal-only-admin-test
+  (testing "GET /api/collection?personal-only=true check that we see all personal collections if you are an admin."
+    (t2.with-temp/with-temp [Collection collection-1 {:name "Collection 1"}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+      (is (= (->> (t2/select :model/Collection {:where [:!= :personal_owner_id nil]})
+                  (map :name)
+                  (into #{}))
+             (->> (mt/user-http-request :crowberto :get 200 "collection" :personal-only true)
+                  (filter (fn [{collection-name :name}]
+                            (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
+                                (str/includes? collection-name "Personal Collection"))))
+                  (map :name)
+                  (into #{})))))))
+
 (deftest list-collections-archived-test
   (testing "GET /api/collection"
     (t2.with-temp/with-temp [Collection _ {:name "Archived Collection", :archived true}
@@ -304,7 +330,10 @@
             ids      (set (map :id (cons personal-collection [a b c d e f g])))]
         (mt/with-test-user :crowberto
           (testing "Make sure we get the expected collections when collection-id is nil"
-            (let [collections (#'api.collection/select-collections false false nil true nil)]
+            (let [collections (#'api.collection/select-collections {:archived                       false
+                                                                    :exclude-other-user-collections false
+                                                                    :shallow                        true
+                                                                    :permissions-set                #{"/"}})]
               (is (= #{{:name "A"}
                        {:name "B"}
                        {:name "C"}
@@ -314,7 +343,11 @@
                           (map #(select-keys % [:name]))
                           (into #{}))))))
           (testing "Make sure we get the expected collections when collection-id is an integer"
-            (let [collections (#'api.collection/select-collections false false nil true (:id a))]
+            (let [collections (#'api.collection/select-collections {:archived                       false
+                                                                    :exclude-other-user-collections false
+                                                                    :shallow                        true
+                                                                    :collection-id                  (:id a)
+                                                                    :permissions-set                #{"/"}})]
               ;; E & G are too deep to show up
               (is (= #{{:name "C"}
                        {:name "B"}
@@ -324,7 +357,11 @@
                           (filter (fn [coll] (contains? ids (:id coll))))
                           (map #(select-keys % [:name]))
                           (into #{})))))
-            (let [collections (#'api.collection/select-collections false false nil true (:id b))]
+            (let [collections (#'api.collection/select-collections {:archived                       false
+                                                                    :exclude-other-user-collections false
+                                                                    :shallow                        true
+                                                                    :collection-id                  (:id b)
+                                                                    :permissions-set                #{"/"}})]
               (is (= #{}
                      (->> collections
                           (filter (fn [coll] (contains? ids (:id coll))))
