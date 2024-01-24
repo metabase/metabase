@@ -5229,8 +5229,8 @@ databaseChangeLog:
               UPDATE report_card
               SET type = 'model'
               WHERE dataset is true
-
-# TODO: we might need a revision migration here
+      rollback: # no need, the column will be dropped
+      # TODO: we might need a revision migration here
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

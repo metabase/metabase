@@ -321,24 +321,24 @@
 
 (defn- ensure-type-and-dataset-are-aligned
   [{:keys [type dataset] :as card}]
-  (cond-> card
+  (cond
     ;; if none of the 2 keys presents, do nothing
     (and (nil? type) (nil? dataset))
-    identity
+    card
 
-    ;; if both type and dataset presents, make sure value of dataset align with type
-    (and type dataset)
-    (assoc :dataset (= type :model))
+    ;; if both type and dataset presents, we prefer dataset since it's used in tests
+    (and (some? type) (some? dataset))
+    (assoc card :type (if dataset :model :question))
 
     ;; if only types exists, we make sure dataset follows
     (some? type)
-    (assoc :dataset (= type :model))
+    (assoc card :dataset (= type :model))
 
     ;; if dataset presents, make sure type follows
     (some? dataset)
-    (assoc :type (if dataset
-                   :model
-                   :question))))
+    (assoc card :type (if dataset
+                       :model
+                       :question))))
 
 (defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
