@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useAsync } from "react-use";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -29,26 +30,14 @@ import type { CollectionId } from "metabase-types/api";
 
 import "./SaveQuestionModal.css";
 
-const getLabels = (question: Question, showSaveType: boolean) => {
-  const type = question.type();
-
-  if (type === "question") {
-    return {
-      singleStepTitle: showSaveType ? t`Save question` : t`Save new question`,
-      multiStepTitle: t`First, save your question`,
-      nameInputPlaceholder: t`What is the name of your question?`,
-    };
+const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
+  if (questionType === "model") {
+    return t`Save model`;
+  } else if (showSaveType) {
+    return t`Save question`;
   }
 
-  if (type === "model") {
-    return {
-      singleStepTitle: t`Save model`,
-      multiStepTitle: t`First, save your model`,
-      nameInputPlaceholder: t`What is the name of your model?`,
-    };
-  }
-
-  throw new Error(`Unknown question.type(): ${type}`);
+  return t`Save new question`;
 };
 
 const SAVE_QUESTION_SCHEMA = Yup.object({
@@ -95,10 +84,80 @@ export const SaveQuestionModal = ({
   multiStep,
   initialCollectionId,
 }: SaveQuestionModalProps) => {
+  // ! HACK *******************************************
   const state = useSelector(state => state);
-  const [suggestedTitle, setSuggestedTitle] = useState("");
-  const [suggestedDescription, setSuggestedDescription] = useState("");
+  // ! HACK *******************************************
+
   const { data: collections } = useCollectionListQuery();
+  const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
+
+  // we can't use null because that can be ID of the root collection
+  const instanceAnalyticsCollectionId =
+    collections?.find(isInstanceAnalyticsCollection)?.id ?? "not found";
+  const isInInstanceAnalyticsQuestion =
+    originalQuestion?.collectionId() === instanceAnalyticsCollectionId;
+
+  if (collections && isInInstanceAnalyticsQuestion) {
+    const customCollection = getInstanceAnalyticsCustomCollection(collections);
+    if (customCollection) {
+      initialCollectionId = customCollection.id;
+    }
+  }
+
+  const initialValues: FormValues = useMemo(
+    () => ({
+      name: "",
+      description: question.description() || "",
+      collection_id:
+        question.collectionId() === undefined ||
+        isReadonly ||
+        isInInstanceAnalyticsQuestion
+          ? initialCollectionId
+          : question.collectionId(),
+      saveType:
+        originalQuestion &&
+        !originalQuestion.isDataset() &&
+        originalQuestion.canWrite()
+          ? "overwrite"
+          : "create",
+    }),
+    [
+      initialCollectionId,
+      isInInstanceAnalyticsQuestion,
+      isReadonly,
+      originalQuestion,
+      question,
+    ],
+  );
+
+  const suggestCardInfo = useCallback(async () => {
+    const collectionId = canonicalCollectionId(initialValues.collection_id);
+    const displayName = initialValues.name.trim();
+    const description = initialValues.description
+      ? initialValues.description.trim()
+      : null;
+
+    const newQuestion = question
+      .setDisplayName(displayName)
+      .setDescription(description)
+      .setCollectionId(collectionId);
+
+    return await apiGetCardSummary(newQuestion, state);
+  }, [initialValues, question, state]);
+  // TODO: Would be nice if we could control the saveType state
+  // * in this component and only call useAsync function if you
+  // * are in the `create` save type
+  const { loading, value } = useAsync(suggestCardInfo, []);
+  const { name, description } = useMemo(() => {
+    if (value?.summary) {
+      return {
+        name: value?.summary?.title,
+        description: value?.summary?.description,
+      };
+    }
+
+    return {};
+  }, [value]);
 
   const handleOverwrite = useCallback(
     async (originalQuestion: Question) => {
@@ -116,32 +175,6 @@ export const SaveQuestionModal = ({
       await onSave(newQuestion.setId(originalQuestion.id()));
     },
     [question, onSave],
-  );
-
-  const suggestCardInfo = useCallback(
-    async (details: FormValues) => {
-      if (details.saveType !== "create") {
-        return;
-      }
-
-      const collectionId = canonicalCollectionId(details.collection_id);
-      const displayName = details.name.trim();
-      const description = details.description
-        ? details.description.trim()
-        : null;
-
-      const newQuestion = question
-        .setDisplayName(displayName)
-        .setDescription(description)
-        .setCollectionId(collectionId);
-
-      const response = await apiGetCardSummary(newQuestion, state);
-      const { description: suggestedDescription, title: suggestedTitle } =
-        response.summary;
-      setSuggestedTitle(suggestedTitle);
-      setSuggestedDescription(suggestedDescription);
-    },
-    [question, setSuggestedTitle, state],
   );
 
   const handleCreate = useCallback(
@@ -177,38 +210,12 @@ export const SaveQuestionModal = ({
     [originalQuestion, handleOverwrite, handleCreate],
   );
 
-  const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
+  const questionType = question.isDataset() ? "model" : "question";
 
-  // we can't use null because that can be ID of the root collection
-  const instanceAnalyticsCollectionId =
-    collections?.find(isInstanceAnalyticsCollection)?.id ?? "not found";
-
-  const isInInstanceAnalyticsQuestion =
-    originalQuestion?.collectionId() === instanceAnalyticsCollectionId;
-
-  if (collections && isInInstanceAnalyticsQuestion) {
-    const customCollection = getInstanceAnalyticsCustomCollection(collections);
-    if (customCollection) {
-      initialCollectionId = customCollection.id;
-    }
-  }
-
-  const initialValues: FormValues = {
-    name: suggestedTitle || question.generateQueryDescription() || "",
-    description: suggestedDescription || question.description() || "",
-    collection_id:
-      question.collectionId() === undefined ||
-      isReadonly ||
-      isInInstanceAnalyticsQuestion
-        ? initialCollectionId
-        : question.collectionId(),
-    saveType:
-      originalQuestion &&
-      originalQuestion.type() === "question" &&
-      originalQuestion.canWrite()
-        ? "overwrite"
-        : "create",
-  };
+  const multiStepTitle =
+    questionType === "question"
+      ? t`First, save your question`
+      : t`First, save your model`;
 
   const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   const showSaveType =
@@ -216,11 +223,14 @@ export const SaveQuestionModal = ({
     originalQuestion != null &&
     originalQuestion.canWrite();
 
-  const { multiStepTitle, singleStepTitle, nameInputPlaceholder } = getLabels(
-    question,
-    showSaveType,
-  );
+  const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
+
   const title = multiStep ? multiStepTitle : singleStepTitle;
+
+  const nameInputPlaceholder =
+    questionType === "question"
+      ? t`What is the name of your question?`
+      : t`What is the name of your model?`;
 
   return (
     <CreateCollectionOnTheGo>
@@ -232,7 +242,11 @@ export const SaveQuestionModal = ({
           onClose={onClose}
         >
           <FormProvider
-            initialValues={{ ...initialValues, ...resumedValues }}
+            initialValues={{
+              ...initialValues,
+              ...{ name, description },
+              ...resumedValues,
+            }}
             onSubmit={handleSubmit}
             validationSchema={SAVE_QUESTION_SCHEMA}
             enableReinitialize
@@ -263,19 +277,14 @@ export const SaveQuestionModal = ({
                       }}
                     >
                       <div className="saveQuestionModalFields">
+                        {loading && <div>Thinking ✨</div>}
                         <FormInput
                           autoFocus
                           name="name"
                           title={t`Name`}
                           placeholder={nameInputPlaceholder}
                         />
-                        <FormFooter>
-                          <Button
-                            type="button"
-                            onClick={() => suggestCardInfo(values)}
-                            primary
-                          >{t`Suggest Title and Description`}</Button>
-                        </FormFooter>
+                        <FormFooter></FormFooter>
                         <FormTextArea
                           name="description"
                           title={t`Description`}
