@@ -5311,6 +5311,23 @@ databaseChangeLog:
             indexName: idx_data_permissions_group_id
 
   - changeSet:
+      id: v49.2024-01-10T03:27:29
+      author: noahmoss
+      comment: Drop foreign key constraint on sandboxes.permissions_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sandboxes
+            constraintName: fk_sandboxes_ref_permissions
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            onDelete: CASCADE
+
+  - changeSet:
       id: v49.2024-01-10T03:27:30
       author: noahmoss
       comment: Migrate data-access permissions from `permissions` to `data_permissions`
@@ -5324,6 +5341,14 @@ databaseChangeLog:
             path: permissions/mysql_data_access.sql
             relativeToChangelogFile: true
       rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_data_access.sql
+            relativeToChangelogFile: true
 
   - changeSet:
       id: v49.2024-01-10T03:27:31
@@ -5334,6 +5359,9 @@ databaseChangeLog:
             path: permissions/native_query_editing.sql
             relativeToChangelogFile: true
       rollback:
+        - sqlFile:
+            path: permissions/rollback/native_query_editing.sql
+            relativeToChangelogFile: true
 
   - changeSet:
       id: v49.2024-01-10T03:27:32
@@ -5349,6 +5377,14 @@ databaseChangeLog:
             path: permissions/mysql_download_results.sql
             relativeToChangelogFile: true
       rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_download_results.sql
+            relativeToChangelogFile: true
 
   - changeSet:
       id: v49.2024-01-10T03:27:33
@@ -5364,6 +5400,14 @@ databaseChangeLog:
             path: permissions/mysql_manage_table_metadata.sql
             relativeToChangelogFile: true
       rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_manage_table_metadata.sql
+            relativeToChangelogFile: true
 
   - changeSet:
       id: v49.2024-01-10T03:27:34
@@ -5374,23 +5418,10 @@ databaseChangeLog:
             path: permissions/manage_database.sql
             relativeToChangelogFile: true
       rollback:
+        - sqlFile:
+            path: permissions/rollback/manage_database.sql
+            relativeToChangelogFile: true
 
-  - changeSet:
-      id: v49.2024-01-10T03:27:35
-      author: noahmoss
-      comment: Drop foreign key constraint on sandboxes.permissions_id
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: sandboxes
-            constraintName: fk_sandboxes_ref_permissions
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: sandboxes
-            baseColumnNames: permission_id
-            referencedTableName: permissions
-            referencedColumnNames: id
-            constraintName: fk_sandboxes_ref_permissions
-            onDelete: CASCADE
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
