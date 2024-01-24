@@ -39,7 +39,7 @@ export const groupModels = (
 ) => {
   const groupedModels = _.groupBy(models, model => model.collection.id);
   let collections = models.map(model => model.collection);
-  collections = _.uniq(collections, collection => collection.id);
+  collections = _.uniq(collections, collection => collection.id) || [];
   collections.sort((a, b) => a.name.localeCompare(b.name, locale));
   return { groupedModels, collections };
 };
