@@ -236,7 +236,7 @@ function setup({
   isObjectDetail = false,
   hasPermissions = true,
 } = {}) {
-  const metadata = hasPermissions ? getMetadata() : {};
+  const metadata = hasPermissions ? getMetadata() : createMockMetadata({});
   const question = card && new Question(card, metadata);
 
   setupCardEndpoints(SOURCE_CARD);
