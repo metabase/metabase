@@ -271,7 +271,17 @@ describe("TagEditorParam", () => {
       });
     });
 
-    it("should clear the default value when becoming not required", () => {
+    it("should set the default value when turning required on", () => {
+      const tag = createMockTemplateTag({ default: "123" });
+      const { setParameterValue } = setup({ tag });
+
+      const toggleLabel = screen.getByText("Always require a value");
+      userEvent.click(toggleLabel);
+
+      expect(setParameterValue).toHaveBeenCalledWith(tag.id, "123");
+    });
+
+    it("should not clear the default value when turning required off", () => {
       const tag = createMockTemplateTag({ required: true, default: "abc" });
       const { setTemplateTag } = setup({ tag });
 
@@ -281,7 +291,7 @@ describe("TagEditorParam", () => {
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         required: false,
-        default: undefined,
+        default: "abc",
       });
     });
   });
