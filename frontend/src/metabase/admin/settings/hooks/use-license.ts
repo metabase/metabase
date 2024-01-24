@@ -11,13 +11,13 @@ export type TokenStatus = {
   validUntil: Date;
   isValid: boolean;
   isTrial: boolean;
-  features: string[];
+  features: Set<string>;
   status: string;
 };
 
 export const useLicense = (onActivated?: () => void) => {
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>();
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -58,7 +58,7 @@ export const useLicense = (onActivated?: () => void) => {
           validUntil: new Date(response["valid-thru"]),
           isValid: response.valid,
           isTrial: response.trial,
-          features: response.features,
+          features: new Set(response.features.concat("metabase-store-managed")),
           status: response.status,
         });
       } catch (e) {
@@ -66,7 +66,7 @@ export const useLicense = (onActivated?: () => void) => {
           setError(UNABLE_TO_VALIDATE_TOKEN);
         }
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -77,7 +77,7 @@ export const useLicense = (onActivated?: () => void) => {
     isUpdating,
     error,
     tokenStatus,
-    isLoading,
+    loading,
     updateToken,
   };
 };
