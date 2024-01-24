@@ -239,9 +239,9 @@
      (metabot-util/find-result
        (fn [rsp]
          (let [{:keys [description keywords questions]} (json/parse-string rsp true)]
-           {:description (format "Description: %s\n\nKeywords: %s\n\nQuestions:\n%s"
-                                 description
+           {:description (format "Keywords: %s\n\nDescription: %s\n\nQuestions:\n%s"
                                  keywords
+                                 description
                                  questions)}))
        (metabot-client/invoke-metabot
          {:messages
