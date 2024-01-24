@@ -900,7 +900,9 @@
 
   Style note: prefer using the setting directly instead:
 
-    (mandrill-api-key \"xyz123\")"
+    (mandrill-api-key \"xyz123\")
+
+  This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
   (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
         name                                                 (setting-name setting)]
@@ -972,6 +974,10 @@
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
       (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
         (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                             setting-name)
+                        {:setting setting})))
+      (when (and (:default setting) (:init setting))
+        (throw (ex-info (tru "Setting {0} uses both :default and :init options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
       (when (and (:enabled? setting) (:feature setting))
@@ -1086,6 +1092,12 @@
 
   The default value of the setting. This must be of the same type as the Setting type, e.g. the default for an
   `:integer` setting must be some sort of integer. (default: `nil`)
+
+  ###### `:init`
+
+  A optional 0-arity function which returns the same type as the Setting type, e.g. for an `:integer` setting must be
+  some sort of integer. This function will be used to generate an initial value for the setting the first time it is
+  accessed. This value will be saved, in case the function is expensive or non-deterministic.
 
   ###### `:type`
 
