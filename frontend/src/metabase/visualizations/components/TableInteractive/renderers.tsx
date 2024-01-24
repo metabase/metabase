@@ -20,7 +20,12 @@ export const renderHeader = header => {
       <ContextMenu.Content className="bg-white bordered rounded shadowed zF relative">
         <ContextMenu.Item className="px1">
           <Link
-            to={Urls.dataModelTable(1, "1:PUBLIC", header.column.table_id)}
+            to={Urls.dataModelField(
+              1,
+              "1:PUBLIC",
+              header.column.table_id,
+              header.column.id,
+            )}
             target="_blank"
           >
             Edit metadata
