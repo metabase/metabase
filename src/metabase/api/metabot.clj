@@ -144,4 +144,10 @@
   ;(check-data-permissions-for-query dataset_query)
   (metabot/infer-card-summary body))
 
+(api/defendpoint GET "/dashboard/summarize/:id"
+  "Get Dashboard with ID."
+  [id]
+  {id ms/PositiveInt}
+  (metabot/infer-dashboard-summary id))
+
 (api/define-routes)
