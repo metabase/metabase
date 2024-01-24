@@ -92,7 +92,8 @@ function ModelDetailPage({
   );
 
   const database = model.database();
-  const hasDataPermissions = model.isQueryEditable();
+  const { isEditable } = Lib.queryDisplayInfo(model.query());
+  const hasDataPermissions = isEditable;
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;
@@ -100,11 +101,13 @@ function ModelDetailPage({
     database != null && database.hasFeature("nested-queries");
 
   const mainTable = useMemo(() => {
-    if (model.isNative()) {
+    const query = model.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+
+    if (isNative) {
       return null;
     }
 
-    const query = model.query();
     const sourceTableId = Lib.sourceTableOrCardId(query);
     const table = model.metadata().table(sourceTableId);
     return table;

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 
+import * as Lib from "metabase-lib";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
@@ -178,12 +179,13 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
-    const isDirty =
-      question.isQueryEditable() &&
-      question.isDirtyComparedTo(originalQuestion);
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      if (question.isNative()) {
+      const { isNative } = Lib.queryDisplayInfo(question.query());
+
+      if (isNative) {
         question = question.syncColumnsAndSettings(
           originalQuestion,
           queryResults[0],

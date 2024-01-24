@@ -174,7 +174,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
             `You will need to publish this ${object} before you can embed it in another application.`,
           );
 
-          cy.button("Publish changes").click();
+          cy.button("Publish").click();
 
           cy.wait("@embedObject");
         });
@@ -340,7 +340,7 @@ function visitAndEnableSharing(object, acceptTerms = true) {
     visitDashboard(ORDERS_DASHBOARD_ID);
   }
 
-  openStaticEmbeddingModal({acceptTerms});
+  openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {

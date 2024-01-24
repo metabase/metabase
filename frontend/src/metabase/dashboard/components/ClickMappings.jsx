@@ -8,6 +8,7 @@ import { getIn, assocIn, dissocIn } from "icepick";
 import { Icon } from "metabase/ui";
 import Select from "metabase/core/components/Select";
 
+import * as Lib from "metabase-lib";
 import MetabaseSettings from "metabase/lib/settings";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { GTAPApi } from "metabase/services";
@@ -342,9 +343,10 @@ export function isMappableColumn(column) {
 export function clickTargetObjectType(object) {
   if (!(object instanceof Question)) {
     return "dashboard";
-  } else if (object.isNative()) {
-    return "native";
-  } else {
-    return "gui";
   }
+
+  const query = object.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+
+  return isNative ? "native" : "gui";
 }

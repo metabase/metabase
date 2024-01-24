@@ -141,7 +141,10 @@ function getLabelError({
     return t`Required`;
   }
   if (isParameterSlugUsed(labelValue)) {
-    return t`This label is already in use`;
+    return t`This label is already in use.`;
+  }
+  if (labelValue.toLowerCase() === "tab") {
+    return t`This label is reserved for dashboard tabs.`;
   }
   return null;
 }

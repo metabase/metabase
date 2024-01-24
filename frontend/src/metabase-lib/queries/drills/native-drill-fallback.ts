@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 
 interface FallbackNativeDrillProps {
@@ -6,7 +7,10 @@ interface FallbackNativeDrillProps {
 
 export function nativeDrillFallback({ question }: FallbackNativeDrillProps) {
   const database = question.database();
-  if (!question.isNative() || !question.isQueryEditable() || !database) {
+  const query = question.query();
+  const { isNative, isEditable } = Lib.queryDisplayInfo(query);
+
+  if (!isNative || !isEditable || !database) {
     return null;
   }
 

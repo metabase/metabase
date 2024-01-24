@@ -8,7 +8,6 @@ import {
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import { ArrowDown, ArrowUp } from "./icons";
 import { computeSmartScalarSettings } from "./settings";
 
 export function SmartScalar({
@@ -89,22 +88,21 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       ? formatChange(comparison.percentChange)
       : comparison.display.percentChange;
 
-  let Icon: typeof ArrowUp | null = null;
+  let icon: string | null = null;
 
   if (comparison.changeArrowIconName === "arrow_up") {
-    Icon = ArrowUp;
+    icon = "↑";
   } else if (comparison.changeArrowIconName === "arrow_down") {
-    Icon = ArrowDown;
+    icon = "↓";
   }
 
   const styles: Record<string, CSSProperties> = {
     root: {
-      fontSize: "12px",
+      fontSize: "14px",
     },
     icon: {
-      width: "12px",
-      height: "12px",
-      fill: comparison.changeColor,
+      fontSize: "14px",
+      color: comparison.changeColor,
       marginRight: "6px",
     },
     percentChange: {
@@ -128,7 +126,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
 
   return (
     <span style={styles.root}>
-      {!!Icon && <Icon style={styles.icon} />}
+      {!!icon && <span style={styles.icon}>{icon}</span>}
       <span>
         <span style={styles.percentChange}>{changeDisplayValue}</span>
         <span style={styles.separator}> • </span>
