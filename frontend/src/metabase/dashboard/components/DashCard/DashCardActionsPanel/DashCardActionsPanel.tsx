@@ -17,7 +17,10 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { addCardToDashboard } from "metabase/dashboard/actions";
+import {
+  addCardToDashboard,
+  addDashCardToDashboard,
+} from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
@@ -157,15 +160,27 @@ export function DashCardActionsPanel({
         key="duplicate-question"
         aria-label={t`Duplicate`}
         tooltip={t`Duplicate`}
-        onClick={() =>
+        onClick={() => {
+          if (isVirtualDashCard(dashcard)) {
+            const { id: _, ...newDashcard } = dashcard;
+            dispatch(
+              addDashCardToDashboard({
+                dashId: dashboard.id,
+                dashcardOverrides: newDashcard,
+                tabId: selectedTabId,
+              }),
+            );
+            return;
+          }
+
           dispatch(
             addCardToDashboard({
               dashId: dashboard.id,
               cardId: dashcard.card_id,
               tabId: selectedTabId,
             }),
-          )
-        }
+          );
+        }}
       >
         <Icon name="copy" />
       </DashCardActionButton>,
