@@ -46,7 +46,7 @@ export const BrowseDataPage = () => {
 
   const databases = useDatabaseListQuery();
 
-  // TODO: Put the BrowseTabs into the BrowseHeader so that these tabs appear on all the pages that use the browseheader. EXCEPT there might be some contexts where BrowseHeader is used but where tabs don't make sense
+  // TODO: Put the BrowseTabs into the BrowseHeader so that these tabs appear on all the pages that use the browseheader. EXCEPT there might be some contexts where BrowseHeader is used but
   return (
     <BrowseContainer data-testid="data-browser">
       <BrowseHeader />

@@ -53,7 +53,11 @@ export const BrowseModels = ({
     return (
       <GridContainer role="grid">
         {Object.values(groupedModels).map((models, index) => (
-          <ModelGroup models={models} key={`modelgroup-${index}`} />
+          <ModelGroup
+            index={index}
+            models={models}
+            key={`modelgroup-${index}`}
+          />
         ))}
       </GridContainer>
     );
@@ -74,12 +78,18 @@ export const BrowseModels = ({
   );
 };
 
-const ModelGroup = ({ models }: { models: SearchResult[] }) => {
+const ModelGroup = ({
+  models,
+  index,
+}: {
+  models: SearchResult[];
+  index: number;
+}) => {
   const sortedModels = models.sort(sortModels);
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
-  const collectionHtmlId = `collection-${collection?.id}`;
+  const collectionHtmlId = `collection-${collection?.id ?? `index-${index}`}`;
 
   return (
     <>
