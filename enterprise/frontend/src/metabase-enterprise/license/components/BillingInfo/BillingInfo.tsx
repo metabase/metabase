@@ -16,8 +16,8 @@ import {
 
 interface BillingInfoProps {
   isStoreManagedBilling: boolean;
-  billingInfo: IBillingInfo;
-  error: string;
+  billingInfo?: IBillingInfo;
+  error: string | undefined;
 }
 
 const BillingInfoValue = ({ lineItem }: { lineItem: BillingInfoLineItem }) => {
@@ -39,7 +39,7 @@ const BillingInfoValue = ({ lineItem }: { lineItem: BillingInfoLineItem }) => {
 
 export function BillingInfo({
   isStoreManagedBilling,
-  billingInfo,
+  billingInfo = [],
   error,
 }: BillingInfoProps) {
   if (error) {
