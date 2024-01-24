@@ -16,6 +16,9 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { addCardToDashboard } from "metabase/dashboard/actions";
+import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
@@ -71,9 +74,9 @@ export function DashCardActionsPanel({
     disableClickBehavior,
   } = getVisualizationRaw(series) ?? {};
 
-  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
-
   const buttons = [];
+
+  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
 
   if (dashcard) {
     buttons.push(
@@ -141,6 +144,30 @@ export function DashCardActionsPanel({
         onClick={onReplaceCard}
       >
         <Icon name="refresh_downstream" />
+      </DashCardActionButton>,
+    );
+  }
+
+  const dispatch = useDispatch();
+  const selectedTabId = useSelector(getSelectedTabId);
+
+  if (!isLoading && dashcard) {
+    buttons.push(
+      <DashCardActionButton
+        key="duplicate-question"
+        aria-label={t`Duplicate`}
+        tooltip={t`Duplicate`}
+        onClick={() =>
+          dispatch(
+            addCardToDashboard({
+              dashId: dashboard.id,
+              cardId: dashcard.card_id,
+              tabId: selectedTabId,
+            }),
+          )
+        }
+      >
+        <Icon name="copy" />
       </DashCardActionButton>,
     );
   }
