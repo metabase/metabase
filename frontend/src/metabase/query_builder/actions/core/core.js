@@ -20,6 +20,7 @@ import { ModelIndexes } from "metabase/entities/model-indexes";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Revision from "metabase/entities/revisions";
 import * as Lib from "metabase-lib";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -74,12 +75,17 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
       Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
     );
     const card = Questions.HACK_getObjectFromAction(action);
+    const question = new Question(
+      card,
+      getMetadata(getState()),
+      outdatedQuestion.parameters(),
+    );
 
     dispatch(loadMetadataForCard(card));
 
     dispatch(
       runQuestionQuery({
-        overrideWithCard: card,
+        overrideWithQuestion: question,
         shouldUpdateUrl: false,
       }),
     );
