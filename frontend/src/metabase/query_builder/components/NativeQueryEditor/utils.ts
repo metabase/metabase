@@ -1,3 +1,5 @@
+import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
+import { getEngineNativeType } from "metabase/lib/engine";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import { SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 
@@ -53,4 +55,55 @@ export function calcInitialEditorHeight({
   }
   const lines = getVisibleLinesCount({ query, viewHeight });
   return getEditorLineHeight(lines);
+}
+
+const formatSql = async (sql: string, options: FormatOptionsWithLanguage) => {
+  const sqlFormatter = await import(
+    /* webpackChunkName: "sql-formatter" */ "sql-formatter"
+  );
+  return sqlFormatter.format(sql, options);
+};
+
+const formatterDialectByEngine: Record<string, SqlLanguage> = {
+  "bigquery-cloud-sdk": "bigquery",
+  mysql: "mysql",
+  oracle: "plsql",
+  postgres: "postgresql",
+  "presto-jdbc": "trino",
+  redshift: "redshift",
+  snowflake: "snowflake",
+  sparksql: "spark",
+  sqlite: "sqlite",
+  sqlserver: "tsql",
+};
+
+function getFormatterDialect(engine: string) {
+  if (getEngineNativeType(engine) === "json") {
+    return null;
+  }
+
+  // Fall back to ANSI SQL dialect
+  return formatterDialectByEngine[engine] ?? "sql";
+}
+
+export function canFormatForEngine(engine: string) {
+  return getEngineNativeType(engine) === "sql";
+}
+
+export function formatQuery(queryText: string, engine: string) {
+  const dialect = getFormatterDialect(engine);
+  if (!dialect) {
+    throw new Error(`No formatter dialect for engine ${engine}`);
+  }
+
+  return formatSql(queryText, {
+    language: dialect,
+    tabWidth: 2,
+    keywordCase: "upper",
+    linesBetweenQueries: 2,
+    paramTypes: {
+      // Snippets, parameters, nested questions
+      custom: [{ regex: "\\{\\{[^\\{\\}]*\\}\\}" }],
+    },
+  });
 }

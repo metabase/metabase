@@ -56,6 +56,7 @@ import { ResponsiveParametersList } from "../ResponsiveParametersList";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 import {
   calcInitialEditorHeight,
+  formatQuery,
   getEditorLineHeight,
   getMaxAutoSizeLines,
 } from "./utils";
@@ -723,6 +724,17 @@ export class NativeQueryEditor extends Component<
     );
   };
 
+  formatQuery = async () => {
+    const engine = this.props.question?.database?.()?.engine;
+    const queryText = this._editor?.getValue();
+    if (!queryText || !engine) {
+      return;
+    }
+
+    this.handleQueryUpdate(await formatQuery(queryText, engine));
+    this._editor?.focus();
+  };
+
   render() {
     const {
       question,
@@ -854,6 +866,7 @@ export class NativeQueryEditor extends Component<
                 features={sidebarFeatures}
                 onShowPromptInput={this.togglePromptVisibility}
                 isPromptInputVisible={isPromptInputVisible}
+                onFormatQuery={this.formatQuery}
                 {...this.props}
               />
             )}
