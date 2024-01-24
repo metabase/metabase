@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
-import CopyButton from "metabase/components/CopyButton";
+import { CopyButton } from "metabase/components/CopyButton";
 import type { AnchorProps } from "metabase/ui";
 import { Anchor } from "metabase/ui";
 

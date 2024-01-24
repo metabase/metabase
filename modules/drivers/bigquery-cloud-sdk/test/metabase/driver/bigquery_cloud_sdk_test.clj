@@ -711,7 +711,7 @@
               (is (= ["my-dataset" "my-dataset"]
                      (t2/select-fn-vec :schema Table :id [:in [(u/the-id table1) (u/the-id table2)]]))))))))))
 
-(deftest ^:parallel query-drive-external-tables
+(deftest query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Google Sheets external tables can be queried via BigQuery (#4179)"
       ;; link to the underlying Google sheet, which everyone in the Google domain should have edit permission on
