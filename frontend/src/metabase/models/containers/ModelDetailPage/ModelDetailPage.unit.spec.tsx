@@ -362,7 +362,7 @@ describe("ModelDetailPage", () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         userEvent.click(getIcon("ellipsis"));
-        userEvent.click(screen.getByText("Archive"));
+        userEvent.click(await screen.findByText("Archive"));
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
         userEvent.click(screen.getByRole("button", { name: "Archive" }));
@@ -383,13 +383,15 @@ describe("ModelDetailPage", () => {
         });
 
         userEvent.click(getIcon("ellipsis"));
-        userEvent.click(screen.getByText("Move"));
+        userEvent.click(await screen.findByText("Move"));
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
         userEvent.click(await screen.findByText(COLLECTION_2.name));
         userEvent.click(screen.getByRole("button", { name: "Move" }));
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() =>
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+        );
 
         await waitFor(() => {
           expect(modelUpdateSpy).toHaveBeenCalledWith(
@@ -633,7 +635,7 @@ describe("ModelDetailPage", () => {
         await setupActions({ model, actions: [action] });
 
         openActionMenu(action);
-        userEvent.click(screen.getByText("Edit"));
+        userEvent.click(await screen.findByText("Edit"));
 
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
@@ -646,12 +648,14 @@ describe("ModelDetailPage", () => {
 
         const listItem = screen.getByRole("listitem", { name: action.name });
         userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
-        userEvent.click(screen.getByText("Archive"));
+        userEvent.click(await screen.findByText("Archive"));
 
         const modal = screen.getByRole("dialog");
         userEvent.click(within(modal).getByRole("button", { name: "Archive" }));
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() =>
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+        );
         expect(updateActionSpy).toHaveBeenCalledWith({
           id: action.id,
           archived: true,
@@ -677,7 +681,7 @@ describe("ModelDetailPage", () => {
         await setupActions({ model, actions });
 
         userEvent.click(screen.getByLabelText("Actions menu"));
-        userEvent.click(screen.getByText("Disable basic actions"));
+        userEvent.click(await screen.findByText("Disable basic actions"));
         userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
         actions.forEach(action => {
@@ -734,7 +738,7 @@ describe("ModelDetailPage", () => {
 
         openActionMenu(action);
 
-        expect(screen.getByText("View")).toBeInTheDocument();
+        expect(await screen.findByText("View")).toBeInTheDocument();
       });
 
       it("doesn't allow to archive actions", async () => {
@@ -848,7 +852,7 @@ describe("ModelDetailPage", () => {
       await setupActions({ model: modelCard, actions: [action] });
 
       userEvent.click(screen.getByLabelText("Actions menu"));
-      userEvent.click(screen.getByText("Create basic actions"));
+      userEvent.click(await screen.findByText("Create basic actions"));
 
       await waitFor(() => {
         expect(createActionSpy).toHaveBeenCalledWith({

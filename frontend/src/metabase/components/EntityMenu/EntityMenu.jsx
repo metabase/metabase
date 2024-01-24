@@ -64,7 +64,7 @@ class EntityMenu extends Component {
       <Popover
         opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
-        transitionProps={{ transition: "scale" }}
+        transitionProps={{ transition: "pop" }}
         onChange={() => this.toggleMenu()}
         position="bottom-end"
       >
