@@ -198,8 +198,8 @@
        (map process-endpoint)
        (group-by :ns-name)
        (into (sorted-map-by (fn [a b] (compare
-                                       (str/lower-case a)
-                                       (str/lower-case b)))))))
+                                       (u/lower-case-en a)
+                                       (u/lower-case-en b)))))))
 
 ;;;; Page generators
 
