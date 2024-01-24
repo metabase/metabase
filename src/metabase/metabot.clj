@@ -232,9 +232,6 @@
 (comment
   (infer-dashboard-summary 54)
   (let [{dashboard-name :name :keys [parameters dashcards] :as dashboard}
-        param-id->param (zipmap
-                          (map :id parameters)
-                          (map #(select-keys [:name :type]) parameters))
         (t2/hydrate (t2/select-one :model/Dashboard 54) [:dashcards
                                                          :card
                                                          :series
@@ -242,7 +239,10 @@
                                                          :dashcard/linkcard-info]
                     :tabs
                     :param_fields
-                    :param_values)]
+                    :param_values)
+        param-id->param (zipmap
+                          (map :id parameters)
+                          (map #(select-keys % [:name :type]) parameters))]
     {:dashboard-name    dashboard-name
      :charts            (for [{:keys [card parameter_mappings] :as dcs} dashcards
                               :let [{card-name :name
