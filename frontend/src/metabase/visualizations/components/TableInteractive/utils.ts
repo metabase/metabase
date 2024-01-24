@@ -45,15 +45,25 @@ function rendererForSemanticType(col) {
 }
 
 export const prepareColumns = (columns: Array<any>) => {
-  return columns.map((col: any) => {
-    return {
-      ...col,
-      resizable: true,
-      key: `${col.name}-${col.field}`,
-      width: "max-content",
-      name: col.display_name,
-      frozen: false,
-      renderCell: pickRenderer(col) || defaultRenderer,
-    };
-  });
+  return [
+    {
+      key: "index",
+      name: "",
+      width: 40,
+      frozen: true,
+      resizable: false,
+      renderCell: () => "",
+    },
+    ...columns.map((col: any) => {
+      return {
+        ...col,
+        resizable: true,
+        key: `${col.name}-${col.field}`,
+        width: "max-content",
+        name: col.display_name,
+        frozen: false,
+        renderCell: pickRenderer(col) || defaultRenderer,
+      };
+    }),
+  ];
 };

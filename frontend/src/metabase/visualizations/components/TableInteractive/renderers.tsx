@@ -2,22 +2,27 @@ import getUnicodeFlagIcon from "country-flag-icons/unicode";
 import { Facebook, Twitter, Search, Mail } from "react-feather";
 import { Icon } from "metabase/ui";
 
+const getVal = r => {
+  const { row, column } = r;
+  return row[column.idx - 1];
+};
+
 export const defaultRenderer = (row: Row) => {
-  return <div>{String(row.row[row.column.idx])}</div>;
+  return <div>{String(getVal(row))}</div>;
 };
 
 export const emailRenderer = (row: Row) => {
   return (
     <div>
       <Icon name="mail" size={12} className="mr1" style={{ opacity: 0.6 }} />
-      {String(row.row[row.column.idx])}
+      {String(getVal(row))}
     </div>
   );
 };
 
 export const sourceRenderer = (row: Row) => {
   const size = 12;
-  const val = row.row[row.column.idx];
+  const val = getVal(row);
   function getIcon(val: string) {
     switch (val) {
       case "Facebook":
@@ -42,24 +47,23 @@ export const sourceRenderer = (row: Row) => {
           {getIcon(val)}
         </span>
       )}
-      {String(row.row[row.column.idx])}
+      {String(getVal(row))}
     </div>
   );
 };
 
 export const countryRenderer = (row: Row) => {
+  const val = getVal(row);
   return (
     <>
-      <span className="mr1">
-        {getUnicodeFlagIcon(String(row.row[row.column.idx]))}
-      </span>
-      {String(row.row[row.column.idx])}
+      <span className="mr1">{getUnicodeFlagIcon(String(val))}</span>
+      {String(val)}
     </>
   );
 };
 
 export const booleanRenderer = (row: Row) => {
-  const val = row.row[row.column.idx];
+  const val = getVal(row);
 
   return (
     <div>
@@ -87,7 +91,7 @@ export const dateRenderer = (row: Row) => {
         className="mr1"
         style={{ opacity: 0.6 }}
       />
-      {new Date(row.row[row.column.idx]).toLocaleString("en")}
+      {new Date(getVal(row)).toLocaleString("en")}
     </div>
   );
 };
