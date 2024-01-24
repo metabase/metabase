@@ -22,7 +22,14 @@ import {
   addDashCardToDashboard,
   generateTemporaryDashcardId,
 } from "metabase/dashboard/actions";
-import { getCardData, getSelectedTabId } from "metabase/dashboard/selectors";
+import {
+  getCardData,
+  getDashboards,
+  getDashcards,
+  getSelectedTabId,
+} from "metabase/dashboard/selectors";
+import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
@@ -153,6 +160,8 @@ export function DashCardActionsPanel({
   }
 
   const dispatch = useDispatch();
+  const dashboards = useSelector(getDashboards);
+  const dashcards = useSelector(getDashcards);
   const selectedTabId = useSelector(getSelectedTabId);
   const dashcardDataMap = useSelector(getCardData);
 
@@ -164,11 +173,21 @@ export function DashCardActionsPanel({
         tooltip={t`Duplicate`}
         onClick={() => {
           const newId = generateTemporaryDashcardId(); // TODO maybe do this in a better way :thinking:
-          const { id: _, ...newDashcard } = dashcard;
+          const { id: _id, ...newDashcard } = dashcard;
+          const position = getPositionForNewDashCard(
+            getExistingDashCards(
+              dashboards,
+              dashcards,
+              dashboard.id,
+              selectedTabId,
+            ),
+            dashcard.size_x,
+            dashcard.size_y,
+          );
           dispatch(
             addDashCardToDashboard({
               dashId: dashboard.id,
-              dashcardOverrides: { id: newId, ...newDashcard },
+              dashcardOverrides: { id: newId, ...newDashcard, ...position },
               tabId: selectedTabId,
             }),
           );
