@@ -24,6 +24,7 @@ import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/Au
 
 /* Browse data */
 import { BrowseApp } from "metabase/browse/components/BrowseApp";
+//import { BrowseDataPage } from "metabase/browse/containers/BrowseData";
 import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 
@@ -91,6 +92,8 @@ import {
   IsNotAuthenticated,
 } from "./route-guards";
 import { getApplicationName } from "./selectors/whitelabel";
+import { BrowseModels } from "./browse/containers/BrowseModels";
+import { BrowseDatabases } from "./browse/containers/BrowseData";
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
@@ -216,19 +219,40 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="browse" component={BrowseApp}>
-            <IndexRoute component={BrowseApp} />
-            <Route path=":slug" component={SchemaBrowser} />
-            <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
-          </Route>
+            <IndexRedirect to="/browse/models" />
+            <Route path="models" component={BrowseModels} />
+            <Route path="databases" component={BrowseDatabases} />
+            <Route path="databases/:slug" component={SchemaBrowser} />
+            <Route
+              path="databases/:dbId/schema/:schemaName"
+              component={TableBrowser}
+            />
 
-          <Route
-            path="browse-models"
-            component={() => <BrowseApp tab="models" />}
-          />
-          <Route
-            path="browse-databases"
-            component={() => <BrowseApp tab="databases" />}
-          />
+            {/* Don't break links like /browse/1-countries.
+            Redirect to /browse/databases/1-countries */}
+            <Route
+              path=":dbId-:slug"
+              onEnter={({ params, location }, replace) => {
+                const { dbId, slug } = params;
+                replace({
+                  pathname: `/browse/databases/${dbId}-${slug}`,
+                  hash: location.hash,
+                });
+              }}
+            />
+            {/* Don't break links like /browse/1/.
+            Redirect to /browse/databases/1-countries */}
+            <Route
+              path=":dbId/schema/:schemaName"
+              onEnter={({ params, location }, replace) => {
+                const { dbId, schemaName } = params;
+                replace({
+                  pathname: `/browse/databases/${dbId}/schema/${schemaName}`,
+                  hash: location.hash,
+                });
+              }}
+            />
+          </Route>
 
           {/* INDIVIDUAL DASHBOARDS */}
 

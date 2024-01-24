@@ -15,11 +15,7 @@ export default function BrowseHeader({ crumbs = [] }) {
   return (
     <BrowseHeaderRoot>
       <BrowseHeaderContent>
-        {crumbs.length > 0 ? (
-          <BrowserCrumbs crumbs={crumbs} />
-        ) : (
-          <h2 className="text-dark">{t`Browse data`}</h2>
-        )}
+        <BrowserCrumbs crumbs={crumbs} />
         <div className="flex flex-align-right" style={{ flexBasis: "40.0%" }}>
           <Link
             className="flex flex-align-right"

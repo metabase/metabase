@@ -88,11 +88,13 @@ dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
 const emptyArray: SearchResult[] = [];
 
 export const BrowseModels = ({
-  data: models = emptyArray,
-  error,
-  isLoading,
-}: ReturnType<typeof useSearchListQuery<SearchResult>>) => {
-  const groupedModels = _.groupBy(models, model => model.collection.id);
+  modelsResult,
+}: {
+  modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
+}) => {
+  const { data: models = emptyArray, error, isLoading } = modelsResult;
+
+  const groupedModels = _.groupBy(models, model => model.collection?.id);
 
   if (error || isLoading) {
     return (
@@ -226,10 +228,14 @@ const LastEdited = ({
   const howLongAgo = getHowLongAgo(timestamp);
   const timeLabel = timestamp ? getHowLongAgo(timestamp) : "";
   const formattedDate = formatDateTimeWithUnit(timestamp, "day", {});
-  const time = <time dateTime={timestamp}>{formattedDate}</time>;
+  const time = (
+    <time key="time" dateTime={timestamp}>
+      {formattedDate}
+    </time>
+  );
   const tooltipLabel = c(
     "{0} is the full name (or if this is unavailable, the email address) of the last person who edited a model. {1} is a phrase like '5 months ago'",
-  ).jt`Last edited by ${lastEditorFullName}${(<br />)}${time}`;
+  ).jt`Last edited by ${lastEditorFullName}${(<br key="br" />)}${time}`;
   return (
     <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
       <Text role="note" size="small">

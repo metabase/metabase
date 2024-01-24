@@ -142,3 +142,8 @@ export const CollectionHeaderLink = styled(Link)`
     color: ${color("brand")};
   }
 `;
+
+export const BrowseDataHeader = styled.h2`
+  margin-bottom: 1rem;
+  color: ${color("dark")};
+`;
