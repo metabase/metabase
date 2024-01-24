@@ -16,20 +16,7 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { createAction, useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  FETCH_CARD_DATA,
-  addDashCardToDashboard,
-  generateTemporaryDashcardId,
-} from "metabase/dashboard/actions";
-import {
-  getCardData,
-  getDashboards,
-  getDashcards,
-  getSelectedTabId,
-} from "metabase/dashboard/selectors";
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
-import { getExistingDashCards } from "metabase/dashboard/actions/utils";
+import { useDuplicateDashCard } from "../use-duplicate-dashcard";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
@@ -159,50 +146,14 @@ export function DashCardActionsPanel({
     );
   }
 
-  const dispatch = useDispatch();
-  const dashboards = useSelector(getDashboards);
-  const dashcards = useSelector(getDashcards);
-  const selectedTabId = useSelector(getSelectedTabId);
-  const dashcardDataMap = useSelector(getCardData);
-
+  const duplicateDashcard = useDuplicateDashCard({ dashboard, dashcard });
   if (!isLoading && dashcard) {
     buttons.push(
       <DashCardActionButton
         key="duplicate-question"
         aria-label={t`Duplicate`}
         tooltip={t`Duplicate`}
-        onClick={() => {
-          const newId = generateTemporaryDashcardId(); // TODO maybe do this in a better way :thinking:
-          const { id: _id, ...newDashcard } = dashcard;
-          const position = getPositionForNewDashCard(
-            getExistingDashCards(
-              dashboards,
-              dashcards,
-              dashboard.id,
-              selectedTabId,
-            ),
-            dashcard.size_x,
-            dashcard.size_y,
-          );
-          dispatch(
-            addDashCardToDashboard({
-              dashId: dashboard.id,
-              dashcardOverrides: { id: newId, ...newDashcard, ...position },
-              tabId: selectedTabId,
-            }),
-          );
-
-          if (!isVirtualDashCard(dashcard) && dashcard.card_id !== null) {
-            dispatch(
-              createAction(FETCH_CARD_DATA)({
-                // TODO do this in a better way maybe (e.g. don't manually create action)?
-                dashcard_id: newId,
-                card_id: dashcard.card_id,
-                result: dashcardDataMap[dashcard.id][dashcard?.card_id],
-              }),
-            );
-          }
-        }}
+        onClick={duplicateDashcard}
       >
         <Icon name="copy" />
       </DashCardActionButton>,
