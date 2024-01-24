@@ -3,7 +3,7 @@ import { Component } from "react";
 
 import _ from "underscore";
 import Select, { Option } from "metabase/core/components/Select";
-import CopyButton from "metabase/components/CopyButton";
+import { CopyButton } from "metabase/components/CopyButton";
 import AceEditor from "metabase/components/TextEditor";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
