@@ -35,7 +35,9 @@ const relativeTimeConfig = {
   s: () => giveContext("minute").t`${1}min`,
   ss: () => giveContext("minute").t`${1}min`,
   past: "%s",
-  future: giveContext("period").t`${"%s"} from now`,
+  // For the edge case where a model's last-edit date is somehow in the future
+  future: c("{0} is a period of time such as '5 minutes' or '5 months'")
+    .t`${"%s"} from now`,
 };
 
 dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
