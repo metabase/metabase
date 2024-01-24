@@ -30,12 +30,26 @@ function rendereForForced(col) {
   }
 }
 
-function pickRenderer(col) {
+function rendererForEffectiveType(col) {
+  switch (col.effective_type) {
+    case "type/DateTime":
+      return dateRenderer;
+    case "plain":
+      return defaultRenderer;
+    default:
+      return defaultRenderer;
+  }
+}
+
+export function pickRenderer(col) {
   if (col.forcedDisplay !== "default" && col.forcedDisplay !== undefined) {
     return rendereForForced(col);
   }
   if (col.semantic_type) {
     return rendererForSemanticType(col);
+  }
+  if (col.effective_type) {
+    return rendererForEffectiveType(col);
   }
 }
 

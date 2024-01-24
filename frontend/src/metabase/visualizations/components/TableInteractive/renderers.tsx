@@ -96,6 +96,14 @@ export const badgeRenderer = (row: Row) => {
     gmail: ["#84cc16", "#F5FFE5"],
     hotmail: ["#f59e0b", "#FFF7E9"],
     yahoo: ["#6366f1", "#D7D8FF"],
+    average: ["#f59e0b", "#FFF7E9"],
+    good: ["#22c55e", "#F5FFE5"],
+    poor: ["#ef4444", "#FEE2E2"],
+    null: ["#ddd", "transparent"],
+    facebook: ["#fff", "#0668E1"],
+    twitter: ["#fff", "#1DA1F2"],
+    invite: ["#fff", "#F59E0B"],
+    google: ["#fff", "#DB4437"],
   };
 
   const colorGetter = val => {
@@ -127,8 +135,13 @@ export const badgeRenderer = (row: Row) => {
 
 export const emailRenderer = (row: Row) => {
   return (
-    <div>
-      <Icon name="mail" size={12} className="mr1" style={{ opacity: 0.6 }} />
+    <div className="flex align-center">
+      <Icon
+        name="mail"
+        size={12}
+        className="flex-no-shrink"
+        style={{ opacity: 0.6, marginRight: 4 }}
+      />
       {String(getVal(row))}
     </div>
   );
@@ -198,12 +211,12 @@ export const booleanRenderer = (row: Row) => {
 
 export const dateRenderer = (row: Row) => {
   return (
-    <div>
+    <div className="flex align-center">
       <Icon
         name="calendar"
         size={12}
-        className="mr1"
-        style={{ opacity: 0.6 }}
+        className="flex-no-shrink"
+        style={{ opacity: 0.6, marginRight: 4 }}
       />
       {new Date(getVal(row)).toLocaleString("en")}
     </div>

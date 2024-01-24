@@ -55,3 +55,29 @@ th {
 .ComparisonTable td {
   border-bottom: 1px solid var(--color-border);
 }
+
+@layer rdg {
+  .rdg {
+    font-size: 12px;
+  }
+}
+
+.ListGrid {
+  @layer rdg {
+    .rdg {
+      border: none;
+    }
+    .rdg-cell {
+      padding: 0 8px;
+      border: none !important;
+      font-size: 12px;
+    }
+    .rdg-header-row {
+      border-radius: 4px;
+    }
+
+    .rdg-header-row .rdg-cell {
+      font-size: 12px;
+    }
+  }
+}

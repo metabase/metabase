@@ -25,6 +25,7 @@ import {
 
 const DEFAULT_ORDER = [
   "table",
+  "list",
   "bar",
   "line",
   "pie",

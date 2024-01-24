@@ -5,6 +5,7 @@ import {
 
 import ActionViz from "metabase/actions/components/ActionViz";
 
+import { List } from "./visualizations/List";
 import { Scalar } from "./visualizations/Scalar";
 import { SmartScalar } from "./visualizations/SmartScalar";
 import Progress from "./visualizations/Progress";
@@ -48,5 +49,6 @@ export default function () {
   registerVisualization(PivotTable);
   registerVisualization(ActionViz);
   registerVisualization(Heading);
+  registerVisualization(List);
   setDefaultVisualization(Table);
 }
