@@ -1,6 +1,6 @@
 import type { StyleHTMLAttributes } from "react";
-import { useState, useRef } from "react";
-import { useMount, useUnmount } from "react-use";
+import { useState, useRef, useEffect } from "react";
+import { useMount, usePrevious, useUnmount } from "react-use";
 
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
@@ -15,8 +15,6 @@ import { ListField } from "metabase/components/ListField";
 import ValueComponent from "metabase/components/Value";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import AutoExpanding from "metabase/hoc/AutoExpanding";
 
 import { addRemappings } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
@@ -42,8 +40,8 @@ import { isNotNull } from "metabase/lib/types";
 import type Field from "metabase-lib/metadata/Field";
 import type Question from "metabase-lib/Question";
 
+import ExplicitSize from "../ExplicitSize";
 import type { ValuesMode, LoadingStateType } from "./types";
-
 import {
   canUseParameterEndpoints,
   isNumeric,
@@ -82,8 +80,8 @@ export interface IFieldValuesWidgetProps {
   containerWidth?: number | string;
   maxWidth?: number;
   minWidth?: number;
+  width?: number;
 
-  expand?: boolean;
   disableList?: boolean;
   disableSearch?: boolean;
   disablePKRemappingForSearch?: boolean;
@@ -120,7 +118,7 @@ export function FieldValuesWidgetInner({
   containerWidth,
   maxWidth = 500,
   minWidth,
-  expand,
+  width,
   disableList = false,
   disableSearch = false,
   disablePKRemappingForSearch,
@@ -153,13 +151,26 @@ export function FieldValuesWidgetInner({
       disablePKRemappingForSearch,
     }),
   );
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const dispatch = useDispatch();
+
+  const previousWidth = usePrevious(width);
 
   useMount(() => {
     if (shouldList({ parameter, fields, disableSearch })) {
       fetchValues();
     }
   });
+
+  useEffect(() => {
+    if (
+      typeof width === "number" &&
+      typeof previousWidth === "number" &&
+      width > previousWidth
+    ) {
+      setIsExpanded(true);
+    }
+  }, [width, previousWidth]);
 
   const _cancel = useRef<null | (() => void)>(null);
 
@@ -432,7 +443,7 @@ export function FieldValuesWidgetInner({
       <div
         data-testid="field-values-widget"
         style={{
-          width: expand ? maxWidth : containerWidth,
+          width: isExpanded ? maxWidth : containerWidth,
           minWidth: minWidth,
           maxWidth: maxWidth,
         }}
@@ -498,7 +509,7 @@ export function FieldValuesWidgetInner({
   );
 }
 
-export const FieldValuesWidget = AutoExpanding(FieldValuesWidgetInner);
+export const FieldValuesWidget = ExplicitSize()(FieldValuesWidgetInner);
 
 const LoadingState = () => (
   <div className="flex layout-centered align-center" style={{ minHeight: 82 }}>
