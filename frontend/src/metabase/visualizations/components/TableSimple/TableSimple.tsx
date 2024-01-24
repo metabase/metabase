@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useCallback, useLayoutEffect, useMemo, useState, useRef } from "react";
 import { getIn } from "icepick";
 import _ from "underscore";
@@ -8,9 +7,19 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 import { isPositiveInteger } from "metabase/lib/number";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
+
+import type {
+  Card,
+  DatasetColumn,
+  DatasetData,
+  RowValue,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { ClickObject } from "metabase-lib";
 import { isID } from "metabase-lib/types/utils/isa";
 
-import TableCell from "./TableCell";
+import { TableCell } from "./TableCell";
 import TableFooter from "./TableFooter";
 import {
   Root,
@@ -21,11 +30,13 @@ import {
   SortIcon,
 } from "./TableSimple.styled";
 
-function getBoundingClientRectSafe(ref) {
+function getBoundingClientRectSafe(ref: {
+  current?: HTMLElement | null;
+}): Partial<DOMRect> {
   return ref.current?.getBoundingClientRect?.() ?? {};
 }
 
-function formatCellValueForSorting(value, column) {
+function formatCellValueForSorting(value: RowValue, column: DatasetColumn) {
   if (typeof value === "string") {
     if (isID(column) && isPositiveInteger(value)) {
       return parseInt(value, 10);
@@ -39,7 +50,23 @@ function formatCellValueForSorting(value, column) {
   return value;
 }
 
-function TableSimple({
+interface TableSimpleProps {
+  card: Card;
+  data: DatasetData;
+  series: Series;
+  settings: VisualizationSettings;
+  height: number;
+  isDashboard?: boolean;
+  isEditing?: boolean;
+  isPivoted: boolean;
+  className?: string;
+  getColumnTitle: (colIndex: number) => string;
+  getExtraDataForClick: (clickObject: ClickObject) => any;
+  onVisualizationClick?: (clickObject: ClickObject) => void;
+  visualizationIsClickable?: (clickObject: ClickObject) => boolean;
+}
+
+function TableSimpleInner({
   card,
   data,
   series,
@@ -51,7 +78,7 @@ function TableSimple({
   visualizationIsClickable,
   getColumnTitle,
   getExtraDataForClick,
-}) {
+}: TableSimpleProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(1);
   const [sortColumn, setSortColumn] = useState(null);
@@ -62,7 +89,7 @@ function TableSimple({
   const firstRowRef = useRef(null);
 
   useLayoutEffect(() => {
-    const { height: headerHeight } = getBoundingClientRectSafe(headerRef);
+    const { height: headerHeight = 0 } = getBoundingClientRectSafe(headerRef);
     const { height: footerHeight = 0 } = getBoundingClientRectSafe(footerRef);
     const { height: rowHeight = 0 } = getBoundingClientRectSafe(firstRowRef);
     const currentPageSize = Math.floor(
@@ -87,10 +114,10 @@ function TableSimple({
 
   const checkIsVisualizationClickable = useCallback(
     clickedItem => {
-      return (
+      return Boolean(
         onVisualizationClick &&
-        visualizationIsClickable &&
-        visualizationIsClickable(clickedItem)
+          visualizationIsClickable &&
+          visualizationIsClickable(clickedItem),
       );
     },
     [onVisualizationClick, visualizationIsClickable],
@@ -217,7 +244,7 @@ function TableSimple({
   );
 }
 
-export default ExplicitSize({
+export const TableSimple = ExplicitSize<TableSimpleProps>({
   refreshMode: props =>
     props.isDashboard && !props.isEditing ? "debounceLeading" : "throttle",
-})(TableSimple);
+})(TableSimpleInner);

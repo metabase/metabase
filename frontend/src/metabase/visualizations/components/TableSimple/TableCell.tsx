@@ -1,9 +1,9 @@
-/* eslint-disable react/prop-types */
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, isValidElement } from "react";
 import cx from "classnames";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
@@ -11,10 +11,30 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
+
+import type {
+  DatasetColumn,
+  DatasetData,
+  RowValue,
+  RowValues,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { ClickObject } from "metabase-lib";
 import { isID, isFK } from "metabase-lib/types/utils/isa";
 
 import MiniBar from "../MiniBar";
 import { CellRoot, CellContent } from "./TableCell.styled";
+
+type GetCellDataOpts = {
+  value: RowValue;
+  clicked: ClickObject;
+  extraData: Record<string, unknown>;
+  cols: DatasetColumn[];
+  rows: RowValues[];
+  columnIndex: number;
+  columnSettings: OptionsType;
+};
 
 function getCellData({
   value,
@@ -24,7 +44,7 @@ function getCellData({
   rows,
   columnIndex,
   columnSettings,
-}) {
+}: GetCellDataOpts) {
   if (value == null) {
     return "-";
   }
@@ -46,7 +66,25 @@ function getCellData({
   });
 }
 
-function TableCell({
+interface TableCellProps {
+  value: RowValue;
+  data: DatasetData;
+  series: Series;
+  settings: VisualizationSettings;
+  rowIndex: number;
+  columnIndex: number;
+  isPivoted: boolean;
+  getCellBackgroundColor: (
+    value: RowValue,
+    rowIndex: number,
+    columnName: string,
+  ) => string | undefined;
+  getExtraDataForClick: (clickObject: ClickObject) => any;
+  checkIsVisualizationClickable: (clickObject: ClickObject) => boolean;
+  onVisualizationClick?: (clickObject: ClickObject) => void;
+}
+
+export function TableCell({
   value,
   data,
   series,
@@ -58,7 +96,7 @@ function TableCell({
   getExtraDataForClick,
   checkIsVisualizationClickable,
   onVisualizationClick,
-}) {
+}: TableCellProps) {
   const { rows, cols } = data;
   const column = cols[columnIndex];
   const columnSettings = settings.column(column);
@@ -66,6 +104,7 @@ function TableCell({
   const clickedRowData = useMemo(
     () =>
       getTableClickedObjectRowData(
+        // @ts-expect-error -- visualizations/lib/table should be typed
         series,
         rowIndex,
         columnIndex,
@@ -107,13 +146,13 @@ function TableCell({
     [value, clicked, extraData, cols, rows, columnIndex, columnSettings],
   );
 
-  const isLink = cellData && cellData.type === ExternalLink;
+  const isLink = isValidElement(cellData) && cellData.type === ExternalLink;
   const isClickable = !isLink;
 
   const onClick = useCallback(
     e => {
       if (checkIsVisualizationClickable(clicked)) {
-        onVisualizationClick({
+        onVisualizationClick?.({
           ...clicked,
           element: e.currentTarget,
           extraData,
@@ -155,5 +194,3 @@ function TableCell({
     </CellRoot>
   );
 }
-
-export default TableCell;
