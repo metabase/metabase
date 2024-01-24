@@ -63,7 +63,6 @@
           :pdeletable pdeletable
           :poff       poff}))))
 
-
 (defmacro with-temp-persist-models
   "Creates a temp database with three models, each with different persisted info states: creating, deletable, and off."
   {:style/indent 1}

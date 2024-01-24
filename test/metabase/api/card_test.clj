@@ -337,7 +337,7 @@
           :id           card-1-id
           :user-id      user-id
           :is-creation? true
-          :object       {:id card-1-id :type "question"}}))
+          :object       {:id card-1-id}}))
 
       (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
         (revision/push-revision!
@@ -345,7 +345,7 @@
           :id           card-2-id
           :user-id      user-id
           :is-creation? true
-          :object       {:id card-2-id :type "question"}}))
+          :object       {:id card-2-id}}))
       (let [results (m/index-by :id (mt/user-http-request :rasta :get 200 "card"))]
         (is (=? {:name           "Card 1"
                  :last-edit-info {:id         (mt/user->id :rasta)
@@ -1004,25 +1004,29 @@
            (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
 
 (deftest update-card-with-type-and-dataset-test
-  (testing "can toggle model using dataset"
-    (mt/with-temp [:model/Card card {}]
-      (is (=? {:dataset true
-               :type    "model"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:dataset true})))
-
-      (is (=? {:dataset false
-               :type    "question"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:dataset false})))))
-
-  (testing "can toggle model using type"
-    (mt/with-temp [:model/Card card {}]
+  (testing "can toggle model using only type"
+    (mt/with-temp [:model/Card card {:dataset_query {}}]
       (is (=? {:dataset true
                :type    "model"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
 
       (is (=? {:dataset false
                :type    "question"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"}))))))
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))
+
+  (testing "can toggle model using both type and dataset"
+    (mt/with-temp [:model/Card card {:dataset_query {}}]
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model" :dataset true})))
+
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question" :dataset false})))
+
+      (testing "but error if type and dataset doesn't match"
+        (is (= "Dataset and type doesn't match"
+                (mt/user-http-request :crowberto :put 400 (str "card/" (:id card)) {:type "question" :dataset true})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |

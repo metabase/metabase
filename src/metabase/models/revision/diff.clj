@@ -76,8 +76,11 @@
     [:dataset_query _ _]
     (deferred-tru "modified the query")
 
-    [:type old new]
-    (deferred-tru "type changed from {0} to {1}" (name old) (name new))
+    [:dataset false true]
+    (deferred-tru "turned this into a model")
+
+    [:dataset true false]
+    (deferred-tru "changed this from a model to a saved question")
 
     [:display _ _]
     (deferred-tru "changed the display from {0} to {1}" (name v1) (name v2))

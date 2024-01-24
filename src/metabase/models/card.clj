@@ -102,12 +102,19 @@
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Card :id pk))))
 
-(def card-types #{"model" "question" #_:metric})
+(def ^{:private true
+       :doc     "All acceptable card types.
+                Previously (< 49), we only have 2 types of card: question and model, this was differentiated using
+                the boolean `dataset`. Soon we'll have more card types (e.g: metric) and we can't no longer use a boolean
+                column to differentiate between all types. So we've add a new column `type` for this purpose.
 
-;; we want the :keyword as part of schema so it'll be automatically transformed to keyword in API
+                Migrating all the code to use `report_card.dataset` is quite an effort, so we decided we'll migrate it gradually.
+                In the mean time we'll have both `type` and `dataset` columns."} card-types
+  #{"model" "question" #_:metric})
+
 (def CardTypes
+  "Malli schema for acceptable card types."
   (into [:enum] card-types))
-
 
 (mu/defn ^:private is-type? :- :boolean
   "Check if card is a model?"
@@ -180,7 +187,7 @@
   ([_model _id instance]
    (cond-> (apply dissoc instance excluded-columns-for-card-revision)
      ;; datasets should preserve edits to metadata
-     (not (is-model? instance))
+     (not (:dataset instance))
      (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -331,21 +338,27 @@
                            :field-filter-database field-db-id})))))))
 
 (defn- ensure-type-and-dataset-are-aligned
+  "We're in the process of migrating from using `report_card.dataset` to `report_card.type`.
+  In the future we'll drop `dataset` and only use `type`. But for now we need to make sure that both keys are aligned
+  when dealing with cards.
+  - If both keys are present, we make sure `dataset` is true if `type` is `model` else false.
+    This will make a different when we have `metric` type since a boolean can't represent tri-state
+  - If only one key is present, we'll assoc the correct value for the other key."
   [{:keys [type dataset] :as card}]
   (cond
    ;; if none of the 2 keys presents, do nothing
    (and (nil? type) (nil? dataset))
    card
 
-   ;; if both type and dataset presents, we prefer dataset since it's used in tests
+   ;; if both type and dataset presents, we prioritize type
    (and (some? type) (some? dataset))
-   (assoc card :type (if dataset "model" "question"))
+   (assoc card :dataset (= type "model"))
 
-   ;; if only types exists, we make sure dataset follows
+   ;; if only type presents, make sure dataset follows
    (some? type)
    (assoc card :dataset (= type "model"))
 
-   ;; if dataset presents, make sure type follows
+   ;; if only dataset presents, make sure type follows
    (some? dataset)
    (assoc card :type (if dataset
                        "model"
@@ -365,8 +378,7 @@
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
-                  :parameter_mappings []
-                  :type               "question"}
+                  :parameter_mappings []}
         card     (ensure-type-and-dataset-are-aligned (merge defaults card))]
     (u/prog1 card
       ;; make sure this Card doesn't have circular source query references
@@ -648,9 +660,8 @@ saved later when it is ready."
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                      :creator_id (:id creator)
-                                     :type       (or (:type card-data) "question")
-                                     :dataset    (or (boolean (:dataset card-data))
-                                                     (and (:type card-data) (is-model? card-data)))
+                                     :dataset    (or (and (:type card-data) (is-model? card-data))
+                                                     (boolean (:dataset card-data)))
                                      :parameters (or parameters [])
                                      :parameter_mappings (or parameter_mappings []))
          result-metadata-chan (result-metadata-async {:query    dataset_query

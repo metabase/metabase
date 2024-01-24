@@ -92,12 +92,12 @@
               {:name "Spots by State", :private true})))))
 
   (testing "Check that several changes are handled nicely"
-    (is (= (str "type changed from question to model, made it private and renamed it from \"Tips by State\" to \"Spots by State\".")
+    (is (= (str "turned this into a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\".")
            (u/build-sentence
              ((get-method revision/diff-strings :default)
               Card
-              {:name "Tips by State", :private false, :type "question"}
-              {:name "Spots by State", :private true, :type "model"}))))))
+              {:name "Tips by State", :private false, :dataset false}
+              {:name "Spots by State", :private true, :dataset true}))))))
 
 (deftest ^:parallel revision-contains-changes-that-has-havent-been-specced-test
   (testing "When revision object contains key that we don't know how to generate diff-string
@@ -416,24 +416,24 @@
            {:description          "changed the display from table to bar and turned this into a model."
             :has_multiple_changes true}
            (#'revision/revision-description-info model
-                                                 {:object       {:type    "question"
+                                                 {:object       {:dataset false
                                                                  :display :table}
                                                   :is_reversion false
                                                   :is_creation  false}
-                                                 {:object       {:type    "model"
+                                                 {:object       {:dataset true
                                                                  :display :bar}
                                                   :is_reversion false
                                                   :is_creation  false}))
 
          (testing "changes contains unspecified keys will not be mentioned"
-           (is (= {:description          "type changed from question to model."
+           (is (= {:description          "turned this into a model."
                    :has_multiple_changes false}
                   (#'revision/revision-description-info model
-                                                        {:object       {:type        "question"
+                                                        {:object       {:dataset     false
                                                                         :unknown_key false}
                                                          :is_reversion false
                                                          :is_creation  false}
-                                                        {:object       {:type        "model"
+                                                        {:object       {:dataset     true
                                                                         :unknown_key false}
                                                          :is_reversion false
                                                          :is_creation  false})))))))))

@@ -385,8 +385,12 @@
 
 (defn- check-card-type-and-dataset
   [{:keys [dataset type]}]
-  (when (and (some? type) (true? dataset))
-    (api/check (= type "model")
+  ;; if dataset is true then type must be model
+  ;; if dataset is false, then type can't be model
+  (when (and (some? type) (some? dataset))
+    (api/check (if (true? dataset)
+                 (= "model" type)
+                 (not= "model" type))
       [400 (deferred-tru "Dataset and type doesn''t match")])))
 
 (api/defendpoint POST "/"

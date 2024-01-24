@@ -5230,7 +5230,6 @@ databaseChangeLog:
               SET type = 'model'
               WHERE dataset is true
       rollback: # no need, the column will be dropped
-      # TODO: we might need a revision migration here
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
