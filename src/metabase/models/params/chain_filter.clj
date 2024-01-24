@@ -74,12 +74,12 @@
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
-   [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -516,8 +516,14 @@
   [field-id]
   (and
     field-id
-    (mi/can-read? Field field-id)
     (field-values/field-should-have-field-values? field-id)))
+
+(defn- check-field-value-query-permissions!
+  "Check query permissions against the chain-filter-mbql-query (private #196)"
+  [field-id constraints options]
+  (->> (chain-filter-mbql-query field-id constraints options)
+       qp/preprocess
+       qp.perms/check-query-permissions*))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
@@ -562,7 +568,9 @@
      (-> (unremapped-chain-filter field-id constraints options)
          (update :values add-human-readable-values v->human-readable))
 
-     (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
+     (and (use-cached-field-values? field-id)
+          (nil? @the-remapped-field-id)
+          (check-field-value-query-permissions! field-id constraints options))
      (cached-field-values field-id constraints options)
 
      ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;

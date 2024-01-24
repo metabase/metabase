@@ -2814,7 +2814,7 @@
           ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
-          (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
+          (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
@@ -2829,7 +2829,17 @@
                   :has_more_values false}
                  (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                       (mt/user-http-request :rasta :get 200)
-                      (chain-filter-test/take-n-values 3)))))))))
+                      (chain-filter-test/take-n-values 3)))))))
+
+    (testing "block data perms should not allow access to field values"
+      (mt/with-temp-copy-of-db
+        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                          {:schemas :block})
+          (is (= "You don't have permissions to do that."
+                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                      (mt/user-http-request :rasta :get 403)))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
@@ -4053,17 +4063,24 @@
   (testing "Users without permissions should not see all options in a dashboard filter (#196)"
     (mt/with-temp-copy-of-db
       (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-        (testing "Return values if permitted"
+        (testing "Return values with access"
           (is (=? {:values (comp #(contains? % ["African"]) set)}
                   (mt/user-http-request :rasta :get 200
                                         (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
-        (testing "Don't return `param_values` for Fields for which the current User has no data perms."
+        (testing "Return values with self-service (#26874)"
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (is (=? {:values (comp #(contains? % ["African"]) set)}
+                  (mt/user-http-request :rasta :get 200
+                                        (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+        (testing "Return values for admin"
+          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                          {:schemas :block})
+          (is (=? {:values (comp #(contains? % ["African"]) set)}
+                  (mt/user-http-request :crowberto :get 200
+                                        (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+        (testing "Don't return with block perms."
           (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
                                           {:schemas :block})
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403
-                                       (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
-        (testing "Return values for admin"
-          (is (=? {:values (comp #(contains? % ["African"]) set)}
-                  (mt/user-http-request :crowberto :get 200
-                                        (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))
+                                       (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))
