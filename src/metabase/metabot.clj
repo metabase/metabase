@@ -247,10 +247,11 @@
             :content "You are a helpful assistant that summarizes dashboards I am generating for my customers by
              filling in the missing \"description\" and \"questions\" keys in a json fragment."}
            {:role    "assistant"
-            :content "The \"description\" key is a user friendly description of the dashboard, generally 1-3 paragraphs."}
+            :content "The \"description\" key is a user friendly description of the dashboard containing up to
+            two sentences. This description may not be more than 256 characters."}
            {:role    "assistant"
-            :content "The \"questions\" key contains a markdown-formatted numbered list of questions this dashboard
-            might help a user answer. Each question should be on its own line."}
+            :content "The \"questions\" key contains a markdown-formatted hyphenated list of up to 5 questions this
+            dashboard might help a user answer. Each question should be on its own line."}
            {:role    "assistant"
             :content "The parts you replace are \"%%FILL_THIS_DESCRIPTION_IN%%\" and \"%%FILL_THESE_QUESTIONS_IN%%\"."}
            {:role    "assistant"
