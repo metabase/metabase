@@ -86,6 +86,14 @@ const _TabButton = forwardRef(function TabButton<T>(
   const showMenu =
     showMenuProp && menuItems !== undefined && menuItems.length > 0;
 
+  const handleRightClick: MouseEventHandler<HTMLDivElement> = useCallback(
+    event => {
+      event.preventDefault();
+      setIsMenuOpen(true);
+    },
+    [],
+  );
+
   const handleButtonClick: MouseEventHandler<HTMLDivElement> = useCallback(
     event => {
       if (
@@ -116,6 +124,7 @@ const _TabButton = forwardRef(function TabButton<T>(
     <TabButtonRoot
       {...props}
       onClick={handleButtonClick}
+      onContextMenu={handleRightClick}
       isSelected={isSelected}
       disabled={disabled}
       role="tab"
