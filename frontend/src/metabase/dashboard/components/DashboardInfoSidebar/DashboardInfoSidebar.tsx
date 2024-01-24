@@ -54,7 +54,7 @@ export function DashboardInfoSidebar({
       });
 
       return response?.summary?.description;
-    }, []);
+    }, [dashboard]);
 
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
@@ -103,7 +103,10 @@ export function DashboardInfoSidebar({
           key={`dashboard-description-${dashboard.description}`}
         />
         {loading && <div>Thinking ✨</div>}
-        <Button onClick={fetchSuggestion}>{t`Suggest Description`}</Button>
+        <Button
+          variant="filled"
+          onClick={fetchSuggestion}
+        >{t`Suggest Description`}</Button>
       </ContentSection>
 
       <ContentSection>
