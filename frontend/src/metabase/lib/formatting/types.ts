@@ -1,4 +1,11 @@
-export interface OptionsType {
+export interface TimeOnlyOptions {
+  local?: boolean;
+  time_enabled?: "minutes" | "milliseconds" | "seconds" | null;
+  time_format?: string;
+  time_style?: string;
+}
+
+export interface OptionsType extends TimeOnlyOptions {
   click_behavior?: any;
   clicked?: any;
   column?: any;
@@ -12,7 +19,6 @@ export interface OptionsType {
   jsx?: boolean;
   link_text?: string;
   link_url?: string;
-  local?: boolean;
   majorWidth?: number;
   markdown_template?: any;
   maximumFractionDigits?: number;
@@ -23,9 +29,6 @@ export interface OptionsType {
   remap?: any;
   rich?: boolean;
   suffix?: string;
-  time_enabled?: "minutes" | "milliseconds" | "seconds" | null;
-  time_format?: string;
-  time_style?: string;
   type?: string;
   view_as?: string | null;
   weekday_enabled?: boolean;
