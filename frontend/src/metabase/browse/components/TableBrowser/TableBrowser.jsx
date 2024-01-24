@@ -19,8 +19,8 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/urls";
-import BrowseHeader from "../BrowseHeader";
 import { RELOAD_INTERVAL } from "../../constants";
+import { BrowseHeader } from "../BrowseHeader";
 import {
   TableActionLink,
   TableCard,
@@ -53,7 +53,7 @@ const TableBrowser = ({
     <div>
       <BrowseHeader
         crumbs={[
-          { title: t`Our data`, to: "/browse" },
+          { title: t`Our data`, to: "/browse/databases" },
           getDatabaseCrumbs(dbId),
           showSchemaInHeader && { title: schemaName },
         ]}

@@ -52,7 +52,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // We must enter a value for a locked parameter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview locked parameters")
+      cy.findByText("Previewing locked parameters")
         .parent()
         .within(() => {
           cy.findByText("Total").click();
@@ -292,7 +292,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
 });
 
 function setParameter(name, filter) {
-  cy.findByLabelText("Enable or lock parameters")
+  cy.findByLabelText("Configuring parameters")
     .parent()
     .within(() => {
       cy.findByText(name).siblings("a").click();
@@ -304,7 +304,7 @@ function setParameter(name, filter) {
 function publishChanges(callback) {
   cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
-  cy.button("Publish changes").click();
+  cy.button(/^(Publish|Publish changes)$/).click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.

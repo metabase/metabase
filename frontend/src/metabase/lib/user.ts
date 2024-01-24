@@ -1,11 +1,5 @@
-export function getFullName(user: NamedUser): string | null {
-  const firstName = user.first_name?.trim() || "";
-  const lastName = user.last_name?.trim() || "";
-  return [firstName, lastName].join(" ").trim() || null;
-}
+import type { User } from "metabase-types/api";
 
-export interface NamedUser {
-  first_name?: string | null;
-  last_name?: string | null;
-  email?: string;
+export function getFullName(user: User): string | null {
+  return [user.first_name, user.last_name].join(" ").trim() || null;
 }
