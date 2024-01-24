@@ -74,6 +74,7 @@
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
+   [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
    [metabase.models.params.field-values :as params.field-values]
@@ -515,6 +516,7 @@
   [field-id]
   (and
     field-id
+    (mi/can-read? Field field-id)
     (field-values/field-should-have-field-values? field-id)))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
