@@ -17,6 +17,8 @@ import { Box, Group, Icon, Text, Title, Tooltip } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { sortModels } from "metabase/browse/utils";
 import NoResults from "assets/img/no_results.svg";
+import { useSelector } from "metabase/lib/redux";
+import { getLocale } from "metabase/setup/selectors";
 import {
   CenteredEmptyState,
   CollectionHeaderContainer,
@@ -30,6 +32,8 @@ import {
 dayjs.extend(updateLocale);
 dayjs.extend(relativeTime);
 
+// TODO: Move to separate file, along with LastEdited
+// Move localization to separate PR
 const giveContext = (unit: string) =>
   c(
     `Abbreviation for "{0} ${unit}(s)". Keep abbreviations distinct from one another.`,
@@ -87,14 +91,25 @@ dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
 
 const emptyArray: SearchResult[] = [];
 
+export const groupModels = (
+  models: SearchResult[],
+  locale: string | undefined,
+) => {
+  const groupedModels = _.groupBy(models, model => model.collection.id);
+  let collections = models.map(model => model.collection);
+  collections = _.uniq(collections, collection => collection.id);
+  collections.sort((a, b) => a.name.localeCompare(b.name, locale));
+  return { groupedModels, collections };
+};
+
 export const BrowseModels = ({
   modelsResult,
 }: {
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
 }) => {
   const { data: models = emptyArray, error, isLoading } = modelsResult;
-
-  const groupedModels = _.groupBy(models, model => model.collection?.id);
+  const locale = useSelector(getLocale);
+  const { collections, groupedModels } = groupModels(models, locale?.code);
 
   if (error || isLoading) {
     return (
@@ -109,10 +124,10 @@ export const BrowseModels = ({
   if (models.length) {
     return (
       <GridContainer role="grid">
-        {Object.values(groupedModels).map((models, index) => (
+        {collections.map((collection, index) => (
           <ModelGroup
             index={index}
-            models={models}
+            models={groupedModels[collection.id]}
             key={`modelgroup-${index}`}
           />
         ))}

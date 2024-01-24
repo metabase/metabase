@@ -91,8 +91,6 @@ import {
   IsNotAuthenticated,
 } from "./route-guards";
 import { getApplicationName } from "./selectors/whitelabel";
-import { BrowseModels } from "./browse/containers/BrowseModels";
-import { BrowseDatabases } from "./browse/containers/BrowseData";
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
@@ -217,14 +215,31 @@ export const getRoutes = store => {
             <Route path="metabot" component={QueryBuilder} />
           </Route>
 
-          <Route path="browse" component={BrowseApp}>
+          <Route path="browse">
             <IndexRedirect to="/browse/models" />
-            <Route path="models" component={BrowseModels} />
-            <Route path="databases" component={BrowseDatabases} />
-            <Route path="databases/:slug" component={SchemaBrowser} />
+            {/* See if consolidating this into a single route with a :tab parameter makes sense.
+            For invalid tabs like /browse/asdf, redirect to /browse/models
+            */}
+            <Route path="models" component={() => <BrowseApp tab="models" />} />
+            <Route
+              path="databases"
+              component={() => <BrowseApp tab="databases" />}
+            />
+            <Route
+              path="databases/:slug"
+              component={({ params }) => (
+                <BrowseApp tab="databases">
+                  <SchemaBrowser params={params} />
+                </BrowseApp>
+              )}
+            />
             <Route
               path="databases/:dbId/schema/:schemaName"
-              component={TableBrowser}
+              component={({ params }) => (
+                <BrowseApp tab="databases">
+                  <TableBrowser params={params} />
+                </BrowseApp>
+              )}
             />
 
             <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />

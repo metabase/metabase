@@ -1,23 +1,23 @@
-import fetchMock from "fetch-mock";
-import { createMockDatabase } from "metabase-types/api/mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import type { Collection, SearchResult } from "metabase-types/api";
 import { createMockSetupState } from "metabase-types/store/mocks";
-import { BrowseApp } from "../components/BrowseApp";
-import { groupModels } from "./BrowseModels";
+import { groupModels, BrowseModels } from "../containers/BrowseModels";
 
-const renderBrowseApp = () => {
-  return renderWithProviders(<BrowseApp />, {
-    storeInitialState: {
-      setup: createMockSetupState({ locale: { name: "English", code: "en" } }),
+const renderBrowseModels = (modelCount: number) => {
+  const models = mockModels.slice(0, modelCount);
+  return renderWithProviders(
+    <BrowseModels
+      modelsResult={{ data: models, isLoading: false, error: false }}
+    />,
+    {
+      storeInitialState: {
+        setup: createMockSetupState({
+          locale: { name: "English", code: "en" },
+        }),
+      },
     },
-  });
+  );
 };
-
-const databases = [...Array(100)].map((_, index) =>
-  createMockDatabase({ id: index, name: `Database ${index}` }),
-);
 
 const collectionNames = [
   "Collection A",
@@ -29,7 +29,7 @@ const collectionNames = [
   "Collection Ö",
 ];
 
-const models = [...Array(21)].map((_, index) => {
+const mockModels = [...Array(21)].map((_, index) => {
   // Put 3 models in each collection
   const collection: Partial<Collection> & { id: number } = {
     id: Math.floor(index / 3),
@@ -44,87 +44,19 @@ const models = [...Array(21)].map((_, index) => {
   } as SearchResult;
 });
 
-const setDatabaseCount = (count: number) => {
-  setupDatabasesEndpoints(
-    databases.slice(0, count),
-    {
-      hasSavedQuestions: false,
-    },
-    {},
-  );
-};
-
-const setModelCount = (count: number) => {
-  fetchMock.get(
-    {
-      url: "path:/api/search",
-      query: {
-        models: ["dataset"],
-        filter_items_in_personal_collection: "exclude",
-      },
-    },
-    () => ({
-      body: { data: models.slice(0, count) },
-    }),
-  );
-};
-
-const setup = ({
-  models,
-  databases,
-}: {
-  models: number;
-  databases: number;
-}) => {
-  setModelCount(models);
-  setDatabaseCount(databases);
-  renderBrowseApp();
-};
-
-// TODO: Move to BrowseApp.unit...
-describe("BrowseApp", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-  it("has the models tab selected by default", async () => {
-    setup({ models: 1, databases: 0 });
-    expect(
-      await screen.findByRole("tab", { name: "Models", selected: true }),
-    ).toBeInTheDocument();
-  });
-  it("displays models in the models tab", async () => {
-    const modelCount = 10;
-    setup({ models: modelCount, databases: 0 });
-    // Exercise the tabs a little
-    (await screen.findByRole("tab", { name: "Databases" })).click();
-    (await screen.findByRole("tab", { name: "Models" })).click();
-    for (let i = 0; i < modelCount; i++) {
+describe("BrowseModels", () => {
+  it("displays models", async () => {
+    renderBrowseModels(10);
+    for (let i = 0; i < 10; i++) {
       expect(await screen.findByText(`Model ${i}`)).toBeInTheDocument();
     }
   });
-  it("displays databases in the databases tab", async () => {
-    const databaseCount = 10;
-    setup({ models: 0, databases: databaseCount });
-    (await screen.findByRole("tab", { name: "Databases" })).click();
-    for (let i = 0; i < databaseCount; i++) {
-      expect(await screen.findByText(`Database ${i}`)).toBeInTheDocument();
-    }
-  });
   it("displays a 'no models' message in the Models tab when no models exist", async () => {
-    setup({ models: 0, databases: 10 });
-    (await screen.findByRole("tab", { name: "Databases" })).click();
-    (await screen.findByRole("tab", { name: "Models" })).click();
+    renderBrowseModels(0);
     expect(await screen.findByText("No models here yet")).toBeInTheDocument();
   });
-  it("displays a 'no databases' message in the Databases tab when no databases exist", async () => {
-    setup({ models: 10, databases: 0 });
-    (await screen.findByRole("tab", { name: "Databases" })).click();
-    expect(
-      await screen.findByText("No databases here yet"),
-    ).toBeInTheDocument();
-  });
   it("displays models, organized by parent collection", async () => {
-    setup({ models: 10, databases: 0 });
+    renderBrowseModels(10);
     // Three <a> tags representing models have aria-labelledby="collection-1 model-$id",
     // and "collection-1" is the id of an element containing text 'Collection 1',
     // so the following line finds those <a> tags.
@@ -134,12 +66,12 @@ describe("BrowseApp", () => {
     expect(modelsInCollection2).toHaveLength(3);
   });
   it("displays last edited information about models", async () => {
-    setup({ models: 3, databases: 0 });
+    renderBrowseModels(3);
     await screen.findByText("Model 0");
     expect(await screen.findAllByText(/[0-9]+yr/)).toHaveLength(3);
   });
   it("has a function that groups models by collection", () => {
-    const { groupedModels } = groupModels(models, "en");
+    const { groupedModels } = groupModels(mockModels, "en");
     // Check that models are grouped
     expect(groupedModels[0]).toHaveLength(3);
     expect(groupedModels[1]).toHaveLength(3);
@@ -150,7 +82,7 @@ describe("BrowseApp", () => {
     expect(groupedModels[6]).toHaveLength(3);
   });
   it("has a function that sorts collection names correctly in English", () => {
-    const { collections } = groupModels(models, "en");
+    const { collections } = groupModels(mockModels, "en");
     // Check that the collections are alphabetized according to the locale
     expect(collections).toEqual([
       { id: 0, name: "Collection A" },
@@ -163,7 +95,7 @@ describe("BrowseApp", () => {
     ]);
   });
   it("has a function that groups models by collection correctly in Swedish", () => {
-    const { collections } = groupModels(models, "sv-SV");
+    const { collections } = groupModels(mockModels, "sv-SV");
     expect(collections).toEqual([
       { id: 0, name: "Collection A" },
       { id: 1, name: "Collection B" },
