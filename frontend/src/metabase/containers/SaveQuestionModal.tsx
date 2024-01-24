@@ -4,6 +4,7 @@ import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { Group } from "metabase/ui";
 import { apiGetCardSummary } from "metabase/query_builder/actions";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import {
@@ -277,15 +278,28 @@ export const SaveQuestionModal = ({
                       }}
                     >
                       <div className="saveQuestionModalFields">
-                        {loading && <div>Thinking ✨</div>}
+                        <Group position="right">
+                          {loading && (
+                            <div>
+                              <span className="suggestionLoading3">✨</span>
+                              <span className="suggestionLoading2">✨</span>
+                              <span className="suggestionLoading">✨ </span>
+                              Metabot be Grooving
+                              <span className="suggestionLoading"> ✨</span>
+                              <span className="suggestionLoading2">✨</span>
+                              <span className="suggestionLoading3">✨</span>
+                            </div>
+                          )}
+                        </Group>
                         <FormInput
-                          autoFocus
+                          loading={loading}
                           name="name"
                           title={t`Name`}
                           placeholder={nameInputPlaceholder}
                         />
                         <FormTextArea
                           name="description"
+                          loading={loading}
                           title={t`Description`}
                           placeholder={t`It's optional but oh, so helpful`}
                         />

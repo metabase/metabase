@@ -17,3 +17,53 @@
   max-height: 0px;
   transition: max-height 500ms ease-out;
 }
+
+@keyframes blinking {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.1;
+  }
+}
+
+@keyframes blinking2 {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.1;
+  }
+}
+
+@keyframes blinking3 {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.1;
+  }
+}
+
+.suggestionLoading {
+  animation-name: blinking;
+  animation-duration: 0.9s;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.suggestionLoading2 {
+  animation-name: blinking;
+  animation-duration: 0.9s;
+  animation-delay: 0.3s;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.suggestionLoading3 {
+  animation-name: blinking;
+  animation-duration: 0.9s;
+  animation-delay: 0.6s;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
