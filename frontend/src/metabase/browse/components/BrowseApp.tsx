@@ -8,15 +8,15 @@ import {
 import type { SearchResult } from "metabase-types/api";
 import { useDispatch } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { BrowseDatabases, isValidBrowseTab } from "../containers/BrowseData";
+import { BrowseDatabases, isValidBrowseTab } from "./BrowseDatabases";
+import { BrowseModels } from "./BrowseModels";
 import {
+  BrowseAppRoot,
   BrowseContainer,
   BrowseDataHeader,
   BrowseTabs,
   BrowseTabsPanel,
-} from "../containers/BrowseData.styled";
-import { BrowseModels } from "../containers/BrowseModels";
-import { BrowseAppRoot } from "./BrowseApp.styled";
+} from "./BrowseApp.styled";
 
 export const BrowseApp = ({
   tab = "models",

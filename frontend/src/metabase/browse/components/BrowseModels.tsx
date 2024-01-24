@@ -24,10 +24,9 @@ import {
   CollectionHeaderContainer,
   CollectionHeaderLink,
   GridContainer,
-  LastEditedInfoSeparator,
   ModelCard,
   MultilineEllipsified,
-} from "./BrowseData.styled";
+} from "./BrowseModels.styled";
 
 dayjs.extend(updateLocale);
 dayjs.extend(relativeTime);
@@ -255,9 +254,7 @@ const LastEdited = ({
     <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
       <Text role="note" size="small">
         {lastEditorFullName}
-        {lastEditorFullName && howLongAgo && (
-          <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
-        )}
+        {lastEditorFullName && howLongAgo && <Text px=".4">•</Text>}
         {howLongAgo}
       </Text>
     </Tooltip>
