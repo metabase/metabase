@@ -5,11 +5,10 @@ import { t } from "ttag";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { Button, Switch } from "metabase/ui";
+import { Button, Group, Switch } from "metabase/ui";
 import { MetabotApi } from "metabase/services";
 
 import { Timeline } from "metabase/common/components/Timeline";
-import EditableText from "metabase/core/components/EditableText";
 
 import type { Dashboard } from "metabase-types/api";
 import { getUser } from "metabase/selectors/user";
@@ -28,6 +27,7 @@ import {
   HistoryHeader,
   ContentSection,
   DescriptionHeader,
+  StyledEditableText,
 } from "./DashboardInfoSidebar.styled";
 
 type DashboardAttributeType = string | number | null | boolean;
@@ -90,8 +90,9 @@ export function DashboardInfoSidebar({
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
-        <EditableText
+        <StyledEditableText
           initialValue={description || dashboard.description}
+          loading={loading}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
           isOptional
@@ -100,14 +101,24 @@ export function DashboardInfoSidebar({
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
         />
-        {!loading ? (
-          <Button
-            variant="filled"
-            onClick={fetchSuggestion}
-          >{t`Suggest Description`}</Button>
-        ) : (
-          <div>Thinking ✨</div>
-        )}
+        <Group mt="0.5rem" position="right">
+          {!loading ? (
+            <Button
+              variant="filled"
+              onClick={fetchSuggestion}
+            >{t`Suggest Description`}</Button>
+          ) : (
+            <div>
+              <span className="suggestionLoading3">✨</span>
+              <span className="suggestionLoading2">✨</span>
+              <span className="suggestionLoading">✨ </span>
+              Metabot be Grooving
+              <span className="suggestionLoading"> ✨</span>
+              <span className="suggestionLoading2">✨</span>
+              <span className="suggestionLoading3">✨</span>
+            </div>
+          )}
+        </Group>
       </ContentSection>
 
       <ContentSection>
