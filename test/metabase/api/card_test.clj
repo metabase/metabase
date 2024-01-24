@@ -72,6 +72,7 @@
    :collection_preview  true
    :dataset_query       {}
    :dataset             false
+   :type                "question"
    :description         nil
    :display             "scalar"
    :enable_embedding    false
@@ -336,7 +337,7 @@
           :id           card-1-id
           :user-id      user-id
           :is-creation? true
-          :object       {:id card-1-id}}))
+          :object       {:id card-1-id :type "question"}}))
 
       (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
         (revision/push-revision!
@@ -344,7 +345,7 @@
           :id           card-2-id
           :user-id      user-id
           :is-creation? true
-          :object       {:id card-2-id}}))
+          :object       {:id card-2-id :type "question"}}))
       (let [results (m/index-by :id (mt/user-http-request :rasta :get 200 "card"))]
         (is (=? {:name           "Card 1"
                  :last-edit-info {:id         (mt/user->id :rasta)
@@ -976,6 +977,52 @@
                          [:actual-perms   [:sequential perms.u/PathSchema]]
                          [:trace          [:sequential :any]]]
                         (create-card! :rasta 403)))))))))
+
+(deftest create-card-with-type-and-dataset-test
+  (mt/with-model-cleanup [:model/Card]
+    (testing "type and dataset must maches"
+      (is (= "Dataset and type doesn't match"
+             (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                      :dataset true
+                                                                      :type :question)))))
+
+    (testing "can create a model using dataset"
+      (is (=? {:dataset true
+               :type    "model"}
+           (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                    :dataset true)))))
+
+    (testing "can create a model using type"
+      (is (=? {:dataset true
+               :type    "model"}
+           (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                    :type :model)))))
+
+    (testing "default is a question"
+      (is (=? {:dataset false
+               :type    "question"}
+           (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
+
+(deftest update-card-with-type-and-dataset-test
+  (testing "can toggle model using dataset"
+    (mt/with-temp [:model/Card card {}]
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:dataset true})))
+
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:dataset false})))))
+
+  (testing "can toggle model using type"
+    (mt/with-temp [:model/Card card {}]
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
@@ -2646,7 +2693,7 @@
                                                :dataset_query (mbql-count-query)}]
       (is (=? {:display "table" :dataset true}
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                    (assoc card :dataset true)))))))
+                                    (assoc card :dataset true :type "model")))))))
 
 (deftest dataset-card-2
   (testing "Cards preserve their edited metadata"

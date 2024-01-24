@@ -67,7 +67,6 @@
 
 (t2/deftransforms :model/Card
   {:dataset_query          mi/transform-metabase-query
-   :type                   mi/transform-keyword
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword
@@ -103,16 +102,28 @@
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Card :id pk))))
 
-(def card-types #{:model :question #_:metric})
+(def card-types #{"model" "question" #_:metric})
 
 ;; we want the :keyword as part of schema so it'll be automatically transformed to keyword in API
 (def CardTypes
-  [:and :keyword (into [:enum] card-types)])
+  (into [:enum] card-types))
 
-(mu/defn is-model? :- :boolean
+
+(mu/defn ^:private is-type? :- :boolean
   "Check if card is a model?"
-  [{:keys [type] :as _card} :- [:map [:type CardTypes]]]
-  (= :model type))
+  [target-type :- CardTypes
+   {:keys [type] :as _card} :- [:map [:type CardTypes]]]
+  (= target-type type))
+
+(def ^{:arglists '([card])
+       :doc      "Returns true if `card` is a model."}
+  is-model?
+  (partial is-type? "model"))
+
+(def ^{:arglists '([card])
+       :doc      "Returns true if `card` is a model."}
+  is-question?
+  (partial is-type? "question"))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -322,29 +333,29 @@
 (defn- ensure-type-and-dataset-are-aligned
   [{:keys [type dataset] :as card}]
   (cond
-    ;; if none of the 2 keys presents, do nothing
-    (and (nil? type) (nil? dataset))
-    card
+   ;; if none of the 2 keys presents, do nothing
+   (and (nil? type) (nil? dataset))
+   card
 
-    ;; if both type and dataset presents, we prefer dataset since it's used in tests
-    (and (some? type) (some? dataset))
-    (assoc card :type (if dataset :model :question))
+   ;; if both type and dataset presents, we prefer dataset since it's used in tests
+   (and (some? type) (some? dataset))
+   (assoc card :type (if dataset "model" "question"))
 
-    ;; if only types exists, we make sure dataset follows
-    (some? type)
-    (assoc card :dataset (= type :model))
+   ;; if only types exists, we make sure dataset follows
+   (some? type)
+   (assoc card :dataset (= type "model"))
 
-    ;; if dataset presents, make sure type follows
-    (some? dataset)
-    (assoc card :type (if dataset
-                       :model
-                       :question))))
+   ;; if dataset presents, make sure type follows
+   (some? dataset)
+   (assoc card :type (if dataset
+                       "model"
+                       "question"))))
 
 (defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
   [{:keys [type dataset_query]}]
   (case type
-    :model (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
+    "model" (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
                                          (map (comp keyword :type)))]
              (when (some (complement #{:card :snippet}) template-tag-types)
                (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
@@ -355,7 +366,7 @@
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
                   :parameter_mappings []
-                  :type               :question}
+                  :type               "question"}
         card     (ensure-type-and-dataset-are-aligned (merge defaults card))]
     (u/prog1 card
       ;; make sure this Card doesn't have circular source query references
@@ -637,8 +648,9 @@ saved later when it is ready."
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                      :creator_id (:id creator)
-                                     :type       (or (:type card-data) :question)
-                                     :dataset    (boolean (:dataset card-data))
+                                     :type       (or (:type card-data) "question")
+                                     :dataset    (or (boolean (:dataset card-data))
+                                                     (and (:type card-data) (is-model? card-data)))
                                      :parameters (or parameters [])
                                      :parameter_mappings (or parameter_mappings []))
          result-metadata-chan (result-metadata-async {:query    dataset_query
@@ -830,7 +842,7 @@ saved later when it is ready."
   (serdes/extract-query-collections Card opts))
 
 (defn- export-result-metadata [card metadata]
-  (when (and metadata (= :model (:type card)))
+  (when (and metadata (is-model? card))
     (for [m metadata]
       (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)

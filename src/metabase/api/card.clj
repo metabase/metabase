@@ -383,10 +383,11 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
-(defn- assert-card-type-and-dataset
+(defn- check-card-type-and-dataset
   [{:keys [dataset type]}]
   (when (and (some? type) (true? dataset))
-    (assert (= type :model) "Card dataset and type mismatched")))
+    (api/check (= type "model")
+      [400 (deferred-tru "Dataset and type doesn''t match")])))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
@@ -409,7 +410,7 @@
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (assert-card-type-and-dataset body)
+  (check-card-type-and-dataset body)
   (-> (card/create-card! body @api/*current-user*)
       hydrate-card-details
       (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -475,7 +476,7 @@
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
-    (assert-card-type-and-dataset card-updates)
+    (check-card-type-and-dataset card-updates)
     ;; make sure we have the correct `result_metadata`
     (let [result-metadata-chan  (card/result-metadata-async {:original-query    (:dataset_query card-before-update)
                                                              :query             dataset_query

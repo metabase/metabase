@@ -1326,13 +1326,15 @@
                                                                    :updated_at :%now
                                                                    :details    "{}"})
                 [card-id]      (t2/insert-returning-pks!
-                                :model/Card
+                                :report_card
                                 {:visualization_settings card-vis
                                  :display                "table"
                                  :dataset_query          "{}"
                                  :creator_id             user-id
                                  :database_id            database-id
-                                 :name                   "My Card"})
+                                 :name                   "My Card"
+                                 :created_at             :%now
+                                 :updated_at             :%now})
                 [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
                                                                            :creator_id user-id
                                                                            :parameters []})
