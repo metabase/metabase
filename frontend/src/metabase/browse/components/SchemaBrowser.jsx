@@ -12,7 +12,7 @@ import TableBrowser from "metabase/browse/containers/TableBrowser";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import BrowseHeader from "metabase/browse/components/BrowseHeader";
+import { BrowseHeader } from "metabase/browse/components/BrowseHeader";
 import { SchemaGridItem, SchemaLink } from "./SchemaBrowser.styled";
 
 function SchemaBrowser(props) {

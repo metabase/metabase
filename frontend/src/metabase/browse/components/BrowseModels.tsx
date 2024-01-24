@@ -254,7 +254,11 @@ const LastEdited = ({
     <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
       <Text role="note" size="small">
         {lastEditorFullName}
-        {lastEditorFullName && howLongAgo && <Text px=".4">•</Text>}
+        {lastEditorFullName && howLongAgo && (
+          <Text span px=".33rem">
+            •
+          </Text>
+        )}
         {howLongAgo}
       </Text>
     </Tooltip>

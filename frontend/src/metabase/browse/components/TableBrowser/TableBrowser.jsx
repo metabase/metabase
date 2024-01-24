@@ -13,7 +13,7 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-import BrowseHeader from "../BrowseHeader";
+import { BrowseHeader } from "../BrowseHeader";
 import {
   TableActionLink,
   TableCard,
@@ -46,7 +46,7 @@ const TableBrowser = ({
     <div>
       <BrowseHeader
         crumbs={[
-          { title: t`Our data`, to: "/browse" },
+          { title: t`Our data`, to: "/browse/databases" },
           getDatabaseCrumbs(dbId),
           showSchemaInHeader && { title: schemaName },
         ]}
