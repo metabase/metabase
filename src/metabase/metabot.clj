@@ -171,7 +171,7 @@
                      {:role    "assistant"
                       :content (cond-> "The \"display\" key is how I intend to present the final data."
                                  (seq visualization_settings)
-                                 (str " The \"visualization_settings key has chart settings."))}
+                                 (str " The \"visualization_settings\" key has chart settings."))}
                      {:role    "assistant"
                       :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
                      {:role    "assistant"
