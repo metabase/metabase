@@ -399,7 +399,7 @@ msgstr "מחק את {0} ?"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:38
 msgid "Saved questions and other things that depend on this {0} will continue to work, but this {1} will no longer be selectable from the query builder."
-msgstr "שאלות שמורות ופעולות אחרות שתלויות ב {0] ימשיכו לעבוד, אבל {1} לא יהיה זמין לבחירה במחולל הדוחות"
+msgstr "{שאלות שמורות ופעולות אחרות שתלויות ב {0] ימשיכו לעבוד, אבל {1} לא יהיה זמין לבחירה במחולל הדוחות"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:39
 msgid "If you're sure you want to retire this {0}, please write a quick explanation of why it's being retired:"
@@ -535,7 +535,7 @@ msgstr "מצא סכמה"
 #: frontend/src/metabase/query_builder/components/dataref/DatabaseSchemasPane.tsx:81
 msgid "{0} schema"
 msgid_plural "{0} schemas"
-msgstr[0] "{0 סכימה"
+msgstr[0] "{0} סכימה"
 msgstr[1] "{0} סכימות"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:241
@@ -13812,7 +13812,7 @@ msgstr "נכשלה קביעת משימות למסד נתונים {0}"
 msgid "All elements must be distinct."
 msgstr "כל האלמנטים חייבים להיות מובחנים."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "בחר את העמודות שאתה רוצה לכלול"
@@ -18264,12 +18264,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "פולסים נשללים"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "כעת תוכל להגדיר {0} במקום זאת. אנו נסיר קטניות במהדורה עתידית ונעזור לך להעביר כל מה שיש לך עדיין."
@@ -18278,7 +18278,7 @@ msgstr "כעת תוכל להגדיר {0} במקום זאת. אנו נסיר קט
 msgid "dashboard subscriptions"
 msgstr "מנויים של לוח המחוונים"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} תרשימים במנוי שלך לא ייראו כמו בלוח המחוונים שלך. {1}"
 
@@ -18427,7 +18427,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "הגדר {0} מסד נתונים מקור והפעל הגירות ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:387
 msgid "Set up {0} target database and run migrations..."
@@ -26358,12 +26358,12 @@ msgstr "לא ניתן היה לחלץ מסד נתונים לדוגמא לספר�
 msgid "Metabase config files require a Premium token with the :advanced-config feature."
 msgstr "קבצי תצורת Metabase דורשים אסימון פרימיום עם התכונה: Advanced-Config."
 
-#: 
+#:
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "תרשימים במנויים עשויים להיראות מעט שונים מתרשימים בלוח המחוונים."
 
-#: 
+#:
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "הנמענים יראו נתונים אלה בדיוק כפי שאתה רואה אותם, ללא קשר להרשאותיהם."
