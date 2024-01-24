@@ -1,5 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid from "react-data-grid";
+import { useState } from "react";
 import type { FunctionComponent } from "react";
 
 import { getRowHeightForViewMode, prepareColumns } from "./utils";
@@ -17,8 +18,10 @@ export const TableInteractive: FunctionComponent<TableInteractiveProps> = ({
 }) => {
   const { rows, cols } = data;
 
+  const [stateCols, setCols] = useState(cols);
+
   const rowHeight = getRowHeightForViewMode(viewMode);
-  const columns = prepareColumns(cols);
+  const columns = prepareColumns(stateCols, setCols);
   return (
     <DataGrid
       columns={columns}

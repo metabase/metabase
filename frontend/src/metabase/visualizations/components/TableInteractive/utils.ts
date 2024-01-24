@@ -19,8 +19,19 @@ export const getRowHeightForViewMode = (viewMode: string) => {
       return 28;
   }
 };
+function rendereForForced(col) {
+  switch (col.forcedDisplay) {
+    case "badge":
+      return badgeRenderer;
+    default:
+      return defaultRenderer;
+  }
+}
 
 function pickRenderer(col) {
+  if (col.forcedDisplay !== "default") {
+    return rendereForForced(col);
+  }
   if (col.semantic_type) {
     return rendererForSemanticType(col);
   }
@@ -48,7 +59,7 @@ function rendererForSemanticType(col) {
   }
 }
 
-export const prepareColumns = (columns: Array<any>) => {
+export const prepareColumns = (columns: Array<any>, setCols: any) => {
   return [
     {
       key: "index",
@@ -68,6 +79,9 @@ export const prepareColumns = (columns: Array<any>) => {
         frozen: false,
         renderCell: pickRenderer(col) || defaultRenderer,
         renderHeaderCell: renderHeader,
+        setCols,
+        columns: columns,
+        forcedDisplay: col.forcedDisplay || "default",
       };
     }),
   ];

@@ -11,6 +11,19 @@ const getVal = r => {
 };
 
 export const renderHeader = header => {
+  function setNewDisplay(display: string) {
+    return header.column.setCols(
+      header.column.columns.map(col => {
+        if (col.id === header.column.id) {
+          return {
+            ...col,
+            forcedDisplay: display,
+          };
+        }
+        return col;
+      }),
+    );
+  }
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger>
@@ -18,8 +31,10 @@ export const renderHeader = header => {
       </ContextMenu.Trigger>
       <ContextMenu.Portal />
       <ContextMenu.Content className="bg-white bordered rounded shadowed zF relative">
-        <ContextMenu.Item className="px1">
+        <ContextMenu.Item className="p1">
           <Link
+            className="bg-light-hover block p1"
+            style={{ lineHeight: 1 }}
             to={Urls.dataModelField(
               1,
               "1:PUBLIC",
@@ -31,8 +46,8 @@ export const renderHeader = header => {
             Edit metadata
           </Link>
         </ContextMenu.Item>
-        <ContextMenu.Item className="px1">Sup</ContextMenu.Item>
-        <ContextMenu.Item className="px1">Sup</ContextMenu.Item>
+        <ContextMenu.Item>Sup</ContextMenu.Item>
+        <ContextMenu.Item>Sup</ContextMenu.Item>
         <ContextMenu.Item className="px1">Sup</ContextMenu.Item>
         <ContextMenu.Separator
           style={{ height: 1, display: "block", backgroundColor: "#ddd" }}
@@ -40,10 +55,12 @@ export const renderHeader = header => {
         <ContextMenu.Sub>
           <ContextMenu.SubTrigger>Display as</ContextMenu.SubTrigger>
           <ContextMenu.SubContent className="bg-white bordered rounded shadowed zF">
-            <ContextMenu.Item>Column default ()</ContextMenu.Item>
-            <ContextMenu.Item>Badge</ContextMenu.Item>
-            <ContextMenu.Item>Sup</ContextMenu.Item>
-            <ContextMenu.Item>Sup</ContextMenu.Item>
+            <ContextMenu.Item onClick={() => setNewDisplay("default")}>
+              Column default
+            </ContextMenu.Item>
+            <ContextMenu.Item onClick={() => setNewDisplay("badge")}>
+              Badge
+            </ContextMenu.Item>
           </ContextMenu.SubContent>
         </ContextMenu.Sub>
       </ContextMenu.Content>
