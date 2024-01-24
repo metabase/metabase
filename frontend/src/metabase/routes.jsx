@@ -24,7 +24,7 @@ import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/Au
 
 /* Browse data */
 import { BrowseApp } from "metabase/browse/components/BrowseApp";
-import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
+import SchemaBrowser from "metabase/browse/components/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
