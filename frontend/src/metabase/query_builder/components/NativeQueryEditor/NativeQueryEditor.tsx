@@ -452,7 +452,7 @@ export class NativeQueryEditor extends Component<
         name: name,
         value: name,
         meta: meta,
-      })) ?? [];
+      }));
 
     aceLanguageTools.addCompleter({
       getCompletions: async (
