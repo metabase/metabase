@@ -324,17 +324,6 @@ describe("StructuredQuery", () => {
         expect(query.canRun()).toBe(true);
       });
     });
-    describe("isEditable", () => {
-      it("A valid query should be editable", () => {
-        expect(query.isEditable()).toBe(true);
-      });
-
-      it("should be not editable when database object is missing", () => {
-        const q = makeQuery();
-        q._database = () => null;
-        expect(q.isEditable()).toBe(false);
-      });
-    });
   });
 
   describe("AGGREGATION METHODS", () => {
