@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import _ from "underscore";
 import { LegaleseStep } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
@@ -106,7 +106,7 @@ export const EmbedModalContent = (
     setEmbeddingParams(getDefaultEmbeddingParams(resource, resourceParameters));
   };
 
-  const getPreviewParamsBySlug = () => {
+  const previewParametersBySlug = useMemo(() => {
     const lockedParameters = getLockedPreviewParameters(
       resourceParameters,
       embeddingParams,
@@ -118,13 +118,32 @@ export const EmbedModalContent = (
         parameterValues[parameter.id] ?? null,
       ]),
     );
-  };
+  }, [embeddingParams, parameterValues, resourceParameters]);
 
-  const previewParametersBySlug = getPreviewParamsBySlug();
   const lockedParameters = getLockedPreviewParameters(
     resourceParameters,
     embeddingParams,
   );
+
+  const iframeUrl = useMemo(() => {
+    return getSignedPreviewUrl(
+      siteUrl,
+      resourceType,
+      resource.id,
+      previewParametersBySlug,
+      displayOptions,
+      secretKey,
+      embeddingParams,
+    );
+  }, [
+    displayOptions,
+    embeddingParams,
+    previewParametersBySlug,
+    resource.id,
+    resourceType,
+    secretKey,
+    siteUrl,
+  ]);
 
   if (embedType == null) {
     return (
@@ -172,15 +191,7 @@ export const EmbedModalContent = (
             secretKey,
             embeddingParams,
           )}
-          iframeUrl={getSignedPreviewUrl(
-            siteUrl,
-            resourceType,
-            resource.id,
-            previewParametersBySlug,
-            displayOptions,
-            secretKey,
-            embeddingParams,
-          )}
+          iframeUrl={iframeUrl}
           siteUrl={siteUrl}
           secretKey={secretKey}
           params={previewParametersBySlug}
