@@ -3,7 +3,7 @@ import type { MouseEvent } from "react";
 import { Icon } from "metabase/ui";
 
 type Props = {
-  name: "close" | "enter_or_return" | "empty" | "chevrondown" | "refresh";
+  name: "close" | "empty" | "chevrondown" | "refresh";
   onClick?: () => void;
 };
 
