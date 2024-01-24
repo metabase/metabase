@@ -36,7 +36,7 @@ function reducer(
   }
 }
 
-export const useBilling = (): UseBillingState => {
+export const useBilling = (token: string): UseBillingState => {
   const [state, dispatch] = useReducer(reducer, defaultState);
 
   useEffect(() => {
@@ -57,12 +57,14 @@ export const useBilling = (): UseBillingState => {
       }
     };
 
-    fetchBillingInfo();
+    if (token) {
+      fetchBillingInfo();
+    }
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [token]);
 
   return state;
 };

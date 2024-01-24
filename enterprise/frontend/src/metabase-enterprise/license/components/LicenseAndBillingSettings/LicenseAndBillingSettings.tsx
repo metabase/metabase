@@ -112,9 +112,8 @@ const LicenseAndBillingSettings = ({
     !!licenseError || (tokenStatus != null && !tokenStatus.isValid);
   const description = getDescription(tokenStatus, !!token);
 
-  const isStoreManagedBilling = tokenStatus?.features?.has(
-    STORE_MANAGED_FEATURE_KEY,
-  );
+  const isStoreManagedBilling =
+    tokenStatus?.features?.has(STORE_MANAGED_FEATURE_KEY) ?? false;
 
   const shouldShowLicenseInput =
     !tokenStatus?.features?.has(HOSTING_FEATURE_KEY);
