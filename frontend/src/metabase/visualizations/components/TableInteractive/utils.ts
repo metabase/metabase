@@ -6,6 +6,7 @@ import {
   sourceRenderer,
   countryRenderer,
   badgeRenderer,
+  renderHeader,
 } from "./renderers";
 
 export const getRowHeightForViewMode = (viewMode: string) => {
@@ -41,7 +42,7 @@ function rendererForSemanticType(col) {
     case "type/Product":
       return badgeRenderer;
     case "type/Subscription":
-      return booleanRenderer;
+      return badgeRenderer;
     default:
       return defaultRenderer;
   }
@@ -66,6 +67,7 @@ export const prepareColumns = (columns: Array<any>) => {
         name: col.display_name,
         frozen: false,
         renderCell: pickRenderer(col) || defaultRenderer,
+        renderHeaderCell: renderHeader,
       };
     }),
   ];

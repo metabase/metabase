@@ -1,10 +1,49 @@
 import getUnicodeFlagIcon from "country-flag-icons/unicode";
 import { Facebook, Twitter, Search, Mail } from "react-feather";
+import * as ContextMenu from "@radix-ui/react-context-menu";
 import { Icon } from "metabase/ui";
+import Link from "metabase/core/components/Link";
+import * as Urls from "metabase/lib/urls";
 
 const getVal = r => {
   const { row, column } = r;
   return row[column.idx - 1];
+};
+
+export const renderHeader = header => {
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger>
+        <div>{header.column.name}</div>;
+      </ContextMenu.Trigger>
+      <ContextMenu.Portal />
+      <ContextMenu.Content className="bg-white bordered rounded shadowed zF relative">
+        <ContextMenu.Item className="px1">
+          <Link
+            to={Urls.dataModelTable(1, "1:PUBLIC", header.column.table_id)}
+            target="_blank"
+          >
+            Edit metadata
+          </Link>
+        </ContextMenu.Item>
+        <ContextMenu.Item className="px1">Sup</ContextMenu.Item>
+        <ContextMenu.Item className="px1">Sup</ContextMenu.Item>
+        <ContextMenu.Item className="px1">Sup</ContextMenu.Item>
+        <ContextMenu.Separator
+          style={{ height: 1, display: "block", backgroundColor: "#ddd" }}
+        />
+        <ContextMenu.Sub>
+          <ContextMenu.SubTrigger>Display as</ContextMenu.SubTrigger>
+          <ContextMenu.SubContent className="bg-white bordered rounded shadowed zF">
+            <ContextMenu.Item>Column default ()</ContextMenu.Item>
+            <ContextMenu.Item>Badge</ContextMenu.Item>
+            <ContextMenu.Item>Sup</ContextMenu.Item>
+            <ContextMenu.Item>Sup</ContextMenu.Item>
+          </ContextMenu.SubContent>
+        </ContextMenu.Sub>
+      </ContextMenu.Content>
+    </ContextMenu.Root>
+  );
 };
 
 export const defaultRenderer = (row: Row) => {
@@ -12,12 +51,14 @@ export const defaultRenderer = (row: Row) => {
 };
 
 export const badgeRenderer = (row: Row) => {
-  const val = getVal(row);
+  const val = String(getVal(row));
 
   const hackweekValues = {
     premium: ["#6366f1", "#D7D8FF"],
     basic: ["#f59e0b", "#FFF7E9"],
     other: ["#84cc16", "#F5FFE5"],
+    true: ["#22c55e", "#F5FFE5"],
+    false: ["#ef4444", "#FEE2E2"],
   };
 
   const [color, bgColor] =
