@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import EditableText from "metabase/core/components/EditableText";
 import FormField from "metabase/core/components/FormField/FormField";
@@ -59,4 +60,39 @@ export const ContentSection = styled.div`
 
 export const DescriptionHeader = styled.h3`
   margin-bottom: 0.5rem;
+`;
+
+export const StyledEditableText = styled(EditableText)`
+  ${({ loading }) =>
+    loading &&
+    css`
+      border-radius: 0.5rem;
+      --border-size: 2px;
+      --border-angle: 0turn;
+      background-image: conic-gradient(from var(--border-angle), #fff, #fff),
+        conic-gradient(
+          from var(--border-angle),
+          transparent 5%,
+          ${color("brand")},
+          ${color("brand")}
+        );
+      background-size: calc(100% - (var(--border-size) * 2))
+          calc(100% - (var(--border-size) * 2)),
+        cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+
+      animation: bg-spin 2s linear infinite;
+      @keyframes bg-spin {
+        to {
+          --border-angle: 1turn;
+        }
+      }
+
+      @property --border-angle {
+        syntax: "<angle>";
+        inherits: true;
+        initial-value: 0turn;
+      }
+    `}
 `;
