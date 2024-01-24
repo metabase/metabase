@@ -1,10 +1,12 @@
 import { useCallback } from "react";
+import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { Switch } from "metabase/ui";
+import { Button, Switch } from "metabase/ui";
+import { MetabotApi } from "metabase/services";
 
 import { Timeline } from "metabase/common/components/Timeline";
 import EditableText from "metabase/core/components/EditableText";
@@ -43,6 +45,15 @@ export function DashboardInfoSidebar({
     query: { model_type: "dashboard", model_id: dashboard.id },
   });
 
+  const [{ loading, value: description }, fetchSuggestion] =
+    useAsyncFn(async () => {
+      const response = await MetabotApi.summarizeDashboard({
+        dashboardId: dashboard.id,
+      });
+
+      return response?.summary?.description;
+    }, []);
+
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 
@@ -80,7 +91,7 @@ export function DashboardInfoSidebar({
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
         <EditableText
-          initialValue={dashboard.description}
+          initialValue={description || dashboard.description}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
           isOptional
@@ -89,6 +100,8 @@ export function DashboardInfoSidebar({
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
         />
+        {loading && <div>Thinking ✨</div>}
+        <Button onClick={fetchSuggestion}>{t`Suggest Description`}</Button>
       </ContentSection>
 
       <ContentSection>
