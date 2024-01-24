@@ -621,11 +621,13 @@
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
   (try
-    (cond
-      substring
-      (autocomplete-suggestions id (str "%" substring "%"))
-      prefix
-      (autocomplete-suggestions id (str prefix "%")))
+    {:status  200
+     :headers {"Cache-Control" "public, max-age=30"
+               ;; we're checking your access, so cache is separate for everyone
+               "Vary"          "Cookie"}
+     :body    (cond
+                substring (autocomplete-suggestions id (str "%" substring "%"))
+                prefix    (autocomplete-suggestions id (str prefix "%")))}
     (catch Throwable e
       (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
 
