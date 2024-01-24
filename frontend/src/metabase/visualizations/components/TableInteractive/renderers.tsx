@@ -30,8 +30,12 @@ export const renderHeader = header => {
         <div>{header.column.name}</div>;
       </ContextMenu.Trigger>
       <ContextMenu.Portal />
-      <ContextMenu.Content className="bg-white bordered rounded shadowed zF relative">
-        <ContextMenu.Item className="p1">
+      <ContextMenu.Content
+        className="bg-white bordered rounded shadowed zF relative"
+        style={{ minWidth: 160 }}
+      >
+        <span className="h5 text-normal text-light px2">Column Settings</span>
+        <ContextMenu.Item className="pb1 px1">
           <Link
             className="bg-light-hover block p1"
             style={{ lineHeight: 1 }}
@@ -54,7 +58,7 @@ export const renderHeader = header => {
         />
         <ContextMenu.Sub>
           <ContextMenu.SubTrigger className="px1">
-            <div className="p1">Display as</div>
+            <div className="p1">Display as...</div>
           </ContextMenu.SubTrigger>
           <ContextMenu.SubContent className="bg-white bordered rounded shadowed zF">
             <ContextMenu.Item onClick={() => setNewDisplay("default")}>

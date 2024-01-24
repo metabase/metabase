@@ -50,7 +50,7 @@ class View extends Component {
   constructor(init) {
     super(init);
     this.state = {
-      viewMode: "cozy",
+      viewMode: "compact",
     };
   }
 
