@@ -25,6 +25,7 @@ export function DashboardTabs({
   const {
     tabs,
     createNewTab,
+    duplicateTab,
     deleteTab,
     renameTab,
     selectTab,
@@ -58,6 +59,10 @@ export function DashboardTabs({
                 canRename={isEditing}
                 showMenu={isEditing}
                 menuItems={[
+                  {
+                    label: t`Duplicate`,
+                    action: (_, value) => duplicateTab(value),
+                  },
                   {
                     label: t`Delete`,
                     action: (_, value) => deleteTab(value),

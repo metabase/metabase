@@ -23,10 +23,15 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
-import { calculateDashCardRowAfterUndo } from "../utils";
+import { calculateDashCardRowAfterUndo, isVirtualDashCard } from "../utils";
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
+import { generateTemporaryDashcardId } from "./cards";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
+type DuplicateTabPayload = {
+  sourceTabId: DashboardTabId;
+  newTabId: DashboardTabId;
+};
 type DeleteTabPayload = {
   tabId: DashboardTabId | null;
   tabDeletionId: TabDeletionId;
@@ -53,6 +58,7 @@ type UndoMoveDashCardToTabPayload = {
 type InitTabsPayload = { slug: string | undefined };
 
 const CREATE_NEW_TAB = "metabase/dashboard/CREATE_NEW_TAB";
+const DUPLICATE_TAB = "metabase/dashboard/DUPLICATE_TAB";
 const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
 const UNDO_DELETE_TAB = "metabase/dashboard/UNDO_DELETE_TAB";
 const RENAME_TAB = "metabase/dashboard/RENAME_TAB";
@@ -78,6 +84,15 @@ export function createNewTab() {
   tempTabId -= 2;
 
   return createNewTabAction({ tabId });
+}
+
+const duplicateTabAction = createAction<DuplicateTabPayload>(DUPLICATE_TAB);
+
+export function duplicateTab(sourceTabId: DashboardTabId) {
+  const newTabId = tempTabId;
+  tempTabId -= 2;
+
+  return duplicateTabAction({ sourceTabId, newTabId });
 }
 
 export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
@@ -234,6 +249,66 @@ export const tabsReducer = createReducer<DashboardState>(
             dashboard_tab_id: firstTabId,
           };
         });
+      },
+    );
+
+    builder.addCase<typeof duplicateTabAction>(
+      duplicateTabAction,
+      (state, { payload: { sourceTabId, newTabId } }) => {
+        const { dashId, prevDash, prevTabs } = getPrevDashAndTabs({ state });
+        if (!dashId || !prevDash) {
+          throw new Error(
+            `DUPLICATE_TAB was dispatched but either dashId (${dashId}) or prevDash (${prevDash}) are null`,
+          );
+        }
+        const sourceTab = prevTabs.find(tab => tab.id === sourceTabId);
+        if (!sourceTab) {
+          throw new Error(
+            `DUPLICATED_TAB was dispatched but no tab with sourceTabId ${sourceTabId} was found`,
+          );
+        }
+
+        // 1. Create empty tab
+        const newTab = getDefaultTab({
+          tabId: newTabId,
+          dashId,
+          name: t`Copy of ${sourceTab.name}`,
+        });
+        prevDash.tabs = [...prevTabs, newTab];
+
+        // 2. Duplicate dashcards
+        const sourceTabDashCards = prevDash.dashcards
+          .map(id => state.dashcards[id])
+          .filter(dashCard => dashCard.dashboard_tab_id === sourceTabId);
+
+        sourceTabDashCards.forEach(sourceDashCard => {
+          const newDashCardId = generateTemporaryDashcardId();
+
+          prevDash.dashcards.push(newDashCardId);
+
+          state.dashcards[newDashCardId] = {
+            ...sourceDashCard,
+            id: newDashCardId,
+            dashboard_tab_id: newTabId,
+          };
+
+          // We don't have card (question) data for virtual dashcards (text, heading, link, action)
+          if (isVirtualDashCard(sourceDashCard)) {
+            // TODO fix typescript error
+            return;
+          }
+          if (sourceDashCard.card_id === null) {
+            throw Error("sourceDashCard is non-virtual yet has null card_id");
+          }
+          state.dashcardData[newDashCardId] = {
+            [sourceDashCard.card_id]:
+              state.dashcardData[sourceDashCard.id][sourceDashCard.card_id],
+          };
+        });
+
+        // 3. Select new tab
+        state.selectedTabId = newTabId;
+        return;
       },
     );
 
