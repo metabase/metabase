@@ -371,7 +371,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
-          .type(filter, { delay: 100 });
+          .type(filter, { delay: 10 });
 
         popover().within(() => {
           cy.contains(/^expected closing parenthesis/i).should("not.exist");
