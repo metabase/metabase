@@ -79,7 +79,7 @@ import {
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-type CardCompletionItem = Pick<Card, "id" | "name" | "dataset" | "type"> & {
+type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
   collection_name: string;
 };
 
