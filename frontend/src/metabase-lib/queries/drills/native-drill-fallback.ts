@@ -8,9 +8,9 @@ interface FallbackNativeDrillProps {
 export function nativeDrillFallback({ question }: FallbackNativeDrillProps) {
   const database = question.database();
   const query = question.query();
-  const { isNative } = Lib.queryDisplayInfo(query);
+  const { isNative, isEditable } = Lib.queryDisplayInfo(query);
 
-  if (!isNative || !question.isQueryEditable() || !database) {
+  if (!isNative || !isEditable || !database) {
     return null;
   }
 
