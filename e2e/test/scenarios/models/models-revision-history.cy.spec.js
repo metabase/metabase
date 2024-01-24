@@ -7,7 +7,7 @@ describe("scenarios > models > revision history", () => {
     cy.signInAsAdmin();
     cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
-      dataset: true,
+      type: "model",
     });
   });
 
