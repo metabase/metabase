@@ -5210,7 +5210,9 @@ databaseChangeLog:
       author: piranha
       comment: >-
         This significantly speeds up api.database/autocomplete-fields query
-        and is an improvement for issue 30588
+        and is an improvement for issue 30588.
+        H2 does not support this: https://github.com/h2database/h2database/issues/3535
+      dbms: postgresql,mysql,mariadb
       changes:
         - createIndex:
             tableName: metabase_field
