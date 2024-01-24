@@ -11,22 +11,23 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(defn current-user-can-fetch-field-values?
+  "Whether the current User has permissions to fetch FieldValues for a `field`."
+  [field]
+  ;; read permissions for a Field = partial permissions for its parent Table (including EE segmented permissions)
+  (mi/can-read? field))
+
 (defn default-get-or-create-field-values-for-current-user!
   "OSS implementation; used as a fallback for the EE implementation if the field isn't sandboxed."
   [field]
-  (field-values/get-or-create-full-field-values! field))
+  (when (mi/can-read? field)
+    (field-values/get-or-create-full-field-values! field)))
 
 (defenterprise get-or-create-field-values-for-current-user!*
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues."
   metabase-enterprise.sandbox.models.params.field-values
   [field]
   (default-get-or-create-field-values-for-current-user! field))
-
-(defn current-user-can-fetch-field-values?
-  "Whether the current User has permissions to fetch FieldValues for a `field`."
-  [field]
-  ;; read permissions for a Field = partial permissions for its parent Table (including EE segmented permissions)
-  (mi/can-read? field))
 
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.
