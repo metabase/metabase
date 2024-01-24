@@ -43,6 +43,47 @@ export const GTAPApi = {
 
 export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
+  billingInfo: () => {
+    // TODO: use real endpoint, send along language, email, and token
+    // GET("/api//api/v2/metabase/billing_info"),
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve([
+          {
+            name: "Plan",
+            type: "string",
+            value: "Metabase Cloud Pro",
+          },
+          {
+            name: "Billing Frequency",
+            type: "string",
+            value: "Monthly",
+          },
+          {
+            name: "Users",
+            value: 4,
+            type: "number",
+          },
+          {
+            name: "Next charge",
+            type: "string",
+            value: "Monday, January 22, 2024",
+          },
+          {
+            name: "Next charge amount",
+            type: "string",
+            value: "$85.00",
+          },
+          {
+            name: "Visit the Metabase store to manage your account and billing preferences.",
+            type: "link",
+            value: "https://store.metabase.com/",
+            title: "Manage preferences",
+          },
+        ]);
+      }, _.random(500, 1500));
+    });
+  },
 };
 
 // Pivot tables need extra data beyond what's described in the MBQL query itself.
