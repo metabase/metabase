@@ -313,6 +313,7 @@
     "build-watch:js": "yarn && NODE_OPTIONS=--max-old-space-size=8196 webpack --watch",
     "build:cljs": "yarn && yarn build-pure:cljs",
     "build:js": "yarn && NODE_OPTIONS=--max-old-space-size=8196 webpack --bail",
+    "build-embedding-sdk-example:watch": "webpack --config webpack.embedding-sdk.config.js --watch",
     "chromatic": "yarn build:cljs && NODE_OPTIONS=--max-old-space-size=8196 chromatic",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-backend": "clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure -X:dev:test",
