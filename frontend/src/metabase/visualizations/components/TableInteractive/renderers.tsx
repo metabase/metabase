@@ -70,7 +70,7 @@ export const booleanRenderer = (row: Row) => {
           width: 8,
           height: 8,
           borderRadius: 12,
-          backgroundColor: val ? "#22c55e" : "#f43f5e",
+          backgroundColor: val ? "#22c55e" : "#ef4444",
         }}
       ></div>
       {String(val)}
