@@ -31,6 +31,7 @@
   :visibility :public
   :type       :string
   :setter     :none
+  :audit      :never
   :init       setting/random-uuid-str
   :doc        false)
 

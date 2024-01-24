@@ -125,6 +125,7 @@
   :visibility :authenticated
   :type       :string
   :setter     :none
+  :audit      :never
   :init       setting/random-uuid-str
   :doc        false)
 
@@ -138,6 +139,7 @@
   :visibility :internal
   :type       :string
   :setter     :none
+  :audit      :never
   :init       setting/random-uuid-str
   :doc        false)
 
@@ -147,6 +149,7 @@
   :visibility :internal
   :type       :string
   :setter     :none
+  :audit      :never
   :init       setting/random-uuid-str)
 
 (defsetting site-uuid-for-unsubscribing-url
@@ -155,6 +158,7 @@
   :visibility :internal
   :type       :string
   :setter     :none
+  :audit      :never
   :init       setting/random-uuid-str)
 
 (defn- normalize-site-url [^String s]
