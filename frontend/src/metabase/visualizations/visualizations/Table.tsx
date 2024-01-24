@@ -1,12 +1,10 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
-import * as DataGrid from "metabase/lib/data_grid";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+
 import { formatColumn } from "metabase/lib/formatting";
+import * as DataGrid from "metabase/lib/data_grid";
 
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import ChartSettingsTableFormatting, {
@@ -20,12 +18,19 @@ import {
   getTitleForColumn,
   isPivoted as _isPivoted,
 } from "metabase/visualizations/lib/settings/column";
-
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
+
+import type {
+  DatasetColumn,
+  DatasetData,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import {
@@ -40,10 +45,20 @@ import {
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
+import type { ColumnSettingDefinition, VisualizationProps } from "../types";
 import { TableSimple } from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 
-export default class Table extends Component {
+interface TableProps extends VisualizationProps {
+  isShowingDetailsOnlyColumns?: boolean;
+}
+
+interface TableState {
+  data: Pick<DatasetData, "cols" | "rows" | "results_timezone"> | null;
+  question: Question | null;
+}
+
+class Table extends Component<TableProps, TableState> {
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
@@ -52,19 +67,15 @@ export default class Table extends Component {
   static minSize = getMinSize("table");
   static defaultSize = getDefaultSize("table");
 
-  static isSensible({ cols, rows }) {
+  static isSensible() {
     return true;
   }
 
-  static isLiveResizable(series) {
+  static isLiveResizable() {
     return false;
   }
 
-  static checkRenderable([
-    {
-      data: { cols, rows },
-    },
-  ]) {
+  static checkRenderable() {
     // scalar can always be rendered, nothing needed here
   }
 
@@ -77,8 +88,8 @@ export default class Table extends Component {
       title: t`Pivot table`,
       widget: "toggle",
       inline: true,
-      getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
-      getDefault: ([{ card, data }]) => {
+      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
+      getDefault: ([{ card, data }]: Series) => {
         if (
           !data ||
           data.cols.length !== 3 ||
@@ -100,20 +111,18 @@ export default class Table extends Component {
         {
           data: { cols, rows },
         },
-      ]) => {
+      ]: Series) => {
         return getDefaultPivotColumn(cols, rows)?.name;
       },
-      getProps: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => ({
+      getProps: ([
+        {
+          data: { cols },
+        },
+      ]: Series) => ({
         options: cols.filter(isDimension).map(getOptionFromColumn),
       }),
-      getHidden: (series, settings) => !settings["table.pivot"],
+      getHidden: (series: Series, settings: VisualizationSettings) =>
+        !settings["table.pivot"],
       readDependencies: ["table.pivot"],
       persistDefault: true,
     },
@@ -121,7 +130,10 @@ export default class Table extends Component {
       section: t`Columns`,
       title: t`Cell column`,
       widget: "field",
-      getDefault: ([{ data }], { "table.pivot_column": pivotCol }) => {
+      getDefault: (
+        [{ data }]: Series,
+        { "table.pivot_column": pivotCol }: VisualizationSettings,
+      ) => {
         // We try to show numeric values in pivot cells, but if none are
         // available, we fall back to the last column in the unpivoted table
         const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
@@ -129,24 +141,15 @@ export default class Table extends Component {
         const { name } = nonPivotCols.find(isMetric) || lastCol || {};
         return name;
       },
-      getProps: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => ({
+      getProps: ([
+        {
+          data: { cols },
+        },
+      ]: Series) => ({
         options: cols.map(getOptionFromColumn),
       }),
-      getHidden: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => !settings["table.pivot"],
+      getHidden: (series: Series, settings: VisualizationSettings) =>
+        !settings["table.pivot"],
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
@@ -156,19 +159,16 @@ export default class Table extends Component {
       section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
-      getProps: (series, settings) => ({
+      getProps: (series: Series, settings: VisualizationSettings) => ({
         cols: series[0].data.cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
       }),
 
-      getHidden: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => cols.filter(isFormattable).length === 0,
+      getHidden: ([
+        {
+          data: { cols },
+        },
+      ]: Series) => cols.filter(isFormattable).length === 0,
       readDependencies: ["table.pivot"],
     },
     "table._cell_background_getter": {
@@ -177,8 +177,8 @@ export default class Table extends Component {
           {
             data: { rows, cols },
           },
-        ],
-        settings,
+        ]: Series,
+        settings: VisualizationSettings,
       ) {
         return makeCellBackgroundGetter(
           rows,
@@ -191,8 +191,11 @@ export default class Table extends Component {
     },
   };
 
-  static columnSettings = column => {
-    const settings = {
+  static columnSettings = (column: DatasetColumn) => {
+    const settings: Record<
+      string,
+      ColumnSettingDefinition<unknown, unknown>
+    > = {
       column_title: {
         title: t`Column title`,
         widget: "input",
@@ -200,6 +203,7 @@ export default class Table extends Component {
       },
       click_behavior: {},
     };
+
     if (isNumber(column)) {
       settings["show_mini_bar"] = {
         title: t`Show a mini bar chart`,
@@ -250,7 +254,7 @@ export default class Table extends Component {
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
       getProps: (
-        col,
+        column,
         settings,
         onChange,
         {
@@ -276,7 +280,7 @@ export default class Table extends Component {
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
       getProps: (
-        col,
+        column,
         settings,
         onChange,
         {
@@ -297,19 +301,16 @@ export default class Table extends Component {
     return settings;
   };
 
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      data: null,
-    };
-  }
+  state: TableState = {
+    data: null,
+    question: null,
+  };
 
   UNSAFE_componentWillMount() {
     this._updateData(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: VisualizationProps) {
     if (
       newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)
@@ -318,7 +319,7 @@ export default class Table extends Component {
     }
   }
 
-  _updateData({ series, settings, metadata }) {
+  _updateData({ series, settings, metadata }: VisualizationProps) {
     const [{ card, data }] = series;
 
     if (Table.isPivoted(series, settings)) {
@@ -335,18 +336,12 @@ export default class Table extends Component {
         (col, index) => index !== pivotIndex && index !== cellIndex,
       );
       this.setState({
-        data: DataGrid.pivot(
-          data,
-          normalIndex,
-          pivotIndex,
-          cellIndex,
-          settings,
-        ),
+        data: DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex),
       });
     } else {
       const { cols, rows, results_timezone } = data;
       const columnSettings = settings["table.columns"];
-      const columnIndexes = columnSettings
+      const columnIndexes = (columnSettings || [])
         .filter(
           columnSetting =>
             columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
@@ -362,6 +357,7 @@ export default class Table extends Component {
           rows: rows.map(row => columnIndexes.map(i => row[i])),
           results_timezone,
         },
+
         // construct a Question that is in-sync with query results
         // cache it here for performance reasons
         question: new Question(card, metadata),
@@ -371,7 +367,7 @@ export default class Table extends Component {
 
   // shared helpers for table implementations
 
-  getColumnTitle = columnIndex => {
+  getColumnTitle = (columnIndex: number) => {
     const cols = this.state.data && this.state.data.cols;
     if (!cols) {
       return null;
@@ -380,7 +376,7 @@ export default class Table extends Component {
     return getTitleForColumn(cols[columnIndex], series, settings);
   };
 
-  getColumnSortDirection = columnIndex => {
+  getColumnSortDirection = (columnIndex: number) => {
     const { question, data } = this.state;
     if (!question || !data) {
       return;
@@ -410,7 +406,7 @@ export default class Table extends Component {
     const { series, isDashboard, settings } = this.props;
     const { data } = this.state;
     const isPivoted = Table.isPivoted(series, settings);
-    const areAllColumnsHidden = data.cols.length === 0;
+    const areAllColumnsHidden = data?.cols.length === 0;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
     if (!data) {
@@ -450,3 +446,6 @@ export default class Table extends Component {
     );
   }
 }
+
+// eslint-disable-next-line import/no-default-export
+export default Table;

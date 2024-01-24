@@ -9,6 +9,7 @@ export interface OptionsType extends TimeOnlyOptions {
   click_behavior?: any;
   clicked?: any;
   column?: any;
+  column_title?: string;
   compact?: boolean;
   date_abbreviate?: boolean;
   date_format?: string;
