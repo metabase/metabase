@@ -21,7 +21,7 @@ export default class TextEditor extends Component {
     value: PropTypes.string,
     defaultValue: PropTypes.string,
     readOnly: PropTypes.bool,
-    highlightedText: PropTypes.arrayOf(PropTypes.string),
+    highlightedTexts: PropTypes.arrayOf(PropTypes.string),
     onChange: PropTypes.func,
     className: PropTypes.string,
   };
@@ -62,9 +62,9 @@ export default class TextEditor extends Component {
     element.classList[this.props.readOnly ? "add" : "remove"]("read-only");
 
     this._removeTextHighlight();
-    const { highlightedText } = this.props;
-    if (highlightedText != null) {
-      highlightedText.forEach(this._addTextHighlight);
+    const { highlightedTexts } = this.props;
+    if (highlightedTexts != null) {
+      highlightedTexts.forEach(this._addTextHighlight);
     }
 
     this._updateSize();

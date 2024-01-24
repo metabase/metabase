@@ -21,14 +21,16 @@ import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 
 const TextEditorMock = ({
   value,
-  highlightedText,
+  highlightedTexts,
 }: {
   value: string;
-  highlightedText?: string[];
+  highlightedTexts?: string[];
 }) => (
   <>
     <div data-testid="text-editor-mock">{value}</div>
-    <div data-testid="text-editor-mock-highlighted-code">{highlightedText}</div>
+    <div data-testid="text-editor-mock-highlighted-code">
+      {highlightedTexts}
+    </div>
   </>
 );
 

@@ -97,7 +97,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       // publish the embedded dashboard so that we can directly navigate to its url
-      publishChanges(false, ({ request }) => {
+      publishChanges(({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           id: "locked",
           name: "enabled",
@@ -145,7 +145,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.get("@allParameters").findByText("Editable").click();
       popover().contains("Disabled").click();
 
-      publishChanges(true, ({ request }) => {
+      publishChanges(({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           name: "disabled",
           id: "disabled",
@@ -407,7 +407,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     // ID param is disabled by default
     setParameter("Name", "Editable");
     setParameter("Source", "Locked");
-    publishChanges(false, ({ request }) => {
+    publishChanges(({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
         source: "locked",
         name: "enabled",
@@ -427,10 +427,10 @@ function openFilterOptions(name) {
   filterWidget().contains(name).click();
 }
 
-function publishChanges(hasChanges, callback) {
+function publishChanges(callback) {
   cy.intercept("PUT", "/api/dashboard/*").as("publishChanges");
 
-  cy.button(hasChanges ? "Publish changes" : "Publish").click();
+  cy.button(/^(Publish|Publish changes)$/).click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.

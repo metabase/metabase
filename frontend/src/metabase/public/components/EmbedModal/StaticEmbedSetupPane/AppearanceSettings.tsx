@@ -2,7 +2,11 @@ import { jt, t } from "ttag";
 import type { ChangeEvent, ReactNode } from "react";
 import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import {
+  getDocsUrl,
+  getSetting,
+  getUpgradeUrl,
+} from "metabase/selectors/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Select from "metabase/core/components/Select";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
@@ -30,8 +34,6 @@ const THEME_OPTIONS = [
 ];
 const DEFAULT_THEME = THEME_OPTIONS[0].value;
 
-const PRICING_PAGE_URL = "https://www.metabase.com/pricing/";
-
 export interface AppearanceSettingsProps {
   activePane: ActivePreviewPane;
 
@@ -58,6 +60,9 @@ export const AppearanceSettings = ({
     getDocsUrl(state, {
       page: "embedding/static-embedding",
     }),
+  );
+  const upgradePageUrl = useSelector(state =>
+    getUpgradeUrl(state, { utm_media: "static-embed-settings-appearance" }),
   );
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
@@ -165,7 +170,7 @@ export const AppearanceSettings = ({
                   <Text>{jt`You can change the font with ${(
                     <ExternalLink
                       key="fontPlan"
-                      href={`${PRICING_PAGE_URL}${utmTags}`}
+                      href={upgradePageUrl}
                     >{t`a paid plan`}</ExternalLink>
                   )}.`}</Text>
                 )}
@@ -201,7 +206,7 @@ export const AppearanceSettings = ({
                 <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
                   <ExternalLink
                     key="bannerPlan"
-                    href={`${PRICING_PAGE_URL}${utmTags}`}
+                    href={upgradePageUrl}
                   >{t`a paid plan`}</ExternalLink>
                 )} to remove the banner.`}</Text>
               </StaticEmbedSetupPaneSettingsContentSection>

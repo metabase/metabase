@@ -12,7 +12,7 @@ interface CodeSampleProps {
   languageOptions: CodeSampleOption["name"][];
   title?: string;
   textHighlightMode: string;
-  highlightedText?: string[];
+  highlightedTexts?: string[];
 
   dataTestId?: string;
   className?: string;
@@ -27,7 +27,7 @@ export const CodeSample = ({
   languageOptions,
   dataTestId,
   textHighlightMode,
-  highlightedText,
+  highlightedTexts,
   className,
   onChangeOption,
 }: CodeSampleProps): JSX.Element => {
@@ -64,7 +64,7 @@ export const CodeSample = ({
           theme="ace/theme/metabase"
           sizeToFit
           readOnly
-          highlightedText={highlightedText}
+          highlightedTexts={highlightedTexts}
         />
         {source && (
           <CopyButtonContainer>

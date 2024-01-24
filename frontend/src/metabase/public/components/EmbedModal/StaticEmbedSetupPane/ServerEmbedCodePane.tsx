@@ -58,7 +58,7 @@ export const ServerEmbedCodePane = ({
     return null;
   }
 
-  const { hasParametersCodeDiff, hasAppearanceCodeDiff, highlightedText } =
+  const { hasParametersCodeDiff, hasAppearanceCodeDiff, highlightedTexts } =
     getHighlightedText({
       initialPreviewParameters,
       params,
@@ -86,7 +86,7 @@ export const ServerEmbedCodePane = ({
       languageOptions={serverCodeOptions.map(({ name }) => name)}
       source={selectedServerCodeOption.source}
       textHighlightMode={selectedServerCodeOption.mode}
-      highlightedText={highlightedText}
+      highlightedTexts={highlightedTexts}
       onChangeOption={setSelectedServerCodeOptionName}
     />
   );
@@ -132,19 +132,19 @@ function getHighlightedText({
     displayOptions,
   );
 
-  const highlightedText: string[] = [];
+  const highlightedTexts: string[] = [];
   if (hasParametersCodeDiff) {
-    highlightedText.push(selectedServerCodeOption.parametersSource);
+    highlightedTexts.push(selectedServerCodeOption.parametersSource);
   }
 
   if (hasAppearanceCodeDiff) {
-    highlightedText.push(selectedServerCodeOption.getIframeQuerySource);
+    highlightedTexts.push(selectedServerCodeOption.getIframeQuerySource);
   }
 
   return {
     hasParametersCodeDiff,
     hasAppearanceCodeDiff,
-    highlightedText: highlightedText.length ? highlightedText : undefined,
+    highlightedTexts: highlightedTexts.length ? highlightedTexts : undefined,
   };
 }
 

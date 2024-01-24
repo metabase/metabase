@@ -8,7 +8,7 @@ import type {
   EmbeddingDisplayOptions,
 } from "./types";
 
-export function getSignedToken(
+function getSignedToken(
   resourceType: EmbedResourceType,
   resourceId: EmbedResource["id"],
   params: EmbeddingParameters = {},

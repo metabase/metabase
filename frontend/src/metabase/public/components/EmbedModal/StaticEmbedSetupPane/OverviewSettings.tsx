@@ -52,13 +52,6 @@ export const OverviewSettings = ({
     }
   }, [selectedServerCodeOption]);
 
-  const staticEmbedDocsLink = (
-    <ExternalLink
-      key="doc"
-      href={`${docsUrl}?utm_source=${plan}&utm_media=static-embed-settings-overview`}
-    >{t`documentation`}</ExternalLink>
-  );
-
   return (
     <SettingsTabLayout
       settingsSlot={
@@ -73,7 +66,12 @@ export const OverviewSettings = ({
               <br />
             </>
           )}
-          <Text>{jt`Check out the ${staticEmbedDocsLink} for more.`}</Text>
+          <Text>{jt`Check out the ${(
+            <ExternalLink
+              key="doc"
+              href={`${docsUrl}?utm_source=${plan}&utm_media=static-embed-settings-overview`}
+            >{t`documentation`}</ExternalLink>
+          )} for more.`}</Text>
         </StaticEmbedSetupPaneSettingsContentSection>
       }
       previewSlot={

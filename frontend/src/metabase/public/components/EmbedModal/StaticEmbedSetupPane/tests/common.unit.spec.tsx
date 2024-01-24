@@ -5,6 +5,13 @@ import { getBrokenUpTextMatcher } from "__support__/ui";
 
 import { getMockResource, setup } from "./setup";
 
+const DATE_PARAMETER_MOCK = {
+  id: "5cd742ef",
+  name: "Month and Year",
+  slug: "month_and_year",
+  type: "date/month-year",
+};
+
 describe("Static Embed Setup phase", () => {
   describe.each([
     {
@@ -157,10 +164,10 @@ describe("Static Embed Setup phase", () => {
       });
 
       it("should render preview iframe in Preview mode", () => {
-        const dashboard = createMockDashboard();
         setup({
           props: {
-            resource: dashboard,
+            resourceType,
+            resource: getMockResource(resourceType),
           },
           activeTab: "Parameters",
         });
@@ -310,23 +317,16 @@ describe("Static Embed Setup phase", () => {
         });
 
         it("should highlight changed code on parameters change", () => {
-          const dashboard = createMockDashboard();
-          const dateParameter = {
-            id: "5cd742ef",
-            name: "Month and Year",
-            slug: "month_and_year",
-            type: "date/month-year",
-          };
-
           setup({
             props: {
-              resource: dashboard,
-              resourceParameters: [dateParameter],
+              resourceType,
+              resource: getMockResource(resourceType),
+              resourceParameters: [DATE_PARAMETER_MOCK],
             },
             activeTab: "Parameters",
           });
 
-          userEvent.click(screen.getByLabelText(dateParameter.name));
+          userEvent.click(screen.getByLabelText(DATE_PARAMETER_MOCK.name));
 
           userEvent.click(screen.getByText("Locked"));
 
@@ -337,17 +337,11 @@ describe("Static Embed Setup phase", () => {
           ).toBeVisible();
 
           expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-            `params: { "${dateParameter.slug}": null }`,
+            `params: { "${DATE_PARAMETER_MOCK.slug}": null }`,
           );
         });
 
         it("should highlight changed code on locked parameter value change", () => {
-          const dateParameter = {
-            id: "5cd742ef",
-            name: "Month and Year",
-            slug: "month_and_year",
-            type: "date/month-year",
-          };
           setup({
             props: {
               resourceType,
@@ -357,7 +351,7 @@ describe("Static Embed Setup phase", () => {
                   month_and_year: "locked",
                 },
               },
-              resourceParameters: [dateParameter],
+              resourceParameters: [DATE_PARAMETER_MOCK],
             },
             activeTab: "Parameters",
           });
@@ -365,7 +359,7 @@ describe("Static Embed Setup phase", () => {
           userEvent.click(
             within(
               screen.getByLabelText("Previewing locked parameters"),
-            ).getByRole("button", { name: dateParameter.name }),
+            ).getByRole("button", { name: DATE_PARAMETER_MOCK.name }),
           );
 
           userEvent.click(screen.getByText("February"));
@@ -376,7 +370,7 @@ describe("Static Embed Setup phase", () => {
             screen.getByTestId("text-editor-mock-highlighted-code"),
           ).toHaveTextContent(
             `params: { "${
-              dateParameter.slug
+              DATE_PARAMETER_MOCK.slug
             }": "${new Date().getFullYear()}-02" }`,
           );
         });
@@ -483,7 +477,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/pricing/?utm_source=oss&utm_media=static-embed-settings-appearance",
+          "https://www.metabase.com/upgrade?utm_media=static-embed-settings-appearance&utm_source=oss",
         );
       });
 
@@ -513,7 +507,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/pricing/?utm_source=oss&utm_media=static-embed-settings-appearance",
+          "https://www.metabase.com/upgrade?utm_media=static-embed-settings-appearance&utm_source=oss",
         );
       });
     });
@@ -586,25 +580,19 @@ describe("Static Embed Setup phase", () => {
   });
 
   it("should preserve highlighted code on tabs navigation", async () => {
-    const dateParameter = {
-      id: "5cd742ef",
-      name: "Month and Year",
-      slug: "month_and_year",
-      type: "date/month-year",
-    };
     setup({
       props: {
         resource: createMockDashboard(),
-        resourceParameters: [dateParameter],
+        resourceParameters: [DATE_PARAMETER_MOCK],
       },
       activeTab: "Parameters",
     });
 
-    userEvent.click(screen.getByLabelText(dateParameter.name));
+    userEvent.click(screen.getByLabelText(DATE_PARAMETER_MOCK.name));
 
     userEvent.click(screen.getByText("Locked"));
 
-    const parametersChangedCode = `params: { "${dateParameter.slug}": null }`;
+    const parametersChangedCode = `params: { "${DATE_PARAMETER_MOCK.slug}": null }`;
 
     expect(
       screen.getByTestId("text-editor-mock-highlighted-code"),
@@ -618,7 +606,7 @@ describe("Static Embed Setup phase", () => {
 
     expect(
       screen.getByTestId("text-editor-mock-highlighted-code"),
-    ).toHaveTextContent(`params: { "${dateParameter.slug}": null }`);
+    ).toHaveTextContent(`params: { "${DATE_PARAMETER_MOCK.slug}": null }`);
 
     userEvent.click(screen.getByText("Transparent"));
 
