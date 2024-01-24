@@ -197,10 +197,6 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
-
-    (try (greeting-with-schema "rasta")
-         (catch Exception e (def e e)))
-
     (testing "Only EE schema is validated if EE implementation is called"
       (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
              (greeting-with-invalid-oss-return-schema :rasta)))
