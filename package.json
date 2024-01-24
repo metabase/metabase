@@ -62,7 +62,7 @@
     "inflection": "^1.7.1",
     "js-cookie": "^2.1.2",
     "jspdf": "^2.5.1",
-    "jsrsasign": "^10.5.25",
+    "jsrsasign": "^11.0.0",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
