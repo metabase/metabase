@@ -208,6 +208,7 @@
      :charts            (for [{:keys [card parameter_mappings] :as dcs} dashcards
                               :let [{card-name :name
                                      :keys     [display
+                                                description
                                                 visualization_settings
                                                 result_metadata]} card
                                     field-name->display-name (zipmap
@@ -217,6 +218,7 @@
                                                                   remove-nil-vals
                                                                   (walk/prewalk (fn [v] (field-name->display-name v v))))]]
                           {:chart-name        card-name
+                           :chart-description description
                            :chart-type        display
                            :chart-settings    visualization_settings
                            :data-column-names (vals field-name->display-name)
@@ -253,7 +255,8 @@
             two sentences. This description may not be more than 256 characters."}
            {:role    "assistant"
             :content "The \"keywords\" key is 3-5 single-quoted, comma-separated key words
-            describing the dashboard. Example: 'keyword1', 'key word'"}
+            describing the dashboard. Keywords might be used to categorize, concisely describe, or label
+            the entire dashboard. Example: 'keyword1', 'key word'"}
            {:role    "assistant"
             :content "The \"questions\" key contains a markdown-formatted hyphenated list of up to 5 questions this
             dashboard might help a user answer. Each question should be on its own line."}
