@@ -41,7 +41,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 
 import * as querying from "../querying";
@@ -56,20 +56,26 @@ type BaseSetupOpts = {
   user?: User;
   location: LocationDescriptorObject;
   params: Record<string, unknown>;
+  hasDataPermissions?: boolean;
 };
 
 const SEGMENT = createMockSegment();
 
 const METRIC = createMockMetric();
 
-async function baseSetup({ user, location, params }: BaseSetupOpts) {
+async function baseSetup({
+  user,
+  location,
+  params,
+  hasDataPermissions = true,
+}: BaseSetupOpts) {
   jest.useFakeTimers();
 
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
   const state = createMockState({
     entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: hasDataPermissions ? [createSampleDatabase()] : [],
       metrics: [METRIC],
       segments: [SEGMENT],
     }),
@@ -617,16 +623,16 @@ describe("QB Actions > initializeQB", () => {
       }: SnippetsSetupOpts) {
         const clone = { ...card };
 
-        jest
-          .spyOn(NativeQuery.prototype, "isEditable")
-          .mockReturnValue(hasDatabaseWritePermission);
-
         Snippets.actions.fetchList = jest.fn();
         Snippets.selectors.getList = jest
           .fn()
           .mockReturnValue(snippet ? [snippet] : []);
 
-        return setup({ card: clone, ...opts });
+        return setup({
+          card: clone,
+          hasDataPermissions: hasDatabaseWritePermission,
+          ...opts,
+        });
       }
 
       describe(questionType, () => {

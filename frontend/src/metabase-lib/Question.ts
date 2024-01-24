@@ -503,11 +503,6 @@ class Question {
     return (db && db.auto_run_queries) || false;
   }
 
-  isQueryEditable(): boolean {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-    return query ? query.isEditable() : false;
-  }
-
   /**
    * Returns the type of alert that current question supports
    *
@@ -1108,14 +1103,14 @@ class Question {
    */
   canExploreResults() {
     const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
-    const { isNative } = Lib.queryDisplayInfo(this.query());
+    const { isNative, isEditable } = Lib.queryDisplayInfo(this.query());
 
     return (
       isNative &&
       this.isSaved() &&
       this.parameters().length === 0 &&
       canNest &&
-      this.isQueryEditable() // originally "canRunAdhocQuery"
+      isEditable // originally "canRunAdhocQuery"
     );
   }
 

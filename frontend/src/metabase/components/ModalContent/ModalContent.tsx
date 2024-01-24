@@ -2,12 +2,9 @@ import type { ReactNode } from "react";
 import { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import {
-  ModalContentActionIcon,
-  ActionsWrapper,
-  HeaderContainer,
-  HeaderText,
-} from "./ModalContent.styled";
+
+import type { CommonModalProps } from "./types";
+import { ModalHeader } from "./ModalHeader";
 
 export interface ModalContentProps extends CommonModalProps {
   "data-testid"?: string;
@@ -19,17 +16,6 @@ export interface ModalContentProps extends CommonModalProps {
   className?: string;
 }
 
-interface CommonModalProps {
-  // takes over the entire screen
-  fullPageModal?: boolean;
-  // standard modal
-  formModal?: boolean;
-  centeredTitle?: boolean;
-
-  headerActions?: ReactNode;
-  onClose?: () => void;
-}
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ModalContent extends Component<ModalContentProps> {
   static propTypes = {
@@ -38,6 +24,7 @@ export default class ModalContent extends Component<ModalContentProps> {
     title: PropTypes.oneOfType([PropTypes.string, PropTypes.element]),
     centeredTitle: PropTypes.bool,
     onClose: PropTypes.func,
+    onBack: PropTypes.func,
     // takes over the entire screen
     fullPageModal: PropTypes.bool,
     // standard modal
@@ -65,6 +52,7 @@ export default class ModalContent extends Component<ModalContentProps> {
       centeredTitle,
       footer,
       onClose,
+      onBack,
       children,
       className,
       fullPageModal,
@@ -91,6 +79,7 @@ export default class ModalContent extends Component<ModalContentProps> {
             formModal={formModal}
             headerActions={headerActions}
             onClose={onClose}
+            onBack={onBack}
           >
             {title}
           </ModalHeader>
@@ -109,49 +98,6 @@ export default class ModalContent extends Component<ModalContentProps> {
 }
 
 const FORM_WIDTH = 500 + 32 * 2; // includes padding
-
-interface ModalHeaderProps extends CommonModalProps {
-  children: ReactNode;
-
-  className?: string;
-}
-
-export const ModalHeader = ({
-  children,
-  className,
-  fullPageModal,
-  centeredTitle,
-  headerActions,
-  onClose,
-}: ModalHeaderProps) => {
-  const hasActions = !!headerActions || !!onClose;
-  const actionIconSize = fullPageModal ? 24 : 16;
-
-  return (
-    <HeaderContainer className={className} data-testid="modal-header">
-      <HeaderText
-        className={cx({
-          "text-centered": fullPageModal || centeredTitle,
-        })}
-      >
-        {children}
-      </HeaderText>
-
-      {hasActions && (
-        <ActionsWrapper>
-          {headerActions}
-          {onClose && (
-            <ModalContentActionIcon
-              name="close"
-              size={actionIconSize}
-              onClick={onClose}
-            />
-          )}
-        </ActionsWrapper>
-      )}
-    </HeaderContainer>
-  );
-};
 
 interface ModalBodyProps extends CommonModalProps {
   children: ReactNode;
