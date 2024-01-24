@@ -119,6 +119,6 @@ describe("BrowseDataPage", () => {
   it("displays last edited information about models", async () => {
     setup({ models: 3, databases: 0 });
     await screen.findByText("Model 0");
-    expect(await screen.findAllByText(/years ago/)).toHaveLength(3);
+    expect(await screen.findAllByText(/[0-9]+yr/)).toHaveLength(3);
   });
 });
