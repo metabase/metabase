@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import cx from "classnames";
 import _ from "underscore";
 import debounce from "lodash.debounce";
 
@@ -22,7 +21,7 @@ const REFRESH_MODE = {
 /**
  * @deprecated HOCs are deprecated
  */
-export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
+export default ({ selector, refreshMode = "throttle" } = {}) =>
   ComposedComponent => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
@@ -140,21 +139,7 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
       };
 
       render() {
-        if (wrapped) {
-          const { className, style = {}, ...props } = this.props;
-          const { width, height } = this.state;
-          return (
-            <div className={cx(className, "relative")} style={style}>
-              <ComposedComponent
-                style={{ position: "absolute", top: 0, left: 0, width, height }}
-                {...props}
-                {...this.state}
-              />
-            </div>
-          );
-        } else {
-          return <ComposedComponent {...this.props} {...this.state} />;
-        }
+        return <ComposedComponent {...this.props} {...this.state} />;
       }
     }
 

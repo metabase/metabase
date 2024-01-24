@@ -105,48 +105,57 @@ class ChartWithLegend extends Component {
     ) : null;
 
     return (
-      <div
-        className={cx(
-          className,
-          "fullscreen-text-small fullscreen-normal-text fullscreen-night-text",
-          styles.ChartWithLegend,
-          styles[type],
-          flexChart && styles.flexChart,
-        )}
-        style={{
-          ...style,
-          paddingBottom: PADDING,
-          paddingLeft: PADDING,
-          paddingRight: PADDING,
-        }}
-      >
-        {legend && (
-          <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
-            {legend}
-          </div>
-        )}
+      <div className={cx(className, "relative")} style={style}>
         <div
-          className={cx(styles.Chart)}
-          style={{ width: chartWidth, height: chartHeight }}
+          className={cx(
+            className,
+            "fullscreen-text-small fullscreen-normal-text fullscreen-night-text",
+            styles.ChartWithLegend,
+            styles[type],
+            flexChart && styles.flexChart,
+          )}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: this.props.width,
+            height: this.props.height,
+            ...style,
+            paddingBottom: PADDING,
+            paddingLeft: PADDING,
+            paddingRight: PADDING,
+          }}
         >
-          {children}
-        </div>
-        {/* spacer div to balance legend */}
-        {legend && (
+          {legend && (
+            <div
+              className={cx(styles.LegendWrapper)}
+              data-testid="chart-legend"
+            >
+              {legend}
+            </div>
+          )}
           <div
-            className={cx(styles.LegendSpacer)}
-            // don't center the chart on dashboards
-            style={isDashboard ? { flexBasis: 0 } : {}}
+            className={cx(styles.Chart)}
+            style={{ width: chartWidth, height: chartHeight }}
           >
-            {legend}
+            {children}
           </div>
-        )}
+          {/* spacer div to balance legend */}
+          {legend && (
+            <div
+              className={cx(styles.LegendSpacer)}
+              // don't center the chart on dashboards
+              style={isDashboard ? { flexBasis: 0 } : {}}
+            >
+              {legend}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 }
 
 export default ExplicitSize({
-  wrapped: true,
   refreshMode: props => (props.isDashboard ? "debounceLeading" : "throttle"),
 })(ChartWithLegend);

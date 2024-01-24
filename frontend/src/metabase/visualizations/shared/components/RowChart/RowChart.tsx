@@ -52,6 +52,7 @@ export interface RowChartProps<TDatum> {
 
   xScaleType?: ContinuousScaleType;
 
+  className?: string;
   style?: React.CSSProperties;
 
   hoveredData?: HoveredData | null;

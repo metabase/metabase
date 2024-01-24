@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from "react";
 import type * as React from "react";
 import { t } from "ttag";
-
+import cx from "classnames";
 import _ from "underscore";
+
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
@@ -73,14 +74,23 @@ import {
 } from "./utils/format";
 
 const RowChartRenderer = ExplicitSize({
-  wrapped: true,
   refreshMode: "throttle",
   selector: false,
-})((props: RowChartProps<GroupedDatum>) => (
-  <RowChartContainer>
-    <RowChart {...props} />
-  </RowChartContainer>
-));
+})(
+  ({
+    className,
+    style,
+    width,
+    height,
+    ...props
+  }: RowChartProps<GroupedDatum>) => (
+    <div className={cx(className, "relative")} style={style}>
+      <RowChartContainer style={{ width, height }}>
+        <RowChart {...props} width={width} height={height} />
+      </RowChartContainer>
+    </div>
+  ),
+);
 
 const RowChartVisualization = ({
   card,
