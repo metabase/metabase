@@ -12,7 +12,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { JS_CODE, IFRAME_CODE } from "./shared/embedding-snippets";
+import { getEmbeddingJsCode, IFRAME_CODE } from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
@@ -43,7 +43,7 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE({ type: "dashboard", id: ORDERS_DASHBOARD_ID }),
+            getEmbeddingJsCode({ type: "dashboard", id: ORDERS_DASHBOARD_ID }),
           );
 
         cy.findAllByTestId("embed-backend-select-button")
@@ -57,11 +57,12 @@ features.forEach(feature => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      modal().within(() => {
-        cy.findAllByTestId("embed-frontend-select-button")
-          .should("contain", "Mustache")
-          .click();
-      });
+      cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+
+      modal()
+        .findAllByTestId("embed-frontend-select-button")
+        .should("contain", "Pug / Jade")
+        .click();
 
       popover()
         .should("contain", "Mustache")
@@ -72,6 +73,11 @@ features.forEach(feature => {
       modal().within(() => {
         cy.findByRole("tab", { name: "Appearance" }).click();
 
+        // No download button for dashboards even for pro/enterprise users metabase#23477
+        cy.findByLabelText(
+          "Enable users to download data from this embed",
+        ).should("not.exist");
+
         // set transparent background metabase#23477
         cy.findByText("Transparent").click();
         cy.get(".ace_content")
@@ -79,14 +85,12 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE({
+            getEmbeddingJsCode({
               type: "dashboard",
               id: ORDERS_DASHBOARD_ID,
               theme: "transparent",
             }),
           );
-
-        cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
       });
     });
 
@@ -108,7 +112,7 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE({ type: "question", id: ORDERS_QUESTION_ID }),
+            getEmbeddingJsCode({ type: "question", id: ORDERS_QUESTION_ID }),
           );
 
         cy.findByRole("tab", { name: "Appearance" }).click();
@@ -120,7 +124,7 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE({
+            getEmbeddingJsCode({
               type: "question",
               id: ORDERS_QUESTION_ID,
               theme: "transparent",
@@ -130,7 +134,7 @@ features.forEach(feature => {
         // hide download button for pro/enterprise users metabase#23477
         if (feature === "all") {
           cy.findByText(
-            "Enable users to download data from this embed?",
+            "Enable users to download data from this embed",
           ).click();
 
           cy.get(".ace_content")
@@ -138,7 +142,7 @@ features.forEach(feature => {
             .invoke("text")
             .should(
               "match",
-              JS_CODE({
+              getEmbeddingJsCode({
                 type: "question",
                 id: ORDERS_QUESTION_ID,
                 theme: "transparent",
@@ -147,9 +151,7 @@ features.forEach(feature => {
             );
         }
 
-        cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
-
-        cy.findAllByTestId("embed-backend-select-button")
+        cy.findByTestId("embed-backend-select-button")
           .should("contain", "Node.js")
           .click();
       });
@@ -159,16 +161,6 @@ features.forEach(feature => {
         .and("contain", "Ruby")
         .and("contain", "Python")
         .and("contain", "Clojure");
-
-      cy.findAllByTestId("embed-frontend-select-button")
-        .should("contain", "Mustache")
-        .click();
-
-      popover()
-        .should("contain", "Mustache")
-        .and("contain", "Pug / Jade")
-        .and("contain", "ERB")
-        .and("contain", "JSX");
     });
   });
 });
