@@ -235,7 +235,6 @@ function setup({
   subHead = false,
   isObjectDetail = false,
   hasPermissions = true,
-  isMultiSchemaDB = false,
 } = {}) {
   const metadata = hasPermissions ? getMetadata() : {};
   const question = card && new Question(card, metadata);
