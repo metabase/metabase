@@ -12,7 +12,6 @@ interface SidebarProps {
   closeIsDisabled?: boolean;
   children: ReactNode;
   onClose?: () => void;
-  // TODO remove this option once Pulses are deprecated and NewPulseSidebar component is no longer needed
   onCancel?: () => void;
   onRemove?: () => void;
   "data-testid"?: string;
