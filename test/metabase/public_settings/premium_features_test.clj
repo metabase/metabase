@@ -186,7 +186,7 @@
 
    (testing "Return schemas are validated for OSS implementations"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid output: \[\"should be a keyword\"\]"
+                            #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta.*"
                             (greeting-with-invalid-oss-return-schema :rasta)))))
 
   (when config/ee-available?
