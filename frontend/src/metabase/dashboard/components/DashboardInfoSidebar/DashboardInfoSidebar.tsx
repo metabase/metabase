@@ -100,11 +100,14 @@ export function DashboardInfoSidebar({
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
         />
-        {loading && <div>Thinking ✨</div>}
-        <Button
-          variant="filled"
-          onClick={fetchSuggestion}
-        >{t`Suggest Description`}</Button>
+        {!loading ? (
+          <Button
+            variant="filled"
+            onClick={fetchSuggestion}
+          >{t`Suggest Description`}</Button>
+        ) : (
+          <div>Thinking ✨</div>
+        )}
       </ContentSection>
 
       <ContentSection>
