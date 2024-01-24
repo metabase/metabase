@@ -75,8 +75,12 @@
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
 
-  For archived, we can either pass in include both (when archived is nil), include only archived is true, or archived is false."
-  [archived exclude-other-user-collections namespace shallow collection-id]
+  For archived, we can either include everthing (when archived is `nil`), only archived (when `archived` is true),
+  or only non-archived (when `archived` is false).
+
+  To select only personal collections, pass in `personal-only` as `true`.
+  This will select only collections where `personal_owner_id` is not `nil`."
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -84,16 +88,18 @@
                          [:= :archived archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
+                       (when personal-only
+                         [:!= :personal_owner_id nil])
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-ids->honeysql-filter-clause
                         :id
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                        (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -103,15 +109,23 @@
   `?archived=true`.
 
   By default, admin users will see all collections. To hide other user's collections pass in
-  `?exclude-other-user-collections=true`."
-  [archived exclude-other-user-collections namespace]
+  `?exclude-other-user-collections=true`.
+
+  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
+  [archived exclude-other-user-collections namespace personal-only]
   {archived                       [:maybe ms/BooleanValue]
    exclude-other-user-collections [:maybe ms/BooleanValue]
-   namespace                      [:maybe ms/NonBlankString]}
+   namespace                      [:maybe ms/NonBlankString]
+   personal-only                  [:maybe ms/BooleanValue]}
   (as->
-   (select-collections archived exclude-other-user-collections namespace false nil) collections
-    ;; include Root Collection at beginning or results if archived isn't `true`
-    (if archived
+   (select-collections {:archived                       archived
+                        :exclude-other-user-collections exclude-other-user-collections
+                        :namespace                      namespace
+                        :shallow                        false
+                        :personal-only                  personal-only
+                        :permissions-set                @api/*current-user-permissions-set*}) collections
+    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
+    (if (or archived personal-only)
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
@@ -173,7 +187,12 @@
    shallow                        [:maybe :boolean]
    collection-id                  [:maybe ms/PositiveInt]}
   (let [archived    (if exclude-archived false nil)
-        collections (select-collections archived exclude-other-user-collections namespace shallow collection-id)]
+        collections (select-collections {:archived                       archived
+                                         :exclude-other-user-collections exclude-other-user-collections
+                                         :namespace                      namespace
+                                         :shallow                        shallow
+                                         :collection-id                  collection-id
+                                         :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
