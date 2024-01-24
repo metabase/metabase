@@ -14,7 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (com.mongodb.client AggregateIterable ClientSession MongoDatabase MongoCursor)
+   (com.mongodb.client AggregateIterable ClientSession MongoClient MongoCursor MongoDatabase)
    (java.util.concurrent TimeUnit)
    (org.bson BsonBoolean BsonInt32)))
 
@@ -179,7 +179,7 @@
 ;; TODO: move to jdw!
 (defn- start-session!
   ^ClientSession
-  [^com.mongodb.client.MongoClient c]
+  [^MongoClient c]
   (.. c startSession))
 
 ;; TODO: move to jdw

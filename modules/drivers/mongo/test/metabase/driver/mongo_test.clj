@@ -71,9 +71,11 @@
                                                              :port   3000
                                                              :dbname "bad-db-name?connectTimeoutMS=50"}
                                                   :expected false}
-                                                 {:details  {:conn-uri "mongodb://metabase:metasample123@localhost:27017/test-data?authSource=admin"}
+                                                 {:details  {:use-conn-uri true
+                                                             :conn-uri "mongodb://metabase:metasample123@localhost:27017/test-data?authSource=admin"}
                                                   :expected (not (tdm/ssl-required?))}
-                                                 {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
+                                                 {:details  {:use-conn-uri true
+                                                             :conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
                                                   :expected false}]
              :let [ssl-details (tdm/conn-details details)]]
        (testing (str "connect with " details)

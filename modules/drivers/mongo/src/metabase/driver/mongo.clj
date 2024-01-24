@@ -20,7 +20,8 @@
    [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
   (:import
-   (org.bson.types ObjectId)))
+   (org.bson.types ObjectId)
+   (com.mongodb.client MongoClient MongoDatabase)))
 
 (set! *warn-on-reflection* true)
 
@@ -44,9 +45,9 @@
 ;; TODO: database vs database details
 (defmethod driver/can-connect? :mongo
   [_ db-details]
-  (mongo.jdw/with-mongo-client [^com.mongodb.client.MongoClient c db-details]
+  (mongo.jdw/with-mongo-client [^MongoClient c db-details]
     (let [db-names (mongo.jdw/list-database-names c)]
-      (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db db-details]
+      (mongo.jdw/with-mongo-database [^MongoDatabase db db-details]
         (let [db-stats (mongo.jdw/run-command db {:dbStats 1})]
           (and
            ;; 1. check db.dbStats command completes successfully
@@ -193,7 +194,7 @@
 
 (defmethod driver/describe-database :mongo
   [_ database]
-  (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db database]
+  (mongo.jdw/with-mongo-database [^MongoDatabase db database]
     {:tables (set (for [collection (disj (into #{} (mongo.jdw/list-collection-names db)) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
@@ -201,7 +202,7 @@
 ;; TODO: Comments!
 (defmethod driver/describe-table-indexes :mongo
   [_ database table]
-  (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db database]
+  (mongo.jdw/with-mongo-database [^MongoDatabase db database]
     ;; using raw DBObject instead of calling `monger/indexes-on`
     ;; because in case a compound index has more than 8 keys, the `key` returned by
     ;;`monger/indexes-on` will be a hash-map, and with a hash map we can't determine
@@ -224,7 +225,7 @@
 
 ;; TODO: orderd map for sort-criteria?
 ;; TODO: find returning cursor or what?
-(defn- sample-documents [^com.mongodb.client.MongoDatabase db table sort-direction]
+(defn- sample-documents [^MongoDatabase db table sort-direction]
   (let [coll (mongo.jdw/collection db (:name table))]
     (mongo.jdw/do-find coll {:limit metadata-queries/nested-field-sample-limit
                              :skip 0
@@ -237,7 +238,7 @@
 
       {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil},
        :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
-  [^com.mongodb.client.MongoDatabase db table]
+  [^MongoDatabase db table]
   (try
     (reduce
      (fn [field-defs row]
@@ -252,7 +253,7 @@
 
 (defmethod driver/describe-table :mongo
   [_ database table]
-  (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db database]
+  (mongo.jdw/with-mongo-database [^MongoDatabase db database]
     (let [column-info (table-sample-column-info db table)]
       {:schema nil
        :name   (:name table)

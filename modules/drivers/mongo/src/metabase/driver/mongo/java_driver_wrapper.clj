@@ -1,5 +1,6 @@
 (ns metabase.driver.mongo.java-driver-wrapper
-  "This namespace is a wrapper of `mongo-java-driver`, borrowing a lot from monger library."
+  "This namespace is a wrapper of `mongo-java-driver`, adjusted for Metabase purposes, borrowing a lot from
+   the Monger library."
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
@@ -13,12 +14,19 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.ssh :as ssh]))
+   [metabase.util.ssh :as ssh])
+  (:import
+   (com.mongodb MongoClientSettings MongoClientSettings$Builder)
+   (com.mongodb.client FindIterable MongoClient MongoClients MongoCollection MongoDatabase)
+   (com.mongodb.connection SslSettings$Builder)))
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *mongo-client*
+  "Stores an instance of MongoClient bound by [[with-mongo-client]]."
+  nil)
+
 ;;;; Conversions
-;;   Borrows heavily from monger.
 
 (defprotocol ConvertFromDocument
   (from-document [input keywordize] "Converts given DBObject instance to a piece of Clojure data"))
@@ -37,49 +45,24 @@
   java.util.List
   (from-document [^java.util.List input keywordize]
     (vec (map #(from-document % keywordize) input)))
-
-  ;; TODO: remove following!
-  com.mongodb.BasicDBList
-  (from-document [^com.mongodb.BasicDBList input keywordize]
-    (vec (map #(from-document % keywordize) input)))
-
-  com.mongodb.DBRef
-  (from-document [^com.mongodb.DBRef input keywordize]
-    input)
-
-  ;; TODO: remove following!
-  com.mongodb.DBObject
-  (from-document [^com.mongodb.DBObject input keywordize]
-    ;; DBObject provides .toMap, but the implementation in
-    ;; subclass GridFSFile unhelpfully throws
-    ;; UnsupportedOperationException.
-    (reduce (if keywordize
-              (fn [m ^String k]
-                (assoc m (keyword k) (from-document (.get input k) true)))
-              (fn [m ^String k]
-                (assoc m k (from-document (.get input k) false))))
-            {} (.keySet input))))
-
-(extend-protocol ConvertFromDocument
+  
   java.util.Date
   (from-document [t _]
-    (t/instant t)))
-
-(extend-protocol ConvertFromDocument
+                 (t/instant t))
+  
   org.bson.Document
   (from-document [input keywordize]
-    (def kwkws keywordize)
-    (reduce (if keywordize
-              (fn [m ^String k]
-                (assoc m (keyword k) (from-document (.get input k) true)))
-              (fn [m ^String k]
-                (assoc m k (from-document (.get input k) false))))
-            ;; following ignores ordering
-            (ordered-map/ordered-map) @(def ksks (.keySet input))
-            #_#_{} @(def ksks (.keySet input)))))
+                 (reduce (if keywordize
+                           (fn [m ^String k]
+                             (assoc m (keyword k) (from-document (.get input k) true)))
+                           (fn [m ^String k]
+                             (assoc m k (from-document (.get input k) false))))
+                         (ordered-map/ordered-map)
+                         (.keySet input))))
 
 (defprotocol ConvertToDocument
-  (^org.bson.Document to-document [input] "Converts given piece of Clojure data to BasicDBObject MongoDB Java driver uses"))
+  (^org.bson.Document to-document [input] 
+    "Converts given piece of Clojure data to org.bson.Document usable by java driver."))
 
 (extend-protocol ConvertToDocument
   nil
@@ -128,14 +111,12 @@
   (to-document [^com.mongodb.DBRef dbref]
     dbref)
 
-  ;; other just returns
   Object
   (to-document [input]
     input))
 
-
-;; It seems to be the case that the only thing BSON supports is DateTime which is basically the equivalent of Instant;
-;; for the rest of the types, we'll have to fake it
+;; Cam: It seems to be the case that the only thing BSON supports is DateTime which is basically the equivalent
+;; of Instant; for the rest of the types, we'll have to fake it.
 (extend-protocol ConvertToDocument
   java.time.Instant
   (to-document [t]
@@ -169,78 +150,64 @@
   (to-document [t]
     (to-document (t/instant t))))
 
-;;;; Wrapped java driver api.
+;;;; Wrapped java driver.
 
 (defn mongo-client
-  ^com.mongodb.client.MongoClient
-  [^com.mongodb.MongoClientSettings settings]
-  (com.mongodb.client.MongoClients/create settings))
+  ^MongoClient [^MongoClientSettings settings]
+  (MongoClients/create settings))
 
-(defn close [^com.mongodb.client.MongoClient client]
+(defn close
+  [^MongoClient client]
   (.close client))
 
-;; TODO: instead of this, with-mongo-db should be designed differently? -- no client can operate multiple databases?
-;;       but not in Metabase.
-(defn db-name
-  ^String [{:keys [conn-uri] :as db-details}]
-  (if (string? conn-uri)
-    (-> (com.mongodb.ConnectionString. conn-uri) .getDatabase)
-    (:dbname db-details)))
-
 (defn database
-  ^com.mongodb.client.MongoDatabase
-  [^com.mongodb.client.MongoClient client db-name]
+  ^MongoDatabase
+  [^MongoClient client db-name]
   (.getDatabase client db-name))
 
-;; TODO: check correctness! keywordize
 (defn run-command
-  ([^com.mongodb.client.MongoDatabase db cmd-map & {:keys [keywordize] :or {keywordize true}}]
+  ([^MongoDatabase db cmd-map & {:keys [keywordize] :or {keywordize true}}]
    (let [from-document* #(from-document % keywordize)]
      (->> cmd-map to-document (.runCommand db) from-document*))))
 
-(defn list-database-names [^com.mongodb.client.MongoClient client]
+(defn list-database-names [^MongoClient client]
   (->> client .listDatabaseNames (into [])))
 
-(defn list-collection-names [^com.mongodb.client.MongoDatabase db]
+(defn list-collection-names [^MongoDatabase db]
   (->> db .listCollectionNames (into [])))
 
-(defn collection [^com.mongodb.client.MongoDatabase db coll-name]
+(defn collection [^MongoDatabase db coll-name]
   (.getCollection db coll-name))
 
-;; TODO: remove into []
 (defn list-indexes
-  ([^com.mongodb.client.MongoDatabase db coll-name]
+  ([^MongoDatabase db coll-name]
    (list-indexes (collection db coll-name)))
-  ([^com.mongodb.client.MongoCollection coll]
+  ([^MongoCollection coll]
    (into [] (.listIndexes coll))))
 
 ;; TODO: return cursor!
 ;; TODO: should shadow find
 ;; TODO: should be modified to avoid into
-(defn do-find [^com.mongodb.client.MongoCollection coll
+(defn do-find [^MongoCollection coll
                & {:keys [limit skip batch-size sort-criteria] :as _opts}]
-  (->> (cond-> ^com.mongodb.client.FindIterable (.find coll)
-         ;; following is "funny"
-        limit (.limit limit)
-        skip (.skip skip)
-        batch-size (.batchSize (int batch-size))
-        sort-criteria (.sort (to-document sort-criteria)))
+  (->> (cond-> ^FindIterable (.find coll)
+         limit (.limit limit)
+         skip (.skip skip)
+         batch-size (.batchSize (int batch-size))
+         sort-criteria (.sort (to-document sort-criteria)))
       (mapv #(from-document % true))))
 
-;; indexes
+(defn create-index
+  "Create index."
+  [^MongoCollection coll cmd-map]
+  (.createIndex coll (to-document cmd-map)))
 
-(defn create-index [^com.mongodb.client.MongoCollection coll cmd-map]
-  (let [cmd (to-document cmd-map)]
-    (.createIndex coll cmd)))
+(defn insert-one
+  "Insert document into mongo collection."
+  [^MongoCollection coll document-map]
+  (.insertOne coll (to-document document-map)))
 
-;; CREATE
-
-(defn insert-one [^com.mongodb.client.MongoCollection coll document-ordred-map]
-  (.insertOne coll (to-document document-ordred-map)))
-
-;;;; UTIL
-
-(def ^:dynamic *mongo-client* nil)
+;;;; Util
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:
@@ -248,116 +215,105 @@
   [host]
   (<= 2 (-> host frequencies (get \. 0))))
 
-;; TODO: ssl nil?
-(defn- normalize-details [details]
-  (let [{:keys [dbname host port user pass authdb additional-options use-srv conn-uri ssl ssl-cert ssl-use-client-auth client-ssl-cert]
-         :or   {port 27017, ssl false, ssl-use-client-auth false, use-srv false, ssl-cert "", authdb "admin"}} details
-        ;; ignore empty :user and :pass strings
-        user (not-empty user)
-        pass (not-empty pass)]
-    (when (and use-srv (not (fqdn? host)))
-      (throw (ex-info (tru "Using DNS SRV requires a FQDN for host")
-                      {:host host})))
-    {:host                    host
-     :port                    port
-     :user                    user
-     :authdb                  authdb
-     :pass                    pass
-     :dbname                  dbname
-     :ssl                     ssl
-     :additional-options      additional-options
-     :conn-uri                conn-uri
-     :srv?                    use-srv
-     :ssl-cert                ssl-cert
-     :ssl-use-client-auth     ssl-use-client-auth
-     :client-ssl-cert         client-ssl-cert
-     :client-ssl-key          (secret/get-secret-string details "client-ssl-key")}))
+(defn- validate-db-details! [{:keys [use-srv host] :as _db-details}]
+  (when (and use-srv (not (fqdn? host)))
+    (throw (ex-info (tru "Using DNS SRV requires a FQDN for host")
+                    {:host host}))))
 
-(defn- database->details
-  "Make sure `database` is in a standard db details format. This is done so we can accept several different types of
-  values for `database`, such as plain strings or the usual MB details map."
+(defn update-ssl-db-details
+  [db-details]
+  (-> db-details
+      (assoc :client-ssl-key (secret/get-secret-string db-details "client-ssl-key"))
+      (dissoc :client-ssl-key-creator-id
+              :client-ssl-key-created-at
+              :client-ssl-key-id
+              :client-ssl-key-source)))
+
+(defn- details-normalized
+  "Return _normalized_ database `:details` for `x`, where `x` could be a database id, database name, database object
+   (as returned eg. by call to `(toucan2.core/select-one :model/Database)`)"
   [database]
-  (cond
-    (integer? database)             (qp.store/with-metadata-provider database
-                                      (:details (lib.metadata.protocols/database (qp.store/metadata-provider))))
-    (string? database)              {:dbname database}
-    (:dbname (:details database))   (:details database) ; entire Database obj
-    (:dbname database)              database            ; connection details map only
-    (:conn-uri database)            database            ; connection URI has all the parameters
-    (:conn-uri (:details database)) (:details database)
-    :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
-                                                            (:details database))))))
+  (let [db-details
+        (cond
+          (integer? database)             (qp.store/with-metadata-provider database
+                                            (:details (lib.metadata.protocols/database (qp.store/metadata-provider))))
+          (string? database)              {:dbname database}
+          (:dbname (:details database))   (:details database) ; entire Database obj
+          (:dbname database)              database            ; connection details map only
+          (:conn-uri database)            database            ; connection URI has all the parameters
+          (:conn-uri (:details database)) (:details database)
+          :else
+          (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
+                                  (:details database)))))]
+    (validate-db-details! db-details)
+    (update-ssl-db-details db-details)))
 
-;; the code below is done to support "additional connection options" the way some of the JDBC drivers do.
-;; For example, some people might want to specify a`readPreference` of `nearest`. The normal Java way of
-;; doing this would be to do
-;;
-;;     (.readPreference builder (ReadPreference/nearest))
-;;
-;; But the user will enter something like `readPreference=nearest`. Luckily, the Mongo Java lib can parse
-;; these options for us and return a `MongoClientOptions` like we'd prefer. Code below:
+;; TODO: ADD explanation from notion doc.
 (defn db-details->connection-string
-  "Additional connection options as eg. readPreference are set using `additional-options`."
-  [{:keys [conn-uri host port user authdb pass dbname additional-options srv? ssl] :as _db-details}]
-  (if (string? conn-uri)
+  "Generate connection string from database details."
+  [{:keys [use-conn-uri conn-uri host port user authdb pass dbname additional-options use-srv ssl] :as _db-details}]
+  ;; Connection string docs:
+  ;; http://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-core/com/mongodb/ConnectionString.html
+  (if use-conn-uri
     conn-uri
     (str
-     ;; prefix
-     (if srv? "mongodb+srv" "mongodb")
+     (if use-srv "mongodb+srv" "mongodb")
      "://"
-     ;; credentials
-     (when (string? user) (str user (when (string? pass) (str ":" pass)) "@"))
-     ;; host
+     (when (seq user) (str user (when (seq pass) (str ":" pass)) "@"))
      host
-     (when (int? port) (str ":" port))
+     (when (and (not use-srv) (some? port)) (str ":" port))
      "/"
      dbname
-     ;; TODO: Here I believe it is a right thing to do to overwrite ours url params by user provided. Verify that's true.
-     "?authSource=" authdb
+     "?authSource=" (if (empty? authdb) "admin" authdb)
      "&appName=" config/mb-app-id-string
      "&connectTimeoutMS=" (driver.u/db-connection-timeout-ms)
      "&serverSelectionTimeoutMS=" (driver.u/db-connection-timeout-ms)
-     ;; here other options, and overwrite with `additional-options`
-     (when (boolean? ssl) (str "&ssl=" ssl))
-     (when (some? additional-options) (str "&" additional-options)))))
+     (when ssl "&ssl=true")
+     (when (seq additional-options) (str "&" additional-options)))))
 
-;; TODO: Missing connection URI only
+(defn- maybe-add-ssl-context-to-builder!
+  "TODO: When certs are empty we add context with empty certs! Is that desired?"
+  [^MongoClientSettings$Builder builder
+   {:keys [ssl-cert ssl-use-client-auth client-ssl-cert client-ssl-key]}]
+  (let [server-cert? (not (str/blank? ssl-cert))
+        client-cert? (and ssl-use-client-auth
+                          (not-any? str/blank? [client-ssl-cert client-ssl-key]))]
+    (when (or client-cert? server-cert?)
+      (let [ssl-params (cond-> {}
+                         server-cert? (assoc :trust-cert ssl-cert)
+                         client-cert? (assoc :private-key client-ssl-key
+                                             :own-cert client-ssl-cert))
+            ssl-context (driver.u/ssl-context ssl-params)]
+        (.applyToSslSettings builder
+                             (reify com.mongodb.Block
+                               (apply [_this builder]
+                                 (.context ^SslSettings$Builder builder ssl-context))))))))
+
 (defn db-details->mongo-client-settings
   "Generate `MongoClientSettings` from `db-details`. `ConnectionString` is generated and applied to
    `MongoClientSettings$Builder` first. Then ssl context is udated in the `builder`. Afterwards, `MongoClientSettings`
    are built using `.build`."
-  ^com.mongodb.MongoClientSettings
-  [{:keys [conn-uri ssl ssl-cert ssl-use-client-auth client-ssl-cert client-ssl-key] :as db-details}]
+  ^MongoClientSettings
+  [{:keys [use-conn-uri ssl] :as db-details}]
   (let [connection-string (-> db-details
                               db-details->connection-string
                               com.mongodb.ConnectionString.)
         builder (com.mongodb.MongoClientSettings/builder)]
     (.applyConnectionString builder connection-string)
-    ;; TODO: not conn-uri condition is just temporary to match old logic..
-    (when (and ssl (not conn-uri))
-      (let [server-cert? (not (str/blank? ssl-cert))
-            client-cert? (and ssl-use-client-auth
-                              (not-any? str/blank? [client-ssl-cert client-ssl-key]))
-            ssl-params (cond-> {}
-                         server-cert? (assoc :trust-cert ssl-cert)
-                         client-cert? (assoc :private-key client-ssl-key
-                                             :own-cert client-ssl-cert))
-            ssl-context (driver.u/ssl-context ssl-params)]
-        (.applyToSslSettings builder (reify com.mongodb.Block
-                                       (apply [_this builder]
-                                         (.context ^com.mongodb.connection.SslSettings$Builder builder ssl-context))))))
+    (when (and ssl (not use-conn-uri))
+      (maybe-add-ssl-context-to-builder! builder db-details))
     (.build builder)))
 
 (defn do-with-mongo-client [thunk database]
-  (let [db-details (-> database database->details)]
+  (let [db-details (details-normalized database)]
     (ssh/with-ssh-tunnel [details-with-tunnel db-details]
-      (let [client (mongo-client (db-details->mongo-client-settings (normalize-details details-with-tunnel)))]
+      (let [client (mongo-client (db-details->mongo-client-settings details-with-tunnel))]
+        (log/debug (u/format-color 'cyan (trs "Opened new MongoClient.")))
         (try
-          (log/debug (u/format-color 'cyan (trs "Opened new MongoClient.")))
           (binding [*mongo-client* client]
             (thunk client))
           (finally
-            (.close client)
+            (close client)
             (log/debug (u/format-color 'cyan (trs "Closed MongoClient.")))))))))
 
 (defmacro with-mongo-client
@@ -367,10 +323,13 @@
        (do-with-mongo-client f# ~database)
        (f# *mongo-client*))))
 
-;; TODO: shadowing of database? better arg name
-;; TODO: database details can have connection string only
+(defn details->db-name
+  "Get database name from database `:details`."
+  ^String [{:keys [dbname conn-uri] :as _db-details}]
+  (or (not-empty dbname) (-> (com.mongodb.ConnectionString. conn-uri) .getDatabase)))
+
 (defn do-with-mongo-database [thunk database*]
-  (let [db-name (-> database* database->details db-name)]
+  (let [db-name (-> database* details-normalized details->db-name)]
     (with-mongo-client [c database*]
       (thunk (database c db-name)))))
 

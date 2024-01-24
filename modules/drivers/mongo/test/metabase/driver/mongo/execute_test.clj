@@ -9,7 +9,7 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.test :as mt])
   (:import
-   (com.mongodb BasicDBObject)
+   #_(com.mongodb BasicDBObject)
    (java.util NoSuchElementException)))
 
 (set! *warn-on-reflection* true)
@@ -22,7 +22,6 @@
                   (vswap! counter inc)
                   (if (< i (count rows))
                     (mongo.jdw/to-document (get rows i))
-                    #_(BasicDBObject. ^java.util.Map (get rows i))
                     (throw (NoSuchElementException. (str "no element at " i))))))
       (close [_]))))
 

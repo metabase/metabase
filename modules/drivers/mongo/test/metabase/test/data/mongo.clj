@@ -12,7 +12,8 @@
    [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
    [metabase.test.data.interface :as tx])
   (:import
-   (com.fasterxml.jackson.core JsonGenerator)))
+   (com.fasterxml.jackson.core JsonGenerator)
+   (com.mongodb.client MongoDatabase)))
 
 (set! *warn-on-reflection* true)
 
@@ -55,61 +56,33 @@
                  (when-let [password (tx/db-test-env-var :mongo :password)]
                    {:pass password}))))
 
-;; TODO: escaped database name?
 (defn- destroy-db! [driver dbdef]
-  (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase db (tx/dbdef->connection-details driver :server dbdef)]
-    (.drop db) #_(tx/escaped-database-name dbdef)))
+  (mongo.jdw/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :server dbdef)]
+    (.drop db)))
 
 (def ^:dynamic *remove-nil?*
   "When creating a dataset, omit any nil-valued fields from the documents."
   false)
 
-#_(defmethod tx/create-db! :mongo
-  [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
-  (when-not skip-drop-db?
-    (destroy-db! driver dbdef))
-  (with-mongo-connection [mongo-db (tx/dbdef->connection-details driver :db dbdef)]
-    (doseq [{:keys [field-definitions table-name rows]} table-definitions]
-      (doseq [{:keys [field-name indexed?]} field-definitions]
-        (when indexed?
-          (mcoll/create-index mongo-db table-name {field-name 1})))
-      (let [field-names (for [field-definition field-definitions]
-                          (keyword (:field-name field-definition)))]
-        ;; Use map-indexed so we can get an ID for each row (index + 1)
-        (doseq [[i row] (map-indexed vector rows)]
-          (try
-            ;; Insert each row
-            (mcoll/insert mongo-db (name table-name) (into (ordered-map/ordered-map :_id (inc i))
-                                                           (cond->> (zipmap field-names row)
-                                                             *remove-nil?* (m/remove-vals nil?))))
-            ;; If row already exists then nothing to do
-            (catch com.mongodb.MongoException _)))))))
-
 (defmethod tx/create-db! :mongo
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
   (when-not skip-drop-db?
     (destroy-db! driver dbdef))
-  (mongo.jdw/with-mongo-database [^com.mongodb.client.MongoDatabase mongo-db (tx/dbdef->connection-details driver :db dbdef)]
+  (mongo.jdw/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :db dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
       (doseq [{:keys [field-name indexed?]} field-definitions]
         (when indexed?
-          ;; 
-          (mongo.jdw/create-index (mongo.jdw/collection mongo-db table-name) {field-name 1})
-          #_(.createIndex (mongo.jdw/collection mongo-db table-name) (mongo.jdw/map->Document {field-name 1}))
-          #_(mcoll/create-index (mongo.jdw/collection mongo-db) table-name {field-name 1})))
+          (mongo.jdw/create-index (mongo.jdw/collection db table-name) {field-name 1})))
       (let [field-names (for [field-definition field-definitions]
                           (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            ;; TODO THIS INSERT!!!!
-            (mongo.jdw/insert-one (mongo.jdw/collection mongo-db (name table-name)) (into (ordered-map/ordered-map :_id (inc i))
-                                                                                        (cond->> (zipmap field-names row)
-                                                                                          *remove-nil?* (m/remove-vals nil?))))
-            #_(mcoll/insert mongo-db (name table-name) (into (ordered-map/ordered-map :_id (inc i))
-                                                           (cond->> (zipmap field-names row)
-                                                             *remove-nil?* (m/remove-vals nil?))))
+            (mongo.jdw/insert-one (mongo.jdw/collection db (name table-name))
+                                  (into (ordered-map/ordered-map :_id (inc i))
+                                        (cond->> (zipmap field-names row)
+                                          *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 

@@ -12,9 +12,9 @@
    [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
    [metabase.driver.mongo.operators :refer [$add $addToSet $and $avg $concat $cond
                                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                                            $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute
-                                            $mod $month $multiply $ne $not $or $project $regexMatch $second $size $skip $sort
-                                            $strcasecmp $subtract $sum $toLower $unwind $year]]
+                                            $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
+                                            $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
+                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
@@ -1371,9 +1371,6 @@
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
   (try
-    #_(mapv (fn [^org.bson.BsonValue v] (-> v .asDocument com.mongodb.BasicDBObject.))
-          (org.bson.BsonArray/parse s))
-    ;; TODO: Verify this!
     (mapv mongo.jdw/to-document (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
