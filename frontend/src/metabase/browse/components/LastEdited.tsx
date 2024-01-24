@@ -1,8 +1,8 @@
 import _ from "underscore";
 import { c, t } from "ttag";
 import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import updateLocale from "dayjs/plugin/updateLocale";
+import relativeTime from "dayjs/plugin/relativeTime";
 
 import { Text, Tooltip } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
@@ -10,27 +10,49 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 dayjs.extend(updateLocale);
 dayjs.extend(relativeTime);
 
-const relativeTimeConfig: Record<string, unknown> = {
-  m: t`${1}min`,
-  mm: t`${"%d"}min`,
-  h: t`${1}h`,
-  hh: t`${"%d"}h`,
-  d: t`${1}d`,
-  dd: t`${"%d"}d`,
-  M: t`${1}mo`,
-  MM: t`${"%d"}mo`,
-  y: t`${1}yr`,
-  yy: t`${"%d"}yr`,
-  // For any number of seconds, just show 1min
-  s: () => t`${1}min`,
-  ss: () => t`${1}min`,
-  // Don't use "ago"
+/** Contextualize a msgid string related to a unit of time, for the benefit of
+* our translators. This is useful because it might be hard to know how to
+* translate a string like '{0}d' without additional context. */
+const giveContext = (unit: string) =>
+  c(
+    `Abbreviation for "{0} ${unit}(s)". Keep abbreviations distinct from one another.`,
+  );
+
+/** @see https://day.js.org/docs/en/customization/customization */
+const relativeTimeConfig = {
+  m: giveContext("minute").t`${"%d"}min`,
+  mm: giveContext("minute").t`${"%d"}min`,
+  h: giveContext("hour").t`${"%d"}h`,
+  hh: giveContext("hour").t`${"%d"}h`,
+  d: giveContext("day").t`${"%d"}d`,
+  dd: giveContext("day").t`${"%d"}d`,
+  w: giveContext("week").t`${"%d"}d`,
+  ww: giveContext("week").t`${"%d"}d`,
+  M: giveContext("month").t`${"%d"}mo`,
+  MM: giveContext("month").t`${"%d"}mo`,
+  y: giveContext("year").t`${"%d"}yr`,
+  yy: giveContext("year").t`${"%d"}yr`,
+  s: () => giveContext("minute").t`${1}min`,
+  ss: () => giveContext("minute").t`${1}min`,
   past: "%s",
-  // For the edge case where a model's last-edit date is somehow in the future
-  future: t`${"%s"} from now`,
+  future: giveContext("period").t`${"%s"} from now`,
 };
 
 dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
+
+// TODO: Check if this is required:
+// // Use a different dayjs instance to avoid polluting the global one
+// const dayjsWithAbbrevs = dayjs.extend((_, { instance }) => {
+//   return {
+//     updateLocale(localeName, config) {
+//       const locale = (instance.Ls[localeName] = {
+//         ...instance.Ls[localeName],
+//         ...config,
+//       });
+//       return locale;
+//     },
+//   };
+// });
 
 const getHowLongAgo = (timestamp: string) => {
   const date = dayjs(timestamp);
