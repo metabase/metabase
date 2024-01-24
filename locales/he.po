@@ -399,7 +399,7 @@ msgstr "מחק את {0} ?"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:38
 msgid "Saved questions and other things that depend on this {0} will continue to work, but this {1} will no longer be selectable from the query builder."
-msgstr "{שאלות שמורות ופעולות אחרות שתלויות ב {0] ימשיכו לעבוד, אבל {1} לא יהיה זמין לבחירה במחולל הדוחות"
+msgstr "שאלות שמורות ופעולות אחרות שתלויות ב {0} ימשיכו לעבוד, אבל {1} לא יהיה זמין לבחירה במחולל הדוחות."
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:39
 msgid "If you're sure you want to retire this {0}, please write a quick explanation of why it's being retired:"
