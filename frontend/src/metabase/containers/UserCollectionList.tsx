@@ -49,7 +49,6 @@ export const UserCollectionList = () => {
             },
             { title: PERSONAL_COLLECTIONS.name },
           ]}
-          analyticsContext="user-collections"
         />
       </ListHeader>
       <Box style={{ flexGrow: 1, overflowY: "auto" }} pr="0.5rem">
