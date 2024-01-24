@@ -2,7 +2,7 @@ import cx from "classnames";
 import { Icon } from "metabase/ui";
 
 type Props = {
-  name: "close" | "enter_or_return" | "empty" | "chevrondown";
+  name: "close" | "empty" | "chevrondown";
   onClick?: () => void;
 };
 
