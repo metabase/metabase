@@ -78,7 +78,20 @@ class ParameterValueWidget extends Component {
       parentFocusChanged(isFocused);
     }
     this.setState({ isFocused });
+
+    if (this.isInsideNativeQuery() && !isFocused) {
+      this.resetToDefault();
+    }
   };
+
+  resetToDefault() {
+    const { required, default: defaultValue } = this.props.parameter;
+    const { value } = this.props;
+
+    if (required && defaultValue && !value) {
+      this.props.setValue(defaultValue);
+    }
+  }
 
   onPopoverClose = () => {
     if (this.valuePopover.current) {
