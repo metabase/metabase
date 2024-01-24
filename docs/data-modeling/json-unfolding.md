@@ -14,15 +14,15 @@ Metabase can unfold that JSON column so that each key in the JSON object gets it
 
 ![Unfolded fields](./images/unfolded-fields.png)
 
-And here are the values:
+And here are the values as seen in the table:
 
 ![Unfolded values](./images/unfolded-values.png)
 
-Metabase will give prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing its columns.
+Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
 
 ## Toggling JSON unfolding for a database
 
-If you notice performance suffer from this JSON unfolding, we recommend turning off JSON unfolding.
+If you notice a hit to performance from this JSON unfolding, we recommend turning it off.
 
 To turn off JSON unfolding for a database:
 
