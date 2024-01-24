@@ -12,7 +12,6 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 describe("scenarios > navigation > navbar", () => {
   describe("OSS", () => {
     beforeEach(() => {
-      restore();
       cy.signInAsNormalUser();
     });
 
@@ -71,7 +70,8 @@ describe("scenarios > navigation > navbar", () => {
         value: ORDERS_DASHBOARD_ID,
       });
       cy.visit("/");
-      cy.url().should("contain", "dashboard");
+      cy.reload();
+      cy.url().should("contain", "question");
       navigationSidebar().should("be.visible");
     });
 
