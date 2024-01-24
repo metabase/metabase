@@ -88,7 +88,7 @@ WHERE dp.perm_type = 'perms/download-results'
 AND dp.table_id IS NOT NULL;
 
 INSERT INTO permissions (object, group_id)
-SELECT DISTINCT ON (dp.db_id, dp.group_id)
+SELECT
   concat('/download/limited/db/',  dp.db_id,  '/native/'),
   dp.group_id
 FROM data_permissions dp
@@ -111,7 +111,8 @@ WHERE dp.perm_type = 'perms/download-results'
         AND sub_dp.group_id = dp.group_id
         AND sub_dp.table_id IS NULL
         AND sub_dp.perm_type = 'perms/download-results'
-  );
+  )
+GROUP BY dp.db_id, dp.group_id;
 
 -- MANAGE TABLE METADATA
 
@@ -133,7 +134,7 @@ SELECT concat('/data-model/db/',
        dp.group_id
 FROM data_permissions dp
 WHERE dp.perm_type = 'perms/manage-table-metadata'
-  AND dp.perm_value = 'no'
+  AND dp.perm_value = 'yes'
 AND dp.table_id IS NOT NULL;
 
 -- MANAGE DATABASE

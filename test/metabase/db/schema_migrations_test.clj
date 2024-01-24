@@ -1228,13 +1228,11 @@
                                                                                  :name       "Table 1"
                                                                                  :created_at :%now
                                                                                  :updated_at :%now
-                                                                                 :schema     "PUBLIC"
                                                                                  :active     true}))
             table-id-2   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
                                                                                  :name       "Table 2"
                                                                                  :created_at :%now
                                                                                  :updated_at :%now
-                                                                                 :schema     "PUBLIC"
                                                                                  :active     true}))
             insert-perm! (fn [perm-type perm-value & [table-id schema]]
                            (t2/insert! (t2/table-name :model/DataPermissions)
@@ -1265,6 +1263,12 @@
         (insert-perm! "perms/data-access" "unrestricted" table-id "PUBLIC")
         (migrate! :down 48)
         (is (= [(format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/data-access" "unrestricted" table-id "schema/with\\slashes")
+        (migrate! :down 48)
+        (is (= [(format "/db/%d/schema/schema\\/with\\\\slashes/table/%d/" db-id table-id)]
                (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
 
         (migrate-up!)
@@ -1314,7 +1318,7 @@
         (is (= #{(format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
 
-        ;; Granular download perms also get limited native download perms if all tables have at least "ten-thousand-rows""
+        ;; Granular download perms also get limited native download perms if all tables have at least "ten-thousand-rows"")
         (migrate-up!)
         (insert-perm! "perms/download-results" "one-million-rows" table-id "PUBLIC")
         (insert-perm! "perms/download-results" "ten-thousand-rows" table-id-2 "PUBLIC")
@@ -1331,6 +1335,13 @@
         (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
 
         (migrate-up!)
+        (insert-perm! "perms/download-results" "one-million-rows" table-id "schema/with\\slashes")
+        (insert-perm! "perms/download-results" "no" table-id-2 "PUBLIC")
+        (migrate! :down 48)
+        (is (= #{(format "/download/db/%d/schema/schema\\/with\\\\slashes/table/%d/" db-id table-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
         (insert-perm! "perms/manage-table-metadata" "yes")
         (migrate! :down 48)
         (is (= [(format "/data-model/db/%d/" db-id)]
@@ -1345,6 +1356,12 @@
         (insert-perm! "perms/manage-table-metadata" "yes" table-id "PUBLIC")
         (migrate! :down 48)
         (is (= [(format "/data-model/db/%d/schema/PUBLIC/table/%d/" db-id table-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/manage-table-metadata" "yes" table-id "schema/with\\slashes")
+        (migrate! :down 48)
+        (is (= [(format "/data-model/db/%d/schema/schema\\/with\\\\slashes/table/%d/" db-id table-id)]
                (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
 
         (migrate-up!)
