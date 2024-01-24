@@ -123,7 +123,7 @@ class TagEditorParamInner extends Component<Props> {
     const { tag, setTemplateTag } = this.props;
 
     if (tag.required !== required) {
-      setTemplateTag({ ...tag, required: required, default: undefined });
+      setTemplateTag({ ...tag, required: required });
     }
   };
 
