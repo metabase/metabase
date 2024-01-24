@@ -4,7 +4,7 @@ title: Working with JSON
 
 # Working with JSON fields
 
-With [some databases](#databases-that-support-json-unfolding), Metabase can unfold JSON columns into their component fields.
+With [some databases](#databases-that-support-json-unfolding), Metabase can unfold JSON columns into their component fields, which you can then filter on using the query builder.
 
 Here is a table with a column that contains JSON.
 
@@ -17,6 +17,8 @@ Metabase can unfold that JSON column so that each key in the JSON object gets it
 And here are the values as seen in the table:
 
 ![Unfolded values](./images/unfolded-values.png)
+
+This unfolding allows you to filter for values found in the original JSON object.
 
 Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
 
