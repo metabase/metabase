@@ -23,13 +23,15 @@ function rendereForForced(col) {
   switch (col.forcedDisplay) {
     case "badge":
       return badgeRenderer;
+    case "plain":
+      return defaultRenderer;
     default:
       return defaultRenderer;
   }
 }
 
 function pickRenderer(col) {
-  if (col.forcedDisplay !== "default") {
+  if (col.forcedDisplay !== "default" && col.forcedDisplay !== undefined) {
     return rendereForForced(col);
   }
   if (col.semantic_type) {

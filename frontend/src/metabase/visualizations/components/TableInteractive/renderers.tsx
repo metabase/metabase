@@ -46,20 +46,25 @@ export const renderHeader = header => {
             Edit metadata
           </Link>
         </ContextMenu.Item>
-        <ContextMenu.Item>Sup</ContextMenu.Item>
-        <ContextMenu.Item>Sup</ContextMenu.Item>
-        <ContextMenu.Item className="px1">Sup</ContextMenu.Item>
+        <ContextMenu.Item className="px1">
+          <div className="px1">Pin as filter</div>
+        </ContextMenu.Item>
         <ContextMenu.Separator
           style={{ height: 1, display: "block", backgroundColor: "#ddd" }}
         />
         <ContextMenu.Sub>
-          <ContextMenu.SubTrigger>Display as</ContextMenu.SubTrigger>
+          <ContextMenu.SubTrigger className="px1">
+            <div className="p1">Display as</div>
+          </ContextMenu.SubTrigger>
           <ContextMenu.SubContent className="bg-white bordered rounded shadowed zF">
             <ContextMenu.Item onClick={() => setNewDisplay("default")}>
               Column default
             </ContextMenu.Item>
             <ContextMenu.Item onClick={() => setNewDisplay("badge")}>
               Badge
+            </ContextMenu.Item>
+            <ContextMenu.Item onClick={() => setNewDisplay("plain")}>
+              Plain text
             </ContextMenu.Item>
           </ContextMenu.SubContent>
         </ContextMenu.Sub>
@@ -84,10 +89,21 @@ export const badgeRenderer = (row: Row) => {
     gizmo: ["#6366f1", "#D7D8FF"],
     gadget: ["#f59e0b", "#FFF7E9"],
     doohickey: ["#84cc16", "#F5FFE5"],
+    gmail: ["#84cc16", "#F5FFE5"],
+    hotmail: ["#f59e0b", "#FFF7E9"],
+    yahoo: ["#6366f1", "#D7D8FF"],
   };
 
+  const colorGetter = val => {
+    if (row.column.name === "Email") {
+      const domain = val.split("@");
+      const domainName = domain[1].split(".")[0];
+      return domainName;
+    }
+    return val.toLowerCase();
+  };
   const [color, bgColor] =
-    hackweekValues[val.toLowerCase()] || hackweekValues.other;
+    hackweekValues[colorGetter(val)] || hackweekValues.other;
 
   return (
     <div
