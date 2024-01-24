@@ -5,6 +5,7 @@ import {
   booleanRenderer,
   sourceRenderer,
   countryRenderer,
+  badgeRenderer,
 } from "./renderers";
 
 export const getRowHeightForViewMode = (viewMode: string) => {
@@ -37,6 +38,8 @@ function rendererForSemanticType(col) {
       return sourceRenderer;
     case "type/Country":
       return countryRenderer;
+    case "type/Product":
+      return badgeRenderer;
     case "type/Subscription":
       return booleanRenderer;
     default:

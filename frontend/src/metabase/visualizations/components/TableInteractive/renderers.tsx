@@ -11,6 +11,34 @@ export const defaultRenderer = (row: Row) => {
   return <div>{String(getVal(row))}</div>;
 };
 
+export const badgeRenderer = (row: Row) => {
+  const val = getVal(row);
+
+  const hackweekValues = {
+    premium: ["#6366f1", "#D7D8FF"],
+    basic: ["#f59e0b", "#FFF7E9"],
+    other: ["#84cc16", "#F5FFE5"],
+  };
+
+  const [color, bgColor] =
+    hackweekValues[val.toLowerCase()] || hackweekValues.other;
+
+  return (
+    <div
+      className="inline-block"
+      style={{
+        color,
+        backgroundColor: bgColor,
+        borderRadius: 4,
+        padding: "2px 6px",
+        lineHeight: "1",
+      }}
+    >
+      {String(val)}
+    </div>
+  );
+};
+
 export const emailRenderer = (row: Row) => {
   return (
     <div>
