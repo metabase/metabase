@@ -45,7 +45,7 @@ export interface ParameterSidebarProps {
   onClose: () => void;
 }
 
-const ParameterSidebar = ({
+export const ParameterSidebar = ({
   parameter,
   otherParameters,
   onChangeName,
@@ -167,5 +167,3 @@ const getTabs = (parameter: Parameter) => {
 
   return tabs;
 };
-
-export { ParameterSidebar };
