@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -31,12 +29,16 @@ import { BrowseModels } from "./BrowseModels";
 
 type BrowseTabId = "models" | "databases";
 
-const isValidTabId = (value: string | null): value is BrowseTabId =>
+export const isValidTabId = (value: string | null): value is BrowseTabId =>
   value === "models" || value === "databases";
 
-export const BrowseDataPage = () => {
-  const [currentTabId, setTabId] = useState<BrowseTabId>("models");
-
+export const BrowseDataPage = ({
+  currentTabId,
+  setTabId,
+}: {
+  currentTabId: BrowseTabId;
+  setTabId: (tabId: BrowseTabId) => void;
+}) => {
   const models = useSearchListQuery<SearchResult>({
     query: {
       models: ["dataset"],
@@ -79,7 +81,7 @@ export const BrowseDataPage = () => {
   );
 };
 
-const BrowseDatabases = ({
+export const BrowseDatabases = ({
   data: databases = [],
   error,
   isLoading,
