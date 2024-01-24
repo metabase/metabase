@@ -1,4 +1,4 @@
-name: Unit Test Stress Test Flake Fix
+name: Frontend Unit Test Stress Test Flake Fix
 
 on:
   workflow_dispatch:
@@ -33,10 +33,10 @@ jobs:
           echo '' >> $GITHUB_STEP_SUMMARY
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
-  unit-test-stress-test-flake-fix:
+  frontend-unit-test-stress-test-flake-fix:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
-    name: Stress test unit test flake fix
+    name: Stress test frontend unit test flake fix
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
