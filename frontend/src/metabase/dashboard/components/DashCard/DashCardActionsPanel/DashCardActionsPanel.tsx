@@ -16,12 +16,13 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { createAction, useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  addCardToDashboard,
+  FETCH_CARD_DATA,
   addDashCardToDashboard,
+  generateTemporaryDashcardId,
 } from "metabase/dashboard/actions";
-import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { getCardData, getSelectedTabId } from "metabase/dashboard/selectors";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
@@ -153,6 +154,7 @@ export function DashCardActionsPanel({
 
   const dispatch = useDispatch();
   const selectedTabId = useSelector(getSelectedTabId);
+  const dashcardDataMap = useSelector(getCardData);
 
   if (!isLoading && dashcard) {
     buttons.push(
@@ -161,25 +163,26 @@ export function DashCardActionsPanel({
         aria-label={t`Duplicate`}
         tooltip={t`Duplicate`}
         onClick={() => {
-          if (isVirtualDashCard(dashcard)) {
-            const { id: _, ...newDashcard } = dashcard;
-            dispatch(
-              addDashCardToDashboard({
-                dashId: dashboard.id,
-                dashcardOverrides: newDashcard,
-                tabId: selectedTabId,
-              }),
-            );
-            return;
-          }
-
+          const newId = generateTemporaryDashcardId(); // TODO maybe do this in a better way :thinking:
+          const { id: _, ...newDashcard } = dashcard;
           dispatch(
-            addCardToDashboard({
+            addDashCardToDashboard({
               dashId: dashboard.id,
-              cardId: dashcard.card_id,
+              dashcardOverrides: { id: newId, ...newDashcard },
               tabId: selectedTabId,
             }),
           );
+
+          if (!isVirtualDashCard(dashcard) && dashcard.card_id !== null) {
+            dispatch(
+              createAction(FETCH_CARD_DATA)({
+                // TODO do this in a better way maybe (e.g. don't manually create action)?
+                dashcard_id: newId,
+                card_id: dashcard.card_id,
+                result: dashcardDataMap[dashcard.id][dashcard?.card_id],
+              }),
+            );
+          }
         }}
       >
         <Icon name="copy" />
