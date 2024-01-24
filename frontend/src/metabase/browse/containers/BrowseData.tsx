@@ -23,49 +23,6 @@ export type BrowseTabId = "models" | "databases";
 export const isValidBrowseTab = (value: string | null): value is BrowseTabId =>
   value === "models" || value === "databases";
 
-// export const BrowseDataPage = ({
-//   currentTabId,
-//   setTabId,
-// }: {
-//   currentTabId: BrowseTabId;
-//   setTabId: (tabId: BrowseTabId) => void;
-// }) => {
-//   const dispatch = useDispatch();
-
-//   const models = useSearchListQuery<SearchResult>({
-//     query: {
-//       models: ["dataset"],
-//       filter_items_in_personal_collection: "exclude",
-//     },
-//   });
-
-//   const databases = useDatabaseListQuery();
-
-//   // TODO: Put the BrowseTabs into the BrowseHeader so that these tabs appear on all the pages that use the browseheader. EXCEPT there might be some contexts where BrowseHeader is used but
-//   return (
-//     <BrowseContainer data-testid="data-browser">
-//       <BrowseHeader />
-//       <BrowseTabs
-//         value={currentTabId}
-//         onTabChange={value => dispatch(push(`/browse-${value}`))}
-//       >
-//         <Tabs.List>
-//           <Tabs.Tab key={"models"} value={"models"}>
-//             {t`Models`}
-//           </Tabs.Tab>
-//           <Tabs.Tab key={"databases"} value={"databases"}>
-//             {t`Databases`}
-//           </Tabs.Tab>
-//         </Tabs.List>
-//         <Divider />
-//         <BrowseTabsPanel key={currentTabId} value={currentTabId ?? ""}>
-//           {children}
-//         </BrowseTabsPanel>
-//       </BrowseTabs>
-//     </BrowseContainer>
-//   );
-// };
-
 export const BrowseDatabases = ({
   databasesResult,
 }: {

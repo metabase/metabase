@@ -27,7 +27,6 @@ type BrowseTabProps = {
 
 export const BrowseApp = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useDispatch();
-
   const location = useLocation();
   const currentTab = location.pathname?.split("/")[2] || "models";
 

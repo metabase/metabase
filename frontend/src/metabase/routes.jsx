@@ -24,7 +24,6 @@ import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/Au
 
 /* Browse data */
 import { BrowseApp } from "metabase/browse/components/BrowseApp";
-//import { BrowseDataPage } from "metabase/browse/containers/BrowseData";
 import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 
@@ -228,29 +227,10 @@ export const getRoutes = store => {
               component={TableBrowser}
             />
 
-            {/* Don't break links like /browse/1-countries.
-            Redirect to /browse/databases/1-countries */}
-            <Route
-              path=":dbId-:slug"
-              onEnter={({ params, location }, replace) => {
-                const { dbId, slug } = params;
-                replace({
-                  pathname: `/browse/databases/${dbId}-${slug}`,
-                  hash: location.hash,
-                });
-              }}
-            />
-            {/* Don't break links like /browse/1/.
-            Redirect to /browse/databases/1-countries */}
-            <Route
-              path=":dbId/schema/:schemaName"
-              onEnter={({ params, location }, replace) => {
-                const { dbId, schemaName } = params;
-                replace({
-                  pathname: `/browse/databases/${dbId}/schema/${schemaName}`,
-                  hash: location.hash,
-                });
-              }}
+            <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />
+            <Redirect
+              from=":dbId/schema/:schemaName"
+              to="databases/:dbId/schema/:schemaName"
             />
           </Route>
 
