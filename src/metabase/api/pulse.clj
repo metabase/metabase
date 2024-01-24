@@ -12,6 +12,7 @@
    [metabase.email :as email]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -28,8 +29,11 @@
    [metabase.pulse.render :as render]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2])
@@ -322,11 +326,13 @@
   "Get PNG rendering of a Card with `id`."
   [id]
   {id ms/PositiveInt}
-  (let [card   (api/read-check Card id)
+  (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
                  (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
-    {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
+    {:status 200
+     :headers {"Content-Type" "image/png"}
+     :body (ByteArrayInputStream. ba)}))
 
 (api/defendpoint POST "/test"
   "Test send an unsaved pulse."
@@ -354,6 +360,72 @@
                 pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
     (t2/delete! PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
+
+;;; HACKATHON WIP
+
+;; From api.dataset
+;; based on code for `POST` `api/dataset/`
+
+(defn- query->source-card-id
+  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`. Used so
+  `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate. This fn
+  is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
+  well."
+  [outer-query]
+  (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
+    (log/info "Source query for this query is Card {0}" (pr-str source-card-id))
+    (api/read-check Card source-card-id)
+    source-card-id))
+
+(defn- run-question-query
+  [{:keys [database], :as query}
+   & {:keys [context qp-runner]
+      :or   {context       :ad-hoc
+             qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
+  (when (and (not= (:type query) "internal")
+             (not= database lib.schema.id/saved-questions-virtual-database-id))
+    (when-not database
+      (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
+                      {:status-code 400, :query query})))
+    (api/read-check :model/Database database))
+  ;; store table id trivially iff we get a query with simple source-table
+
+  (let [table-id (get-in query [:query :source-table])]
+    (when (int? table-id)
+      (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+                                                :user-id api/*current-user-id*})))
+
+  ;; add sensible constraints for results limits on our query
+  (let [source-card-id (query->source-card-id query)
+        source-card    (when source-card-id
+                         (t2/select-one [Card :result_metadata :dataset] :id source-card-id))
+        info           (cond-> {:executed-by api/*current-user-id*
+                                :context     context
+                                :card-id     source-card-id}
+                         (:dataset source-card)
+                         (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
+    (binding [qp.perms/*card-id* source-card-id]
+      (qp-runner query info))))
+
+(defn- timezone
+  [database-id]
+  (or (some->> database-id (t2/select-one :model/Database :id) qp.timezone/results-timezone-id)
+      (qp.timezone/system-timezone-id)))
+
+(api/defendpoint POST "/preview_unsaved_question"
+  "Get PNG rendering of an unsaved Question."
+  [:as {question :body}]
+  (let [question (update question :display keyword)
+        query    (-> (:dataset_query question)
+                     (assoc :middleware
+                            {:process-viz-settings? true
+                             :js-int-to-string?     true}))
+        database (get-in query [:query :database])
+        result   (run-question-query query)
+        ba       (render/render-pulse-card-to-png (timezone database) question result 1000)]
+    {:status  200
+     :headers {"Content-Type" "image/png"}
+     :body    (ByteArrayInputStream. ba)}))
 
 (def ^:private style-nonce-middleware
   (partial preview/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
