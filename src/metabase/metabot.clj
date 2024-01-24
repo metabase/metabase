@@ -232,30 +232,37 @@
   (let [dashboard-summary (dashboard-summary dashboard-id)
         summary-with-prompts (merge dashboard-summary
                                     {:description "%%FILL_THIS_DESCRIPTION_IN%%"
+                                     :keywords "%%FILL_THESE_KEYWORDS_IN%%"
                                      :questions "%%FILL_THESE_QUESTIONS_IN%%"})
         json-str (json/generate-string summary-with-prompts)]
     {:summary
      (metabot-util/find-result
        (fn [rsp]
-         (let [{:keys [description questions]} (json/parse-string rsp true)]
-           {:description (format "Description: %s\n\nQuestions:\n%s"
+         (let [{:keys [description keywords questions]} (json/parse-string rsp true)]
+           {:description (format "Description: %s\n\nKeywords: %s\n\nQuestions:\n%s"
                                  description
+                                 keywords
                                  questions)}))
        (metabot-client/invoke-metabot
          {:messages
           [{:role    "system"
             :content "You are a helpful assistant that summarizes dashboards I am generating for my customers by
-             filling in the missing \"description\" and \"questions\" keys in a json fragment."}
+             filling in the missing \"description\", \"keywords\", and \"questions\" keys in a json fragment."}
            {:role    "assistant"
             :content "The \"description\" key is a user friendly description of the dashboard containing up to
             two sentences. This description may not be more than 256 characters."}
            {:role    "assistant"
+            :content "The \"keywords\" key is 3-5 single-quoted, comma-separated key words
+            describing the dashboard. Example: 'keyword1', 'key word'"}
+           {:role    "assistant"
             :content "The \"questions\" key contains a markdown-formatted hyphenated list of up to 5 questions this
             dashboard might help a user answer. Each question should be on its own line."}
            {:role    "assistant"
-            :content "The parts you replace are \"%%FILL_THIS_DESCRIPTION_IN%%\" and \"%%FILL_THESE_QUESTIONS_IN%%\"."}
+            :content "The parts you replace are \"%%FILL_THIS_DESCRIPTION_IN%%\", \"%%FILL_THESE_KEYWORDS_IN%%\",
+            and \"%%FILL_THESE_QUESTIONS_IN%%\"."}
            {:role    "assistant"
-            :content "Just return a json map with the \"description\" and \"questions\" fields and nothing else."}
+            :content "Just return a json map with the \"description\", \"keywords\", and \"questions\" fields and
+            nothing else."}
            {:role    "user"
             :content json-str}]}))}))
 
