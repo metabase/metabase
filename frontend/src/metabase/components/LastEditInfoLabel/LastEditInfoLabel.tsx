@@ -16,13 +16,15 @@ import type { User } from "metabase-types/api";
 dayjs.extend(relativeTime);
 
 export type ItemWithLastEditInfo = {
-  "last-edit-info": {
-    id?: number;
-    timestamp: string;
-    first_name?: string;
-    last_name?: string;
-    full_name?: string | null;
-  };
+  "last-edit-info": Edit;
+};
+
+export type Edit = {
+  id?: number;
+  timestamp: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string | null;
 };
 
 export const getHowLongAgo = (timestamp: string) => {

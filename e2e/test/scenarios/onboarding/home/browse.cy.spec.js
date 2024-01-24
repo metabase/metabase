@@ -6,7 +6,7 @@ describe("scenarios > browse data", () => {
     cy.signInAsAdmin();
   });
 
-  it("can browse to model", () => {
+  it("can browse to a model (metabase#36368)", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.location("pathname").should("eq", "/browse");
@@ -14,15 +14,13 @@ describe("scenarios > browse data", () => {
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByRole("button", { name: "Filter" });
   });
-  it("can view summary of model's last edit", () => {
+  it("can view summary of model's last edit (metabase#36368)", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
-    // TODO: Change from "7" to "7h"
-    const editSummary = cy.findByText(/Bobby Tables.*7/);
-    editSummary.realHover();
+    cy.findByRole("note", /Bobby Tables.*7h./).realHover();
     cy.findByRole("tooltip", { name: /Last edited by Bobby Tables/ });
   });
-  it("can browse to a database", () => {
+  it("can browse to a database (metabase#36368)", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.findByRole("tab", { name: "Databases" }).click();
