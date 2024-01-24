@@ -25,7 +25,7 @@ To create an API key:
 7. Enter a **Key name**. You can have multiple API keys, so give it a name that will help you remember what you're using the key for.
 8. Select a **Group**. The key will have the same permissions granted to that group.
 9. Click **Create**.
-10. Copy the generated API key and save it somewhere safe. Metabase won't be able to show you the key again. If you lose the key, you'll need to generate a new key.
+10. Copy the generated API key and save it somewhere safe. Metabase won't be able to show you the key again. If you lose the key, you'll need to regenerate a new key.
 
 ## Managing API Keys
 
@@ -58,6 +58,10 @@ To delete an API Key:
 5. Scroll to **API Keys** and click **Manage**.
 6. Select the key you want to delete and click the **trash** icon.
 7. Metabase will pop up a **Delete API Key** modal. Click the **Delete API Key** button.
+
+### Metabase will transfer API keys associated with a group that gets deleted to the All users group
+
+If you have API keys assigned to a group, but then someone deletes that group, the API keys will still work, but Metabase will reassign those keys to the All users group. If you want to change their group, you'll need to edit the keys manually.
 
 ## Example `GET` requests
 
