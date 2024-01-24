@@ -78,9 +78,9 @@ export interface IFieldValuesWidgetProps {
   formatOptions?: Record<string, any>;
 
   containerWidth?: number | string;
-  maxWidth?: number;
-  minWidth?: number;
-  width?: number;
+  maxWidth?: number | null;
+  minWidth?: number | null;
+  width?: number | null;
 
   disableList?: boolean;
   disableSearch?: boolean;
@@ -443,9 +443,9 @@ export function FieldValuesWidgetInner({
       <div
         data-testid="field-values-widget"
         style={{
-          width: isExpanded ? maxWidth : containerWidth,
-          minWidth: minWidth,
-          maxWidth: maxWidth,
+          width: (isExpanded ? maxWidth : containerWidth) ?? undefined,
+          minWidth: minWidth ?? undefined,
+          maxWidth: maxWidth ?? undefined,
         }}
       >
         {isListMode && isLoading ? (
@@ -509,7 +509,9 @@ export function FieldValuesWidgetInner({
   );
 }
 
-export const FieldValuesWidget = ExplicitSize()(FieldValuesWidgetInner);
+export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
+  FieldValuesWidgetInner,
+);
 
 const LoadingState = () => (
   <div className="flex layout-centered align-center" style={{ minHeight: 82 }}>

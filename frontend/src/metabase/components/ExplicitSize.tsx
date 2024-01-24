@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+import type { CSSProperties, ComponentType } from "react";
 import { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
@@ -10,25 +10,56 @@ import { isCypressActive } from "metabase/env";
 const WAIT_TIME = 300;
 
 const REFRESH_MODE = {
-  throttle: fn => _.throttle(fn, WAIT_TIME),
-  debounce: fn => debounce(fn, WAIT_TIME),
+  throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
+  debounce: (fn: () => void) => debounce(fn, WAIT_TIME),
   // Using lodash.debounce with leading=true to execute the function immediately and also at the end of the debounce period.
   // Underscore debounce with immediate=true will not execute the function after the wait period unless it is called again.
-  debounceLeading: fn => debounce(fn, WAIT_TIME, { leading: true }),
-  none: fn => fn,
+  debounceLeading: (fn: () => void) =>
+    debounce(fn, WAIT_TIME, { leading: true }),
+  none: (fn: () => void) => fn,
 };
 
-/**
- * @deprecated HOCs are deprecated
- */
-export default ({ selector, refreshMode = "throttle" } = {}) =>
-  ComposedComponent => {
+type RefreshMode = keyof typeof REFRESH_MODE;
+
+interface ExplicitSizeProps<T> {
+  selector?: string;
+  refreshMode?: RefreshMode | ((props: T) => RefreshMode);
+}
+
+type SizeState = {
+  width: number | null;
+  height: number | null;
+};
+
+type BaseInnerProps = {
+  className?: string;
+  style?: CSSProperties;
+};
+
+function ExplicitSize<T extends BaseInnerProps>({
+  selector,
+  refreshMode = "throttle",
+}: ExplicitSizeProps<T> = {}) {
+  return (ComposedComponent: ComponentType<T & SizeState>) => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
-    class WrappedComponent extends Component {
+    class WrappedComponent extends Component<T> {
       static displayName = `ExplicitSize[${displayName}]`;
 
-      constructor(props, context) {
+      state: SizeState;
+
+      timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+      _currentElement: Element | null = null;
+
+      _printMediaQuery = window.matchMedia && window.matchMedia("print");
+
+      _refreshMode: RefreshMode =
+        typeof refreshMode === "string" ? refreshMode : "throttle";
+
+      _updateSize: () => void;
+
+      constructor(props: T, context: unknown) {
         super(props, context);
         this.state = {
           width: null,
@@ -41,11 +72,11 @@ export default ({ selector, refreshMode = "throttle" } = {}) =>
       }
 
       _getElement() {
-        const element = ReactDOM.findDOMNode(this);
-        if (selector) {
-          return element.querySelector(selector) || element;
+        let element = ReactDOM.findDOMNode(this);
+        if (selector && element instanceof Element) {
+          element = element.querySelector(selector) || element;
         }
-        return element;
+        return element instanceof Element ? element : null;
       }
 
       componentDidMount() {
@@ -65,7 +96,9 @@ export default ({ selector, refreshMode = "throttle" } = {}) =>
       componentWillUnmount() {
         this._teardownResizeObserver();
         this._teardownQueryMediaListener();
-        clearTimeout(this.timeoutId);
+        if (this.timeoutId !== null) {
+          clearTimeout(this.timeoutId);
+        }
       }
 
       _getRefreshMode = () => {
@@ -83,10 +116,14 @@ export default ({ selector, refreshMode = "throttle" } = {}) =>
         if (nextMode === this._refreshMode) {
           return;
         }
-        resizeObserver.unsubscribe(this._currentElement, this._updateSize);
+        if (this._currentElement) {
+          resizeObserver.unsubscribe(this._currentElement, this._updateSize);
+        }
         const refreshFn = REFRESH_MODE[nextMode];
         this._updateSize = refreshFn(this.__updateSize);
-        resizeObserver.subscribe(this._currentElement, this._updateSize);
+        if (this._currentElement) {
+          resizeObserver.subscribe(this._currentElement, this._updateSize);
+        }
         this._refreshMode = nextMode;
       };
 
@@ -98,20 +135,28 @@ export default ({ selector, refreshMode = "throttle" } = {}) =>
       // ResizeObserver, ensure re-layout when container element changes size
       _initResizeObserver() {
         this._currentElement = this._getElement();
-        resizeObserver.subscribe(this._currentElement, this._updateSize);
+        if (this._currentElement) {
+          resizeObserver.subscribe(this._currentElement, this._updateSize);
+        }
       }
 
       _updateResizeObserver() {
         const element = this._getElement();
         if (this._currentElement !== element) {
-          resizeObserver.unsubscribe(this._currentElement, this._updateSize);
+          if (this._currentElement) {
+            resizeObserver.unsubscribe(this._currentElement, this._updateSize);
+          }
           this._currentElement = element;
-          resizeObserver.subscribe(this._currentElement, this._updateSize);
+          if (this._currentElement) {
+            resizeObserver.subscribe(this._currentElement, this._updateSize);
+          }
         }
       }
 
       _teardownResizeObserver() {
-        resizeObserver.unsubscribe(this._currentElement, this._updateSize);
+        if (this._currentElement) {
+          resizeObserver.unsubscribe(this._currentElement, this._updateSize);
+        }
       }
 
       // media query listener, ensure re-layout when printing
@@ -121,6 +166,7 @@ export default ({ selector, refreshMode = "throttle" } = {}) =>
           this._updateSizeAndRefreshMode,
         );
       }
+
       _teardownQueryMediaListener() {
         this._printMediaQuery?.removeEventListener(
           "change",
@@ -145,3 +191,7 @@ export default ({ selector, refreshMode = "throttle" } = {}) =>
 
     return WrappedComponent;
   };
+}
+
+// eslint-disable-next-line import/no-default-export
+export default ExplicitSize;

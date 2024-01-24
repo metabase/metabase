@@ -21,6 +21,7 @@ import {
 
 import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import {
@@ -73,24 +74,29 @@ import {
   getLabelsFormatter,
 } from "./utils/format";
 
-const RowChartRenderer = ExplicitSize({
-  refreshMode: "throttle",
-  selector: false,
-})(
-  ({
-    className,
-    style,
-    width,
-    height,
-    ...props
-  }: RowChartProps<GroupedDatum>) => (
+type RowChartRendererProps = RowChartProps<GroupedDatum>;
+
+function RowChartRendererInner({
+  className,
+  style,
+  width,
+  height,
+  ...props
+}: RowChartRendererProps) {
+  return (
     <div className={cx(className, "relative")} style={style}>
-      <RowChartContainer style={{ width, height }}>
+      <RowChartContainer
+        style={{ width: width ?? undefined, height: height ?? undefined }}
+      >
         <RowChart {...props} width={width} height={height} />
       </RowChartContainer>
     </div>
-  ),
-);
+  );
+}
+
+const RowChartRenderer = ExplicitSize<RowChartRendererProps>({
+  refreshMode: "throttle",
+})(RowChartRendererInner);
 
 const RowChartVisualization = ({
   card,
@@ -175,7 +181,7 @@ const RowChartVisualization = ({
 
   const handleHover = (
     event: React.MouseEvent,
-    bar: BarData<GroupedDatum, SeriesInfo>,
+    bar: BarData<GroupedDatum, SeriesInfo> | null,
   ) => {
     if (bar == null) {
       onHoverChange?.(null);
@@ -224,7 +230,7 @@ const RowChartVisualization = ({
     }
   };
 
-  const hoverData =
+  const hoverData: HoveredData | null =
     hovered?.index != null
       ? {
           seriesIndex: hovered?.index,
