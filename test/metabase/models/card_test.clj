@@ -742,7 +742,9 @@
                                                     :type       "category"}]}
      Collection       coll {:name "A collection"}]
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (let [columns     (disj (set/difference (set (keys card)) (set @#'card/excluded-columns-for-card-revision))
+      (let [columns     (disj (set/difference (set (keys card)) (conj (set @#'card/excluded-columns-for-card-revision)
+                                                                      ;; dataset wil be replaced by type in the future
+                                                                      :dataset))
                               ;; we only record result metadata for models, so we'll test that seperately
                               :result_metadata)
             update-col  (fn [col value]
@@ -760,6 +762,7 @@
                             (= col :table_id)          (mt/id :venues)
                             (= col :database_id)       (:id db)
                             (= col :query_type)        :native
+                            (= col :type)              "model"
                             (= col :dataset_query)     (mt/mbql-query users)
                             (= col :visualization_settings) {:text "now it's a text card"}
                             (int? value)               (inc value)

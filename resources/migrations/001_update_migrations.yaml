@@ -5231,6 +5231,8 @@ databaseChangeLog:
               WHERE dataset is true
       rollback: # no need, the column will be dropped
 
+  # TODO: add a revision migration to includes type
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

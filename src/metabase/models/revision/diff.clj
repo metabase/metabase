@@ -82,6 +82,9 @@
     [:dataset true false]
     (deferred-tru "changed this from a model to a saved question")
 
+    [:type old new]
+    (deferred-tru "type changed from {0} to {1}" old new)
+
     [:display _ _]
     (deferred-tru "changed the display from {0} to {1}" (name v1) (name v2))
 
