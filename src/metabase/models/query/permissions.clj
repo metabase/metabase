@@ -20,6 +20,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
 ;; Is calculating permissions for queries complicated? Some would say so. Refer to this handy flow chart to see how
@@ -189,6 +191,42 @@
   {:arglists '([query & {:keys [throw-exceptions? already-preprocessed?]}])}
   [query & {:as perms-opts}]
   (perms-set* query (assoc perms-opts :segmented-perms? false)))
+
+(defn- mbql-required-perms
+  [query {:keys [throw-exceptions? already-preprocessed?]}]
+  (try
+    (let [query (mbql.normalize/normalize query)]
+      ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
+      (if-let [source-card-id (qp.util/query->source-card-id query)]
+        {:paths (source-card-read-perms source-card-id)}
+        ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
+        (let [{:keys [query]} (cond-> query
+                                (not already-preprocessed?) preprocess-query)
+              table-ids-or-native      (vec (query->source-table-ids query))
+              table-ids                (filter integer? table-ids-or-native)
+              native?                  (.contains ^clojure.lang.PersistentVector table-ids-or-native ::native)]
+          {:perms/data-access          (zipmap table-ids (repeat :unrestricted))
+           :perms/native-query-editing (if native? :yes :no)})))
+    ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
+    ;; that means no one will ever get to see it
+    (catch Throwable e
+      (let [e (ex-info "Error calculating permissions for query"
+                       {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
+                                   query)}
+                       e)]
+        (if throw-exceptions? (throw e) (log/error e)))
+      #{:tables [0]}))) ; table 0 will never exist
+
+(defn required-perms
+  "Returns a map representing the permissions requried to run `query`. The map has the optional keys
+  :paths (containing legacy permission paths), :perms/data-access, and :perms/native-query-editing."
+  [{query-type :type, :as query} & {:as perms-opts}]
+  (cond
+    (empty? query)                   {}
+    (= (keyword query-type) :native) {:perms/native-query-editing :yes}
+    (= (keyword query-type) :query)  (mbql-required-perms query perms-opts)
+    :else                            (throw (ex-info (tru "Invalid query type: {0}" query-type)
+                                                     {:query query}))))
 
 (mu/defn can-run-query?
   "Return `true` if the current-user has sufficient permissions to run `query`. Handles checking for full table

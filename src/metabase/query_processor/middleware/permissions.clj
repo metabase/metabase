@@ -1,12 +1,12 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
-   [clojure.set :as set]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.config :as config]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
@@ -74,27 +74,6 @@
                                 (mi/perms-objects-set card :read)
                                 {:card-id *card-id*}))))))
 
-(declare check-query-permissions*)
-
-(defn- required-perms
-  {:arglists '([outer-query])}
-  [{{gtap-perms :gtaps} ::perms, :as outer-query}]
-  (set/difference
-   (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)
-   gtap-perms))
-
-(defn- has-data-perms? [required-perms]
-  (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms))
-
-(mu/defn ^:private check-ad-hoc-query-perms
-  [outer-query]
-  (let [required-perms (required-perms outer-query)]
-    (when-not (has-data-perms? required-perms)
-      (throw (perms-exception required-perms))))
-  ;; check perms for any Cards referenced by this query (if it is a native query)
-  (doseq [{query :dataset-query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
-    (check-query-permissions* query)))
-
 (def ^:dynamic *param-values-query*
   "Used to allow users looking at a dashboard to view (possibly chained) filters."
   false)
@@ -106,28 +85,66 @@
   (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
                   query)))
 
-(mu/defn check-query-permissions*
+(defn remove-permissions-key
+  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
+  information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
+  but we definitely don't want users passing it in themselves. So remove it if it's present."
+  [query]
+  (dissoc query ::perms))
+
+(defn- check-data-perms
+  [db-id required-perms & {:keys [throw-exceptions?]
+                           :or   {throw-exceptions? true}}]
+  (try
+    ;; Check any required v1 paths
+    (when-let [paths (:paths required-perms)]
+      (or (perms/set-has-full-permissions? @*current-user-permissions-set* paths)
+          (throw (perms-exception paths))))
+    ;; Check native query access if required
+    (when (= (:perms/native-query-editing required-perms) :yes)
+      (or (= (data-perms/database-permission-for-user *current-user-id* :perms/native-query-editing db-id)
+             :yes)
+          (throw (perms-exception {db-id {:perms/native-query-editing :yes}}))))
+    ;; Check for unrestricted data access to any tables referenced by the query
+    (when-let [table-ids (:perms/data-access required-perms)]
+      (doseq [[table-id _] table-ids]
+        (or (= (data-perms/table-permission-for-user *current-user-id* :perms/data-access db-id table-id)
+               :unrestricted)
+            (throw (perms-exception {db-id {:perms/data-access {table-id :unrestricted}}})))))
+    true
+    (catch clojure.lang.ExceptionInfo e
+      (if throw-exceptions?
+        (throw e)
+        false))))
+
+(mu/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
-    (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
+    (log/tracef "Checking query permissions. Current user permissions = %s"
+                (pr-str (data-perms/permissions-for-user *current-user-id*)))
     (when (= perms/audit-db-id database-id)
      (check-audit-db-permissions outer-query))
-    (cond
-      *card-id*
-      (do
-        (check-card-read-perms database-id *card-id*)
-        (when-not (has-data-perms? (required-perms outer-query))
-          (check-block-permissions outer-query)))
+    (let [required-perms (query-perms/required-perms outer-query :already-preprocessed? true)]
+      (cond
+        *card-id*
+        (do
+          (check-card-read-perms database-id *card-id*)
+          (when-not (check-data-perms database-id required-perms :throw-exceptions? false)
+            (check-block-permissions outer-query)))
 
-      ;; set when querying for field values of dashboard filters, which only require
-      ;; collection perms for the dashboard and not ad-hoc query perms
-      *param-values-query*
-      (when-not (has-data-perms? (required-perms outer-query))
-        (check-block-permissions outer-query))
+        ;; set when querying for field values of dashboard filters, which only require
+        ;; collection perms for the dashboard and not ad-hoc query perms
+        *param-values-query*
+        (when-not (check-data-perms database-id required-perms :throw-exceptions? false)
+          (check-block-permissions outer-query))
 
-      :else
-      (check-ad-hoc-query-perms outer-query))))
+        :else
+        (do
+          (check-data-perms database-id required-perms :throw-exceptions? true)
+          ;; check perms for any Cards referenced by this query (if it is a native query)
+          (doseq [{query :dataset-query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
+            (check-query-permissions* query)))))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
@@ -139,13 +156,6 @@
     (check-query-permissions* query)
     (qp query rff context)))
 
-(defn remove-permissions-key
-  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
-  information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
-  but we definitely don't want users passing it in themselves. So remove it if it's present."
-  [query]
-  (dissoc query ::perms))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Writeback fns                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -156,7 +166,9 @@
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (check-card-read-perms database-id *card-id*))
-  (when-not (has-data-perms? (required-perms outer-query))
+  (when-not (check-data-perms database-id
+                              (query-perms/required-perms outer-query :already-preprocessed? true)
+                              :throw-exceptions? false)
     (check-block-permissions outer-query)))
 
 (defn check-query-action-permissions
@@ -179,8 +191,8 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (let [required-perms (perms/adhoc-native-query-path database-id)]
-     (perms/set-has-full-permissions? @*current-user-permissions-set* required-perms))))
+   (= (data-perms/database-permission-for-user *current-user-id* :perms/native-query-editing database-id)
+      :yes)))
 
 (defn check-current-user-has-adhoc-native-query-perms
   "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an
@@ -188,4 +200,4 @@
   to native.)"
   [{database-id :database, :as query}]
   (when-not (current-user-has-adhoc-native-query-perms? query)
-    (throw (perms-exception (perms/adhoc-native-query-path database-id)))))
+    (throw (perms-exception {database-id {:perms/native-query-editing :yes}}))))
