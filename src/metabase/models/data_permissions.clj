@@ -232,7 +232,8 @@
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
-      (when (= [:perms/data-access :block] [perm-type value])
+      (when (and (= :perms/data-access perm-type)
+                 (= :unrestricted value))
         (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)))))
 
 (mu/defn set-table-permissions!
@@ -297,6 +298,11 @@
                                           :table_id    (:id table)
                                           :schema_name (:schema table)})
                                        other-tables)]
+              ;; When you set the perms/data-access at a granular level, then we
+              ;; need to update perms/native-query-editing to false, since to have native query editing, you need
+              ;; data-access to the whole db (and we are changing a table, so you won't have that)
+              (when (= perm-type :perms/data-access)
+                (set-database-permission! group-or-id db-id :perms/native-query-editing :no))
               (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
               (t2/insert! :model/DataPermissions (concat other-new-perms new-perms))))
           (let [existing-table-perms (t2/select :model/DataPermissions
