@@ -33,7 +33,9 @@
   "Implementation of `with-restored-perms` and related helper functions. Optionally takes `group-ids` to restore only the
   permissions for a set of groups."
   [group-ids thunk]
-  (let [select-condition [(when group-ids [:in :group_id group-ids])]
+  (let [select-condition (if-not group-ids
+                           true
+                           [:in :group_id group-ids])
         original-perms (t2/select :model/DataPermissions {:where select-condition})]
     (try
       (thunk)
