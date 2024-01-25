@@ -177,47 +177,49 @@ class SettingsEditor extends Component {
   renderSettingsSections() {
     const { sections, activeSectionName, newVersionAvailable } = this.props;
 
-    const renderedSections = Object.entries(sections).map(([slug, section]) => {
-      // HACK - This is used to hide specific items in the sidebar and is currently
-      // only used as a way to fake the multi page auth settings pages without
-      // requiring a larger refactor.
-      const isNestedSettingPage = Boolean(slug.split("/")[1]);
-      if (isNestedSettingPage) {
-        return null;
-      }
+    const renderedSections = Object.entries(sections).map(
+      ([slug, section], _idx) => {
+        // HACK - This is used to hide specific items in the sidebar and is currently
+        // only used as a way to fake the multi page auth settings pages without
+        // requiring a larger refactor.
+        const isNestedSettingPage = Boolean(slug.split("/")[1]);
+        if (isNestedSettingPage) {
+          return null;
+        }
 
-      // The nested authentication routes should be matched just on the prefix:
-      // e.g. "authentication/google" => "authentication"
-      const [sectionNamePrefix] = activeSectionName.split("/");
+        // The nested authentication routes should be matched just on the prefix:
+        // e.g. "authentication/google" => "authentication"
+        const [sectionNamePrefix] = activeSectionName.split("/");
 
-      const classes = cx(
-        "AdminList-item",
-        "flex",
-        "align-center",
-        "justify-between",
-        "no-decoration",
-        { selected: slug === sectionNamePrefix },
-      );
+        const classes = cx(
+          "AdminList-item",
+          "flex",
+          "align-center",
+          "justify-between",
+          "no-decoration",
+          { selected: slug === sectionNamePrefix },
+        );
 
-      // if this is the Updates section && there is a new version then lets add a little indicator
-      const shouldDisplayNewVersionIndicator =
-        slug === "updates" &&
-        newVersionAvailable &&
-        !MetabaseSettings.isHosted();
+        // if this is the Updates section && there is a new version then lets add a little indicator
+        const shouldDisplayNewVersionIndicator =
+          slug === "updates" &&
+          newVersionAvailable &&
+          !MetabaseSettings.isHosted();
 
-      const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
-        <NewVersionIndicator>1</NewVersionIndicator>
-      ) : null;
+        const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
+          <NewVersionIndicator>1</NewVersionIndicator>
+        ) : null;
 
-      return (
-        <li key={slug}>
-          <Link to={"/admin/settings/" + slug} className={classes}>
-            <span>{section.name}</span>
-            {newVersionIndicator}
-          </Link>
-        </li>
-      );
-    });
+        return (
+          <li key={slug}>
+            <Link to={"/admin/settings/" + slug} className={classes}>
+              <span>{section.name}</span>
+              {newVersionIndicator}
+            </Link>
+          </li>
+        );
+      },
+    );
 
     return (
       <aside className="MetadataEditor-table-list AdminList flex-no-shrink">

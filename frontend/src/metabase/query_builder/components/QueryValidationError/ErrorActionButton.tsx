@@ -28,10 +28,9 @@ export const BUTTON_ACTIONS: Record<
 > = {
   [VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION]: [
     t`Edit variables`,
-    ({ uiControls }) => {
-      if (!uiControls.isShowingTemplateTagsEditor) {
-        // TODO: This originally just called trackStructEvent. Can this be removed?
-      }
+    () => {
+      // TODO: This function originally just triggered trackStructEvent,
+      // which has been removed. Can BUTTON_ACTIONS now be removed?
     },
   ],
 };
