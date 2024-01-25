@@ -16,6 +16,7 @@
 
 (t2/deftransforms :model/DataPermissions
   {:perm_type  mi/transform-keyword
+   :perm-type  mi/transform-keyword
    :perm_value mi/transform-keyword
    ;; define keyword transformation for :type and :value as well so that we can use them as aliases
    :type       mi/transform-keyword
@@ -143,6 +144,63 @@
                                                   [:= :table_id nil]]]})]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
+
+(mu/defn data-permissions-graph-for-user
+  "Returns a permissions graph for a single user."
+  [user-id & {:keys [db-id perm-type]}]
+  (let [data-perms    (t2/select :model/DataPermissions
+                                 {:select [[:p.perm_type :perm-type]
+                                           [:p.group_id :group-id]
+                                           [:p.perm_value :value]
+                                           [:p.db_id :db-id]
+                                           [:p.table_id :table-id]]
+                                  :from [[:permissions_group_membership :pgm]]
+                                  :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                                         [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                                  :where [:and
+                                          [:= :pgm.user_id user-id]
+                                          (when db-id [:= :db_id db-id])
+                                          (when perm-type [:= :perm_type (u/qualified-name perm-type)])]})
+        grouped-perms (group-by (fn [{:keys [db-id perm-type table-id]}]
+                                  (if table-id
+                                    [db-id perm-type table-id]
+                                    [db-id perm-type]))
+                                data-perms)
+        coalesced-perms (reduce-kv
+                         (fn [result path perms]
+                           ;; Coalesce the values for permissions set in multiple groups for the same user
+                           (let [[db-id perm-type] path
+                                 coalesced-perms (coalesce perm-type
+                                                           (concat
+                                                            (map :value perms)
+                                                            (map :value (get grouped-perms [db-id perm-type]))))]
+                             (assoc result path coalesced-perms)))
+                         {}
+                         grouped-perms)
+        granular-graph  (reduce
+                         (fn [graph [[db-id perm-type table-id] value]]
+                           (let [current-perms (get-in graph [db-id perm-type])
+                                 updated-perms (if table-id
+                                                 (if (keyword? current-perms)
+                                                   {table-id value}
+                                                   (assoc current-perms table-id value))
+                                                 (if (map? current-perms)
+                                                   current-perms
+                                                   value))]
+                             (assoc-in graph [db-id perm-type] updated-perms)))
+                         {}
+                         coalesced-perms)]
+    (reduce (fn [new-graph [db-id perms]]
+              (assoc new-graph db-id
+                     (reduce (fn [new-perms [perm-type value]]
+                               (if (and (map? value)
+                                        (apply = (vals value)))
+                                 (assoc new-perms perm-type (first (vals value)))
+                                 (assoc new-perms perm-type value)))
+                             {}
+                             perms)))
+            {}
+            granular-graph)))
 
 
 ;;; ---------------------------------------- Fetching the data permissions graph --------------------------------------
