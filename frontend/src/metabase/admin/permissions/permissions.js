@@ -466,6 +466,12 @@ const hasRevisionChanged = handleActions(
     [LOAD_DATA_PERMISSIONS_FOR_DB]: {
       next: checkRevisionChanged,
     },
+    [SAVE_DATA_PERMISSIONS]: {
+      next: (state, { payload }) => ({
+        revision: payload.revision,
+        hasChanged: false,
+      }),
+    },
   },
   {
     revision: null,
