@@ -1557,29 +1557,25 @@
                                                              :model     "Card"
                                                              :model_id  (:id card)
                                                              :user_id   user-id}))]
-      (testing "sanity check revision object "
+      (testing "sanity check revision object"
         (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
           (testing "doesn't have type"
             (is (not (contains? card-revision-object "type"))))
-          (testing "have dataset"
-            (is (= false (get card-revision-object "dataset"))))))
+          (testing "has dataset"
+            (is (contains? card-revision-object "dataset")))))
 
-
-      (testing "after migration card reivisions should have type and remove dataset"
+      (testing "after migration card revisions should have type"
         (migrate!)
         (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)
               model-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision model-revision-id)]
           (is (= "question" (get card-revision-object "type")))
-          (is (= "model" (get model-revision-object "type")))
-          (is (not (contains? card-revision-object "dataset")))
-          (is (not (contains? model-revision-object "dataset")))))
+          (is (= "model" (get model-revision-object "type")))))
 
-
-      (testing "rollback should remove type and add back dataset"
+      (testing "rollback should remove type and keep dataset"
         (migrate! :down 48)
         (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)
               model-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision model-revision-id)]
-          (is (= false (get card-revision-object "dataset")))
-          (is (= true (get model-revision-object "dataset")))
+          (is (contains? card-revision-object "dataset"))
+          (is (contains? model-revision-object "dataset"))
           (is (not (contains? card-revision-object "type")))
           (is (not (contains? model-revision-object "type"))))))))

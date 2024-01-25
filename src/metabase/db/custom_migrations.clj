@@ -1040,8 +1040,7 @@
                          new-object (-> object
                                         (assoc :type (if (:dataset object)
                                                        "model"
-                                                       "question"))
-                                        (dissoc :dataset))]
+                                                       "question")))]
                      (t2/query {:update :revision
                                 :set    {:object (json/generate-string new-object)}
                                 :where  [:= :id (:id revision)]})))]
