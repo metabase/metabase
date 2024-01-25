@@ -1,17 +1,28 @@
-import { useContext, useEffect, useState } from "react";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import type { CardId } from "metabase-types/api";
-import { EmbeddingContext } from "metabase/embedding/context";
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import { useEffect, useState } from "react";
+import type { Card, CardId, Dataset } from "metabase-types/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { PublicApi } from "metabase/services";
+import { CardApi } from "metabase/services";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
+import {
+  onCloseChartType,
+  onOpenChartSettings,
+  setUIControls,
+  updateQuestion,
+} from "metabase/query_builder/actions";
 import Question from "metabase-lib/Question";
 
 interface QueryVisualizationProps {
   questionId: CardId;
 }
+
+type State = {
+  card: Card | null;
+  result: Dataset | null;
+};
 
 export const QueryVisualizationSdk = (
   props: QueryVisualizationProps,
@@ -20,48 +31,81 @@ export const QueryVisualizationSdk = (
   const metadata = useSelector(getMetadata);
   const { questionId } = props;
 
-  const [state, setState] = useState({
+  const [state, setState] = useState<State>({
     card: null,
     result: null,
-    initialized: false,
   });
 
   useEffect(() => {
-    PublicApi.card({ uuid: questionId }).then(card => {
+    CardApi.get({ cardId: questionId }).then(card => {
       setState(prevState => ({
         ...prevState,
         card,
       }));
+
+      CardApi.query({
+        cardId: questionId,
+      }).then(result => {
+        setState(prevState => ({
+          ...prevState,
+          result,
+        }));
+      });
     });
   }, [questionId]);
 
-  // className,
-  // isRunning,
-  // isObjectDetail,
-  // isResultDirty,
-  // isNativeEditorOpen,
-  // result,
-  // loadingMessage,
-  // maxTableRows
-
   const { card, result } = state;
-
-  const question = new Question(card, metadata);
 
   return (
     <LoadingAndErrorWrapper
-      className="flex-full"
+      className="flex-full full-width"
       loading={!result}
       error={typeof result === "string" ? result : null}
       noWrapper
     >
-      {() => (
-        <QueryVisualization
-          question={question}
-          isRunning={!result}
-          mode={PublicMode}
-        />
-      )}
+      {() => {
+        const question = new Question(card, metadata);
+        const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
+
+        return (
+          <div
+            style={{
+              height: "600px",
+              position: "relative",
+              display: "flex",
+              flexDirection: "row",
+            }}
+          >
+            <aside
+              style={{
+                width: "355px",
+              }}
+            >
+              <ChartTypeSidebar
+                question={question}
+                result={result}
+                onOpenChartSettings={onOpenChartSettings}
+                onCloseChartType={onCloseChartType}
+                query={legacyQuery}
+                setUIControls={setUIControls}
+                updateQuestion={updateQuestion}
+              />
+            </aside>
+            <QueryVisualization
+              className="full-width"
+              question={question}
+              rawSeries={[{ card: card, data: result && result.data }]}
+              isRunning={!result}
+              isObjectDetail={false}
+              isResultDirty={false}
+              isNativeEditorOpen={false}
+              result={result}
+              noHeader
+              mode={PublicMode}
+            />
+          </div>
+        );
+      }}
     </LoadingAndErrorWrapper>
   );
 };

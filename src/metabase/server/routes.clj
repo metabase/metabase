@@ -43,6 +43,12 @@
        (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] index/embed))
 
+(defroutes ^:private embedding-example-routes
+  (GET ["/question/:token.:export-format", :export-format api.dataset/export-format-regex]
+       [token export-format]
+       (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
+  (GET "*" [] index/embedding-example))
+
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
   (or (some-> (resolve 'ee.sso.routes/routes) var-get)
       (fn [_ respond _]
@@ -79,5 +85,7 @@
   (context "/public" [] public-routes)
   ;; ^/emebed/ -> Embed frontend and download routes
   (context "/embed" [] embed-routes)
+  ;; ^/embedding-example/ -> Embed frontend and download routes
+  (context "/embedding-example" [] embedding-example-routes)
   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
   (GET "*" [] index/index))

@@ -56,6 +56,7 @@ const config = (module.exports = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
+    "app-sdk": "./embedding/app-example.tsx",
     styles: "./css/index.css",
   },
 
@@ -230,6 +231,13 @@ const config = (module.exports = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    new HtmlWebpackPlugin({
+      filename: "../../embedding-example.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "styles", "app-sdk"],
+      template:
+        __dirname + "/resources/frontend_client/embedding_template.html",
     }),
     new webpack.BannerPlugin({
       banner:

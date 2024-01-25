@@ -172,15 +172,15 @@ export function siteLocale() {
   }
 }
 
-// register site locale with ttag, if needed later
-if (window.MetabaseSiteLocalization) {
-  const translationsObject = window.MetabaseSiteLocalization;
-  const locale = translationsObject.headers.language;
-  addMsgIds(translationsObject);
-  addLocale(locale, translationsObject);
-}
-
-// set the initial localization to user locale
-if (window.MetabaseUserLocalization) {
-  setLocalization(window.MetabaseUserLocalization);
-}
+// // register site locale with ttag, if needed later
+// if (window.MetabaseSiteLocalization) {
+//   const translationsObject = window.MetabaseSiteLocalization;
+//   const locale = translationsObject.headers.language;
+//   addMsgIds(translationsObject);
+//   addLocale(locale, translationsObject);
+// }
+//
+// // set the initial localization to user locale
+// if (window.MetabaseUserLocalization) {
+//   setLocalization(window.MetabaseUserLocalization);
+// }
