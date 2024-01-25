@@ -1,6 +1,7 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import type { Collection, SearchResult } from "metabase-types/api";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import type { SearchResult } from "metabase-types/api";
 import { createMockSetupState } from "metabase-types/store/mocks";
+import { createMockSearchResult } from "metabase-types/api/mocks";
 import { groupModels, BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
@@ -19,30 +20,163 @@ const renderBrowseModels = (modelCount: number) => {
   );
 };
 
-const collectionNames = [
-  "Collection A",
-  "Collection B",
-  "Collection C",
-  "Collection D",
-  "Collection Z",
-  "Collection Ä",
-  "Collection Ö",
-];
+const collectionAlpha = { id: 0, name: "Alpha" };
+const collectionBeta = { id: 1, name: "Beta" };
+const collectionCharlie = { id: 2, name: "Charlie" };
+const collectionDelta = { id: 3, name: "Delta" };
+const collectionZulu = { id: 4, name: "Zulu" };
+const collectionAngstrom = { id: 5, name: "Ångström" };
+const collectionOzgur = { id: 6, name: "Özgür" };
 
-const mockModels = [...Array(21)].map((_, index) => {
-  // Put 3 models in each collection
-  const collection: Partial<Collection> & { id: number } = {
-    id: Math.floor(index / 3),
-  };
-  collection.name = collectionNames[collection.id];
-  return {
-    id: index,
-    name: `Model ${index}`,
-    collection,
+const mockModels: SearchResult[] = [
+  {
+    id: 0,
+    name: "Model 0",
+    collection: collectionAlpha,
     last_editor_common_name: "Nicole Oresme",
-    last_edited_at: `${2000 - index}-01-01T00:00:00.000Z`,
-  } as SearchResult;
-});
+    last_edited_at: "2024-12-15T11:59:59.000Z",
+  },
+  {
+    id: 1,
+    name: "Model 1",
+    collection: collectionAlpha,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-12-15T11:59:30.000Z",
+  },
+  {
+    id: 2,
+    name: "Model 2",
+    collection: collectionAlpha,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-12-15T11:59:00.000Z",
+  },
+  {
+    id: 3,
+    name: "Model 3",
+    collection: collectionBeta,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-12-15T11:50:00.000Z",
+  },
+  {
+    id: 4,
+    name: "Model 4",
+    collection: collectionBeta,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-12-15T11:00:00.000Z",
+  },
+  {
+    id: 5,
+    name: "Model 5",
+    collection: collectionBeta,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-12-14T22:00:00.000Z",
+  },
+  {
+    id: 6,
+    name: "Model 6",
+    collection: collectionCharlie,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-12-14T12:00:00.000Z",
+  },
+  {
+    id: 7,
+    name: "Model 7",
+    collection: collectionCharlie,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-12-10T12:00:00.000Z",
+  },
+  {
+    id: 8,
+    name: "Model 8",
+    collection: collectionCharlie,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-11-15T12:00:00.000Z",
+  },
+  {
+    id: 9,
+    name: "Model 9",
+    collection: collectionDelta,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2024-02-15T12:00:00.000Z",
+  },
+  {
+    id: 10,
+    name: "Model 10",
+    collection: collectionDelta,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2023-12-15T12:00:00.000Z",
+  },
+  {
+    id: 11,
+    name: "Model 11",
+    collection: collectionDelta,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2020-01-01T00:00:00.000Z",
+  },
+  {
+    id: 12,
+    name: "Model 12",
+    collection: collectionZulu,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 13,
+    name: "Model 13",
+    collection: collectionZulu,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 14,
+    name: "Model 14",
+    collection: collectionZulu,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 15,
+    name: "Model 15",
+    collection: collectionAngstrom,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 16,
+    name: "Model 16",
+    collection: collectionAngstrom,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 17,
+    name: "Model 17",
+    collection: collectionAngstrom,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 18,
+    name: "Model 18",
+    collection: collectionOzgur,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 19,
+    name: "Model 19",
+    collection: collectionOzgur,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 20,
+    name: "Model 20",
+    collection: collectionOzgur,
+    last_editor_common_name: "Nicole Oresme",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+].map(model => createMockSearchResult(model));
 
 describe("BrowseModels", () => {
   it("displays models", async () => {
@@ -60,19 +194,40 @@ describe("BrowseModels", () => {
     // Three <a> tags representing models have aria-labelledby="collection-1 model-$id",
     // and "collection-1" is the id of an element containing text 'Collection 1',
     // so the following line finds those <a> tags.
-    const modelsInCollection1 = await screen.findAllByLabelText("Collection A");
+    const modelsInCollection1 = await screen.findAllByLabelText("Alpha");
     expect(modelsInCollection1).toHaveLength(3);
-    const modelsInCollection2 = await screen.findAllByLabelText("Collection B");
+    const modelsInCollection2 = await screen.findAllByLabelText("Beta");
     expect(modelsInCollection2).toHaveLength(3);
   });
   it("displays last edited information about models", async () => {
-    renderBrowseModels(3);
-    await screen.findByText("Model 0");
-    expect(await screen.findAllByText(/[0-9]+yr/)).toHaveLength(3);
+    jest.useFakeTimers().setSystemTime(new Date("2024-12-15T12:00:00.000Z"));
+
+    renderBrowseModels(12);
+    const howLongAgo = /\d+(min|h|d|mo|yr)/;
+    const findWhenModelWasEdited = async (modelName: string) =>
+      (
+        await within(await screen.findByLabelText(modelName)).findByText(
+          howLongAgo,
+        )
+      )?.textContent?.match(howLongAgo)?.[0];
+
+    expect(await findWhenModelWasEdited("Model 0")).toBe("1min");
+    expect(await findWhenModelWasEdited("Model 1")).toBe("1min");
+    expect(await findWhenModelWasEdited("Model 2")).toBe("1min");
+    expect(await findWhenModelWasEdited("Model 3")).toBe("10min");
+    expect(await findWhenModelWasEdited("Model 4")).toBe("1h");
+    expect(await findWhenModelWasEdited("Model 5")).toBe("14h");
+    expect(await findWhenModelWasEdited("Model 6")).toBe("1d");
+    expect(await findWhenModelWasEdited("Model 7")).toBe("5d");
+    expect(await findWhenModelWasEdited("Model 8")).toBe("1mo");
+    expect(await findWhenModelWasEdited("Model 9")).toBe("10mo");
+    expect(await findWhenModelWasEdited("Model 10")).toBe("1yr");
+    expect(await findWhenModelWasEdited("Model 11")).toBe("5yr");
+
+    jest.useRealTimers();
   });
   it("has a function that groups models by collection", () => {
     const { groupedModels } = groupModels(mockModels, "en");
-    // Check that models are grouped
     expect(groupedModels[0]).toHaveLength(3);
     expect(groupedModels[1]).toHaveLength(3);
     expect(groupedModels[2]).toHaveLength(3);
@@ -83,27 +238,26 @@ describe("BrowseModels", () => {
   });
   it("has a function that sorts collection names correctly in English", () => {
     const { collections } = groupModels(mockModels, "en");
-    // Check that the collections are alphabetized according to the locale
     expect(collections).toEqual([
-      { id: 0, name: "Collection A" },
-      { id: 5, name: "Collection Ä" },
-      { id: 1, name: "Collection B" },
-      { id: 2, name: "Collection C" },
-      { id: 3, name: "Collection D" },
-      { id: 6, name: "Collection Ö" },
-      { id: 4, name: "Collection Z" },
+      { id: 0, name: "Alpha" },
+      { id: 5, name: "Ångström" },
+      { id: 1, name: "Beta" },
+      { id: 2, name: "Charlie" },
+      { id: 3, name: "Delta" },
+      { id: 6, name: "Özgür" },
+      { id: 4, name: "Zulu" },
     ]);
   });
   it("has a function that groups models by collection correctly in Swedish", () => {
     const { collections } = groupModels(mockModels, "sv-SV");
     expect(collections).toEqual([
-      { id: 0, name: "Collection A" },
-      { id: 1, name: "Collection B" },
-      { id: 2, name: "Collection C" },
-      { id: 3, name: "Collection D" },
-      { id: 4, name: "Collection Z" },
-      { id: 5, name: "Collection Ä" },
-      { id: 6, name: "Collection Ö" },
+      { id: 0, name: "Alpha" },
+      { id: 1, name: "Beta" },
+      { id: 2, name: "Charlie" },
+      { id: 3, name: "Delta" },
+      { id: 4, name: "Zulu" },
+      { id: 5, name: "Ångström" },
+      { id: 6, name: "Özgür" },
     ]);
   });
 });

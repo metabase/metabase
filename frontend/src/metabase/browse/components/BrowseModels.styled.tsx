@@ -22,18 +22,8 @@ export const ModelCard = styled(Card)`
   justify-content: flex-start;
   align-items: flex-start;
 
+  border: 1px solid ${color("border")};
   box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.06) !important;
-
-  // TODO: Don't use LastEditInfoLabel and so don't use these rules
-  .Button:hover {
-    color: ${color("text-medium")} !important;
-  }
-  & .last-edit-info-label-button div,
-  & .last-edit-info-label-button span {
-    white-space: wrap !important;
-    text-align: left;
-    font-weight: normal;
-  }
 `;
 
 export const MultilineEllipsified = styled(Ellipsified)`

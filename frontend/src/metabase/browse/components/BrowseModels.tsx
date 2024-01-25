@@ -1,9 +1,6 @@
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
-import dayjs from "dayjs";
-import updateLocale from "dayjs/plugin/updateLocale";
-import relativeTime from "dayjs/plugin/relativeTime";
 
 import type { Card, Collection, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
@@ -29,9 +26,6 @@ import {
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
 
-dayjs.extend(updateLocale);
-dayjs.extend(relativeTime);
-
 const emptyArray: SearchResult[] = [];
 
 export const groupModels = (
@@ -41,7 +35,7 @@ export const groupModels = (
   const groupedModels = _.groupBy(models, model => model.collection.id);
   let collections = models.map(model => model.collection);
   collections = _.uniq(collections, collection => collection.id) || [];
-  collections.sort((a, b) => a.name.localeCompare(b.name, locale));
+  collections.sort((a, b) => a.name?.localeCompare(b.name, locale));
   return { groupedModels, collections };
 };
 

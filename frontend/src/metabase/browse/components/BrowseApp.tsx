@@ -28,14 +28,14 @@ export const BrowseApp = ({
   children?: React.ReactNode;
 }) => {
   const dispatch = useDispatch();
-
   const modelsResult = useSearchListQuery<SearchResult>({
     query: {
       models: ["dataset"],
       filter_items_in_personal_collection: "exclude",
     },
+    reload: true,
   });
-  const databasesResult = useDatabaseListQuery();
+  const databasesResult = useDatabaseListQuery({ reload: true });
 
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;
