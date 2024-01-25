@@ -78,7 +78,7 @@
 (defn- dox-for-schema
   "Generate the docstring for `schema` for use in auto-generated API documentation."
   [schema route-str]
-  (try (umd/describe schema)
+  (try (with-out-str (umd/describe schema))
        (catch Exception _
          (ex-data
           (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
