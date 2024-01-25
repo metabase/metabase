@@ -27,7 +27,14 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
   const applicationName = useSelector(getApplicationName);
   return (
     <AuthLayout>
-      <Box c="text-dark" fz="1.25rem" fw="bold" lh="1.5rem" ta="center">
+      <Box
+        role="heading"
+        c="text-dark"
+        fz="1.25rem"
+        fw="bold"
+        lh="1.5rem"
+        ta="center"
+      >
         {t`Sign in to ${applicationName}`}
       </Box>
       {selection && selection.Panel && (

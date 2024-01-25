@@ -10,7 +10,8 @@ import * as Urls from "metabase/lib/urls";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
-import { reload } from "metabase/lib/dom";
+import { reload, isSmallScreen } from "metabase/lib/dom";
+import { openNavbar } from "metabase/redux/app";
 import {
   trackLogin,
   trackLoginGoogle,
@@ -58,6 +59,9 @@ export const login = createAsyncThunk(
       await dispatch(refreshSession()).unwrap();
       trackLogin();
       dispatch(push(redirectUrl));
+      if (!isSmallScreen()) {
+        dispatch(openNavbar());
+      }
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -81,6 +85,9 @@ export const loginGoogle = createAsyncThunk(
       await dispatch(refreshSession()).unwrap();
       trackLoginGoogle();
       dispatch(push(redirectUrl));
+      if (!isSmallScreen()) {
+        dispatch(openNavbar());
+      }
     } catch (error) {
       return rejectWithValue(error);
     }
