@@ -217,9 +217,6 @@ export const getRoutes = store => {
 
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
-            {/* See if consolidating this into a single route with a :tab parameter makes sense.
-            For invalid tabs like /browse/asdf, redirect to /browse/models
-            */}
             <Route path="models" component={() => <BrowseApp tab="models" />} />
             <Route
               path="databases"
