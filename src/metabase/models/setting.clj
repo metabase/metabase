@@ -611,7 +611,7 @@
                      env-var-value
                      db-or-cache-value
                      (cond
-                       (:default setting) default-value
+                       (some?(:default setting)) default-value
                        (:init setting)    (when-not *disable-init*
                                             init!))]]
      (loop [[f & more] source-fns]
@@ -999,6 +999,10 @@
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
       (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
         (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                             setting-name)
+                        {:setting setting})))
+      (when (and (some? (:default setting)) (:init setting))
+        (throw (ex-info (tru "Setting {0} uses both :default and :init options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
       (when (and (:enabled? setting) (:feature setting))
