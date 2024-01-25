@@ -1,9 +1,12 @@
 (ns metabase.driver.sync-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.postgres]
    [metabase.driver.sync :as driver.s])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(comment metabase.driver.postgres/keep-me) ; this is used by [[schema-filter-NPE-test]] below
 
 (deftest ^:parallel schema-filter-test
   (doseq [[test-kind expect-match? schema-name inclusion-filters exclusion-filters]
