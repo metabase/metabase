@@ -14,7 +14,6 @@ import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
-  SettingRemoveButton,
   SettingSection,
   SettingsRoot,
   SettingValueWidget,
@@ -34,7 +33,6 @@ export interface ParameterSettingsProps {
   onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
-  onRemoveParameter: () => void;
 }
 
 const ParameterSettings = ({
@@ -46,7 +44,6 @@ const ParameterSettings = ({
   onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
-  onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
 
@@ -123,9 +120,6 @@ const ParameterSettings = ({
           />
         </SettingSection>
       )}
-      <SettingRemoveButton onClick={onRemoveParameter}>
-        {t`Remove`}
-      </SettingRemoveButton>
     </SettingsRoot>
   );
 };
@@ -149,5 +143,4 @@ function getLabelError({
   return null;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ParameterSettings;
+export { ParameterSettings };
