@@ -33,7 +33,7 @@ describe("scenarios > auth > signin", () => {
     cy.button("Sign in").click();
     cy.findByRole("alert")
       .filter(':contains("did not match stored password")')
-      .should("exist");
+      .should("be.visible");
   });
 
   it("should display same error for unknown users (to avoid leaking the existence of accounts)", () => {
