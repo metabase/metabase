@@ -31,7 +31,4 @@ select
     null as is_active,
     null as sso_source,
     null as locale
-    from core_user
-
-
 ;

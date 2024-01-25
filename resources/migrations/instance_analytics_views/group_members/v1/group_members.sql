@@ -12,3 +12,4 @@ select
     0 as user_id,
     0 as group_id,
     'External users' as group_name
+;
