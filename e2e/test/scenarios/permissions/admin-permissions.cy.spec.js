@@ -490,6 +490,18 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           ["Products", "Unrestricted", "Yes"],
           ["Reviews", "Unrestricted", "Yes"],
         ]);
+
+        // After saving permissions, user should be able to make further edits without refreshing the page
+        // metabase#37811
+        selectSidebarItem("data");
+
+        modifyPermission(
+          "Sample Database",
+          NATIVE_QUERIES_PERMISSION_INDEX,
+          "No",
+        );
+
+        cy.button("Refresh the page").should("not.exist");
       });
 
       it("should show a modal when a revision changes while an admin is editing", () => {
@@ -722,6 +734,98 @@ describeEE("scenarios > admin > permissions", () => {
       ["data", "Unrestricted", "Yes", "No", "No"],
       ["nosql", "Unrestricted", "No", "No", "No"],
       ["readonly", "No self-service", "No", "No", "No"],
+    ]);
+  });
+
+  it("allows editing sandboxed access in the group focused view", () => {
+    cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
+    cy.visit(
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
+    );
+
+    modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
+
+    modal().within(() => {
+      cy.findByText("Change access to this database to granular?");
+      cy.button("Change").click();
+    });
+
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
+    );
+    modal().within(() => {
+      cy.findByText("Grant sandboxed access to this table");
+      cy.button("Save").should("be.disabled");
+      cy.findByText("Pick a column").click();
+    });
+
+    popover().findByText("User ID").click();
+    modal().findByText("Pick a user attribute").click();
+    popover().findByText("attr_uid").click();
+    modal().button("Save").click();
+
+    assertPermissionTable([
+      ["Accounts", "No self-service", "No", "1 million rows", "No"],
+      ["Analytic Events", "No self-service", "No", "1 million rows", "No"],
+      ["Feedback", "No self-service", "No", "1 million rows", "No"],
+      ["Invoices", "No self-service", "No", "1 million rows", "No"],
+      ["Orders", "Sandboxed", "No", "1 million rows", "No"],
+      ["People", "No self-service", "No", "1 million rows", "No"],
+      ["Products", "No self-service", "No", "1 million rows", "No"],
+      ["Reviews", "No self-service", "No", "1 million rows", "No"],
+    ]);
+
+    modifyPermission(
+      "Orders",
+      DATA_ACCESS_PERMISSION_INDEX,
+      "Edit sandboxed access",
+    );
+
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
+    );
+
+    modal().findByText("Grant sandboxed access to this table");
+
+    cy.button("Save").click();
+
+    modal().should("not.exist");
+
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
+    );
+
+    cy.button("Save changes").click();
+
+    modal().within(() => {
+      cy.findByText("Save permissions?").should("exist");
+      cy.contains(
+        "All Users will be given access to 1 table in Sample Database",
+      ).should("exist");
+      cy.button("Yes").click();
+    });
+
+    cy.wait("@saveGraph");
+
+    // assertions that specifically targets metabase#37774. Should be able to reload with the schema in the URL and not error
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
+    );
+    cy.reload();
+
+    assertPermissionTable([
+      ["Accounts", "No self-service", "No", "1 million rows", "No"],
+      ["Analytic Events", "No self-service", "No", "1 million rows", "No"],
+      ["Feedback", "No self-service", "No", "1 million rows", "No"],
+      ["Invoices", "No self-service", "No", "1 million rows", "No"],
+      ["Orders", "Sandboxed", "No", "1 million rows", "No"],
+      ["People", "No self-service", "No", "1 million rows", "No"],
+      ["Products", "No self-service", "No", "1 million rows", "No"],
+      ["Reviews", "No self-service", "No", "1 million rows", "No"],
     ]);
   });
 
