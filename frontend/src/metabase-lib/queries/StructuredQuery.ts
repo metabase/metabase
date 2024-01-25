@@ -350,7 +350,6 @@ class StructuredQuery extends AtomicQuery {
     const table = this.table();
 
     // NOTE: special case for Google Analytics which requires an aggregation
-    // TODO: Remove this?
     if (table.entity_type === "entity/GoogleAnalyticsTable") {
       if (!this.hasAggregations()) {
         return false;
