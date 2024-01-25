@@ -522,8 +522,9 @@
   "Check query permissions against the chain-filter-mbql-query (private #196)"
   [field-id constraints options]
   (->> (chain-filter-mbql-query field-id constraints options)
-       qp/preprocess
-       qp.perms/check-query-permissions*))
+         qp/preprocess
+         qp.perms/check-query-permissions*)
+  true)
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
