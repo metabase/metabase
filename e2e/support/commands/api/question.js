@@ -56,7 +56,7 @@ function question(
   {
     name = "test question",
     description,
-    type: entityType = "question",
+    type = "question",
     native,
     query,
     database = SAMPLE_DB_ID,
@@ -104,16 +104,16 @@ function question(
         cy.wrap(body.id).as(idAlias);
       }
 
-      if (entityType === "model" || enable_embedding) {
+      if (type === "model" || enable_embedding) {
         cy.request("PUT", `/api/card/${body.id}`, {
-          type: entityType,
+          type,
           enable_embedding,
           embedding_params,
         });
       }
 
       if (loadMetadata || visitQuestion) {
-        entityType === "model"
+        type === "model"
           ? cy.intercept("POST", `/api/dataset`).as("dataset")
           : // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
             cy
@@ -121,11 +121,11 @@ function question(
               .as(interceptAlias);
 
         const url =
-          entityType === "model" ? `/model/${body.id}` : `/question/${body.id}`;
+          type === "model" ? `/model/${body.id}` : `/question/${body.id}`;
         cy.visit(url);
 
         // Wait for `result_metadata` to load
-        if (entityType === "model") {
+        if (type === "model") {
           cy.wait("@dataset");
         } else {
           cy.wait("@" + interceptAlias);
