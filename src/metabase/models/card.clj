@@ -104,11 +104,11 @@
 
 (def ^{:private true
        :doc     "All acceptable card types.
-                Previously (< 49), we only have 2 types of card: question and model, this was differentiated using
-                the boolean `dataset`. Soon we'll have more card types (e.g: metric) and we can't no longer use a boolean
-                column to differentiate between all types. So we've add a new column `type` for this purpose.
+                Previously (< 49), we only had 2 card types: question and model, which were differentiated using the
+                boolean `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean
+                column to differentiate between all types. So we've added a new `type` column for this purpose.
 
-                Migrating all the code to use `report_card.dataset` is quite an effort, so we decided we'll migrate it gradually.
+                Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it gradually.
                 In the mean time we'll have both `type` and `dataset` columns."} card-types
   #{"model" "question" #_:metric})
 
@@ -122,15 +122,15 @@
    {:keys [type] :as _card} :- [:map [:type CardTypes]]]
   (= target-type type))
 
-(def ^{:arglists '([card])
-       :doc      "Returns true if `card` is a model."}
-  is-model?
-  (partial is-type? "model"))
+(defn  is-question?
+  "Returns true if `card` is a question"
+  [card]
+  (is-type? "model" card))
 
-(def ^{:arglists '([card])
-       :doc      "Returns true if `card` is a model."}
-  is-question?
-  (partial is-type? "question"))
+(defn is-model?
+  "Returns true if `card` is a model."
+  [card]
+  (is-type? "model" card))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -179,7 +179,9 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version])
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
+   ;; we'll use type now
+   :dataset])
 
 (defmethod revision/serialize-instance :model/Card
   ([instance]
@@ -187,7 +189,7 @@
   ([_model _id instance]
    (cond-> (apply dissoc instance excluded-columns-for-card-revision)
      ;; datasets should preserve edits to metadata
-     (not (:dataset instance))
+     (and (:type instance) (not (is-model? instance)))
      (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -337,7 +339,7 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(defn- ensure-type-and-dataset-are-aligned
+(defn- ensure-type-and-dataset-are-consistent
   "We're in the process of migrating from using `report_card.dataset` to `report_card.type`.
   In the future we'll drop `dataset` and only use `type`. But for now we need to make sure that both keys are aligned
   when dealing with cards.
@@ -360,9 +362,11 @@
 
    ;; if only dataset presents, make sure type follows
    (some? dataset)
-   (assoc card :type (if dataset
-                       "model"
-                       "question"))))
+   (let [inferred-type (if dataset
+                         "model"
+                         "question")]
+     (log/warnf "Card type not found, defaulting to '%s'" inferred-type)
+     (assoc card :type inferred-type))))
 
 (defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
@@ -379,7 +383,7 @@
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
                   :parameter_mappings []}
-        card     (ensure-type-and-dataset-are-aligned (merge defaults card))]
+        card     (ensure-type-and-dataset-are-consistent (merge defaults card))]
     (u/prog1 card
       ;; make sure this Card doesn't have circular source query references
       (check-for-circular-source-query-references card)
@@ -533,7 +537,7 @@
   ;;
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
-  (-> (into {:id (:id card)} (ensure-type-and-dataset-are-aligned (t2/changes card)))
+  (-> (into {:id (:id card)} (ensure-type-and-dataset-are-consistent (t2/changes card)))
       maybe-normalize-query
       populate-result-metadata
       pre-update
@@ -657,8 +661,9 @@ saved later when it is ready."
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
+                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
+                                     :type       (:or (:type card-data) "question")
                                      :creator_id (:id creator)
                                      :dataset    (or (and (:type card-data) (is-model? card-data))
                                                      (boolean (:dataset card-data)))
@@ -817,7 +822,7 @@ saved later when it is ready."
   included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [card-before-update card-updates actor]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (let [card-updates (ensure-type-and-dataset-are-aligned card-updates)]
+  (let [card-updates (ensure-type-and-dataset-are-consistent card-updates)]
     (t2/with-transaction [_conn]
       (api/maybe-reconcile-collection-position! card-before-update card-updates)
 

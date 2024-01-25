@@ -416,11 +416,11 @@
            {:description          "changed the display from table to bar and turned this into a model."
             :has_multiple_changes true}
            (#'revision/revision-description-info model
-                                                 {:object       {:dataset false
+                                                 {:object       {:type "question"
                                                                  :display :table}
                                                   :is_reversion false
                                                   :is_creation  false}
-                                                 {:object       {:dataset true
+                                                 {:object       {:type "model"
                                                                  :display :bar}
                                                   :is_reversion false
                                                   :is_creation  false}))

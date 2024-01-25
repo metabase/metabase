@@ -27,7 +27,6 @@
    :collection_preview     true
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)
-   :dataset                false
    :type                   "question"
    :description            nil
    :display                :table

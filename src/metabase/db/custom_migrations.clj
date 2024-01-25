@@ -1033,3 +1033,28 @@
 (define-reversible-migration UnifyTimeColumnsType
   (unify-time-column-type! :up)
   (unify-time-column-type! :down))
+
+(define-reversible-migration CardRevisionAddType
+  (let [migrate! (fn [revision]
+                   (let [object    (json/parse-string (:object revision) keyword)
+                         new-object (-> object
+                                        (assoc :type (if (:dataset object)
+                                                       "model"
+                                                       "question")))]
+                     (t2/query {:update :revision
+                                :set    {:object (json/generate-string new-object)}
+                                :where  [:= :id (:id revision)]})))]
+    (run! migrate! (t2/reducible-query {:select [:*]
+                                        :from   [:revision]
+                                        :where  [:= :model "Card"]})))
+  (let [rollback! (fn [revision]
+                    (let [object    (json/parse-string (:object revision) keyword)
+                          new-object (-> object
+                                         (assoc :dataset (= (:type object) "model"))
+                                         (dissoc :type))]
+                      (t2/query {:update :revision
+                                 :set    {:object (json/generate-string new-object)}
+                                 :where  [:= :id (:id revision)]})))]
+    (run! rollback! (t2/reducible-query {:select [:*]
+                                         :from   [:revision]
+                                         :where  [:= :model "Card"]}))))
