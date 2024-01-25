@@ -19,7 +19,7 @@ declare global {
        *
        * @example
        * cy.heading("Sample Database").click();
-       * modal().heading("Save").click();
+       * modal().heading("Are you sure?").click();
        */
       heading(
         headingName: string,
