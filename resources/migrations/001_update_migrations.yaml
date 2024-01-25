@@ -5231,6 +5231,14 @@ databaseChangeLog:
               WHERE dataset is true
       rollback: # no need, the column will be dropped
 
+  - changeSet:
+      id: v49.2024-01-22T11:52:00
+      author: qnkhuat
+      comment: Backfill `report_card.type`
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CardRevisionAddType"
+
   # TODO: add a revision migration to includes type
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
