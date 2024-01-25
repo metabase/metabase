@@ -31,7 +31,7 @@
 
 (api/defendpoint GET "/"
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
-   using the token and email of the currently signed in user to fetch the data."
+   using the embedding token and signed in user's email to fetch the billing information."
   []
   (let [token    (premium-features/premium-embedding-token)
         email    (t2/select-one-fn :email :model/User :id api/*current-user-id*)
