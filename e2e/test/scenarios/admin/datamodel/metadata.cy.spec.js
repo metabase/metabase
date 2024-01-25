@@ -146,8 +146,13 @@ describe("scenarios > admin > datamodel > metadata", () => {
       .click();
 
     popover().within(() => {
-      cy.findAllByText("Rating").should("have.length", 2);
+      cy.findAllByTestId("dimension-list-item")
+        .eq(3)
+        .should("have.text", "Rating");
       cy.get(".List-section-header").should("have.length", 3);
+      cy.get(".List-section-header").eq(0).should("have.text", "Review");
+      cy.get(".List-section-header").eq(1).should("have.text", "Product");
+      cy.get(".List-section-header").eq(2).should("have.text", "Rating");
     });
   });
 
