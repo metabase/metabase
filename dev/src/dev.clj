@@ -37,6 +37,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
    [dev.model-tracking :as model-tracking]
@@ -60,6 +61,7 @@
    [metabase.server.handler :as handler]
    [metabase.sync :as sync]
    [metabase.test :as mt]
+   [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -326,3 +328,24 @@
   See https://github.com/weavejester/hashp"
   [form]
   (hashp/p* form))
+
+(defn find-root-test-failure!
+  "Sometimes tests fail due to another test not cleaning up after itself properly (e.g. leaving permissions in a dirty
+  state). This is a common cause of tests failing in CI, or when run via `find-and-run-tests`, but not when run alone.
+
+  This helper allows you to pass in a test var for a test that fails only after other tests run. It finds and runs all
+  tests, running your passed test after each.
+
+  When the passed test starts failing, it throws an exception notifying you of the test that caused it to start
+  failing. At that point, you can start investigating what pleasant surprises that test is leaving behind in the
+  database."
+  [failing-test-var]
+  (let [failed? (fn []
+                  (not= [0 0] ((juxt :fail :error) (clojure.test/run-test-var failing-test-var))))]
+    (when (failed?)
+      (throw (ex-info "Test is already failing! Better go fix it." {:failed-test failing-test-var})))
+    (doseq [test (metabase.test-runner/find-tests)]
+      (clojure.test/run-test-var test)
+      (when (failed?)
+        (throw (ex-info (format "Test failed after running: `%s`" test)
+                        {:test test}))))))
