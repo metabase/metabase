@@ -72,27 +72,27 @@ describe("scenarios > auth > signin", () => {
     cy.findByRole("checkbox").should("not.be.checked");
   });
 
-  it("should redirect to a unsaved question after login", () => {
+  it("should redirect to an unsaved question after login", () => {
     cy.signInAsAdmin();
     cy.visit("/");
     browse().click();
     cy.findByRole("tab", { name: "Databases" }).click();
-    cy.heading("Sample Database").click();
-    cy.heading("Orders").click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
+    cy.findByRole("heading", { name: "Orders" }).click();
     cy.wait("@dataset");
-    cy.findByRole("gridcell").filter(':contains("37.65")');
+    cy.findAllByRole("gridcell", { name: "37.65" });
 
     // signout and reload page with question hash in url
     cy.signOut();
     cy.reload();
 
-    cy.heading("Sign in to Metabase");
+    cy.findByRole("heading", { name: "Sign in to Metabase" });
     cy.findByLabelText("Email address").type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
 
     cy.wait("@dataset");
-    cy.findByRole("gridcell").filter(':contains("37.65")');
+    cy.findAllByRole("gridcell", { name: "37.65" });
   });
 
   sizes.forEach(size => {

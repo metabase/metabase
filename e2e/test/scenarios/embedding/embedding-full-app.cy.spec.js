@@ -8,7 +8,6 @@ import {
   navigationSidebar,
   getDashboardCard,
   getTextCardDetails,
-  closeNavigationSidebar,
   updateDashboardCards,
 } from "e2e/support/helpers";
 import {
@@ -137,7 +136,7 @@ describeEE("scenarios > embedding > full app", () => {
   });
 
   describe("browse data", () => {
-    it("should hide the side nav when nothing is shown", () => {
+    it("should hide the top nav when nothing is shown", () => {
       visitFullAppEmbeddingUrl({
         url: "/browse",
         qs: { side_nav: false, logo: false },
@@ -278,7 +277,7 @@ describeEE("scenarios > embedding > full app", () => {
     it("should show the dashboard header by default", () => {
       visitDashboardUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
 
-      cy.heading("Orders in a dashboard").should("be.visible");
+      cy.findByTestId("dashboard-name-heading").should("be.visible");
       cy.button(/Edited.*by/).should("be.visible");
     });
 
@@ -287,7 +286,9 @@ describeEE("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { header: false },
       });
-      cy.heading("Orders in a dashboard").should("not.exist");
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "not.exist",
+      );
     });
 
     it("should hide the dashboard's additional info by a param", () => {
@@ -358,7 +359,6 @@ describeEE("scenarios > embedding > full app", () => {
       cy.log("Navigate to a dashboard via in-app navigation");
       navigationSidebar().findByText("Our analytics").click();
       cy.findByRole("main").findByText(dashboardDetails.name).click();
-      closeNavigationSidebar();
       navigationSidebar().findByText("Our analytics").should("not.be.visible");
 
       cy.get("main header")
@@ -391,7 +391,7 @@ describeEE("scenarios > embedding > full app", () => {
     it("should show the dashboard header by default", () => {
       visitXrayDashboardUrl({ url: "/auto/dashboard/table/1" });
 
-      cy.heading("More X-rays").should("be.visible");
+      cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("be.visible");
     });
 
@@ -401,7 +401,7 @@ describeEE("scenarios > embedding > full app", () => {
         qs: { header: false },
       });
 
-      cy.heading("More X-rays").should("be.visible");
+      cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("not.exist");
     });
   });
