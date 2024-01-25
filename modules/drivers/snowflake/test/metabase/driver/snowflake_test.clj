@@ -204,17 +204,20 @@
             schema-name "Test-Schema"
             table-name  "Test-Table"
             field-name  "Test-ID"
-            spec        (sql-jdbc.conn/connection-details->spec :snowflake details)
-            identifier  (fn [& args]
-                          (str/join \. (map #(str \" % \") args)))]
+            spec        (sql-jdbc.conn/connection-details->spec :snowflake details)]
         ;; create the snowflake DB
-        (doseq [stmt [(format "DROP DATABASE IF EXISTS %s;" (identifier db-name))
-                      (format "CREATE DATABASE %s;" (identifier db-name))
-                      (format "CREATE SCHEMA %s;" (identifier db-name schema-name))
-                      (format "CREATE TABLE %s (%s INTEGER AUTOINCREMENT);" (identifier db-name schema-name table-name) (identifier field-name))
-                      (format "GRANT SELECT ON %s TO PUBLIC;" (identifier db-name schema-name table-name))]]
-          (jdbc/execute! spec [stmt] {:transaction? false}))
-        ;; create the DB object
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake spec nil
+         (fn [^java.sql.Connection conn]
+           (doseq [stmt (letfn [(identifier [& args]
+                                  (str/join \. (map #(str \" % \") args)))]
+                          [(format "DROP DATABASE IF EXISTS %s;" (identifier db-name))
+                           (format "CREATE DATABASE %s;" (identifier db-name))
+                           (format "CREATE SCHEMA %s;" (identifier db-name schema-name))
+                           (format "CREATE TABLE %s (%s INTEGER AUTOINCREMENT);" (identifier db-name schema-name table-name) (identifier field-name))
+                           (format "GRANT SELECT ON %s TO PUBLIC;" (identifier db-name schema-name table-name))])]
+             (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))))
+        ;; fetch metadata
         (t2.with-temp/with-temp [Database database {:engine :snowflake, :details details}]
           (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
                   (driver/describe-database :snowflake database))))))))
