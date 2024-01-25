@@ -42,7 +42,7 @@ import type {
 } from "./types";
 
 export function metadataProvider(
-  databaseId: DatabaseId,
+  databaseId: DatabaseId | null,
   metadata: Metadata,
 ): MetadataProvider {
   return ML.metadataProvider(databaseId, metadata);

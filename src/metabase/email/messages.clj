@@ -308,8 +308,8 @@
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/generate-string {:salt public-settings/site-uuid-for-unsubscribing-url
-                           :email email
+    (json/generate-string {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+                           :email    email
                            :pulse-id pulse-id}))))
 
 (defn- pulse-context [pulse dashboard non-user-email]

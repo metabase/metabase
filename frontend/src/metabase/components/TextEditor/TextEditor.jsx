@@ -1,5 +1,4 @@
 /*global ace*/
-/* eslint-disable react/prop-types */
 import { Component, createRef } from "react";
 import PropTypes from "prop-types";
 
@@ -11,6 +10,9 @@ import { TextEditorRoot } from "./TextEditor.styled";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
+const HIGHLIGHTED_CODE_ROW_CLASSNAME = "highlighted-code-marker";
+const HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME =
+  "highlighted-code-marker-row-number";
 
 export default class TextEditor extends Component {
   static propTypes = {
@@ -18,7 +20,10 @@ export default class TextEditor extends Component {
     theme: PropTypes.string,
     value: PropTypes.string,
     defaultValue: PropTypes.string,
+    readOnly: PropTypes.bool,
+    highlightedTexts: PropTypes.arrayOf(PropTypes.string),
     onChange: PropTypes.func,
+    className: PropTypes.string,
   };
 
   static defaultProps = {
@@ -27,6 +32,8 @@ export default class TextEditor extends Component {
   };
 
   editorRef = createRef();
+
+  highlightedTextMarkerIds = [];
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (
@@ -51,9 +58,14 @@ export default class TextEditor extends Component {
     this._editor.getSession().setMode(this.props.mode);
     this._editor.setTheme(this.props.theme);
 
-    // read only
     this._editor.setReadOnly(this.props.readOnly);
     element.classList[this.props.readOnly ? "add" : "remove"]("read-only");
+
+    this._removeTextHighlight();
+    const { highlightedTexts } = this.props;
+    if (highlightedTexts != null) {
+      highlightedTexts.forEach(this._addTextHighlight);
+    }
 
     this._updateSize();
   }
@@ -70,6 +82,42 @@ export default class TextEditor extends Component {
     element.style.height =
       2 * SCROLL_MARGIN + LINE_HEIGHT * doc.getLength() + "px";
     this._editor.resize();
+  }
+
+  _addTextHighlight = textToHighlight => {
+    const textRange = this._editor.find(textToHighlight);
+    this._editor.selection.clearSelection();
+
+    if (textRange) {
+      const highlightedTextMarkerId = this._editor.session.addMarker(
+        textRange,
+        HIGHLIGHTED_CODE_ROW_CLASSNAME,
+        "fullLine",
+        true,
+      );
+      this.highlightedTextMarkerIds.push(highlightedTextMarkerId);
+
+      for (let i = textRange.start.row; i <= textRange.end.row; i++) {
+        this._editor.session.addGutterDecoration(
+          i,
+          HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME,
+        );
+      }
+    }
+  };
+
+  _removeTextHighlight() {
+    this.highlightedTextMarkerIds.forEach(highlightedTextMarkerId => {
+      this._editor.session.removeMarker(highlightedTextMarkerId);
+    });
+    this.highlightedTextMarkerIds = [];
+
+    for (let i = 0; i <= this._editor.session.getLength(); i++) {
+      this._editor.session.removeGutterDecoration(
+        i,
+        HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME,
+      );
+    }
   }
 
   onChange = e => {
@@ -95,14 +143,11 @@ export default class TextEditor extends Component {
 
     // misc options, copied from NativeQueryEditor
     this._editor.setOptions({
-      enableBasicAutocompletion: true,
-      enableSnippets: true,
-      enableLiveAutocompletion: true,
       showPrintMargin: false,
       highlightActiveLine: false,
       highlightGutterLine: false,
       showLineNumbers: true,
-      // wrap: true
+      showFoldWidgets: false,
     });
     this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
 
@@ -126,14 +171,8 @@ export default class TextEditor extends Component {
   }
 
   render() {
-    const { className, style } = this.props;
+    const { className } = this.props;
 
-    return (
-      <TextEditorRoot
-        ref={this.editorRef}
-        className={className}
-        style={style}
-      />
-    );
+    return <TextEditorRoot ref={this.editorRef} className={className} />;
   }
 }

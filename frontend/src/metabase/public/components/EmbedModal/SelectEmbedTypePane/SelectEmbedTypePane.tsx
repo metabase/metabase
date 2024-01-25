@@ -8,8 +8,7 @@ import { Group, Text, Anchor, Stack } from "metabase/ui";
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 import Link from "metabase/core/components/Link";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
-
-import type { EmbedResource } from "../types";
+import type { EmbedResource } from "metabase/public/lib/types";
 import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
 import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
