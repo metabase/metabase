@@ -1,9 +1,6 @@
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
-import dayjs from "dayjs";
-import updateLocale from "dayjs/plugin/updateLocale";
-import relativeTime from "dayjs/plugin/relativeTime";
 
 import type { Card, Collection, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
@@ -27,9 +24,6 @@ import {
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
-
-dayjs.extend(updateLocale);
-dayjs.extend(relativeTime);
 
 const emptyArray: SearchResult[] = [];
 

@@ -2,11 +2,35 @@ import _ from "underscore";
 import { c, t } from "ttag";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { Text, Tooltip } from "metabase/ui";
+import updateLocale from "dayjs/plugin/updateLocale";
 
+import { Text, Tooltip } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 
+dayjs.extend(updateLocale);
 dayjs.extend(relativeTime);
+
+const relativeTimeConfig: Record<string, unknown> = {
+  m: t`${1}min`,
+  mm: t`${"%d"}min`,
+  h: t`${1}h`,
+  hh: t`${"%d"}h`,
+  d: t`${1}d`,
+  dd: t`${"%d"}d`,
+  M: t`${1}mo`,
+  MM: t`${"%d"}mo`,
+  y: t`${1}yr`,
+  yy: t`${"%d"}yr`,
+  // For any number of seconds, just show 1min
+  s: () => t`${1}min`,
+  ss: () => t`${1}min`,
+  // Don't use "ago"
+  past: "%s",
+  // For the edge case where a model's last-edit date is somehow in the future
+  future: t`${"%s"} from now`,
+};
+
+dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
 
 const getHowLongAgo = (timestamp: string) => {
   const date = dayjs(timestamp);
@@ -25,7 +49,7 @@ export const LastEdited = ({
   timestamp: string;
 }) => {
   const howLongAgo = getHowLongAgo(timestamp);
-  const timeLabel = timestamp ? getHowLongAgo(timestamp) : "";
+  const timeLabel = timestamp ? howLongAgo : "";
   const formattedDate = formatDateTimeWithUnit(timestamp, "day", {});
   const time = (
     <time key="time" dateTime={timestamp}>
