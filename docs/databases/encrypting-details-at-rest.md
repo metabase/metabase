@@ -11,8 +11,8 @@ Metabase stores connection information for the various databases you add in the 
 ## Creating an encryption key
 
 1. Generate a secret key that is at least 16 characters (longer is even better!). We recommend using a secure random key generator, such as `openssl`.
-   > Take care not to lose this key because you can't decrypt connection details without it. If you lose (or change) the key, you'll have to reset all of the connection details that have been encrypted with it in the Admin Panel.
-2. Set your secret key as the environment variable `MB_ENCRYPTION_SECRET_KEY`.
+   > You cannot decrypt connection details without this key. If you lose (or change) the key, you'll have to reset all of the connection details that have been encrypted with that key in the Admin Panel.
+2. Set your secret key as the environment variable `MB_ENCRYPTION_SECRET_KEY`. On paid plans, you can set also set this using the [config file](../configuring-metabase/config-file.md).
 
 ### Example commands for creating and adding a key
 
@@ -29,9 +29,7 @@ Metabase stores connection information for the various databases you add in the 
    MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java -jar metabase.jar
    ```
 
-Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will securely encrypt and store the connection details for each new database that you add.
-
-**Note**
+Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will automatically encrypt and store the connection details for each new database that you add. To encrypt existing connections, see the next section.
 
 > Some versions of Linux interpret single-quotes (`'`) and double-quotes (`"`) differently for environment variable values. If you upgrade to a newer version of Linux, and the key originally used single-quotes, you might need to wrap the key in double-quotes, so that the single-quotes are interpreted literally. For example, `MB_ENCRYPTION_SECRET_KEY='IYq...sM='` would become `MB_ENCRYPTION_SECRET_KEY="'IYq...sM='"`
 

@@ -702,11 +702,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         it("should display pivot table in an embed URL", () => {
           openStaticEmbeddingModal({
             activeTab: "parameters",
-            confirmSave: test.confirmSave
+            confirmSave: test.confirmSave,
           });
-
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Publish changes").click();
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
           visitIframe();
