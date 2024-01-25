@@ -152,8 +152,11 @@ DashCardMenu.shouldRender = ({
   isPublic,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
+  // Do not remove this check until we completely remove the old code related to Audit V1!
+  // MLv2 doesn't handle `internal` queries used for Audit V1.
   const isInternalQuery =
     question.legacyQuery({ useStructuredQuery: true }) instanceof InternalQuery;
+
   if (isEmbed) {
     return isEmbed;
   }
