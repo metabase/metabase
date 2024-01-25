@@ -242,6 +242,7 @@ export const getRoutes = store => {
               )}
             />
 
+            {/* These two Redirects support legacy paths in v48 and earlier */}
             <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />
             <Redirect
               from=":dbId/schema/:schemaName"
