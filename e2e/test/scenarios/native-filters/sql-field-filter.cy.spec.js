@@ -20,35 +20,77 @@ describe("scenarios > filters > sql filters > field filter", () => {
     cy.signInAsAdmin();
   });
 
-  it("should need the default value for a required filter", () => {
-    openNativeEditor();
-    SQLFilter.enterParameterizedQuery(
-      "SELECT * FROM products WHERE {{filter}}",
-    );
+  describe("required tag", () => {
+    beforeEach(() => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM products WHERE {{filter}}",
+      );
 
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
 
-    FieldFilter.mapTo({
-      table: "Products",
-      field: "ID",
+      FieldFilter.mapTo({
+        table: "Products",
+        field: "ID",
+      });
+
+      FieldFilter.setWidgetType("ID");
     });
 
-    FieldFilter.setWidgetType("ID");
+    function setDefaultFieldValue(value) {
+      cy.findByTestId("sidebar-content")
+        .findByText("Enter a default value…")
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a default value…").type(value);
+        cy.button("Add filter").click();
+      });
+    }
 
-    SQLFilter.toggleRequired();
-    SQLFilter.getRunQueryButton().should("be.disabled");
-    SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
+    it("needs a default value to run or save the query", () => {
+      SQLFilter.toggleRequired();
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
-    cy.findByTestId("sidebar-content")
-      .findByText("Enter a default value…")
-      .click();
-    popover().within(() => {
-      cy.findByPlaceholderText("Enter a default value…").type(4);
-      cy.button("Add filter").click();
+      setDefaultFieldValue(4);
+
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
     });
-    SQLFilter.getRunQueryButton().should("not.be.disabled");
-    SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+
+    it("when there's a default value, enabling required sets it as a parameter value", () => {
+      setDefaultFieldValue(5);
+      filterWidget().click();
+      clearFilterWidget();
+      SQLFilter.toggleRequired();
+      filterWidget().findByTestId("field-set-content").should("have.text", "5");
+    });
+
+    it("when there's a default value and value is unset, updating filter sets the default back", () => {
+      setDefaultFieldValue(10);
+      SQLFilter.toggleRequired();
+      filterWidget().click();
+      popover().within(() => {
+        cy.icon("close").click();
+        cy.findByText("Update filter").click();
+      });
+      filterWidget()
+        .findByTestId("field-set-content")
+        .should("have.text", "10");
+    });
+
+    it("when there's a default value and template tag is required, can reset it back", () => {
+      setDefaultFieldValue(8);
+      SQLFilter.toggleRequired();
+      filterWidget().click();
+      popover().within(() => {
+        cy.get("input").type("10{enter}");
+        cy.findByText("Update filter").click();
+      });
+      filterWidget().icon("refresh").click();
+      filterWidget().findByTestId("field-set-content").should("have.text", "8");
+    });
   });
 
   context("ID filter", () => {

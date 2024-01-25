@@ -59,7 +59,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });
 
-      it("when there's a default value, enabling required set it as a parameter value", () => {
+      it("when there's a default value, enabling required sets it as a parameter value", () => {
         SQLFilter.setDefaultValue("New value");
         filterWidget().find("input").invoke("val", "");
         SQLFilter.toggleRequired();
@@ -77,7 +77,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         });
       });
 
-      it("when there's a default value and template tag is required, can click on reset icon", () => {
+      it("when there's a default value and template tag is required, can reset it back", () => {
         SQLFilter.setDefaultValue("default");
         SQLFilter.toggleRequired();
         filterWidget().within(() => {
@@ -133,7 +133,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });
 
-      it("when there's a default value, enabling required set it as a parameter value", () => {
+      it("when there's a default value, enabling required sets it as a parameter value", () => {
         SQLFilter.setDefaultValue("3");
         filterWidget().find("input").invoke("val", "");
         SQLFilter.toggleRequired();
@@ -151,7 +151,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         });
       });
 
-      it("when there's a default value and template tag is required, can click on reset icon", () => {
+      it("when there's a default value and template tag is required, can reset it back", () => {
         SQLFilter.setDefaultValue("3");
         SQLFilter.toggleRequired();
         filterWidget().within(() => {
@@ -228,7 +228,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });
 
-      it("when there's a default value, enabling required set it as a parameter value", () => {
+      it("when there's a default value, enabling required sets it as a parameter value", () => {
         setDefaultDate("2023", "11", "01");
         filterWidget().icon("close").click();
         SQLFilter.toggleRequired();
@@ -237,7 +237,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           .should("have.text", "November 1, 2023");
       });
 
-      it("when there's a default value and template tag is required, can click on reset icon", () => {
+      it("when there's a default value and template tag is required, can reset it back", () => {
         setDefaultDate("2023", "11", "01");
         SQLFilter.toggleRequired();
         filterWidget().click();
