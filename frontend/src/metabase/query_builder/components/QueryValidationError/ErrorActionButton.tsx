@@ -2,7 +2,6 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { getUiControls } from "metabase/query_builder/selectors";
-import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
 import type { ErrorType } from "metabase-lib/ValidationError";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
@@ -17,16 +16,11 @@ type QueryBuilderUiControls = {
 
 export type ErrorActionButtonProps = QueryValidationErrorProps & {
   uiControls: QueryBuilderUiControls;
-  toggleTemplateTagsEditor: () => void;
 };
 
 const mapStateToProps = (state: any) => ({
   uiControls: getUiControls(state),
 });
-
-const mapDispatchToProps = {
-  toggleTemplateTagsEditor,
-};
 
 export const BUTTON_ACTIONS: Record<
   ErrorType,
@@ -34,10 +28,9 @@ export const BUTTON_ACTIONS: Record<
 > = {
   [VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION]: [
     t`Edit variables`,
-    ({ uiControls, toggleTemplateTagsEditor }) => {
-      if (!uiControls.isShowingTemplateTagsEditor) {
-        toggleTemplateTagsEditor();
-      }
+    () => {
+      // TODO: This function originally just triggered trackStructEvent,
+      // which has been removed. Can BUTTON_ACTIONS now be removed?
     },
   ],
 };
@@ -60,4 +53,4 @@ export function ErrorActionButton(props: ErrorActionButtonProps) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(ErrorActionButton);
+export default connect(mapStateToProps)(ErrorActionButton);

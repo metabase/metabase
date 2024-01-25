@@ -8,7 +8,6 @@ import {
   selectStep,
   skipDatabase,
   submitDatabase,
-  submitUserInvite,
   updateDatabaseEngine,
 } from "../../actions";
 import { DATABASE_STEP } from "../../constants";
@@ -55,10 +54,6 @@ export const DatabaseStep = (): JSX.Element => {
     }
   };
 
-  const handleInviteSubmit = (invite: InviteInfo) => {
-    dispatch(submitUserInvite(invite));
-  };
-
   const handleStepSelect = () => {
     dispatch(selectStep(DATABASE_STEP));
   };
@@ -102,7 +97,9 @@ export const DatabaseStep = (): JSX.Element => {
           <InviteUserForm
             user={user}
             invite={invite}
-            onSubmit={handleInviteSubmit}
+            // TODO: Since all this did was fire a Google Analytics event, can we remove the whole form?
+            // onSubmit={handleInviteSubmit}
+            onSubmit={() => null}
           />
         </SetupSection>
       )}

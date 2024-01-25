@@ -7,8 +7,6 @@ import {
   combineReducers,
 } from "metabase/lib/redux";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { PermissionsApi } from "metabase/services";
 
 import Users from "metabase/entities/users";
@@ -42,7 +40,6 @@ export const createMembership = createAction(
       user_id: userId,
       group_id: groupId,
     });
-    MetabaseAnalytics.trackStructEvent("People Groups", "Membership Added");
     return {
       user_id: userId,
       group_id: groupId,
@@ -56,7 +53,6 @@ export const deleteMembership = createThunkAction(
     const memberships = getMemberships(getState());
     const membership = memberships[membershipId];
     await PermissionsApi.deleteMembership({ id: membershipId });
-    MetabaseAnalytics.trackStructEvent("People Groups", "Membership Deleted");
     return { membershipId, groupId: membership.group_id };
   },
 );
@@ -68,7 +64,6 @@ export const updateMembership = createAction(
       ...membership,
       id: membership.membership_id,
     });
-    MetabaseAnalytics.trackStructEvent("People Groups", "Membership Updated");
     return membership;
   },
 );

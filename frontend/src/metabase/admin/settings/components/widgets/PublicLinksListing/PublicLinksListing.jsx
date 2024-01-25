@@ -10,7 +10,6 @@ import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ActionsApi, CardApi, DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { RevokeIconWrapper } from "./PublicLinksListing.styled";
 
@@ -48,10 +47,6 @@ export default class PublicLinksListing extends Component {
     }
   }
 
-  trackEvent(label) {
-    MetabaseAnalytics.trackStructEvent(`Admin ${this.props.type}`, label);
-  }
-
   render() {
     const { getUrl, getPublicUrl, revoke, noLinksMessage } = this.props;
     let { list, error } = this.state;
@@ -80,11 +75,7 @@ export default class PublicLinksListing extends Component {
                   <tr key={link.id}>
                     <td>
                       {getUrl ? (
-                        <Link
-                          to={getUrl(link)}
-                          onClick={() => this.trackEvent("Entity Link Clicked")}
-                          className="text-wrap"
-                        >
+                        <Link to={getUrl(link)} className="text-wrap">
                           {link.name}
                         </Link>
                       ) : (
@@ -95,7 +86,6 @@ export default class PublicLinksListing extends Component {
                       <td>
                         <ExternalLink
                           href={getPublicUrl(link)}
-                          onClick={() => this.trackEvent("Public Link Clicked")}
                           className="link text-wrap"
                         >
                           {getPublicUrl(link)}
@@ -109,7 +99,6 @@ export default class PublicLinksListing extends Component {
                           content={t`They won't work anymore, and can't be restored, but you can create new links.`}
                           action={() => {
                             this.revoke(link);
-                            this.trackEvent("Revoked link");
                           }}
                         >
                           <RevokeIconWrapper

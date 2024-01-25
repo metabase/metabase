@@ -9,7 +9,9 @@ export function getDefaultEngine() {
 export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
+      return "json";
     case "druid":
+      return "json";
     case "googleanalytics":
       return "json";
     default:
@@ -24,7 +26,9 @@ export function getNativeQueryLanguage(engine) {
 export function getEngineNativeAceMode(engine) {
   switch (engine) {
     case "mongo":
+      return "ace/mode/json";
     case "druid":
+      return "ace/mode/json";
     case "googleanalytics":
       return "ace/mode/json";
     default:
@@ -37,18 +41,31 @@ export function getEngineLogo(engine) {
 
   switch (engine) {
     case "bigquery":
+      return `${path}/${engine}.svg`;
     case "druid":
+      return `${path}/${engine}.svg`;
     case "googleanalytics":
+      return `${path}/${engine}.svg`;
     case "h2":
+      return `${path}/${engine}.svg`;
     case "mongo":
+      return `${path}/${engine}.svg`;
     case "mysql":
+      return `${path}/${engine}.svg`;
     case "oracle":
+      return `${path}/${engine}.svg`;
     case "postgres":
+      return `${path}/${engine}.svg`;
     case "redshift":
+      return `${path}/${engine}.svg`;
     case "snowflake":
+      return `${path}/${engine}.svg`;
     case "sparksql":
+      return `${path}/${engine}.svg`;
     case "sqlite":
+      return `${path}/${engine}.svg`;
     case "sqlserver":
+      return `${path}/${engine}.svg`;
     case "vertica":
       return `${path}/${engine}.svg`;
     case "bigquery-cloud-sdk":

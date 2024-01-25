@@ -13,7 +13,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
@@ -119,8 +118,6 @@ class ChartSettings extends Component {
   };
 
   handleResetSettings = () => {
-    MetabaseAnalytics.trackStructEvent("Chart Settings", "Reset Settings");
-
     const originalCardSettings =
       this.props.dashcard.card.visualization_settings;
     const clickBehaviorSettings = getClickBehaviorSettings(this._getSettings());

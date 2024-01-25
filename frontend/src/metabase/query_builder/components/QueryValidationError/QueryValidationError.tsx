@@ -9,17 +9,8 @@ import {
 } from "./QueryValidationError.styled";
 import ErrorActionButton from "./ErrorActionButton";
 
-type QueryBuilderUiControls = {
-  isShowingTemplateTagsEditor?: boolean;
-};
-
 export type QueryValidationErrorProps = {
   error: Error | ValidationError;
-};
-
-type ErrorActionButton = QueryValidationErrorProps & {
-  uiControls: QueryBuilderUiControls;
-  toggleTemplateTagsEditor: () => void;
 };
 
 function QueryValidationError({ error }: QueryValidationErrorProps) {

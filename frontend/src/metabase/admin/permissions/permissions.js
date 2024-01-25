@@ -15,7 +15,6 @@ import {
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 import Group from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   inferAndUpdateEntityPermissions,
   updateFieldsPermission,
@@ -27,7 +26,6 @@ import {
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
-import { trackPermissionChange } from "./analytics";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -143,13 +141,6 @@ export const updateDataPermission = createThunkAction(
         }
       }
 
-      trackPermissionChange(
-        entityId,
-        permissionInfo.permission,
-        permissionInfo.type === "native",
-        value,
-      );
-
       return { groupId, permissionInfo, value, metadata, entityId };
     };
   },
@@ -160,7 +151,6 @@ export const SAVE_DATA_PERMISSIONS =
 export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
   () => async (_dispatch, getState) => {
-    MetabaseAnalytics.trackStructEvent("Permissions", "save");
     const { dataPermissions, dataPermissionsRevision } =
       getState().admin.permissions;
 
@@ -196,7 +186,6 @@ const SAVE_COLLECTION_PERMISSIONS =
 export const saveCollectionPermissions = createThunkAction(
   SAVE_COLLECTION_PERMISSIONS,
   namespace => async (_dispatch, getState) => {
-    MetabaseAnalytics.trackStructEvent("Permissions", "save");
     const { collectionPermissions, collectionPermissionsRevision } =
       getState().admin.permissions;
     const result = await CollectionsApi.updateGraph({

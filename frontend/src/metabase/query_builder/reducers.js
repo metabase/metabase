@@ -14,9 +14,6 @@ import {
   INITIALIZE_QB,
   SET_DATA_REFERENCE_STACK,
   OPEN_DATA_REFERENCE_AT_QUESTION,
-  TOGGLE_DATA_REFERENCE,
-  TOGGLE_TEMPLATE_TAGS_EDITOR,
-  TOGGLE_SNIPPET_SIDEBAR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   SET_NATIVE_EDITOR_SELECTED_RANGE,
   SET_MODAL_SNIPPET,
@@ -166,13 +163,6 @@ export const uiControls = handleActions(
       },
     },
 
-    [TOGGLE_DATA_REFERENCE]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingDataReference: !state.isShowingDataReference,
-      }),
-    },
     [SET_DATA_REFERENCE_STACK]: {
       next: (state, { payload }) => ({
         ...state,
@@ -189,21 +179,6 @@ export const uiControls = handleActions(
             }
           : state;
       },
-    },
-    [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor,
-      }),
-    },
-    [TOGGLE_SNIPPET_SIDEBAR]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingSnippetSidebar: !state.isShowingSnippetSidebar,
-        snippetCollectionId: null,
-      }),
     },
     [SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { isShowingTemplateTagsEditor }) => ({

@@ -3,7 +3,6 @@ import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Metrics from "metabase/entities/metrics";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 
@@ -37,7 +36,6 @@ const UpdateMetricFormInner = ({
 
       try {
         await updateMetric(metric);
-        MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
         onChangeLocation("/admin/datamodel/metrics");
       } catch (error) {
         setIsDirty(isDirty);
@@ -80,7 +78,6 @@ const CreateMetricForm = ({
           ...metric,
           table_id: metric.definition["source-table"],
         });
-        MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
         onChangeLocation("/admin/datamodel/metrics");
       } catch (error) {
         setIsDirty(isDirty);

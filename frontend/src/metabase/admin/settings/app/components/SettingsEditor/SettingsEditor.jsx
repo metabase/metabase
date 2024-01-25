@@ -9,12 +9,10 @@ import _ from "underscore";
 import cx from "classnames";
 
 import title from "metabase/hoc/Title";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
 
-import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import ErrorBoundary from "metabase/ErrorBoundary";
 
 import {
@@ -121,25 +119,10 @@ class SettingsEditor extends Component {
       }
 
       this.saveStatusRef.current.setSaved();
-
-      const value = prepareAnalyticsValue(setting);
-
-      MetabaseAnalytics.trackStructEvent(
-        "General Settings",
-        setting.display_name || setting.key,
-        value,
-        // pass the actual value if it's a number
-        typeof value === "number" && value,
-      );
     } catch (error) {
       const message =
         error && (error.message || (error.data && error.data.message));
       this.saveStatusRef.current.setSaveError(message);
-      MetabaseAnalytics.trackStructEvent(
-        "General Settings",
-        setting.display_name,
-        "error",
-      );
     }
   };
 
@@ -195,7 +178,7 @@ class SettingsEditor extends Component {
     const { sections, activeSectionName, newVersionAvailable } = this.props;
 
     const renderedSections = Object.entries(sections).map(
-      ([slug, section], idx) => {
+      ([slug, section], _idx) => {
         // HACK - This is used to hide specific items in the sidebar and is currently
         // only used as a way to fake the multi page auth settings pages without
         // requiring a larger refactor.

@@ -11,12 +11,6 @@ import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
 import { reload } from "metabase/lib/dom";
-import {
-  trackLogin,
-  trackLoginGoogle,
-  trackLogout,
-  trackPasswordReset,
-} from "./analytics";
 import type { LoginData } from "./types";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
@@ -56,7 +50,6 @@ export const login = createAsyncThunk(
     try {
       await SessionApi.create(data);
       await dispatch(refreshSession()).unwrap();
-      trackLogin();
       dispatch(push(redirectUrl));
     } catch (error) {
       return rejectWithValue(error);
@@ -79,7 +72,6 @@ export const loginGoogle = createAsyncThunk(
     try {
       await SessionApi.createWithGoogleAuth({ token: credential });
       await dispatch(refreshSession()).unwrap();
-      trackLoginGoogle();
       dispatch(push(redirectUrl));
     } catch (error) {
       return rejectWithValue(error);
@@ -95,7 +87,6 @@ export const logout = createAsyncThunk(
       await deleteSession();
       dispatch(clearCurrentUser());
       await dispatch(refreshLocale()).unwrap();
-      trackLogout();
       dispatch(push(Urls.login(redirectUrl)));
       reload(); // clears redux state and browser caches
     } catch (error) {
@@ -131,7 +122,6 @@ export const resetPassword = createAsyncThunk(
     try {
       await SessionApi.reset_password({ token, password });
       await dispatch(refreshSession()).unwrap();
-      trackPasswordReset();
     } catch (error) {
       return rejectWithValue(error);
     }

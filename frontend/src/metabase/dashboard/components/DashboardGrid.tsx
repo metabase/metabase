@@ -11,7 +11,6 @@ import Modal from "metabase/components/Modal";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import {
   isDashCardWithQuery,
@@ -286,7 +285,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     if (changes.length > 0) {
       setMultipleDashCardAttributes({ dashcards: changes });
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Layout Changed");
     }
   };
 
@@ -453,7 +451,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       action: () =>
         this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
     });
-    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   }
 
   onDashCardAddSeries(dc: BaseDashboardCard) {

@@ -39,7 +39,6 @@ import {
 
 // lib
 import MetabaseCookies from "metabase/lib/cookies";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
 import { alertIsValid } from "metabase/lib/alert";
@@ -105,11 +104,6 @@ class CreateAlertModalContentInner extends Component {
     await updateUrl(question, { dirty: false });
 
     onAlertCreated();
-    MetabaseAnalytics.trackStructEvent(
-      "Alert",
-      "Create",
-      alert.alert_condition,
-    );
   };
 
   proceedFromEducationalScreen = () => {
@@ -292,12 +286,6 @@ class UpdateAlertModalContentInner extends Component {
     await updateAlert(modifiedAlert);
     await updateUrl(question, { dirty: false });
     onAlertUpdated();
-
-    MetabaseAnalytics.trackStructEvent(
-      "Alert",
-      "Update",
-      modifiedAlert.alert_condition,
-    );
   };
 
   onDeleteAlert = async () => {

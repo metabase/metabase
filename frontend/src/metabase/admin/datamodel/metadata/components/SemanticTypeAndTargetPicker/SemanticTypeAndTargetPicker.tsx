@@ -3,7 +3,6 @@ import cx from "classnames";
 import { t } from "ttag";
 import { currency } from "cljs/metabase.shared.util.currency";
 import * as MetabaseCore from "metabase/lib/core";
-import { trackStructEvent } from "metabase/lib/analytics";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -69,8 +68,6 @@ const SemanticTypeAndTargetPicker = ({
       } else {
         onUpdateField(field, { semantic_type: semanticType });
       }
-
-      trackStructEvent("Data Model", "Update Field Special-Type", semanticType);
     },
     [field, onUpdateField],
   );
@@ -80,7 +77,6 @@ const SemanticTypeAndTargetPicker = ({
       onUpdateField(field, {
         settings: { ...field.settings, currency },
       });
-      trackStructEvent("Data Model", "Update Currency Type", currency);
     },
     [field, onUpdateField],
   );
@@ -88,7 +84,6 @@ const SemanticTypeAndTargetPicker = ({
   const handleChangeTarget = useCallback(
     ({ target: { value: fk_target_field_id } }: SelectChangeEvent<FieldId>) => {
       onUpdateField(field, { fk_target_field_id });
-      trackStructEvent("Data Model", "Update Field Target");
     },
     [field, onUpdateField],
   );

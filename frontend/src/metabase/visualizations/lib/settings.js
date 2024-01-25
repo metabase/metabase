@@ -14,8 +14,6 @@ import ChartSettingFieldsPartition from "metabase/visualizations/components/sett
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 const WIDGETS = {
   input: ChartSettingInput,
   inputGroup: ChartSettingInputGroup,
@@ -208,9 +206,6 @@ export function getPersistableDefaultSettings(settingsDefs, completeSettings) {
 }
 
 export function updateSettings(storedSettings, changedSettings) {
-  for (const key of Object.keys(changedSettings)) {
-    MetabaseAnalytics.trackStructEvent("Chart Settings", "Change Setting", key);
-  }
   const newSettings = {
     ...storedSettings,
     ...changedSettings,

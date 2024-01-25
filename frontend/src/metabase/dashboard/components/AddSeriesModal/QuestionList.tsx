@@ -2,7 +2,6 @@ import { memo, useState, useEffect, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useAsyncFn } from "react-use";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
@@ -91,14 +90,6 @@ export const QuestionList = memo(function QuestionList({
     loadCards(debouncedSearchText, lastCard?.id);
   }, [cards, debouncedSearchText, loadCards]);
 
-  const handleSearchFocus = () => {
-    MetabaseAnalytics.trackStructEvent(
-      "Dashboard",
-      "Edit Series Modal",
-      "search",
-    );
-  };
-
   const hasQuestionsToShow = cards.length > 0;
 
   return (
@@ -109,7 +100,6 @@ export const QuestionList = memo(function QuestionList({
           value={searchText}
           leftIcon="search"
           placeholder={t`Search for a question`}
-          onFocus={handleSearchFocus}
           onChange={e => setSearchText(e.target.value)}
         />
       </SearchContainer>

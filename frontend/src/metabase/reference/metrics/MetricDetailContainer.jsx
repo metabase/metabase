@@ -3,8 +3,6 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import SidebarLayout from "metabase/components/SidebarLayout";
 import MetricDetail from "metabase/reference/metrics/MetricDetail";
 
@@ -52,7 +50,6 @@ class MetricDetailContainer extends Component {
   startEditing() {
     const { metric, router } = this.props;
     router.replace(`/reference/metrics/${metric.id}/edit`);
-    MetabaseAnalytics.trackStructEvent("Data Reference", "Started Editing");
   }
 
   endEditing() {

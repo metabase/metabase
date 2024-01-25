@@ -3,14 +3,11 @@ import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import type { DatabaseData } from "metabase-types/api";
-import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
+import type { Locale, State, UserInfo } from "metabase-types/store";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
-  trackDatabaseStepCompleted,
   trackTrackingChanged,
-  trackUserStepCompleted,
-  trackWelcomeStepCompleted,
 } from "./analytics";
 import {
   getAvailableLocales,
@@ -62,13 +59,8 @@ export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
   },
 );
 
-export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
+export const SELECT_STEP = "metabase/setup/SELECT_STEP";
 export const selectStep = createAction<number>(SELECT_STEP);
-
-export const SUBMIT_WELCOME = "metabase/setup/SUBMIT_WELCOME_STEP";
-export const submitWelcome = createAsyncThunk(SUBMIT_WELCOME, () => {
-  trackWelcomeStepCompleted();
-});
 
 export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
 export const updateLocale = createAsyncThunk(
@@ -80,13 +72,6 @@ export const updateLocale = createAsyncThunk(
 
 export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
 export const submitLanguage = createAction(SUBMIT_LANGUAGE);
-
-export const submitUser = createAsyncThunk(
-  "metabase/setup/SUBMIT_USER_INFO",
-  (_: UserInfo) => {
-    trackUserStepCompleted();
-  },
-);
 
 export const UPDATE_DATABASE_ENGINE = "metabase/setup/UPDATE_DATABASE_ENGINE";
 export const updateDatabaseEngine = createAsyncThunk(
@@ -125,12 +110,10 @@ export const submitDatabase = createAsyncThunk<
 
     try {
       await validateDatabase(token, sslDatabase);
-      trackDatabaseStepCompleted(database.engine);
       return sslDatabase;
     } catch (error1) {
       try {
         await validateDatabase(token, nonSslDatabase);
-        trackDatabaseStepCompleted(database.engine);
         return nonSslDatabase;
       } catch (error2) {
         return rejectWithValue(error2);
@@ -139,19 +122,10 @@ export const submitDatabase = createAsyncThunk<
   },
 );
 
-export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
-export const submitUserInvite = createAsyncThunk(
-  SUBMIT_USER_INVITE,
-  (_: InviteInfo) => {
-    trackDatabaseStepCompleted();
-  },
-);
-
 export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
 export const skipDatabase = createAsyncThunk(
   SKIP_DATABASE,
   (engine?: string) => {
-    trackDatabaseStepCompleted();
     trackAddDataLaterClicked(engine);
   },
 );

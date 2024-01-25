@@ -3,7 +3,6 @@ import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Segments from "metabase/entities/segments";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 
@@ -37,7 +36,6 @@ const UpdateSegmentFormInner = ({
 
       try {
         await updateSegment(segment);
-        MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
         onChangeLocation("/admin/datamodel/segments");
       } catch (error) {
         setIsDirty(isDirty);
@@ -80,7 +78,6 @@ const CreateSegmentForm = ({
           ...segment,
           table_id: segment.definition["source-table"],
         });
-        MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
         onChangeLocation("/admin/datamodel/segments");
       } catch (error) {
         setIsDirty(isDirty);

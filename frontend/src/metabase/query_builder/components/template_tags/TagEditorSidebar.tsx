@@ -5,7 +5,6 @@ import cx from "classnames";
 import _ from "underscore";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import type {
   Card,
@@ -61,11 +60,6 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
 
   setSection(section: "settings" | "help") {
     this.setState({ section });
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Template Tag Editor Section Change",
-      section,
-    );
   }
 
   render() {

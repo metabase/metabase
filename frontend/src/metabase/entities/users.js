@@ -1,7 +1,6 @@
 import { assocIn } from "icepick";
 
 import { UserSchema } from "metabase/schema";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { createEntity } from "metabase/lib/entities";
@@ -81,34 +80,23 @@ const Users = createEntity({
 
   objectActions: {
     resentInvite: async ({ id }) => {
-      MetabaseAnalytics.trackStructEvent("People Admin", "Resent Invite");
       await UserApi.send_invite({ id });
       return { type: RESEND_INVITE };
     },
     resetPasswordEmail: async ({ email }) => {
-      MetabaseAnalytics.trackStructEvent(
-        "People Admin",
-        "Trigger User Password Reset",
-      );
       await SessionApi.forgot_password({ email });
       return { type: PASSWORD_RESET_EMAIL };
     },
     resetPasswordManual: async ({ id }, password = generatePassword()) => {
-      MetabaseAnalytics.trackStructEvent(
-        "People Admin",
-        "Manual Password Reset",
-      );
       await UserApi.update_password({ id, password });
       return { type: PASSWORD_RESET_MANUAL, payload: { id, password } };
     },
     deactivate: async ({ id }) => {
-      MetabaseAnalytics.trackStructEvent("People Admin", "User Removed");
       // TODO: move these APIs from services to this file
       await UserApi.delete({ userId: id });
       return { type: DEACTIVATE, payload: { id } };
     },
     reactivate: async ({ id }) => {
-      MetabaseAnalytics.trackStructEvent("People Admin", "User Reactivated");
       // TODO: move these APIs from services to this file
       const user = await UserApi.reactivate({ userId: id });
       return { type: REACTIVATE, payload: user };

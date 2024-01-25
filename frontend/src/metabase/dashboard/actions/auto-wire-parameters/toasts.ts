@@ -73,5 +73,5 @@ export const showAddedCardAutoWireParametersToast =
   };
 
 export const closeAutoWireParameterToast = () => (dispatch: Dispatch) => {
-  dispatch(dismissUndo(AUTO_WIRE_TOAST_ID, false));
+  dispatch(dismissUndo(AUTO_WIRE_TOAST_ID));
 };

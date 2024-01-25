@@ -1,6 +1,5 @@
 import { createAction } from "redux-actions";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 
 import Questions from "metabase/entities/questions";
@@ -26,11 +25,6 @@ import {
 
 import { updateQuestion } from "./core";
 import { SET_UI_CONTROLS } from "./ui";
-
-export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
-export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
-  MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Data Reference");
-});
 
 export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
 export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
@@ -77,18 +71,6 @@ export const openDataReferenceAtQuestion = createThunkAction(
   },
 );
 
-export const TOGGLE_TEMPLATE_TAGS_EDITOR =
-  "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
-export const toggleTemplateTagsEditor = createAction(
-  TOGGLE_TEMPLATE_TAGS_EDITOR,
-  () => {
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Toggle Template Tags Editor",
-    );
-  },
-);
-
 export const SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR =
   "metabase/qb/SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR";
 export const setIsShowingTemplateTagsEditor = (
@@ -96,11 +78,6 @@ export const setIsShowingTemplateTagsEditor = (
 ) => ({
   type: SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   isShowingTemplateTagsEditor,
-});
-
-export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
-export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR, () => {
-  MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Snippet Sidebar");
 });
 
 export const SET_IS_SHOWING_SNIPPET_SIDEBAR =

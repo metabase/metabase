@@ -2,8 +2,6 @@ import { t } from "ttag";
 import { createAction } from "redux-actions";
 
 import * as Lib from "metabase-lib";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
@@ -125,22 +123,12 @@ export const runQuestionQuery = ({
     const startTime = new Date();
     const cancelQueryDeferred = defer();
 
-    const queryTimer = startTimer();
-
     apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
       isDirty: cardIsDirty,
     })
       .then(queryResults => {
-        queryTimer(duration =>
-          MetabaseAnalytics.trackStructEvent(
-            "QueryBuilder",
-            "Run Query",
-            question.type(),
-            duration,
-          ),
-        );
         return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
@@ -235,7 +223,7 @@ function preserveModelMetadata(queryResults, originalModel) {
 }
 
 function mergeQueryMetadataWithModelMetadata(queryMetadata, modelMetadata) {
-  return queryMetadata.map((queryCol, index) => {
+  return queryMetadata.map(queryCol => {
     const modelCol = modelMetadata.find(modelCol => {
       return isSameField(modelCol.field_ref, queryCol.field_ref);
     });

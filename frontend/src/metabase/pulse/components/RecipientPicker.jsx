@@ -3,7 +3,6 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { recipientIsValid } from "metabase/lib/pulse";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { isEmail } from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
@@ -29,27 +28,7 @@ export default class RecipientPicker extends Component {
 
   handleOnChange = newRecipients => {
     this.props.onRecipientsChange(newRecipients);
-    this._trackChange(newRecipients);
   };
-
-  _trackChange(newRecipients) {
-    const { recipients, isNewPulse } = this.props;
-
-    // kind of hacky way to find the changed recipient
-    const previous = new Set(recipients.map(r => JSON.stringify(r)));
-    const next = new Set(newRecipients.map(r => JSON.stringify(r)));
-    const recipient =
-      [...next].filter(r => !previous.has(r))[0] ||
-      [...previous].filter(r => !next.has(r))[0];
-
-    MetabaseAnalytics.trackStructEvent(
-      isNewPulse ? "PulseCreate" : "PulseEdit",
-      newRecipients.length > recipients.length
-        ? "AddRecipient"
-        : "RemoveRecipient",
-      recipient && (recipient.id ? "user" : "email"),
-    );
-  }
 
   render() {
     const { recipients, users, autoFocus, invalidRecipientText } = this.props;

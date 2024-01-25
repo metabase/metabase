@@ -4,7 +4,7 @@ import type { UserInfo } from "metabase-types/store";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InvactiveStep";
 import { UserForm } from "../UserForm";
-import { selectStep, submitUser } from "../../actions";
+import { selectStep } from "../../actions";
 import { USER_STEP } from "../../constants";
 import {
   getIsHosted,
@@ -30,10 +30,6 @@ export const UserStep = (): JSX.Element => {
     dispatch(selectStep(USER_STEP));
   };
 
-  const handleSubmit = (user: UserInfo) => {
-    dispatch(submitUser(user));
-  };
-
   if (!isStepActive) {
     return (
       <InactiveStep
@@ -57,7 +53,9 @@ export const UserStep = (): JSX.Element => {
       <UserForm
         user={user}
         onValidatePassword={validatePassword}
-        onSubmit={handleSubmit}
+        // TODO: Since all this did was fire a Google Analytics event, can we remove the whole form?
+        // onSubmit={handleSubmit}
+        onSubmit={() => null}
       />
     </ActiveStep>
   );
