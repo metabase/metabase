@@ -1232,7 +1232,7 @@
         setting-setter-fn-symbol (-> (symbol (str (name setting-symbol) \!))
                                      (with-meta (meta setting-symbol)))
         setting-definition-symbol (gensym "setting-")]
-    `(let [setting-options#          (merge (expand-setting-type ~options) ~setting-metadata)
+    `(let [setting-options#          (merge (#'expand-setting-type ~options) ~setting-metadata)
            ~setting-definition-symbol (register-setting! setting-options#)]
        ~(when maybe-i18n-exception
           `(when (#'requires-i18n? ~setting-definition-symbol)
