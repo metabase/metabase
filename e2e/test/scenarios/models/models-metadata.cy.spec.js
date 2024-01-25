@@ -41,7 +41,7 @@ describe("scenarios > models metadata", () => {
           "source-table": ORDERS_ID,
           limit: 5,
         },
-        dataset: true,
+        type: "model",
       };
 
       cy.createQuestion(modelDetails).then(({ body: { id } }) => {
@@ -126,7 +126,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -176,7 +176,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -198,7 +198,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -234,7 +234,7 @@ describe("scenarios > models metadata", () => {
 
       cy.createNativeQuestion({
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -289,7 +289,7 @@ describe("scenarios > models metadata", () => {
       cy.createNativeQuestion(
         {
           name: "Native Model",
-          dataset: true,
+          type: "model",
           native: {
             query: "select * from orders limit 100",
           },
@@ -427,7 +427,7 @@ describe("scenarios > models metadata", () => {
 
       const questionDetails = {
         name: "22521",
-        dataset: true,
+        type: "model",
         query: {
           "source-table": PRODUCTS_ID,
           limit: 5,

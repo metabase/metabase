@@ -14,7 +14,7 @@ describe("issue 28788", () => {
   it("search results container should not be scrollable horizontally (metabase#28788)", () => {
     const questionDetails = {
       name: `28788-${LONG_STRING}`,
-      dataset: true,
+      type: "model",
       description: LONG_STRING,
       query: {
         "source-table": PEOPLE_ID,

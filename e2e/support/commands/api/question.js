@@ -35,7 +35,7 @@ Cypress.Commands.add(
  * @param {object} questionDetails
  * @param {string} [questionDetails.name="test question"]
  * @param {string} questionDetails.description
- * @param {boolean} questionDetails.dataset - Is this a Model or no? (model = dataset)
+ * @param {("question"|"model")} questionDetails.type
  * @param {object} questionDetails.native
  * @param {object} questionDetails.query
  * @param {number} [questionDetails.database=1]
@@ -56,7 +56,7 @@ function question(
   {
     name = "test question",
     description,
-    dataset = false,
+    type: entityType = "question",
     native,
     query,
     database = SAMPLE_DB_ID,
@@ -104,27 +104,32 @@ function question(
         cy.wrap(body.id).as(idAlias);
       }
 
-      if (dataset || enable_embedding) {
+      if (entityType === "model" || enable_embedding) {
         cy.request("PUT", `/api/card/${body.id}`, {
-          type: dataset ? "model" : "question",
+          type: entityType,
           enable_embedding,
           embedding_params,
         });
       }
 
       if (loadMetadata || visitQuestion) {
-        dataset
+        entityType === "model"
           ? cy.intercept("POST", `/api/dataset`).as("dataset")
           : // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
             cy
               .intercept("POST", `/api/card/**/${body.id}/query`)
               .as(interceptAlias);
 
-        const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
+        const url =
+          entityType === "model" ? `/model/${body.id}` : `/question/${body.id}`;
         cy.visit(url);
 
         // Wait for `result_metadata` to load
-        dataset ? cy.wait("@dataset") : cy.wait("@" + interceptAlias);
+        if (entityType === "model") {
+          cy.wait("@dataset");
+        } else {
+          cy.wait("@" + interceptAlias);
+        }
       }
     });
 }

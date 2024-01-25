@@ -461,7 +461,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
-      dataset: true,
+      type: "model",
       display: "table",
     });
 
@@ -469,7 +469,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       {
         name: "Orders model",
         query: { "source-table": ORDERS_ID },
-        dataset: true,
+        type: "model",
         display: "table",
       },
       { visitQuestion: true },
@@ -529,7 +529,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     () => {
       cy.createNativeQuestion({
         name: "Orders, Model",
-        dataset: true,
+        type: "model",
         native: { query: "SELECT * FROM ORDERS" },
       });
 

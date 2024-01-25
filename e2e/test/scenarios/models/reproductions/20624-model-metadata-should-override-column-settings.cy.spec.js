@@ -5,7 +5,7 @@ const renamedColumn = "TITLE renamed";
 
 const questionDetails = {
   name: "20624",
-  dataset: true,
+  type: "model",
   native: { query: "select * from PRODUCTS limit 2" },
   visualization_settings: {
     column_settings: { '["name","TITLE"]': { column_title: renamedColumn } },

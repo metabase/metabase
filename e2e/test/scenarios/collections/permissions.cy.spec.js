@@ -170,7 +170,7 @@ describe("collection permissions", () => {
                   cy.skipOn(user === "nodata");
                   cy.createNativeQuestion({
                     name: "Model",
-                    dataset: true,
+                    type: "model",
                     native: {
                       query: "SELECT * FROM ORDERS",
                     },

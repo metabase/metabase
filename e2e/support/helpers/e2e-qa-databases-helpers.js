@@ -220,7 +220,7 @@ export const createModelFromTableName = ({
         query: {
           "source-table": tableId,
         },
-        dataset: true,
+        type: "model",
       },
       {
         wrapId: true,

@@ -18,7 +18,7 @@ const questionDetails = {
     },
     limit: 2,
   },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {

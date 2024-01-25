@@ -39,9 +39,8 @@ describe("issue 31309", () => {
       {
         name: "model",
         query: TEST_QUERY,
-        type: "query",
         database: SAMPLE_DB_ID,
-        dataset: true,
+        type: "model",
       },
       {
         visitQuestion: true,

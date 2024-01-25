@@ -12,7 +12,7 @@ const questionDetails = {
     "table.pivot_column": "orphaned1",
     "table.cell_column": "orphaned2",
   },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 23421", () => {

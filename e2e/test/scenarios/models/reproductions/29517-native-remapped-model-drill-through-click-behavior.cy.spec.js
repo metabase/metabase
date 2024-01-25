@@ -10,7 +10,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const questionDetails = {
   name: "29517",
-  dataset: true,
+  type: "model",
   native: {
     query:
       'Select Orders."ID" AS "ID",\nOrders."CREATED_AT" AS "CREATED_AT"\nFrom Orders',

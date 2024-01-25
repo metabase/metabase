@@ -100,7 +100,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.createQuestion({
       name: "Orders Model",
       query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
-      dataset: true,
+      type: "model",
     });
 
     addThenRemoveBookmarkTo("Orders Model");

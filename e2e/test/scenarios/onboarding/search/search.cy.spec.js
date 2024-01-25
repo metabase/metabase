@@ -197,13 +197,13 @@ describe("scenarios > search", () => {
         description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
 
         Lorem ipsum dolor sit amet.
-        
+
         ----
-        
+
         ## Heading 1
-        
+
         This is a [link](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg).
-        
+
         Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
       }).then(() => {
         cy.signInAsNormalUser();
@@ -314,7 +314,7 @@ describe("scenarios > search", () => {
         cy.createQuestion({
           name: "Orders Model",
           query: { "source-table": ORDERS_ID },
-          dataset: true,
+          type: "model",
         }).then(({ body: { id } }) => {
           createAction({
             name: "Update orders quantity",
@@ -340,7 +340,7 @@ describe("scenarios > search", () => {
           {
             name: "Products Model",
             query: { "source-table": PRODUCTS_ID },
-            dataset: true,
+            type: "model",
           },
           { wrapId: true, idAlias: "modelId" },
         );

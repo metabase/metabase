@@ -122,7 +122,7 @@ describe("scenarios > models query editor", () => {
       cy.createNativeQuestion(
         {
           name: "Native Model",
-          dataset: true,
+          type: "model",
           native: {
             query: "SELECT * FROM orders limit 5",
           },
@@ -161,7 +161,7 @@ describe("scenarios > models query editor", () => {
       cy.createNativeQuestion(
         {
           name: "Native Model",
-          dataset: true,
+          type: "model",
           native: {
             query: "SELECT * FROM orders limit 5",
           },
@@ -199,7 +199,7 @@ describe("scenarios > models query editor", () => {
       cy.createNativeQuestion(
         {
           name: "Erroring Model",
-          dataset: true,
+          type: "model",
           native: {
             // Let's use API to type the most of the query, but stil make it invalid
             query: "SELECT 1 FROM",

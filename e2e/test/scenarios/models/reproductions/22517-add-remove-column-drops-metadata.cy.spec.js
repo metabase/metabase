@@ -12,7 +12,7 @@ describe("issue 22517", () => {
       {
         name: "22517",
         native: { query: `select * from orders` },
-        dataset: true,
+        type: "model",
       },
       { visitQuestion: true },
     );

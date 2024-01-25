@@ -369,7 +369,7 @@ const createDashboardWithCards = () => {
   const modelDetails = {
     name: "Orders model",
     query: { "source-table": ORDERS_ID },
-    dataset: true,
+    type: "model",
   };
 
   const actionDetails = {
