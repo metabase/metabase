@@ -1,4 +1,5 @@
 import * as Snowplow from "@snowplow/browser-tracker";
+import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
 
@@ -41,8 +42,7 @@ export const trackStructEvent = (category, action, label, value) => {
 };
 
 export const trackSchemaEvent = (schema, version, data) => {
-  // eslint-disable-next-line no-undef
-  if (process.env.MB_LOG_ANALYTICS === "true") {
+  if (shouldLogAnalytics) {
     const { event, ...other } = data;
     // eslint-disable-next-line no-console
     console.log(
