@@ -1206,20 +1206,22 @@
         ;; preserve metadata from the `setting-symbol` passed to `defsetting`.
         setting-getter-fn-symbol setting-symbol
         setting-setter-fn-symbol (-> (symbol (str (name setting-symbol) \!))
-                                     (with-meta (meta setting-symbol)))]
-    `(let [setting-options#   (merge ~options ~setting-metadata)
-           setting-definition# (register-setting! setting-options#)]
-       (when (and ~maybe-i18n-exception (#'requires-i18n? setting-definition#))
-         (throw ~maybe-i18n-exception))
-       (-> (def ~setting-getter-fn-symbol (setting-fn :getter setting-definition#))
-           (alter-meta! merge (setting-fn-metadata :getter setting-definition#)))
+                                     (with-meta (meta setting-symbol)))
+        setting-definition-symbol (gensym "setting-")]
+    `(let [setting-options#          (merge ~options ~setting-metadata)
+           ~setting-definition-symbol (register-setting! setting-options#)]
+       ~(when maybe-i18n-exception
+          `(when (#'requires-i18n? ~setting-definition-symbol)
+             (throw ~maybe-i18n-exception)))
+       (-> (def ~setting-getter-fn-symbol (setting-fn :getter ~setting-definition-symbol))
+           (alter-meta! merge (setting-fn-metadata :getter ~setting-definition-symbol)))
        ;; unfortunately we can't evaluate this condition at compile time, as the options might contain runtime forms.
-       (when (not= (:setter setting-definition#) :none)
+       (when (not= (:setter ~setting-definition-symbol) :none)
          ;; therefore we need to do some runtime skullduggery to ensure the var is only created conditionally
-         (-> (intern (:namespace setting-definition#)
+         (-> (intern (:namespace ~setting-definition-symbol)
                      '~setting-setter-fn-symbol
-                     (setting-fn :setter setting-definition#))
-             (alter-meta! merge (setting-fn-metadata :setter setting-definition#)))))))
+                     (setting-fn :setter ~setting-definition-symbol))
+             (alter-meta! merge (setting-fn-metadata :setter ~setting-definition-symbol)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 EXTRA UTIL FNS                                                 |
