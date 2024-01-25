@@ -433,17 +433,24 @@
        :order-by order-clause})))
 
 (defn- hydrate-user-metadata
-  "Hydrate common-name for last_edited_by and created_by from result."
+  "Hydrate common, first, and last names for last_edited_by and created_by from result."
   [results]
-  (let [user-ids             (set (flatten (for [result results]
-                                             (remove nil? ((juxt :last_editor_id :creator_id) result)))))
-        user-id->common-name (if (pos? (count user-ids))
-                               (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids])
-                               {})]
+  (let [named-user-ids (->> results
+                            (mapcat (fn [r] [(:last_editor_id r) (:creator_id r)]))
+                            (remove nil?)
+                            set)
+        user-id->names (m/index-by :id
+                                   (if (seq named-user-ids)
+                                     (t2/select [:model/User :id :first_name :last_name :email] :id [:in named-user-ids])
+                                     {}))]
     (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
             (assoc result
-                   :creator_common_name (get user-id->common-name creator_id)
-                   :last_editor_common_name (get user-id->common-name last_editor_id)))
+                   :creator_first_name (get-in user-id->names [creator_id :first_name])
+                   :creator_last_name (get-in user-id->names [creator_id :last_name])
+                   :creator_common_name (get-in user-id->names [creator_id :common_name])
+                   :last_editor_first_name (get-in user-id->names [last_editor_id :first_name])
+                   :last_editor_last_name (get-in user-id->names [last_editor_id :last_name])
+                   :last_editor_common_name (get-in user-id->names [last_editor_id :common_name])))
           results)))
 
 (mu/defn ^:private search
@@ -540,25 +547,27 @@
   "Get the set of models that a search query will return"
   [q archived table-db-id created_at created_by last_edited_at last_edited_by
    filter_items_in_personal_collection search_native_query verified]
-  {archived            [:maybe ms/BooleanValue]
-   table-db-id         [:maybe ms/PositiveInt]
-   created_at          [:maybe ms/NonBlankString]
-   created_by          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   last_edited_at      [:maybe ms/PositiveInt]
-   last_edited_by      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   search_native_query [:maybe true?]
-   verified            [:maybe true?]}
-  (query-model-set (search-context {:search-string       q
-                                    :archived            archived
-                                    :table-db-id         table-db-id
-                                    :created-at          created_at
-                                    :created-by          (set (u/one-or-many created_by))
+  {q                                   [:maybe ms/NonBlankString]
+   archived                            [:maybe ms/BooleanValue]
+   table-db-id                         [:maybe ms/PositiveInt]
+   created_at                          [:maybe ms/NonBlankString]
+   created_by                          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   last_edited_at                      [:maybe ms/PositiveInt]
+   last_edited_by                      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   search_native_query                 [:maybe true?]
+   verified                            [:maybe true?]}
+  (query-model-set (search-context {:search-string                       q
+                                    :archived                            archived
+                                    :table-db-id                         table-db-id
+                                    :created-at                          created_at
+                                    :created-by                          (set (u/one-or-many created_by))
                                     :filter-items-in-personal-collection filter_items_in_personal_collection
-                                    :last-edited-at      last_edited_at
-                                    :last-edited-by      (set (u/one-or-many last_edited_by))
-                                    :search-native-query search_native_query
-                                    :verified            verified
-                                    :models              search.config/all-models})))
+                                    :last-edited-at                      last_edited_at
+                                    :last-edited-by                      (set (u/one-or-many last_edited_by))
+                                    :search-native-query                 search_native_query
+                                    :verified                            verified
+                                    :models                              search.config/all-models})))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.
