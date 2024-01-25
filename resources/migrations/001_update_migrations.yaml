@@ -5239,8 +5239,6 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.CardRevisionAddType"
 
-  # TODO: add a revision migration to includes type
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

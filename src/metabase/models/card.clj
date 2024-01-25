@@ -362,9 +362,11 @@
 
    ;; if only dataset presents, make sure type follows
    (some? dataset)
-   (assoc card :type (if dataset
-                       "model"
-                       "question"))))
+   (let [inferred-type (if dataset
+                         "model"
+                         "question")]
+     (log/warnf "Card type not found, defaulting to '%s'" inferred-type)
+     (assoc card :type inferred-type))))
 
 (defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
