@@ -142,8 +142,11 @@
   - Nesting: see [[rename-perms]] to see which keys in `graph` affect which paths in the api permission-graph
   - Adds sandboxed entries, and impersonations to graph
  "
-  [& {:as opts} :- [:map [:group-id {:optional true} [:maybe pos-int?]] [:db-id {:optional true} [:maybe pos-int?]]
-              [:audit? {:optional true} [:maybe :boolean]] [:perm-type {:optional true} [:maybe data-perms/Type]]]]
+  [& {:as opts} :- [:map
+                    [:group-id {:optional true} [:maybe pos-int?]]
+                    [:db-id {:optional true} [:maybe pos-int?]]
+                    [:audit? {:optional true} [:maybe :boolean]]
+                    [:perm-type {:optional true} [:maybe data-perms/Type]]]]
   (let [graph (data-perms/data-permissions-graph opts)]
     {:revision (perms-revision/latest-id)
      :groups (-> graph
