@@ -17,6 +17,7 @@ import type {
 } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
+import InternalQuery from "metabase-lib/queries/InternalQuery";
 import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
@@ -151,10 +152,13 @@ DashCardMenu.shouldRender = ({
   isPublic,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
+  const isInternalQuery =
+    question.legacyQuery({ useStructuredQuery: true }) instanceof InternalQuery;
   if (isEmbed) {
     return isEmbed;
   }
   return (
+    !isInternalQuery &&
     !isPublic &&
     !isEditing &&
     !isXray &&
