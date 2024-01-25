@@ -286,7 +286,9 @@ describeEE("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { header: false },
       });
-      cy.heading("Orders in a dashboard").should("not.exist");
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "not.exist",
+      );
     });
 
     it("should hide the dashboard's additional info by a param", () => {
@@ -389,7 +391,7 @@ describeEE("scenarios > embedding > full app", () => {
     it("should show the dashboard header by default", () => {
       visitXrayDashboardUrl({ url: "/auto/dashboard/table/1" });
 
-      cy.heading("More X-rays").should("be.visible");
+      cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("be.visible");
     });
 
@@ -399,7 +401,7 @@ describeEE("scenarios > embedding > full app", () => {
         qs: { header: false },
       });
 
-      cy.heading("More X-rays").should("be.visible");
+      cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("not.exist");
     });
   });

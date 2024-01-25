@@ -76,8 +76,8 @@ describe("scenarios > auth > signin", () => {
     cy.signInAsAdmin();
     cy.visit("/");
     browse().click();
-    cy.heading("Sample Database").click();
-    cy.heading("Orders").click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
+    cy.findByRole("heading", { name: "Orders" }).click();
     cy.wait("@dataset");
     cy.findAllByRole("gridcell", { name: "37.65" });
 
@@ -85,7 +85,7 @@ describe("scenarios > auth > signin", () => {
     cy.signOut();
     cy.reload();
 
-    cy.heading("Sign in to Metabase");
+    cy.findByRole("heading", { name: "Sign in to Metabase" });
     cy.findByLabelText("Email address").type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
