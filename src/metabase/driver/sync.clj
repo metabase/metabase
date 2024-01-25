@@ -40,11 +40,16 @@
 
       :else
       (let [inclusion? exclusion-blank?
-            pattern    (schema-pattern->re-pattern (if inclusion? inclusion-patterns exclusion-patterns))]
-        (fn [s]
-          (let [m        (.matcher pattern s)
-                matches? (.matches m)]
-            (if inclusion? matches? (not matches?))))))))
+            pattern    (schema-pattern->re-pattern (if inclusion? inclusion-patterns exclusion-patterns))
+            match-fn   (fn match-fn [^String s]
+                         (when s
+                           (let [m (.matcher pattern s)]
+                             (.matches m))))]
+        ;; for inclusion patterns, never match a `nil` schema; for exclusion patterns, always consider a `nil` schema to
+        ;; be ok
+        (if inclusion?
+          match-fn
+          (complement match-fn))))))
 
 (def ^:private schema-patterns->filter-fn (memoize schema-patterns->filter-fn*))
 
@@ -56,12 +61,13 @@
    (let [{prop-name :name} (driver.u/find-schema-filters-prop (driver.u/database->driver database))]
      (db-details->schema-filter-patterns prop-name database)))
   ([prop-nm {db-details :details :as _database}]
-   (let [schema-filter-type     (get db-details (keyword (str prop-nm "-type")))
-         schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))]
-     (case schema-filter-type
-       "exclusion" [nil schema-filter-patterns]
-       "inclusion" [schema-filter-patterns nil]
-       [nil nil]))))
+   (when prop-nm
+     (let [schema-filter-type     (get db-details (keyword (str prop-nm "-type")))
+           schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))]
+       (case schema-filter-type
+         "exclusion" [nil schema-filter-patterns]
+         "inclusion" [schema-filter-patterns nil]
+         [nil nil])))))
 
 (defn include-schema?
   "Returns true if the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
