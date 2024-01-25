@@ -106,8 +106,7 @@
                                                            org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.1"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api
-                                                           junit/junit
-                                                           org.codelibs/nekohtml]}
+                                                           junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20230409"} ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.25.0"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.14.0"}             ; helper methods for working with java.lang stuff
@@ -152,7 +151,6 @@
   org.clojure/tools.namespace               {:mvn/version "1.4.4"}
   org.clojure/tools.reader                  {:mvn/version "1.3.7"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.codelibs/nekohtml                     {:mvn/version "2.1.2"}              ; used in cssbox
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.17"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.4"}             ; JavaScript engine
