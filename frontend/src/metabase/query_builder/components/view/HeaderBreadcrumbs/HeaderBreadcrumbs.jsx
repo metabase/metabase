@@ -29,7 +29,12 @@ export function HeadBreadcrumbs({
   ...props
 }) {
   return (
-    <Container data-testid="head-crumbs-container" {...props} variant={variant}>
+    <Container
+      aria-label="breadcrumbs"
+      data-testid="head-crumbs-container"
+      {...props}
+      variant={variant}
+    >
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;
         const badgeInactiveColor =
@@ -43,6 +48,7 @@ export function HeadBreadcrumbs({
                 to={part.href}
                 icon={part.icon}
                 inactiveColor={badgeInactiveColor}
+                aria-current={isLast ? "page" : undefined}
               >
                 {part.name}
               </HeaderBadge>
