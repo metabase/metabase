@@ -30,7 +30,7 @@ Cypress.Commands.add(
 
 /**
  *
- * @param {("query"|"native")} type
+ * @param {("query"|"native")} queryType
  *
  * @param {object} questionDetails
  * @param {string} [questionDetails.name="test question"]
@@ -52,7 +52,7 @@ Cypress.Commands.add(
  * @param {string} customOptions.interceptAlias - We need distinctive endpoint aliases for cases where we have multiple questions or nested questions.
  */
 function question(
-  type,
+  queryType,
   {
     name = "test question",
     description,
@@ -81,8 +81,8 @@ function question(
       name,
       description,
       dataset_query: {
-        type,
-        [type]: type === "native" ? native : query,
+        type: queryType,
+        [queryType]: queryType === "native" ? native : query,
         database,
       },
       display,
