@@ -51,9 +51,9 @@ Cypress.Commands.add(
   {
     prevSubject: "optional",
   },
-  (subject, headingNAme, timeout) => {
+  (subject, headingName, timeout) => {
     const config = {
-      name: headingNAme,
+      name: headingName,
       timeout,
     };
 
