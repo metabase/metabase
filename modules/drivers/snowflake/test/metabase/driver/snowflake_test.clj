@@ -193,17 +193,17 @@
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
     (mt/test-driver :snowflake
-      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db {:database-name "lowercase_test"})
+      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db {:database-name "Default-Schema-Test"})
                                ;; simulate a DB default schema or session schema by including it in the connection
                                ;; details... see
                                ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706219065462619?thread_ts=1706156558.940489&cid=C04DN5VRQM6
                                :schema "PUBLIC"
                                :schema-filters-type "inclusion"
-                               :schema-filters-patterns "test_schema")
+                               :schema-filters-patterns "Test-Schema")
             db-name     (:db details)
-            schema-name "test_schema"
-            table-name  "test_table"
-            field-name  "test_id"
+            schema-name "Test-Schema"
+            table-name  "Test-Table"
+            field-name  "Test-ID"
             spec        (sql-jdbc.conn/connection-details->spec :snowflake details)
             identifier  (fn [& args]
                           (str/join \. (map #(str \" % \") args)))]
