@@ -3,13 +3,16 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
@@ -108,3 +111,53 @@
 
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
+
+(defn- query-dependents
+  [metadata-providerable query-or-join]
+  (let [base-stage (first (:stages query-or-join))
+        database-id (:database query-or-join -1)]
+    (concat
+     (when (pos? database-id)
+       [{:type :database, :id database-id}
+        {:type :schema,   :id database-id}])
+     ;; cf. frontend/src/metabase-lib/queries/NativeQuery.ts
+     (when (= (:lib/type base-stage) :mbql.stage/native)
+       (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
+             :when (and (= tag-type :dimension)
+                        (= dim-tag :field)
+                        (integer? id))]
+         {:type :field, :id id}))
+     ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
+     (when-let [card-id (:source-card base-stage)]
+       (let [card-metadata (lib.metadata/card metadata-providerable card-id)]
+         (cond-> (for [column (:result-metadata card-metadata)
+                       :let [column (u/normalize-map column)
+                             fk-target (:fk-target-field-id column)]
+                       :when (and (integer? fk-target)
+                                  (lib.types.isa/foreign-key? column))]
+                   {:type :field, :id fk-target})
+           ;; the FE code mentions this, but #36974 doesn't
+           #_#_:always (conj {:type :question, :id card-id})
+           (:dataset card-metadata) (conj {:type :table, :id (str "card__" card-id)}))))
+     (when-let [table-id (:source-table base-stage)]
+       [{:type :table, :id table-id}])
+     (for [stage (:stages query-or-join)
+           join (:joins stage)
+           dependent (query-dependents metadata-providerable join)]
+       dependent))))
+
+(def ^:private DependentItem
+  [:and
+   [:map
+    [:type [:enum :database :schema :table :field]]]
+   [:multi {:dispatch :type}
+    [:database [:map [:id ::lib.schema.id/database]]]
+    [:schema   [:map [:id ::lib.schema.id/database]]]
+    [:table    [:map [:id [:or ::lib.schema.id/table :string]]]]
+    [:field    [:map [:id ::lib.schema.id/field]]]]])
+
+(mu/defn dependent-metadata :- [:sequential DependentItem]
+  "Return the IDs and types of entities the metadata about is required
+  for the FE to function properly."
+  [query :- ::lib.schema/query]
+  (into [] (distinct) (query-dependents query query)))

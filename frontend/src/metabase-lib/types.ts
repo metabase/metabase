@@ -1,8 +1,10 @@
 import type {
   DatasetColumn,
+  DatabaseId,
   FieldId,
   FieldValuesType,
   RowValue,
+  TableId,
 } from "metabase-types/api";
 import type {
   BOOLEAN_FILTER_OPERATORS,
@@ -515,3 +517,25 @@ export type QueryDisplayInfo = {
   isNative: boolean;
   isEditable: boolean;
 };
+
+export type DatabaseItem = {
+  type: "database";
+  id: DatabaseId;
+};
+
+export type SchemaItem = {
+  type: "schema";
+  id: DatabaseId;
+};
+
+export type TableItem = {
+  type: "table";
+  id: TableId;
+};
+
+export type FieldItem = {
+  type: "field";
+  id: FieldId;
+};
+
+export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
