@@ -20,3 +20,4 @@ serdes/meta:
   model: Schema
 - id: v_view_log
   model: Table
+database_require_filter: null

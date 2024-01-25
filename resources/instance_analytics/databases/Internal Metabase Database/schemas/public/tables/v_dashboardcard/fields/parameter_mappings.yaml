@@ -38,3 +38,4 @@ serdes/meta:
 - id: parameter_mappings
   model: Field
 database_indexed: null
+database_partitioned: null

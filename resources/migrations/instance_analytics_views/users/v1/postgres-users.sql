@@ -15,4 +15,23 @@ select
     is_active,
     sso_source,
     locale
-    from core_user;
+    from core_user
+union
+select
+    0 as user_id,
+    'user_0' as entity_qualified_id,
+    null as email,
+    'External' as first_name,
+    'User' as last_name,
+    'External User' as full_name,
+    null as date_joined,
+    null as last_login,
+    null as updated_at,
+    false as is_admin,
+    null as is_active,
+    null as sso_source,
+    null as locale
+    from core_user
+
+
+;

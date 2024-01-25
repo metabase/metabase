@@ -14,7 +14,7 @@ select
            end as topic,
        timestamp,
        null    as end_timestamp,
-       user_id,
+       coalesce(user_id, 0) as user_id,
        lower(model) as entity_type,
        model_id as entity_id,
        case

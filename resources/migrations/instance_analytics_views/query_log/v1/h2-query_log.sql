@@ -9,7 +9,7 @@ select
     native as is_native,
     context as query_source,
     error,
-    executor_id as user_id,
+    coalesce(executor_id, 0) as user_id,
     card_id,
     'card_' || card_id as card_qualified_id,
     dashboard_id,

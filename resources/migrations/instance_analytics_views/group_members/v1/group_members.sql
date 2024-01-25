@@ -7,3 +7,8 @@ select
     permissions_group.name as group_name
     from permissions_group_membership
         left join permissions_group on permissions_group_membership.group_id = permissions_group.id
+union
+select
+    0 as user_id,
+    0 as group_id,
+    'External users' as group_name
