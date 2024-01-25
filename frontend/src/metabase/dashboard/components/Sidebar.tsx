@@ -38,6 +38,8 @@ export function Sidebar({
               onClick={onRemove}
               style={{ paddingLeft: 0, paddingRight: 0 }}
               compact
+              role="button"
+              aria-label={t`Remove`}
             >{t`Remove`}</Button>
           )}
           {onCancel && (
