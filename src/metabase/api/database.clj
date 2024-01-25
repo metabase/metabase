@@ -622,8 +622,11 @@
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
   (try
     {:status  200
-     :headers {"Cache-Control" "public, max-age=30"
-               ;; we're checking your access, so cache is separate for everyone
+     ;; Presumably user will repeat same prefixes many times writing the query,
+     ;; so let them cache response to make autocomplete feel fast. 60 seconds
+     ;; is not enough to be a nuisance when schema or permissions change. Cache
+     ;; is user-specific since we're checking for permissions.
+     :headers {"Cache-Control" "public, max-age=60"
                "Vary"          "Cookie"}
      :body    (cond
                 substring (autocomplete-suggestions id (str "%" substring "%"))
