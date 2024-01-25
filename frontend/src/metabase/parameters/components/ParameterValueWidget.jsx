@@ -101,13 +101,7 @@ class ParameterValueWidget extends Component {
       );
     }
 
-    const noPopover = hasNoPopover(this.props.parameter);
-
-    if (noPopover && this.state.isFocused) {
-      return <WidgetStatusIcon name="enter_or_return" />;
-    }
-
-    if (!noPopover) {
+    if (!hasNoPopover(this.props.parameter)) {
       return <WidgetStatusIcon name="chevrondown" />;
     }
 

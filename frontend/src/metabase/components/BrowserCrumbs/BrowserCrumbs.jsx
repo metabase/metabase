@@ -14,17 +14,14 @@ const Crumb = ({ children }) => (
   </h5>
 );
 
-const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
+const BrowserCrumbs = ({ crumbs }) => (
   <BrowserCrumbsRoot data-testid="browsercrumbs">
     {crumbs
       .filter(c => c)
       .map((crumb, index, crumbs) => (
         <BrowserCrumbsItem key={index}>
           {crumb.to ? (
-            <BrowserCrumbsLink
-              to={crumb.to}
-              data-metabase-event={`${analyticsContext};Bread Crumb;Click`}
-            >
+            <BrowserCrumbsLink to={crumb.to}>
               <Crumb>{crumb.title}</Crumb>
             </BrowserCrumbsLink>
           ) : (
