@@ -165,7 +165,6 @@
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
 
-
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
