@@ -140,7 +140,7 @@ export const emailRenderer = (row: Row) => {
         name="mail"
         size={12}
         className="flex-no-shrink"
-        style={{ opacity: 0.6, marginRight: 4 }}
+        style={{ opacity: 0.3, marginRight: 4 }}
       />
       {String(getVal(row))}
     </div>
@@ -170,7 +170,7 @@ export const sourceRenderer = (row: Row) => {
       className="flex align-center"
     >
       {val && (
-        <span className="mr1" style={{ opacity: 0.6 }}>
+        <span className="mr1" style={{ opacity: 0.3 }}>
           {getIcon(val)}
         </span>
       )}
@@ -216,7 +216,7 @@ export const dateRenderer = (row: Row) => {
         name="calendar"
         size={12}
         className="flex-no-shrink"
-        style={{ opacity: 0.6, marginRight: 4 }}
+        style={{ opacity: 0.3, marginRight: 4 }}
       />
       {new Date(getVal(row)).toLocaleString("en")}
     </div>
