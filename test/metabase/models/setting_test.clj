@@ -199,7 +199,7 @@
               #"Cannot initialize setting before the db is set up"
               (setting/get :test-setting-custom-init)))))))
 
-(def base-options
+(def ^:private base-options
   {:setter   :none
    :type     :csv
    :default "base-default"})
@@ -210,13 +210,14 @@
     :visibility :internal
     :default "my,default"))
 
-(deftest defsetting-with-base-test
+(deftest ^:parallel defsetting-with-base-test
   (testing "A setting which specifies some base options"
     (let [setting (setting/resolve-setting :test-base-setting)]
       (testing "Uses non-overridden base options"
         (is (= :csv (:type setting)))
         (is (= :none (:setter setting)))
-        (is (nil? (resolve 'test-base-setting!)))
+        ;; Obfuscate the symbol we're resolving to avoid a false positive from `deftest-check-parallel`
+        (is (nil? (resolve (symbol (str 'test-base-setting "!")))))
       (testing "Can override base options"
         (is (= "my,default" (:default setting)))
         (is (= ["my" "default"] (test-base-setting))))))))
