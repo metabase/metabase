@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Stack, Tabs } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -67,11 +67,15 @@ export const StaticEmbedSetupPane = ({
     DEFAULT_DISPLAY_OPTIONS,
   );
 
-  const previewParametersBySlug = getPreviewParamsBySlug({
-    resourceParameters,
-    embeddingParams,
-    parameterValues,
-  });
+  const previewParametersBySlug = useMemo(
+    () =>
+      getPreviewParamsBySlug({
+        resourceParameters,
+        embeddingParams,
+        parameterValues,
+      }),
+    [embeddingParams, parameterValues, resourceParameters],
+  );
   const initialPreviewParameters = getPreviewParamsBySlug({
     resourceParameters,
     embeddingParams: initialEmbeddingParams,
@@ -103,14 +107,26 @@ export const StaticEmbedSetupPane = ({
     embeddingParams,
   });
 
-  const iframeUrl = getSignedPreviewUrl(
-    siteUrl,
-    resourceType,
-    resource.id,
-    previewParametersBySlug,
-    displayOptions,
-    secretKey,
-    embeddingParams,
+  const iframeUrl = useMemo(
+    () =>
+      getSignedPreviewUrl(
+        siteUrl,
+        resourceType,
+        resource.id,
+        previewParametersBySlug,
+        displayOptions,
+        secretKey,
+        embeddingParams,
+      ),
+    [
+      displayOptions,
+      embeddingParams,
+      previewParametersBySlug,
+      resource.id,
+      resourceType,
+      secretKey,
+      siteUrl,
+    ],
   );
 
   const handleSave = async () => {

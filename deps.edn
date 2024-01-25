@@ -86,7 +86,7 @@
   joda-time/joda-time                       {:mvn/version "2.12.5"}
   kixi/stats                                {:mvn/version "0.5.5"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
-  lambdaisland/uri                          {:mvn/version "1.16.134"}           ; Used by opanai-clojure. security bump
+  lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "2.2.4"               ; EE SAML integration.
@@ -127,11 +127,11 @@
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.17"}               ; SVG -> image
-  org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.77"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.77"}
   org.clj-commons/hickory                   {:mvn/version "0.7.3"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
+  org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.clojure/clojure                       {:mvn/version "1.11.1"}
   org.clojure/core.async                    {:mvn/version "1.6.681"
                                              :exclusions  [org.clojure/tools.reader]}
