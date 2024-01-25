@@ -1,7 +1,10 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { SearchResult } from "metabase-types/api";
 import { createMockSetupState } from "metabase-types/store/mocks";
-import { createMockSearchResult } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 import { groupModels, BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
@@ -20,13 +23,14 @@ const renderBrowseModels = (modelCount: number) => {
   );
 };
 
-const collectionAlpha = { id: 0, name: "Alpha" };
-const collectionBeta = { id: 1, name: "Beta" };
-const collectionCharlie = { id: 2, name: "Charlie" };
-const collectionDelta = { id: 3, name: "Delta" };
-const collectionZulu = { id: 4, name: "Zulu" };
-const collectionAngstrom = { id: 5, name: "Ångström" };
-const collectionOzgur = { id: 6, name: "Özgür" };
+const collectionAlpha = createMockCollection({ id: 0, name: "Alpha" });
+const collectionBeta = createMockCollection({ id: 1, name: "Beta" });
+const collectionCharlie = createMockCollection({ id: 2, name: "Charlie" });
+const collectionDelta = createMockCollection({ id: 3, name: "Delta" });
+const collectionZulu = createMockCollection({ id: 4, name: "Zulu" });
+const collectionAngstrom = createMockCollection({ id: 5, name: "Ångström" });
+const collectionOzgur = createMockCollection({ id: 6, name: "Özgür" });
+const ourAnalyticsCollection = createMockCollection({ id: "root", name: "" });
 
 const mockModels: SearchResult[] = [
   {
@@ -176,6 +180,20 @@ const mockModels: SearchResult[] = [
     last_editor_common_name: "Bobby",
     last_edited_at: "2000-01-01T00:00:00.000Z",
   },
+  {
+    id: 21,
+    name: "Model 20",
+    collection: ourAnalyticsCollection,
+    last_editor_common_name: "Bobby",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
+  {
+    id: 22,
+    name: "Model 21",
+    collection: ourAnalyticsCollection,
+    last_editor_common_name: "Bobby",
+    last_edited_at: "2000-01-01T00:00:00.000Z",
+  },
 ].map(model => createMockSearchResult(model));
 
 describe("BrowseModels", () => {
@@ -198,6 +216,13 @@ describe("BrowseModels", () => {
     expect(modelsInCollection1).toHaveLength(3);
     const modelsInCollection2 = await screen.findAllByLabelText("Beta");
     expect(modelsInCollection2).toHaveLength(3);
+  });
+  it("displays the Our Analytics collection if it has a model", async () => {
+    renderBrowseModels(23);
+    const modelsInOurAnalytics = await screen.findAllByLabelText(
+      "Our analytics",
+    );
+    expect(modelsInOurAnalytics).toHaveLength(2);
   });
   it("displays last edited information about models", async () => {
     jest.useFakeTimers().setSystemTime(new Date("2024-12-15T12:00:00.000Z"));

@@ -11,10 +11,10 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { useSearchListQuery } from "metabase/common/hooks";
 
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
-import { sortModels } from "metabase/browse/utils";
 import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
+import { isRootCollection } from "metabase/collections/utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
@@ -45,7 +45,8 @@ export const BrowseModels = ({
 }) => {
   const { data: models = emptyArray, error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
-  const { collections, groupedModels } = groupModels(models, locale?.code);
+  const localeCode: string | undefined = locale?.code;
+  const { collections, groupedModels } = groupModels(models, localeCode);
 
   if (error || isLoading) {
     return (
@@ -65,6 +66,7 @@ export const BrowseModels = ({
             index={index}
             models={groupedModels[collection.id]}
             key={`modelgroup-${index}`}
+            localeCode={localeCode}
           />
         ))}
       </GridContainer>
@@ -89,11 +91,18 @@ export const BrowseModels = ({
 const ModelGroup = ({
   models,
   index,
+  localeCode,
 }: {
   models: SearchResult[];
   index: number;
+  localeCode: string | undefined;
 }) => {
-  const sortedModels = models.sort(sortModels);
+  const sortedModels = models.sort((a, b) => {
+    // If the name is undefined or blank, treat it as alphabetically last
+    const nameA = a.name?.toLowerCase() || "\uffff";
+    const nameB = b.name?.toLowerCase() || "\uffff";
+    return nameA.localeCompare(nameB, localeCode);
+  });
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
@@ -102,7 +111,7 @@ const ModelGroup = ({
   return (
     <>
       <CollectionHeader
-        collection={models[0].collection}
+        collection={collection}
         key={collectionHtmlId}
         id={collectionHtmlId}
       />
@@ -119,11 +128,10 @@ const ModelGroup = ({
 
 interface ModelCellProps {
   model: SearchResult;
-  style?: React.CSSProperties;
   collectionHtmlId: string;
 }
 
-const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
+const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const headingId = `heading-for-model-${model.id}`;
 
   const lastEditorFullName =
@@ -134,7 +142,6 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
     <Link
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
       key={model.id}
-      style={style}
       to={Urls.model(model as unknown as Partial<Card>)}
     >
       <ModelCard>
@@ -162,13 +169,14 @@ const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
 
 const CollectionHeader = ({
   collection,
-  style,
   id,
 }: {
-  collection?: Pick<Collection, "id" | "name"> | null;
-  style?: React.CSSProperties;
+  collection: Pick<Collection, "id" | "name">;
   id: string;
 }) => {
+  if (isRootCollection(collection)) {
+    collection.name = t`Our analytics`;
+  }
   const MaybeLink = ({ children }: { children: React.ReactNode }) =>
     collection ? (
       <Group grow noWrap>
@@ -180,7 +188,7 @@ const CollectionHeader = ({
       <>{children}</>
     );
   return (
-    <CollectionHeaderContainer id={id} role="heading" style={style}>
+    <CollectionHeaderContainer id={id} role="heading">
       <MaybeLink>
         <Group spacing=".33rem">
           <Icon name="folder" color={"text-dark"} size={16} />
