@@ -546,6 +546,10 @@
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
+  ;; NOTE: measuring showed that this query performance is improved ~4x when adding trgm index in pgsql and ~10x when
+  ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
+  ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
+  ;; expressions.
   (t2/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
              :metabase_field.active          true
              :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
