@@ -447,7 +447,7 @@
     (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
     (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
 
-(deftest ^:parallel remark-test
+(deftest remark-test
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
     (mt/test-driver :snowflake
       (let [expected-map {"pulseId" nil
