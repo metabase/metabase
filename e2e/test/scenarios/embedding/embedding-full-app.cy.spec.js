@@ -148,7 +148,7 @@ describeEE("scenarios > embedding > full app", () => {
   });
 
   describe("browse data", () => {
-    it("should hide the side nav when nothing is shown", () => {
+    it("should hide the top nav when nothing is shown", () => {
       visitFullAppEmbeddingUrl({
         url: "/browse",
         qs: { side_nav: false, logo: false },
