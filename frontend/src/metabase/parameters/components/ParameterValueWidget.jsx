@@ -191,56 +191,56 @@ class ParameterValueWidget extends Component {
           {this.getActionIcon()}
         </div>
       );
-    } else {
-      const placeholderText = isEditing
-        ? isDateParameter(parameter)
-          ? t`Select a default value…`
-          : t`Enter a default value…`
-        : placeholder || t`Select…`;
-
-      return (
-        <PopoverWithTrigger
-          ref={this.valuePopover}
-          targetOffsetX={16}
-          triggerElement={
-            <div
-              ref={this.trigger}
-              className={cx(S.parameter, className, {
-                [S.selected]: hasValue,
-              })}
-              role="button"
-              aria-label={placeholder}
-            >
-              {showTypeIcon && (
-                <Icon
-                  name={parameterTypeIcon}
-                  className="flex-align-left mr1 flex-no-shrink"
-                  size={16}
-                />
-              )}
-              <div className="mr1 text-nowrap">
-                <FormattedParameterValue
-                  parameter={parameter}
-                  value={value}
-                  placeholder={placeholderText}
-                />
-              </div>
-              {this.getActionIcon()}
-            </div>
-          }
-          target={this.getTargetRef}
-          // make sure the full date picker will expand to fit the dual calendars
-          autoWidth={parameter.type === "date/all-options"}
-        >
-          <Widget
-            {...this.props}
-            target={this.getTargetRef()}
-            onFocusChanged={this.onFocusChanged}
-            onPopoverClose={this.onPopoverClose}
-          />
-        </PopoverWithTrigger>
-      );
     }
+
+    const placeholderText = isEditing
+      ? isDateParameter(parameter)
+        ? t`Select a default value…`
+        : t`Enter a default value…`
+      : placeholder || t`Select…`;
+
+    return (
+      <PopoverWithTrigger
+        ref={this.valuePopover}
+        targetOffsetX={16}
+        triggerElement={
+          <div
+            ref={this.trigger}
+            className={cx(S.parameter, className, {
+              [S.selected]: hasValue,
+            })}
+            role="button"
+            aria-label={placeholder}
+          >
+            {showTypeIcon && (
+              <Icon
+                name={parameterTypeIcon}
+                className="flex-align-left mr1 flex-no-shrink"
+                size={16}
+              />
+            )}
+            <div className="mr1 text-nowrap">
+              <FormattedParameterValue
+                parameter={parameter}
+                value={value}
+                placeholder={placeholderText}
+              />
+            </div>
+            {this.getActionIcon()}
+          </div>
+        }
+        target={this.getTargetRef}
+        // make sure the full date picker will expand to fit the dual calendars
+        autoWidth={parameter.type === "date/all-options"}
+      >
+        <Widget
+          {...this.props}
+          target={this.getTargetRef()}
+          onFocusChanged={this.onFocusChanged}
+          onPopoverClose={this.onPopoverClose}
+        />
+      </PopoverWithTrigger>
+    );
   }
 }
 
@@ -299,6 +299,15 @@ function Widget({
       />
     );
   } else if (isFieldWidget(parameter)) {
+    // TODO this is due to ParameterFieldWidget not supporting focusChanged callback.
+    const setValueOrDefault = value => {
+      const { required, default: defaultValue } = parameter;
+      const shouldUseDefault = required && defaultValue && !value?.length;
+
+      setValue(shouldUseDefault ? defaultValue : value);
+      onPopoverClose();
+    };
+
     return (
       <ParameterFieldWidget
         target={target}
@@ -309,12 +318,8 @@ function Widget({
         placeholder={placeholder}
         value={normalizedValue}
         fields={parameter.fields}
-        setValue={value => {
-          setValue(value);
-          onPopoverClose();
-        }}
+        setValue={setValueOrDefault}
         isEditing={isEditing}
-        focusChanged={onFocusChanged}
       />
     );
   } else {
