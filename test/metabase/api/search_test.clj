@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -48,6 +48,8 @@
    :context                    nil
    :created_at                 true
    :creator_common_name        nil
+   :creator_first_name         nil
+   :creator_last_name          nil
    :creator_id                 false
    :dashboardcard_count        nil
    :database_id                false
@@ -60,6 +62,8 @@
    :model_name                 nil
    :moderated_status           nil
    :last_editor_common_name    nil
+   :last_editor_first_name     nil
+   :last_editor_last_name      nil
    :last_editor_id             false
    :last_edited_at             false
    :pk_ref                     nil
@@ -105,17 +109,22 @@
 
 (defn- default-search-results []
   (sorted-results
-   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
+   [(make-result "dashboard test dashboard",
+                 :model "dashboard",
+                 :bookmark false :creator_id true
+                 :creator_common_name "Rasta Toucan"
+                 :creator_first_name "Rasta"
+                 :creator_last_name "Toucan")
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
-                 :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
+                 :database_id true :creator_id true :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
     (merge
-     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
+     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan")
      (table-search-results))
     (merge
-     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
+     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan")
      (table-search-results))]))
 
 (defn- default-metric-segment-results []
@@ -355,7 +364,10 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
+                         :model "card", :bookmark false :creator_id true
+                         :creator_common_name "Rasta Toucan"
+                         :creator_first_name "Rasta"
+                         :creator_last_name "Toucan"
                          :dataset_query nil :display "table"))]
     (set [(make-card 5)
           (make-card 3)
@@ -424,10 +436,17 @@
                       (default-results-with-collection)
                       (map #(merge default-search-row % (table-search-results))
                            [{:name "metric test2 metric", :description "Lookin' for a blueberry",
-                             :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
+                             :model "metric"
+                             :creator_id true
+                             :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan"}
                             {:name "segment test2 segment", :description "Lookin' for a blueberry",
-                             :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))))
-                   (search-request-data :rasta :q "test"))))))))
+                             :model "segment"
+                             :creator_id true
+                             :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan"}]))))
+                   (do
+                     (def o (search-request-data :rasta :q "test"))
+                     o))))))))
+  o
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
                 "collections they have access to")
@@ -475,9 +494,9 @@
                       (default-results-with-collection)
                       (map #(merge default-search-row % (table-search-results))
                            [{:name "metric test2 metric" :description "Lookin' for a blueberry"
-                             :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
+                             :model "metric" :creator_id true  :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan"}
                             {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
-                             :creator_id true :creator_common_name "Rasta Toucan"}]))))
+                             :creator_id true  :creator_first_name "Rasta" :creator_last_name "Toucan" :creator_common_name "Rasta Toucan"}]))))
                    (search-request-data :rasta :q "test"))))))))
 
   (testing "Metrics on tables for which the user does not have access to should not show up in results"
@@ -807,6 +826,8 @@
       (is (= []
              (binding [*search-request-results-database-id* db-id]
                (search-request-data :rasta :q (:name table))))))))
+
+;;(clojure.test/run-test-var #'table-test)
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
