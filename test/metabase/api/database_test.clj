@@ -686,7 +686,7 @@
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
         (is (= expected (prefix-fn (mt/id) prefix))))
       (testing " returns sane Cache-Control headers"
-        (is (=? {"Cache-Control" "public, max-age=30"
+        (is (=? {"Cache-Control" "public, max-age=60"
                  "Vary"          "Cookie"}
                 (-> (client/client-full-response (test.users/username->token :rasta) :get 200
                                                 (format "database/%s/autocomplete_suggestions" (mt/id))
