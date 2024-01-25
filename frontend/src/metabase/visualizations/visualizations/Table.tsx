@@ -43,7 +43,7 @@ import {
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
-import * as Q_DEPRECATED from "metabase-lib/queries/utils";
+import { isStructured } from "metabase-lib/queries/utils/card";
 
 import type { ColumnSettingDefinition, VisualizationProps } from "../types";
 import { TableSimple } from "../components/TableSimple";
@@ -93,7 +93,7 @@ class Table extends Component<TableProps, TableState> {
         if (
           !data ||
           data.cols.length !== 3 ||
-          !Q_DEPRECATED.isStructured(card.dataset_query) ||
+          !isStructured(card) ||
           data.cols.filter(isMetric).length !== 1 ||
           data.cols.filter(isDimension).length !== 2
         ) {
