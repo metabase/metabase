@@ -622,6 +622,23 @@
              (settings-last-updated-value-in-db))))))
 
 
+;;; ---------------------------------------------- Runtime Setting Options ----------------------------------------------
+
+(def my-default 3)
+
+(defsetting test-dynamic-setting
+  (deferred-tru "This is a sample sensitive Setting.")
+  :default    my-default
+  :type       :integer
+  :visibility (if (odd? my-default) :internal :public))
+
+(deftest var-value-test
+  (testing "The defsetting macro allows references to vars for inputs"
+    (is (= 3 (test-dynamic-setting))))
+  (testing "The defsetting macro allows arbitrary code forms for values"
+    (is (= :internal (:visibility (setting/resolve-setting :test-dynamic-setting))))))
+
+
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
 
 (defsetting test-sensitive-setting
