@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const SidebarAside = styled.aside<{ $width: number }>`
   display: flex;
@@ -24,13 +23,4 @@ export const ButtonContainer = styled.div`
   gap: 20px;
   padding: 12px 32px;
   border-top: 1px solid ${color("border")};
-`;
-
-export const RemoveButton = styled(IconButtonWrapper)`
-  color: ${color("text-medium")};
-  font-weight: bold;
-
-  &:hover {
-    color: ${color("error")};
-  }
 `;
