@@ -210,8 +210,7 @@
     (let [expand            #'setting/expand-setting-type
           explicit-settings {:bloop? false :blep? 'obviously}
           with-basic-type   (assoc explicit-settings :type :json)
-          with-map          (assoc explicit-settings :type fancy-type)
-          with-var          (assoc explicit-settings :type (symbol ::fancy-type))]
+          with-map          (assoc explicit-settings :type fancy-type)]
       (testing "There's no magic when using regular keyword types"
         (is (= with-basic-type (expand with-basic-type))))
       (let [expected {:type   :json
@@ -220,9 +219,7 @@
                       :bloop? false
                       :blep?  'obviously}]
         (testing "You can use explicit maps for the mixin behaviour"
-          (is (= expected (expand with-map))))
-        (testing "You can use var references for the mixing behaviour"
-          (is (= expected (expand with-var))))))))
+          (is (= expected (expand with-map))))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
