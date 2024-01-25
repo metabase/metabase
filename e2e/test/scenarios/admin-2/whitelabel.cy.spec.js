@@ -200,20 +200,3 @@ function setApplicationFontTo(font) {
     value: font,
   });
 }
-
-const testValidLandingPageInput = ({ input, expected }) => {
-  cy.visit("/admin/settings/whitelabel");
-
-  const field = cy.findByTestId("landing-page");
-  field.click().clear();
-  if (input) {
-    field.type(input);
-  }
-  field.blur();
-
-  cy.findByTestId("landing-page").click().clear();
-  cy.wait("@putLandingPage");
-  cy.findByTestId("landing-page-error").should("not.exist");
-  cy.findByText("Exit admin").click();
-  cy.url().should("eq", expected);
-};
