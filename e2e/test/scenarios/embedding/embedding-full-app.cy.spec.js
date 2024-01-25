@@ -278,7 +278,7 @@ describeEE("scenarios > embedding > full app", () => {
     it("should show the dashboard header by default", () => {
       visitDashboardUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
 
-      cy.heading("Orders in a dashboard").should("be.visible");
+      cy.findByTestId("dashboard-name-heading").should("be.visible");
       cy.button(/Edited.*by/).should("be.visible");
     });
 
