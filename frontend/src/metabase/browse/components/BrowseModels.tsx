@@ -25,17 +25,16 @@ import {
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
 
-const emptyArray: SearchResult[] = [];
-
 export const groupModels = (
   models: SearchResult[],
   locale: string | undefined,
 ) => {
-  const groupedModels = _.groupBy(models, model => model.collection.id);
-  let collections = models.map(model => model.collection);
-  collections = _.uniq(collections, collection => collection.id) || [];
-  collections.sort((a, b) => a.name?.localeCompare(b.name, locale));
-  return { groupedModels, collections };
+  const groupedModels = Object.values(
+    _.groupBy(models, model => model.collection.id),
+  ).sort((a, b) =>
+    a[0].collection?.name?.localeCompare(b[0].collection?.name, locale),
+  );
+  return groupedModels;
 };
 
 export const BrowseModels = ({
@@ -43,10 +42,10 @@ export const BrowseModels = ({
 }: {
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
 }) => {
-  const { data: models = emptyArray, error, isLoading } = modelsResult;
+  const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
-  const { collections, groupedModels } = groupModels(models, localeCode);
+  const groupsOfModels = groupModels(models, localeCode);
 
   if (error || isLoading) {
     return (
@@ -61,10 +60,10 @@ export const BrowseModels = ({
   if (models.length) {
     return (
       <GridContainer role="grid">
-        {collections.map((collection, index) => (
+        {groupsOfModels.map((groupOfModels, index) => (
           <ModelGroup
             index={index}
-            models={groupedModels[collection.id]}
+            models={groupOfModels}
             key={`modelgroup-${index}`}
             localeCode={localeCode}
           />

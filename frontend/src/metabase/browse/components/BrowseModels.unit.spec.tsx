@@ -252,7 +252,7 @@ describe("BrowseModels", () => {
     jest.useRealTimers();
   });
   it("has a function that groups models by collection", () => {
-    const { groupedModels } = groupModels(mockModels, "en");
+    const groupedModels = groupModels(mockModels, "en");
     expect(groupedModels[0]).toHaveLength(3);
     expect(groupedModels[1]).toHaveLength(3);
     expect(groupedModels[2]).toHaveLength(3);
@@ -262,7 +262,8 @@ describe("BrowseModels", () => {
     expect(groupedModels[6]).toHaveLength(3);
   });
   it("has a function that sorts collection names correctly in English", () => {
-    const { collections } = groupModels(mockModels, "en");
+    const groupsOfModels = groupModels(mockModels, "en");
+    const collections = groupsOfModels.map(group => group[0].collection);
     expect(collections).toEqual([
       { id: 0, name: "Alpha" },
       { id: 5, name: "Ångström" },
@@ -274,7 +275,8 @@ describe("BrowseModels", () => {
     ]);
   });
   it("has a function that groups models by collection correctly in Swedish", () => {
-    const { collections } = groupModels(mockModels, "sv-SV");
+    const groupsOfModels = groupModels(mockModels, "sv-SV");
+    const collections = groupsOfModels.map(group => group[0].collection);
     expect(collections).toEqual([
       { id: 0, name: "Alpha" },
       { id: 1, name: "Beta" },

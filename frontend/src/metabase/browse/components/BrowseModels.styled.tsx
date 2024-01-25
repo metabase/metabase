@@ -47,11 +47,6 @@ export const GridContainer = styled.div`
   ${breakpointMinMedium} {
     padding-bottom: 3rem;
   }
-
-  .ReactVirtualized__Grid,
-  .ReactVirtualized__Grid__innerScrollContainer {
-    overflow: visible !important;
-  }
 `;
 
 export const CollectionHeaderContainer = styled.div`
