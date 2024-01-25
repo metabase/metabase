@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/ui";
-import FieldSet from "metabase/components/FieldSet";
+import { FieldSet } from "metabase/components/FieldSet";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 /**

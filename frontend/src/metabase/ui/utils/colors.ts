@@ -35,6 +35,7 @@ const CUSTOM_COLORS = [
   "bg-black",
   "success",
   "error",
+  "white",
 ];
 
 function getColorShades(color: string): ColorShades {

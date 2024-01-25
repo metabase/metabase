@@ -7,6 +7,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
+import type { IconName } from "metabase/ui";
 import {
   EmptyStateContainer,
   FilterableTreeContainer,
@@ -23,7 +24,7 @@ interface FilterableTreeProps {
   itemGroups: ITreeNodeItem[][];
   emptyState?: {
     text: string;
-    icon: string;
+    icon: IconName;
   };
   onSelect: (item: ITreeNodeItem) => void;
 }
