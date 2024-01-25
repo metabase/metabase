@@ -8,7 +8,6 @@ import {
   navigationSidebar,
   getDashboardCard,
   getTextCardDetails,
-  closeNavigationSidebar,
   updateDashboardCards,
 } from "e2e/support/helpers";
 import {
@@ -363,7 +362,6 @@ describeEE("scenarios > embedding > full app", () => {
       cy.log("Navigate to a dashboard via in-app navigation");
       navigationSidebar().findByText("Our analytics").click();
       cy.findByRole("main").findByText(dashboardDetails.name).click();
-      closeNavigationSidebar();
       navigationSidebar().findByText("Our analytics").should("not.be.visible");
 
       cy.get("main header")
