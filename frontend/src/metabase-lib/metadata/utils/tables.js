@@ -1,7 +1,7 @@
 import getGAMetadata from "promise-loader?global!metabase-lib/metadata/utils/ga-metadata"; // eslint-disable-line import/default
 
 export async function injectTableMetadata(table) {
-  // HACK: inject GA metadata that we don't have intergrated on the backend yet
+  // HACK: inject GA metadata that we don't have integrated on the backend yet
   // TODO: Remove GA stuff here?
   if (table && table.db && table.db.engine === "googleanalytics") {
     const GA = await getGAMetadata();
