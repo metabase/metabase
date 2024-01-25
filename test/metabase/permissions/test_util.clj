@@ -57,19 +57,20 @@
   `(do-with-restored-data-perms! ~group-ids (fn [] ~@body)))
 
 (defn do-with-no-data-perms-for-all-users!
-  "Implementation of `with-no-data-perms-for-all-users`. Sets every data permission for the test dataset to its
+  "Implementation of `with-no-data-perms-for-all-users`. Sets every data permission for all databases to the
   least-permissive value for the All Users permission group for the duration of the test."
   [thunk]
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions]
-      (data-perms/set-database-permission! (perms-group/all-users)
-                                           (data/db)
-                                           perm-type
-                                           (data-perms/least-permissive-value perm-type)))
+    (doseq [[perm-type _] data-perms/Permissions
+            db-id         (t2/select-pks-set :model/Database)]
+       (data-perms/set-database-permission! (perms-group/all-users)
+                                            db-id
+                                            perm-type
+                                            (data-perms/least-permissive-value perm-type)))
     (thunk)))
 
 (defmacro with-no-data-perms-for-all-users!
-  "Runs `body`, and sets every data permission for the test dataset to its least-permissive value for the All Users
+  "Runs `body`, and sets every data permission for all databases to its least-permissive value for the All Users
   permission group for the duration of the test."
   [& body]
   `(do-with-no-data-perms-for-all-users! (fn [] ~@body)))
