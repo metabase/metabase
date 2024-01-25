@@ -35,7 +35,7 @@ Cypress.Commands.add(
  * @param {object} questionDetails
  * @param {string} [questionDetails.name="test question"]
  * @param {string} questionDetails.description
- * @param {("question"|"model")} questionDetails.type
+ * @param {("question"|"model")} questionDetails.type Entity type
  * @param {object} questionDetails.native
  * @param {object} questionDetails.query
  * @param {number} [questionDetails.database=1]
