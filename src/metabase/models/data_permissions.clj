@@ -152,8 +152,9 @@
   [:map-of [:int {:title "group-id" :min 0}]
    [:map-of [:int {:title "db-id" :min 0}]
     [:map-of Type
-     [:or Value
-      [:map-of :string
+     [:or
+      Value
+      [:map-of [:string {:title "schema"}]
        [:map-of
         [:int {:title "table-id" :min 0}]
         Value]]]]]])

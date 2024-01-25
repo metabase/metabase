@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.models :refer [Card Collection Database Permissions
                             PermissionsGroup PermissionsGroupMembership User]]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -21,8 +20,7 @@
 
 (defn- test-db-perms [group-id]
   (get-in
-   (data-perms.graph/db-graph->api-graph
-    (data-perms/data-permissions-graph {:audit? false}))
+   (data-perms.graph/db-graph->api-graph {:audit? false})
    [:groups group-id (mt/id) :data]))
 
 (defn- api-test-db-perms [group-id]
