@@ -7,6 +7,7 @@
    [metabase.api.alert :as api.alert]
    [metabase.api.api-key :as api.api-key]
    [metabase.api.automagic-dashboards :as api.magic]
+   [metabase.api.billing :as api.billing]
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.card :as api.card]
    [metabase.api.collection :as api.collection]
@@ -33,7 +34,7 @@
    [metabase.api.pulse :as api.pulse]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
-    :refer [+static-apikey +auth +message-only-exceptions +public-exceptions]]
+    :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -73,6 +74,7 @@
   (context "/alert"                [] (+auth api.alert/routes))
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
   (context "/card"                 [] (+auth api.card/routes))
+  (context "/billing"              [] (+auth api.billing/routes))
   (context "/bookmark"             [] (+auth api.bookmark/routes))
   (context "/collection"           [] (+auth api.collection/routes))
   (context "/dashboard"            [] (+auth api.dashboard/routes))
