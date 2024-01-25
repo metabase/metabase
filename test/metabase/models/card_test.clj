@@ -742,9 +742,7 @@
                                                     :type       "category"}]}
      Collection       coll {:name "A collection"}]
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (let [columns     (disj (set/difference (set (keys card)) (conj (set @#'card/excluded-columns-for-card-revision)
-                                                                      ;; dataset wil be replaced by type in the future
-                                                                      :dataset))
+      (let [columns     (disj (set/difference (set (keys card)) (set @#'card/excluded-columns-for-card-revision))
                               ;; we only record result metadata for models, so we'll test that seperately
                               :result_metadata)
             update-col  (fn [col value]
