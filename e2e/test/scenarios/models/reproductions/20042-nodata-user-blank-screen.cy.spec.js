@@ -10,7 +10,7 @@ describe("issue 20042", () => {
 
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       name: "Orders Model",
-      dataset: true,
+      type: "model",
     });
 
     cy.signIn("nodata");

@@ -107,7 +107,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a model", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
 
     openRootCollection();
     openUnpinnedItemMenu(MODEL_NAME);

@@ -106,7 +106,7 @@ function question(
 
       if (dataset || enable_embedding) {
         cy.request("PUT", `/api/card/${body.id}`, {
-          dataset,
+          type: dataset ? "model" : "question",
           enable_embedding,
           embedding_params,
         });

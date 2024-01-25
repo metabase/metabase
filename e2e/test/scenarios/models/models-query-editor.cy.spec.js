@@ -23,7 +23,7 @@ describe("scenarios > models query editor", () => {
     beforeEach(() => {
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "Orders Model",
-        dataset: true,
+        type: "model",
       });
     });
 
