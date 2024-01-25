@@ -58,10 +58,10 @@
                                                             :pass               "test-passwd"
                                                             :dbname             "test-dbname"
                                                             :ssl                true
-                                                            :additional-options ""
-                                                            :use-srv            true}]))
-      ;; TODO!!!
-      #_#_"db.fqdn.test" #"Unable to look up TXT record for host db.fqdn.test"
+                                                            :additional-options "connectTimeoutMS=2000&serverSelectionTimeoutMS=2000"
+                                                            :use-srv            true}]
+                             (mongo.jdw/list-collection-names db)))
+      "db.fqdn.test" #"Failed looking up SRV record"
       "local.test" #"Using DNS SRV requires a FQDN for host")
     (testing "test host and port are correct for both srv and normal"
       (let [host                            "localhost"
