@@ -286,6 +286,7 @@
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "ansi-regex": "5.0.1",
     "d3-color": "^3.1.0",
+    "follow-redirects": "^1.15.5",
     "jsdom": "^22.1.0",
     "json5": "2.2.2",
     "nth-check": "2.0.1",
