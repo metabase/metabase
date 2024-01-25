@@ -30,7 +30,6 @@
 ;; Encode BSON undefined like `nil`
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
 
-;; TODO: Test! (How?)
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
                      [^ObjectId oid data-output]
                      (.writeUTF data-output (.toHexString oid)))
@@ -41,8 +40,6 @@
 
 (driver/register! :mongo)
 
-;; TODO: that's different notion of details to what I thought
-;; TODO: database vs database details
 (defmethod driver/can-connect? :mongo
   [_ db-details]
   (mongo.jdw/with-mongo-client [^MongoClient c db-details]
@@ -95,7 +92,6 @@
 
 (declare update-field-attrs)
 
-;; TODO: Test! (How?)
 (defmethod driver/sync-in-context :mongo
   [_ database do-sync-fn]
   (mongo.jdw/with-mongo-client [_ database]
@@ -150,7 +146,6 @@
   (when (seq field-types)
     (first (apply max-key second field-types))))
 
-;; TODO: Test this!
 (defn- class->base-type [^Class klass]
   (if (isa? klass org.bson.types.ObjectId)
     :type/MongoBSONID
@@ -179,17 +174,16 @@
                                                              first))
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
-;; TODO: make it use keywordized version?
 (defmethod driver/dbms-version :mongo
   [_driver database]
   (mongo.jdw/with-mongo-database [db database]
-    (let [build-info (mongo.jdw/run-command db {:buildInfo 1} :keywordize false)
-          version-array (get build-info "versionArray")
+    (let [build-info (mongo.jdw/run-command db {:buildInfo 1})
+          version-array (:versionArray build-info)
           sanitized-version-array (into [] (take-while nat-int?) version-array)]
       (when (not= (take 3 version-array) (take 3 sanitized-version-array))
         (log/warnf "sanitizing versionArray %s results in %s, losing information"
                    version-array sanitized-version-array))
-      {:version (get build-info "version")
+      {:version (:version build-info)
        :semantic-version sanitized-version-array})))
 
 (defmethod driver/describe-database :mongo
@@ -198,15 +192,9 @@
     {:tables (set (for [collection (disj (into #{} (mongo.jdw/list-collection-names db)) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
-;; TODO: Verify We are using ~ordered correctly!
-;; TODO: Comments!
 (defmethod driver/describe-table-indexes :mongo
   [_ database table]
   (mongo.jdw/with-mongo-database [^MongoDatabase db database]
-    ;; using raw DBObject instead of calling `monger/indexes-on`
-    ;; because in case a compound index has more than 8 keys, the `key` returned by
-    ;;`monger/indexes-on` will be a hash-map, and with a hash map we can't determine
-    ;; which key is the first key.
     (->> (mongo.jdw/list-indexes db (:name table))
          (map (fn [index]
                 ;; for text indexes, column names are specified in the weights
@@ -223,8 +211,6 @@
                   :value %}))
          set)))
 
-;; TODO: orderd map for sort-criteria?
-;; TODO: find returning cursor or what?
 (defn- sample-documents [^MongoDatabase db table sort-direction]
   (let [coll (mongo.jdw/collection db (:name table))]
     (mongo.jdw/do-find coll {:limit metadata-queries/nested-field-sample-limit

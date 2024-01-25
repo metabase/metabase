@@ -185,9 +185,6 @@
   ([^MongoCollection coll]
    (into [] (.listIndexes coll))))
 
-;; TODO: return cursor!
-;; TODO: should shadow find
-;; TODO: should be modified to avoid into
 (defn do-find [^MongoCollection coll
                & {:keys [limit skip batch-size sort-criteria] :as _opts}]
   (->> (cond-> ^FindIterable (.find coll)
