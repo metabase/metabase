@@ -27,9 +27,22 @@ interface useSortableListProps<T> {
   getId: (item: T) => ItemId;
   renderItem: ({ item, id, isDragOverlay }: RenderItemProps<T>) => JSX.Element;
   onSortStart?: (event: DragStartEvent) => void;
+<<<<<<< HEAD
   onSortEnd?: ({ id, newIndex }: DragEndEvent) => void;
+=======
+  onSortEnd?: ({
+    id,
+    newIndex,
+    itemIds,
+  }: {
+    id: ItemId;
+    newIndex: number;
+    itemIds?: ItemId[];
+  }) => void;
+>>>>>>> 7a9d725894 (Metadata Table columns use Sortable List)
   sensors?: SensorDescriptor<any>[];
   modifiers?: Modifier[];
+  useDragOverlay?: boolean;
 }
 
 export const SortableList = <T,>({
@@ -40,6 +53,7 @@ export const SortableList = <T,>({
   onSortEnd,
   sensors = [],
   modifiers = [],
+  useDragOverlay = true,
 }: useSortableListProps<T>) => {
   const [itemIds, setItemIds] = useState<ItemId[]>([]);
   const [indexedItems, setIndexedItems] = useState<Record<ItemId, T>>({});
@@ -90,6 +104,7 @@ export const SortableList = <T,>({
       onSortEnd({
         id: getId(activeItem),
         newIndex: itemIds.findIndex(id => id === getId(activeItem)),
+        itemIds,
       });
       setActiveItem(null);
     }
@@ -104,15 +119,17 @@ export const SortableList = <T,>({
       modifiers={modifiers}
     >
       <SortableContext items={itemIds}>{sortableElements}</SortableContext>
-      <DragOverlay>
-        {activeItem
-          ? renderItem({
-              item: activeItem,
-              id: getId(activeItem),
-              isDragOverlay: true,
-            })
-          : null}
-      </DragOverlay>
+      {useDragOverlay && (
+        <DragOverlay>
+          {activeItem
+            ? renderItem({
+                item: activeItem,
+                id: getId(activeItem),
+                isDragOverlay: true,
+              })
+            : null}
+        </DragOverlay>
+      )}
     </DndContext>
   );
 };
