@@ -113,22 +113,17 @@ function question(
       }
 
       if (loadMetadata || visitQuestion) {
-        type === "model"
-          ? cy.intercept("POST", `/api/dataset`).as("dataset")
-          : // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
-            cy
-              .intercept("POST", `/api/card/**/${body.id}/query`)
-              .as(interceptAlias);
-
-        const url =
-          type === "model" ? `/model/${body.id}` : `/question/${body.id}`;
-        cy.visit(url);
-
-        // Wait for `result_metadata` to load
         if (type === "model") {
-          cy.wait("@dataset");
+          cy.intercept("POST", `/api/dataset`).as("dataset");
+          cy.visit(`/model/${body.id}`);
+          cy.wait("@dataset"); // Wait for `result_metadata` to load
         } else {
-          cy.wait("@" + interceptAlias);
+          // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+          cy.intercept("POST", `/api/card/**/${body.id}/query`).as(
+            interceptAlias,
+          );
+          cy.visit(`/question/${body.id}`);
+          cy.wait("@" + interceptAlias); // Wait for `result_metadata` to load
         }
       }
     });
