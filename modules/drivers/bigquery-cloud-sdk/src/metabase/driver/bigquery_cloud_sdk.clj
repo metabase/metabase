@@ -38,7 +38,6 @@
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -81,15 +80,8 @@
 (defn- list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
   (^Iterable [details]
-   (list-tables details {:validate-dataset? false}))
-  (^Iterable [details {:keys [validate-dataset?]}]
    (let [client (database-details->client details)
          dataset-iter (list-datasets details)]
-     (when (and (not= (:dataset-filters-type details) "all")
-                validate-dataset?
-                (zero? (count dataset-iter)))
-       (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
-                       {::driver/can-connect-message? true})))
      (apply concat (for [^DatasetId dataset-id dataset-iter]
                      (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
                          .iterateAll
@@ -97,14 +89,22 @@
                          iterator-seq))))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ details-map]
-  ;; check whether we can connect by seeing whether listing tables succeeds
-  (try (some? (list-tables details-map {:validate-dataset? true}))
-       (catch Exception e
-         (when (::driver/can-connect-message? (ex-data e))
-           (throw e))
-         (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
-         false)))
+  [_ details]
+  ;; check whether we can connect by seeing whether listing datasets succeeds
+  (let [[success? datasets] (try [true (list-datasets details)]
+                                 (catch Exception e
+                                   (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
+                                   [false nil]))]
+    (cond
+      (not success?)
+      false
+      ;; if the datasets are filtered and we don't find any matches, throw an exception with a message that we can show
+      ;; to the user
+      (and (not= (:dataset-filters-type details) "all")
+           (nil? (first datasets)))
+      (throw (Exception. (tru "Looks like we cannot find any matching datasets.")))
+      :else
+      true)))
 
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))

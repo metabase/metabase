@@ -249,6 +249,7 @@
                  :slug "c",
                                     ;; order importance: the default from template-tag is in the final result
                  :default "C TAG"
+                 :required false
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
                                     ;; the parameter id = "d" is in template-tags, but not card.parameters,
@@ -258,7 +259,8 @@
                  :target ["variable" ["template-tag" "d"]],
                  :name "d",
                  :slug "d",
-                 :default "D TAG"}]
+                 :default "D TAG"
+                 :required false}]
                (:parameters (client/client :get 200 (card-url card)))))))))
 
 (deftest parameters-should-include-relevant-template-tags-only
@@ -270,7 +272,8 @@
                  :id "a",
                  :default "A TAG",
                  :target ["variable" ["template-tag" "a"]],
-                 :slug "a"}]
+                 :slug "a"
+                 :required false}]
                (:parameters (client/client :get 200 (card-url card)))))))))
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------

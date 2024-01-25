@@ -28,7 +28,8 @@
           (#'sql.params.substitution/field->clause
            :h2
            (meta/field-metadata :venues :id)
-           :number/=))))
+           :number/=
+           nil))))
 
 (deftest ^:parallel honeysql->replacement-snippet-info-test
   (testing "make sure we handle quotes inside names correctly!"
@@ -68,7 +69,7 @@
               :query   "SELECT * FROM table WHERE x LIKE ?"
               :params  ["G%"]}))))))
 
-;;; ------------------------------------ align-temporal-unit-with-param-type test ------------------------------------
+;;; ------------------------------------ align-temporal-unit-with-param-type-and-value test ------------------------------------
 
 (driver/register! ::temporal-unit-alignment-original :abstract? true :parent :sql)
 (driver/register! ::temporal-unit-alignment-override :abstract? true :parent :sql)
@@ -78,8 +79,8 @@
     [_driver _feature _db]
     false))
 
-(defmethod sql.params.substitution/align-temporal-unit-with-param-type ::temporal-unit-alignment-override
-  [_driver _field _param-type]
+(defmethod sql.params.substitution/align-temporal-unit-with-param-type-and-value ::temporal-unit-alignment-override
+  [_driver _field _param-type _value]
   nil)
 
 ;; The original implementation will call this method despite the value being past30minutes. This is likely a bug.

@@ -37,12 +37,13 @@ describeEE("issue 26988", () => {
     openStaticEmbeddingModal({
       activeTab: "appearance",
       previewMode: "preview",
+      acceptTerms: false,
     });
 
     cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);
 
-    cy.findByLabelText("Play with the options here")
+    cy.findByLabelText("Playing with appearance options")
       .findByLabelText("Font")
       .as("font-control")
       .click();

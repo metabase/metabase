@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -122,12 +123,18 @@
                        ; source-card not visible
                        (assoc :source-card 999999999)
                        (dissoc :source-table))))))
-    (testing "on native queries"
-      (let [editable (lib/native-query meta/metadata-provider "SELECT * FROM Venues;")
-            bad-db   (assoc editable :database 999999999)]
-        (is (= {:is-native   true
-                :is-editable true}
-               (lib/display-info editable -1 editable)))
-        (is (= {:is-native   true
-                :is-editable false}
-               (lib/display-info bad-db -1 bad-db)))))))
+    (testing "on native queries (#37765)"
+      (let [editable              (lib/native-query meta/metadata-provider "SELECT * FROM Venues;")
+            ;; Logic for the native-query mock borrowed from metabase.lib.native/has-write-permission-test
+            mock-db-native-perms #(lib/native-query (lib.tu/mock-metadata-provider
+                                                     meta/metadata-provider
+                                                     {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions %})})
+                                                    "select * from x;")]
+        (are [editable? query] (= {:is-native   true
+                                   :is-editable editable?}
+                                  (mu/disable-enforcement
+                                   (lib/display-info query -1 query)))
+          true  editable
+          false (assoc editable :database 999999999)    ; database unknown - no permissions
+          false (mock-db-native-perms :none)            ; native-permissions explicitly set to :none
+          false (mock-db-native-perms nil))))))         ; native-permissions not found on the database

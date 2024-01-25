@@ -105,7 +105,7 @@ export function ViewTitleHeader(props) {
     }
   }, [previousQuestion, question, expandFilters, previousQuery, query]);
 
-  const isNative = question.isNative();
+  const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
   const isDataset = question.isDataset();
   const isSummarized = Lib.aggregations(query, -1).length > 0;
@@ -297,7 +297,9 @@ function AhHocQuestionLeftSide(props) {
   } = props;
 
   const handleTitleClick = () => {
-    if (question.isQueryEditable()) {
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+
+    if (isEditable) {
       onOpenModal(MODAL_TYPES.SAVE);
     }
   };
@@ -412,19 +414,15 @@ function ViewTitleHeaderRightSide(props) {
     onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const canEditQuery = question.isQueryEditable();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hasExploreResultsLink =
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !question
-    .legacyQuery({ useStructuredQuery: true })
-    .hasData();
-  const hasSaveButton =
-    !isDataset &&
-    !!isDirty &&
-    (isNewQuery || canEditQuery) &&
-    isActionListVisible;
+  // Models can't be saved. But changing anything about the model will prompt the user
+  // to save it as a new question (based on that model). In other words, at this point
+  // the `dataset` field is set to false.
+  const hasSaveButton = !isDataset && !!isDirty && isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =
@@ -520,10 +518,10 @@ function ViewTitleHeaderRightSide(props) {
       {hasSaveButton && (
         <SaveButton
           role="button"
-          disabled={!question.canRun() || !canEditQuery}
+          disabled={!question.canRun() || !isEditable}
           tooltip={{
             tooltip: t`You don't have permission to save this question.`,
-            isEnabled: !canEditQuery,
+            isEnabled: !isEditable,
             placement: "left",
           }}
           data-metabase-event={

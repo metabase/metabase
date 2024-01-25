@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 
 export const CopyButtonContainer = styled.div`
   position: absolute;
@@ -9,6 +8,6 @@ export const CopyButtonContainer = styled.div`
   z-index: 2;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${({ theme }) => theme.fn.themeColor("brand")};
   }
 `;

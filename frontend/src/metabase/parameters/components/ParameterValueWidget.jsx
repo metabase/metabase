@@ -87,19 +87,33 @@ class ParameterValueWidget extends Component {
     return this.trigger.current;
   };
 
+  getWidgetStatusIcon = () => {
+    if (this.props.isFullscreen) {
+      return null;
+    }
+
+    if (this.props.value != null) {
+      return (
+        <WidgetStatusIcon
+          name="close"
+          onClick={() => this.props.setValue(null)}
+        />
+      );
+    }
+
+    if (!hasNoPopover(this.props.parameter)) {
+      return <WidgetStatusIcon name="chevrondown" />;
+    }
+
+    // This is required to keep input width constant
+    return <WidgetStatusIcon name="empty" />;
+  };
+
   render() {
-    const {
-      parameter,
-      value,
-      setValue,
-      isEditing,
-      placeholder,
-      isFullscreen,
-      className,
-    } = this.props;
+    const { parameter, value, isEditing, placeholder, className } = this.props;
     const { isFocused } = this.state;
     const hasValue = value != null;
-    const { noPopover } = getWidgetDefinition(parameter);
+    const noPopover = hasNoPopover(parameter);
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
@@ -124,13 +138,7 @@ class ParameterValueWidget extends Component {
             onFocusChanged={this.onFocusChanged}
             onPopoverClose={this.onPopoverClose}
           />
-          <WidgetStatusIcon
-            isFullscreen={isFullscreen}
-            hasValue={hasValue}
-            noPopover={!!noPopover}
-            isFocused={isFocused}
-            setValue={setValue}
-          />
+          {this.getWidgetStatusIcon()}
         </div>
       );
     } else {
@@ -167,13 +175,7 @@ class ParameterValueWidget extends Component {
                   placeholder={placeholderText}
                 />
               </div>
-              <WidgetStatusIcon
-                isFullscreen={isFullscreen}
-                hasValue={hasValue}
-                noPopover={!!noPopover}
-                isFocused={isFocused}
-                setValue={setValue}
-              />
+              {this.getWidgetStatusIcon()}
             </div>
           }
           target={this.getTargetRef}
@@ -289,18 +291,13 @@ Widget.propTypes = {
   onFocusChanged: PropTypes.func.isRequired,
 };
 
-function getWidgetDefinition(parameter) {
-  if (DATE_WIDGETS[parameter.type]) {
-    return DATE_WIDGETS[parameter.type];
-  } else if (isTextWidget(parameter)) {
-    return TextWidget;
-  } else if (isNumberParameter(parameter)) {
-    return NumberInputWidget;
-  } else if (isFieldWidget(parameter)) {
-    return ParameterFieldWidget;
-  } else {
-    return StringInputWidget;
+function hasNoPopover(parameter) {
+  // This is needed because isTextWidget check isn't complete,
+  // and returns true for dates too.
+  if (isDateParameter(parameter)) {
+    return false;
   }
+  return isTextWidget(parameter);
 }
 
 function isTextWidget(parameter) {

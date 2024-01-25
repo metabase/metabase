@@ -426,6 +426,7 @@
                                                                   exclusion-patterns
                                                                   schema)
                                         (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                         (map #(dissoc % :type))
                          set)}))))))
 
 (defmethod driver/describe-table :snowflake
@@ -525,10 +526,10 @@
   (sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn "show parameters like 'TIMEZONE';")
+     (with-open [stmt (.prepareStatement conn "show parameters like 'TIMEZONE' in user;")
                  rset (.executeQuery stmt)]
        (when (.next rset)
-         (.getString rset "default"))))))
+         (.getString rset "value"))))))
 
 (defmethod sql-jdbc.sync/excluded-schemas :snowflake
   [_]

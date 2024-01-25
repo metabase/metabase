@@ -97,7 +97,7 @@ const MetadataTable = ({
   );
 
   return (
-    <div className="MetadataTable full px3">
+    <div className="MetadataTable full">
       <TableTitleSection
         table={table}
         tab={tab}

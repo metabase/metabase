@@ -552,6 +552,18 @@ Change this to a higher value if you notice that regular usage consumes all or c
 
 See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size) for setting maximum connections to the Metabase application database.
 
+### `MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
+
+Type: integer<br>
+Default: `1200`<br>
+Since: v47.4
+
+Metabase's query processor will normally kill connections when their queries time out, but in practice some connections can be severed and go undetected by Metabase, staying alive even after a query returns or times out. This environment variable tells  Metabase how long to wait before killing connections if no response is received from the connection.
+
+This variable affects connections that are severed and undetected by Metabase (that is, in situations where Metabase never receives a connection closed signal and is treating an inactive connection as active). You may want to adjust this variable's value if your connection is unreliable or is a dynamic connections behind a SSH tunnel where the connection to the SSH tunnel host may stay active even after the connection from the SSH tunnel host to your database is severed.
+
+Unless set otherwise, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
+
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
 Type: integer<br>
@@ -1324,6 +1336,14 @@ Default: `"metabase_files"`<br>
 Since: v42.0
 
 Set the system files channel used by Metabase to store images. This channel has to be public, and is not intended to be used by humans. The Slack App has to be invited into this channel.
+
+### `MB_JETTY_SKIP_SNI`
+
+Type: string<br>
+Default: `"true"`<br>
+Since: v48.4
+
+Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=false`, or use another SSL certificate that exactly matches the domain name of the server.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 

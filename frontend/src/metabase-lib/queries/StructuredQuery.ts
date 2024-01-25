@@ -141,13 +141,6 @@ class StructuredQuery extends AtomicQuery {
     return metadata != null && metadata.table(this._sourceTableId()) != null;
   }
 
-  // Whether the user can modify and run this query
-  // Determined based on availability of database and source table metadata
-  // For queries based on questions expects virtual table metadata for the source card
-  isEditable(): boolean {
-    return this._database() != null && this.hasMetadata();
-  }
-
   /* AtomicQuery superclass methods */
 
   /**
@@ -402,6 +395,9 @@ class StructuredQuery extends AtomicQuery {
     }
   }
 
+  /**
+   * @deprecated use MLv2
+   */
   hasData() {
     return !!this.table();
   }

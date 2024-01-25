@@ -32,8 +32,8 @@ const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
 
 const TEST_CASES = [
-  { case: "question", subject: QUESTION_NAME },
-  { case: "dashboard", subject: DASHBOARD_NAME },
+  { case: "question", subject: QUESTION_NAME, confirmSave: true },
+  { case: "dashboard", subject: DASHBOARD_NAME, confirmSave: false },
 ];
 
 /**
@@ -700,10 +700,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
-          openStaticEmbeddingModal({ activeTab: "parameters" });
-
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Publish changes").click();
+          openStaticEmbeddingModal({
+            activeTab: "parameters",
+            confirmSave: test.confirmSave
+          });
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
           visitIframe();

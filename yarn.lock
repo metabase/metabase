@@ -4758,10 +4758,10 @@
   dependencies:
     "@types/node" "*"
 
-"@types/jsrsasign@^8.0.13":
-  version "8.0.13"
-  resolved "https://registry.yarnpkg.com/@types/jsrsasign/-/jsrsasign-8.0.13.tgz#770c1e429107dfb0cc4f5b78b472584511a55a28"
-  integrity sha512-+0Ij59D6NXP48KkeLhPXeQKOyLjvA9CD7zacc0Svy2IWHdl62BmDeTvGSIwKaGZSoamLJOo+on1AG/wPRLsd7A==
+"@types/jsrsasign@^10.5.12":
+  version "10.5.12"
+  resolved "https://registry.yarnpkg.com/@types/jsrsasign/-/jsrsasign-10.5.12.tgz#39ca12e576249f1a5494943d1c0c49c9087bf13d"
+  integrity sha512-sOA+eVnHU+FziThpMhuqs/tjFKe5gHVJKIS7g1BzhXP+e2FS8OvtzM0K3IzFxVksDOr98Gz5FJiZVxZ9uFoHhw==
 
 "@types/leaflet-draw@^0.4.14":
   version "0.4.14"
@@ -14306,10 +14306,10 @@ jsprim@^2.0.2:
     json-schema "0.4.0"
     verror "1.10.0"
 
-jsrsasign@^10.5.25:
-  version "10.5.25"
-  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-10.5.25.tgz#8eb3f943718d73f2dd3d85f587f241a5316b835a"
-  integrity sha512-N7zxHaCwYvFlXsybq4p4RxRwn4AbEq3cEiyjbCrWmwA7g8aS4LTKDJ9AJmsXxwtYesYx0imJ+ITtkyyxLCgeIg==
+jsrsasign@^11.0.0:
+  version "11.0.0"
+  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-11.0.0.tgz#766570c21f87d68075a142f5188f7e583cee9d70"
+  integrity sha512-BtRwVKS+5dsgPpAtzJcpo5OoWjSs1/zllSBG0+8o8/aV0Ki76m6iZwHnwnsqoTdhfFZDN1XIdcaZr5ZkP+H2gg==
 
 "jsx-ast-utils@^2.4.1 || ^3.0.0":
   version "3.2.0"
@@ -19838,10 +19838,10 @@ shadow-cljs-jar@1.3.4:
   resolved "https://registry.yarnpkg.com/shadow-cljs-jar/-/shadow-cljs-jar-1.3.4.tgz#0939d91c468b4bc5eab5a958f79e7ef5696fdf62"
   integrity sha512-cZB2pzVXBnhpJ6PQdsjO+j/MksR28mv4QD/hP/2y1fsIa9Z9RutYgh3N34FZ8Ktl4puAXaIGlct+gMCJ5BmwmA==
 
-shadow-cljs@2.25.7:
-  version "2.25.7"
-  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.25.7.tgz#b672ebc26c4fd2073932d5cb377977b4749d7581"
-  integrity sha512-5ZYxrabzGblKnAs4C4/L7zDRr+gBPiyxYc1oYbSzd6B31p341vBMaAWZffohSooci8txzXTpe2rVhAsLtCmiOg==
+shadow-cljs@2.26.5:
+  version "2.26.5"
+  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.26.5.tgz#978335510faeea81c32f70e8fe911ff5b0287a1b"
+  integrity sha512-3mWQefe1va6hjGxIIfLliw3N1ylJxH/qQLw5P3oJS40GO/6cRELXJT3pB9vSKr8SoRdt5mnfUMh1JkG2MGmrhw==
   dependencies:
     node-libs-browser "^2.2.1"
     readline-sync "^1.4.7"
