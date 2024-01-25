@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -9,11 +9,13 @@ import { useModalOpen } from "metabase/hooks/use-modal-open";
 import Collections from "metabase/entities/collections";
 
 import type { EntityPickerOptions } from "../../types";
-
 import { tabOptions, type ValidTab } from "../../utils";
-import { TabsView, ButtonBar, SinglePickerView } from "../";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
-import { NewCollectionModal } from "../NewCollectionModal";
+
+import { NewCollectionModal } from "./NewCollectionModal";
+import { ButtonBar } from "./ButtonBar";
+import { TabsView } from "./TabsView";
+import { SinglePickerView } from "./SinglePickerView";
 import { GrowFlex, ModalContent, ModalBody } from "./EntityPickerModal.styled";
 
 export type EntityPickerModalOptions = {

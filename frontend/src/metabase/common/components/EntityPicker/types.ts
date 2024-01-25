@@ -1,16 +1,14 @@
+import type { CollectionItem, SearchListQuery } from 'metabase-types/api';
 import type { CollectionPickerOptions } from './SpecificEntityPickers/CollectionPicker';
 import type { EntityPickerModalOptions } from './components/EntityPickerModal';
-import type { SearchListQuery } from 'metabase-types/api';
-import type { EntityItemList } from './components/EntityItemList';
-import type { ItemList } from './components/ItemList';
+import type { EntityItemList, ItemList } from './components/ItemList';
 
 export type PickerState<T> = PickerStateItem<T>[];
 
 export type PickerStateItem<T> = EntityPickerStateItem<T> | DataPickerStateItem<T>;
 
 type EntityPickerStateItem<T> = {
-  ListComponent: typeof EntityItemList,
-  query: SearchListQuery,
+  query?: SearchListQuery,
   selectedItem: T | null
 }
 
@@ -25,3 +23,8 @@ export type EntityPickerOptions =
     CollectionPickerOptions
   )
 ;
+
+export type PickerItem = Pick<
+  CollectionItem,
+  'id' | 'name' | 'description' | 'can_write' | 'display' | 'model' | 'location' | 'is_personal'
+>;

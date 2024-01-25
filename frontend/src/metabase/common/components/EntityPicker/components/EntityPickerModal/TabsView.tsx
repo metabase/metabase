@@ -1,11 +1,10 @@
-import { Tabs } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Tabs, Icon } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
 import {
   EntityPickerSearchTab,
   EntityPickerSearchResults,
-} from "../EntityPickerSearch/";
+} from "../EntityPickerSearch";
 
 import { tabOptions } from "../../utils";
 import type { EntityPickerOptions } from "../../types";

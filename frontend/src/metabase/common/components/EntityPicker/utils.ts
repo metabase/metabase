@@ -1,19 +1,19 @@
 import { t } from "ttag";
 
 import { entityForObject } from "metabase/lib/schema";
-import type { SearchResult } from "metabase-types/api";
+import type { SearchResult, CollectionItem } from "metabase-types/api";
 import { QuestionPicker } from "./SpecificEntityPickers/QuestionPicker";
 import { TablePicker } from "./SpecificEntityPickers/TablePicker";
 import { CollectionPicker } from "./SpecificEntityPickers/CollectionPicker";
 
-export const getIcon = (item: SearchResult) => {
+export const getIcon = (item: CollectionItem) => {
   const entity = entityForObject(item);
   return entity?.objectSelectors?.getIcon?.(item)?.name || "table";
 };
 
 export const isSelectedItem = (
-  item: SearchResult,
-  selectedItem: SearchResult | null,
+  item: CollectionItem,
+  selectedItem: CollectionItem | null,
 ): boolean => {
   return (
     !!selectedItem &&

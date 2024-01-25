@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import type { SearchResult } from "metabase-types/api";
-import { Icon } from "metabase/core/components/Icon";
-import { Button, Flex } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 
 export const ButtonBar = ({

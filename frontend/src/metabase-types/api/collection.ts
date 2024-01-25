@@ -95,5 +95,6 @@ export interface CollectionItem {
 export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
+  "personal-only"?: boolean;
   namespace?: string;
 }

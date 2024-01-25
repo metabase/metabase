@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
-import { Stack, Tabs, TextInput } from "metabase/ui";
+import { Stack, Tabs, TextInput, Icon } from "metabase/ui";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import type {
   SearchResult as SearchResultType,
@@ -9,7 +9,6 @@ import type {
 import type { WrappedResult } from "metabase/search/types";
 
 import { useDispatch } from "metabase/lib/redux";
-import { Icon } from "metabase/core/components/Icon";
 
 import Search from "metabase/entities/search";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";

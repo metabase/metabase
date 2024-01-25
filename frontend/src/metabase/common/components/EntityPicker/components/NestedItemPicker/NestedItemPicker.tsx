@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-
 import { Flex } from "metabase/ui";
-
 import type { SearchResult } from "metabase-types/api";
-import type { PickerState, PickerStateItem } from "../../types";
-import { HorizontalScrollBox, ListBox } from "./NestedItemPicker.styled";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import ErrorBoundary from "metabase/ErrorBoundary";
+import type { PickerState, EntityPickerOptions } from "../../types";
+import type { EntityItemListProps } from "../ItemList";
+import { RootItemList, EntityItemList, PersonalCollectionsItemList  } from "../ItemList";
+import {  ListBox } from "./NestedItemPicker.styled";
+import { AutoScrollBox } from "./AutoScrollBox";
+
 
 interface NestedItemPickerProps<T> {
   onFolderSelect: ({
@@ -17,6 +20,7 @@ interface NestedItemPickerProps<T> {
   onItemSelect: ({ item, level }: { item: T; level: number }) => void;
   folderModel: string;
   itemModel: string;
+  options: EntityPickerOptions;
   path: PickerState<T>;
 }
 
@@ -24,36 +28,12 @@ export const NestedItemPicker = ({
   onFolderSelect,
   onItemSelect,
   folderModel,
+  options,
   path,
 }: NestedItemPickerProps<SearchResult>) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const handleFolderSelect = (folder: SearchResult, levelIndex: number) => {
     onFolderSelect({ folder, level: levelIndex });
-
-    const intervalId = setInterval(() => {
-      if (
-        containerRef.current !== null &&
-        containerRef.current.scrollLeft + containerRef.current.clientWidth <
-          containerRef.current.scrollWidth
-      ) {
-        containerRef.current.scrollLeft += 25;
-      } else {
-        clearInterval(intervalId);
-      }
-    }, 10);
   };
-
-  useEffect(() => {
-    if (
-      containerRef.current !== null &&
-      containerRef.current.clientWidth < containerRef.current.scrollWidth
-    ) {
-      const diff =
-        containerRef.current.scrollWidth - containerRef.current.clientWidth;
-      containerRef.current.scrollLeft += diff;
-    }
-  }, [containerRef]);
 
   const handleClick = (item: SearchResult, levelIndex: number) => {
     if (folderModel.includes(item.model)) {
@@ -64,23 +44,62 @@ export const NestedItemPicker = ({
   };
 
   return (
-    <HorizontalScrollBox h="100%" ref={containerRef}>
+    <AutoScrollBox>
       <Flex h="100%" w="fit-content">
         {path.map((level, levelIndex) => {
-          const { ListComponent, ...rest } = level;
+          const { query, selectedItem } = level;
 
           return (
-            <ListBox key={JSON.stringify(level).slice(0, 255)}>
-              <ListComponent
-                {...rest}
-                onClick={item => handleClick(item, levelIndex)}
-                selectedItem={level?.selectedItem}
-                folderModel={folderModel}
-              />
+            <ListBox key={JSON.stringify(query ?? 'root').slice(0, 255)}>
+              <ErrorBoundary>
+                <ListComponent
+                  query={query}
+                  selectedItem={selectedItem}
+                  options={options}
+                  onClick={(item: SearchResult ) => handleClick(item, levelIndex)}
+                  folderModel={folderModel}
+                />
+              </ErrorBoundary>
             </ListBox>
           );
         })}
       </Flex>
-    </HorizontalScrollBox>
+    </AutoScrollBox>
   );
 };
+
+function ListComponent({
+  onClick, selectedItem, folderModel, options, query
+}: EntityItemListProps & { options: EntityPickerOptions }) {
+  if (!query) {
+    return (
+      <RootItemList
+        options={options}
+        selectedItem={selectedItem}
+        onClick={onClick}
+        folderModel={folderModel}
+      />
+    );
+  }
+
+  if (query.collection === PERSONAL_COLLECTIONS.id) {
+    return (
+      <PersonalCollectionsItemList
+        options={options}
+        onClick={onClick}
+        selectedItem={selectedItem}
+        folderModel={folderModel}
+      />
+    );
+  }
+
+  return (
+    <EntityItemList
+      query={query}
+      onClick={onClick}
+      selectedItem={selectedItem}
+      folderModel={folderModel}
+    />
+  );
+
+}

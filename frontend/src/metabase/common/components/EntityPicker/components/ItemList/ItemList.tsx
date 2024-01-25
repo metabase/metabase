@@ -1,29 +1,32 @@
-import { Text, Box, ScrollArea, NavLink, Loader } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
-import type { SearchResult } from "metabase-types/api";
+import { useRef } from "react";
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Box , Text, Box, ScrollArea, NavLink, Loader, Center, Icon } from 'metabase/ui';
+
+import type { CollectionItem } from "metabase-types/api";
 import { getIcon, isSelectedItem } from "../../utils";
 import { PickerColumn } from "./ItemList.styled";
-import { useAsync } from "react-use";
+
 
 export const ItemList = ({
-  dataFn,
+  items,
+  isLoading = false,
   onClick,
   selectedItem,
   folderModel,
 }: {
-  dataFn: () => Promise<any[]>;
-  onClick: (item: SearchResult) => void;
-  selectedItem: SearchResult | null;
+  items?: CollectionItem[];
+  isLoading: boolean;
+  onClick: (item: CollectionItem) => void;
+  selectedItem: CollectionItem | null;
   folderModel: string;
 }) => {
-  const { value: items, loading: isLoading } = useAsync(dataFn);
-
+  const listRef = useRef<Box>(null);
   if (isLoading) {
     return (
       <Box miw={310}>
-        <Text align="center" p="lg">
+        <Center p="lg">
           <Loader />
-        </Text>
+        </Center>
       </Box>
     );
   }
@@ -44,7 +47,7 @@ export const ItemList = ({
 
   return (
     <ScrollArea h="100%">
-      <PickerColumn>
+      <PickerColumn ref={listRef}>
         {items.map(item => {
           const isFolder = folderModel.includes(item.model);
           const isSelected = isSelectedItem(item, selectedItem);
