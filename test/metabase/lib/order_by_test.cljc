@@ -78,7 +78,7 @@
 (deftest ^:parallel append-order-by-field-metadata-test
   (testing "Should be able to add an order by using raw Field metadata"
     (let [query     (lib/query meta/metadata-provider (meta/table-metadata :categories))
-          venues-id (lib.metadata/field-with-nesting query (meta/id :venues :id))]
+          venues-id (lib.metadata/field query (meta/id :venues :id))]
       (is (=? {:database (meta/id)
                :stages   [{:lib/type     :mbql.stage/mbql
                            :source-table (meta/id :categories)

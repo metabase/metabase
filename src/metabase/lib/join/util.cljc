@@ -68,7 +68,7 @@
   (when (and fk-field-id table-id)
     (when-let [table (lib.metadata/table-or-card query table-id)]
       (let [table-name           (:name table)
-            source-field-id-name (:name (lib.metadata/field-with-nesting query fk-field-id))]
+            source-field-id-name (:name (lib.metadata/field query fk-field-id))]
         (format-implicit-join-name table-name source-field-id-name)))))
 
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string

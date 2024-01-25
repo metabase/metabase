@@ -81,7 +81,7 @@
                {:base-type :type/*, :lib/type :metadata/column}
                (when-let [field-id (:id col)]
                  (try
-                   (lib.metadata/field-with-nesting metadata-providerable field-id)
+                   (lib.metadata/field metadata-providerable field-id)
                    (catch #?(:clj Throwable :cljs :default) _
                      nil)))
                col

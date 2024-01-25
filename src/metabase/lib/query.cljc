@@ -132,7 +132,7 @@
                        [:field
                         (opts :guard (complement (some-fn :base-type :effective-type)))
                         (field-id :guard (every-pred number? pos?))]
-                       (let [found-ref (-> (lib.metadata/field-with-nesting metadata-provider field-id)
+                       (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
                                            (select-keys [:base-type :effective-type]))]
                          ;; Fallback if metadata is missing
                          [:field (merge found-ref opts) field-id])

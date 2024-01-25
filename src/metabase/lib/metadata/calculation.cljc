@@ -548,7 +548,7 @@
   "Returns a list of primary keys for the source table of this query."
   [query        :- ::lib.schema/query]
   (if-let [table-id (lib.util/source-table-id query)]
-    (filter lib.types.isa/primary-key? (lib.metadata/fields-with-nesting query table-id))
+    (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
     []))
 
 (defn implicitly-joinable-columns
@@ -567,7 +567,7 @@
                 (filter :id)
                 (filter (comp number? :id))
                 (map (fn [{source-field-id :id, :keys [fk-target-field-id] :as source}]
-                       (-> (lib.metadata/field-with-nesting query fk-target-field-id)
+                       (-> (lib.metadata/field query fk-target-field-id)
                            (assoc ::source-field-id source-field-id
                                   ::source-join-alias (:metabase.lib.join/join-alias source)))))
                 (remove #(contains? existing-table-ids (:table-id %)))

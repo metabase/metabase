@@ -19,10 +19,9 @@
                              (lib.tu/mock-metadata-provider
                               {:fields [time-field]})
                              meta/metadata-provider)]
-      (doseq [f [lib.metadata/field lib.metadata/field-with-nesting]]
-        (is (=? {:name           "BIRTH_DATE"
-                 :base-type      :type/Time
-                 :effective-type :type/Time}
-                (f
-                 metadata-provider
-                 (meta/id :people :birth-date))))))))
+      (is (=? {:name           "BIRTH_DATE"
+               :base-type      :type/Time
+               :effective-type :type/Time}
+              (lib.metadata/field
+               metadata-provider
+               (meta/id :people :birth-date)))))))

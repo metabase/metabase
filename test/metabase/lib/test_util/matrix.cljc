@@ -168,7 +168,7 @@
              (providers.mock/mock-metadata-provider
                {:cards (vals mock-cards)}))
         table-meta (lib.metadata/table mp 1)
-        field-meta (lib.metadata/field-with-nesting mp 2)
+        field-meta (lib.metadata/field mp 2)
         queries [[(lib/query mp table-meta)
                   "TEST_ME"]
                  [(-> (lib/query mp table-meta)
@@ -193,8 +193,7 @@
                       (lib/join table-meta))
                   "Matrix - Foreign__TEST_ME"]
                  [(-> (lib/query mp table-meta)
-                      (lib/join (lib/join-clause table-meta [(lib/= (lib.metadata/field-with-nesting mp 1)
-                                                                    (lib.metadata/field-with-nesting mp 1))])))
+                      (lib/join (lib/join-clause table-meta [(lib/= (lib.metadata/field mp 1) (lib.metadata/field mp 1))])))
                   "Matrix__TEST_ME"]
                  [(lib/query mp (:matrix mock-cards))
                   "TEST_ME"]

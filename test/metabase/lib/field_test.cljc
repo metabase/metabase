@@ -530,7 +530,7 @@
   ;; this uses a legacy `card__<id>` `:table-id` intentionally; we don't currently have logic that parses this to
   ;; something like `:card-id` for Column Metadata yet. Make sure it works correctly.
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
-        field (lib/metadata query (assoc (lib.metadata/field-with-nesting query (meta/id :venues :name))
+        field (lib/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
                                                               :table-id "card__1"))]
     (is (=? {:name           "NAME"
              :display-name   "Name"
@@ -1529,7 +1529,7 @@
                                 (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :name)
                                                                                  :has-field-values nil}]})
                                 (lib.tu/remap-metadata-provider (meta/id :venues :name) (meta/id :categories :name)))
-          venues-name       (lib.metadata/field-with-nesting metadata-provider (meta/id :venues :name))]
+          venues-name       (lib.metadata/field metadata-provider (meta/id :venues :name))]
       (testing `lib.types.isa/searchable?
         (is (lib.types.isa/searchable? venues-name)))
       (testing `lib.field/remapped-field
@@ -1558,7 +1558,7 @@
               :has-field-values :list}
              (lib.field/field-values-search-info
               metadata-provider
-              (lib.metadata/field-with-nesting metadata-provider (meta/id :venues :id))))))))
+              (lib.metadata/field metadata-provider (meta/id :venues :id))))))))
 
 (deftest ^:parallel field-values-search-info-native-test
   (testing "No field-id without custom metadata (#37100)"
