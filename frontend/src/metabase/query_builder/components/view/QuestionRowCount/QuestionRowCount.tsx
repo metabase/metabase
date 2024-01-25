@@ -87,7 +87,9 @@ function QuestionRowCount({
     onChangeLimit(limit > 0 ? limit : null);
   };
 
-  const canChangeLimit = question.isStructured() && question.isQueryEditable();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+
+  const canChangeLimit = question.isStructured() && isEditable;
 
   const limit = canChangeLimit ? Lib.currentLimit(question.query(), -1) : null;
 

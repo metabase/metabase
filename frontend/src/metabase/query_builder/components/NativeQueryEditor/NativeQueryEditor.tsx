@@ -85,6 +85,12 @@ type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
 
 type AutocompleteItem = [string, string];
 
+type LastAutoComplete = {
+  timestamp: number;
+  prefix: string | null;
+  results: AutocompleteItem[];
+};
+
 type OwnProps = typeof NativeQueryEditor.defaultProps & {
   question: Question;
   query: NativeQuery;
@@ -183,11 +189,6 @@ export class NativeQueryEditor extends Component<
   nextCompleters?: (position: Ace.Position) => Ace.Completer[] = undefined;
 
   _editor: Ace.Editor | null = null;
-  _lastAutoComplete: {
-    timestamp: number;
-    prefix: string | null;
-    results: AutocompleteItem[];
-  } = { timestamp: 0, prefix: null, results: [] };
   _localUpdate = false;
 
   constructor(props: Props) {
@@ -440,7 +441,18 @@ export class NativeQueryEditor extends Component<
       showLineNumbers: true,
     });
 
-    this._lastAutoComplete = { timestamp: 0, prefix: null, results: [] };
+    let lastAutoComplete: LastAutoComplete = {
+      timestamp: 0,
+      prefix: "",
+      results: [],
+    };
+
+    const prepareResultsForAce = (results: [string, string][]) =>
+      results.map(([name, meta]) => ({
+        name: name,
+        value: name,
+        meta: meta,
+      }));
 
     aceLanguageTools.addCompleter({
       getCompletions: async (
@@ -455,18 +467,35 @@ export class NativeQueryEditor extends Component<
         }
 
         try {
-          let { results, timestamp } = this._lastAutoComplete;
+          if (prefix.length <= 1 && prefix !== lastAutoComplete.prefix) {
+            // ACE triggers an autocomplete immediately when the user starts typing that is
+            // not debounced by debouncing _retriggerAutocomplete.
+            // Here we prevent it from actually calling the autocomplete endpoint.
+            // It will run eventually even if the prefix is only one character,
+            // after the user stops typing, because _retriggerAutocomplete will get called with the same prefix.
+            lastAutoComplete = {
+              timestamp: 0,
+              prefix,
+              results: lastAutoComplete.results,
+            };
+
+            callback(null, prepareResultsForAce(lastAutoComplete.results));
+            return;
+          }
+
+          let { results, timestamp } = lastAutoComplete;
           const cacheHit =
             Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
-            this._lastAutoComplete.prefix === prefix;
+            lastAutoComplete.prefix === prefix;
+
           if (!cacheHit) {
             // Get models and fields from tables
             // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
             const apiResults = await this.props.autocompleteResultsFn(prefix);
-            this._lastAutoComplete = {
+            lastAutoComplete = {
               timestamp: Date.now(),
               prefix,
-              results,
+              results: apiResults,
             };
 
             // Get referenced questions
@@ -505,12 +534,7 @@ export class NativeQueryEditor extends Component<
           }
 
           // transform results into what ACE expects
-          const resultsForAce = results?.map(([name, meta]) => ({
-            name: name,
-            value: name,
-            meta: meta,
-          }));
-          callback(null, resultsForAce || []);
+          callback(null, prepareResultsForAce(results));
         } catch (error) {
           console.error("error getting autocompletion data", error);
           callback(null, []);
