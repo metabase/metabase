@@ -661,8 +661,9 @@ saved later when it is ready."
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
+                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
+                                     :type       (:or (:type card-data) "question")
                                      :creator_id (:id creator)
                                      :dataset    (or (and (:type card-data) (is-model? card-data))
                                                      (boolean (:dataset card-data)))
