@@ -235,7 +235,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-testing-library": "^5.11.0",
     "fetch-mock": "^9.11.0",
-    "glob": "^10.3.10",
+    "glob": "^7.1.1",
     "html-webpack-plugin": "5.5.0",
     "husky": "^8.0.2",
     "jest": "^29.5.0",
