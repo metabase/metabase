@@ -29,6 +29,7 @@ import {
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
@@ -195,7 +196,7 @@ export const fetchDashboard = createAsyncThunk(
         );
         result = {
           ...result,
-          id: dashId,
+          id: IS_EMBED_PREVIEW ? result.id : dashId,
           dashcards: result.dashcards.map(dc => ({
             ...dc,
             dashboard_id: dashId,
@@ -275,7 +276,7 @@ export const fetchDashboard = createAsyncThunk(
       return {
         entities,
         dashboard: result,
-        dashboardId: dashId,
+        dashboardId: result.id,
         parameterValues: parameterValuesById,
         preserveParameters,
       };
