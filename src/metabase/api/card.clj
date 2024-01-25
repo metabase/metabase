@@ -384,6 +384,7 @@
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (defn- check-card-type-and-dataset
+  "Check if the value of card type and datset is consistent, returns 400 if not."
   [{:keys [dataset type]}]
   ;; if dataset is true then type must be model
   ;; if dataset is false, then type can't be model
@@ -391,7 +392,7 @@
     (api/check (if (true? dataset)
                  (= "model" type)
                  (not= "model" type))
-      [400 (deferred-tru "Dataset and type doesn''t match")])))
+      [400 (deferred-tru ":dataset is inconsistent with :type")])))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
@@ -784,7 +785,7 @@
     param-key :- ms/NonBlankString
     query     :- [:maybe ms/NonBlankString]]
    (let [param (get (m/index-by :id (or (seq (:parameters card))
-                                        ;; some olderkcards or cards in e2e just use the template tags on native queries
+                                        ;; some older cards or cards in e2e just use the template tags on native queries
                                         (card/template-tag-parameters card)))
                     param-key)]
      (when-not param

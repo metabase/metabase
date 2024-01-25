@@ -76,12 +76,7 @@
     [:dataset_query _ _]
     (deferred-tru "modified the query")
 
-    [:dataset false true]
-    (deferred-tru "turned this into a model")
-
-    [:dataset true false]
-    (deferred-tru "changed this from a model to a saved question")
-
+    ;; report_card.type
     [:type old new]
     (deferred-tru "type changed from {0} to {1}" old new)
 
