@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
-import CopyButton from "metabase/components/CopyButton";
+import { CopyButton } from "metabase/components/CopyButton";
 import type { AnchorProps } from "metabase/ui";
 import { Anchor } from "metabase/ui";
 
@@ -10,7 +10,7 @@ export const PublicLinkCopyButton = styled(CopyButton)`
   cursor: pointer;
 
   &:hover {
-    color: ${({ theme }) => theme.colors.brand[1]};
+    color: ${({ theme }) => theme.fn.themeColor("brand")};
   }
 `;
 

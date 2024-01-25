@@ -2,6 +2,7 @@
 import { t } from "ttag";
 import cx from "classnames";
 
+import * as Lib from "metabase-lib";
 import ButtonBar from "metabase/components/ButtonBar";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -43,7 +44,8 @@ const ViewFooter = ({
     return null;
   }
 
-  const hasDataPermission = question.query().isEditable();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const hasDataPermission = isEditable;
   const hideChartSettings = result.error && !hasDataPermission;
 
   return (
@@ -103,18 +105,18 @@ const ViewFooter = ({
           QuestionRowCount.shouldRender({
             result,
             isObjectDetail,
-          }) && <QuestionRowCount key="row_count" className="mx1" />,
+          }) && <QuestionRowCount key="row_count" />,
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
-              className="mx1 hide sm-show"
+              className="hide sm-show"
               result={result}
             />
           ),
           QueryDownloadWidget.shouldRender({ result }) && (
             <QueryDownloadWidget
               key="download"
-              className="mx1 hide sm-show"
+              className="hide sm-show"
               question={question}
               result={result}
               visualizationSettings={visualizationSettings}
@@ -128,7 +130,7 @@ const ViewFooter = ({
           }) && (
             <QuestionAlertWidget
               key="alerts"
-              className="mx1 hide sm-show"
+              className="hide sm-show"
               canManageSubscriptions={canManageSubscriptions}
               question={question}
               questionAlerts={questionAlerts}
@@ -155,7 +157,7 @@ const ViewFooter = ({
           QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
-              className="mx1 hide sm-show"
+              className="hide sm-show"
               isShowingTimelineSidebar={isShowingTimelineSidebar}
               onOpenTimelines={onOpenTimelines}
               onCloseTimelines={onCloseTimelines}

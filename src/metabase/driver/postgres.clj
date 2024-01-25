@@ -39,7 +39,7 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)
    (org.postgresql.copy CopyManager)
@@ -61,8 +61,10 @@
                               :datetime-diff            true
                               :now                      true
                               :persist-models           true
+                              :table-privileges         true
                               :schemas                  true
-                              :connection-impersonation true}]
+                              :connection-impersonation true
+                              :uploads                  true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -72,7 +74,6 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :table-privileges
                  :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
@@ -825,49 +826,56 @@
 
 (defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db-id
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (let [copy-manager (CopyManager. (.unwrap conn PgConnection))
-           [sql & _]    (sql/format {::copy       (keyword table-name)
-                                     :columns     (map keyword column-names)
-                                     ::from-stdin "''"}
-                                    :quoted true
-                                    :dialect (sql.qp/quote-style driver))]
-       ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
-       (doseq [slice-of-values (partition-all 100 values)]
-         (let [tsvs (->> slice-of-values
-                         (map row->tsv)
-                         (str/join "\n")
-                         (StringReader.))]
-           (.copyIn copy-manager ^String sql tsvs)))))))
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
+          [sql & _]    (sql/format {::copy       (keyword table-name)
+                                    :columns     (map keyword column-names)
+                                    ::from-stdin "''"}
+                                   :quoted true
+                                   :dialect (sql.qp/quote-style driver))
+          ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
+          ;; little faster but not by much (3.63m), and 10,000 threw an error:
+          ;;     PreparedStatement can have at most 65,535 parameters
+          chunks (partition-all (or driver/*insert-chunk-rows* 1000) values)]
+      (doseq [chunk chunks]
+        (let [tsvs (->> chunk
+                        (map row->tsv)
+                        (str/join "\n")
+                        (StringReader.))]
+          (.copyIn copy-manager ^String sql tsvs))))))
 
 (defmethod driver/current-user-table-privileges :postgres
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (jdbc/query
-     conn-spec
-     (str/join
-      "\n"
-      ["with table_privileges as ("
-       "select"
-       "  NULL as role,"
-       "  t.schemaname as schema,"
-       "  t.tablename as table,"
-       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
-       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
-       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
-       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
-       "from pg_catalog.pg_tables t"
-       "where t.schemaname !~ '^pg_'"
-       "  and t.schemaname <> 'information_schema'"
-       "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-       ")"
-       "select t.*"
-       "from table_privileges t"
-       "where t.select or t.update or t.insert or t.delete"]))))
+    ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
+    ;; result in a operation not supported error
+    (->> (jdbc/query
+          conn-spec
+          (str/join
+           "\n"
+           ["with table_privileges as ("
+            " select"
+            "   NULL as role,"
+            "   t.schemaname as schema,"
+            "   t.objectname as table,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
+            " from ("
+            "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
+            "   union"
+            "   select schemaname, viewname as objectname from pg_catalog.pg_views"
+            "   union"
+            "   select schemaname, matviewname as objectname from pg_catalog.pg_matviews"
+            " ) t"
+            " where t.schemaname !~ '^pg_'"
+            "   and t.schemaname <> 'information_schema'"
+            "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+            ")"
+            "select t.*"
+            "from table_privileges t"]))
+         (filter #(or (:select %) (:update %) (:delete %) (:update %))))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

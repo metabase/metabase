@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { usePrevious } from "react-use";
 
+import * as Lib from "metabase-lib";
 import * as Urls from "metabase/lib/urls";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
@@ -88,26 +89,26 @@ export function ViewTitleHeader(props) {
 
   const previousQuestion = usePrevious(question);
 
+  const query = question.query();
+  const previousQuery = usePrevious(query);
+
   useEffect(() => {
     if (!question.isStructured() || !previousQuestion?.isStructured()) {
       return;
     }
 
-    const filtersCount = question.query().filters().length;
-    const previousFiltersCount = previousQuestion.query().filters().length;
+    const filtersCount = Lib.filters(query, -1).length;
+    const previousFiltersCount = Lib.filters(previousQuery, -1).length;
 
     if (filtersCount > previousFiltersCount) {
       expandFilters();
     }
-  }, [previousQuestion, question, expandFilters]);
+  }, [previousQuestion, question, expandFilters, previousQuery, query]);
 
-  const isStructured = question.isStructured();
-  const isNative = question.isNative();
+  const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
   const isDataset = question.isDataset();
-
-  const isSummarized =
-    isStructured && question.query().topLevelQuery().hasAggregations();
+  const isSummarized = Lib.aggregations(query, -1).length > 0;
 
   const onQueryChange = useCallback(
     newQuery => {
@@ -296,8 +297,9 @@ function AhHocQuestionLeftSide(props) {
   } = props;
 
   const handleTitleClick = () => {
-    const query = question.query();
-    if (!query.readOnly()) {
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+
+    if (isEditable) {
       onOpenModal(MODAL_TYPES.SAVE);
     }
   };
@@ -412,17 +414,15 @@ function ViewTitleHeaderRightSide(props) {
     onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const canEditQuery = !question.query().readOnly();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hasExploreResultsLink =
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !question.query().hasData();
-  const hasSaveButton =
-    !isDataset &&
-    !!isDirty &&
-    (isNewQuery || canEditQuery) &&
-    isActionListVisible;
+  // Models can't be saved. But changing anything about the model will prompt the user
+  // to save it as a new question (based on that model). In other words, at this point
+  // the `dataset` field is set to false.
+  const hasSaveButton = !isDataset && !!isDirty && isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =
@@ -446,8 +446,8 @@ function ViewTitleHeaderRightSide(props) {
       {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
-          query={question._getMLv2Query()}
-          expanded={areFiltersExpanded}
+          query={question.query()}
+          isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
         />
@@ -518,10 +518,10 @@ function ViewTitleHeaderRightSide(props) {
       {hasSaveButton && (
         <SaveButton
           role="button"
-          disabled={!question.canRun() || !canEditQuery}
+          disabled={!question.canRun() || !isEditable}
           tooltip={{
             tooltip: t`You don't have permission to save this question.`,
-            isEnabled: !canEditQuery,
+            isEnabled: !isEditable,
             placement: "left",
           }}
           data-metabase-event={

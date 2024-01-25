@@ -116,6 +116,11 @@
         (assoc (handle-conn-uri base-details user account file)
                :private_key_file file)))))
 
+(defn- quote-name
+  [raw-name]
+  (when raw-name
+    (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
@@ -142,6 +147,9 @@
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead
                    ;; of `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
+                   ;; see https://github.com/metabase/metabase/issues/27856
+                   (cond-> (:quote-db-name details)
+                     (update :db quote-name))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (update :schema upcase-not-nil)
@@ -418,6 +426,7 @@
                                                                   exclusion-patterns
                                                                   schema)
                                         (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                         (map #(dissoc % :type))
                          set)}))))))
 
 (defmethod driver/describe-table :snowflake
@@ -517,10 +526,10 @@
   (sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn "show parameters like 'TIMEZONE';")
+     (with-open [stmt (.prepareStatement conn "show parameters like 'TIMEZONE' in user;")
                  rset (.executeQuery stmt)]
        (when (.next rset)
-         (.getString rset "default"))))))
+         (.getString rset "value"))))))
 
 (defmethod sql-jdbc.sync/excluded-schemas :snowflake
   [_]

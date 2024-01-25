@@ -41,9 +41,10 @@
   :model/User)
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :author]  [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :creator] [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :user]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :creator]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :updated_by] [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :user]       [_original-model _k] :model/User)
 
 (doto :model/User
   (derive :metabase/model)
@@ -335,7 +336,7 @@
    [:email      ms/Email]
    [:first_name [:maybe ms/NonBlankString]]])
 
-(mu/defn insert-new-user!
+(mu/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))

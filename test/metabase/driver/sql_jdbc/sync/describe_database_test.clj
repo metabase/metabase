@@ -59,7 +59,7 @@
           (fn [^java.sql.Connection conn]
             ;; We have to mock this to make it work with all DBs
             (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
+              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) (mt/db) conn nil nil))
                    (map :name)
                    sort)))))))
 
@@ -70,7 +70,7 @@
           (mt/db)
           nil
           (fn [^java.sql.Connection conn]
-            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
+            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 (mt/db) conn nil nil))
                  (map :name)
                  sort))))))
 
@@ -104,8 +104,8 @@
        driver
        db
        nil
-       (fn [conn]
-         (sql-jdbc.describe-database/describe-database driver {:connection conn})
+       (fn [_conn]
+         (sql-jdbc.describe-database/describe-database driver db)
          (reduce + (for [^ResultSet rs @resultsets]
                      (if (.isClosed rs) 0 1))))))))
 
@@ -154,7 +154,9 @@
          driver)))
 
 (deftest database-schema-filtering-test
-  (mt/test-drivers (schema-filtering-drivers)
+  ;; BigQuery is tested separately in `metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test`, because
+  ;; otherwise this test takes too long and flakes intermittently
+  (mt/test-drivers (disj (schema-filtering-drivers) :bigquery-cloud-sdk)
     (let [driver             (driver.u/database->driver (mt/db))
           schema-filter-prop (find-schema-filters-prop driver)
           filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))

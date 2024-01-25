@@ -5,7 +5,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 import Tables from "metabase/entities/tables";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import AccordionList from "metabase/core/components/AccordionList";
 import Grabber from "metabase/components/Grabber";
 import {
@@ -84,7 +84,7 @@ const MetadataTableColumnList = ({
   );
 
   return (
-    <div id="ColumnsList" className={cx("my3", { disabled: isHidden })}>
+    <div id="ColumnsList" className={cx("mt3", { disabled: isHidden })}>
       <div className="text-uppercase text-medium py1">
         <div className="relative">
           <div

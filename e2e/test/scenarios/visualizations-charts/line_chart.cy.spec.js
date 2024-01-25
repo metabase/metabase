@@ -577,6 +577,42 @@ describe("scenarios > visualizations > line chart", () => {
       cy.get(".y-axis-label").invoke("text").should("eq", "Average of Price");
     });
   });
+
+  it("should apply brush filters to the series selecting area range when axis is a number", () => {
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.QUANTITY]],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    cy.viewport(1280, 800);
+
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "line",
+    });
+
+    cy.get(".Visualization")
+      .trigger("mousedown", 180, 200)
+      .trigger("mousemove", 180, 200)
+      .trigger("mouseup", 220, 200);
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("filter-pill").should(
+      "contain.text",
+      "Quantity is between",
+    );
+    const X_AXIS_VALUE = 8;
+    cy.get(".CardVisualization").within(() => {
+      cy.get(".x-axis-label").should("have.text", "Quantity");
+      cy.findByText(X_AXIS_VALUE);
+    });
+  });
 });
 
 function testPairedTooltipValues(val1, val2) {

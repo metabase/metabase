@@ -149,7 +149,7 @@
                        :value        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])}
       :drill-args     ["<"]
       :expected-query {:stages [{:filters [[:< {}
-                                            [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                            [:field {} (meta/id :orders :created-at)]
                                             (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])]]}]}})))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-3
@@ -182,16 +182,14 @@
                                 (lib/available-drill-thrus query -1 context))]
       (is (=? {:lib/type  :metabase.lib.drill-thru/drill-thru
                :type      :drill-thru/quick-filter
-               :operators [{:name "="}
-                           {:name "≠"}
-                           {:name "contains"}
+               :operators [{:name "contains"}
                            {:name "does-not-contain"}]
                :value     "text"
                :column    {:name "BODY"}}
               drill))
       (testing "Should include :value in the display info (#33560)"
         (is (=? {:type      :drill-thru/quick-filter
-                 :operators ["=" "≠" "contains" "does-not-contain"]
+                 :operators ["contains" "does-not-contain"]
                  :value     "text"}
                 (lib/display-info query drill))))
       (testing "apply drills"

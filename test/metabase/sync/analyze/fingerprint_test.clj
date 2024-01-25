@@ -280,10 +280,11 @@
         (is (= (fingerprint/empty-stats-map 0)
                (fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (data/id :venues))] (fn [_ _]))))))))
 
-(deftest ^:parallel fingerprint-test
+(deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "Text fingerprints"
+        (fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues)))
         (is (=? {:global {:distinct-count 100
                           :nil%           0.0}
                  :type   {:type/Text {:percent-json   0.0

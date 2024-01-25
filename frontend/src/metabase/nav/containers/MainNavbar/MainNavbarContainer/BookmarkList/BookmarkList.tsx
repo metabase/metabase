@@ -2,12 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
+import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import {
-  SortableContainer,
-  SortableElement,
-} from "metabase/components/sortable";
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
+
+import { Sortable } from "metabase/core/components/Sortable";
+
 import CollapseSection from "metabase/components/CollapseSection";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import type { Bookmark } from "metabase-types/api";
@@ -62,7 +70,6 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
 
 const BookmarkItem = ({
   bookmark,
-  index,
   isSorting,
   selectedItem,
   onSelect,
@@ -78,7 +85,7 @@ const BookmarkItem = ({
     !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
 
   return (
-    <SortableBookmarkItem index={index} key={bookmark.id}>
+    <Sortable id={bookmark.id} key={bookmark.id}>
       <SidebarBookmarkItem
         key={`bookmark-${bookmark.id}`}
         url={url}
@@ -97,7 +104,7 @@ const BookmarkItem = ({
       >
         {bookmark.name}
       </SidebarBookmarkItem>
-    </SortableBookmarkItem>
+    </Sortable>
   );
 };
 
@@ -115,6 +122,10 @@ const BookmarkList = ({
     setOrderedBookmarks(bookmarks);
   }, [bookmarks]);
 
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 0 },
+  });
+
   const onToggleBookmarks = useCallback(isVisible => {
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
   }, []);
@@ -125,13 +136,17 @@ const BookmarkList = ({
   }, []);
 
   const handleSortEnd = useCallback(
-    ({ newIndex, oldIndex }) => {
+    input => {
       document.body.classList.remove("grabbing");
       setIsSorting(false);
+      const newIndex = bookmarks.findIndex(b => b.id === input.over.id);
+      const oldIndex = bookmarks.findIndex(b => b.id === input.active.id);
       reorderBookmarks({ newIndex, oldIndex });
     },
-    [reorderBookmarks],
+    [reorderBookmarks, bookmarks],
   );
+
+  const bookmarkIds = bookmarks.map(b => b.id);
 
   return (
     <CollapseSection
@@ -142,34 +157,34 @@ const BookmarkList = ({
       headerClass="mb1"
       onToggle={onToggleBookmarks}
     >
-      <SortableBookmarkList
-        distance={9}
-        onSortStart={handleSortStart}
-        onSortEnd={handleSortEnd}
-        lockAxis="y"
-        helperClass="sorting"
+      <DndContext
+        onDragEnd={handleSortEnd}
+        onDragStart={handleSortStart}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        sensors={[pointerSensor]}
       >
-        {orderedBookmarks.map((bookmark, index) => (
-          <BookmarkItem
-            bookmark={bookmark}
-            isSorting={isSorting}
-            key={index}
-            index={index}
-            selectedItem={selectedItem}
-            onSelect={onSelect}
-            onDeleteBookmark={onDeleteBookmark}
-          />
-        ))}
-      </SortableBookmarkList>
+        <SortableContext
+          items={bookmarkIds ?? []}
+          strategy={verticalListSortingStrategy}
+        >
+          <ul>
+            {orderedBookmarks.map((bookmark, index) => (
+              <BookmarkItem
+                bookmark={bookmark}
+                isSorting={isSorting}
+                key={index}
+                index={index}
+                selectedItem={selectedItem}
+                onSelect={onSelect}
+                onDeleteBookmark={onDeleteBookmark}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
     </CollapseSection>
   );
 };
-
-const List = ({ children }: { children: JSX.Element[] }) => <ul>{children}</ul>;
-const Item = ({ children }: { children: JSX.Element }) => <>{children}</>;
-
-const SortableBookmarkItem = SortableElement(Item);
-const SortableBookmarkList = SortableContainer(List);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(BookmarkList);

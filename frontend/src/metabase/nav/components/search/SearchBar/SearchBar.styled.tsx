@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
@@ -65,13 +65,14 @@ export const SearchInputContainer = styled.div<{
     width: 2rem;
     height: 2rem;
     border-radius: 99px;
-
+    border-color: transparent;
     ${props =>
       props.isActive &&
       css`
         width: 100%;
+        border-color: ${color("border")};
         ${activeInputCSS};
-      `}
+      `};
   }
 
   ${breakpointMinSmall} {
@@ -85,7 +86,7 @@ export const SearchInput = styled.input<{
 }>`
   background-color: transparent;
   border: none;
-  color: ${({ theme }) => theme.colors.text[2]};
+  color: ${({ theme }) => theme.fn.themeColor("text-dark")};
   font-weight: 700;
   font-size: 0.875rem;
 
@@ -96,7 +97,7 @@ export const SearchInput = styled.input<{
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.colors.text[2]};
+    color: ${({ theme }) => theme.fn.themeColor("text-dark")};
   }
 
   ${breakpointMinSmall} {

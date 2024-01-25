@@ -4,7 +4,6 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
-import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { formatColumn } from "metabase/lib/formatting";
@@ -27,6 +26,8 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
 import {
   isMetric,
   isDimension,
@@ -317,8 +318,8 @@ export default class Table extends Component {
     }
   }
 
-  _updateData({ series, settings }) {
-    const [{ data }] = series;
+  _updateData({ series, settings, metadata }) {
+    const [{ card, data }] = series;
 
     if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
@@ -343,7 +344,7 @@ export default class Table extends Component {
         ),
       });
     } else {
-      const { cols, rows } = data;
+      const { cols, rows, results_timezone } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
         .filter(
@@ -359,7 +360,11 @@ export default class Table extends Component {
         data: {
           cols: columnIndexes.map(i => cols[i]),
           rows: rows.map(row => columnIndexes.map(i => row[i])),
+          results_timezone,
         },
+        // construct a Question that is in-sync with query results
+        // cache it here for performance reasons
+        question: new Question(card, metadata),
       });
     }
   }
@@ -375,11 +380,35 @@ export default class Table extends Component {
     return getTitleForColumn(cols[columnIndex], series, settings);
   };
 
+  getColumnSortDirection = columnIndex => {
+    const { question, data } = this.state;
+    if (!question || !data) {
+      return;
+    }
+
+    const query = question.query();
+    const stageIndex = -1;
+    const column = Lib.findMatchingColumn(
+      query,
+      stageIndex,
+      Lib.fromLegacyColumn(query, stageIndex, data.cols[columnIndex]),
+      Lib.orderableColumns(query, stageIndex),
+    );
+
+    if (column != null) {
+      const columnInfo = Lib.displayInfo(query, stageIndex, column);
+      if (columnInfo.orderByPosition != null) {
+        const orderBys = Lib.orderBys(query, stageIndex);
+        const orderBy = orderBys[columnInfo.orderByPosition];
+        const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
+        return orderByInfo.direction;
+      }
+    }
+  };
+
   render() {
     const { series, isDashboard, settings } = this.props;
     const { data } = this.state;
-    const [{ card }] = series;
-    const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = Table.isPivoted(series, settings);
     const areAllColumnsHidden = data.cols.length === 0;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
@@ -415,8 +444,8 @@ export default class Table extends Component {
         {...this.props}
         data={data}
         isPivoted={isPivoted}
-        sort={sort}
         getColumnTitle={this.getColumnTitle}
+        getColumnSortDirection={this.getColumnSortDirection}
       />
     );
   }

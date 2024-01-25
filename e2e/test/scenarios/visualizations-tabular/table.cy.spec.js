@@ -186,7 +186,7 @@ describe("scenarios > visualizations > table", () => {
           // semantic type
           cy.contains("No special type");
           // fingerprint
-          cy.findByText(/-0\d:00/);
+          cy.findByText("Timezone");
           cy.findByText("April 26, 1958, 12:00 AM");
           cy.findByText("April 3, 2000, 12:00 AM");
         },
@@ -228,9 +228,17 @@ describe("scenarios > visualizations > table", () => {
     cy.wait("@dataset");
 
     cy.get(".Visualization").within(() => {
-      // Make sure new table results loaded with Custom column and Count columns
-      cy.contains(ccName);
       cy.contains("Count").trigger("mouseenter");
+    });
+
+    popover().within(() => {
+      cy.contains("Quantity");
+      cy.findByText("No description");
+    });
+
+    cy.get(".Visualization").within(() => {
+      // Make sure new table results loaded with Custom column and Count columns
+      cy.contains(ccName).trigger("mouseenter");
     });
 
     popover().within(() => {
@@ -362,6 +370,58 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       "background-color",
       "rgba(80, 158, 227, 0.65)",
     );
+  });
+});
+
+describe("scenarios > visualizations > table > time formatting (#11398)", () => {
+  const singleTimeQuery = `
+      WITH t1 AS (SELECT TIMESTAMP '2023-01-01 18:34:00' AS time_value),
+           t2 AS (SELECT CAST(time_value AS TIME) AS creation_time
+                  FROM t1)
+      SELECT *
+      FROM t2;
+  `;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should work with time columns", { tags: ["@external"] }, () => {
+    cy.createNativeQuestion(
+      {
+        name: "11398",
+        native: {
+          query: singleTimeQuery,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    // Open the formatting menu
+    cy.findByTestId("field-info-popover").click();
+
+    cy.findByTestId("drill-through-section").within(() => {
+      cy.icon("gear").click();
+    });
+
+    cy.findByTestId("column-formatting-settings").within(() => {
+      // Set to hours, minutes, seconds, 24-hour clock
+      cy.findByText("HH:MM:SS").click();
+      cy.findByText("17:24 (24-hour clock)").click();
+    });
+
+    // And you should find the result
+    cy.findByRole("gridcell").findByText("18:34:00");
+
+    cy.findByTestId("column-formatting-settings").within(() => {
+      // Add millisecond display and change back to 12 hours
+      cy.findByText("HH:MM:SS.MS").click();
+      cy.findByText("5:24 PM (12-hour clock)").click();
+    });
+
+    // And you should find the result
+    cy.findByRole("gridcell").findByText("6:34:00.000 PM");
   });
 });
 

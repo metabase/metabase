@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
 import {
+  Icon,
   Button,
   Divider,
   Flex,
@@ -11,6 +11,7 @@ import {
   Select,
   Text,
 } from "metabase/ui";
+
 import type { DateIntervalValue } from "../types";
 import {
   formatDateRange,
@@ -91,7 +92,7 @@ export function DateIntervalPicker({
         <Menu>
           <Menu.Target>
             <Button
-              c="text.2"
+              c="text-dark"
               variant="subtle"
               leftIcon={<Icon name="ellipsis" />}
               aria-label={t`Options`}
@@ -119,7 +120,7 @@ export function DateIntervalPicker({
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">
-        <Group c="text.1" spacing="sm">
+        <Group c="text-medium" spacing="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

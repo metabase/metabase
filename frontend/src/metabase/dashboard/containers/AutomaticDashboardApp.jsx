@@ -13,8 +13,7 @@ import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
-import { Icon } from "metabase/core/components/Icon";
-import Filter from "metabase/query_builder/components/Filter";
+import { Icon } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 
@@ -30,9 +29,6 @@ import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
-import * as Q from "metabase-lib/queries/utils/query";
-import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
-import { isSegment } from "metabase-lib/queries/utils/filter";
 
 import { DashboardTabs } from "../components/DashboardTabs";
 import {
@@ -134,12 +130,6 @@ class AutomaticDashboardAppInner extends Component {
                   <h2 className="text-wrap mr2">
                     {dashboard && <TransientTitle dashboard={dashboard} />}
                   </h2>
-                  {dashboard && dashboard.transient_filters && (
-                    <TransientFilters
-                      filter={dashboard.transient_filters}
-                      metadata={this.props.metadata}
-                    />
-                  )}
                 </div>
                 {savedDashboardId != null ? (
                   <Button className="ml-auto" disabled>{t`Saved`}</Button>
@@ -217,45 +207,6 @@ const TransientTitle = ({ dashboard }) =>
   ) : dashboard.name ? (
     <span>{dashboard.name}</span>
   ) : null;
-
-const TransientFilters = ({ filter, metadata }) => (
-  <div className="mt1 flex align-center text-medium text-bold">
-    {Q.getFilters({ filter }).map((f, index) => (
-      <TransientFilter key={index} filter={f} metadata={metadata} />
-    ))}
-  </div>
-);
-
-const TransientFilter = ({ filter, metadata }) => {
-  const dimension = getFilterDimension(filter, metadata);
-
-  return (
-    <div className="mr3">
-      <Icon
-        size={12}
-        name={getIconForFilter(filter, dimension)}
-        className="mr1"
-      />
-      <Filter filter={filter} metadata={metadata} />
-    </div>
-  );
-};
-
-const getIconForFilter = (filter, dimension) => {
-  const field = dimension?.field();
-
-  if (isSegment(filter)) {
-    return "star";
-  } else if (!field) {
-    return "label";
-  } else if (field.isDate()) {
-    return "calendar";
-  } else if (field.isLocation()) {
-    return "location";
-  } else {
-    return "label";
-  }
-};
 
 const RELATED_CONTENT = {
   compare: {

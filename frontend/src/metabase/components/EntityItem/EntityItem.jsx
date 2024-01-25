@@ -8,10 +8,10 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import {
   isPreviewShown,
-  isFullyParametrized,
+  isFullyParameterized,
   isItemModel,
   isItemPinned,
 } from "metabase/collections/utils";
@@ -102,7 +102,7 @@ function EntityItemMenu({
 }) {
   const isPinned = isItemPinned(item);
   const isPreviewed = isPreviewShown(item);
-  const isParametrized = isFullyParametrized(item);
+  const isParameterized = isFullyParameterized(item);
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
   const isMetabotShown = isModel && canUseMetabot;
@@ -134,10 +134,10 @@ function EntityItemMenu({
             : t`Show visualization`,
           icon: isPreviewed ? "eye_crossed_out" : "eye",
           action: onTogglePreview,
-          tooltip: !isParametrized
+          tooltip: !isParameterized
             ? t`Open this question and fill in its variables to see it.`
             : undefined,
-          disabled: !isParametrized,
+          disabled: !isParameterized,
           event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
         },
         onMove && {
@@ -172,7 +172,7 @@ function EntityItemMenu({
       isXrayShown,
       isMetabotShown,
       isPreviewed,
-      isParametrized,
+      isParameterized,
       isBookmarked,
       onPin,
       onMove,

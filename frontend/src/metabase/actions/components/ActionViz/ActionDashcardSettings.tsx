@@ -5,8 +5,6 @@ import { useMemo } from "react";
 import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
 
-import MetabaseSettings from "metabase/lib/settings";
-
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 
@@ -27,14 +25,13 @@ import {
   ActionSettingsLeft,
   ActionSettingsRight,
   ModalActions,
-  ExplainerText,
-  BrandLinkWithLeftMargin,
 } from "./ActionDashcardSettings.styled";
 import {
   getParameterDefaultValue,
   isParameterHidden,
   isParameterRequired,
 } from "./utils";
+import { ExplainerText } from "./ExplainerText";
 
 const mapDispatchToProps = {
   setActionForDashcard,
@@ -101,14 +98,7 @@ export function ActionDashcardSettings({
                 <ActionSettingsHeader>
                   {t`Where should the values for '${action.name}' come from?`}
                 </ActionSettingsHeader>
-                <ExplainerText>
-                  {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
-                  <BrandLinkWithLeftMargin
-                    href={MetabaseSettings.docsUrl("dashboards/actions")}
-                  >
-                    {t`Learn more.`}
-                  </BrandLinkWithLeftMargin>
-                </ExplainerText>
+                <ExplainerText />
               </>
             )}
             <ParameterMapperContainer>

@@ -46,19 +46,60 @@
 
 (declare root-collection)
 
-(defn- remove-other-users-personal-collections
+(defn- location-from-collection-id-clause
+  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
+   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
+   then restrict to that collection's parents and children."
+  [collection-id]
+  (if collection-id
+    [:and
+     [:like :location (str "%/" collection-id "/%")]
+     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
+    [:not [:like :location "/%/%/"]]))
+
+(defn- remove-other-users-personal-subcollections
   [user-id collections]
-  (let [personal-ids (into #{} (comp (filter :personal_owner_id)
-                                     (remove (comp #{user-id} :personal_owner_id))
-                                     (map :id))
-                           collections)
-        prefixes     (into #{} (map (fn [id] (format "/%d/" id))) personal-ids)
-        personal?    (fn [{^String location :location id :id}]
-                       (or (personal-ids id)
-                           (prefixes (re-find #"^/\d+/" location))))]
-    (if (seq prefixes)
-      (remove personal? collections)
-      collections)))
+  (let [personal-ids         (set (t2/select-fn-set :id :model/Collection
+                                                    {:where
+                                                     [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
+        personal-descendant? (fn [collection]
+                               (let [first-parent-collection-id (-> collection
+                                                                    :location
+                                                                    collection/location-path->ids
+                                                                    first)]
+                                 (personal-ids first-parent-collection-id)))]
+    (remove personal-descendant? collections)))
+
+(defn- select-collections
+  "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
+  the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
+  is not necessary.
+
+  For archived, we can either include everthing (when archived is `nil`), only archived (when `archived` is true),
+  or only non-archived (when `archived` is false).
+
+  To select only personal collections, pass in `personal-only` as `true`.
+  This will select only collections where `personal_owner_id` is not `nil`."
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  (cond->>
+   (t2/select :model/Collection
+              {:where [:and
+                       (when (some? archived)
+                         [:= :archived archived])
+                       (when shallow
+                         (location-from-collection-id-clause collection-id))
+                       (when personal-only
+                         [:!= :personal_owner_id nil])
+                       (when exclude-other-user-collections
+                         [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
+                       (perms/audit-namespace-clause :namespace namespace)
+                       (collection/visible-collection-ids->honeysql-filter-clause
+                        :id
+                        (collection/permissions-set->visible-collection-ids permissions-set))]
+               ;; Order NULL collection types first so that audit collections are last
+               :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+                          [:%lower.name :asc]]})
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -68,27 +109,23 @@
   `?archived=true`.
 
   By default, admin users will see all collections. To hide other user's collections pass in
-  `?exclude-other-user-collections=true`."
-  [archived exclude-other-user-collections namespace]
+  `?exclude-other-user-collections=true`.
+
+  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
+  [archived exclude-other-user-collections namespace personal-only]
   {archived                       [:maybe ms/BooleanValue]
    exclude-other-user-collections [:maybe ms/BooleanValue]
-   namespace                      [:maybe ms/NonBlankString]}
-  (as-> (t2/select Collection
-                   {:where    [:and
-                               [:= :archived archived]
-                               (perms/audit-namespace-clause :namespace namespace)
-                               (collection/visible-collection-ids->honeysql-filter-clause
-                                :id
-                                (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                              ;; Order NULL collection types first so that audit collections are last
-                    :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
-                               [:%lower.name :asc]]}) collections
-    ;; Remove other users' personal collections
-    (if exclude-other-user-collections
-      (remove-other-users-personal-collections api/*current-user-id* collections)
-      collections)
-    ;; include Root Collection at beginning or results if archived isn't `true`
-    (if archived
+   namespace                      [:maybe ms/NonBlankString]
+   personal-only                  [:maybe ms/BooleanValue]}
+  (as->
+   (select-collections {:archived                       archived
+                        :exclude-other-user-collections exclude-other-user-collections
+                        :namespace                      namespace
+                        :shallow                        false
+                        :personal-only                  personal-only
+                        :permissions-set                @api/*current-user-permissions-set*}) collections
+    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
+    (if (or archived personal-only)
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
@@ -101,6 +138,26 @@
       (-> collection
           (dissoc ::collection.root/is-root?)
           collection/personal-collection-with-ui-details))))
+
+(defn- shallow-tree-from-collection-id
+  "Returns only a shallow Collection in the provided collection-id, e.g.
+
+  location: /1/
+  ```
+  [{:name     \"A\"
+    :location \"/1/\"
+    :children 1}
+    ...
+    {:name     \"H\"
+     :location \"/1/\"}]
+
+  If the collection-id is nil, then we default to the root collection.
+  ```"
+  [colls]
+  (->> colls
+       (map collection/personal-collection-with-ui-details)
+       (collection/collections->tree nil)
+       (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
@@ -123,33 +180,30 @@
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
-  [exclude-archived exclude-other-user-collections namespace]
+  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
-   namespace                      [:maybe ms/NonBlankString]}
-  (let [exclude-archived? exclude-archived
-        exclude-other-user-collections? exclude-other-user-collections
-        coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                (update acc (if dataset :dataset :card) conj collection_id))
-                              {:dataset #{}
-                               :card    #{}}
-                              (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
-                                                          :from            [:report_card]
-                                                          :where           [:= :archived false]}))
-        colls (cond->>
-                (t2/select Collection
-                  {:where [:and
-                           (when exclude-archived?
-                             [:= :archived false])
-                           (perms/audit-namespace-clause :namespace namespace)
-                           (collection/visible-collection-ids->honeysql-filter-clause
-                            :id
-                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-                exclude-other-user-collections?
-                (remove-other-users-personal-collections api/*current-user-id*))
-        colls-with-details (map collection/personal-collection-with-ui-details colls)]
-    (collection/collections->tree coll-type-ids colls-with-details)))
-
+   namespace                      [:maybe ms/NonBlankString]
+   shallow                        [:maybe :boolean]
+   collection-id                  [:maybe ms/PositiveInt]}
+  (let [archived    (if exclude-archived false nil)
+        collections (select-collections {:archived                       archived
+                                         :exclude-other-user-collections exclude-other-user-collections
+                                         :namespace                      namespace
+                                         :shallow                        shallow
+                                         :collection-id                  collection-id
+                                         :permissions-set                @api/*current-user-permissions-set*})]
+    (if shallow
+      (shallow-tree-from-collection-id collections)
+      (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                          (update acc (if dataset :dataset :card) conj collection_id))
+                                        {:dataset #{}
+                                         :card    #{}}
+                                        (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                                                    :from            [:report_card]
+                                                                    :where           [:= :archived false]}))
+            collections-with-details (map collection/personal-collection-with-ui-details collections)]
+        (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
@@ -354,11 +408,11 @@
   [_ collection options]
   (card-query false collection options))
 
-(defn- fully-parametrized-text?
-  "Decide if `text`, usually (a part of) a query, is fully parametrized given the parameter types
+(defn- fully-parameterized-text?
+  "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
   described by `template-tags` (usually the template tags of a native query).
 
-  The rules to consider a piece of text fully parametrized is as follows:
+  The rules to consider a piece of text fully parameterized is as follows:
 
   1. All parameters not in an optional block are field-filters or snippets or have a default value.
   2. All required parameters have a default value.
@@ -377,7 +431,7 @@
                                   (comp (filter params/Param?)
                                         (map :k))
                                   (params.parse/parse text))]
-      (and (every? #(or (#{:dimension :snippet} (:type %))
+      (and (every? #(or (#{:dimension :snippet :card} (:type %))
                         (:default %))
                    (map template-tags obligatory-params))
            (every? #(or (not (:required %))
@@ -388,17 +442,17 @@
       ;; true so that we still can try to generate a preview for the query and display an error.
       false)))
 
-(defn- fully-parametrized-query? [row]
+(defn- fully-parameterized-query? [row]
   (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
     (if-let [template-tags (:template-tags native-query)]
-      (fully-parametrized-text? (:query native-query) template-tags)
+      (fully-parameterized-text? (:query native-query) template-tags)
       true)))
 
 (defn- post-process-card-row [row]
   (-> row
       (dissoc :authority_level :icon :personal_owner_id :dataset_query)
       (update :collection_preview api/bit->boolean)
-      (assoc :fully_parametrized (fully-parametrized-query? row))))
+      (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
   [_ rows]

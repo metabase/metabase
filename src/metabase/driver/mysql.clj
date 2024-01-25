@@ -28,7 +28,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -756,7 +755,12 @@
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))
-          (qp.writeback/execute-write-sql! db-id sql))
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver
+           db-id
+           nil
+           (fn [conn]
+             (jdbc/execute! {:connection conn} sql))))
         (finally
           (.delete temp-file))))))
 
@@ -850,7 +854,7 @@
   (let [{global-grants   :global
          database-grants :database
          table-grants    :table} (group-by :level privilege-grants)
-        lower-database-name (u/lower-case-en database-name)
+        lower-database-name  (u/lower-case-en database-name)
         all-table-privileges (set/union (:privilege-types (first global-grants))
                                         (:privilege-types (m/find-first #(= (:object %) (str "`" lower-database-name "`.*"))
                                                                         database-grants)))
@@ -872,11 +876,14 @@
   ;; for the mysql database), so we can't query the full privileges of the current user.
   (when-not (mariadb? database)
     (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+          db-name     (or (get-in database [:details :db])
+                          ;; some tests are stil using dbname
+                          (get-in database [:details :dbname]))
           table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
                            (drop 1)
                            (map first))]
       (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()")
-                                                             (:name database)
+                                                             db-name
                                                              table-names)]
         {:role   nil
          :schema nil

@@ -1,5 +1,5 @@
 import { singularize } from "metabase/lib/formatting";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type { ColumnGroupDisplayInfo } from "metabase-lib/types";
 
 export function getColumnGroupName(groupInfo: ColumnGroupDisplayInfo) {

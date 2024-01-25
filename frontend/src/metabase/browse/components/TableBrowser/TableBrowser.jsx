@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
 import {
   isVirtualCardId,
@@ -14,7 +14,7 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 
 import { ANALYTICS_CONTEXT } from "../../constants";
-import BrowseHeader from "../BrowseHeader";
+import { BrowseHeader } from "../BrowseHeader";
 import {
   TableActionLink,
   TableCard,

@@ -22,6 +22,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           padding: compact ? `${rem(3)} ${rem(7)}` : `${rem(11)} ${rem(15)}`,
           fontSize: theme.fontSizes.md,
           lineHeight: theme.lineHeight,
+          overflow: "hidden",
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
             [`.${getStylesRef("leftIcon")}`]: {
@@ -34,6 +35,9 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
         },
         label: {
           ref: getStylesRef("label"),
+          display: "inline-block",
+          height: "auto",
+          textOverflow: "ellipsis",
         },
         leftIcon: {
           ref: getStylesRef("leftIcon"),
@@ -51,17 +55,17 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
 
         return {
           root: {
-            color: theme.colors.text[2],
-            borderColor: theme.colors.border[0],
+            color: theme.fn.themeColor("text-dark"),
+            borderColor: theme.fn.themeColor("border"),
             backgroundColor: theme.white,
             "&:hover": {
               color: primaryColor,
-              backgroundColor: theme.colors.bg[0],
+              backgroundColor: theme.fn.themeColor("bg-light"),
             },
             "&:disabled": {
-              color: theme.colors.text[0],
-              borderColor: theme.colors.border[0],
-              backgroundColor: theme.colors.bg[0],
+              color: theme.fn.themeColor("text-light"),
+              borderColor: theme.fn.themeColor("border"),
+              backgroundColor: theme.fn.themeColor("bg-light"),
             },
             "&[data-loading]": {
               [`& .${getStylesRef("leftIcon")}`]: {
@@ -85,13 +89,13 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               backgroundColor: hoverColor,
             },
             "&:disabled": {
-              color: theme.colors.text[0],
-              borderColor: theme.colors.border[0],
-              backgroundColor: theme.colors.bg[0],
+              color: theme.fn.themeColor("text-light"),
+              borderColor: theme.fn.themeColor("border"),
+              backgroundColor: theme.fn.themeColor("bg-light"),
             },
             "&[data-loading]": {
               [`& .${getStylesRef("leftIcon")}`]: {
-                color: theme.colors.focus[0],
+                color: theme.fn.themeColor("focus"),
               },
             },
           },
@@ -112,9 +116,9 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               backgroundColor,
             },
             "&:disabled": {
-              color: theme.colors.text[0],
-              borderColor: theme.colors.border[0],
-              backgroundColor: theme.colors.bg[0],
+              color: theme.fn.themeColor("text-light"),
+              borderColor: theme.fn.themeColor("border"),
+              backgroundColor: theme.fn.themeColor("bg-light"),
             },
           },
         };
@@ -131,7 +135,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               backgroundColor: "transparent",
             },
             "&:disabled": {
-              color: theme.colors.text[0],
+              color: theme.fn.themeColor("text-light"),
               borderColor: "transparent",
               backgroundColor: "transparent",
             },

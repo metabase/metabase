@@ -1,8 +1,7 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Box, Flex, Text, Icon } from "metabase/ui";
 
 import * as Lib from "metabase-lib";
 
@@ -26,7 +25,7 @@ import {
 } from "./JoinStep.styled";
 
 export function JoinStep({
-  topLevelQuery: query,
+  query,
   step,
   color,
   readOnly,

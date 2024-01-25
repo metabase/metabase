@@ -54,6 +54,7 @@
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
+  :export?    true
   :audit      :getter
   :setter
   (fn [new-value]
@@ -63,6 +64,7 @@
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     (fn [] (short-timezone-name (report-timezone)))
   :doc        false)
@@ -70,6 +72,7 @@
 (defsetting report-timezone-long
   "Current report timezone string"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
@@ -887,6 +890,10 @@
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:dynamic *insert-chunk-rows*
+  "The number of rows to insert at a time when uploading data to a database. This can be bound for testing purposes."
+  nil)
+
 (defmulti table-name-length-limit
   "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver])}
@@ -907,8 +914,23 @@
 
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
-   `column-names`."
+   `column-names`.
+
+  The types in `values` may include:
+  - java.lang.String
+  - java.lang.Double
+  - java.math.BigInteger
+  - java.lang.Boolean
+  - java.time.LocalDate
+  - java.time.LocalDateTime
+  - java.time.OffsetDateTime"
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti add-columns!
+  "Add columns given by `col->type` to a table named `table-name`. If the table doesn't exist it will throw an error."
+  {:added "0.49.0", :arglists '([driver db-id table-name col->type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -5,7 +5,8 @@
    [malli.core :as mc]
    [malli.experimental :as mx]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.defn :as mu.defn]))
+   [metabase.util.malli.defn :as mu.defn]
+   [metabase.util.malli.fn :as mu.fn]))
 
 (deftest ^:parallel annotated-docstring-test
   (are [fn-tail expected] (= expected
@@ -33,20 +34,21 @@
 
 (deftest ^:parallel mu-defn-test
   (testing "invalid input"
-    (is (=? {:humanized {:x ["missing required key"]
-                         :y ["missing required key"]}}
+    (is (=? {:humanized {:x ["missing required key, got: nil"]
+                         :y ["missing required key, got: nil"]}}
             (try (bar {})
                  (catch Exception e (ex-data e))))
         "when we pass bar an invalid shape um/defn throws"))
 
   (testing "invalid output"
-    (is (=? {:humanized {:x ["should be an int"]
-                         :y ["missing required key"]}}
+    (is (=? {:humanized {:x ["should be an int, got: \"3\""]
+                         :y ["missing required key, got: nil"]}}
             (try (baz)
-                 (catch Exception e (ex-data e))))
+                 (catch Exception e (def eed (ex-data e)) eed)))
         "when baz returns an invalid form um/defn throws")
     (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]"
            (:doc (meta #'baz))))))
+
 
 (mu/defn ^:private boo :- :int "something very important to remember goes here" [_x])
 
@@ -158,3 +160,25 @@
              :tag)))
   (is (= 'Integer
          (-> #'add-ints meta :arglists first meta :tag))))
+
+(deftest defn-forms-are-not-emitted-for-skippable-ns-in-prod-test
+  (testing "omission in macroexpansion"
+    (testing "returns a simple fn*"
+      (binding [mu.fn/*skip-ns-decision-fn* (constantly true)]
+        (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
+          (is (= '(def f
+                    "Inputs: []\n  Return: :int" (clojure.core/fn [] "foo"))
+                 expansion)))))
+    (testing "returns an instrumented fn"
+      (binding [mu.fn/*skip-ns-decision-fn* (constantly false)]
+        (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
+          (is (= '(def f
+                    "Inputs: []\n  Return: :int"
+                    (clojure.core/let
+                        [&f (clojure.core/fn [] "foo")]
+                      (clojure.core/fn
+                        ([]
+                         (try
+                           (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
+                           (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
+                 expansion)))))))

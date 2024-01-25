@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Card]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -35,20 +34,20 @@
                                        :skip_if_empty false})
                          :recipients (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))})))]
             (testing "allowed email -- should pass"
-              (premium-features-test/with-premium-features #{:email-allow-list}
+              (mt/with-premium-features #{:email-allow-list}
                 (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
                   (let [{:keys [response recipients]} (send! 200)]
                     (is (= {:ok true}
                            response))
                     (is (contains? recipients "test@metabase.com"))))
                 (testing "No :email-allow-list token"
-                  (premium-features-test/with-premium-features #{}
+                  (mt/with-premium-features #{}
                     (let [{:keys [response recipients]} (send! 200)]
                       (is (= {:ok true}
                              response))
                       (is (contains? recipients "test@metabase.com")))))))
             (testing "disallowed email"
-              (premium-features-test/with-premium-features #{:email-allow-list}
+              (mt/with-premium-features #{:email-allow-list}
                 (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
                   (testing "should fail when :email-allow-list is enabled"
                     (let [{:keys [response recipients]} (send! 403)]
@@ -56,7 +55,7 @@
                              (:message response)))
                       (is (not (contains? recipients "test@metabase.com")))))
                   (testing "No :email-allow-list token -- should still pass"
-                    (premium-features-test/with-premium-features #{}
+                    (mt/with-premium-features #{}
                       (let [{:keys [response recipients]} (send! 200)]
                         (is (= {:ok true}
                                response))

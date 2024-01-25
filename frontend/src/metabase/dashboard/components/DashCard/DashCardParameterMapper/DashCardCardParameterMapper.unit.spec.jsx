@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-import { getIcon } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 
 import {
   createMockCard,
@@ -33,12 +32,11 @@ const state = createMockState({
 const metadata = getMetadata(state); // metabase-lib Metadata instance
 
 const setup = options => {
-  render(
+  renderWithProviders(
     <DashCardCardParameterMapper
       card={createMockCard()}
       dashcard={createMockDashboardCard()}
       editingParameter={{}}
-      target={null}
       mappingOptions={[]}
       metadata={metadata}
       setParameterMapping={jest.fn()}

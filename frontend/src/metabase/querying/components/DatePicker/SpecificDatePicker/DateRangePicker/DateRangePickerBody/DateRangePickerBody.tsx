@@ -53,7 +53,7 @@ export function DateRangePickerBody({
           aria-label={t`Start date`}
           onChange={handleStartDateChange}
         />
-        <Text c="text.0">{t`and`}</Text>
+        <Text c="text-light">{t`and`}</Text>
         <FlexDateInput
           value={endDate}
           popoverProps={{ opened: false }}
@@ -68,7 +68,7 @@ export function DateRangePickerBody({
             aria-label={t`Start time`}
             onChange={handleStartTimeChange}
           />
-          <Text c="text.0">{t`and`}</Text>
+          <Text c="text-light">{t`and`}</Text>
           <FlexTimeInput
             value={endDate}
             aria-label={t`End time`}

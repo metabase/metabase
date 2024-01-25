@@ -26,6 +26,7 @@ import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import type { Card, Collection, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 
@@ -91,17 +92,26 @@ function ModelDetailPage({
   );
 
   const database = model.database();
-  const hasDataPermissions = model.query().isEditable();
+  const { isEditable } = Lib.queryDisplayInfo(model.query());
+  const hasDataPermissions = isEditable;
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;
   const supportsNestedQueries =
     database != null && database.hasFeature("nested-queries");
 
-  const mainTable = useMemo(
-    () => (model.isStructured() ? model.query().sourceTable() : null),
-    [model],
-  );
+  const mainTable = useMemo(() => {
+    const query = model.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+
+    if (isNative) {
+      return null;
+    }
+
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    const table = model.metadata().table(sourceTableId);
+    return table;
+  }, [model]);
 
   const tab = useMemo(() => {
     const pathname = location.pathname;

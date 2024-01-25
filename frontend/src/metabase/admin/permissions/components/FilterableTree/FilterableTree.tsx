@@ -7,6 +7,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
+import type { IconName } from "metabase/ui";
 import {
   EmptyStateContainer,
   FilterableTreeContainer,
@@ -23,7 +24,7 @@ interface FilterableTreeProps {
   itemGroups: ITreeNodeItem[][];
   emptyState?: {
     text: string;
-    icon: string;
+    icon: IconName;
   };
   onSelect: (item: ITreeNodeItem) => void;
 }
@@ -73,8 +74,6 @@ export const FilterableTree = ({
             TreeNode={AdminTreeNode}
             emptyState={
               <EmptyStateContainer>
-                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-                {/* @ts-ignore */}
                 <EmptyState
                   message={emptyState?.text ?? t`Nothing here`}
                   icon={emptyState?.icon ?? "folder"}

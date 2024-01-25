@@ -20,6 +20,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -90,7 +91,7 @@ const QuestionActions = ({
     canWrite &&
     isSaved &&
     isDataset &&
-    checkDatabaseCanPersistDatasets(question.query().database());
+    checkDatabaseCanPersistDatasets(question.database());
 
   const handleEditQuery = useCallback(() => {
     setQueryBuilderMode("dataset", {
@@ -197,7 +198,8 @@ const QuestionActions = ({
     }
   }
 
-  if (!question.query().readOnly()) {
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  if (isEditable) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "clone",

@@ -4,7 +4,7 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
-import type { IconProps } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/ui";
 
 export interface ColumnSetting extends TableColumnOrderSetting {
   fieldRef: FieldReference;

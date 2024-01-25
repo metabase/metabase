@@ -1,6 +1,7 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
@@ -82,10 +83,14 @@
                                                (when-let [col (lib.equality/find-matching-column
                                                                query stage-number a-breakout cols
                                                                {:generous? true})]
-                                                 [col index]))
+                                                 [col [index a-breakout]]))
                                              (or (breakouts query stage-number) [])))]
-         (mapv #(let [pos (matching %)]
+         (mapv #(let [[pos a-breakout] (matching %)
+                      binning (lib.binning/binning a-breakout)
+                      {:keys [unit]} (lib.temporal-bucket/temporal-bucket a-breakout)]
                   (cond-> %
+                    binning (lib.binning/with-binning binning)
+                    unit (lib.temporal-bucket/with-temporal-bucket unit)
                     pos (assoc :breakout-position pos)))
                cols))))))
 
@@ -130,3 +135,12 @@
       (lib.remove-replace/remove-clause query stage-number a-breakout))
     query
     (existing-breakouts query stage-number column))))
+
+(mu/defn breakout-column :- ::lib.schema.metadata/column
+  "Returns the input column used for this breakout."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   breakout-ref :- ::lib.schema.ref/ref]
+  (->> (lib.util/query-stage query stage-number)
+       (lib.metadata.calculation/visible-columns query stage-number)
+       (lib.equality/find-matching-column breakout-ref)))

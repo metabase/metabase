@@ -1,4 +1,5 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
+import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 /**
  * @typedef {object} QuestionResource
@@ -107,6 +108,8 @@ export function visitEmbeddedPage(
  * but make sure user is signed out.
  */
 export function visitIframe() {
+  modal().findByText("Preview").click();
+
   cy.document().then(doc => {
     const iframe = doc.querySelector("iframe");
 
@@ -147,10 +150,51 @@ export function openEmbedModalFromMenu() {
     .click();
 }
 
-export function openStaticEmbeddingModal() {
+/**
+ * Open Static Embedding setup modal
+ * @param {object} params
+ * @param {("overview"|"parameters"|"appearance")} [params.activeTab] - modal tab to open
+ * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
+ * @param {boolean} [params.acceptTerms] - whether we need to go through the legalese step
+ */
+export function openStaticEmbeddingModal({
+  activeTab,
+  previewMode,
+  acceptTerms = true,
+  confirmSave,
+} = {}) {
   openEmbedModalFromMenu();
 
+  if (confirmSave) {
+    cy.findByRole("button", { name: "Save" }).click();
+  }
+
   cy.findByTestId("sharing-pane-static-embed-button").click();
+
+  if (acceptTerms) {
+    cy.findByTestId("accept-legalese-terms-button").click();
+  }
+
+  modal().within(() => {
+    if (activeTab) {
+      const tabKeyToNameMap = {
+        overview: "Overview",
+        parameters: "Parameters",
+        appearance: "Appearance",
+      };
+
+      cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();
+    }
+
+    if (previewMode) {
+      const previewModeToKeyMap = {
+        code: "Code",
+        preview: "Preview",
+      };
+
+      cy.findByText(previewModeToKeyMap[previewMode]).click();
+    }
+  });
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
@@ -173,9 +217,9 @@ export function openNewPublicLinkDropdown(resourceType) {
 }
 
 export function createPublicQuestionLink(questionId) {
-  cy.request("POST", `/api/card/${questionId}/public_link`, {});
+  return cy.request("POST", `/api/card/${questionId}/public_link`, {});
 }
 
 export function createPublicDashboardLink(dashboardId) {
-  cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
+  return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }

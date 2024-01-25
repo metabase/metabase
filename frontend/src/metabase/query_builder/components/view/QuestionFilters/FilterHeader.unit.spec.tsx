@@ -13,7 +13,6 @@ import {
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { FilterHeader } from "./QuestionFilters";
 
 const metadata = createMockMetadata({
@@ -40,8 +39,8 @@ function setup({
       dataset_query: Lib.toLegacyQuery(query),
     });
 
-    const handleQueryChange = (nextLegacyQuery: StructuredQuery) => {
-      const nextQuery = nextLegacyQuery.question()._getMLv2Query();
+    const handleQueryChange = (question: Question) => {
+      const nextQuery = question.query();
       setQuery(nextQuery);
       onChange(nextQuery);
     };
@@ -51,7 +50,7 @@ function setup({
         <FilterHeader
           question={question}
           expanded={isExpanded}
-          onQueryChange={handleQueryChange}
+          updateQuestion={handleQueryChange}
         />
       </div>
     );
@@ -76,11 +75,6 @@ function setup({
 }
 
 describe("FilterHeader", () => {
-  it("should not render if a query has no filters", () => {
-    setup({ query: createQuery() });
-    expect(screen.queryByTestId("TEST_CONTAINER")).toBeEmptyDOMElement();
-  });
-
   it("should not render if expanded is false", () => {
     setup({ isExpanded: false });
     expect(screen.queryByTestId("TEST_CONTAINER")).toBeEmptyDOMElement();
@@ -169,9 +163,9 @@ describe("FilterHeader", () => {
     expect(screen.getByText("Count is greater than 5")).toBeInTheDocument();
 
     const query = getNextQuery();
+    expect(Lib.stageCount(query)).toBe(2);
     expect(Lib.filters(query, 0)).toHaveLength(1);
     expect(Lib.filters(query, 1)).toHaveLength(1);
-    expect(Lib.filters(query, 2)).toHaveLength(0);
   });
 
   it("should remove a filter from the previous stage", () => {

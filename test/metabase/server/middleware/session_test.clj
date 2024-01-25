@@ -18,11 +18,10 @@
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
+   [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -131,7 +130,7 @@
     (with-redefs [env/env (assoc env/env :max-session-age "1")]
       (doseq [[created-at expected msg]
               [[:%now                                                               false "brand-new session"]
-               [#t "1970-01-01T00:00:00Z"                                           true  "really old session"]
+               [#t "1970-01-01T00:00:01Z"                                           true  "really old session"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
@@ -247,10 +246,11 @@
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri]))))))
 
 (deftest current-user-info-for-api-key-test
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name         "An API Key"
-                                            :user_id      (mt/user->id :lucky)
-                                            :created_by   (mt/user->id :lucky)
-                                            :unhashed_key "mb_foobar"}]
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                            :user_id       (mt/user->id :lucky)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
     (testing "A valid API key works, and user info is added to the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
@@ -286,27 +286,29 @@
      (fn [e] (throw e)))))
 
 (deftest user-data-is-correctly-bound-for-api-keys
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name         "An API Key"
-                                            :user_id      (mt/user->id :lucky)
-                                            :created_by   (mt/user->id :lucky)
-                                            :unhashed_key "mb_foobar"}
-                           :model/ApiKey _ {:name "A superuser API Key"
-                                            :user_id (mt/user->id :crowberto)
-                                            :created_by (mt/user->id :crowberto)
-                                            :unhashed_key "mb_superuser"}]
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                            :user_id       (mt/user->id :lucky)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}
+                           :model/ApiKey _ {:name          "A superuser API Key"
+                                            :user_id       (mt/user->id :crowberto)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  (u.secret/secret "mb_superuser")}]
     (testing "A valid API key works, and user info is added to the request"
-      (is (= {:is-superuser? false
+      (is (= {:is-superuser?     false
               :is-group-manager? false
-              :user-id (mt/user->id :lucky)
-              :user {:id (mt/user->id :lucky)
-                     :email (:email (mt/fetch-user :lucky))}}
+              :user-id           (mt/user->id :lucky)
+              :user              {:id    (mt/user->id :lucky)
+                                  :email (:email (mt/fetch-user :lucky))}}
              (simple-auth-handler {:headers {"x-api-key" "mb_foobar"}}))))
     (testing "A superuser API key has `*is-superuser?*` bound correctly"
-      (is (= {:is-superuser? true
+      (is (= {:is-superuser?     true
               :is-group-manager? false
-              :user-id (mt/user->id :crowberto)
-              :user {:id (mt/user->id :crowberto)
-                     :email (:email (mt/fetch-user :crowberto))}}
+              :user-id           (mt/user->id :crowberto)
+              :user              {:id    (mt/user->id :crowberto)
+                                  :email (:email (mt/fetch-user :crowberto))}}
              (simple-auth-handler {:headers {"x-api-key" "mb_superuser"}}))))))
 
 (deftest current-user-info-for-session-test
@@ -338,7 +340,7 @@
         (t2/insert! Session {:id      (str test-uuid)
                              :user_id (:id user)})
         (testing "is `false` if advanced-permisison is disabled"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (is (= false
                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))
 
@@ -395,7 +397,7 @@
       (t2/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (t2/query-one {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
+      (t2/query-one {:update :core_session, :set {:created_at (t/instant 1000)}, :where [:= :id (str test-uuid)]})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
@@ -540,7 +542,7 @@
 
 (deftest session-timeout-env-var-validation-test
   (let [set-and-get (fn [timeout]
-                      (mt/with-temp-env-var-value [mb-session-timeout (json/generate-string timeout)]
+                      (mt/with-temp-env-var-value! [mb-session-timeout (json/generate-string timeout)]
                         (mw.session/session-timeout)))]
     (testing "Setting the session timeout with env var should work with valid timeouts"
       (doseq [timeout [{:unit "hours", :amount 1}

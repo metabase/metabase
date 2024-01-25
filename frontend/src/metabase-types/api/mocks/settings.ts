@@ -1,3 +1,4 @@
+import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
   Engine,
   EngineField,
@@ -130,9 +131,12 @@ export const createMockSettingDefinition = (
   ...opts,
 });
 
-export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
+export const createMockSettings = (
+  opts?: Partial<Settings | EnterpriseSettings>,
+): EnterpriseSettings => ({
   "admin-email": "admin@metabase.test",
   "anon-tracking-enabled": false,
+  "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
   "application-name": "Metabase",
@@ -160,6 +164,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   engines: createMockEngines(),
   "has-user-setup": true,
   "hide-embed-branding?": true,
+  "show-static-embed-terms": true,
   "ga-enabled": false,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
@@ -196,6 +201,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
   "show-lighthouse-illustration": true,
+  "show-metabase-links": true,
   "show-metabot": true,
   "site-locale": "en",
   "site-url": "http://localhost:3000",

@@ -113,7 +113,7 @@ export function ExcludeOptionPicker({
         {unitOptions.map((option, index) => (
           <Button
             key={index}
-            c="text.2"
+            c="text-dark"
             display="block"
             variant="subtle"
             onClick={() => onSelectUnit(option.unit)}
@@ -127,7 +127,7 @@ export function ExcludeOptionPicker({
         {operatorOptions.map((option, index) => (
           <Button
             key={index}
-            c={option.operator === value?.operator ? "brand.1" : "text.2"}
+            c={option.operator === value?.operator ? "brand" : "text-dark"}
             display="block"
             variant="subtle"
             onClick={() => handleChange(option.operator)}

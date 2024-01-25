@@ -9,28 +9,75 @@ describe("formatDateTimeRangeWithUnit", () => {
   for (const unit of SPECIFIC_DATE_TIME_UNITS) {
     describe(`formats for unit ${unit}`, () => {
       const specs = DATE_RANGE_FORMAT_SPECS[unit];
-      it("should have a default spec in the last position", () => {
-        const i = specs.findIndex(spec => spec.same === null);
-        expect(i).toBe(specs.length - 1);
+      it("should have a default spec", () => {
+        const defaultSpec = specs.find(spec => spec.same === null);
+        expect(defaultSpec).toBeDefined();
       });
-      for (const {
-        same,
-        test: { output, verboseOutput, input },
-      } of specs) {
+
+      for (const spec of specs) {
+        const {
+          same,
+          tests: { verbose, compact, removedYear, removedDay },
+        } = spec;
+
         const inside = same
           ? `inside the same ${same}`
           : "with no units in common";
-        it(`should correctly format a ${unit} range ${inside}`, () => {
-          expect(
-            formatDateTimeRangeWithUnit(input, unit, { type: "tooltip" }),
-          ).toBe(output);
-          if (verboseOutput) {
-            // eslint-disable-next-line jest/no-conditional-expect
-            expect(formatDateTimeRangeWithUnit(input, unit)).toBe(
-              verboseOutput,
+
+        if (verbose) {
+          const { output, verboseOutput, input } = verbose;
+
+          it(`should correctly format a ${unit} range ${inside}`, () => {
+            const options = { type: "tooltip" };
+
+            expect(formatDateTimeRangeWithUnit(input, unit, options)).toBe(
+              output,
             );
-          }
-        });
+
+            if (verboseOutput) {
+              // eslint-disable-next-line jest/no-conditional-expect
+              expect(formatDateTimeRangeWithUnit(input, unit)).toBe(
+                verboseOutput,
+              );
+            }
+          });
+        }
+
+        if (compact) {
+          const { output, input } = compact;
+
+          it(`(options.compact) should correctly compact format a ${unit} range ${inside}`, () => {
+            const options = { compact: true };
+
+            expect(formatDateTimeRangeWithUnit(input, unit, options)).toBe(
+              output,
+            );
+          });
+        }
+
+        if (removedYear) {
+          const { output, input } = removedYear;
+
+          it(`(options.removeYear) should correctly format a ${unit} range ${inside} with the year removed`, () => {
+            const options = { type: "tooltip", removeYear: true };
+
+            expect(formatDateTimeRangeWithUnit(input, unit, options)).toBe(
+              output,
+            );
+          });
+        }
+
+        if (removedDay) {
+          const { output, input } = removedDay;
+
+          it(`(options.removeDay) should correctly format a ${unit} range ${inside} with the day removed`, () => {
+            const options = { type: "tooltip", removeDay: true };
+
+            expect(formatDateTimeRangeWithUnit(input, unit, options)).toBe(
+              output,
+            );
+          });
+        }
       }
     });
   }

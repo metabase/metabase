@@ -61,7 +61,7 @@
           (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :rasta)})
           (t2/update! (t2/table-name Session) {:id session-id}
-            {:created_at (t/instant 0)})
+            {:created_at (t/instant 1000)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
           (finally (t2/delete! Session :id session-id)))))

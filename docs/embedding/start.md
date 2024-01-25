@@ -12,6 +12,10 @@ What is embedding, and how does it work?
 
 The solution to self-service customer analytics: embed the full Metabase app in your app. Interactive embedding integrates with your data permissions to let people slice and dice data on their own using Metabase's query builder.
 
+## [Interactive embedding quick start](./interactive-embedding-quick-start-guide.md)
+
+You'll embed the full Metabase application in your app. Once logged in, people can view a Metabase dashboard in your web app, and be able to use the full Metabase application to explore their data, and only their data.
+
 ## [Static embedding](./static-embedding.md)
 
 Also known as Signed Embedding, Static embedding offers drill-through with custom destinations, so you can define what happens when people click on a chart, like sending people to another chart or URL–all while securing the underlying data.

@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import {
   getDatasetEditorTab,
   getPreviousQueryBuilderMode,
@@ -31,25 +32,26 @@ export const updateCardVisualizationSettings =
     }
 
     // The check allows users without data permission to resize/rearrange columns
-    const hasWritePermissions = question.query().isEditable();
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const hasWritePermissions = isEditable;
     await dispatch(
       updateQuestion(question.updateSettings(settings), {
-        run: hasWritePermissions ? "auto" : false,
         shouldUpdateUrl: hasWritePermissions,
       }),
     );
   };
 
 export const replaceAllCardVisualizationSettings =
-  (settings, question) => async (dispatch, getState) => {
-    question = question ?? getQuestion(getState());
-    question = question.setSettings(settings);
+  (settings, newQuestion) => async (dispatch, getState) => {
+    const oldQuestion = getQuestion(getState());
+    const updatedQuestion = (newQuestion ?? oldQuestion).setSettings(settings);
+    const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
+    const hasWritePermissions = isEditable;
 
-    // The check allows users without data permission to resize/rearrange columns
-    const hasWritePermissions = question.query().isEditable();
     await dispatch(
-      updateQuestion(question, {
-        run: hasWritePermissions ? "auto" : false,
+      updateQuestion(updatedQuestion, {
+        // rerun the query when it is changed alongside settings
+        run: newQuestion != null && hasWritePermissions,
         shouldUpdateUrl: hasWritePermissions,
       }),
     );

@@ -19,6 +19,7 @@ import { ModelIndexes } from "metabase/entities/model-indexes";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Revision from "metabase/entities/revisions";
+import * as Lib from "metabase-lib";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -36,6 +37,7 @@ import {
   getResultsMetadata,
   getTransformedSeries,
   isBasedOnExistingQuestion,
+  getParameters,
 } from "../../selectors";
 
 import { updateUrl } from "../navigation";
@@ -187,8 +189,9 @@ export const apiCreateQuestion = question => {
 
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
+    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
     const questionToCreate = questionWithVizSettings
-      .setQuery(question.query().clean({ skipFilters: true }))
+      .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
     const createdQuestion = await reduxCreateQuestion(
       questionToCreate,
@@ -249,11 +252,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
+    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
     const questionToUpdate = questionWithVizSettings
-      // Before we clean the query, we make sure question is not treated as a dataset
-      // as calling table() method down the line would bring unwanted consequences
-      // such as dropping joins (as joins are treated differently between pure questions and datasets)
-      .setQuery(question.setDataset(false).query().clean({ skipFilters: true }))
+      .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
@@ -302,6 +303,22 @@ export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => {
     return { id: parameterId, value: normalizeValue(value) };
+  },
+);
+
+export const SET_PARAMETER_VALUE_TO_DEFAULT =
+  "metabase/qb/SET_PARAMETER_VALUE_TO_DEFAULT";
+export const setParameterValueToDefault = createThunkAction(
+  SET_PARAMETER_VALUE_TO_DEFAULT,
+  parameterId => (dispatch, getState) => {
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+    const defaultValue = parameter?.default;
+
+    if (defaultValue) {
+      dispatch(setParameterValue(parameterId, defaultValue));
+    }
   },
 );
 

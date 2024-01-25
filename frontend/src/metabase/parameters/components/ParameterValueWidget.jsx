@@ -2,6 +2,7 @@ import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
+import * as Lib from "metabase-lib";
 
 import {
   getParameterIconName,
@@ -9,7 +10,7 @@ import {
 } from "metabase/parameters/utils/ui";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
 import DateRangeWidget from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
@@ -17,7 +18,7 @@ import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { TextWidget } from "metabase/components/TextWidget";
-import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
+import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
 import StringInputWidget from "metabase/parameters/components/widgets/StringInputWidget";
@@ -52,13 +53,14 @@ class ParameterValueWidget extends Component {
     setValue: PropTypes.func.isRequired,
     placeholder: PropTypes.string,
     isEditing: PropTypes.bool,
-    noReset: PropTypes.bool,
     commitImmediately: PropTypes.bool,
     focusChanged: PropTypes.func,
     isFullscreen: PropTypes.bool,
     className: PropTypes.string,
     parameters: PropTypes.array,
     dashboard: PropTypes.object,
+    question: PropTypes.object,
+    setParameterValueToDefault: PropTypes.func,
   };
 
   state = { isFocused: false };
@@ -76,7 +78,20 @@ class ParameterValueWidget extends Component {
       parentFocusChanged(isFocused);
     }
     this.setState({ isFocused });
+
+    if (this.isInsideNativeQuery() && !isFocused) {
+      this.resetToDefault();
+    }
   };
+
+  resetToDefault() {
+    const { required, default: defaultValue } = this.props.parameter;
+    const { value } = this.props;
+
+    if (required && defaultValue && !value) {
+      this.props.setValue(defaultValue);
+    }
+  }
 
   onPopoverClose = () => {
     if (this.valuePopover.current) {
@@ -88,20 +103,67 @@ class ParameterValueWidget extends Component {
     return this.trigger.current;
   };
 
+  getActionIcon() {
+    if (this.props.isFullscreen) {
+      return null;
+    }
+
+    const icon =
+      this.isInsideNativeQuery() && this.props.parameter.required
+        ? this.getRequiredActionIcon()
+        : this.getOptionalActionIcon();
+
+    if (!icon) {
+      // This is required to keep input width constant
+      return <WidgetStatusIcon name="empty" />;
+    }
+
+    return icon;
+  }
+
+  getOptionalActionIcon() {
+    if (this.props.value != null) {
+      return (
+        <WidgetStatusIcon
+          name="close"
+          onClick={() => this.props.setValue(null)}
+        />
+      );
+    }
+
+    if (!hasNoPopover(this.props.parameter)) {
+      return <WidgetStatusIcon name="chevrondown" />;
+    }
+  }
+
+  getRequiredActionIcon() {
+    const { required, default: defaultValue } = this.props.parameter;
+    const { value, setParameterValueToDefault } = this.props;
+
+    if (required && defaultValue && value !== defaultValue) {
+      return (
+        <WidgetStatusIcon
+          name="refresh"
+          onClick={() => setParameterValueToDefault(this.props.parameter.id)}
+        />
+      );
+    }
+  }
+
+  isInsideNativeQuery() {
+    const query = this.props.question?.query();
+    if (query) {
+      const { isNative } = Lib.queryDisplayInfo(query);
+      return isNative;
+    }
+    return false;
+  }
+
   render() {
-    const {
-      parameter,
-      value,
-      setValue,
-      isEditing,
-      placeholder,
-      isFullscreen,
-      noReset,
-      className,
-    } = this.props;
+    const { parameter, value, isEditing, placeholder, className } = this.props;
     const { isFocused } = this.state;
     const hasValue = value != null;
-    const { noPopover } = getWidgetDefinition(parameter);
+    const noPopover = hasNoPopover(parameter);
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
@@ -126,73 +188,59 @@ class ParameterValueWidget extends Component {
             onFocusChanged={this.onFocusChanged}
             onPopoverClose={this.onPopoverClose}
           />
-          <WidgetStatusIcon
-            isFullscreen={isFullscreen}
-            hasValue={hasValue}
-            noReset={noReset}
-            noPopover={!!noPopover}
-            isFocused={isFocused}
-            setValue={setValue}
-          />
+          {this.getActionIcon()}
         </div>
       );
-    } else {
-      const placeholderText = isEditing
-        ? isDateParameter(parameter)
-          ? t`Select a default value…`
-          : t`Enter a default value…`
-        : placeholder || t`Select…`;
+    }
 
-      return (
-        <PopoverWithTrigger
-          ref={this.valuePopover}
-          targetOffsetX={16}
-          triggerElement={
-            <div
-              ref={this.trigger}
-              className={cx(S.parameter, className, {
-                [S.selected]: hasValue,
-              })}
-              role="button"
-              aria-label={placeholder}
-            >
-              {showTypeIcon && (
-                <Icon
-                  name={parameterTypeIcon}
-                  className="flex-align-left mr1 flex-no-shrink"
-                  size={16}
-                />
-              )}
-              <div className="mr1 text-nowrap">
-                <FormattedParameterValue
-                  parameter={parameter}
-                  value={value}
-                  placeholder={placeholderText}
-                />
-              </div>
-              <WidgetStatusIcon
-                isFullscreen={isFullscreen}
-                hasValue={hasValue}
-                noReset={noReset}
-                noPopover={!!noPopover}
-                isFocused={isFocused}
-                setValue={setValue}
+    const placeholderText = isEditing
+      ? isDateParameter(parameter)
+        ? t`Select a default value…`
+        : t`Enter a default value…`
+      : placeholder || t`Select…`;
+
+    return (
+      <PopoverWithTrigger
+        ref={this.valuePopover}
+        targetOffsetX={16}
+        triggerElement={
+          <div
+            ref={this.trigger}
+            className={cx(S.parameter, className, {
+              [S.selected]: hasValue,
+            })}
+            role="button"
+            aria-label={placeholder}
+          >
+            {showTypeIcon && (
+              <Icon
+                name={parameterTypeIcon}
+                className="flex-align-left mr1 flex-no-shrink"
+                size={16}
+              />
+            )}
+            <div className="mr1 text-nowrap">
+              <FormattedParameterValue
+                parameter={parameter}
+                value={value}
+                placeholder={placeholderText}
               />
             </div>
-          }
-          target={this.getTargetRef}
-          // make sure the full date picker will expand to fit the dual calendars
-          autoWidth={parameter.type === "date/all-options"}
-        >
-          <Widget
-            {...this.props}
-            target={this.getTargetRef()}
-            onFocusChanged={this.onFocusChanged}
-            onPopoverClose={this.onPopoverClose}
-          />
-        </PopoverWithTrigger>
-      );
-    }
+            {this.getActionIcon()}
+          </div>
+        }
+        target={this.getTargetRef}
+        // make sure the full date picker will expand to fit the dual calendars
+        autoWidth={parameter.type === "date/all-options"}
+      >
+        <Widget
+          {...this.props}
+          target={this.getTargetRef()}
+          onFocusChanged={this.onFocusChanged}
+          onPopoverClose={this.onPopoverClose}
+        />
+      </PopoverWithTrigger>
+    );
   }
 }
 
@@ -251,6 +299,15 @@ function Widget({
       />
     );
   } else if (isFieldWidget(parameter)) {
+    // TODO this is due to ParameterFieldWidget not supporting focusChanged callback.
+    const setValueOrDefault = value => {
+      const { required, default: defaultValue } = parameter;
+      const shouldUseDefault = required && defaultValue && !value?.length;
+
+      setValue(shouldUseDefault ? defaultValue : value);
+      onPopoverClose();
+    };
+
     return (
       <ParameterFieldWidget
         target={target}
@@ -261,12 +318,8 @@ function Widget({
         placeholder={placeholder}
         value={normalizedValue}
         fields={parameter.fields}
-        setValue={value => {
-          setValue(value);
-          onPopoverClose();
-        }}
+        setValue={setValueOrDefault}
         isEditing={isEditing}
-        focusChanged={onFocusChanged}
       />
     );
   } else {
@@ -293,18 +346,13 @@ Widget.propTypes = {
   onFocusChanged: PropTypes.func.isRequired,
 };
 
-function getWidgetDefinition(parameter) {
-  if (DATE_WIDGETS[parameter.type]) {
-    return DATE_WIDGETS[parameter.type];
-  } else if (isTextWidget(parameter)) {
-    return TextWidget;
-  } else if (isNumberParameter(parameter)) {
-    return NumberInputWidget;
-  } else if (isFieldWidget(parameter)) {
-    return ParameterFieldWidget;
-  } else {
-    return StringInputWidget;
+function hasNoPopover(parameter) {
+  // This is needed because isTextWidget check isn't complete,
+  // and returns true for dates too.
+  if (isDateParameter(parameter)) {
+    return false;
   }
+  return isTextWidget(parameter);
 }
 
 function isTextWidget(parameter) {

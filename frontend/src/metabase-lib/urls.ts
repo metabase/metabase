@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import * as Urls from "metabase/lib/urls";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import type { ParameterId, ParameterValue } from "metabase-types/api";
@@ -14,7 +15,6 @@ type UrlBuilderOpts = {
   includeDisplayIsLocked?: boolean;
   creationType?: string;
   clean?: boolean;
-  cleanFilters?: boolean;
 };
 
 export function getUrl(
@@ -22,7 +22,6 @@ export function getUrl(
   {
     originalQuestion,
     clean = true,
-    cleanFilters = false,
     query,
     includeDisplayIsLocked,
     creationType,
@@ -37,7 +36,6 @@ export function getUrl(
     return Urls.question(null, {
       hash: question._serializeForUrl({
         clean,
-        cleanFilters,
         includeDisplayIsLocked,
         creationType,
       }),
@@ -55,18 +53,18 @@ export function getUrlWithParameters(
   { objectId, clean }: { objectId?: string | number; clean?: boolean } = {},
 ): string {
   const includeDisplayIsLocked = true;
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
 
   if (question.isStructured()) {
     let questionWithParameters = question.setParameters(parameters);
 
-    if (question.query().isEditable()) {
+    if (isEditable) {
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();
 
       return getUrl(questionWithParameters, {
         clean,
-        cleanFilters: true,
         originalQuestion: question,
         includeDisplayIsLocked,
         query: objectId === undefined ? {} : { objectId },
@@ -81,7 +79,7 @@ export function getUrlWithParameters(
     });
   }
 
-  const query = question.query() as NativeQuery;
+  const query = question.legacyQuery() as NativeQuery;
   return getUrl(question, {
     clean,
     query: remapParameterValuesToTemplateTags(

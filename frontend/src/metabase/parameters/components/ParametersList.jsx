@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import {
   SortableContainer,
   SortableElement,
@@ -45,6 +45,7 @@ function ParametersList({
   vertical,
   commitImmediately,
 
+  setParameterValueToDefault,
   setParameterValue,
   setParameterIndex,
   setEditingParameter,
@@ -105,6 +106,7 @@ function ParametersList({
             setParameterValue &&
             (value => setParameterValue(valuePopulatedParameter.id, value))
           }
+          setParameterValueToDefault={setParameterValueToDefault}
           commitImmediately={commitImmediately}
           dragHandle={
             isEditing && setParameterIndex ? <SortableParameterHandle /> : null

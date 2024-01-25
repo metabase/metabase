@@ -239,7 +239,7 @@
   (let [uploads-db-id (public-settings/uploads-database-id)]
     (for [db dbs]
       (assoc db :can_upload (and (= (:id db) uploads-db-id)
-                                 (upload/can-upload? db (public-settings/uploads-schema-name)))))))
+                                 (upload/can-create-upload? db (public-settings/uploads-schema-name)))))))
 
 (defn- dbs-list
   [& {:keys [include-tables?
@@ -336,7 +336,7 @@
   "Add an entry about whether the user can upload to this DB."
   [db]
   (assoc db :can_upload (and (= (u/the-id db) (public-settings/uploads-database-id))
-                             (upload/can-upload? db (public-settings/uploads-schema-name)))))
+                             (upload/can-create-upload? db (public-settings/uploads-schema-name)))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -590,6 +590,7 @@
          "Larger instances can have performance issues matching using substring, so can use prefix matching, "
          " or turn autocompletions off."))
   :visibility :public
+  :export?    true
   :type       :keyword
   :default    :substring
   :audit      :raw-value

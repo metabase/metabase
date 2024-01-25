@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import SelectButton from "metabase/core/components/SelectButton";
-import FieldList from "metabase/query_builder/components/FieldList";
+import { FieldList } from "metabase/admin/datamodel/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
 
 export const FieldMappingRoot = styled.div`
