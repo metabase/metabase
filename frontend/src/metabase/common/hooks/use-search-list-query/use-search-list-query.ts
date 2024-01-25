@@ -10,9 +10,12 @@ import type {
 } from "../use-entity-list-query";
 import { useEntityListQuery } from "../use-entity-list-query";
 
-export const useSearchListQuery = (
+export const useSearchListQuery = <
+  TItem = CollectionItem,
+  TResult = Omit<SearchResults, "data">,
+>(
   props: UseEntityListQueryProps<SearchListQuery> = {},
-): UseEntityListQueryResult<CollectionItem, Omit<SearchResults, "data">> => {
+): UseEntityListQueryResult<TItem, TResult> => {
   return useEntityListQuery(props, {
     fetchList: Search.actions.fetchList,
     getList: Search.selectors.getList,

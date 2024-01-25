@@ -702,7 +702,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         it("should display pivot table in an embed URL", () => {
           openStaticEmbeddingModal({
             activeTab: "parameters",
-            confirmSave: test.confirmSave
+            confirmSave: test.confirmSave,
           });
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
