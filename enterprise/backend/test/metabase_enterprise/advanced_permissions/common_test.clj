@@ -33,9 +33,10 @@
     (mt/with-additional-premium-features #{:advanced-permissions}
       (memoize/memo-clear! @#'field/cached-db-id)
       (perms.test-util/with-restored-perms!
-        (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
-        (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
-        (f)))))
+        (perms.test-util/with-restored-data-perms!
+          (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
+          (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
+          (f))))))
 
 (defmacro ^:private with-all-users-data-perms!
   "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
