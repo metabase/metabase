@@ -26,8 +26,6 @@ describe("issue 16584", () => {
 
     runNativeQuery();
 
-    cy.get(".Visualization").within(() => {
-      cy.findByText("NL").should("exist");
-    });
+    cy.get(".Visualization").findByText("NL").should("exist");
   });
 });
