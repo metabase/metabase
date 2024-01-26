@@ -985,17 +985,22 @@
              (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
                                                                       :dataset true
                                                                       :type :question)))))
+   (testing "can create a model using dataset"
+     (is (=? {:dataset true
+              :type    "model"}
+             (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                      :dataset true)))))
 
-    (testing "can create a model using type"
-      (is (=? {:dataset true
-               :type    "model"}
-           (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
-                                                                    :type :model)))))
+   (testing "can create a model using type"
+     (is (=? {:dataset true
+              :type    "model"}
+          (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                   :type :model)))))
 
-    (testing "default is a question"
-      (is (=? {:dataset false
-               :type    "question"}
-           (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
+   (testing "default is a question"
+     (is (=? {:dataset false
+              :type    "question"}
+          (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
 
 (deftest update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"

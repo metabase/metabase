@@ -663,10 +663,14 @@ saved later when it is ready."
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                     :type       (or (:type card-data) "question")
                                      :creator_id (:id creator)
                                      :dataset    (or (and (:type card-data) (is-model? card-data))
                                                      (boolean (:dataset card-data)))
+                                     :type       (or (:type card-data)
+                                                     ;; most tests will create a model using :dataset true, so we'll
+                                                     ;; respect that
+                                                     (when (:dataset card-data) "model")
+                                                     "question")
                                      :parameters (or parameters [])
                                      :parameter_mappings (or parameter_mappings []))
          result-metadata-chan (result-metadata-async {:query    dataset_query
