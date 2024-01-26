@@ -90,21 +90,21 @@ export const EMPTY_COLLECTION = createMockCollection({
 export const SAMPLE_MODEL = createMockCard({
   id: 1,
   name: "Sample Model",
-  type: "model",
+  dataset: true,
   collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_MODEL_2 = createMockCard({
   id: 2,
   name: "Sample Model 2",
-  type: "model",
+  dataset: true,
   collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_MODEL_3 = createMockCard({
   id: 3,
   name: "Sample Model 3",
-  type: "model",
+  dataset: true,
   collection_id: SAMPLE_COLLECTION_ID,
 });
 

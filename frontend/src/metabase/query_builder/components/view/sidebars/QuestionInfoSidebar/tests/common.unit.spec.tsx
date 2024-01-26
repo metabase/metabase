@@ -15,12 +15,12 @@ describe("QuestionInfoSidebar", () => {
       createMockCard({
         name: "Question",
         description: DESCRIPTION,
-        type: "question",
+        dataset: false,
       }),
       createMockCard({
         name: "Model",
         description: DESCRIPTION,
-        type: "model",
+        dataset: true,
       }),
     ])("should display description of a $name", async card => {
       await setup({ card });
@@ -52,7 +52,7 @@ describe("QuestionInfoSidebar", () => {
 
   describe("model detail link", () => {
     it("is shown for models", async () => {
-      const card = createMockCard({ name: "abc", type: "model" });
+      const card = createMockCard({ name: "abc", dataset: true });
       await setup({ card });
 
       const link = screen.getByText("Model details");
@@ -65,7 +65,7 @@ describe("QuestionInfoSidebar", () => {
       const card = createMockCard({
         name: "abc",
         description: DESCRIPTION,
-        type: "question",
+        dataset: false,
       });
       await setup({ card });
       expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();

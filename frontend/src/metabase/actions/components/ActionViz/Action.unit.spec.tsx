@@ -91,7 +91,7 @@ const CARD = createMockCard({
   }),
   display: "action",
   can_write: true,
-  type: "model",
+  dataset: true,
 });
 
 function createMockActionDashboardCard(

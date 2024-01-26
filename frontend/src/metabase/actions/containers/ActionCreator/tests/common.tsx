@@ -41,7 +41,7 @@ export async function setup({
 }: SetupOpts = {}) {
   if (model === undefined) {
     model = createMockCard({
-      type: "model",
+      dataset: true,
       can_write: canWrite,
     });
   }
