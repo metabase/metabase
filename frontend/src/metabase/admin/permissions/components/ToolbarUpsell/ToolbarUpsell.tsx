@@ -34,7 +34,6 @@ const ToolbarUpsell = ({ upgradeUrl }: ToolbarUpsellProps) => {
         )} and disable download results, control access to the data model, promote group managers, ${(
           <ExternalLink
             key="upsell-more-link"
-            // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
             href={MetabaseSettings.docsUrl("permissions/start")}
           >
             {t`and more`}

@@ -34,7 +34,6 @@ export const ApplicationPermissionsHelp = () => (
     <Text component="footer" align="center" py="1rem" weight={600}>
       {jt`${(
         <ExternalLink
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
           href={MetabaseSettings.docsUrl("permissions/application")}
         >{t`Learn more`}</ExternalLink>
       )} about application permissions`}

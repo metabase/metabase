@@ -15,7 +15,6 @@ ModelEducationalModal.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
 const EDUCATION_URL = MetabaseSettings.learnUrl("getting-started/models");
 
 export function ModelEducationalModal({ isOpen, onClose }) {

@@ -21,7 +21,6 @@ export const settingToFormField = setting => ({
 export const settingToFormFieldId = setting => `setting-${setting.key}`;
 
 export const getEnvVarDocsUrl = envName => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
   return MetabaseSettings.docsUrl(
     "configuring-metabase/environment-variables",
     envName?.toLowerCase(),

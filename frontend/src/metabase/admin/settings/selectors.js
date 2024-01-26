@@ -599,7 +599,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
           <ExternalLink
             key="model-caching-link"
-            // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
             href={MetabaseSettings.docsUrl("data-modeling/models")}
           >{t`Learn more`}</ExternalLink>
         )}.`,

@@ -39,7 +39,6 @@ export const CollectionPermissionsHelp = () => (
     <Text component="footer" align="center" py={24} weight={600}>
       {jt`${(
         <ExternalLink
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
           href={MetabaseSettings.docsUrl("permissions/collections")}
         >{t`Learn more`}</ExternalLink>
       )} about collection permissions`}

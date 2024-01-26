@@ -112,7 +112,6 @@ const getFormFieldProps = (setting?: SettingDefinition) => {
 };
 
 const getDocsLink = (): string => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
   return MetabaseSettings.docsUrl(
     "people-and-groups/google-and-ldap",
     "enabling-google-sign-in",
