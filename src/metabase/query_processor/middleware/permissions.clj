@@ -3,14 +3,12 @@
   (:require
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.config :as config]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -39,23 +37,10 @@
                     :permissions-error?   true}
                    additional-ex-data))))
 
-(def ^:private ^{:arglists '([query])} check-block-permissions
-  "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
-  Collection perms; throw an Exception if they are. Otherwise returns a keyword explaining why the check wasn't done,
-  or why it succeeded (this is mostly for test/debug purposes). The query is still allowed to run if the current User
-  has appropriate data permissions from another Group. See the namespace documentation
-  for [[metabase.models.collection]] for more details.
-
-  Note that this feature is Metabase© Enterprise Edition™ only. Actual implementation is
-  in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE code is
-  present. This feature is only enabled if we have a valid Enterprise Edition™ token."
-  (let [dlay (delay
-              (when config/ee-available?
-                (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
-                (resolve 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions)))]
-    (fn [query]
-      (when-let [f @dlay]
-        (f query)))))
+(defenterprise check-block-permissions
+  "OSS implementation always returns `nil` because block permissions are an EE-only feature."
+  metabase-enterprise.advanced-permissions.models.permissions.block-permissions
+  [_query])
 
 (mu/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
