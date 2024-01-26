@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.models :refer [Card Collection Database Permissions
                             PermissionsGroup PermissionsGroupMembership User]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -130,13 +131,35 @@
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
  (testing "granting data permissions should delete existing block permissions"
-   (mt/with-temp [PermissionsGroup {group-id :id} {}
-                  Permissions      _ {:group_id group-id :object (perms/database-block-perms-path (mt/id))}]
-     (is (= {:schemas :block}
-            (test-db-perms group-id)))
-     (perms/update-data-perms-graph! [group-id (mt/id) :data :schemas] {"public" {(mt/id :venues) {:read :all}}})
-     (is (= {:schemas {"public" {(mt/id :venues) {:read :all}}}}
-            (test-db-perms group-id))))))
+   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+     (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
+     (is (= {:schemas :block} (test-db-perms group-id)))
+     ;; set a table to be no-self-service:
+     (perms/update-data-perms-graph! [group-id (mt/id) :data :schemas] {"PUBLIC" {(mt/id :venues) {:read :all}}})
+     ;; The data-access db perm has been set to no-self-service
+     (is (= :no-self-service
+            (t2/select-one-fn :perm_value :model/DataPermissions {:where [:and
+                                                                          [:= :group_id group-id]
+                                                                          [:= :db_id (mt/id)]
+                                                                          [:= :perm_type "perms/data-access"]]})))
+     (is (= nil (test-db-perms group-id))))))
+
+(deftest update-graph-data-perms-two-tables-should-delete-block-perms-test
+ (testing "granting data permissions on 2 tables should delete existing block permissions"
+   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+     (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
+     (is (= {:schemas :block} (test-db-perms group-id)))
+     (testing "set 2 tables to be no-self-service:"
+       (perms/update-data-perms-graph! [group-id (mt/id) :data :schemas]
+                                       {"PUBLIC" {(mt/id :venues) {:read :all}
+                                                  (mt/id :orders) {:read :all}}})
+       ;; The data-access db perm has been set to no-self-service
+       (is (= :no-self-service
+              (t2/select-one-fn :perm_value :model/DataPermissions {:where [:and
+                                                                            [:= :group_id group-id]
+                                                                            [:= :db_id (mt/id)]
+                                                                            [:= :perm_type "perms/data-access"]]})))
+       (is (= nil (test-db-perms group-id)))))))
 
 (deftest update-graph-disallow-native-query-perms-test
   (testing "Disallow block permissions + native query permissions"
