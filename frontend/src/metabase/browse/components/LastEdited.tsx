@@ -56,9 +56,11 @@ export const LastEdited = ({
       {formattedDate}
     </time>
   );
+
   const tooltipLabel = c(
-    "{0} is the full name (or if this is unavailable, the email address) of the last person who edited a model. {1} is a phrase like '5 months ago'",
+    "{0} is the full name (or if this is unavailable, the email address) of the last person who edited a model. {1} is a date",
   ).jt`Last edited by ${lastEditorFullName}${(<br key="br" />)}${time}`;
+
   return (
     <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
       <Text role="note" size="small">

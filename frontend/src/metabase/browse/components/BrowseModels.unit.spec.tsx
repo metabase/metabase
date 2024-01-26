@@ -5,7 +5,7 @@ import {
   createMockCollection,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
-import { groupModels, BrowseModels } from "./BrowseModels";
+import { groupModels, BrowseModels, getCollectionName } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
   const models = mockModels.slice(0, modelCount);
@@ -251,48 +251,49 @@ describe("BrowseModels", () => {
 
     jest.useRealTimers();
   });
-  it("has a function that groups models by collection", () => {
-    const groupedModels = groupModels(mockModels, "en");
+  it("has a function that groups models by collection, sorting the collections alphabetically when English is the locale", () => {
+    const groupedModels = groupModels(mockModels, "en-US");
+    expect(groupedModels[0][0].collection.name).toEqual("Alpha");
     expect(groupedModels[0]).toHaveLength(3);
+    expect(groupedModels[1][0].collection.name).toEqual("Ångström");
     expect(groupedModels[1]).toHaveLength(3);
+    expect(groupedModels[2][0].collection.name).toEqual("Beta");
     expect(groupedModels[2]).toHaveLength(3);
+    expect(groupedModels[3][0].collection.name).toEqual("Charlie");
     expect(groupedModels[3]).toHaveLength(3);
+    expect(groupedModels[4][0].collection.name).toEqual("Delta");
     expect(groupedModels[4]).toHaveLength(3);
-    expect(groupedModels[5]).toHaveLength(3);
+    expect(groupedModels[5][0].collection.name).toEqual("");
+    expect(getCollectionName(groupedModels[5][0].collection)).toEqual(
+      "Our analytics",
+    );
+    expect(groupedModels[5]).toHaveLength(2);
+    expect(groupedModels[6][0].collection.name).toEqual("Özgür");
     expect(groupedModels[6]).toHaveLength(3);
+    expect(groupedModels[7][0].collection.name).toEqual("Zulu");
+    expect(groupedModels[7]).toHaveLength(3);
   });
-  it("has a function that sorts collection names correctly in English", () => {
-    const groupsOfModels = groupModels(mockModels, "en");
-    const collections = groupsOfModels.map(group => group[0].collection);
-    const collectionIdsAndNames = collections.map(({ id, name }) => ({
-      id,
-      name,
-    }));
-    expect(collectionIdsAndNames).toEqual([
-      { id: 0, name: "Alpha" },
-      { id: 5, name: "Ångström" },
-      { id: 1, name: "Beta" },
-      { id: 2, name: "Charlie" },
-      { id: 3, name: "Delta" },
-      { id: 6, name: "Özgür" },
-      { id: 4, name: "Zulu" },
-    ]);
-  });
-  it("has a function that groups models by collection correctly in Swedish", () => {
-    const groupsOfModels = groupModels(mockModels, "sv-SV");
-    const collections = groupsOfModels.map(group => group[0].collection);
-    const collectionIdsAndNames = collections.map(({ id, name }) => ({
-      id,
-      name,
-    }));
-    expect(collectionIdsAndNames).toEqual([
-      { id: 0, name: "Alpha" },
-      { id: 1, name: "Beta" },
-      { id: 2, name: "Charlie" },
-      { id: 3, name: "Delta" },
-      { id: 4, name: "Zulu" },
-      { id: 5, name: "Ångström" },
-      { id: 6, name: "Özgür" },
-    ]);
+
+  it("has a function that groups models by collection, sorting the collections alphabetically when Swedish is the locale", () => {
+    const groupedModels = groupModels(mockModels, "sv-SV");
+    expect(groupedModels[0][0].collection.name).toEqual("Alpha");
+    expect(groupedModels[0]).toHaveLength(3);
+    expect(groupedModels[1][0].collection.name).toEqual("Beta");
+    expect(groupedModels[1]).toHaveLength(3);
+    expect(groupedModels[2][0].collection.name).toEqual("Charlie");
+    expect(groupedModels[2]).toHaveLength(3);
+    expect(groupedModels[3][0].collection.name).toEqual("Delta");
+    expect(groupedModels[3]).toHaveLength(3);
+    expect(groupedModels[4][0].collection.name).toEqual("");
+    expect(getCollectionName(groupedModels[4][0].collection)).toEqual(
+      "Our analytics",
+    );
+    expect(groupedModels[4]).toHaveLength(2);
+    expect(groupedModels[5][0].collection.name).toEqual("Zulu");
+    expect(groupedModels[5]).toHaveLength(3);
+    expect(groupedModels[6][0].collection.name).toEqual("Ångström");
+    expect(groupedModels[6]).toHaveLength(3);
+    expect(groupedModels[7][0].collection.name).toEqual("Özgür");
+    expect(groupedModels[7]).toHaveLength(3);
   });
 });

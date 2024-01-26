@@ -2,7 +2,11 @@ import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
 
-import type { Card, Collection, SearchResult } from "metabase-types/api";
+import type {
+  Card,
+  CollectionEssentials,
+  SearchResult,
+} from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
@@ -32,7 +36,10 @@ export const groupModels = (
   const groupedModels = Object.values(
     _.groupBy(models, model => model.collection.id),
   ).sort((a, b) =>
-    a[0].collection?.name?.localeCompare(b[0].collection?.name, locale),
+    getCollectionName(a[0].collection).localeCompare(
+      getCollectionName(b[0].collection),
+      locale,
+    ),
   );
   return groupedModels;
 };
@@ -166,16 +173,20 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   );
 };
 
+export const getCollectionName = (collection: CollectionEssentials) => {
+  if (isRootCollection(collection)) {
+    return t`Our analytics`;
+  }
+  return collection?.name || t`Untitled collection`;
+};
+
 const CollectionHeader = ({
   collection,
   id,
 }: {
-  collection: Pick<Collection, "id" | "name">;
+  collection: CollectionEssentials;
   id: string;
 }) => {
-  if (isRootCollection(collection)) {
-    collection.name = t`Our analytics`;
-  }
   const MaybeLink = ({ children }: { children: React.ReactNode }) =>
     collection ? (
       <Group grow noWrap>
@@ -191,7 +202,7 @@ const CollectionHeader = ({
       <MaybeLink>
         <Group spacing=".33rem">
           <Icon name="folder" color={"text-dark"} size={16} />
-          <Text>{collection?.name || "Untitled collection"}</Text>
+          <Text>{getCollectionName(collection)}</Text>
         </Group>
       </MaybeLink>
     </CollectionHeaderContainer>
