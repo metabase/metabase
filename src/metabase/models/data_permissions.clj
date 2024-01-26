@@ -233,7 +233,7 @@
                                           :perm_value value
                                           :db_id      db-id})
       (when (and (= :perms/data-access perm-type)
-                 (= :unrestricted value))
+                 (not= :unrestricted value))
         (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)))))
 
 (mu/defn set-table-permissions!

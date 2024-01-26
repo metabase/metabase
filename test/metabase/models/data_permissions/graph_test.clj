@@ -20,7 +20,7 @@
       (are [api-graph db-graph] (= db-graph
                                    (do
                                      (data-perms.graph/update-data-perms-graph! api-graph)
-                                     (data-perms/data-permissions-graph :group-id group-id-1)))
+                                     (data-perms/data-permissions-graph :group-id group-id-1 :audit? false)))
         ;; Setting granular data access permissions
         {group-id-1
          {database-id-1
@@ -74,9 +74,9 @@
            {:native :none
             :schemas :block}}}}
         {group-id-1
-          {database-id-1
-           {:perms/native-query-editing :no
-            :perms/data-access :block}}}))))
+         {database-id-1
+          {:perms/native-query-editing :no
+           :perms/data-access :block}}}))))
 
 (deftest update-db-level-download-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
