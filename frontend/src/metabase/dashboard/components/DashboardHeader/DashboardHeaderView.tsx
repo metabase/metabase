@@ -117,7 +117,11 @@ export function DashboardHeaderComponent({
           data-testid="dashboard-header"
           ref={header}
         >
-          <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
+          <HeaderContent
+            role="heading"
+            hasSubHeader
+            showSubHeader={showSubHeader}
+          >
             <HeaderCaptionContainer>
               <HeaderCaption
                 key={dashboard.name}
