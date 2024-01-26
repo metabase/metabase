@@ -15,15 +15,12 @@ import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
+  SettingRequiredContainer,
+  SettingRequiredLabel,
   SettingSection,
   SettingsRoot,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
-
-const MULTI_SELECT_OPTIONS = [
-  { name: t`Multiple values`, value: true },
-  { name: t`A single value`, value: false },
-];
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
@@ -108,12 +105,16 @@ const ParameterSettings = ({
           <SettingLabel>{t`People can pick`}</SettingLabel>
           <Radio
             value={getIsMultiSelect(parameter)}
-            options={MULTI_SELECT_OPTIONS}
+            options={[
+              { name: t`Multiple values`, value: true },
+              { name: t`A single value`, value: false },
+            ]}
             vertical
             onChange={onChangeIsMultiSelect}
           />
         </SettingSection>
       )}
+
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
         <SettingValueWidget
@@ -124,21 +125,21 @@ const ParameterSettings = ({
           setValue={onChangeDefaultValue}
         />
 
-        <Toggle
-          // id={`tag-editor-required_${tag.id}`}
-          value={parameter.required}
-          onChange={onChangeRequired}
-        />
-
-        {t`Always require a value`}
-        <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
-
-        {/* <div>
-          <ToggleLabel htmlFor={`tag-editor-required_${tag.id}`}>
-            {t`Always require a value`}
-          </ToggleLabel>
-          <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
-        </div> */}
+        <SettingRequiredContainer>
+          <Toggle
+            id={`parameter-setting-required_${parameter.id}`}
+            value={parameter.required}
+            onChange={onChangeRequired}
+          />
+          <div>
+            <SettingRequiredLabel
+              htmlFor={`parameter-setting-required_${parameter.id}`}
+            >
+              {t`Always require a value`}
+            </SettingRequiredLabel>
+            <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
+          </div>
+        </SettingRequiredContainer>
       </SettingSection>
     </SettingsRoot>
   );
