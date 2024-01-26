@@ -24,7 +24,7 @@ export const CollectionIcon = ({
     <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
       color={color("brand")}
       collection={collection}
-      entity={question.type() ?? "question"}
+      entity={question.isDataset() ? "model" : "question"}
     />
   );
 };

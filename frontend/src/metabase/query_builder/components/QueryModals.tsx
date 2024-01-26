@@ -134,7 +134,7 @@ class QueryModals extends Component<QueryModalsProps> {
               }}
               onCreate={async question => {
                 await this.props.onCreate(question);
-                if (question.type() === "model") {
+                if (question.isDataset()) {
                   onCloseModal();
                   setQueryBuilderMode("view");
                 } else {
@@ -258,7 +258,7 @@ class QueryModals extends Component<QueryModalsProps> {
                     notify: {
                       message: (
                         <QuestionMoveToast
-                          isModel={question.type() === "model"}
+                          isModel={question.isDataset()}
                           collectionId={collection.id || ROOT_COLLECTION.id}
                         />
                       ),

@@ -164,13 +164,13 @@ export const SaveQuestionModal = ({
         : question.collectionId(),
     saveType:
       originalQuestion &&
-      question.type() === "question" &&
+      !originalQuestion.isDataset() &&
       originalQuestion.canWrite()
         ? "overwrite"
         : "create",
   };
 
-  const questionType = question.type() ?? "question";
+  const questionType = question.isDataset() ? "model" : "question";
 
   const multiStepTitle =
     questionType === "question"

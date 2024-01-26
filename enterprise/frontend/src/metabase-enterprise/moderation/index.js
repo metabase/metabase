@@ -29,13 +29,14 @@ if (hasPremiumFeature("content_verification")) {
     ModerationStatusIcon,
     getStatusIcon,
     getModerationTimelineEvents,
-    getMenuItems: (question, isModerator, reload) => {
-      const itemId = question.id();
+    getMenuItems: (model, isModerator, reload) => {
+      const id = model.id();
+      const isDataset = model.isDataset();
       const { name: verifiedIconName } = getStatusIcon(
         MODERATION_STATUS.verified,
       );
       const latestModerationReview = getLatestModerationReview(
-        question.getModerationReviews(),
+        model.getModerationReviews(),
       );
       const isVerified = isItemVerified(latestModerationReview);
 
@@ -44,15 +45,15 @@ if (hasPremiumFeature("content_verification")) {
           {
             title: isVerified
               ? t`Remove verification`
-              : question.type() === "model"
+              : isDataset
               ? t`Verify this model`
               : t`Verify this question`,
             icon: isVerified ? "close" : verifiedIconName,
             action: async () => {
               if (isVerified) {
-                await removeReview({ itemId, itemType: "card" });
+                await removeReview({ itemId: id, itemType: "card" });
               } else {
-                await verifyItem({ itemId, itemType: "card" });
+                await verifyItem({ itemId: id, itemType: "card" });
               }
               reload();
             },

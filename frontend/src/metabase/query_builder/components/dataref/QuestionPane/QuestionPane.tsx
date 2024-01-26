@@ -44,7 +44,7 @@ const QuestionPane = ({
   return (
     <SidebarContent
       title={question.displayName() || undefined}
-      icon={question.type() === "model" ? "model" : "table"}
+      icon={question.isDataset() ? "model" : "table"}
       onBack={onBack}
       onClose={onClose}
     >

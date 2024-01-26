@@ -239,7 +239,7 @@ class View extends Component {
     // So the model is opened as an underlying native question and the query editor becomes visible
     // This check makes it hide the editor in this particular case
     // More details: https://github.com/metabase/metabase/pull/20161
-    if (question.type() === "model" && !question.isQueryEditable()) {
+    if (question.isDataset() && !question.isQueryEditable()) {
       return null;
     }
 
@@ -338,7 +338,7 @@ class View extends Component {
       );
     }
 
-    if (question.type() === "model" && queryBuilderMode === "dataset") {
+    if (question.isDataset() && queryBuilderMode === "dataset") {
       return (
         <>
           <DatasetEditor {...this.props} />

@@ -16,7 +16,7 @@ export const loadMetadataForCard =
     const metadata = getMetadata(getState());
     const question = new Question(card, metadata);
     const queries = [question.legacyQuery({ useStructuredQuery: true })];
-    if (question.type() === "model") {
+    if (question.isDataset()) {
       queries.push(
         question.composeDataset().legacyQuery({ useStructuredQuery: true }),
       );

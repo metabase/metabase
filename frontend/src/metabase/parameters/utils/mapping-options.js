@@ -98,13 +98,12 @@ export function getParameterMappingOptions(
 
   const question = new Question(card, metadata);
   const options = [];
-  if (question.isStructured() || question.type() === "model") {
+  if (question.isStructured() || question.isDataset()) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
-    const query =
-      question.type() === "model"
-        ? question.composeDataset().query()
-        : question.query();
+    const query = question.isDataset()
+      ? question.composeDataset().query()
+      : question.query();
     const stageIndex = -1;
     const availableColumns = Lib.filterableColumns(query, stageIndex);
     const parameterColumns = parameter

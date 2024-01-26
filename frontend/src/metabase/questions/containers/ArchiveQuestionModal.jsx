@@ -26,7 +26,7 @@ class ArchiveQuestionModal extends Component {
   render() {
     const { onClose, question } = this.props;
 
-    const isModel = question.type() === "model";
+    const isModel = question.isDataset();
 
     const title = isModel ? t`Archive this model?` : t`Archive this question?`;
 

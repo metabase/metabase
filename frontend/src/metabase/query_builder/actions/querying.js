@@ -116,7 +116,7 @@ export const runQuestionQuery = ({
 
     if (shouldUpdateUrl) {
       const isAdHocModel =
-        question.type() === "model" &&
+        question.isDataset() &&
         isAdHocModelQuestion(question, originalQuestion);
 
       dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));

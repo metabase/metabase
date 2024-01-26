@@ -29,7 +29,7 @@ export const QuestionInfoSidebar = ({
 }: QuestionInfoSidebarProps) => {
   const description = question.description();
   const canWrite = question.canWrite();
-  const isDataset = question.type() === "model";
+  const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
   const hasCacheSection = PLUGIN_CACHING.hasQuestionCacheSection(question);
 
@@ -50,7 +50,7 @@ export const QuestionInfoSidebar = ({
       <ContentSection>
         <HeaderContainer>
           <h3>{t`About`}</h3>
-          {question.type() === "model" && (
+          {question.isDataset() && (
             <Link
               variant="brand"
               to={Urls.modelDetail(question.card())}

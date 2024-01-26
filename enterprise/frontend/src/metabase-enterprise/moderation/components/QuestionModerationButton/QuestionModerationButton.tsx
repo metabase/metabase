@@ -76,7 +76,7 @@ function QuestionModerationButton({
           data-testid="moderation-verify-action"
           {...verifyButtonProps}
         >
-          {question.type() === "model"
+          {question.isDataset()
             ? t`Verify this model`
             : t`Verify this question`}
         </VerifyButton>

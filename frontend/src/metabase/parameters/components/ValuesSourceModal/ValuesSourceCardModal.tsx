@@ -157,7 +157,7 @@ const getInitialValue = (
 ): Partial<DataPickerValue> | undefined => {
   if (question) {
     const id = question.id();
-    const isDatasets = question.type() === "model";
+    const isDatasets = question.isDataset();
 
     return {
       type: isDatasets ? "models" : "questions",

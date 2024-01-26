@@ -72,7 +72,7 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
             if (!sourceQuestion || loading) {
               return null;
             }
-            if (sourceQuestion.type() === "model") {
+            if (sourceQuestion.isDataset()) {
               return (
                 <SourceDatasetBreadcrumbs
                   model={sourceQuestion}

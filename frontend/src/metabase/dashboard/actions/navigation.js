@@ -80,7 +80,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       );
 
       const isDrillingFromNativeModel =
-        previousQuestion.type() === "model" && isPreviousNative;
+        previousQuestion.isDataset() && isPreviousNative;
 
       const url = ML_Urls.getUrlWithParameters(
         question,

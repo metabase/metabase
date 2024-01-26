@@ -343,7 +343,7 @@ export const getQuestion = createSelector(
     // as it would be blocked by the backend as an ad-hoc query
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
-    return question.type() === "model" && hasDataPermission && !isEditingModel
+    return question.isDataset() && hasDataPermission && !isEditingModel
       ? question.composeDataset()
       : question;
   },
@@ -371,11 +371,7 @@ function areModelsEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
-  if (
-    !lastRunQuestion ||
-    !currentQuestion ||
-    !(originalQuestion?.type() === "model")
-  ) {
+  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
     return false;
   }
 
@@ -569,9 +565,7 @@ export const getIsSavedQuestionChanged = createSelector(
     const hasUnsavedChanges = hasChanges && !wereChangesSaved;
 
     return (
-      isSavedQuestion &&
-      hasUnsavedChanges &&
-      originalQuestion.type() !== "model"
+      isSavedQuestion && hasUnsavedChanges && !originalQuestion.isDataset()
     );
   },
 );

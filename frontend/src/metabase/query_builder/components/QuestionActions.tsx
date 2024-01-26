@@ -80,7 +80,7 @@ const QuestionActions = ({
     ? color("brand")
     : undefined;
 
-  const isDataset = question.type() === "model";
+  const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
