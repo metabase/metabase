@@ -266,6 +266,14 @@ class Question {
     return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
+  /**
+   * returns whether this question is a model
+   * @returns boolean
+   */
+  isDataset() {
+    return this._card && this._card.dataset;
+  }
+
   type(): CardType | undefined {
     return this._card && this._card.type;
   }
