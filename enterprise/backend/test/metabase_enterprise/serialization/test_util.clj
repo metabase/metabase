@@ -65,16 +65,19 @@
     (testing (format "\nApp DB = %s" (pr-str (.url #_metabase.db.data_source.DataSource ~data-source)))
       ~@body)) )
 
-(defn- do-with-in-memory-h2-db [db-name-prefix f]
+(defn- do-with-in-memory-h2-db* [db-name-prefix f]
   (let [db-name           (str db-name-prefix "-" (mt/random-name))
         connection-string (format "jdbc:h2:mem:%s" db-name)
         data-source       (mdb.data-source/raw-connection-string->DataSource connection-string)]
     ;; DB should stay open as long as `conn` is held open.
     (with-open [_conn (.getConnection data-source)]
-      (letfn [(do-with-app-db [thunk]
-                (with-db data-source (thunk)))]
-        (do-with-app-db mdb/setup-db!)
-        (f do-with-app-db)))))
+      (with-db data-source (mdb/setup-db!))
+      (f data-source))))
+
+(defn- do-with-in-memory-h2-db [db-name-prefix f]
+  (letfn [(do-with-db [data-source]
+            (fn [thunk] (f (with-db data-source (thunk)))))]
+    (do-with-in-memory-h2-db* db-name-prefix do-with-db)))
 
 (defn do-with-source-and-dest-dbs [f]
   (do-with-in-memory-h2-db
