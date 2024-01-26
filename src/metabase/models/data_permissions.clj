@@ -16,6 +16,7 @@
 
 (t2/deftransforms :model/DataPermissions
   {:perm_type  mi/transform-keyword
+   :perm-type  mi/transform-keyword
    :perm_value mi/transform-keyword
    ;; define keyword transformation for :type and :value as well so that we can use them as aliases
    :type       mi/transform-keyword
@@ -143,6 +144,80 @@
                                                   [:= :table_id nil]]]})]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
+
+
+(defn- admin-permission-graph
+  "Returns the graph representing admin permissions for all groups"
+  [& {:keys [db-id perm-type]}]
+  (let [db-ids     (if db-id [db-id] (t2/select-pks-vec :model/Database))
+        perm-types (if perm-type [perm-type] (keys Permissions))]
+    (into {} (map (fn [db-id]
+                    [db-id (into {} (map (fn [perm] [perm (most-permissive-value perm)])
+                                         perm-types))])
+                  db-ids))))
+
+(mu/defn permissions-for-user
+  "Returns a graph representing the permissions for a single user. Can be optionally filtered by database ID and/or permission type.
+  Combines permissions from multiple groups into a single value for each DB/table and permission type.
+
+  This is intended to be used for logging and debugging purposes, to see what a user's real permissions are at a glance. Enforcement
+  should happen via `database-permission-for-user` and `table-permission-for-user`."
+  [user-id & {:keys [db-id perm-type]}]
+  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+    (admin-permission-graph :db-id db-id :perm-type perm-type)
+    (let [data-perms    (t2/select :model/DataPermissions
+                                   {:select [[:p.perm_type :perm-type]
+                                             [:p.group_id :group-id]
+                                             [:p.perm_value :value]
+                                             [:p.db_id :db-id]
+                                             [:p.table_id :table-id]]
+                                    :from [[:permissions_group_membership :pgm]]
+                                    :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                                           [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                                    :where [:and
+                                            [:= :pgm.user_id user-id]
+                                            (when db-id [:= :db_id db-id])
+                                            (when perm-type [:= :perm_type (u/qualified-name perm-type)])]})
+          path->perms     (group-by (fn [{:keys [db-id perm-type table-id]}]
+                                      (if table-id
+                                        [db-id perm-type table-id]
+                                        [db-id perm-type]))
+                                    data-perms)
+          coalesced-perms (reduce-kv
+                           (fn [result path perms]
+                             ;; Combine permissions from multiple groups into a single value
+                             (let [[db-id perm-type] path
+                                   coalesced-perms (coalesce perm-type
+                                                             (concat
+                                                              (map :value perms)
+                                                              (map :value (get path->perms [db-id perm-type]))))]
+                               (assoc result path coalesced-perms)))
+                           {}
+                           path->perms)
+          granular-graph  (reduce
+                           (fn [graph [[db-id perm-type table-id] value]]
+                             (let [current-perms (get-in graph [db-id perm-type])
+                                   updated-perms (if table-id
+                                                   (if (keyword? current-perms)
+                                                     {table-id value}
+                                                     (assoc current-perms table-id value))
+                                                   (if (map? current-perms)
+                                                     current-perms
+                                                     value))]
+                               (assoc-in graph [db-id perm-type] updated-perms)))
+                           {}
+                           coalesced-perms)]
+      (reduce (fn [new-graph [db-id perms]]
+                (assoc new-graph db-id
+                       (reduce (fn [new-perms [perm-type value]]
+                                 (if (and (map? value)
+                                          (apply = (vals value)))
+                                   (assoc new-perms perm-type (first (vals value)))
+                                   (assoc new-perms perm-type value)))
+                               {}
+                               perms)))
+              {}
+              granular-graph))))
 
 
 ;;; ---------------------------------------- Fetching the data permissions graph --------------------------------------
