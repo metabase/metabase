@@ -9,6 +9,7 @@ import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 
 export const EmbeddingAppSameSiteCookieDescription = () => {
   const docsUrl = useSelector(state =>
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
     getDocsUrl(state, {
       page: "embedding/interactive-embedding",
       anchor: "embedding-metabase-in-a-different-domain",

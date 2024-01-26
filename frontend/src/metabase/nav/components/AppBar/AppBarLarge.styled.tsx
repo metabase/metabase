@@ -11,7 +11,8 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   align-items: center;
   gap: 1rem;
   height: ${APP_BAR_HEIGHT};
-  padding: 0 1rem;
+  padding-left: 1.325rem;
+  padding-right: 1rem;
   border-bottom: 1px solid
     ${props => (props.isNavBarOpen ? color("border") : "transparent")};
   background-color: ${color("bg-white")};

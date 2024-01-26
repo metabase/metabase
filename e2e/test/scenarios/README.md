@@ -1,9 +1,5 @@
 # Metabase Scenarios
 
-## Running
-
-- If you are running tests that include `alert > email_alert`, run `docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5` in terminal first for setting up email through your localhost
-
 ## Metabase QA DB Tests
 
 If you're running Cypress locally and you need to write or run tests for one of the [supported databases](https://github.com/metabase/metabase-qa), make sure you have docker running and start cypress using `yarn-test-cypress-open-qa`.

@@ -262,8 +262,8 @@ describe("TagEditorParam", () => {
       const tag = createMockTemplateTag();
       const { setTemplateTag } = setup({ tag });
 
-      const toggle = screen.getByRole("switch", { name: "Required?" });
-      userEvent.click(toggle);
+      const toggleLabel = screen.getByText("Always require a value");
+      userEvent.click(toggleLabel);
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
@@ -271,17 +271,27 @@ describe("TagEditorParam", () => {
       });
     });
 
-    it("should clear the default value when becoming not required", () => {
+    it("should set the default value when turning required on", () => {
+      const tag = createMockTemplateTag({ default: "123" });
+      const { setParameterValue } = setup({ tag });
+
+      const toggleLabel = screen.getByText("Always require a value");
+      userEvent.click(toggleLabel);
+
+      expect(setParameterValue).toHaveBeenCalledWith(tag.id, "123");
+    });
+
+    it("should not clear the default value when turning required off", () => {
       const tag = createMockTemplateTag({ required: true, default: "abc" });
       const { setTemplateTag } = setup({ tag });
 
-      const toggle = screen.getByRole("switch", { name: "Required?" });
-      userEvent.click(toggle);
+      const toggleLabel = screen.getByText("Always require a value");
+      userEvent.click(toggleLabel);
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         required: false,
-        default: undefined,
+        default: "abc",
       });
     });
   });

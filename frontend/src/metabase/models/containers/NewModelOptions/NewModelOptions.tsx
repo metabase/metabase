@@ -68,7 +68,6 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
                 dataset: true,
                 collectionId,
               })}
-              data-metabase-event="New Model; Custom Question Start"
             />
           </OptionsGridItem>
         )}
@@ -86,7 +85,6 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
                 collectionId,
               })}
               width={180}
-              data-metabase-event="New Model; Native Query Start"
             />
           </OptionsGridItem>
         )}
