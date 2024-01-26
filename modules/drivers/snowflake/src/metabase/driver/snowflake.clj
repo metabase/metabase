@@ -341,8 +341,9 @@
   accept either. Throw an Exception if neither key can be found."
   {:arglists '([database])}
   [{details :details}]
-  (or (:db details)
-      (:dbname details)
+  ;; ignore any blank keys
+  (or (m/find-first (every-pred string? (complement str/blank?))
+                    ((juxt :db :dbname) details))
       (throw (Exception. (tru "Invalid Snowflake connection details: missing DB name.")))))
 
 (defn- query-db-name []
@@ -418,16 +419,31 @@
          driver
          database
          nil
+         ;; you know what, if we really wanted to make this efficient we would do
+         ;;
+         ;;    SHOW SCHEMAS IN DATABASE <db>
+         ;;
+         ;; first, and filter out the ones we're not interested in, and THEN do
+         ;;
+         ;;    SHOW OBJECTS IN SCHEMA <schema>
+         ;;
+         ;; for each of the schemas we wanted to sync. Right now we're fetching EVERY table, including ones from schemas
+         ;; we aren't interested in.
          (fn [^Connection conn]
-           {:tables (->> (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) nil db-name)
-                         (filter (fn [{schema :schema table-name :name}]
-                                   (and (not (contains? excluded-schemas schema))
-                                        (driver.s/include-schema? inclusion-patterns
-                                                                  exclusion-patterns
-                                                                  schema)
-                                        (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
-                         (map #(dissoc % :type))
-                         set)}))))))
+           {:tables (into #{}
+                          (comp (filter (fn [{schema :schema table-name :name}]
+                                          (and (not (contains? excluded-schemas schema))
+                                               (driver.s/include-schema? inclusion-patterns
+                                                                         exclusion-patterns
+                                                                         schema)
+                                               (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                                (map #(dissoc % :type)))
+                          ;; The Snowflake JDBC drivers is dumb and broken, it will narrow the results to the current
+                          ;; session schema pass in `nil` for `schema-or-nil` to `getTables()`... `%` seems to fix it.
+                          ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
+                          ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
+                          ;; for more info.
+                          (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name))}))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
