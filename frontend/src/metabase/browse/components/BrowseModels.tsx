@@ -1,6 +1,6 @@
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type {
   Card,
@@ -29,6 +29,7 @@ import {
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
 
+/** Group models by collection */
 export const groupModels = (
   models: SearchResult[],
   locale: string | undefined,
@@ -104,9 +105,17 @@ const ModelGroup = ({
   localeCode: string | undefined;
 }) => {
   const sortedModels = models.sort((a, b) => {
-    // If the name is undefined or blank, treat it as alphabetically last
-    const nameA = a.name?.toLowerCase() || "\uffff";
-    const nameB = b.name?.toLowerCase() || "\uffff";
+    if (!a.name && b.name) {
+      return 1;
+    }
+    if (a.name && !b.name) {
+      return -1;
+    }
+    if (!a.name && !b.name) {
+      return 0;
+    }
+    const nameA = a.name.toLowerCase();
+    const nameB = b.name.toLowerCase();
     return nameA.localeCompare(nameB, localeCode);
   });
   const collection = models[0].collection;
@@ -144,6 +153,9 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
+  const noDescription = c(
+    "Indicates that a model has no description associated with it",
+  ).t`No description.`;
   return (
     <Link
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
@@ -158,16 +170,13 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
         </Title>
         <Text h="2rem" size="xs" mb="auto">
           <MultilineEllipsified
-            tooltipMaxWidth="100%"
+            tooltipMaxWidth="80%"
             className={cx({ "text-light": !model.description })}
           >
-            {model.description || "No description."}{" "}
+            {model.description || noDescription}{" "}
           </MultilineEllipsified>
         </Text>
-        <LastEdited
-          lastEditorFullName={lastEditorFullName}
-          timestamp={timestamp}
-        />
+        <LastEdited editorFullName={lastEditorFullName} timestamp={timestamp} />
       </ModelCard>
     </Link>
   );
