@@ -217,8 +217,8 @@
 
 (defn- date-trunc
   [unit expr]
-  (-> [:date_trunc unit expr]
-      (h2x/with-database-type-info (h2x/database-type expr))))
+  (-> [:date_trunc unit (h2x/->timestamp expr)]
+      (h2x/with-database-type-info "timestamp")))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:snowflake :minute]          [_ _ expr] (date-trunc :minute expr))
