@@ -156,7 +156,7 @@
       (str/includes? (:endpoint-str (first ep-data)) "/auth/sso")
       (str/includes? (:endpoint-str (first ep-data)) "/api/moderation-review")))
 
-(defn- endpoint-footer
+(defn endpoint-footer
   "Adds a footer with a link back to the API index."
   [ep-data]
   (let [level (if (paid? ep-data) "../../" "../")]
@@ -164,7 +164,7 @@
 
 ;;;; Build API pages
 
-(defn- endpoint-page
+(defn endpoint-page
   "Builds a page with the name, description, table of contents for endpoints in a namespace,
   followed by the endpoint and their parameter descriptions."
   [ep ep-data]
@@ -185,7 +185,7 @@
                  u/lower-case-en)]
     (str dir file ext)))
 
-(defn- build-endpoint-link
+(defn build-endpoint-link
   "Creates a link to the page for each endpoint. Used to build links
   on the API index page at `docs/api-documentation.md`."
   [ep ep-data]
