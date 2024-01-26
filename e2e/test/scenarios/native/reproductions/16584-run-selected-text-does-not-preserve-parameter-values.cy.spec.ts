@@ -11,10 +11,11 @@ describe("issue 16584", () => {
     openNativeEditor()
       .type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country }}", {
         parseSpecialCharSequences: false,
+        delay: 0,
       })
       .type("{selectAll}");
 
-    cy.findByPlaceholderText("Country").type("NL");
+    cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
     runNativeQuery();
 
