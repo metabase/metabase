@@ -108,7 +108,7 @@ function ParametersList({
             (value => setParameterValue(valuePopulatedParameter.id, value))
           }
           setParameterValueToDefault={setParameterValueToDefault}
-          enableParameterRequiredBehavior
+          enableParameterRequiredBehavior={enableParameterRequiredBehavior}
           commitImmediately={commitImmediately}
           dragHandle={
             isEditing && setParameterIndex ? <SortableParameterHandle /> : null

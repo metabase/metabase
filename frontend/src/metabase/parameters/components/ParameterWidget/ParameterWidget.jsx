@@ -74,6 +74,7 @@ export class ParameterWidget extends Component {
       setValue,
       children,
       dragHandle,
+      enableParameterRequiredBehavior,
     } = this.props;
 
     const isEditingParameter =
@@ -87,7 +88,7 @@ export class ParameterWidget extends Component {
       return (
         <ParameterFieldSet
           legend={legend}
-          required={Boolean(parameter.required)}
+          required={enableParameterRequiredBehavior && parameter.required}
           noPadding={true}
           fieldHasValueOrFocus={fieldHasValueOrFocus}
           className={className}
