@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { useEffect, useReducer } from "react";
 import { StoreApi } from "metabase/services";
-import type { BillingInfo } from "metabase-types/api";
+import type { BillingInfo, BillingInfoResponse } from "metabase-types/api";
 
 type UseBillingAction =
   | { type: "SET_LOADING" }
@@ -36,7 +36,7 @@ function reducer(
   }
 }
 
-export const useBilling = (token: string): UseBillingState => {
+export const useBilling = (): UseBillingState => {
   const [state, dispatch] = useReducer(reducer, defaultState);
 
   useEffect(() => {
@@ -47,9 +47,10 @@ export const useBilling = (token: string): UseBillingState => {
 
       try {
         // TODO: send along token, email, lang? what to do if MB_PREMIUM_EMBEDDING_TOKEN is being used + there's no token
-        const billingResponse = (await StoreApi.billingInfo()) as BillingInfo;
+        const billingResponse =
+          (await StoreApi.billingInfo()) as BillingInfoResponse;
         if (!cancelled) {
-          dispatch({ type: "SET_DATA", payload: billingResponse });
+          dispatch({ type: "SET_DATA", payload: billingResponse.content });
         }
       } catch (err: any) {
         const msg = err?.message || err?.toString() || t`An error occurred`;
@@ -57,14 +58,12 @@ export const useBilling = (token: string): UseBillingState => {
       }
     };
 
-    if (token) {
-      fetchBillingInfo();
-    }
+    fetchBillingInfo();
 
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   return state;
 };
