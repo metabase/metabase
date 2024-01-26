@@ -322,7 +322,7 @@ const CardSourceModal = ({
               </Select>
             ) : (
               <ModalErrorMessage>
-                {question.isDataset()
+                {question.type() === "model"
                   ? t`This model doesn’t have any text columns.`
                   : t`This question doesn’t have any text columns.`}{" "}
                 {t`Please pick a different model or question.`}

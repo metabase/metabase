@@ -606,7 +606,7 @@ class Question {
   }
 
   composeDataset(): Question {
-    if (!this.isDataset() || !this.isSaved()) {
+    if (this.type() !== "model" || !this.isSaved()) {
       return this;
     }
 
@@ -882,7 +882,7 @@ class Question {
     // we frequently treat dataset/model questions like they are already nested
     // so we need to fetch the virtual card table representation of the Question
     // so that we can properly access the table's fields in various scenarios
-    if (this.isDataset() && this.isSaved()) {
+    if (this.type() === "model" && this.isSaved()) {
       dependencies.push({
         type: "table",
         id: getQuestionVirtualTableId(this.id()),

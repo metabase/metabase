@@ -107,7 +107,7 @@ export function ViewTitleHeader(props) {
 
   const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
-  const isDataset = question.isDataset();
+  const isDataset = question.type() === "model";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
 
   const onQueryChange = useCallback(
@@ -217,7 +217,7 @@ function SavedQuestionLeftSide(props) {
   }, []);
 
   const hasLastEditInfo = question.lastEditInfo() != null;
-  const isDataset = question.isDataset();
+  const isDataset = question.type() === "model";
 
   const onHeaderChange = useCallback(
     name => {

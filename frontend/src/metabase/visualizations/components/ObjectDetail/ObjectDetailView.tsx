@@ -247,7 +247,7 @@ export function ObjectDetailView({
   const areImplicitActionsEnabled =
     question &&
     question.canWrite() &&
-    question.isDataset() &&
+    question.type() === "model" &&
     question.supportsImplicitActions();
 
   const { data: actions = [] } = useActionListQuery({

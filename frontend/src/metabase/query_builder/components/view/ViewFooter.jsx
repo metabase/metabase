@@ -139,7 +139,7 @@ const ViewFooter = ({
               }
             />
           ),
-          !question.isDataset() && (
+          question.type() === "question" && (
             <EmbedMenu
               key="embed"
               resource={question}

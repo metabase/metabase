@@ -90,7 +90,7 @@ export const isNavigationAllowed = ({
     .filter(Boolean)
     .map(String);
 
-  if (question.isDataset()) {
+  if (question.type() === "model") {
     if (isNewQuestion) {
       const allowedPathnames = ["/model/query", "/model/metadata"];
       return isRunningModel || allowedPathnames.includes(pathname);

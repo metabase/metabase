@@ -219,7 +219,7 @@ export const apiCreateQuestion = question => {
 
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
-    const metadataOptions = { reload: createdQuestion.isDataset() };
+    const metadataOptions = { reload: createdQuestion.type() === "model" };
     await dispatch(loadMetadataForCard(card, metadataOptions));
 
     return createdQuestion;
@@ -235,7 +235,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
 
-    if (question.isDataset()) {
+    if (question.type() === "model") {
       resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
         resultsMetadata.columns,
       );
@@ -282,13 +282,13 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       payload: updatedQuestion.card(),
     });
 
-    if (question.isDataset()) {
+    if (question.type() === "model") {
       // this needs to happen after the question update completes in case we have changed the type
       // of the primary key field in the same update
       await dispatch(ModelIndexes.actions.updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: question.isDataset() };
+    const metadataOptions = { reload: question.type() === "model" };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {

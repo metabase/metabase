@@ -9,7 +9,7 @@ export default class SavedQuestionIntroModal extends Component {
   render() {
     const { question, isShowingNewbModal, onClose } = this.props;
 
-    const isModel = question.isDataset();
+    const isModel = question.type() === "model";
     const title = isModel
       ? t`It's okay to play around with models`
       : t`It's okay to play around with saved questions`;

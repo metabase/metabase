@@ -27,7 +27,7 @@ export function getStructuredQueryTable(
   }
 
   // 3. The query's question is a saved dataset.
-  const isDataset = question.isDataset() && question.isSaved();
+  const isDataset = question.type() === "model" && question.isSaved();
   if (isDataset) {
     return getDatasetTable(legacyQuery);
   }

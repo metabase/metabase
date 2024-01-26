@@ -271,7 +271,7 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async newQuestion => {
-      const shouldBePinned = newQuestion.isDataset();
+      const shouldBePinned = newQuestion.type() === "model";
       const createdQuestion = await apiCreateQuestion(
         newQuestion.setPinned(shouldBePinned),
       );
