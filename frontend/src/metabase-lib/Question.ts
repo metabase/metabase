@@ -1045,6 +1045,10 @@ class Question {
   }
 
   query(metadata = this._metadata): Query {
+    if (this._legacyQuery() instanceof InternalQuery) {
+      throw new Error("Internal query is not supported by MLv2");
+    }
+
     const databaseId = this.datasetQuery()?.database;
 
     // cache the metadata provider we create for our metadata.
