@@ -15,11 +15,6 @@ import NoResults from "assets/img/no_results.svg";
 import { DatabaseCard, DatabaseGridItem } from "./BrowseDatabases.styled";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 
-export type BrowseTabId = "models" | "databases";
-
-export const isValidBrowseTab = (value: string | null): value is BrowseTabId =>
-  value === "models" || value === "databases";
-
 export const BrowseDatabases = ({
   databasesResult,
 }: {

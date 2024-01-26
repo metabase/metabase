@@ -9,7 +9,7 @@ import type { SearchResult } from "metabase-types/api";
 import { useDispatch } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
-import { BrowseDatabases, isValidBrowseTab } from "./BrowseDatabases";
+import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseModels } from "./BrowseModels";
 import {
   BrowseAppRoot,
@@ -19,6 +19,11 @@ import {
   BrowseTabsPanel,
 } from "./BrowseApp.styled";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
+
+export type BrowseTabId = "models" | "databases";
+
+const isValidBrowseTab = (value: string | null): value is BrowseTabId =>
+  value === "models" || value === "databases";
 
 export const BrowseApp = ({
   tab = "models",
