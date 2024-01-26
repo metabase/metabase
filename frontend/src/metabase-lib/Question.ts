@@ -281,7 +281,7 @@ class Question {
   /**
    * @deprecated Use Question.prototype.setType instead
    */
-  _setDataset(dataset) {
+  _setDataset(dataset: boolean) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
