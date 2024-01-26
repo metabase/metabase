@@ -518,13 +518,12 @@
     field-id
     (field-values/field-should-have-field-values? field-id)))
 
-(defn- check-field-value-query-permissions!
+(defn- check-field-value-query-permissions
   "Check query permissions against the chain-filter-mbql-query (private #196)"
   [field-id constraints options]
   (->> (chain-filter-mbql-query field-id constraints options)
-         qp/preprocess
-         qp.perms/check-query-permissions*)
-  true)
+       qp/preprocess
+       qp.perms/check-query-permissions*))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
@@ -569,10 +568,10 @@
      (-> (unremapped-chain-filter field-id constraints options)
          (update :values add-human-readable-values v->human-readable))
 
-     (and (use-cached-field-values? field-id)
-          (nil? @the-remapped-field-id)
-          (check-field-value-query-permissions! field-id constraints options))
-     (cached-field-values field-id constraints options)
+     (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
+     (do
+       (check-field-value-query-permissions field-id constraints options)
+       (cached-field-values field-id constraints options))
 
      ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
      ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
