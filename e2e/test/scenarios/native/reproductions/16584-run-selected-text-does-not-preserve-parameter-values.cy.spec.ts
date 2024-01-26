@@ -7,7 +7,7 @@ describe("issue 16584", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("should pass parameters when running with 'Run select text' (metabase#16584)", async () => {
+  it("should pass parameters when running with 'Run select text' (metabase#16584)", () => {
     const editor = openNativeEditor();
 
     editor.type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country ");
