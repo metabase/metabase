@@ -455,10 +455,6 @@ class Question {
     return this.setSettings({ ...this.settings(), ...settings });
   }
 
-  type(): string {
-    return this.datasetQuery().type;
-  }
-
   creationType(): string {
     return this.card().creationType;
   }
