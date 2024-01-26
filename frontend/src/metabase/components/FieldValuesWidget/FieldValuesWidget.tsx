@@ -151,7 +151,7 @@ export function FieldValuesWidgetInner({
       disablePKRemappingForSearch,
     }),
   );
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const dispatch = useDispatch();
 
   const previousWidth = usePrevious(width);
