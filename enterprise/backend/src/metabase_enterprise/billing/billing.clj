@@ -1,14 +1,13 @@
-(ns metabase.api.billing
-  "/api/billing endpoints"
+(ns metabase-enterprise.billing.billing
+  "`/api/ee/billing/` endpoints"
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
-   [compojure.core :refer [GET PUT]]
+   [compojure.core :as compojure :refer [GET PUT]]
    [metabase.api.common :as api]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -35,7 +34,7 @@
   []
   (let [token    (premium-features/premium-embedding-token)
         email    (t2/select-one-fn :email :model/User :id api/*current-user-id*)
-        language (public-settings/site-locale)]
+        language (i18n/user-locale-string)]
     (fetch-billing-status* token email language)))
 
 (api/define-routes)
