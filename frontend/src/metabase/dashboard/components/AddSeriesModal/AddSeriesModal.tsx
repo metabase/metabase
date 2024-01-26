@@ -172,11 +172,7 @@ export class AddSeriesModal extends Component<Props, State> {
             >
               {t`Done`}
             </button>
-            <button
-              data-metabase-event="Dashboard;Edit Series Modal;cancel"
-              className="Button ml2"
-              onClick={this.props.onClose}
-            >
+            <button className="Button ml2" onClick={this.props.onClose}>
               {t`Cancel`}
             </button>
           </div>

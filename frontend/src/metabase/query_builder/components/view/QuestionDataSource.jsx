@@ -164,7 +164,8 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     return [];
   }
 
-  const hasDataPermission = question.isQueryEditable();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const hasDataPermission = isEditable;
   if (!hasDataPermission) {
     return [];
   }

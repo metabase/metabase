@@ -97,7 +97,6 @@ class PartialQueryBuilder extends Component {
             <span className="text-bold px3">{previewSummary}</span>
             <Link
               to={previewUrl}
-              data-metabase-event="Data Model;Preview Click"
               target={window.OSX ? null : "_blank"}
               rel="noopener noreferrer"
               className="Button Button--primary"

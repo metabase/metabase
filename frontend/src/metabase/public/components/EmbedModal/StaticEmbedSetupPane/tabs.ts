@@ -1,5 +1,5 @@
 export const EMBED_MODAL_TABS = {
-  Overview: "overview",
-  Parameters: "parameters",
-  Appearance: "appearance",
+  Overview: "overview" as const,
+  Parameters: "parameters" as const,
+  Appearance: "appearance" as const,
 };

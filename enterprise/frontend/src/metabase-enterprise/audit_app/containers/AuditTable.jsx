@@ -51,7 +51,7 @@ function AuditTable({
 
   const handleOnLoad = results => {
     setLoadedCount(results[0].row_count);
-    onLoad(results);
+    onLoad?.(results);
   };
 
   const card = chain(table.card)

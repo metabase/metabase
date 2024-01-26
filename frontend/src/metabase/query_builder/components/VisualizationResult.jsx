@@ -8,6 +8,7 @@ import { ErrorMessage } from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
+import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { ALERT_TYPE_ROWS } from "metabase-lib/Alert";
 
@@ -108,7 +109,8 @@ export default class VisualizationResult extends Component {
         this.props,
         ...ALLOWED_VISUALIZATION_PROPS,
       );
-      const hasDrills = question.isQueryEditable();
+      const { isEditable } = Lib.queryDisplayInfo(question.query());
+      const hasDrills = isEditable;
       return (
         <>
           <Visualization

@@ -698,6 +698,8 @@ class TableInteractive extends Component {
     const isSorted = sortDirection != null;
     const isAscending = sortDirection === "asc";
 
+    const fieldInfoPopoverTestId = "field-info-popover";
+
     return (
       <TableDraggable
         /* needs to be index+name+counter so Draggable resets after each drag */
@@ -793,6 +795,7 @@ class TableInteractive extends Component {
                     className="Icon mr1"
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
+                    data-testid={fieldInfoPopoverTestId}
                   />
                 )}
                 {columnTitle}
@@ -801,6 +804,7 @@ class TableInteractive extends Component {
                     className="Icon ml1"
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
+                    data-testid={fieldInfoPopoverTestId}
                   />
                 )}
               </Ellipsified>,

@@ -152,7 +152,10 @@ export const getRoutes = store => {
             onEnter={(nextState, replace) => {
               const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
               if (page && page !== "/") {
-                replace(page[0] === "/" ? page : `/${page}`);
+                replace({
+                  pathname: page[0] === "/" ? page : `/${page}`,
+                  state: { preserveNavbarState: true },
+                });
               }
             }}
           />

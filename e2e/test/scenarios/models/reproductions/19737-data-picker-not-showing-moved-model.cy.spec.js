@@ -3,6 +3,7 @@ import {
   modal,
   popover,
   navigationSidebar,
+  openNavigationSidebar,
 } from "e2e/support/helpers";
 
 const modelName = "Orders Model";
@@ -60,6 +61,7 @@ describe("issue 19737", () => {
     cy.go("back");
 
     // move "Orders Model" from a custom collection ("First collection") to another collection
+    openNavigationSidebar();
     navigationSidebar().findByText("First collection").click();
 
     moveModel(modelName, "My personal collection");

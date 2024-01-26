@@ -43,7 +43,7 @@ export const PublicLinkCopyPanel = ({
       placeholder={loading ? t`Loading…` : undefined}
       value={url ?? undefined}
       inputWrapperOrder={["label", "input", "error", "description"]}
-      rightSection={<PublicLinkCopyButton value={url} onCopy={onCopy} />}
+      rightSection={url && <PublicLinkCopyButton value={url} onCopy={onCopy} />}
     />
     <Box pos="relative">
       <Group mt="sm" pos="absolute" w="100%" position="apart" align="center">

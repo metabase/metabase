@@ -240,7 +240,6 @@ const SuggestionsList = ({ suggestions, section }) => (
               key={itemIndex}
               to={item.url}
               className="hover-parent hover--visibility"
-              data-metabase-event={`Auto Dashboard;Click Related;${s}`}
             >
               <Card className="p2" hoverable>
                 <ItemContent>

@@ -161,13 +161,6 @@ export default class NativeQuery extends AtomicQuery {
     return database && database.engine;
   }
 
-  // Whether the user can modify and run this query
-  // Determined based on availability of database metadata and native database permissions
-  isEditable(): boolean {
-    const database = this._database();
-    return database != null && database.native_permissions === "write";
-  }
-
   /* Methods unique to this query type */
 
   /**
@@ -318,6 +311,11 @@ export default class NativeQuery extends AtomicQuery {
         );
         if (!dimension) {
           return new ValidationError(t`Invalid template tag: ${tag.name}`);
+        }
+        if (tag.required && !tag.default) {
+          return new ValidationError(
+            t`Missing default value for a required template tag: ${tag.name}`,
+          );
         }
 
         return dimension.validateTemplateTag();

@@ -229,7 +229,14 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, card, height, isDirty, isNativeEditorOpen } = this.props;
+    const {
+      question,
+      card,
+      height,
+      isDirty,
+      isNativeEditorOpen,
+      setParameterValueToDefault,
+    } = this.props;
     const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
@@ -239,7 +246,8 @@ class View extends Component {
     // So the model is opened as an underlying native question and the query editor becomes visible
     // This check makes it hide the editor in this particular case
     // More details: https://github.com/metabase/metabase/pull/20161
-    if (question.isDataset() && !question.isQueryEditable()) {
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    if (question.isDataset() && !isEditable) {
       return null;
     }
 
@@ -252,6 +260,7 @@ class View extends Component {
           isOpen={legacyQuery.isEmpty() || isDirty}
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
+          setParameterValueToDefault={setParameterValueToDefault}
         />
       </NativeQueryEditorContainer>
     );

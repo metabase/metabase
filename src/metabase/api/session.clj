@@ -296,7 +296,7 @@
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 (api/defendpoint GET "/password_reset_token_valid"
-  "Check is a password reset token is valid and isn't expired."
+  "Check if a password reset token is valid and isn't expired."
   [token]
   {token ms/NonBlankString}
   {:valid (boolean (valid-reset-token->user token))})
@@ -357,15 +357,16 @@
    email    :string
    hash     :string}
   (check-hash pulse-id email hash (request.u/ip-address request))
-  (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-    (let [emails (get-in pulse-channel [:details :emails])]
-      (if (some #{email} emails)
-        (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #{email} emails)))
-        (throw (ex-info (tru "Email for pulse-id doesn't exist.")
-                        {:type        type
-                         :status-code 400}))))
-    (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
-    {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
+  (t2/with-transaction [_conn]
+    (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+      (let [emails (get-in pulse-channel [:details :emails])]
+        (if (some #{email} emails)
+          (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
+          (throw (ex-info (tru "Email for pulse-id doesn't exist.")
+                          {:type        type
+                           :status-code 400}))))
+      (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
+      {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))})))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
@@ -374,15 +375,15 @@
    email    :string
    hash     :string}
   (check-hash pulse-id email hash (request.u/ip-address request))
-  (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-    (let [emails       (get-in pulse-channel [:details :emails])
-          given-email? #(= % email)]
-      (if (some given-email? emails)
-        (throw (ex-info (tru "Email for pulse-id already exists.")
-                        {:type        type
-                         :status-code 400}))
-        (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
-    (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
-    {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
+  (t2/with-transaction [_conn]
+    (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+      (let [emails (get-in pulse-channel [:details :emails])]
+        (if (some #{email} emails)
+          (throw (ex-info (tru "Email for pulse-id already exists.")
+                          {:type        type
+                           :status-code 400}))
+          (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
+      (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
+      {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))})))
 
 (api/define-routes +log-all-request-failures)
