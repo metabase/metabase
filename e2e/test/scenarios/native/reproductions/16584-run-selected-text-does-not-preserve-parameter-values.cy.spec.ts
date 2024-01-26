@@ -13,7 +13,7 @@ describe("issue 16584", () => {
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     openNativeEditor()
-      .type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country }} ", {
+      .type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 10", {
         parseSpecialCharSequences: false,
         delay: 0,
       })
