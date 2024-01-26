@@ -8,8 +8,12 @@ describe("issue 16584", () => {
   });
 
   it("should pass parameters when running with 'Run select text' (metabase#16584)", () => {
+    // The bug described in is #16584 can be further simplified:
+    // - the issue persists even when selecting the *entire* query
+    // - the issue is unrelated to using a date filter, using a text filter works too
+    // - the issue is unrelated to whether or not the parameter is required or if default value is set
     openNativeEditor()
-      .type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country }}", {
+      .type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country }} ", {
         parseSpecialCharSequences: false,
         delay: 0,
       })
