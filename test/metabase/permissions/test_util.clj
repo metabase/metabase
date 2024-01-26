@@ -38,8 +38,15 @@
     (try
       (thunk)
       (finally
-        (t2/delete! :model/DataPermissions {:where select-condition})
-        (t2/insert! :model/DataPermissions original-perms)))))
+        (let [existing-db-ids    (t2/select-pks-set :model/Database)
+              existing-table-ids (t2/select-pks-set :model/Table)
+              still-valid-perms  (filter
+                                  (fn [p] (and (contains? existing-db-ids (:db_id p))
+                                               (or (nil? (:table_id p))
+                                                   (contains? existing-table-ids (:table_id p)))))
+                                  original-perms)]
+          (t2/delete! :model/DataPermissions {:where select-condition})
+          (t2/insert! :model/DataPermissions still-valid-perms))))))
 
 (defmacro with-restored-data-perms!
   "Runs `body`, and restores all permissions to their original state afterwards."
