@@ -75,6 +75,8 @@ function mapStateToProps(state: State) {
 const mapDispatchToProps = { fetchField };
 
 class TagEditorParamInner extends Component<Props> {
+  forceFocusDefaultPicker: (() => void) | null = null;
+
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -129,6 +131,10 @@ class TagEditorParamInner extends Component<Props> {
     if (!parameter.value && required && tag.default) {
       setParameterValue(tag.id, tag.default);
     }
+
+    if (required && !tag.default) {
+      this.forceFocusDefaultPicker?.();
+    }
   };
 
   setQueryType = (queryType: ValuesQueryType) => {
@@ -156,12 +162,25 @@ class TagEditorParamInner extends Component<Props> {
   setParameterAttribute(attr: keyof TemplateTag, val: string) {
     // only register an update if the value actually changes
     if (this.props.tag[attr] !== val) {
+      // Whe parameter is required, removing default disables required as well
+      const required =
+        attr === "default"
+          ? val?.length
+            ? this.props.tag.required
+            : false
+          : this.props.tag.required;
+
       this.props.setTemplateTag({
         ...this.props.tag,
         [attr]: val?.length > 0 ? val : null,
+        required,
       });
     }
   }
+
+  setForceFocusDefaultPicker = (cb: () => void) => {
+    this.forceFocusDefaultPicker = cb;
+  };
 
   setDimension(fieldId: FieldId) {
     const { tag, setTemplateTag, metadata } = this.props;
@@ -223,7 +242,6 @@ class TagEditorParamInner extends Component<Props> {
     const hasNoWidgetType =
       tag["widget-type"] === "none" || !tag["widget-type"];
     const hasNoWidgetLabel = !tag["display-name"];
-    const hasNoDefaultValue = !tag.default;
 
     return (
       <TagContainer>
@@ -357,7 +375,7 @@ class TagEditorParamInner extends Component<Props> {
         <div>
           <ContainerLabel>
             {t`Default filter widget value`}
-            {hasNoDefaultValue && tag.required && (
+            {!tag.default && tag.required && (
               <ErrorSpan>{t`(required)`}</ErrorSpan>
             )}
           </ContainerLabel>
@@ -384,6 +402,7 @@ class TagEditorParamInner extends Component<Props> {
             }}
             isEditing
             commitImmediately
+            setForceFocus={this.setForceFocusDefaultPicker}
           />
 
           <ToggleContainer>
