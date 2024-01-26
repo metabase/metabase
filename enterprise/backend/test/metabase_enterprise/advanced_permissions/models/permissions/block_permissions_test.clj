@@ -33,34 +33,15 @@
 
 (deftest graph-test
   (testing "block permissions should come back from"
-    (doseq [[message perms] {"the graph function"
-                             test-db-perms
+    (doseq [[message get-perms] {"the graph function"
+                                 test-db-perms
 
-                             "the API"
-                             api-test-db-perms}]
+                                 "the API"
+                                 api-test-db-perms}]
       (testing (str message "\n")
-        (mt/with-temp [PermissionsGroup {group-id :id} {}
-                       Permissions      _ {:group_id group-id
-                                           :object   (perms/database-block-perms-path (mt/id))}]
-          (is (= {:schemas :block}
-                 (perms group-id)))
-          (testing (str "\nBlock perms and data perms shouldn't exist together at the same time, but if they do for some "
-                        "reason, then the graph endpoint should ignore the data perms.")
-            (doseq [path [(perms/data-perms-path (mt/id))
-                          (perms/data-perms-path (mt/id) "public")
-                          (perms/data-perms-path (mt/id) "public" (mt/id :venues))]]
-              (testing (format "\nPath = %s" (pr-str path))
-                (mt/with-temp [Permissions _ {:group_id group-id
-                                              :object   path}]
-                  (is (= (merge {:schemas :block}
-                                ;; block perms won't affect the value of `:native`; if a given group has both
-                                ;; `/db/1/` and `/block/db/1/` then the graph will come back with `:native
-                                ;; :write` and `:schemas :block`. This state isn't normally allowed, but the
-                                ;; graph code doesn't currently correct it if it happens. Not sure it's worth
-                                ;; the extra code complexity since it should never happen in the first place.
-                                (when (= path (perms/data-perms-path (mt/id)))
-                                  {:native :write}))
-                         (perms group-id))))))))))))
+        (mt/with-temp [PermissionsGroup {group-id :id} {}]
+          (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
+          (is (= {:schemas :block} (get-perms group-id))))))))
 
 (defn- grant-block-perms! [group-id]
   (perms/update-data-perms-graph! [group-id (mt/id) :data] {:schemas :block}))
