@@ -30,6 +30,7 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
+  getCanSaveDashboard,
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
 } from "metabase/dashboard/selectors";
@@ -147,6 +148,7 @@ interface StateProps {
   isNavBarOpen: boolean;
   isShowingDashboardInfoSidebar: boolean;
   isHomepageDashboard: boolean;
+  canSaveDashboard: boolean;
 }
 
 interface DispatchProps {
@@ -176,6 +178,7 @@ const mapStateToProps = (state: State, props: OwnProps): StateProps => {
     isHomepageDashboard:
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
+    canSaveDashboard: getCanSaveDashboard(state),
   };
 };
 
@@ -307,6 +310,8 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         activeText={t`Saving…`}
         failedText={t`Save failed`}
         successText={t`Saved`}
+        // TODO add an explanatory message as to why it is not available?
+        disabled={!this.props.canSaveDashboard}
       />,
     ];
   }
