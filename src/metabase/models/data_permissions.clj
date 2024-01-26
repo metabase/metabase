@@ -145,6 +145,25 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
+(mu/defn user-has-block-perms-for-database? :- :boolean
+  "Returns a Boolean indicating whether the given user should have block permissions enforced for the given database.
+  This is a standalone function because block perms are only set at the database-level, but :perms/data-access is
+  generally checked at the table-level, except in the case of block perms."
+  [user-id database-id]
+  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+    false
+    (let [perm-values (t2/select-fn-set :value
+                                        :model/DataPermissions
+                                        {:select [[:p.perm_value :value]]
+                                         :from [[:permissions_group_membership :pgm]]
+                                         :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                                                [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                                         :where [:and
+                                                 [:= :pgm.user_id user-id]
+                                                 [:= :p.perm_type (u/qualified-name :perms/data-access)]
+                                                 [:= :p.db_id database-id]]})]
+      (= (coalesce :perms/data-access perm-values)
+         :block))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"

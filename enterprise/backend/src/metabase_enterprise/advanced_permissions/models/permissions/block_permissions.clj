@@ -2,15 +2,9 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.public-settings.premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]))
-
-(defn- current-user-has-block-permissions-for-database?
-  [database-or-id]
-  (= (data-perms/database-permission-for-user api/*current-user-id* :perms/data-access database-or-id)
-     :block))
 
 (defenterprise check-block-permissions
   "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
@@ -21,7 +15,7 @@
   :feature :advanced-permissions
   [{database-id :database}]
   (or
-   (not (current-user-has-block-permissions-for-database? database-id))
+   (not (data-perms/user-has-block-perms-for-database? api/*current-user-id* database-id))
    (throw (ex-info (tru "Blocked: you are not allowed to run queries against Database {0}." database-id)
                    {:type               qp.error-type/missing-required-permissions
                     :actual-permissions @api/*current-user-permissions-set*
