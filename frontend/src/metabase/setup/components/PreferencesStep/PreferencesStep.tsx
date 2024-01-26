@@ -15,6 +15,7 @@ import {
 } from "../../selectors";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InvactiveStep";
+import type { NumberedStepProps } from "../types";
 import {
   StepDescription,
   StepToggleContainer,
@@ -24,7 +25,9 @@ import {
   StepToggle,
 } from "./PreferencesStep.styled";
 
-export const PreferencesStep = (): JSX.Element => {
+export const PreferencesStep = ({
+  stepLabel,
+}: NumberedStepProps): JSX.Element => {
   const [errorMessage, setErrorMessage] = useState<string>();
   const isTrackingAllowed = useSelector(getIsTrackingAllowed);
   const isStepActive = useSelector(state =>
@@ -57,7 +60,7 @@ export const PreferencesStep = (): JSX.Element => {
     return (
       <InactiveStep
         title={getStepTitle(isTrackingAllowed, isStepCompleted)}
-        label={4}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
         onStepSelect={handleStepSelect}
@@ -68,7 +71,7 @@ export const PreferencesStep = (): JSX.Element => {
   return (
     <ActiveStep
       title={getStepTitle(isTrackingAllowed, isStepCompleted)}
-      label={4}
+      label={stepLabel}
     >
       <StepDescription>
         {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
