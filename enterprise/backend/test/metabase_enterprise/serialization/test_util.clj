@@ -99,6 +99,7 @@
   "Creates and sets up two in-memory H2 application databases, a source database and an application database. For
   testing load/dump/serialization stuff. To use the source DB, use [[with-source-db]], which makes binds it as the
   current application database; [[with-dest-db]] binds the destination DB as the current application database."
+  {:style/indent 0 :deprecated "0.48.0"}
   [& body]
   ;; this is implemented by introducing the anaphors `&source-db` and `&dest-db` which are used by
   ;; [[with-source-db]] and [[with-dest-db]]
@@ -107,7 +108,7 @@
 
 (defmacro with-source-db
   "For use with [[with-source-and-dest-dbs]]. Makes the source DB the current application database."
-  {}
+  {:style/indent 0 :deprecated "0.48.0"}
   [& body]
   `(fn [~'source-db] ~@body))
 
