@@ -2795,7 +2795,7 @@
 (deftest block-data-should-not-expose-field-values
   (testing "block data perms should not allow access to field values (private#196)"
     (when config/ee-available?
-      (mt/with-premium-features #{:advanced-permissions}
+      (premium-features-test/with-premium-features #{:advanced-permissions}
         (mt/with-temp-copy-of-db
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
             (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
@@ -4026,7 +4026,7 @@
 (deftest param-values-permissions-test
   (testing "Users without permissions should not see all options in a dashboard filter (private#196)"
     (when config/ee-available?
-      (mt/with-premium-features #{:advanced-permissions}
+      (premium-features-test/with-premium-features #{:advanced-permissions}
         (mt/with-temp-copy-of-db
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
             (testing "Return values with access"
