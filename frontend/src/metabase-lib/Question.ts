@@ -24,6 +24,7 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
+  CardType,
   CollectionId,
   DatabaseId,
   DatasetQuery,
@@ -275,6 +276,11 @@ class Question {
 
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setType(type: CardType) {
+    const isDataset = type === "model";
+    return this.setCard(assoc(this.card(), "type", type)).setDataset(isDataset);
   }
 
   isPersisted() {
