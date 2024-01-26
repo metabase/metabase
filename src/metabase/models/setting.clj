@@ -1071,13 +1071,13 @@
               {:description-form ~description-form})))
 
 ;; This exists as its own method so that we can stub it in tests
-(defn- in-test? [ns] (str/ends-with? ns "-test"))
+(defn- ns-in-test? [ns-name] (str/ends-with? ns-name "-test"))
 
 (defn- requires-i18n?
   [setting-definition]
   (and (not= (:visibility setting-definition) :internal)
        (not= (:setter setting-definition) :none)
-       (not (in-test? (:namespace setting-definition)))))
+       (not (ns-in-test? (:namespace setting-definition)))))
 
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.

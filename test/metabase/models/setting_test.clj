@@ -624,19 +624,22 @@
 
 ;;; ---------------------------------------------- Runtime Setting Options ----------------------------------------------
 
-(def my-default 3)
+(def my-setter :none)
 
 (defsetting test-dynamic-setting
   (deferred-tru "This is a sample sensitive Setting.")
-  :default    my-default
   :type       :integer
-  :visibility (if (odd? my-default) :internal :public))
+  :setter     my-setter
+  :visibility (if (some? my-setter) :internal :public))
 
 (deftest var-value-test
-  (testing "The defsetting macro allows references to vars for inputs"
-    (is (= 3 (test-dynamic-setting))))
-  (testing "The defsetting macro allows arbitrary code forms for values"
-    (is (= :internal (:visibility (setting/resolve-setting :test-dynamic-setting))))))
+  (let [setting-definition (setting/resolve-setting :test-dynamic-setting)]
+    (testing "The defsetting macro allows references to vars for inputs"
+      (is (= :none (:setter setting-definition)))
+      (testing "And these options are used everywhere as expected"
+        (is (not (resolve `test-dynamic-setting!)))))
+    (testing "The defsetting macro allows arbitrary code forms for values"
+      (is (= :internal (:visibility setting-definition))))))
 
 
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
@@ -1162,7 +1165,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [setting/in-test? (constantly false)]
+  (with-redefs [setting/ns-in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all
