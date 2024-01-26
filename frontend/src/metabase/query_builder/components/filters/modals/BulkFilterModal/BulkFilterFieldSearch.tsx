@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -29,12 +29,6 @@ export const FieldSearch = ({
     }
     return false;
   };
-
-  useEffect(() => {
-    if (isExpanded) {
-      inputRef.current?.focus();
-    }
-  }, [isExpanded]);
 
   return (
     <SearchContainer
