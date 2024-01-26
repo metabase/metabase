@@ -23,6 +23,7 @@ function navigatorInfo() {
   return _.pick(navigator, "language", "platform", "userAgent", "vendor");
 }
 
+// eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
 const template = `**Describe the bug**
 A clear and concise description of what the bug is.
 

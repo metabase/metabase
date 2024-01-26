@@ -40,6 +40,7 @@ function FeatureDescription({ schemaName }: { schemaName: string }) {
   const docsLink = (
     <ExternalLink
       key="model-caching-link"
+      // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
       href={MetabaseSettings.docsUrl("data-modeling/models")}
     >{t`Learn more.`}</ExternalLink>
   );

@@ -38,7 +38,7 @@ module.exports = {
   },
 
   create(context) {
-    let isMetabaseSettingsImported = false;
+    let metabaseSettings;
     let isGetDocsUrlSelectorImported = false;
     let isGetLearnUrlSelectorImported = false;
     let isGetShowMetabaseLinksSelectorImported = false;
@@ -55,38 +55,41 @@ module.exports = {
      * @param {object} node
      * @param {DefaultImport|NamedImport} parameter
      */
-    function checkIfModuleIsImported(node, { isDefault, named, source }) {
+    function getImportedModuleNode(node, { isDefault, named, source }) {
       if (getImportNodeLocation(node) === source) {
         const variables = context.getDeclaredVariables(node);
         if (isDefault) {
-          return variables.some(
+          return variables.find(
             variable => variable.defs[0].node.type === "ImportDefaultSpecifier",
           );
         }
 
         // Named import
-        return variables.some(
+        return variables.find(
           variable =>
             variable.defs[0].node.type === "ImportSpecifier" &&
             variable.name === named,
         );
       }
 
-      return false;
+      return undefined;
     }
 
     return {
       ImportDeclaration(node) {
         if (
-          checkIfModuleIsImported(node, {
+          getImportedModuleNode(node, {
             isDefault: true,
             source: "metabase/lib/settings",
           })
         ) {
-          isMetabaseSettingsImported = true;
+          metabaseSettings = getImportedModuleNode(node, {
+            isDefault: true,
+            source: "metabase/lib/settings",
+          });
         }
         if (
-          checkIfModuleIsImported(node, {
+          getImportedModuleNode(node, {
             named: "getDocsUrl",
             source: "metabase/selectors/settings",
           })
@@ -94,7 +97,7 @@ module.exports = {
           isGetDocsUrlSelectorImported = true;
         }
         if (
-          checkIfModuleIsImported(node, {
+          getImportedModuleNode(node, {
             named: "getLearnUrl",
             source: "metabase/selectors/settings",
           })
@@ -102,7 +105,7 @@ module.exports = {
           isGetLearnUrlSelectorImported = true;
         }
         if (
-          checkIfModuleIsImported(node, {
+          getImportedModuleNode(node, {
             named: "getShowMetabaseLinks",
             source: "metabase/selectors/whitelabel",
           })
@@ -139,10 +142,10 @@ module.exports = {
 
         // call `MetabaseSettings.learnUrl` or `MetabaseSettings.docsUrl`
         if (
-          isMetabaseSettingsImported &&
+          metabaseSettings?.references.some(
+            reference => reference.identifier === node?.callee?.object,
+          ) &&
           !isGetShowMetabaseLinksSelectorImported &&
-          node?.callee?.object?.type === "Identifier" &&
-          node?.callee?.object?.name === "MetabaseSettings" &&
           ["learnUrl", "docsUrl"].includes(node?.callee?.property?.name)
         ) {
           context.report({

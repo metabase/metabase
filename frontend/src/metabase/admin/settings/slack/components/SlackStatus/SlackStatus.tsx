@@ -41,6 +41,7 @@ const SlackStatus = ({
   }, []);
 
   const docsUrl = useMemo(() => {
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
     return Settings.docsUrl("configuring-metabase/slack");
   }, []);
 

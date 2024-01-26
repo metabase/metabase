@@ -82,6 +82,7 @@ function NewVersionAvailable({ currentVersion }) {
           }
           className="Button Button--white Button--medium borderless"
           href={
+            // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
             "https://www.metabase.com/docs/" +
             latestVersion +
             "/operations-guide/upgrading-metabase.html"
