@@ -2803,7 +2803,11 @@
                                             {:schemas :block})
             (is (= "You don't have permissions to do that."
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
-                        (mt/user-http-request :rasta :get 403))))))))))
+                        (mt/user-http-request :rasta :get 403))))
+            (testing "search"
+              (is (= "You don't have permissions to do that."
+                     (->> (chain-filter-search-url (:id dashboard) (:category-name param-keys) "BBQ")
+                          (mt/user-http-request :rasta :get 403)))))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"

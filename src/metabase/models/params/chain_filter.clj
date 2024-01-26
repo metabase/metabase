@@ -679,20 +679,22 @@
         v->human-readable     (delay (human-readable-remapping-map field-id))
         the-remapped-field-id (delay (remapped-field-id field-id))]
     (cond
-     (str/blank? query)
-     (apply chain-filter field-id constraints options)
+      (str/blank? query)
+      (apply chain-filter field-id constraints options)
 
-     (some? @v->human-readable)
-     (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query options)
+      (some? @v->human-readable)
+      (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query options)
 
-     (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id))
-     (cached-field-values-search field-id query constraints options)
+      (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id))
+      (do
+        (check-field-value-query-permissions field-id constraints options)
+        (cached-field-values-search field-id query constraints options))
 
-     (some? @the-remapped-field-id)
-     (unremapped-chain-filter-search @the-remapped-field-id constraints query (assoc options :original-field-id field-id))
+      (some? @the-remapped-field-id)
+      (unremapped-chain-filter-search @the-remapped-field-id constraints query (assoc options :original-field-id field-id))
 
-     :else
-     (unremapped-chain-filter-search field-id constraints query options))))
+      :else
+      (unremapped-chain-filter-search field-id constraints query options))))
 
 ;;; ------------------ Filterable Field IDs (powers GET /api/dashboard/params/valid-filter-fields) -------------------
 
