@@ -527,14 +527,19 @@ export const buildTableColumnSettings = ({
       const question = new Question(card /* metadata */);
       const columns = card.visualization_settings["table.columns"];
       const enabledColumns = columns.filter(column => column.enabled);
+
+      let query;
+
+      try {
+        query = question.query();
+      } catch (e) {
+        console.warn(e);
+      }
+
       return _.all(
         enabledColumns,
         columnSetting =>
-          findColumnIndexForColumnSetting(
-            data.cols,
-            columnSetting,
-            question.query(),
-          ) >= 0,
+          findColumnIndexForColumnSetting(data.cols, columnSetting, query) >= 0,
       );
     },
     getDefault: ([
