@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "e2e/support/helpers";
+import { restore, openNativeEditor, runNativeQuery } from "e2e/support/helpers";
 
 describe("issue 16584", () => {
   beforeEach(() => {
@@ -13,9 +13,10 @@ describe("issue 16584", () => {
     editor.type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country ");
     editor.type("{selectAll}");
 
-    cy.get("input[placeholder='Country']").type("NL");
+    cy.findByPlaceholderText("Country").type("NL");
 
-    cy.get("button[aria-label='Get Answer']").first().click();
+    runNativeQuery();
+
     cy.wait("@dataset").then(({ request }) => {
       const { body } = request;
       expect(body.parameters[0].value).to.equal("NL");
