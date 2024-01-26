@@ -43,6 +43,9 @@ export function findColumnIndexForColumnSetting(
     let columnIndex: number;
 
     if (!query) {
+      // TODO: remove once migration is completed
+      throw new Error("query is required to find column index");
+
       columnIndex = legacyFindColumnIndexForColumnSetting(
         columns,
         normalizedFieldRef,
