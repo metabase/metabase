@@ -9,7 +9,9 @@ describe("issue 16584", () => {
 
   it("should pass parameters when running with 'Run select text' (metabase#16584)", () => {
     openNativeEditor()
-      .type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country ")
+      .type("SELECT * FROM ACCOUNTS WHERE COUNTRY = {{ country }}", {
+        parseSpecialCharSequences: false,
+      })
       .type("{selectAll}");
 
     cy.findByPlaceholderText("Country").type("NL");
