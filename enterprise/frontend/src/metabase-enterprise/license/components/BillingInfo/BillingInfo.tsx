@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import type {
   BillingInfoLineItem,
   BillingInfo as IBillingInfo,
@@ -7,12 +8,14 @@ import { Text, Anchor } from "metabase/ui";
 import {
   BillingErrorMessage,
   BillingInfoCard,
-  BillingInfoRow,
+  BillingInfoRowContainer,
   BillingInfoKey,
-  BillingInfoPrimitiveValue,
+  BillingInfoTextValue,
+  BillingInternalLink,
   BillingExternalLink,
   BillingExternalLinkIcon,
 } from "./BillingInfo.styled";
+import { isSupportedLineItem, formatBillingValue } from "./utils";
 
 interface BillingInfoProps {
   isStoreManagedBilling: boolean;
@@ -21,21 +24,56 @@ interface BillingInfoProps {
 }
 
 const BillingInfoValue = ({ lineItem }: { lineItem: BillingInfoLineItem }) => {
-  if (lineItem.type === "link") {
+  const formattedValue = formatBillingValue(lineItem);
+
+  if (!lineItem.display || lineItem.display === "value") {
+    return <BillingInfoTextValue>{formattedValue}</BillingInfoTextValue>;
+  }
+
+  if (lineItem.display === "internal-link") {
     return (
-      <BillingExternalLink href={lineItem.value}>
-        {lineItem.title}
+      <BillingInternalLink to={lineItem.link}>
+        <BillingInfoTextValue>{formattedValue}</BillingInfoTextValue>
+      </BillingInternalLink>
+    );
+  }
+
+  if (lineItem.display === "external-link") {
+    return (
+      <BillingExternalLink href={lineItem.link}>
+        <BillingInfoTextValue>{formattedValue}</BillingInfoTextValue>
         <BillingExternalLinkIcon size="16" name="external" />
       </BillingExternalLink>
     );
   }
 
-  return (
-    <BillingInfoPrimitiveValue type={lineItem.type}>
-      {lineItem.value}
-    </BillingInfoPrimitiveValue>
-  );
+  // do not display items with unknown display or value types
+  return null;
 };
+
+function BillingInfoRow({
+  lineItem,
+  extraPadding,
+}: {
+  lineItem: BillingInfoLineItem;
+  extraPadding: boolean;
+}) {
+  // avoid rendering the entire row if we can't format/display the value
+  // ErrorBoundary serves as an extra guard in case billingInfo schema
+  // changes in a way the current application doesn't expect
+  if (!isSupportedLineItem(lineItem)) {
+    return null;
+  }
+
+  return (
+    <ErrorBoundary errorComponent={() => null}>
+      <BillingInfoRowContainer extraPadding={extraPadding}>
+        <BillingInfoKey>{lineItem.name}</BillingInfoKey>
+        <BillingInfoValue lineItem={lineItem} />
+      </BillingInfoRowContainer>
+    </ErrorBoundary>
+  );
+}
 
 export function BillingInfo({
   isStoreManagedBilling,
@@ -58,11 +96,9 @@ export function BillingInfo({
       {billingInfo.map((lineItem, index) => (
         <BillingInfoRow
           key={lineItem.name}
+          lineItem={lineItem}
           extraPadding={billingInfo.length === index + 1}
-        >
-          <BillingInfoKey>{lineItem.name}</BillingInfoKey>
-          <BillingInfoValue lineItem={lineItem} />
-        </BillingInfoRow>
+        />
       ))}
     </BillingInfoCard>
   );
