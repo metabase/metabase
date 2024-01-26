@@ -101,7 +101,7 @@ export const createStructuredModelCard = (
   opts?: Partial<StructuredCard>,
 ): StructuredCard => {
   return createSavedStructuredCard({
-    dataset: true,
+    type: "model",
     ...opts,
   });
 };
@@ -110,7 +110,7 @@ export const createNativeModelCard = (
   opts?: Partial<NativeCard>,
 ): NativeCard => {
   return createSavedNativeCard({
-    dataset: true,
+    type: "model",
     ...opts,
   });
 };

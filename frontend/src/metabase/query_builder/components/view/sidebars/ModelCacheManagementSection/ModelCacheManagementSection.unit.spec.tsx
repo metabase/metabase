@@ -36,7 +36,7 @@ async function setup({
     ...question.card(),
     id: 1,
     name: "Order model",
-    dataset: true,
+    type: "model",
   });
 
   const modelCacheInfo = getMockModelCacheInfo({
