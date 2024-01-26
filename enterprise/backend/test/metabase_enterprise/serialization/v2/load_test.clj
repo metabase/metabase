@@ -52,7 +52,6 @@
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
           eid1       "0123456789abcdef_0123"]
-      #_{:clj-kondo/ignore [:deprecated-var]}
       (ts/with-source-and-dest-dbs
         (testing "extraction succeeds"
           (ts/with-source-db
@@ -84,7 +83,6 @@
           parent     (atom nil)
           child      (atom nil)
           grandchild (atom nil)]
-      #_{:clj-kondo/ignore [:deprecated-var]}
       (ts/with-source-and-dest-dbs
         (testing "serialization of the three collections"
           (ts/with-source-db
@@ -128,7 +126,6 @@
           t2s        (atom nil)
           f1s        (atom nil)
           f2s        (atom nil)]
-      #_{:clj-kondo/ignore [:deprecated-var]}
       (ts/with-source-and-dest-dbs
         (testing "serializing the two databases"
           (ts/with-source-db
@@ -195,7 +192,7 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field2d    (atom nil)]
-      #_{:clj-kondo/ignore [:deprecated-var]}
+
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
           (ts/with-source-db
@@ -283,7 +280,7 @@
           table2d    (atom nil)
           field2d    (atom nil)]
 
-      #_{:clj-kondo/ignore [:deprecated-var]}
+
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
           (ts/with-source-db
@@ -360,7 +357,7 @@
           table2d    (atom nil)
           field2d    (atom nil)]
 
-      #_{:clj-kondo/ignore [:deprecated-var]}
+
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
           (ts/with-source-db
@@ -444,7 +441,7 @@
           table2d    (atom nil)
           field3d    (atom nil)]
 
-      #_{:clj-kondo/ignore [:deprecated-var]}
+
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
           (ts/with-source-db
@@ -648,7 +645,6 @@
           eventsT1   (atom nil)
           eventsT2   (atom nil)]
 
-      #_{:clj-kondo/ignore [:deprecated-var]}
       (ts/with-source-and-dest-dbs
         (testing "serialize correctly"
           (ts/with-source-db
@@ -757,7 +753,6 @@
           metric1d   (atom nil)
           metric2d   (atom nil)]
 
-      #_{:clj-kondo/ignore [:deprecated-var]}
       (ts/with-source-and-dest-dbs
         (testing "serializing the original entities"
           (ts/with-source-db
@@ -1038,7 +1033,6 @@
 (deftest load-action-test
   (let [serialized (atom nil)
         eid (u/generate-nano-id)]
-    #_{:clj-kondo/ignore [:deprecated-var]}
     (ts/with-source-and-dest-dbs
       (testing "extraction succeeds"
         (ts/with-source-db
@@ -1080,7 +1074,6 @@
         dashcard2d (atom nil)
         tab1s      (atom nil)
         tab2d      (atom nil)]
-    #_{:clj-kondo/ignore [:deprecated-var]}
     (ts/with-source-and-dest-dbs
       (testing "Serializing the original database"
         (ts/with-source-db
@@ -1121,7 +1114,6 @@
                       (:entity_id @tab2d)))))))))
 
 (deftest dashcard-series-test
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (ts/with-source-and-dest-dbs
     (testing "Dashcard series are updated and deleted correctly"
      (ts/with-source-db
@@ -1173,7 +1165,6 @@
 (deftest extraneous-keys-test
   (let [serialized (atom nil)
         eid (u/generate-nano-id)]
-    #_{:clj-kondo/ignore [:deprecated-var]}
     (ts/with-source-and-dest-dbs
       (testing "Sprinkle the source database with a variety of different models"
         (ts/with-source-db

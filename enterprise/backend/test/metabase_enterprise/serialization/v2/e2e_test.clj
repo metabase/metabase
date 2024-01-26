@@ -107,7 +107,6 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (let [extraction (atom nil)
           entities   (atom nil)]
-      #_{:clj-kondo/ignore [:deprecated-var]}
       (ts/with-source-and-dest-dbs
         ;; TODO Generating some nested collections would make these tests more robust, but that's difficult.
         ;; There are handwritten tests for storage and ingestion that check out the nesting, at least.
@@ -430,7 +429,6 @@
 (deftest card-and-dashboard-has-parameter-with-source-is-card-test
   (testing "Dashboard and Card that has parameter with source is a card must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      #_{:clj-kondo/ignore [:deprecated-var]}
       (ts/with-source-and-dest-dbs
         (ts/with-source-db
           ;; preparation
@@ -523,7 +521,6 @@
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    #_{:clj-kondo/ignore [:deprecated-var]}
     (ts/with-source-and-dest-dbs
       (ts/with-source-db
         (let [link-card-viz-setting (fn [model id]
@@ -636,7 +633,6 @@
 
 (deftest dashcards-with-series-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    #_{:clj-kondo/ignore [:deprecated-var]}
     (ts/with-source-and-dest-dbs
       (ts/with-source-db
         (mt/with-temp
@@ -690,7 +686,6 @@
 (deftest dashboard-with-tabs-test
   (testing "Dashboard with tabs must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      #_{:clj-kondo/ignore [:deprecated-var]}
      (ts/with-source-and-dest-dbs
        (ts/with-source-db
          ;; preparation
@@ -760,7 +755,6 @@
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (mt/with-premium-features #{:serialization}
-        #_{:clj-kondo/ignore [:deprecated-var]}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             ;; preparation
@@ -778,7 +772,6 @@
   (testing "without :serialization feature enabled"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (mt/with-premium-features #{}
-        #_{:clj-kondo/ignore [:deprecated-var]}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             ;; preparation
@@ -800,7 +793,6 @@
     (let [old-ids (atom nil)
           card1s  (atom nil)]
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        #_{:clj-kondo/ignore [:deprecated-var]}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             (mt/dataset test-data
