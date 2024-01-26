@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
+   [clojure.set :as set]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -78,24 +79,26 @@
   (dissoc query ::perms))
 
 (defn- check-data-perms
-  [db-id required-perms & {:keys [throw-exceptions?]
-                           :or   {throw-exceptions? true}}]
+  [{{gtap-perms :gtaps} ::perms, db-id :database} required-perms & {:keys [throw-exceptions?]
+                                                                    :or   {throw-exceptions? true}}]
   (try
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]
-      (or (perms/set-has-full-permissions? @*current-user-permissions-set* paths)
-          (throw (perms-exception paths))))
+      (let [paths-excluding-gtap-paths (set/difference paths (-> gtap-perms :paths))]
+        (or (perms/set-has-full-permissions? @*current-user-permissions-set* paths-excluding-gtap-paths)
+            (throw (perms-exception paths)))))
     ;; Check native query access if required
     (when (= (:perms/native-query-editing required-perms) :yes)
-      (or (= (data-perms/database-permission-for-user *current-user-id* :perms/native-query-editing db-id)
-             :yes)
+      (or (= (:perms/native-query-editing gtap-perms) :yes)
+          (= (data-perms/database-permission-for-user *current-user-id* :perms/native-query-editing db-id) :yes)
           (throw (perms-exception {db-id {:perms/native-query-editing :yes}}))))
     ;; Check for unrestricted data access to any tables referenced by the query
     (when-let [table-ids (:perms/data-access required-perms)]
       (doseq [[table-id _] table-ids]
-        (or (= (data-perms/table-permission-for-user *current-user-id* :perms/data-access db-id table-id)
-               :unrestricted)
-            (throw (perms-exception {db-id {:perms/data-access {table-id :unrestricted}}})))))
+        (or
+         (= (get-in gtap-perms [:perms/data-access table-id]) :unrestricted)
+         (= (data-perms/table-permission-for-user *current-user-id* :perms/data-access db-id table-id) :unrestricted)
+         (throw (perms-exception {db-id {:perms/data-access {table-id :unrestricted}}})))))
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -115,18 +118,18 @@
         *card-id*
         (do
           (check-card-read-perms database-id *card-id*)
-          (when-not (check-data-perms database-id required-perms :throw-exceptions? false)
+          (when-not (check-data-perms outer-query required-perms :throw-exceptions? false)
             (check-block-permissions outer-query)))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
         *param-values-query*
-        (when-not (check-data-perms database-id required-perms :throw-exceptions? false)
+        (when-not (check-data-perms outer-query required-perms :throw-exceptions? false)
           (check-block-permissions outer-query))
 
         :else
         (do
-          (check-data-perms database-id required-perms :throw-exceptions? true)
+          (check-data-perms outer-query required-perms :throw-exceptions? true)
           ;; check perms for any Cards referenced by this query (if it is a native query)
           (doseq [{query :dataset-query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
             (check-query-permissions* query)))))))
@@ -151,7 +154,7 @@
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (check-card-read-perms database-id *card-id*))
-  (when-not (check-data-perms database-id
+  (when-not (check-data-perms outer-query
                               (query-perms/required-perms outer-query :already-preprocessed? true)
                               :throw-exceptions? false)
     (check-block-permissions outer-query)))
