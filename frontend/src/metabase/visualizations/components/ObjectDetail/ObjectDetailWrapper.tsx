@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import Question from "metabase-lib/Question";
 import { ObjectDetailView } from "./ObjectDetailView";
 import { PaginationFooter, RootModal } from "./ObjectDetailWrapper.styled";
 import type { ObjectDetailProps } from "./types";
@@ -12,7 +13,7 @@ export function ObjectDetailWrapper({
   card,
   dashcard,
   isObjectDetail,
-  ...props
+  ...rest
 }: ObjectDetailProps) {
   const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
 
@@ -28,10 +29,15 @@ export function ObjectDetailWrapper({
         className={""} // need an empty className to override the Modal default width
       >
         <ObjectDetailView
-          {...props}
+          {...rest}
           showHeader
           data={data}
-          question={question}
+          question={
+            question ??
+            (card && rest.metadata
+              ? new Question(card, rest.metadata)
+              : undefined)
+          }
           closeObjectDetail={closeObjectDetail}
         />
       </RootModal>
@@ -43,11 +49,16 @@ export function ObjectDetailWrapper({
   return (
     <>
       <ObjectDetailView
-        {...props}
+        {...rest}
         zoomedRow={data.rows[currentObjectIndex]}
         data={data}
-        question={question}
-        showHeader={props.settings["detail.showHeader"]}
+        question={
+          question ??
+          (card && rest.metadata
+            ? new Question(card, rest.metadata)
+            : undefined)
+        }
+        showHeader={rest.settings["detail.showHeader"]}
         showControls={false}
         showRelations={false}
         closeObjectDetail={closeObjectDetail}
