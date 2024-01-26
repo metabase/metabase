@@ -128,6 +128,7 @@ const Questions = createEntity({
     "name",
     "cache_ttl",
     "dataset",
+    "type",
     "dataset_query",
     "display",
     "description",
