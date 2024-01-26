@@ -312,6 +312,11 @@ export default class NativeQuery extends AtomicQuery {
         if (!dimension) {
           return new ValidationError(t`Invalid template tag: ${tag.name}`);
         }
+        if (tag.required && !tag.default) {
+          return new ValidationError(
+            t`Missing default value for a required template tag: ${tag.name}`,
+          );
+        }
 
         return dimension.validateTemplateTag();
       })
