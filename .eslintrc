@@ -165,7 +165,7 @@
       }
     },
     {
-      "files": ["*.unit.spec.*"],
+      "files": ["*.unit.spec.*", "frontend/src/metabase/admin/**/*"],
       "rules": {
         "no-unconditional-metabase-links-render": "off"
       }
