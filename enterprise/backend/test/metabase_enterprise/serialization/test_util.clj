@@ -99,26 +99,23 @@
   "Creates and sets up two in-memory H2 application databases, a source database and an application database. For
   testing load/dump/serialization stuff. To use the source DB, use [[with-source-db]], which makes binds it as the
   current application database; [[with-dest-db]] binds the destination DB as the current application database."
-
   [& body]
-  ;; this is implemented by introducing the anaphors `&do-with-source-db` and `&do-with-dest-db` which are used by
+  ;; this is implemented by introducing the anaphors `&source-db` and `&dest-db` which are used by
   ;; [[with-source-db]] and [[with-dest-db]]
-  `(with-dbs [source-db dest-db]
-     (let [~'&do-with-source-db #(with-db source-db @%)
-           ~'&do-with-dest-db #(with-db dest-db @%)]
-       ~@body)))
+  `(with-dbs [~'&source-db ~'&dest-db]
+       ~@body))
 
 (defmacro with-source-db
   "For use with [[with-source-and-dest-dbs]]. Makes the source DB the current application database."
   {}
   [& body]
-  `(~'&do-with-source-db (fn [] ~@body)))
+  `(fn [~'source-db] ~@body))
 
 (defmacro with-dest-db
   "For use with [[with-source-and-dest-dbs]]. Makes the destination DB the current application database."
   {:style/indent 0 :deprecated "0.48.0"}
   [& body]
-  `(~'&do-with-dest-db (fn [] ~@body)))
+  `(fn [~'&dest-db] ~@body))
 
 (defn random-dump-dir [prefix]
   (str (u.files/get-path (System/getProperty "java.io.tmpdir") prefix (mt/random-name))))
