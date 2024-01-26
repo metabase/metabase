@@ -268,9 +268,9 @@ class Question {
 
   /**
    * returns whether this question is a model
-   * @returns boolean
+   * @deprecated Use Question.prototype.type instead
    */
-  isDataset() {
+  isDataset(): boolean {
     return this._card && this._card.dataset;
   }
 
