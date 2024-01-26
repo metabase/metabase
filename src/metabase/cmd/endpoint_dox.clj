@@ -31,7 +31,7 @@
   "Used to format initialisms/acronyms in generated docs."
   '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON" "API"])
 
-(defn- capitalize-initialisms
+(defn capitalize-initialisms
   "Converts initialisms to upper case."
   [name initialisms]
   (let [re (re-pattern (str "(?i)(?:" (str/join "|" (map #(str % "\\b") initialisms)) ")"))]
