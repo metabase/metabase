@@ -8,4 +8,3 @@
 
 (compojure/defroutes ^{:doc "Ring routes for billing API endpoints."} routes
   (compojure/context "/" [] (+auth billing/routes)))
-
