@@ -49,8 +49,7 @@ export function question(
     query = "?" + query;
   }
 
-  const isModel =
-    card?.dataset || card?.model === "dataset" || card?.type === "model";
+  const isModel = card?.dataset || card?.model === "dataset";
   let path = isModel ? "model" : "question";
   if (!card || !card.id) {
     return `/${path}${query}${hash}`;

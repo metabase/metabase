@@ -35,7 +35,7 @@ function setup({
 
     const question = Question.create({
       metadata,
-      datasetQueryType: "query",
+      type: "query",
       dataset_query: Lib.toLegacyQuery(query),
     });
 

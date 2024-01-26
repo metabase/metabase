@@ -92,7 +92,7 @@ const NewItemMenu = ({
         title: hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`,
         icon: "sql",
         link: Urls.newQuestion({
-          datasetQueryType: "native",
+          type: "native",
           creationType: "native_question",
           collectionId,
         }),

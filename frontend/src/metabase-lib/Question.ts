@@ -64,12 +64,12 @@ import type { Query } from "./types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
-  type?: CardType;
+  dataset?: boolean;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
   parameterValues?: ParameterValues;
-  datasetQueryType?: "query" | "native";
+  type?: "query" | "native";
   name?: string;
   display?: string;
   visualization_settings?: VisualizationSettings;
@@ -1132,12 +1132,12 @@ class Question {
     collectionId,
     metadata,
     parameterValues,
-    datasetQueryType = "query",
+    type = "query",
     name,
     display = "table",
     visualization_settings = {},
-    type = "question",
-    dataset_query = datasetQueryType === "native"
+    dataset,
+    dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
   }: QuestionCreatorOpts = {}) {
@@ -1146,12 +1146,11 @@ class Question {
       collection_id: collectionId,
       display,
       visualization_settings,
-      type,
-      dataset: type === "model",
+      dataset,
       dataset_query,
     };
 
-    if (datasetQueryType === "native") {
+    if (type === "native") {
       card = assocIn(card, ["parameters"], []);
     }
 

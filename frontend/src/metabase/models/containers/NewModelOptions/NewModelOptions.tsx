@@ -65,7 +65,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
               to={Urls.newQuestion({
                 mode: "query",
                 creationType: "custom_question",
-                type: "model",
+                dataset: true,
                 collectionId,
               })}
               data-metabase-event="New Model; Custom Question Start"
@@ -80,9 +80,9 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
               to={Urls.newQuestion({
                 mode: "query",
-                datasetQueryType: "native",
+                type: "native",
                 creationType: "native_question",
-                type: "model",
+                dataset: true,
                 collectionId,
               })}
               width={180}
