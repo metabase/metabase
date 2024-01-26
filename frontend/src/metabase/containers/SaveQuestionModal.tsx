@@ -170,7 +170,7 @@ export const SaveQuestionModal = ({
         : "create",
   };
 
-  const questionType = question.type() || "question";
+  const questionType = question.type() ?? "question";
 
   const multiStepTitle =
     questionType === "question"
