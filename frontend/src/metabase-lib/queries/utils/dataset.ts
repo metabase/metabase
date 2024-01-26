@@ -5,6 +5,7 @@ import type {
   FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import Dimension from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
@@ -31,25 +32,51 @@ export function normalizeFieldRef(fieldRef: FieldReference) {
 export function findColumnIndexForColumnSetting(
   columns: DatasetColumn[],
   columnSetting: TableColumnOrderSetting,
+  query?: Lib.Query,
 ) {
   const fieldRef = columnSetting.fieldRef;
   // NOTE: need to normalize field refs because they may be old style [fk->, 1, 2]
+  // TODO: use import { normalize } from "metabase-lib/queries/utils/normalize";
   const normalizedFieldRef = fieldRef ? normalizeFieldRef(fieldRef) : undefined;
   // first try to find by fieldRef
   if (normalizedFieldRef != null) {
-    const dimension = Dimension.parseMBQL(normalizedFieldRef);
-    const index = dimension
-      ? _.findIndex(columns, col =>
-          dimension.isSameBaseDimension(fieldRefForColumn(col)),
-        )
-      : -1;
+    let columnIndex: number;
 
-    if (index >= 0) {
-      return index;
+    if (!query) {
+      columnIndex = legacyFindColumnIndexForColumnSetting(
+        columns,
+        normalizedFieldRef,
+      );
+    } else {
+      const stageIndex = -1;
+      [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+        query,
+        stageIndex,
+        columns,
+        [normalizedFieldRef],
+      );
+    }
+
+    if (columnIndex >= 0) {
+      return columnIndex;
     }
   }
   // if that fails, find by column name
   return _.findIndex(columns, col => col.name === columnSetting.name);
+}
+
+function legacyFindColumnIndexForColumnSetting(
+  columns: DatasetColumn[],
+  normalizedFieldRef: FieldReference,
+) {
+  const dimension = Dimension.parseMBQL(normalizedFieldRef);
+  const index = dimension
+    ? _.findIndex(columns, col =>
+        dimension.isSameBaseDimension(fieldRefForColumn(col)),
+      )
+    : -1;
+
+  return index;
 }
 
 export function findColumnSettingIndexForColumn(
