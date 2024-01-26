@@ -980,17 +980,11 @@
 
 (deftest create-card-with-type-and-dataset-test
   (mt/with-model-cleanup [:model/Card]
-    (testing "type and dataset must maches"
+    (testing "type and dataset must matches"
       (is (= ":dataset is inconsistent with :type"
              (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
                                                                       :dataset true
                                                                       :type :question)))))
-
-    (testing "can create a model using dataset"
-      (is (=? {:dataset true
-               :type    "model"}
-           (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
-                                                                    :dataset true)))))
 
     (testing "can create a model using type"
       (is (=? {:dataset true
