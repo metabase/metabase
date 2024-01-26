@@ -145,7 +145,6 @@
    ^ClientSession session
    stages timeout-ms]
   (let [coll      (.getCollection db coll)
-        ;; TODO: Wrap array list coercion!
         pipe      (java.util.ArrayList. ^java.util.Collection (mongo.jdw/to-document stages))
         aggregate (.aggregate coll session pipe)]
     (init-aggregate! aggregate timeout-ms)))

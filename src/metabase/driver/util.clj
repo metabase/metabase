@@ -596,16 +596,6 @@
     (.init trust-manager-factory trust-store)
     (.getTrustManagers trust-manager-factory)))
 
-(defn ssl-socket-factory
-  "Generates an `SocketFactory` with the custom certificates added"
-  ^SocketFactory [& {:keys [private-key own-cert trust-cert]}]
-  (let [ssl-context (SSLContext/getInstance "TLS")]
-    (.init ssl-context
-           (when (and private-key own-cert) (key-managers private-key (str (random-uuid)) own-cert))
-           (when trust-cert (trust-managers trust-cert))
-           nil)
-    (.getSocketFactory ssl-context)))
-
 (defn ssl-context
   "Generates an `SocketFactory` with the custom certificates added"
   ^javax.net.ssl.SSLContext [& {:keys [private-key own-cert trust-cert]}]
@@ -615,6 +605,11 @@
            (when trust-cert (trust-managers trust-cert))
            nil)
     ssl-context))
+
+(defn ssl-socket-factory
+  "Generates an `SocketFactory` with the custom certificates added"
+  ^SocketFactory [& {:keys [_private-key _own-cert _trust-cert] :as args}]
+    (.getSocketFactory (ssl-context args)))
 
 (def default-sensitive-fields
   "Set of fields that should always be obfuscated in API responses, as they contain sensitive data."

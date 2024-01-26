@@ -45,7 +45,6 @@
                                 details-normalized
                                 mongo.jdw/db-details->connection-string))))))
 
-;; TODO: I'm getting different exception. Why?
 (deftest ^:parallel srv-connection-properties-test
   (testing "connection properties when using SRV"
     (are [host msg]

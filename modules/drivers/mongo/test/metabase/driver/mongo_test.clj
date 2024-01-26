@@ -611,13 +611,13 @@
               (doseq [[i row] (map-indexed vector row-maps)
                       :let    [row (assoc row :_id (inc i))]]
                 (try
-                  (mongo.jdw/insert-one coll row) 
+                  (mongo.jdw/insert-one coll row)
                   (catch Throwable e
                     (throw (ex-info (format "Error inserting row: %s" (ex-message e))
                                     {:database database-name, :collection collection-name, :details details, :row row}
-                                    e))))
-                (log/infof "Inserted %d rows into %s collection %s."
-                           (count row-maps) (pr-str database-name) (pr-str collection-name)))))
+                                    e)))))
+              (log/infof "Inserted %d rows into %s collection %s."
+                         (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
           (let [db (first (t2/insert-returning-instances! Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
