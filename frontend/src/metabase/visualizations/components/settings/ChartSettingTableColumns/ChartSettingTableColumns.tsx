@@ -54,6 +54,7 @@ export const ChartSettingTableColumns = ({
       />
     );
   } else {
+    // question is native
     return (
       <DatasetColumnSelector
         value={value}
