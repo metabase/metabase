@@ -139,14 +139,17 @@ interface ModelCellProps {
 
 const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const headingId = `heading-for-model-${model.id}`;
-
   const lastEditorFullName =
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
-  const lastEditorFirstName =
-    model.last_editor_first_name ?? model.creator_first_name;
-  const lastEditorLastName =
-    model.last_editor_last_name ?? model.creator_last_name;
+  // TODO: Check this is the right way
+  const isMetabaseAnalytics = model.collection.id === 1;
+  const nameDetails = isMetabaseAnalytics
+    ? {}
+    : {
+        firstName: model.last_editor_first_name ?? model.creator_first_name,
+        lastName: model.last_editor_last_name ?? model.creator_last_name,
+      };
 
   return (
     <Link
@@ -169,10 +172,9 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
           </MultilineEllipsified>
         </Text>
         <LastEdited
-          lastEditorFullName={lastEditorFullName}
-          lastEditorFirstName={lastEditorFirstName}
-          lastEditorLastName={lastEditorLastName}
           timestamp={timestamp}
+          fullName={lastEditorFullName}
+          {...nameDetails}
         />
       </ModelCard>
     </Link>

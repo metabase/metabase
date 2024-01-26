@@ -26,7 +26,7 @@ const relativeTimeConfig: Record<string, unknown> = {
   ss: () => t`${1}min`,
   // Don't use "ago"
   past: "%s",
-  // For the edge case where a model's last-edit date is somehow in the future
+  // For the edge case where the system time is prior to a model's last-edit date
   future: t`${"%s"} from now`,
 };
 
@@ -42,26 +42,20 @@ const getHowLongAgo = (timestamp: string) => {
 };
 
 export const LastEdited = ({
-  lastEditorFullName,
-  lastEditorFirstName,
-  lastEditorLastName,
+  fullName,
+  firstName,
+  lastName,
   timestamp,
 }: {
-  lastEditorFullName: string | null;
-  lastEditorFirstName: string | null;
-  lastEditorLastName: string | null;
+  fullName: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   timestamp: string;
 }) => {
   const howLongAgo = getHowLongAgo(timestamp);
   const timeLabel = timestamp ? howLongAgo : "";
   const formattedDate = formatDateTimeWithUnit(timestamp, "day", {});
-  let lastEditorAbbreviatedName = "";
-  if (lastEditorLastName) {
-    const lastEditorFirstInitialOfLastName =
-      lastEditorLastName.length > 0 ? lastEditorLastName[0] : "";
-    lastEditorAbbreviatedName = `${lastEditorFirstName} ${lastEditorFirstInitialOfLastName}`;
-  }
-  const lastEditorName = lastEditorAbbreviatedName || lastEditorFullName;
+  const name = firstName && lastName ? `${firstName} ${lastName[0]}` : fullName;
   const time = (
     <time key="time" dateTime={timestamp}>
       {formattedDate}
@@ -70,13 +64,12 @@ export const LastEdited = ({
 
   const tooltipLabel = c(
     "{0} is the full name (or if this is unavailable, the email address) of the last person who edited a model. {1} is a date",
-  ).jt`Last edited by ${lastEditorFullName}${(<br key="br" />)}${time}`;
-
+  ).jt`Last edited by ${fullName}${(<br key="br" />)}${time}`;
   return (
     <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
       <Text role="note" size="small">
-        {lastEditorName}
-        {lastEditorName && howLongAgo && (
+        {name}
+        {name && howLongAgo && (
           <Text span px=".33rem">
             •
           </Text>
