@@ -49,6 +49,7 @@
                ;; /api/ee/sso/sso/ -> /auth/sso
                (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
                ;; this should be only the replace for enterprise once we resolved #22687
+               (str/replace #"^metabase-enterprise\.serialization\.api" "/api/ee/serialization")
                (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/"))
            (if (vector? route)
              (first route)

@@ -31,7 +31,7 @@
   "Used to format initialisms/acronyms in generated docs."
   '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON" "API"])
 
-(defn capitalize-initialisms
+(defn- capitalize-initialisms
   "Converts initialisms to upper case."
   [name initialisms]
   (let [re (re-pattern (str "(?i)(?:" (str/join "|" (map #(str % "\\b") initialisms)) ")"))]
@@ -48,6 +48,7 @@
       last
       u/capitalize-first-char
       (str/replace #"(.api.|-)" " ")
+      (str/replace ".api" "") ; account for `serialization.api` namespace
       (capitalize-initialisms initialisms)
       (str/replace "SSO SSO" "SSO")))
 
@@ -117,13 +118,20 @@
          :endpoint-str (endpoint-str endpoint)
          :ns-name (endpoint-ns-name endpoint)))
 
+(def api-ns
+  "Regular expression to match endpoints. Needs to match namespaces like:
+   - metabase.api.search
+   - metabase-enterprise.serialization.api
+   - metabase.api.api-key"
+  (re-pattern "^metabase(?:-enterprise\\.[\\w-]+)?\\.api(?:\\.[\\w-]+)?$"))
+
 (defn- api-namespaces []
   (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-        :when   (and (re-find #"^metabase(?:-enterprise\.[\w-]+)?\.api\." (name ns-symb))
+        :when   (and (re-find api-ns (name ns-symb))
                      (not (str/includes? (name ns-symb) "test")))]
     ns-symb))
 
-(defn- collect-endpoints
+(defn collect-endpoints
   "Gets a list of all API endpoints."
   []
   (for [ns-symb     (api-namespaces)
@@ -148,7 +156,7 @@
       (str/includes? (:endpoint-str (first ep-data)) "/auth/sso")
       (str/includes? (:endpoint-str (first ep-data)) "/api/moderation-review")))
 
-(defn endpoint-footer
+(defn- endpoint-footer
   "Adds a footer with a link back to the API index."
   [ep-data]
   (let [level (if (paid? ep-data) "../../" "../")]
@@ -156,7 +164,7 @@
 
 ;;;; Build API pages
 
-(defn endpoint-page
+(defn- endpoint-page
   "Builds a page with the name, description, table of contents for endpoints in a namespace,
   followed by the endpoint and their parameter descriptions."
   [ep ep-data]
@@ -177,7 +185,7 @@
                  u/lower-case-en)]
     (str dir file ext)))
 
-(defn build-endpoint-link
+(defn- build-endpoint-link
   "Creates a link to the page for each endpoint. Used to build links
   on the API index page at `docs/api-documentation.md`."
   [ep ep-data]
