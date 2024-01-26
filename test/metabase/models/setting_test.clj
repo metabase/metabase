@@ -1000,7 +1000,7 @@
   :type       :boolean
   :default    false)
 
-(deftest falsey-default-setting-test
+(deftest ^:parallel falsey-default-setting-test
   (testing "We should use default values even if they are falsey"
     (is (= false (test-falsey-default-setting))))
   (testing "We should return no value for an uninitialized setting with no default or initializer"
