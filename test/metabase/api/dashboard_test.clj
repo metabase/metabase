@@ -2842,20 +2842,11 @@
                                             {:schemas :block})
             (is (= "You don't have permissions to do that."
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
-                        (mt/user-http-request :rasta :get 403))))))))))
-
-(deftest block-data-should-not-expose-field-values-search
-  (testing "block data perms should not allow access to field values (private#196)"
-    (when config/ee-available?
-      (mt/with-premium-features #{:advanced-permissions}
-        (mt/with-temp-copy-of-db
-          (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                            {:schemas :block})
-            (is (= "You don't have permissions to do that."
-                   (->> (chain-filter-search-url (:id dashboard) (:category-name param-keys) "BBQ")
-                        (mt/user-http-request :rasta :get 403))))))))))
+                        (mt/user-http-request :rasta :get 403))))
+            (testing "search"
+              (is (= "You don't have permissions to do that."
+                     (->> (chain-filter-search-url (:id dashboard) (:category-name param-keys) "BBQ")
+                          (mt/user-http-request :rasta :get 403)))))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
