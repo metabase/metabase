@@ -176,15 +176,6 @@ module.exports = {
             });
           }
         });
-        if (
-          LITERAL_METABASE_URL_REGEX.exec(node.value) &&
-          !isGetShowMetabaseLinksSelectorImported
-        ) {
-          context.report({
-            node,
-            message: ERROR_MESSAGE,
-          });
-        }
       },
       Program() {
         const comments = context.getSourceCode().getAllComments();
