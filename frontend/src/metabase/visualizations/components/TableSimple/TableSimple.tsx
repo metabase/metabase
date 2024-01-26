@@ -61,7 +61,7 @@ interface TableSimpleProps {
   isPivoted: boolean;
   className?: string;
   getColumnTitle: (colIndex: number) => string;
-  getExtraDataForClick: (clickObject: ClickObject) => any;
+  getExtraDataForClick: (clickObject: ClickObject) => Record<string, unknown>;
   onVisualizationClick?: (clickObject: ClickObject) => void;
   visualizationIsClickable?: (clickObject: ClickObject) => boolean;
 }
