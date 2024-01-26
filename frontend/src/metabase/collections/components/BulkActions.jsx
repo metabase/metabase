@@ -9,7 +9,6 @@ import Modal from "metabase/components/Modal";
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import {
   BulkActionsToast,
@@ -62,14 +61,12 @@ function BulkActions({
                   purple
                   disabled={!canMove}
                   onClick={onMoveStart}
-                  data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
                 >{t`Move`}</CardButton>
                 <CardButton
                   medium
                   purple
                   disabled={!canArchive}
                   onClick={onArchive}
-                  data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Archive Items`}
                 >{t`Archive`}</CardButton>
               </CardSide>
             </ToastCard>

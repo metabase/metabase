@@ -29,11 +29,7 @@ const ConvertQueryButton = ({
 
   return (
     <Tooltip tooltip={tooltip} placement="top">
-      <SqlButton
-        onClick={handleClick}
-        aria-label={tooltip}
-        data-metabase-event="Notebook Mode; Convert to SQL Click"
-      >
+      <SqlButton onClick={handleClick} aria-label={tooltip}>
         <SqlIcon name="sql" />
       </SqlButton>
     </Tooltip>
