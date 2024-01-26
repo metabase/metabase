@@ -62,13 +62,13 @@ const setup = (props: Partial<Props> = {}) => {
 };
 
 describe("ChartCaption", () => {
-  it("shouldn't render without title", () => {
+  it("should render without a title (metabase#36788)", () => {
     setup();
 
-    expect(screen.queryByTestId("legend-caption")).not.toBeInTheDocument();
+    expect(screen.getByTestId("legend-caption")).toBeInTheDocument();
   });
 
-  it("should render with title", () => {
+  it("should render with a title", () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
       settings: { "card.description": "description" },
