@@ -1,6 +1,7 @@
 const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 
@@ -28,6 +29,13 @@ const BABEL_CONFIG = {
 };
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
+
+const CSS_CONFIG = {
+  localIdentName: devMode
+    ? "[name]__[local]___[hash:base64:5]"
+    : "[hash:base64:5]",
+  importLoaders: 1,
+};
 
 // TODO: Add types generation for SDK
 
@@ -64,6 +72,19 @@ module.exports = env => {
           test: /\.(eot|woff2?|ttf|svg|png)$/,
           type: "asset/resource",
           resourceQuery: { not: [/component|source/] },
+        },
+        {
+          test: /\.css$/,
+          use: [
+            {
+              loader: MiniCssExtractPlugin.loader,
+              options: {
+                publicPath: "./",
+              },
+            },
+            { loader: "css-loader", options: CSS_CONFIG },
+            { loader: "postcss-loader" },
+          ],
         },
         // TODO: this should be enabled only in dev mode
         {
@@ -134,18 +155,8 @@ module.exports = env => {
     },
 
     externals: {
-      react: {
-        commonjs: "react",
-        commonjs2: "react",
-        amd: "React",
-        root: "React",
-      },
-      "react-dom": {
-        commonjs: "react-dom",
-        commonjs2: "react-dom",
-        amd: "ReactDOM",
-        root: "ReactDOM",
-      },
+      react: "react",
+      "react-dom": "react-dom",
       "react/jsx-runtime": "react/jsx-runtime",
     },
 
@@ -158,13 +169,17 @@ module.exports = env => {
     //   ],
     // },
     plugins: [
+      // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
+      new MiniCssExtractPlugin({
+        filename: devMode ? "[name].css" : "[name].[contenthash].css",
+        chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
+      }),
       new NodePolyfillPlugin(), // for crypto, among others
       // https://github.com/remarkjs/remark/discussions/903
-      new webpack.ProvidePlugin({ process: "process/browser.js" }),
-      new webpack.IgnorePlugin({
-        resourceRegExp: /\.css$/, // regular expression to ignore all CSS files
-        contextRegExp: /./,
+      new webpack.ProvidePlugin({
+        process: "process/browser.js",
       }),
+
       shouldAnalyzeBundles &&
         new BundleAnalyzerPlugin({
           analyzerMode: "static",
