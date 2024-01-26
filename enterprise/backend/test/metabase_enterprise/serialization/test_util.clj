@@ -60,9 +60,7 @@
   `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
      ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
      ;;   redefs not great for parallelism
-
-     ;; TODO Check whether we need type hint
-    (testing (format "\nApp DB = %s" (pr-str (.url #_metabase.db.data_source.DataSource ~data-source)))
+    (testing (format "\nApp DB = %s" (pr-str (.url ~data-source)))
       ~@body)) )
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
