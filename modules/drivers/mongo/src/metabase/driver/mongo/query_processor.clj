@@ -1371,7 +1371,11 @@
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
   (try
-    (mapv mongo.jdw/to-document (org.bson.BsonArray/parse s))
+    ;; TODO: Fixme! In following expression we were previously creating BasicDBObject's. As part of Monger removal
+    ;;       in favor of plain mongo-java-driver we now create Documents. I believe following conversion was and is
+    ;;       responsible for #38181.
+    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument org.bson.Document.))
+          (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
                {:type  qp.error-type/invalid-query

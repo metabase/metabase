@@ -16,7 +16,7 @@
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
-   (com.mongodb MongoClientSettings MongoClientSettings$Builder)
+   (com.mongodb ConnectionString MongoClientSettings MongoClientSettings$Builder)
    (com.mongodb.client FindIterable MongoClient MongoClients MongoCollection MongoDatabase)
    (com.mongodb.connection SslSettings$Builder)))
 
@@ -212,9 +212,12 @@
   [host]
   (<= 2 (-> host frequencies (get \. 0))))
 
-(defn- validate-db-details! [{:keys [use-srv host] :as _db-details}]
+(defn- validate-db-details! [{:keys [use-conn-uri conn-uri use-srv host] :as _db-details}]
   (when (and use-srv (not (fqdn? host)))
     (throw (ex-info (tru "Using DNS SRV requires a FQDN for host")
+                    {:host host})))
+  (when (and use-conn-uri (empty? (-> (ConnectionString. conn-uri) .getDatabase)))
+    (throw (ex-info (tru "No database name specified in URI.")
                     {:host host}))))
 
 (defn update-ssl-db-details
@@ -269,7 +272,6 @@
      (when (seq additional-options) (str "&" additional-options)))))
 
 (defn- maybe-add-ssl-context-to-builder!
-  "TODO: When certs are empty we add context with empty certs! Is that desired?"
   [^MongoClientSettings$Builder builder
    {:keys [ssl-cert ssl-use-client-auth client-ssl-cert client-ssl-key]}]
   (let [server-cert? (not (str/blank? ssl-cert))
@@ -294,7 +296,7 @@
   [{:keys [use-conn-uri ssl] :as db-details}]
   (let [connection-string (-> db-details
                               db-details->connection-string
-                              com.mongodb.ConnectionString.)
+                              ConnectionString.)
         builder (com.mongodb.MongoClientSettings/builder)]
     (.applyConnectionString builder connection-string)
     (when (and ssl (not use-conn-uri))
@@ -324,6 +326,9 @@
   "Get database name from database `:details`."
   ^String [{:keys [dbname conn-uri] :as _db-details}]
   (or (not-empty dbname) (-> (com.mongodb.ConnectionString. conn-uri) .getDatabase)))
+
+(defn db-name [database]
+  (-> database details-normalized details->db-name))
 
 (defn do-with-mongo-database [thunk database*]
   (let [db-name (-> database* details-normalized details->db-name)]

@@ -197,7 +197,7 @@
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
         client-database (mongo.jdw/database mongo.jdw/*mongo-client*
-                                            (:name (lib.metadata/database (qp.store/metadata-provider))))]
+                                            (mongo.jdw/db-name (lib.metadata/database (qp.store/metadata-provider))))]
     (with-open [session ^ClientSession (start-session! mongo.jdw/*mongo-client*)]
       (a/go
         (when (a/<! (qp.context/canceled-chan context))

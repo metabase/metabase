@@ -332,6 +332,7 @@
                       :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
       (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
+;; Following is using old mongo driver implementation.
 #_(comment
   (require '[clojure.java.io :as io]
            '[monger.credentials :as mcred])
