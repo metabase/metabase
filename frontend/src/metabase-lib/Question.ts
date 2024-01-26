@@ -274,13 +274,18 @@ class Question {
     return this._card && this._card.dataset;
   }
 
-  setDataset(dataset) {
+  /**
+   * @deprecated Use Question.prototype.setType instead
+   */
+  _setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
   setType(type: CardType) {
-    const isDataset = type === "model";
-    return this.setCard(assoc(this.card(), "type", type)).setDataset(isDataset);
+    const dataset = type === "model";
+    // _setDataset is still called for backwards compatibility
+    // as we're migrating "dataset" -> "type" incrementally
+    return this.setCard(assoc(this.card(), "type", type))._setDataset(dataset);
   }
 
   isPersisted() {
