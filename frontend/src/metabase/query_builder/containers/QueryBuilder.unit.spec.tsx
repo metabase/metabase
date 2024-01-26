@@ -63,12 +63,12 @@ const TEST_DB = createSampleDatabase();
 const TEST_CARD = createMockCard({
   id: 1,
   name: "Test card",
-  dataset: true,
+  type: "model",
 });
 
 const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
-  dataset: false,
+  type: "question",
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -82,7 +82,7 @@ const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
 
 const TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
-  dataset: false,
+  type: "question",
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -109,6 +109,7 @@ const TEST_CARD_VISUALIZATION = createMockCard({
 });
 
 const TEST_MODEL_CARD = createMockCard({
+  type: "model",
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -117,7 +118,6 @@ const TEST_MODEL_CARD = createMockCard({
       limit: 1,
     },
   },
-  dataset: true,
   display: "scalar",
   description: "Test description",
 });

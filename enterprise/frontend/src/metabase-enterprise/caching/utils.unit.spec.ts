@@ -121,7 +121,7 @@ describe("hasQuestionCacheSection", () => {
     lastQueryStart?: string | null;
   }) {
     const card = createMockCard({
-      dataset: isDataset,
+      type: isDataset ? "model" : "question",
       can_write: canWrite,
       last_query_start: lastQueryStart,
     });
