@@ -65,7 +65,7 @@
     (testing (format "\nApp DB = %s" (pr-str (.url #_metabase.db.data_source.DataSource ~data-source)))
       ~@body)) )
 
-(defn- do-with-in-memory-h2-db* [db-name-prefix f]
+(defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix "-" (mt/random-name))
         connection-string (format "jdbc:h2:mem:%s" db-name)
         data-source       (mdb.data-source/raw-connection-string->DataSource connection-string)]
@@ -74,35 +74,43 @@
       (with-db data-source (mdb/setup-db!))
       (f data-source))))
 
-(defn- do-with-in-memory-h2-db [db-name-prefix f]
-  (letfn [(do-with-db [data-source]
-            (fn [thunk] (f (with-db data-source (thunk)))))]
-    (do-with-in-memory-h2-db* db-name-prefix do-with-db)))
+(defn do-with-dbs
+  "Given a function with the given arity, create an in-memory db for each argument and then call the fn with these dbs"
+  [arity f]
+  (if (zero? arity)
+    (f)
+    (recur (dec arity)
+           (fn [& args]
+             (do-with-in-memory-h2-db
+               (str "db-" arity)
+               (fn [data-source]
+                 (apply f data-source args)))))))
 
-(defn do-with-source-and-dest-dbs [f]
-  (do-with-in-memory-h2-db
-   "source"
-   (fn [do-with-source-db]
-     (do-with-in-memory-h2-db
-      "dest"
-      (fn [do-with-dest-db]
-        (f do-with-source-db do-with-dest-db))))))
+(defmacro with-dbs
+  ;; TODO: create a db for each binding
+  {:style/indent 0}
+  [db-bindings & body]
+  `(do-with-dbs
+     ~(count db-bindings)
+     (fn ~db-bindings
+       ~@body)))
 
 (defmacro with-source-and-dest-dbs
   "Creates and sets up two in-memory H2 application databases, a source database and an application database. For
   testing load/dump/serialization stuff. To use the source DB, use [[with-source-db]], which makes binds it as the
   current application database; [[with-dest-db]] binds the destination DB as the current application database."
-  {:style/indent 0 :deprecated "0.48.0"}
+
   [& body]
   ;; this is implemented by introducing the anaphors `&do-with-source-db` and `&do-with-dest-db` which are used by
   ;; [[with-source-db]] and [[with-dest-db]]
-  `(do-with-source-and-dest-dbs
-    (fn [~'&do-with-source-db ~'&do-with-dest-db]
-      ~@body)))
+  `(with-dbs [source-db dest-db]
+     (let [~'&do-with-source-db #(with-db source-db @%)
+           ~'&do-with-dest-db #(with-db dest-db @%)]
+       ~@body)))
 
 (defmacro with-source-db
   "For use with [[with-source-and-dest-dbs]]. Makes the source DB the current application database."
-  {:style/indent 0 :deprecated "0.48.0"}
+  {}
   [& body]
   `(~'&do-with-source-db (fn [] ~@body)))
 
