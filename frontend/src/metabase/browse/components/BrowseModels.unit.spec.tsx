@@ -6,6 +6,7 @@ import {
   createMockCollection,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
+import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import { groupModels, BrowseModels, getCollectionName } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
@@ -31,7 +32,6 @@ const collectionDelta = createMockCollection({ id: 4, name: "Delta" });
 const collectionZulu = createMockCollection({ id: 5, name: "Zulu" });
 const collectionAngstrom = createMockCollection({ id: 6, name: "Ångström" });
 const collectionOzgur = createMockCollection({ id: 7, name: "Özgür" });
-const ourAnalyticsCollection = createMockCollection({ id: "root", name: "" });
 const metabaseAnalyticsCollection = createMockCollection({
   id: 1,
   name: "Metabase Analytics",
@@ -239,7 +239,7 @@ const mockModels: SearchResult[] = [
   {
     id: 21,
     name: "Model 21",
-    collection: ourAnalyticsCollection,
+    collection: defaultRootCollection,
     last_editor_first_name: editors[21].firstName,
     last_editor_last_name: editors[21].lastName,
     last_edited_at: "2000-01-01T00:00:00.000Z",
@@ -247,7 +247,7 @@ const mockModels: SearchResult[] = [
   {
     id: 22,
     name: "Model 22",
-    collection: ourAnalyticsCollection,
+    collection: defaultRootCollection,
     last_editor_first_name: editors[22].firstName,
     last_editor_last_name: editors[22].lastName,
     last_edited_at: "2000-01-01T00:00:00.000Z",
@@ -255,7 +255,7 @@ const mockModels: SearchResult[] = [
   {
     id: 23,
     name: "Model 23",
-    collection: ourAnalyticsCollection,
+    collection: defaultRootCollection,
     last_editor_first_name: editors[23].firstName,
     last_editor_last_name: editors[23].lastName,
     last_edited_at: "2000-01-01T00:00:00.000Z",
@@ -263,7 +263,7 @@ const mockModels: SearchResult[] = [
   {
     id: 24,
     name: "Model 24",
-    collection: ourAnalyticsCollection,
+    collection: defaultRootCollection,
     last_editor_first_name: editors[24].firstName,
     last_editor_last_name: editors[24].lastName,
     last_edited_at: "2000-01-01T00:00:00.000Z",
@@ -271,7 +271,7 @@ const mockModels: SearchResult[] = [
   {
     id: 25,
     name: "Model 25",
-    collection: ourAnalyticsCollection,
+    collection: defaultRootCollection,
     last_editor_first_name: editors[25].firstName,
     last_editor_last_name: editors[25].lastName,
     last_edited_at: "2000-01-01T00:00:00.000Z",
@@ -279,7 +279,7 @@ const mockModels: SearchResult[] = [
   {
     id: 26,
     name: "Model 26",
-    collection: ourAnalyticsCollection,
+    collection: defaultRootCollection,
     last_editor_first_name: editors[26].firstName,
     last_editor_last_name: editors[26].lastName,
     last_edited_at: "2000-01-01T00:00:00.000Z",
