@@ -79,7 +79,7 @@ interface TableCellProps {
     rowIndex: number,
     columnName: string,
   ) => string | undefined;
-  getExtraDataForClick: (clickObject: ClickObject) => any;
+  getExtraDataForClick: (clickObject: ClickObject) => Record<string, unknown>;
   checkIsVisualizationClickable: (clickObject: ClickObject) => boolean;
   onVisualizationClick?: (clickObject: ClickObject) => void;
 }
