@@ -11,6 +11,7 @@
     :as advanced-permissions]
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes :as audit-app]
+   [metabase-enterprise.billing.api.routes :as billing]
    [metabase-enterprise.content-verification.api.routes
     :as content-verification]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
@@ -28,6 +29,9 @@
   ;; and follow the convention.
   (compojure/context
    "/ee" []
+   (compojure/context
+    "/billing" []
+    billing/routes)
    (compojure/context
     "/audit-app" []
     (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") audit-app/routes))
