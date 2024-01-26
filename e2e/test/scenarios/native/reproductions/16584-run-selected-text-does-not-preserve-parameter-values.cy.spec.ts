@@ -4,7 +4,7 @@ describe("issue 16584", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("run");
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should pass parameters when running with 'Run select text' (metabase#16584)", async () => {
@@ -16,7 +16,7 @@ describe("issue 16584", () => {
     cy.get("input[placeholder='Country']").type("NL");
 
     cy.get("button[aria-label='Get Answer']").first().click();
-    cy.wait("@run").then(({ request }) => {
+    cy.wait("@dataset").then(({ request }) => {
       const { body } = request;
       expect(body.parameters[0].value).to.equal("NL");
     });
