@@ -9,7 +9,7 @@
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.models.collection :refer [Collection]]
-   [metabase.models.collection.graph :refer [update-graph!]]
+   [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :refer [graph]]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
@@ -107,14 +107,14 @@
       (with-redefs [config/audit-db-id                 database-id
                     audit-db/default-audit-collection (constantly collection)]
         (testing "Adding instance analytics adds audit db permissions"
-          (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
           (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
             (is (contains? new-perms (table-query-path view-table)))))
         (testing "Unable to update instance analytics to writable"
           (is (thrown-with-msg?
                Exception
                #"Unable to make audit collections writable."
-               (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
+               (graph/update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
 
 ;; TODO: re-enable these tests once they're no longer flaky
 (defn- install-audit-db-if-needed!
