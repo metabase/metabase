@@ -58,6 +58,11 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror embed-token-expired
+  "TODO"
+  :parent invalid-query
+  :show-in-embeds? true)
+
 (deferror invalid-parameter
   "The query is parameterized, and a supplied parameter has an invalid value."
   :parent invalid-query
@@ -94,3 +99,6 @@
 (deferror db
   "Generic ancestor type for all unexpected errors returned or thrown by a data warehouse when running a query."
   :parent server)
+
+
+(show-in-embeds? embed-token-expired)

@@ -95,7 +95,7 @@
                                         e))))]
     (log/tracef "=>%s\n%s" sql (pr-str args))
     (when (seq missing)
-      (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-               {:type    qp.error-type/missing-required-parameter
-                :missing missing})))
+      (throw (ex-info (tru "Something something, this seems to be returned as json")
+                      {:type    qp.error-type/embed-token-expired})))
+    ; this should be reverted
     [(str/trim sql) args]))

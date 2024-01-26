@@ -10,6 +10,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [ring.util.codec :as codec]))
@@ -101,7 +102,8 @@
       ;; if `jwt/unsign` throws an Exception rethrow it in a format that's friendlier to our API
       (catch Throwable e
         (if (str/starts-with? (ex-message e) "Token is expired")
-          (throw (ex-info "Token is expired" {:status-code 403}))
+           (throw (ex-info (tru "Token is expired. This is not returned as json with the error code")
+                           {:type    qp.error-type/embed-token-expired}))
           (throw (ex-info (.getMessage e) {:status-code 400})))))))
 
 (defn get-in-unsigned-token-or-throw
