@@ -32,7 +32,6 @@ export const RootItemList = ({
   folderModel,
   options,
 }: RootItemListProps) => {
-  console.log("rootItemList", options);
   const isAdmin = useSelector(getUserIsAdmin);
 
   const { value: data, loading: isLoading } = useAsync(async () => {
@@ -42,6 +41,7 @@ export const RootItemList = ({
       const ourAnalytics = await CollectionsApi.getRoot({
         namespace: options.namespace,
       });
+
       collectionsData.push({
         ...ourAnalytics,
         model: "collection",
@@ -66,8 +66,6 @@ export const RootItemList = ({
 
     return collectionsData;
   });
-
-  console.log({ rootData: data })
 
   return (
     <ItemList

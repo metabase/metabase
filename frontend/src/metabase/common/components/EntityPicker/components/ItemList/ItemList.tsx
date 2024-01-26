@@ -1,7 +1,4 @@
-import { useRef } from "react";
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { Box , Text, Box, ScrollArea, NavLink, Loader, Center, Icon } from 'metabase/ui';
-
+import { Box , Text, ScrollArea, NavLink, Loader, Center, Icon } from 'metabase/ui';
 import type { CollectionItem } from "metabase-types/api";
 import { getIcon, isSelectedItem } from "../../utils";
 import { PickerColumn } from "./ItemList.styled";
@@ -20,7 +17,6 @@ export const ItemList = ({
   selectedItem: CollectionItem | null;
   folderModel: string;
 }) => {
-  const listRef = useRef<Box>(null);
   if (isLoading) {
     return (
       <Box miw={310}>
@@ -47,12 +43,12 @@ export const ItemList = ({
 
   return (
     <ScrollArea h="100%">
-      <PickerColumn ref={listRef}>
+      <PickerColumn>
         {items.map(item => {
           const isFolder = folderModel.includes(item.model);
           const isSelected = isSelectedItem(item, selectedItem);
           return (
-            <div key={item.model + item.id}>
+            <div key={`${item.model ?? 'collection'}-${item.id}`}>
               <NavLink
                 rightSection={
                   isFolder ? <Icon name="chevronright" size={10} /> : null

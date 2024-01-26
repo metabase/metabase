@@ -38,7 +38,7 @@ export const AutoScrollBox = ({ children }: { children: React.ReactNode}) => {
 
     if (!previousContainerWidth) {
       scrollAllTheWay(containerRef.current);
-    } else if (containerWidth > previousContainerWidth) {
+    } else if (containerWidth !== previousContainerWidth) {
       gradualScroll(containerRef.current);
     }
   }, [containerWidth, previousContainerWidth]);

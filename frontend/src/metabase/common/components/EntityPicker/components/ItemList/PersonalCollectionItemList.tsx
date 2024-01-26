@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import type { SearchResult, CollectionItem, Collection } from "metabase-types/api";
+import type { CollectionItem, Collection } from "metabase-types/api";
 import { useCollectionListQuery } from "metabase/common/hooks";
-import type { EntityPickerOptions, PickerItem } from "../../types";
+import type { EntityPickerOptions } from "../../types";
 import { ItemList } from "./ItemList";
 
 interface PersonalCollectionsItemListProps {
-  onClick: (val: PickerItem) => void;
-  selectedItem: PickerItem | null;
+  onClick: (val: CollectionItem) => void;
+  selectedItem: CollectionItem | null;
   folderModel: string;
   options: EntityPickerOptions;
 }
@@ -16,17 +16,12 @@ export const PersonalCollectionsItemList = ({
   selectedItem,
   folderModel,
 }: PersonalCollectionsItemListProps) => {
-  const { data: personalCollections, isLoading } = useCollectionListQuery({
-    'personal-only': true,
-  });
-  console.log( 'personalCollections', personalCollections)
-  const topLevelPersonalCollections = useMemo(() =>
-    personalCollections
-      ?.filter(isRootPersonalCollection)
-      .sort((a,b) => a?.name.localeCompare(b.name)) ?? []
-  , [personalCollections]);
+  // TODO: see if we can make personal-only flag faster
+  const { data: collections, isLoading } = useCollectionListQuery();
 
-  console.log( 'topLevelPersonalCollections', topLevelPersonalCollections)
+  const topLevelPersonalCollections = useMemo(() =>
+    getSortedTopLevelPersonalCollections(collections)
+  , [collections]);
 
   return (
     <ItemList
@@ -39,6 +34,14 @@ export const PersonalCollectionsItemList = ({
   );
 };
 
+const getSortedTopLevelPersonalCollections = (personalCollections?: Collection[]) =>
+  personalCollections
+    ?.filter(isRootPersonalCollection)
+    .map((collection: Collection) => ({
+      ...collection,
+      model: 'collection',
+    }) as unknown as CollectionItem)
+    .sort((a,b) => a?.name.localeCompare(b.name)) ?? [];
 
 const isRootPersonalCollection = (collection: Collection) =>
   collection.is_personal && collection.location === '/';

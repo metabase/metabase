@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
 
-import { useSelector } from "metabase/lib/redux";
-import type { Collection, SearchResult } from "metabase-types/api";
+import type { Collection, CollectionId, SearchResult } from "metabase-types/api";
 
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import { getUserIsAdmin } from "metabase/selectors/user";
+
 import { useCollectionQuery } from "metabase/common/hooks";
 import { LoadingSpinner, NestedItemPicker } from "../components";
-import type { PickerState } from "../types";
-
+import type { PickerState, PickerItem } from "../types";
 
 export type CollectionPickerOptions = {
   showPersonalCollections?: boolean;
@@ -22,20 +19,9 @@ const defaultOptions: CollectionPickerOptions = {
 };
 
 interface CollectionPickerProps {
-  onItemSelect: (item: SearchResult) => void;
-  value?: Partial<SearchResult>;
+  onItemSelect: (item: PickerItem) => void;
+  value?: PickerItem;
   options?: CollectionPickerOptions;
-}
-
-function getCollectionIdPath(collection: Collection) {
-  const pathFromRoot =
-    collection?.location?.split("/").filter(Boolean).map(Number) ?? [];
-
-  const path = collection.is_personal
-    ? [null, ...pathFromRoot, collection.id]
-    : [null, "root", ...pathFromRoot, collection.id];
-
-  return path;
 }
 
 export const CollectionPicker = ({
@@ -43,65 +29,38 @@ export const CollectionPicker = ({
   value,
   options = defaultOptions,
 }: CollectionPickerProps) => {
-  const [path, setPath] = useState<PickerState<SearchResult>>(() => {
-    return [
-      {
-        selectedItem: { model: "collection", id: "root" },
-      },
-      {
-        query: {
-          collection: "root",
-          models: ["collection"],
-          namespace: options.namespace,
-        },
-        selectedItem: null,
-      },
-    ];
-  });
-
-  const isAdmin = useSelector(getUserIsAdmin);
+  const [path, setPath] = useState<PickerState<PickerItem>>(() =>
+    getStateFromIdPath({
+      idPath: [null, 'root'],
+      namespace: options.namespace,
+    }));
 
   const { data: currentCollection, isLoading: loadingCurrentCollection } =
     useCollectionQuery({ id: value?.id, enabled: !!value?.id });
 
   const onFolderSelect = ({
-    folder,
-    level,
+    folder
   }: {
     folder: Partial<SearchResult>;
-    level: number;
   }) => {
-    setPath(
-      generatePath({
-        path,
-        folder,
-        index: level,
-        options,
-        isAdmin,
-      }),
-    );
+    const newPath = getStateFromIdPath({
+      idPath: getCollectionIdPath(folder as Collection),
+      namespace: options.namespace,
+    });
+    setPath(newPath);
     onItemSelect(folder);
   };
 
-  useEffect(() => {
-    console.log("effectin", [currentCollection, value?.id, options.namespace]);
-    if (value?.id && currentCollection) {
-      const [firstStep, ...steps] = getCollectionIdPath(currentCollection);
-      console.log(firstStep, steps);
-      let _path = [...path];
-      steps.forEach((p, i) => {
-        _path = generatePath({
-          folder: { id: p, model: "collection" },
-          index: i,
-          isAdmin,
-          options,
-          path: _path,
-        });
+  useEffect(function setInitialPath () {
+    if (currentCollection) {
+      const newPath = getStateFromIdPath({
+        idPath: getCollectionIdPath(currentCollection),
+        namespace: options.namespace,
       });
 
-      setPath(_path);
+      setPath(newPath);
     }
-  }, [loadingCurrentCollection, value?.id, options.namespace]);
+  }, [currentCollection, options.namespace]);
 
   if (loadingCurrentCollection) {
     return <LoadingSpinner />;
@@ -119,32 +78,45 @@ export const CollectionPicker = ({
   );
 };
 
-const generatePath = ({ path, folder, index, isAdmin, options }) => {
-  const restOfPath = path.slice(0, index + 1);
+const getCollectionIdPath = (collection: Collection): CollectionId[] => {
+  const pathFromRoot =
+    collection?.location?.split("/").filter(Boolean).map(Number) ?? [];
 
-  restOfPath[restOfPath.length - 1].selectedItem = {
-    id: folder.id,
-    model: folder.model,
-  };
 
-  if (isAdmin && folder.id === (PERSONAL_COLLECTIONS.id as unknown as number)) {
-    return restOfPath.concat({
+  const path = collection.is_personal || collection.id === "root"
+    ? [null, ...pathFromRoot, collection.id]
+    : [null, "root", ...pathFromRoot, collection.id];
+
+  return path as CollectionId[];
+}
+
+const getStateFromIdPath = ({
+  idPath, namespace
+}: {
+  idPath: CollectionId[]; namespace?: 'snippets'
+}): PickerState<SearchResult> => {
+  // TODO: handle collections buried in another user's personal collection 😱
+  return idPath.map((id, index) => {
+    const nextLevelId = idPath[index + 1] ?? null;
+
+    if (index === 0) {
+      return {
+        selectedItem: {
+          model: "collection",
+          id: nextLevelId
+        },
+      };
+    }
+
+    return {
       query: {
-        collection: PERSONAL_COLLECTIONS.id,
+        collection: id,
         models: ["collection"],
-        namespace: options.namespace,
-        'personal-only': true,
+        namespace,
       },
-      selectedItem: null,
-    });
-  } else {
-    return restOfPath.concat({
-      query: {
-        collection: folder.id,
-        models: ["collection"],
-        namespace: options.namespace,
-      },
-      selectedItem: null,
-    });
-  }
+      selectedItem: nextLevelId
+        ? { model: "collection", id: nextLevelId }
+        : null,
+    };
+  });
 };
