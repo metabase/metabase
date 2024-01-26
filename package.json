@@ -1,10 +1,10 @@
 {
-  "name": "metabase",
-  "private": true,
+  "name": "metabase-sdk",
   "version": "0.0.0",
   "description": "Metabase Analytics Report Server",
   "repository": "https://github.com/metabase/metabase",
-  "license": "private",
+  "main": "resources/embedding-sdk/dist/main.bundle.js",
+  "license": "MIT",
   "engines": {
     "node": ">=18",
     "yarn": "^1.12.3"

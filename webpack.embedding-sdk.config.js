@@ -1,6 +1,7 @@
 const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+const path = require("path");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 
@@ -17,6 +18,7 @@ const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 const E2E_PATH = __dirname + "/e2e";
+const SHARED_SRC = path.join(__dirname, "frontend", "src", "metabase-shared");
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -51,6 +53,7 @@ module.exports = env => {
       publicPath: "",
       filename: "[name].bundle.js",
       libraryTarget: "commonjs2",
+      globalObject: "{}",
     },
 
     module: {
@@ -105,6 +108,11 @@ module.exports = env => {
         ".svg",
       ],
       alias: {
+        d3: path.join(
+            SHARED_SRC,
+            "dependencies",
+            "d3.js",
+        ),
         assets: ASSETS_PATH,
         fonts: FONTS_PATH,
         metabase: SRC_PATH,
