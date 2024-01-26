@@ -137,6 +137,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
+  setParameterValueToDefault: (parameterId: ParameterId) => void;
   onOpenModal: (modalType: string) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
@@ -765,6 +766,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery,
       sidebarFeatures,
       canChangeDatabase,
+      setParameterValueToDefault,
     } = this.props;
 
     const isPromptInputVisible = this.isPromptInputVisible();
@@ -802,6 +804,7 @@ export class NativeQueryEditor extends Component<
                 parameters={parameters}
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
+                setParameterValueToDefault={setParameterValueToDefault}
               />
             )}
             {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
