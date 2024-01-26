@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -98,6 +99,12 @@
   (let [ordered-values (-> Permissions perm-type :values)]
     (first (filter (set perm-values) ordered-values))))
 
+(defn- is-superuser?
+  [user-id]
+  (if (= user-id api/*current-user-id*)
+    api/*is-superuser?*
+    (t2/select-one-fn :is_superuser :model/User :id user-id)))
+
 (mu/defn database-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
   multiple permissions for the given type in different groups, they are coalesced into a single value."
@@ -105,7 +112,7 @@
   (when (not= :model/Database (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
-  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+  (if (is-superuser? user-id)
     (most-permissive-value perm-type)
     (let [perm-values (t2/select-fn-set :value
                                         :model/DataPermissions
@@ -127,7 +134,7 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
-  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+  (if (is-superuser? user-id)
     (most-permissive-value perm-type)
     (let [perm-values (t2/select-fn-set :value
                                         :model/DataPermissions
@@ -150,7 +157,7 @@
   This is a standalone function because block perms are only set at the database-level, but :perms/data-access is
   generally checked at the table-level, except in the case of block perms."
   [user-id database-id]
-  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+  (if (is-superuser? user-id)
     false
     (let [perm-values (t2/select-fn-set :value
                                         :model/DataPermissions
@@ -182,7 +189,7 @@
   This is intended to be used for logging and debugging purposes, to see what a user's real permissions are at a glance. Enforcement
   should happen via `database-permission-for-user` and `table-permission-for-user`."
   [user-id & {:keys [db-id perm-type]}]
-  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+  (if (is-superuser? user-id)
     (admin-permission-graph :db-id db-id :perm-type perm-type)
     (let [data-perms    (t2/select :model/DataPermissions
                                    {:select [[:p.perm_type :perm-type]

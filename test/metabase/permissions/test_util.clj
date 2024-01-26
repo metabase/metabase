@@ -78,7 +78,7 @@
 
 (defmacro with-no-data-perms-for-all-users!
   "Runs `body`, and sets every data permission for all databases to its least-permissive value for the All Users
-  permission group for the duration of the test."
+  permission group for the duration of the test. Restores the original permissions afterwards."
   [& body]
   `(do-with-no-data-perms-for-all-users! (fn [] ~@body)))
 
