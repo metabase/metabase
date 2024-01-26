@@ -85,13 +85,15 @@
                  (apply f data-source args)))))))
 
 (defmacro with-dbs
-  ;; TODO: create a db for each binding
+  "Create and set up in-memory H2 application databases for each symbol in the bindings vector, each of which is then
+   bound to the corresponding data-source when executing the body. You can then use [[with-db]] to make any of these
+   data-sources the current application database.
+
+   This is particularly useful for load/dump/serialization tests, where you need both a source and application db."
   {:style/indent 0}
-  [db-bindings & body]
-  `(do-with-dbs
-     ~(count db-bindings)
-     (fn ~db-bindings
-       ~@body)))
+  [bindings & body]
+  (let [arity (count bindings)]
+    `(do-with-dbs ~arity (fn ~bindings ~@body))))
 
 (defn random-dump-dir [prefix]
   (str (u.files/get-path (System/getProperty "java.io.tmpdir") prefix (mt/random-name))))
