@@ -22,7 +22,7 @@ import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
 
 export type BrowseTabId = "models" | "databases";
 
-const isValidBrowseTab = (value: string | null): value is BrowseTabId =>
+const isValidBrowseTab = (value: unknown): value is BrowseTabId =>
   value === "models" || value === "databases";
 
 export const BrowseApp = ({

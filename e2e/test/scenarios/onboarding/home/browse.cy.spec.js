@@ -9,8 +9,8 @@ describe("scenarios > browse data", () => {
   it("can browse to a model (metabase#36368)", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
-    cy.location("pathname").should("eq", "/browse");
-    cy.findByRole("heading", { name: "Browse data" });
+    cy.location("pathname").should("eq", "/browse/models");
+    cy.findByTestId("data-browser").findByText("Browse data");
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByRole("button", { name: "Filter" });
   });

@@ -32,7 +32,7 @@ describe("URLs", () => {
       cy.findByText("Sample Database");
       cy.location("pathname").should(
         "eq",
-        `/browse/${SAMPLE_DB_ID}-sample-database`,
+        `/browse/databases/${SAMPLE_DB_ID}-sample-database`,
       );
     });
 
