@@ -34,6 +34,7 @@ export class ParameterWidget extends Component {
       commitImmediately,
       parameters,
       setParameterValueToDefault,
+      enableParameterRequiredBehavior,
     } = this.props;
 
     const isEditingParameter = editingParameter?.id === parameter.id;
@@ -53,6 +54,7 @@ export class ParameterWidget extends Component {
         isFullscreen={isFullscreen}
         commitImmediately={commitImmediately}
         setParameterValueToDefault={setParameterValueToDefault}
+        enableRequiredBehavior={enableParameterRequiredBehavior}
       />
     );
   }

@@ -805,6 +805,7 @@ export class NativeQueryEditor extends Component<
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
                 setParameterValueToDefault={setParameterValueToDefault}
+                enableParameterRequiredBehavior
               />
             )}
             {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
