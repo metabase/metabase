@@ -82,7 +82,7 @@ describe("scenarios > question > new", () => {
       cy.contains("Sample Database");
       // cy.findAllByRole("link", { name: "Sample Database" })
       //   .should("have.attr", "href")
-      //   .and("eq", `/browse/${SAMPLE_DB_ID}-sample-database`);
+      //   .and("eq", `/browse/databases/${SAMPLE_DB_ID}-sample-database`);
 
       // Discarding the search query should take us back to the original selector
       // that starts with the list of databases and saved questions

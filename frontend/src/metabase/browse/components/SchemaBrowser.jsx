@@ -44,7 +44,7 @@ function SchemaBrowser(props) {
               {schemas.map(schema => (
                 <SchemaGridItem key={schema.id}>
                   <SchemaLink
-                    to={`/browse/${dbId}/schema/${encodeURIComponent(
+                    to={`/browse/databases/${dbId}/schema/${encodeURIComponent(
                       schema.name,
                     )}`}
                   >

@@ -198,7 +198,7 @@ describe("InfoText", () => {
       expect(databaseLink).toBeInTheDocument();
       expect(databaseLink).toHaveAttribute(
         "href",
-        `/browse/${MOCK_DATABASE.id}-database-name`,
+        `/browse/databases/${MOCK_DATABASE.id}-database-name`,
       );
 
       expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
