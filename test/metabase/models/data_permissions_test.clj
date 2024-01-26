@@ -180,7 +180,7 @@
                  :model/Database                   {database-id-2 :id} {}
                  :model/Table                      {table-id-1 :id}    {:db_id database-id-1}
                  :model/Table                      {table-id-2 :id}    {:db_id database-id-1}]
-    (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
+    (mt/with-restored-data-perms-for-groups! [()]
       (mt/with-no-data-perms-for-all-users!
         ;; Clear the default permissions for the groups
         (t2/delete! :model/DataPermissions :group_id group-id-1)
