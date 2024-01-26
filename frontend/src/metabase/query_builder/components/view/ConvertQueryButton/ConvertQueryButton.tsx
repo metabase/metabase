@@ -46,9 +46,9 @@ ConvertQueryButton.shouldRender = ({
   question,
   queryBuilderMode,
 }: ConvertQueryButtonOpts) => {
-  const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
+  const { isNative } = Lib.queryDisplayInfo(question.query());
   return (
-    isStructured &&
+    !isNative &&
     question.database()?.native_permissions === "write" &&
     queryBuilderMode === "notebook"
   );

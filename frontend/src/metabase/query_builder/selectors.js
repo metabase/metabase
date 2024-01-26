@@ -639,11 +639,11 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       return isSavedQuestionChanged;
     }
 
-    const isOriginalQuestionStructured =
+    const isOriginalQuestionNative =
       originalQuestion &&
-      !Lib.queryDisplayInfo(originalQuestion.query()).isNative;
+      Lib.queryDisplayInfo(originalQuestion.query()).isNative;
 
-    if (isOriginalQuestionStructured) {
+    if (!isOriginalQuestionNative) {
       return uiControls.isModifiedFromNotebook;
     }
 
