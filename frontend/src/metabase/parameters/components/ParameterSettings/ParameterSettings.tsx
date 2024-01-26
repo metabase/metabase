@@ -8,6 +8,7 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import { TextInput } from "metabase/ui";
+import Toggle from "metabase/core/components/Toggle";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
@@ -33,6 +34,7 @@ export interface ParameterSettingsProps {
   onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onChangeRequired: (value: boolean) => void;
 }
 
 const ParameterSettings = ({
@@ -44,6 +46,7 @@ const ParameterSettings = ({
   onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
+  onChangeRequired,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
 
@@ -99,16 +102,7 @@ const ParameterSettings = ({
           />
         </SettingSection>
       )}
-      <SettingSection>
-        <SettingLabel>{t`Default value`}</SettingLabel>
-        <SettingValueWidget
-          parameter={parameter}
-          name={parameter.name}
-          value={parameter.default}
-          placeholder={t`No default`}
-          setValue={onChangeDefaultValue}
-        />
-      </SettingSection>
+
       {isSingleOrMultiSelectable(parameter) && (
         <SettingSection>
           <SettingLabel>{t`People can pick`}</SettingLabel>
@@ -120,6 +114,32 @@ const ParameterSettings = ({
           />
         </SettingSection>
       )}
+      <SettingSection>
+        <SettingLabel>{t`Default value`}</SettingLabel>
+        <SettingValueWidget
+          parameter={parameter}
+          name={parameter.name}
+          value={parameter.default}
+          placeholder={t`No default`}
+          setValue={onChangeDefaultValue}
+        />
+
+        <Toggle
+          // id={`tag-editor-required_${tag.id}`}
+          value={parameter.required}
+          onChange={onChangeRequired}
+        />
+
+        {t`Always require a value`}
+        <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
+
+        {/* <div>
+          <ToggleLabel htmlFor={`tag-editor-required_${tag.id}`}>
+            {t`Always require a value`}
+          </ToggleLabel>
+          <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
+        </div> */}
+      </SettingSection>
     </SettingsRoot>
   );
 };

@@ -40,6 +40,7 @@ export interface ParameterSidebarProps {
     parameterId: ParameterId,
     filteringParameters: string[],
   ) => void;
+  onChangeRequired: (parameterId: ParameterId, value: boolean) => void;
   onRemoveParameter: (parameterId: ParameterId) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
@@ -55,6 +56,7 @@ export const ParameterSidebar = ({
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeFilteringParameters,
+  onChangeRequired,
   onRemoveParameter,
   onShowAddParameterPopover,
   onClose,
@@ -123,6 +125,13 @@ export const ParameterSidebar = ({
     [otherParameters],
   );
 
+  const handleChangeRequired = useCallback(
+    (value: boolean) => {
+      onChangeRequired(parameterId, value);
+    },
+    [parameterId, onChangeRequired],
+  );
+
   return (
     <Sidebar onClose={onClose} onRemove={handleRemove}>
       <SidebarHeader>
@@ -144,6 +153,7 @@ export const ParameterSidebar = ({
             onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
+            onChangeRequired={handleChangeRequired}
           />
         ) : (
           <ParameterLinkedFilters
