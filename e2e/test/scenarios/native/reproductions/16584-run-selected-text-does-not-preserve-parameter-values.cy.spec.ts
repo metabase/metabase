@@ -11,6 +11,7 @@ describe("issue 16584", () => {
     // - the issue persists even when selecting the *entire* query
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
+    // - the space at the end of the query is not needed to reproduce this issue
     openNativeEditor()
       .type(
         "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
