@@ -15,6 +15,7 @@ import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
+  SettingLabelError,
   SettingRequiredContainer,
   SettingRequiredLabel,
   SettingSection,
@@ -116,7 +117,13 @@ const ParameterSettings = ({
       )}
 
       <SettingSection>
-        <SettingLabel>{t`Default value`}</SettingLabel>
+        <SettingLabel>
+          {t`Default value`}
+          {parameter.required && !parameter.default && (
+            <SettingLabelError>({t`required`})</SettingLabelError>
+          )}
+        </SettingLabel>
+
         <SettingValueWidget
           parameter={parameter}
           name={parameter.name}
