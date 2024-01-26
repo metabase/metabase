@@ -29,10 +29,7 @@ import {
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
 
-export const groupModels = (
-  models: SearchResult[],
-  locale: string | undefined,
-) => {
+export const groupModels = (models: SearchResult[], localeCode?: string) => {
   const groupedModels = Object.values(
     _.groupBy(models, model => model.collection.id),
   ).sort((a, b) =>
@@ -101,7 +98,7 @@ const ModelGroup = ({
 }: {
   models: SearchResult[];
   index: number;
-  localeCode: string | undefined;
+  localeCode?: string;
 }) => {
   const sortedModels = models.sort((a, b) => {
     // If the name is undefined or blank, treat it as alphabetically last
@@ -126,30 +123,33 @@ const ModelGroup = ({
           model={model}
           collectionHtmlId={collectionHtmlId}
           key={`model-${model.id}`}
+          localeCode={localeCode}
         />
       ))}
     </>
   );
 };
 
-interface ModelCellProps {
+const ModelCell = ({
+  model,
+  collectionHtmlId,
+  localeCode,
+}: {
   model: SearchResult;
   collectionHtmlId: string;
-}
-
-const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
+  localeCode?: string;
+}) => {
   const headingId = `heading-for-model-${model.id}`;
   const lastEditorFullName =
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
-  // TODO: Check this is the right way
   const isMetabaseAnalytics = model.collection.id === 1;
-  const nameDetails = isMetabaseAnalytics
-    ? {}
-    : {
+  const nameDetails = !isMetabaseAnalytics
+    ? {
         firstName: model.last_editor_first_name ?? model.creator_first_name,
         lastName: model.last_editor_last_name ?? model.creator_last_name,
-      };
+      }
+    : null;
 
   return (
     <Link
@@ -174,6 +174,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
         <LastEdited
           timestamp={timestamp}
           fullName={lastEditorFullName}
+          localeCode={localeCode}
           {...nameDetails}
         />
       </ModelCard>

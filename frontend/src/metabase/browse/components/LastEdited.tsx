@@ -46,16 +46,21 @@ export const LastEdited = ({
   firstName,
   lastName,
   timestamp,
+  localeCode,
 }: {
   fullName: string | null;
   firstName?: string | null;
   lastName?: string | null;
   timestamp: string;
+  localeCode?: string;
 }) => {
   const howLongAgo = getHowLongAgo(timestamp);
   const timeLabel = timestamp ? howLongAgo : "";
   const formattedDate = formatDateTimeWithUnit(timestamp, "day", {});
-  const name = firstName && lastName ? `${firstName} ${lastName[0]}` : fullName;
+  const name =
+    firstName && lastName
+      ? `${firstName} ${lastName[0].toLocaleUpperCase(localeCode)}`
+      : fullName;
   const time = (
     <time key="time" dateTime={timestamp}>
       {formattedDate}
