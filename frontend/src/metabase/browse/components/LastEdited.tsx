@@ -43,14 +43,25 @@ const getHowLongAgo = (timestamp: string) => {
 
 export const LastEdited = ({
   lastEditorFullName,
+  lastEditorFirstName,
+  lastEditorLastName,
   timestamp,
 }: {
   lastEditorFullName: string | null;
+  lastEditorFirstName: string | null;
+  lastEditorLastName: string | null;
   timestamp: string;
 }) => {
   const howLongAgo = getHowLongAgo(timestamp);
   const timeLabel = timestamp ? howLongAgo : "";
   const formattedDate = formatDateTimeWithUnit(timestamp, "day", {});
+  let lastEditorAbbreviatedName = "";
+  if (lastEditorLastName) {
+    const lastEditorFirstInitialOfLastName =
+      lastEditorLastName.length > 0 ? lastEditorLastName[0] : "";
+    lastEditorAbbreviatedName = `${lastEditorFirstName} ${lastEditorFirstInitialOfLastName}`;
+  }
+  const lastEditorName = lastEditorAbbreviatedName || lastEditorFullName;
   const time = (
     <time key="time" dateTime={timestamp}>
       {formattedDate}
@@ -64,8 +75,8 @@ export const LastEdited = ({
   return (
     <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
       <Text role="note" size="small">
-        {lastEditorFullName}
-        {lastEditorFullName && howLongAgo && (
+        {lastEditorName}
+        {lastEditorName && howLongAgo && (
           <Text span px=".33rem">
             •
           </Text>
