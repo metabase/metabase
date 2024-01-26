@@ -39,7 +39,6 @@
                                 table-id-2 :no-self-service}
                                ""
                                {table-id-3 :unrestricted}}}}}
-
         ;; Restoring full data access and native query permissions
         {group-id-1
          {database-id-1
@@ -50,7 +49,6 @@
          {database-id-1
           {:perms/native-query-editing :yes
            :perms/data-access :unrestricted}}}
-
         ;; Setting data access permissions at the schema-level
         {group-id-1
          {database-id-1
@@ -66,7 +64,6 @@
                                 table-id-2 :unrestricted}
                                ""
                                {table-id-3 :no-self-service}}}}}
-
         ;; Setting block permissions for the database
         {group-id-1
          {database-id-1
@@ -307,16 +304,18 @@
 (deftest api-graphs-are-equal
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}  {}
                  :model/Database         {db-id-1 :id}     {}]
-    ;; TODO constrain graph outputs to just the temp values...
     (testing "legacy perms-graph should be equal to the new one"
       (let [data-perms (constrain-graph group-id-1 db-id-1
-                                        (data-perms.graph/db-graph->api-graph
-                                         (data-perms/data-permissions-graph)))
+                                        (data-perms.graph/db-graph->api-graph {:audit? false}))
             api-perms (constrain-graph group-id-1 db-id-1
                                        (perms/data-perms-graph))]
         (is (api-graph=
              (:groups api-perms)
              (:groups data-perms)))))))
+
+(comment
+  (clojure.test/run-test-var #'api-graphs-are-equal)
+  )
 
 (comment
   #_(require '[clojure.math.combinatorics :as math.combo])
