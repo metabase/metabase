@@ -68,6 +68,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Sandbox user*](api/ee/sandbox-user.md)
 - [Search](api/search.md)
 - [Segment](api/segment.md)
+- [Serialization*](api/ee/serialization.md)
 - [Session](api/session.md)
 - [Setting](api/setting.md)
 - [Setup](api/setup.md)
