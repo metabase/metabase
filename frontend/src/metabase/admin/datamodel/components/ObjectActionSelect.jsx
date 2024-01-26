@@ -42,7 +42,6 @@ export default class ObjectActionsSelect extends Component {
             <li>
               <ActionLink
                 to={"/admin/datamodel/" + objectType + "/" + object.id}
-                data-metabase-event={"Data Model;" + objectType + " Edit Page"}
               >
                 {t`Edit`} {capitalize(objectType)}
               </ActionLink>
@@ -56,7 +55,6 @@ export default class ObjectActionsSelect extends Component {
                   object.id +
                   "/revisions"
                 }
-                data-metabase-event={"Data Model;" + objectType + " History"}
               >
                 {t`Revision History`}
               </ActionLink>
