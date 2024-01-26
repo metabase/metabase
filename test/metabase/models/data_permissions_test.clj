@@ -142,7 +142,7 @@
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
                  :model/PermissionsGroup           {group-id-2 :id}  {}
-                 :model/User                       {user-id :id}     {}
+                 :model/User                       {user-id   :id}   {}
                  :model/PermissionsGroupMembership {}                {:user_id  user-id
                                                                       :group_id group-id-1}
                  :model/PermissionsGroupMembership {}                {:user_id  user-id
@@ -162,6 +162,83 @@
 
       (testing "Admins always have the most permissive value, regardless of group membership"
         (is (= :unrestricted (data-perms/table-permission-for-user (mt/user->id :crowberto) :perms/data-access database-id table-id-2)))))))
+
+(deftest permissions-for-user-test
+  (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
+                 :model/PermissionsGroup           {group-id-2 :id}    {}
+                 :model/User                       {user-id-1 :id}     {}
+                 :model/User                       {user-id-2 :id}     {:is_superuser true}
+                 :model/PermissionsGroupMembership {}                  {:user_id  user-id-1
+                                                                        :group_id group-id-1}
+                 :model/PermissionsGroupMembership {}                  {:user_id  user-id-1
+                                                                        :group_id group-id-2}
+                 :model/PermissionsGroupMembership {}                  {:user_id  user-id-2
+                                                                        :group_id group-id-1}
+                 :model/PermissionsGroupMembership {}                  {:user_id  user-id-2
+                                                                        :group_id group-id-2}
+                 :model/Database                   {database-id-1 :id} {}
+                 :model/Database                   {database-id-2 :id} {}
+                 :model/Table                      {table-id-1 :id}    {:db_id database-id-1}
+                 :model/Table                      {table-id-2 :id}    {:db_id database-id-1}]
+    (mt/with-no-data-perms-for-all-users!
+      ;; Clear the default permissions for the groups
+      (t2/delete! :model/DataPermissions :group_id group-id-1)
+      (t2/delete! :model/DataPermissions :group_id group-id-2)
+      (testing "A single user's data permissions can be fetched as a graph"
+        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/native-query-editing :yes)
+        (data-perms/set-database-permission! group-id-1 database-id-2 :perms/data-access :no-self-service)
+        (data-perms/set-database-permission! group-id-1 database-id-2 :perms/native-query-editing :no)
+        (is (partial=
+             {database-id-1
+              {:perms/data-access :unrestricted
+               :perms/native-query-editing :yes}
+              database-id-2
+              {:perms/data-access :no-self-service
+               :perms/native-query-editing :no}}
+             (data-perms/permissions-for-user user-id-1))))
+
+      (testing "Perms from multiple groups are coalesced"
+        (data-perms/set-database-permission! group-id-2 database-id-1 :perms/data-access :no-self-service)
+        (data-perms/set-database-permission! group-id-2 database-id-1 :perms/native-query-editing :no)
+        (data-perms/set-database-permission! group-id-2 database-id-2 :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! group-id-2 database-id-2 :perms/native-query-editing :yes)
+        (is (partial=
+             {database-id-1
+              {:perms/data-access :unrestricted
+               :perms/native-query-editing :yes}
+              database-id-2
+              {:perms/data-access :unrestricted
+               :perms/native-query-editing :yes}}
+             (data-perms/permissions-for-user user-id-1))))
+
+      (testing "Table-level perms are included if they're more permissive than any database-level perms"
+        (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :no-self-service)
+        (data-perms/set-table-permission! group-id-1 table-id-2 :perms/data-access :unrestricted)
+        (is (partial=
+             {database-id-1
+              {:perms/data-access {table-id-1 :no-self-service
+                                   table-id-2 :unrestricted}}}
+             (data-perms/permissions-for-user user-id-1))))
+
+      (testing "Table-level perms are not included if a database-level perm is more permissive"
+        (data-perms/set-database-permission! group-id-2 database-id-1 :perms/data-access :unrestricted)
+        (is (partial=
+             {database-id-1
+              {:perms/data-access :unrestricted}}
+             (data-perms/permissions-for-user user-id-1))))
+
+      (testing "Admins always have full permissions"
+        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/data-access :no-self-service)
+        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/native-query-editing :no)
+        (is (partial=
+             {database-id-1
+              {:perms/data-access :unrestricted
+               :perms/native-query-editing :yes
+               :perms/manage-database :yes
+               :perms/manage-table-metadata :yes
+               :perms/download-results :one-million-rows}}
+             (data-perms/permissions-for-user user-id-2)))))))
 
 (deftest data-permissions-graph-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
