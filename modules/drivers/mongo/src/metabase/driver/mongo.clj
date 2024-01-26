@@ -177,13 +177,13 @@
 (defmethod driver/dbms-version :mongo
   [_driver database]
   (mongo.jdw/with-mongo-database [db database]
-    (let [build-info (mongo.jdw/run-command db {:buildInfo 1})
-          version-array (:versionArray build-info)
+    (let [build-info (mongo.jdw/run-command db {:buildInfo 1} :keywordize false)
+          version-array (get build-info "versionArray")
           sanitized-version-array (into [] (take-while nat-int?) version-array)]
       (when (not= (take 3 version-array) (take 3 sanitized-version-array))
         (log/warnf "sanitizing versionArray %s results in %s, losing information"
                    version-array sanitized-version-array))
-      {:version (:version build-info)
+      {:version (get build-info "version")
        :semantic-version sanitized-version-array})))
 
 (defmethod driver/describe-database :mongo
