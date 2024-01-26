@@ -264,7 +264,11 @@ describe("BrowseModels", () => {
   it("has a function that sorts collection names correctly in English", () => {
     const groupsOfModels = groupModels(mockModels, "en");
     const collections = groupsOfModels.map(group => group[0].collection);
-    expect(collections).toEqual([
+    const collectionIdsAndNames = collections.map(({ id, name }) => ({
+      id,
+      name,
+    }));
+    expect(collectionIdsAndNames).toEqual([
       { id: 0, name: "Alpha" },
       { id: 5, name: "Ångström" },
       { id: 1, name: "Beta" },
@@ -277,7 +281,11 @@ describe("BrowseModels", () => {
   it("has a function that groups models by collection correctly in Swedish", () => {
     const groupsOfModels = groupModels(mockModels, "sv-SV");
     const collections = groupsOfModels.map(group => group[0].collection);
-    expect(collections).toEqual([
+    const collectionIdsAndNames = collections.map(({ id, name }) => ({
+      id,
+      name,
+    }));
+    expect(collectionIdsAndNames).toEqual([
       { id: 0, name: "Alpha" },
       { id: 1, name: "Beta" },
       { id: 2, name: "Charlie" },
