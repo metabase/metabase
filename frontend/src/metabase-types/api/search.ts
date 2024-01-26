@@ -81,8 +81,12 @@ export interface SearchResult {
   last_edited_at: string | null;
   last_editor_id: UserId | null;
   last_editor_common_name: string | null;
+  last_editor_first_name?: string | null;
+  last_editor_last_name?: string | null;
   creator_id: UserId | null;
   creator_common_name: string | null;
+  creator_first_name?: string | null;
+  creator_last_name?: string | null;
   created_at: string | null;
 }
 
