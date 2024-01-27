@@ -18,7 +18,6 @@ import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
-import { isRootCollection } from "metabase/collections/utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
@@ -28,22 +27,7 @@ import {
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
-
-/** Group models by collection */
-export const groupModels = (
-  models: SearchResult[],
-  locale: string | undefined,
-) => {
-  const groupedModels = Object.values(
-    _.groupBy(models, model => model.collection.id),
-  ).sort((a, b) =>
-    getCollectionName(a[0].collection).localeCompare(
-      getCollectionName(b[0].collection),
-      locale,
-    ),
-  );
-  return groupedModels;
-};
+import { getCollectionName, groupModels } from "../utils";
 
 export const BrowseModels = ({
   modelsResult,
@@ -177,13 +161,6 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
       </ModelCard>
     </Link>
   );
-};
-
-export const getCollectionName = (collection: CollectionEssentials) => {
-  if (isRootCollection(collection)) {
-    return t`Our analytics`;
-  }
-  return collection?.name || t`Untitled collection`;
 };
 
 const CollectionHeader = ({

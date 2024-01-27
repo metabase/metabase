@@ -6,7 +6,8 @@ import {
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import { groupModels, BrowseModels } from "./BrowseModels";
+import { BrowseModels } from "./BrowseModels";
+import { groupModels } from "../utils";
 
 const renderBrowseModels = (modelCount: number) => {
   const models = mockModels.slice(0, modelCount);

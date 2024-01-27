@@ -15,7 +15,10 @@ import {
   BrowseAppRoot,
   BrowseContainer,
   BrowseDataHeader,
+  BrowseSectionContainer,
+  BrowseTab,
   BrowseTabs,
+  BrowseTabsList,
   BrowseTabsPanel,
 } from "./BrowseApp.styled";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
@@ -49,21 +52,26 @@ export const BrowseApp = ({
     <BrowseAppRoot data-testid="browse-data">
       <BrowseContainer data-testid="data-browser">
         <BrowseDataHeader>
-          {t`Browse data`}
-          <div className="flex flex-align-right" style={{ flexBasis: "40.0%" }}>
-            <Link className="flex flex-align-right" to="reference">
-              <BrowseHeaderIconContainer>
-                <Icon
-                  className="flex align-center"
-                  size={14}
-                  name="reference"
-                />
-                <Text size="md" className="ml1 flex align-center text-bold">
-                  {t`Learn about our data`}
-                </Text>
-              </BrowseHeaderIconContainer>
-            </Link>
-          </div>
+          <BrowseSectionContainer>
+            <h2>{t`Browse data`}</h2>
+            <div
+              className="flex flex-align-right"
+              style={{ flexBasis: "40.0%" }}
+            >
+              <Link className="flex flex-align-right" to="reference">
+                <BrowseHeaderIconContainer>
+                  <Icon
+                    className="flex align-center"
+                    size={14}
+                    name="reference"
+                  />
+                  <Text size="md" className="ml1 flex align-center text-bold">
+                    {t`Learn about our data`}
+                  </Text>
+                </BrowseHeaderIconContainer>
+              </Link>
+            </div>
+          </BrowseSectionContainer>
         </BrowseDataHeader>
         <BrowseTabs
           value={tab}
@@ -73,22 +81,25 @@ export const BrowseApp = ({
             }
           }}
         >
-          <Tabs.List>
-            <Tabs.Tab key={"models"} value={"models"}>
-              {t`Models`}
-            </Tabs.Tab>
-            <Tabs.Tab key={"databases"} value={"databases"}>
-              {t`Databases`}
-            </Tabs.Tab>
-          </Tabs.List>
-          <Divider />
-          <BrowseTabsPanel key={tab} value={tab ?? ""}>
-            {children ||
-              (tab === "models" ? (
-                <BrowseModels modelsResult={modelsResult} />
-              ) : (
-                <BrowseDatabases databasesResult={databasesResult} />
-              ))}
+          <BrowseTabsList>
+            <BrowseSectionContainer>
+              <BrowseTab key={"models"} value={"models"}>
+                {t`Models`}
+              </BrowseTab>
+              <BrowseTab key={"databases"} value={"databases"}>
+                {t`Databases`}
+              </BrowseTab>
+            </BrowseSectionContainer>
+          </BrowseTabsList>
+          <BrowseTabsPanel key={tab} value={tab}>
+            <BrowseSectionContainer>
+              {children ||
+                (tab === "models" ? (
+                  <BrowseModels modelsResult={modelsResult} />
+                ) : (
+                  <BrowseDatabases databasesResult={databasesResult} />
+                ))}
+            </BrowseSectionContainer>
           </BrowseTabsPanel>
         </BrowseTabs>
       </BrowseContainer>
