@@ -1,5 +1,5 @@
 (ns metabase-enterprise.billing.billing
-  "`/api/ee/billing/` endpoints"
+  "`/api/ee/billing/` endpoint(s)"
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]

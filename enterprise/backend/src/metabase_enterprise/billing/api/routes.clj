@@ -1,6 +1,6 @@
 (ns metabase-enterprise.billing.api.routes
-  "API endpoints that are only enabled if we have a premium token with the `:audit-app` feature. These live under
-    `/api/ee/billing/`. Feature-flagging for these routes happens in [[metabase-enterprise.api.routes/routes]]."
+  "API endpoint(s) that are only enabled if ee is enabled. These live under `/api/ee/billing/`. We don't feature flag this
+  endpoint unlike other ee endpoints."
   (:require
    [compojure.core :as compojure]
    [metabase-enterprise.billing.billing :as billing]
