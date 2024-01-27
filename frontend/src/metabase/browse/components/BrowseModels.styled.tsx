@@ -40,6 +40,7 @@ export const GridContainer = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   gap: 1rem;
+  width: 100%;
 
   ${breakpointMinSmall} {
     padding-bottom: 1rem;

@@ -53,6 +53,7 @@ export const BrowseSectionContainer = styled(Container)`
   margin: 0 auto;
   flex: 1;
   display: flex;
+  width: 100%;
 `
 
 export const CenteredEmptyState = styled(EmptyState)`

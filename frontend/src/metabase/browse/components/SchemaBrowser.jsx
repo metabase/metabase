@@ -30,7 +30,7 @@ function SchemaBrowser(props) {
           showSchemaInHeader={false}
         />
       ) : (
-        <div>
+        <>
           <BrowseHeader
             crumbs={[
               { title: t`Our data`, to: "browse" },
@@ -61,7 +61,7 @@ function SchemaBrowser(props) {
               ))}
             </Grid>
           )}
-        </div>
+        </>
       )}
     </div>
   );

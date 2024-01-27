@@ -65,7 +65,7 @@ export const BrowseApp = ({
                     size={14}
                     name="reference"
                   />
-                  <Text size="md" className="ml1 flex align-center text-bold">
+                  <Text size="md" lh="1" className="ml1 flex align-center text-bold">
                     {t`Learn about our data`}
                   </Text>
                 </BrowseHeaderIconContainer>

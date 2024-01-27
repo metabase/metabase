@@ -6,6 +6,11 @@ import {
 } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 import { GridItem } from "metabase/components/Grid";
+import { Grid } from "metabase/components/Grid";
+
+export const DatabaseGrid = styled(Grid)`
+  width: 100%;
+`
 
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;
