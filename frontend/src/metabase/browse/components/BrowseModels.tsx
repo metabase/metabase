@@ -68,11 +68,10 @@ export const BrowseModels = ({
   if (models.length) {
     return (
       <GridContainer role="grid">
-        {groupsOfModels.map((groupOfModels, index) => (
+        {groupsOfModels.map(groupOfModels => (
           <ModelGroup
-            index={index}
             models={groupOfModels}
-            key={`modelgroup-${index}`}
+            key={`modelgroup-${groupOfModels[0].collection.id}`}
             localeCode={localeCode}
           />
         ))}
@@ -97,11 +96,9 @@ export const BrowseModels = ({
 
 const ModelGroup = ({
   models,
-  index,
   localeCode,
 }: {
   models: SearchResult[];
-  index: number;
   localeCode: string | undefined;
 }) => {
   const sortedModels = models.sort((a, b) => {
@@ -121,7 +118,7 @@ const ModelGroup = ({
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
-  const collectionHtmlId = `collection-${collection?.id ?? `index-${index}`}`;
+  const collectionHtmlId = `collection-${collection.id}`;
 
   return (
     <>
@@ -170,7 +167,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
         </Title>
         <Text h="2rem" size="xs" mb="auto">
           <MultilineEllipsified
-            tooltipMaxWidth="80%"
+            tooltipMaxWidth="20rem"
             className={cx({ "text-light": !model.description })}
           >
             {model.description || noDescription}{" "}

@@ -38,9 +38,8 @@ export const BrowseApp = ({
       models: ["dataset"],
       filter_items_in_personal_collection: "exclude",
     },
-    reload: true,
   });
-  const databasesResult = useDatabaseListQuery({ reload: true });
+  const databasesResult = useDatabaseListQuery();
 
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;

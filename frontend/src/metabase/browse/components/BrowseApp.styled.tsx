@@ -30,6 +30,7 @@ export const BrowseContainer = styled.div`
 `;
 
 export const BrowseDataHeader = styled.h2`
+  display: flex;
   margin-bottom: 1rem;
   color: ${color("dark")};
 `;
