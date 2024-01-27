@@ -5243,8 +5243,12 @@ databaseChangeLog:
                   remarks: "Is card dependent on a dashboard. Mutually exclusive with collection_id."
                   constraints:
                     nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: dashboard_id
 
-    - changeSet:
+  - changeSet:
       id: v49.2024-01-26T21:17:58
       author: qwef
       comment: >-
@@ -5264,7 +5268,7 @@ databaseChangeLog:
             tableName: report_card
             columnName: dataset_type
 
-    - changeSet:
+  - changeSet:
       id: v49.2024-01-26T22:27:11
       author: qwef
       comment: Added 0.49.0 - Populate dataset_type in accordance to dataset
@@ -5273,7 +5277,7 @@ databaseChangeLog:
             sql: UPDATE report_card SET dataset_type = 'model' WHERE dataset = true;
       rollback: # not necessary
 
-    - changeSet:
+  - changeSet:
       id: v49.2024-01-26T22:47:26
       author: qwef
       comment: Added 0.49.0 - Populate dataset_type in accordance to dataset
