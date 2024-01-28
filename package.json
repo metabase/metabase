@@ -23,6 +23,7 @@
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^1.9.3",
     "@snowplow/browser-tracker": "^3.1.6",
+    "@tanstack/react-virtual": "^3.0.2",
     "@tippyjs/react": "^4.2.6",
     "@visx/axis": "1.8.0",
     "@visx/clip-path": "^2.1.0",
