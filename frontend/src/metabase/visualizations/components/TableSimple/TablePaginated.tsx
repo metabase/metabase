@@ -26,7 +26,7 @@ function getBoundingClientRectSafe(ref: {
   return ref.current?.getBoundingClientRect?.() ?? {};
 }
 
-function TableSimpleInner({
+function TablePaginatedInner({
   card,
   data,
   series,
@@ -180,7 +180,7 @@ function TableSimpleInner({
   );
 }
 
-export const TableSimple = ExplicitSize<TableSimpleProps>({
+export const TablePaginated = ExplicitSize<TableSimpleProps>({
   refreshMode: props =>
     props.isDashboard && !props.isEditing ? "debounceLeading" : "throttle",
-})(TableSimpleInner);
+})(TablePaginatedInner);

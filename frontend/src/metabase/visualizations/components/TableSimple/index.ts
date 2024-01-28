@@ -1,1 +1,1 @@
-export * from "./TableSimple";
+export * from "./TablePaginated";
