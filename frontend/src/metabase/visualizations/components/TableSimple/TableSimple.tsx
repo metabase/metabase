@@ -5,20 +5,10 @@ import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 
-import { isPositiveInteger } from "metabase/lib/number";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 
-import type {
-  Card,
-  DatasetColumn,
-  DatasetData,
-  RowValue,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type { ClickObject } from "metabase-lib";
-import { isID } from "metabase-lib/types/utils/isa";
-
+import type { TableSimpleProps } from "./types";
+import { useSimpleTable } from "./useSimpleTable";
 import { TableCell } from "./TableCell";
 import TableFooter from "./TableFooter";
 import {
@@ -36,36 +26,6 @@ function getBoundingClientRectSafe(ref: {
   return ref.current?.getBoundingClientRect?.() ?? {};
 }
 
-function formatCellValueForSorting(value: RowValue, column: DatasetColumn) {
-  if (typeof value === "string") {
-    if (isID(column) && isPositiveInteger(value)) {
-      return parseInt(value, 10);
-    }
-    // for strings we should be case insensitive
-    return value.toLowerCase();
-  }
-  if (value === null) {
-    return undefined;
-  }
-  return value;
-}
-
-interface TableSimpleProps {
-  card: Card;
-  data: DatasetData;
-  series: Series;
-  settings: VisualizationSettings;
-  height: number;
-  isDashboard?: boolean;
-  isEditing?: boolean;
-  isPivoted: boolean;
-  className?: string;
-  getColumnTitle: (colIndex: number) => string;
-  getExtraDataForClick: (clickObject: ClickObject) => Record<string, unknown>;
-  onVisualizationClick?: (clickObject: ClickObject) => void;
-  visualizationIsClickable?: (clickObject: ClickObject) => boolean;
-}
-
 function TableSimpleInner({
   card,
   data,
@@ -79,10 +39,16 @@ function TableSimpleInner({
   getColumnTitle,
   getExtraDataForClick,
 }: TableSimpleProps) {
+  const {
+    rowIndexes,
+    sortColumn,
+    sortDirection,
+    setSort,
+    getCellBackgroundColor,
+  } = useSimpleTable({ data, settings });
+
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(1);
-  const [sortColumn, setSortColumn] = useState(null);
-  const [sortDirection, setSortDirection] = useState("asc");
 
   const headerRef = useRef(null);
   const footerRef = useRef(null);
@@ -101,17 +67,6 @@ function TableSimpleInner({
     }
   }, [height, pageSize]);
 
-  const setSort = useCallback(
-    colIndex => {
-      if (sortColumn === colIndex) {
-        setSortDirection(direction => (direction === "asc" ? "desc" : "asc"));
-      } else {
-        setSortColumn(colIndex);
-      }
-    },
-    [sortColumn],
-  );
-
   const checkIsVisualizationClickable = useCallback(
     clickedItem => {
       return Boolean(
@@ -125,7 +80,6 @@ function TableSimpleInner({
 
   const { rows, cols } = data;
   const limit = getIn(card, ["dataset_query", "query", "limit"]) || undefined;
-  const getCellBackgroundColor = settings["table._cell_background_getter"];
 
   const start = pageSize * page;
   const end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
@@ -137,24 +91,6 @@ function TableSimpleInner({
   const handleNextPage = useCallback(() => {
     setPage(p => p + 1);
   }, []);
-
-  const rowIndexes = useMemo(() => {
-    let indexes = _.range(0, rows.length);
-
-    if (sortColumn != null) {
-      indexes = _.sortBy(indexes, rowIndex => {
-        const value = rows[rowIndex][sortColumn];
-        const column = cols[sortColumn];
-        return formatCellValueForSorting(value, column);
-      });
-    }
-
-    if (sortDirection === "desc") {
-      indexes.reverse();
-    }
-
-    return indexes;
-  }, [cols, rows, sortColumn, sortDirection]);
 
   const paginatedRowIndexes = useMemo(
     () => rowIndexes.slice(start, end + 1),
