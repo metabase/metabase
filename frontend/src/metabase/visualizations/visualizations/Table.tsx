@@ -83,6 +83,13 @@ class Table extends Component<TableProps, TableState> {
 
   static settings = {
     ...columnSettings({ hidden: true }),
+    "table.is_paginated": {
+      section: t`Display`,
+      title: t`Paginate results`,
+      widget: "toggle",
+      default: true,
+      dashboard: true,
+    },
     "table.pivot": {
       section: t`Columns`,
       title: t`Pivot table`,

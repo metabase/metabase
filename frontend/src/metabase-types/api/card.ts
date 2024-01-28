@@ -134,6 +134,7 @@ export type VisualizationSettings = {
   "funnel.rows"?: SeriesOrderSetting[];
 
   "table.column_formatting"?: ColumnFormattingSetting[];
+  "table.is_paginated"?: boolean;
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   // Scalar Settings
