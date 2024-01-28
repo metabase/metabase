@@ -105,7 +105,7 @@
         (throw e)
         false))))
 
-(mu/defn ^:private check-query-permissions*
+(mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
