@@ -6,10 +6,17 @@ import { Icon } from "metabase/ui";
 import { alpha, color } from "metabase/lib/colors";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
-export const Root = styled(TableRoot)`
+export const Root = styled(TableRoot)<{ height?: number }>`
   display: flex;
   flex-direction: column;
   position: relative;
+
+  ${props =>
+    props.height &&
+    css`
+      height: ${props.height}px;
+      overflow: auto;
+    `}
 `;
 
 export const ContentContainer = styled.div`

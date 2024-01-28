@@ -46,7 +46,7 @@ import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/data
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import type { ColumnSettingDefinition, VisualizationProps } from "../types";
-import { TablePaginated } from "../components/TableSimple";
+import { TableScrollable, TablePaginated } from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 
 interface TableProps extends VisualizationProps {
@@ -409,12 +409,22 @@ class Table extends Component<TableProps, TableState> {
     }
   };
 
+  getTableComponent() {
+    const { isDashboard, settings } = this.props;
+
+    if (isDashboard) {
+      return settings["table.is_paginated"] ? TablePaginated : TableScrollable;
+    }
+
+    return TableInteractive;
+  }
+
   render() {
     const { series, isDashboard, settings } = this.props;
     const { data } = this.state;
     const isPivoted = Table.isPivoted(series, settings);
     const areAllColumnsHidden = data?.cols.length === 0;
-    const TableComponent = isDashboard ? TablePaginated : TableInteractive;
+    const TableComponent = this.getTableComponent();
 
     if (!data) {
       return null;
