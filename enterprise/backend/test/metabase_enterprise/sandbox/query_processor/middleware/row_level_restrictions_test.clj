@@ -212,8 +212,10 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::qp.perms/perms                           {:gtaps #{(perms/table-query-path (mt/id :checkins))
-                                                                        (perms/table-query-path (mt/id :venues))}}})
+                   ::qp.perms/perms                           {:gtaps {:perms/data-access {(mt/id :checkins) :unrestricted
+                                                                                           (mt/id :venues) :unrestricted}
+                                                                       :perms/native-query-editing :no}}})
+
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
@@ -242,7 +244,7 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::qp.perms/perms                           {:gtaps #{(perms/adhoc-native-query-path (mt/id))}}})
+                   ::qp.perms/perms                           {:gtaps {:perms/native-query-editing :yes}}})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))

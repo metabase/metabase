@@ -274,7 +274,7 @@
     {:perms/data-access (zipmap (sandbox->table-ids sandbox) (repeat :unrestricted))}))
 
 (defn- sandboxes->required-perms [sandboxes]
-  (apply merge (map sandbox->required-perms sandboxes)))
+  (apply m/deep-merge (map sandbox->required-perms sandboxes)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
