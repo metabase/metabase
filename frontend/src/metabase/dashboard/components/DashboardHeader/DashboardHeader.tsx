@@ -641,7 +641,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
   saveAsPDF = async () => {
     const { dashboard } = this.props;
-    const cardNodeSelector = "#Dashboard-Cards-Container";
+    const cardNodeSelector = "#Dashboard-Parameters-And-Cards-Container";
     await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
       trackExportDashboardToPDF(dashboard.id);
     });
