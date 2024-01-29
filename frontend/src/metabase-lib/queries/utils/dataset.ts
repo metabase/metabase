@@ -44,9 +44,8 @@ export function findColumnIndexForColumnSetting(
 
     if (!query) {
       // TODO: remove once migration is completed
-      // throw new Error("query is required to find column index");
+      throw new Error("query is required to find column index");
 
-      // e.g. when question is native, we don't have query, so we need to use legacy method
       columnIndex = legacyFindColumnIndexForColumnSetting(
         columns,
         normalizedFieldRef,
