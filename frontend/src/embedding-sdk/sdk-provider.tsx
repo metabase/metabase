@@ -12,11 +12,11 @@ import { EmbeddingContext } from "./context";
 export const MetabaseProvider = ({
   children,
   apiUrl,
-  secretKey,
+  apiKey,
 }: {
   children: React.ReactNode;
   apiUrl: string;
-  secretKey: string;
+  apiKey: string;
 }): JSX.Element => {
   const store = getStore(reducers);
 
@@ -28,7 +28,7 @@ export const MetabaseProvider = ({
     <EmbeddingContext.Provider
       value={{
         apiUrl,
-        secretKey,
+        apiKey,
       }}
     >
       <Provider store={store}>

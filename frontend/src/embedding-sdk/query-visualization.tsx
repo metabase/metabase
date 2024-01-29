@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { CardApi } from "metabase/services";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
@@ -14,6 +13,8 @@ import {
   updateQuestion,
 } from "metabase/query_builder/actions";
 import Question from "metabase-lib/Question";
+import { useApi } from "./hooks/use-api";
+import { EmbeddingContext } from "./context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -27,7 +28,12 @@ type State = {
 export const QueryVisualizationSdk = (
   props: QueryVisualizationProps,
 ): JSX.Element => {
-  // const { apiUrl, secretKey } = useContext(EmbeddingContext);
+  const { apiUrl, apiKey } = useContext(EmbeddingContext);
+  const { GET, POST } = useApi({
+    apiUrl,
+    apiKey,
+  });
+
   const metadata = useSelector(getMetadata);
   const { questionId } = props;
 
@@ -37,22 +43,25 @@ export const QueryVisualizationSdk = (
   });
 
   useEffect(() => {
-    CardApi.get({ cardId: questionId }).then(card => {
+    GET("/api/card/:cardId")({ cardId: questionId }, { apiKey }).then(card => {
       setState(prevState => ({
         ...prevState,
         card,
       }));
 
-      CardApi.query({
-        cardId: questionId,
-      }).then(result => {
+      POST("/api/card/:cardId/query")(
+        {
+          cardId: questionId,
+        },
+        { apiKey },
+      ).then(result => {
         setState(prevState => ({
           ...prevState,
           result,
         }));
       });
     });
-  }, [questionId]);
+  }, [GET, POST, apiKey, questionId]);
 
   const { card, result } = state;
 

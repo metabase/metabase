@@ -13,9 +13,12 @@ function App() {
         </p>
       </header>
 
-      <MetabaseProvider>
+      <MetabaseProvider
+        apiUrl={"http://localhost:3000"}
+        apiKey={"mb_FqhtoYzE5yotRQY/awukXR5O8OQpLiz1agJK4ucOCdk="}
+      >
         TEST
-        <QueryVisualizationSdk id={77} />
+        <QueryVisualizationSdk questionId={77} />
       </MetabaseProvider>
     </div>
   );

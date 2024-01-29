@@ -2,9 +2,10 @@ import { createContext } from "react";
 
 interface EmbeddingSdkContextData {
   apiUrl: string;
-  secretKey: string;
+  apiKey: string;
 }
 
-export const EmbeddingContext = createContext<EmbeddingSdkContextData | null>(
-  null,
-);
+export const EmbeddingContext = createContext<EmbeddingSdkContextData>({
+  apiUrl: "",
+  apiKey: "",
+});

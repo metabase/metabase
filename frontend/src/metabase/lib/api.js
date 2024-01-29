@@ -37,12 +37,14 @@ export class Api extends EventEmitter {
   PUT;
   DELETE;
 
-  constructor() {
+  constructor(basename) {
     super();
     this.GET = this._makeMethod("GET", { retry: true });
     this.DELETE = this._makeMethod("DELETE", {});
     this.POST = this._makeMethod("POST", { hasBody: true, retry: true });
     this.PUT = this._makeMethod("PUT", { hasBody: true });
+
+    this.basename = basename || "";
   }
 
   _makeMethod(method, creatorOptions = {}) {
@@ -87,6 +89,10 @@ export class Api extends EventEmitter {
 
         if (options.formData && options.fetch) {
           delete headers["Content-Type"];
+        }
+
+        if (options.apiKey) {
+          headers["x-api-key"] = options.apiKey;
         }
 
         if (isWithinIframe()) {
