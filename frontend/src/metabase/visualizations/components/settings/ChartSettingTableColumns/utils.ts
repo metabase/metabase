@@ -9,6 +9,7 @@ import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import type Question from "metabase-lib/Question";
 import type {
   ColumnGroupItem,
   ColumnMetadataItem,
@@ -87,9 +88,14 @@ export const getQueryColumnSettingItems = (
 export const getDatasetColumnSettingItems = (
   datasetColumns: DatasetColumn[],
   columnSettings: ColumnSetting[],
+  question?: Question,
 ): ColumnSettingItem[] => {
   const datasetIndexes = columnSettings.map(columnSetting =>
-    findColumnIndexForColumnSetting(datasetColumns, columnSetting),
+    findColumnIndexForColumnSetting(
+      datasetColumns,
+      columnSetting,
+      question?.query(),
+    ),
   );
 
   return columnSettings.reduce(

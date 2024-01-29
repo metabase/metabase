@@ -1,10 +1,14 @@
 import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 import Tooltip from "metabase/core/components/Tooltip";
 import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box } from "metabase/ui";
 import { InfoLink, StyledFieldTitleIcon } from "../ExpressionWidget.styled";
-import { EXPRESSIONS_DOCUMENTATION_URL } from "../ExpressionWidget";
+
+export const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
+  "questions/query-builder/expressions",
+);
 
 export function ExpressionWidgetInfo() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
