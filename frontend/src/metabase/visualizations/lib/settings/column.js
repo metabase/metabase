@@ -346,8 +346,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     default: true,
     getHidden: (column, settings, { series }) =>
-      settings["number_style"] !== "currency" ||
-      series[0].card.display !== "table",
+      settings["number_style"] !== "currency" &&
+      (!series[0].card.display || series[0].card.display === "table"),
     readDependencies: ["number_style"],
   },
   number_separators: {
