@@ -6,8 +6,14 @@ title: Driver interface changelog
 
 ## Metabase 0.49.0
 
-- The multimethod `metabase.driver/add-columns!` has been added. This method is used to add a column to a table.
-  Currently it only needs to be implemented if the database supports the `:uploads` feature.
+- The multimethod `metabase.driver/add-columns!` has been added. This method is used to add columns to a table for
+  MySQL, Postgres, and H2. Currently third party drivers do not need to implement this method.
+
+- The multimethod `metabase.driver/create-table!` requires an additional nullable argument
+  `primary-key`. `metabase.driver/upload-type->database-type` must also be changed, so that if
+  `:metabase.upload/auto-incrementing-int-pk` is provided as the `upload-type` argument, the function should return a
+  type without the primary-key constraint included. See PR [#22166](https://github.com/metabase/metabase/pull/37505/) for more
+  information. These changes only need to be implemented if the database supports the `:uploads` feature.
 
 - A new driver method has been added `metabase.driver/describe-table-indexes` along with a new feature `:index-info`.
   This method is used to get a set of column names that are indexed or are the first columns in a composite index.
