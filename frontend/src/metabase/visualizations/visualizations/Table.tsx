@@ -87,6 +87,7 @@ class Table extends Component<TableProps, TableState> {
       section: t`Display`,
       title: t`Paginate results`,
       widget: "toggle",
+      inline: true,
       default: true,
       dashboard: true,
     },
