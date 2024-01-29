@@ -141,5 +141,29 @@ describe("getDefaultDisplay", () => {
         },
       });
     });
+
+    it("returns 'bar' display for queries with aggregations and 1 breakout by date with temporal bucketing", () => {
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [
+          {
+            columnName: "CREATED_AT",
+            tableName: "ORDERS",
+            temporalBucketName: "Day of month",
+          },
+        ],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+    });
+
+    it("returns 'line' display for queries with aggregations and 1 breakout by date without temporal bucketing", () => {
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "line" });
+    });
   });
 });
