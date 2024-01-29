@@ -39,10 +39,6 @@ const ChartCaption = ({
     });
   }, [card, onChangeCardAndRun]);
 
-  if (!title) {
-    return null;
-  }
-
   return (
     <ChartCaptionRoot
       title={title}
