@@ -54,10 +54,12 @@ export const ChartSettingTableColumns = ({
       />
     );
   } else {
+    // question is native
     return (
       <DatasetColumnSelector
         value={value}
         columns={columns}
+        question={question}
         getColumnName={getColumnName}
         onChange={onChange}
         onShowWidget={onShowWidget}
