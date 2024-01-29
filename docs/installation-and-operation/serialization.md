@@ -296,6 +296,132 @@ If you've written scripts to automate serialization, you'll need to:
 
 Before exporting, you can also run a Metabase command to [drop entity IDs](./commands.md#drop-entity-ids).
 
+## Serializing Metabase via the API
+
+> Just like the CLI serialization commands, these endpoints are only available for [Pro](/product/pro) and [Enterprise](/product/enterprise) plans.
+
+You can initiate imports and exports of serialized Metabase data via the API.
+
+There are two endpoints:
+
+- `/ee/serialization/export/`
+- `/ee/serialization/import/`
+
+For now, these endpoints are synchronous. If the serialization process takes too long, the request can time out. In this case, we suggest using the CLI commands.
+
+### Use parameters to customize what Metabase exports
+
+You can append optional parameters to tell Metabase what to include or exclude from the export. You can also combine parameters (excluding, of course, `all_collections` and selective collections).
+
+So, assuming you're testing on `localhost`.
+
+Here are some examples:
+
+Select which collections to export:
+
+```html
+http://localhost:3000/api/ee/serialization/export?collection=1&collection=2
+```
+
+Exclude all collections:
+
+```html
+http://localhost:3000/api/ee/serialization/export?all_collections=false
+```
+
+Exclude settings:
+
+```html
+http://localhost:3000/api/ee/serialization/export?settings=false
+```
+
+Exclude the data model:
+
+```
+http://localhost:3000/api/ee/serialization/export?data_model=false
+```
+
+Include field values:
+
+```
+http://localhost:3000/api/ee/serialization/export?field_values=true
+```
+
+Include secrets:
+
+```html
+http://localhost:3000/api/ee/serialization/export?database_secrets=true (add
+secrets)
+```
+
+Specify the directory name.
+
+```
+http://localhost:3000/api/ee/serialization/export?dirname=app_data
+```
+
+### You must compress your files when serializing via the network
+
+To keep files sizes over the network under control, both the `export` and `import` commands expect GZIP-compressed Tar files (`.tgz`).
+
+### Compress a directory
+
+To compress a directory (e.g., a directory named `yamls`).
+
+```sh
+tar -czf yamls.tgz yamls
+```
+
+### Uncompress a directory
+
+To uncompress
+
+```sh
+tar -xvf compressed_file.tgz
+```
+
+### Logs are added to the export and import output.
+
+In the export, it is added in the compressed directory as export.log
+In the import, it is exported directly. The user can add the -o - flag to export logs directly into the terminal or -o import.log to save to a file.
+
+### Example export request
+
+To export the contents of your Metabase:
+
+```sh
+ curl \
+-H 'x-metabase-session: token' \
+-X POST 'http://localhost:3000/api/ee/serialization/export' \
+-o yamls.tgz
+```
+
+This command will download the files as GZIP-compressed Tar file. You'll need to uncompress the file:
+
+```sh
+tar -xvf yamls.tgz
+```
+
+Substiture that last `yamls` with whatever you want to call the directory of uncompressed yaml files that contain your serialized Metabase data.
+
+### Example import request
+
+Let's say you have your YAML files in a directory called `yamls`. Before importing those files to your target Metabase, you'll need to compress those files.
+
+```sh
+tar -czf yamls.tgz yamls
+```
+
+Then
+
+```sh
+curl -X POST \
+-H 'x-metabase-session: token' \
+-F file=@yamls.tgz \
+'http://localhost:3000/api/ee/serialization/import' \
+-o -
+```
+
 ## Further reading
 
 - [Serialization tutorial](https://www.metabase.com/learn/administration/serialization).
