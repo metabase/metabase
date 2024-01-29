@@ -165,5 +165,38 @@ describe("getDefaultDisplay", () => {
 
       expect(getDefaultDisplay(query)).toEqual({ display: "line" });
     });
+
+    it("returns 'bar' display for queries with aggregations and 1 breakout with binning", () => {
+      const query = createQueryWithClauses({
+        query: createQueryWithClauses({
+          aggregations: [{ operatorName: "count" }],
+        }),
+        breakouts: [
+          {
+            columnName: "TOTAL",
+            tableName: "ORDERS",
+            binningStrategyName: "10 bins",
+          },
+        ],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+    });
+
+    it("returns 'table' display for queries with aggregations and 1 breakout without binning", () => {
+      const query = createQueryWithClauses({
+        query: createQueryWithClauses({
+          aggregations: [{ operatorName: "count" }],
+        }),
+        breakouts: [
+          {
+            columnName: "TOTAL",
+            tableName: "ORDERS",
+          },
+        ],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    });
   });
 });

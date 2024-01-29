@@ -3,7 +3,6 @@ import type {
   CardDisplayType,
   VisualizationSettings,
 } from "metabase-types/api";
-import { FieldDimension } from "metabase-lib/Dimension";
 import { TYPE } from "metabase-lib/types/constants";
 import { isa } from "metabase-lib/types/utils/isa";
 
@@ -35,7 +34,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
     const info = Lib.displayInfo(query, stageIndex, breakout);
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    return { info, columnInfo };
+    return { breakout, info, columnInfo };
   });
 
   if (aggregations.length === 1 && breakouts.length === 1) {
@@ -63,7 +62,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length >= 1 && breakouts.length === 1) {
-    const [{ info, columnInfo }] = infos;
+    const [{ breakout, info, columnInfo }] = infos;
 
     if (isDate(columnInfo)) {
       if (info.isTemporalExtraction) {
@@ -73,10 +72,9 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "line" };
     }
 
-    if (
-      breakoutDimensions[0] instanceof FieldDimension &&
-      breakoutDimensions[0].binningStrategy()
-    ) {
+    const binning = Lib.binning(breakout);
+
+    if (binning) {
       return { display: "bar" };
     }
 
