@@ -13,7 +13,7 @@ describe("getDefaultDisplay", () => {
           database: SAMPLE_DATABASE.id,
           type: "native",
           native: {
-            query: "select 1",
+            query: "SELECT * FROM ORDERS",
           },
         },
       });
