@@ -56,7 +56,8 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"
   "Access-Control-Allow-Origin"            "*"
-  "Access-Control-Allow-Headers" "*"})
+  "Access-Control-Allow-Headers" "*"
+  "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"})
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
