@@ -18,6 +18,7 @@ import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
+import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
@@ -27,7 +28,6 @@ import {
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
-import { getCollectionName, groupModels } from "../utils";
 
 export const BrowseModels = ({
   modelsResult,
@@ -104,6 +104,7 @@ const ModelGroup = ({
   /** This id is used by aria-labelledby */
   const collectionHtmlId = `collection-${collection.id}`;
 
+  // TODO: Check padding above the collection header
   return (
     <>
       <CollectionHeader

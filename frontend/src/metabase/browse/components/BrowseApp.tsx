@@ -18,6 +18,7 @@ import {
   BrowseSectionContainer,
   BrowseTab,
   BrowseTabs,
+  BrowseTabsContainer,
   BrowseTabsList,
   BrowseTabsPanel,
 } from "./BrowseApp.styled";
@@ -96,14 +97,14 @@ export const BrowseApp = ({
             </BrowseSectionContainer>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
-            <BrowseSectionContainer>
+            <BrowseTabsContainer>
               {children ||
                 (tab === "models" ? (
                   <BrowseModels modelsResult={modelsResult} />
                 ) : (
                   <BrowseDatabases databasesResult={databasesResult} />
                 ))}
-            </BrowseSectionContainer>
+            </BrowseTabsContainer>
           </BrowseTabsPanel>
         </BrowseTabs>
       </BrowseContainer>

@@ -5,9 +5,13 @@ import EmptyState from "metabase/components/EmptyState";
 
 export const BrowseAppRoot = styled.div`
   flex: 1;
-  border-top: 1px solid #f0f0f0;
   height: 100%;
 `;
+// TODO: question for Kyle: When the side nav is closed, the top nav loses its
+// border, which makes it look a bit odd when the page scrolls. So I originally
+// added a border to BrowseApproot here, but then we see both this border and
+// the top nav's border when the side nav is open, which is odd. What do you
+// think we should do?
 
 export const BrowseTabs = styled(Tabs)`
   display: flex;
@@ -62,6 +66,11 @@ export const BrowseSectionContainer = styled.div`
   flex: 1;
   display: flex;
   width: 100%;
+`;
+
+export const BrowseTabsContainer = styled(BrowseSectionContainer)`
+  flex-flow: column nowrap;
+  justify-content: flex-start;
 `;
 
 export const CenteredEmptyState = styled(EmptyState)`
