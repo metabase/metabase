@@ -81,9 +81,9 @@
     (premium-features-test/with-premium-features #{:serialization}
       (ts/with-random-dump-dir [dump-dir "serialization"]
         (let [dashboard-yaml-filename (str dump-dir "/collections/root/dashboards/Dashboard.yaml")]
-          (ts/with-source-and-dest-dbs
+          (ts/with-dbs [source-db dest-db]
             (testing "create 2 questions in the source and add them to a dashboard"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (let [{db-id :id, :as db} (ts/create! Database :name "My_Database")]
                   (mt/with-db db
                     (let [{user-id :id}      (ts/create! User, :is_superuser true)
@@ -109,7 +109,7 @@
                                                  {:card_id "/collections/root/cards/Card_2"}]}
                               yaml))))
             (testing "load into destination"
-              (ts/with-dest-db
+              (ts/with-db dest-db
                 (testing "Create admin user"
                   (is (some? (ts/create! User, :is_superuser true)))
                   (is (t2/exists? User :is_superuser true)))
@@ -119,12 +119,12 @@
                   (is (= 2 (t2/count Card)) "# Cards")
                   (is (= 2 (t2/count DashboardCard)) "# DashboardCards") >)))
             (testing "remove one of the questions in the source's dashboard"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (t2/delete! Card :name "Card_2")
                 (is (= 1 (t2/count Card)) "# Cards")
                 (is (= 1 (t2/count DashboardCard)) "# DashboardCards")))
             (testing "dump again"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (cmd/dump dump-dir))
               (testing "Verify dump only contains one Card"
                 (is (.exists (io/file dashboard-yaml-filename)))
@@ -132,7 +132,7 @@
                   (is (partial= {:dashboard_cards [{:card_id "/collections/root/cards/Card_1"}]}
                                 yaml)))))
             (testing "load again, with --mode update, destination Dashboard should now only have one question."
-              (ts/with-dest-db
+              (ts/with-db dest-db
                 (is (nil? (cmd/load dump-dir "--mode" "update", "--on-error" "abort")))
                 (is (= 1 (t2/count Dashboard)) "# Dashboards")
                 (testing "Don't delete the Card even tho it was deleted. Just delete the DashboardCard"
