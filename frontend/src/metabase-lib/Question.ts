@@ -19,7 +19,7 @@ import Metadata from "metabase-lib/metadata/Metadata";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
-import { isFK } from "metabase-lib/types/utils/isa";
+import { isa, isFK } from "metabase-lib/types/utils/isa";
 import { sortObject } from "metabase-lib/utils";
 
 import type {
@@ -35,6 +35,7 @@ import type {
   ParameterId,
   VisualizationSettings,
 } from "metabase-types/api";
+import { TYPE } from "metabase-lib/types/constants";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as FILTER from "metabase-lib/queries/utils/filter";
@@ -353,6 +354,85 @@ class Question {
 
     if (aggregations.length === 1 && breakouts.length === 0) {
       return this.setDisplay("scalar");
+    }
+
+    const breakoutColumnsInfos = breakouts.map(breakout => {
+      const column = Lib.breakoutColumn(query, stageIndex, breakout);
+      const info = Lib.displayInfo(query, stageIndex, column);
+      return info;
+    });
+
+    if (aggregations.length === 1 && breakouts.length === 1) {
+      const [breakoutColumnInfo] = breakoutColumnsInfos;
+
+      const isState = isa(breakoutColumnInfo.semanticType, TYPE.State);
+      if (isState) {
+        return this.setDisplay("map").updateSettings({
+          "map.type": "region",
+          "map.region": "us_states",
+        });
+      }
+
+      const isCountry = isa(breakoutColumnInfo.semanticType, TYPE.Country);
+      if (isCountry) {
+        return this.setDisplay("map").updateSettings({
+          "map.type": "region",
+          "map.region": "world_countries",
+        });
+      }
+    }
+
+    if (aggregations.length >= 1 && breakouts.length === 1) {
+      const [breakoutColumnInfo] = breakoutColumnsInfos;
+
+      const isDate = false; // TODO
+      if (isDate) {
+        if (breakoutColumnInfo.isTemporalExtraction) {
+          return this.setDisplay("bar");
+        }
+
+        return this.setDisplay("line");
+      }
+
+      if (
+        breakoutDimensions[0] instanceof FieldDimension &&
+        breakoutDimensions[0].binningStrategy()
+      ) {
+        return this.setDisplay("bar");
+      }
+
+      const isCategory = false; // TODO
+      if (isCategory) {
+        return this.setDisplay("bar");
+      }
+    }
+
+    if (aggregations.length === 1 && breakouts.length === 2) {
+      const isAnyBreakoutDate = breakoutColumnsInfos.some(breakout => {
+        const isDate = false; // TODO
+        return isDate;
+      });
+
+      if (isAnyBreakoutDate) {
+        return this.setDisplay("line");
+      }
+
+      const areBreakoutsCoordinates = breakoutColumnsInfos.every(breakout => {
+        return isa(breakout.semanticType, TYPE.Coordinate);
+      });
+      if (areBreakoutsCoordinates) {
+        return this.setDisplay("map").updateSettings({
+          "map.type": "grid",
+        });
+      }
+
+      const areBreakoutsCategories = breakoutColumnsInfos.every(breakout => {
+        const isCategory = false; // TODO
+        return isCategory;
+      });
+      if (areBreakoutsCategories) {
+        return this.setDisplay("bar");
+      }
     }
 
     return this.setDisplay("table");
