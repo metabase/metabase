@@ -191,6 +191,8 @@
                      Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :no-self-service)
             (letfn [(run-ad-hoc-query []
                       (mt/with-current-user user-id
                         (qp/process-query query)))
