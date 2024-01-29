@@ -449,9 +449,13 @@ function ViewTitleHeaderRightSide(props) {
     [isRunning],
   );
 
+  const missingValueRequiredTTags = requiredTemplateTags.filter(
+    t => t.required && !t.default,
+  );
+
   const isSaveDisabled = !question.canRun() || !isEditable;
   const disabledSaveTooltip = !question.canRun()
-    ? getMissingRequiredTemplateTagsTooltip(requiredTemplateTags)
+    ? getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags)
     : !isEditable
     ? t`You don't have permissions to save this question.`
     : "";
