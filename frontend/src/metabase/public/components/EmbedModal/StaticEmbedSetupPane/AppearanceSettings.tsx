@@ -57,6 +57,7 @@ export const AppearanceSettings = ({
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
   const docsUrl = useSelector(state =>
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- Only appear to admins
     getDocsUrl(state, {
       page: "embedding/static-embedding",
     }),

@@ -22,7 +22,6 @@ export interface NewItemMenuProps {
   trigger?: ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
-  analyticsContext?: string;
   hasModels: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
@@ -47,7 +46,6 @@ const NewItemMenu = ({
   trigger,
   triggerIcon,
   triggerTooltip,
-  analyticsContext,
   hasModels,
   hasDataAccess,
   hasNativeWrite,
@@ -82,7 +80,6 @@ const NewItemMenu = ({
           creationType: "custom_question",
           collectionId,
         }),
-        event: `${analyticsContext};New Question Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -96,7 +93,6 @@ const NewItemMenu = ({
           creationType: "native_question",
           collectionId,
         }),
-        event: `${analyticsContext};New SQL Query Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -106,13 +102,11 @@ const NewItemMenu = ({
         title: t`Dashboard`,
         icon: "dashboard",
         action: () => setModal("new-dashboard"),
-        event: `${analyticsContext};New Dashboard Click;`,
       },
       {
         title: t`Collection`,
         icon: "folder",
         action: () => setModal("new-collection"),
-        event: `${analyticsContext};New Collection Click;`,
       },
     );
     if (hasNativeWrite) {
@@ -124,7 +118,6 @@ const NewItemMenu = ({
         title: t`Model`,
         icon: "model",
         link: `/model/new${collectionQuery}`,
-        event: `${analyticsContext};New Model Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -134,7 +127,6 @@ const NewItemMenu = ({
         title: t`Action`,
         icon: "bolt",
         action: () => setModal("new-action"),
-        event: `${analyticsContext};New Action Click;`,
       });
     }
 
@@ -142,7 +134,6 @@ const NewItemMenu = ({
   }, [
     hasDataAccess,
     hasNativeWrite,
-    analyticsContext,
     hasModels,
     hasDatabaseWithActionsEnabled,
     collectionId,

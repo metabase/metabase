@@ -49,6 +49,7 @@ function ParametersList({
   setParameterValue,
   setParameterIndex,
   setEditingParameter,
+  enableParameterRequiredBehavior,
 }) {
   const handleSortStart = () => {
     document.body.classList.add("grabbing");
@@ -107,6 +108,7 @@ function ParametersList({
             (value => setParameterValue(valuePopulatedParameter.id, value))
           }
           setParameterValueToDefault={setParameterValueToDefault}
+          enableParameterRequiredBehavior={enableParameterRequiredBehavior}
           commitImmediately={commitImmediately}
           dragHandle={
             isEditing && setParameterIndex ? <SortableParameterHandle /> : null

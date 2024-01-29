@@ -97,8 +97,9 @@ export function getParameterMappingOptions(
   }
 
   const question = new Question(card, metadata);
+  const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
   const options = [];
-  if (question.isStructured() || question.isDataset()) {
+  if (isStructured || question.isDataset()) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
     const query = question.isDataset()
