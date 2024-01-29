@@ -12,18 +12,6 @@ type DefaultDisplay = {
   settings?: Partial<VisualizationSettings>;
 };
 
-const isCountry = (info: Lib.ColumnDisplayInfo): boolean => {
-  return isa(info.semanticType, TYPE.Country);
-};
-
-const isDate = (info: Lib.ColumnDisplayInfo): boolean => {
-  return isa(info.effectiveType, TYPE.Temporal);
-};
-
-const isState = (info: Lib.ColumnDisplayInfo): boolean => {
-  return isa(info.semanticType, TYPE.State);
-};
-
 export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -130,4 +118,16 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   return { display: "table" };
+};
+
+const isCountry = (info: Lib.ColumnDisplayInfo): boolean => {
+  return isa(info.semanticType, TYPE.Country);
+};
+
+const isDate = (info: Lib.ColumnDisplayInfo): boolean => {
+  return isa(info.effectiveType, TYPE.Temporal);
+};
+
+const isState = (info: Lib.ColumnDisplayInfo): boolean => {
+  return isa(info.semanticType, TYPE.State);
 };
