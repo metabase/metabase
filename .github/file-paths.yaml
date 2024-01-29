@@ -135,3 +135,4 @@ cljs:
   - *shared_sources
   - *shared_specs
   - ".github/workflows/cljs.yml"
+  - "shadow-cljs.edn"
