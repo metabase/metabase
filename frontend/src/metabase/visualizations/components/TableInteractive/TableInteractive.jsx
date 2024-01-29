@@ -48,7 +48,7 @@ import {
 const TRUNCATE_WIDTH = 780;
 
 const HEADER_HEIGHT = 36;
-const ROW_HEIGHT = 36;
+const ROW_HEIGHT = 28;
 const SIDEBAR_WIDTH = 38;
 
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
