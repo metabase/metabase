@@ -336,6 +336,14 @@ class Question {
       return this;
     }
 
+    return this.setDisplay("table");
+  }
+
+  _setDefaultDisplay(): Question {
+    if (this.displayIsLocked()) {
+      return this;
+    }
+
     const query = this.legacyQuery({ useStructuredQuery: true });
 
     if (query instanceof StructuredQuery) {
