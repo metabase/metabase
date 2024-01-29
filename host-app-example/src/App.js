@@ -2,6 +2,8 @@ import {
   MetabaseProvider,
   QueryVisualizationSdk,
 } from "metabase-embedding-sdk";
+import "metabase-embedding-sdk/dist/main.css";
+
 import "./App.css";
 
 function App() {

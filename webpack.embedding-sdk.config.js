@@ -171,8 +171,8 @@ module.exports = env => {
     plugins: [
       // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
       new MiniCssExtractPlugin({
-        filename: devMode ? "[name].css" : "[name].[contenthash].css",
-        chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
+        filename: "[name].css",
+        chunkFilename: "[id].css",
       }),
       new NodePolyfillPlugin(), // for crypto, among others
       // https://github.com/remarkjs/remark/discussions/903
