@@ -15,7 +15,7 @@
    [metabase.http-client :as client]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -203,14 +203,17 @@
                                                             :type     :query
                                                             :query    {:source-table (str "card__" (u/the-id card))}}))]
                   (is (some? result))
+                  (def result result)
                   (when (some? result)
                     (is (= 16
                            (count (csv/read-csv result)))))))]
-        (testing "with data perms"
-          (do-test))
-        (testing "with collection perms only"
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-          (do-test))))))
+        (mt/with-no-data-perms-for-all-users!
+          (testing "with data perms"
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
+            (do-test))
+          (testing "with collection perms only"
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (do-test)))))))
 
 (deftest formatted-results-ignore-query-constraints
   (testing "POST /api/dataset/:format"
@@ -266,13 +269,13 @@
     (mt/with-temp-copy-of-db
       ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
       ;; the Database
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-      (perms/grant-permissions! (perms-group/all-users) (mt/id) "schema_that_does_not_exist")
-      (is (malli= [:map
-                   [:status [:= "failed"]]
-                   [:error  [:= "You do not have permissions to run this query."]]]
-                  (mt/user-http-request :rasta :post "dataset"
-                                        (mt/mbql-query venues {:limit 1})))))))
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/data-access :unrestricted)
+        (is (malli= [:map
+                     [:status [:= "failed"]]
+                     [:error  [:= "You do not have permissions to run this query."]]]
+                    (mt/user-http-request :rasta :post "dataset"
+                                          (mt/mbql-query venues {:limit 1}))))))))
 
 (deftest compile-test
   (testing "POST /api/dataset/native"
@@ -300,14 +303,14 @@
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/with-temp-copy-of-db
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
-          (is (malli= [:map
-                       [:permissions-error? [:= true]]
-                       [:message            [:= "You do not have permissions to run this query."]]]
-                      (mt/user-http-request :rasta :post "dataset/native"
-                                            (mt/mbql-query venues
-                                                           {:fields [$id $name]})))))))
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
+            (is (malli= [:map
+                         [:permissions-error? [:= true]]
+                         [:message            [:= "You do not have permissions to run this query."]]]
+                        (mt/user-http-request :rasta :post "dataset/native"
+                                              (mt/mbql-query venues
+                                                             {:fields [$id $name]}))))))))
     (testing "We should be able to format the resulting SQL query if desired"
       ;; Note that the following was tested against all driver branches of format-sql and all results were identical.
       (is (= {:query  (str "SELECT\n"

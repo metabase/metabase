@@ -7,11 +7,12 @@
    [medley.core :as m]
    [metabase.api.pivots :as api.pivots]
    [metabase.models :refer [Card Collection]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
+   [metabase.test.data :as data]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -362,28 +363,29 @@
     (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (let [query (mt/mbql-query orders
-                      {:aggregation [[:count]]
-                       :breakout    [$product_id->products.category $user_id->people.source]})]
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-          (testing "User without perms shouldn't be able to run the query normally"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"You do not have permissions to run this query"
-                 (mt/with-test-user :rasta
-                   (qp/process-query query)))))
-          (testing "Should be able to run the query via a Card that All Users has perms for"
-            ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
-            ;; Collection inherits Root Collection perms when created
-            (mt/with-temp [Collection collection {}
-                           Card       card {:collection_id (u/the-id collection), :dataset_query query}]
-              (is (=? {:status "completed"}
-                      (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
-              (testing "... with the pivot-table endpoints"
-                (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
-                  (is (=? {:status "completed"}
-                          result))
-                  (is (= (mt/rows (qp.pivot/run-pivot-query query))
-                         (mt/rows result))))))))))))
+                                   {:aggregation [[:count]]
+                                    :breakout    [$product_id->products.category $user_id->people.source]})]
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-table-permission! (perms-group/all-users) (data/id :orders) :perms/data-access :no-self-service)
+            (testing "User without perms shouldn't be able to run the query normally"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (mt/with-test-user :rasta
+                     (qp/process-query query)))))
+            (testing "Should be able to run the query via a Card that All Users has perms for"
+              ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
+              ;; Collection inherits Root Collection perms when created
+              (mt/with-temp [Collection collection {}
+                             Card       card {:collection_id (u/the-id collection), :dataset_query query}]
+                (is (=? {:status "completed"}
+                        (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
+                (testing "... with the pivot-table endpoints"
+                  (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
+                    (is (=? {:status "completed"}
+                            result))
+                    (is (= (mt/rows (qp.pivot/run-pivot-query query))
+                           (mt/rows result)))))))))))))
 
 (deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
