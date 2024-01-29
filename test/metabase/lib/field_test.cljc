@@ -739,7 +739,7 @@
                :semantic-type :type/Category,
                :is-from-join false,
                :long-display-name "Price: Auto binned",
-               :display-name "Price: Auto binned",
+               :display-name "Price",
                :is-from-previous-stage true,
                :is-calculated false,
                :is-implicitly-joinable false}

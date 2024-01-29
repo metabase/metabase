@@ -224,6 +224,7 @@
                        table-id            :table-id
                        parent-id           :parent-id
                        simple-display-name ::simple-display-name
+                       hide-bin-bucket?    :lib/hide-bin-bucket?
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or simple-display-name
@@ -245,11 +246,11 @@
                                       (not (str/includes? field-display-name " → ")))
                              (or
                               (when fk-field-id
-                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                 ;; "ID" dropped instead.
-                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                 ;; See #30109 for more details.
+                                ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                ;; "ID" dropped instead.
+                                ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                ;; See #30109 for more details.
                                 (if-let [field (lib.metadata/field query fk-field-id)]
                                   (-> (lib.metadata.calculation/display-info query stage-number field)
                                       :display-name
@@ -268,6 +269,7 @@
                              (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (cond
+      (and (not= style :long) hide-bin-bucket?) display-name
       (and temporal-unit (not= display-name (temporal-format humanized-name))) (temporal-format display-name)
       (and binning       (not= display-name (bin-format humanized-name)))      (bin-format display-name)
       :else                                                                    display-name)))
