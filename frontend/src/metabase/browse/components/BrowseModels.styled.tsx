@@ -41,6 +41,11 @@ export const MultilineEllipsified = styled(Ellipsified)`
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+
+  // Without the following rule, the useIsTruncated hook,
+  // which Ellipsified calls, might think that this element
+  // is truncated when it is not
+  padding-bottom: 1px;
 `;
 
 export const GridContainer = styled.div`

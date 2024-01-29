@@ -147,7 +147,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     >
       <ModelCard>
         <Title order={4} className="text-wrap" lh="1rem" mb=".5rem">
-          <MultilineEllipsified id={headingId}>
+          <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
           </MultilineEllipsified>
         </Title>
