@@ -472,26 +472,25 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
-  (let [card-before-update      (t2/hydrate (api/write-check Card id)
-                                            [:moderation_reviews :moderator_details])
-        maybe-switched-to-model (when (and (some? dataset) (some? type))
-                                  (or (= type :model) dataset))]
+  (check-card-type-and-dataset card-updates)
+  (let [card-before-update   (t2/hydrate (api/write-check Card id)
+                                         [:moderation_reviews :moderator_details])
+        maybe-turn-to-datset (or (= "model" type) dataset)]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
-    (check-card-type-and-dataset card-updates)
     ;; make sure we have the correct `result_metadata`
     (let [result-metadata-chan  (card/result-metadata-async {:original-query    (:dataset_query card-before-update)
                                                              :query             dataset_query
                                                              :metadata          result_metadata
                                                              :original-metadata (:result_metadata card-before-update)
-                                                             :dataset?          (if (some? maybe-switched-to-model)
-                                                                                  maybe-switched-to-model
+                                                             :dataset?          (if (some? maybe-turn-to-datset)
+                                                                                  maybe-turn-to-datset
                                                                                   (card/is-model? card-before-update))})
           card-updates          (merge card-updates
-                                       (when maybe-switched-to-model
+                                       (when maybe-turn-to-datset
                                          {:display :table}))
           metadata-timeout      (a/timeout card/metadata-sync-wait-ms)
           [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])

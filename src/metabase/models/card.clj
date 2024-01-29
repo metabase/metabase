@@ -122,10 +122,10 @@
    {:keys [type] :as _card} :- [:map [:type CardTypes]]]
   (= target-type type))
 
-(defn  is-question?
+(defn is-question?
   "Returns true if `card` is a question"
   [card]
-  (is-type? "model" card))
+  (is-type? "question" card))
 
 (defn is-model?
   "Returns true if `card` is a model."
@@ -372,11 +372,12 @@
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
   [{:keys [type dataset_query]}]
   (case type
-    "model" (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
-                                         (map (comp keyword :type)))]
-             (when (some (complement #{:card :snippet}) template-tag-types)
-               (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
-                               {:status-code 400}))))
+    "model" (let [template-tag-types (->> (get-in dataset_query [:native :template-tags])
+                                          vals
+                                          (map (comp keyword :type)))]
+              (when (some (complement #{:card :snippet}) template-tag-types)
+                (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
+                                {:status-code 400}))))
     nil))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??

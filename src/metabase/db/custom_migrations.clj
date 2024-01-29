@@ -1036,11 +1036,10 @@
 
 (define-reversible-migration CardRevisionAddType
   (let [migrate! (fn [revision]
-                   (let [object    (json/parse-string (:object revision) keyword)
-                         new-object (-> object
-                                        (assoc :type (if (:dataset object)
-                                                       "model"
-                                                       "question")))]
+                   (let [object     (json/parse-string (:object revision) keyword)
+                         new-object (assoc object :type (if (:dataset object)
+                                                          "model"
+                                                          "question"))]
                      (t2/query {:update :revision
                                 :set    {:object (json/generate-string new-object)}
                                 :where  [:= :id (:id revision)]})))]
@@ -1048,7 +1047,7 @@
                                         :from   [:revision]
                                         :where  [:= :model "Card"]})))
   (let [rollback! (fn [revision]
-                    (let [object    (json/parse-string (:object revision) keyword)
+                    (let [object     (json/parse-string (:object revision) keyword)
                           new-object (-> object
                                          (assoc :dataset (= (:type object) "model"))
                                          (dissoc :type))]

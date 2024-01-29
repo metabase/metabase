@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -6,7 +5,7 @@ import _ from "underscore";
 
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
-import CopyButton from "metabase/components/CopyButton";
+import { CopyButton } from "metabase/components/CopyButton";
 
 import { UtilApi } from "metabase/services";
 import { useSelector } from "metabase/lib/redux";
@@ -78,7 +77,7 @@ const HelpLink = ({ title, description, link }: HelpLinkProps) => (
 );
 
 interface InfoBlockProps {
-  children?: ReactNode;
+  children: string;
 }
 
 const InfoBlock = ({ children }: InfoBlockProps) => (

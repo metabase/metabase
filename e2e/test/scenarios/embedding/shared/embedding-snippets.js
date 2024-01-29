@@ -1,4 +1,4 @@
-export const JS_CODE = ({ type, id, hideDownloadButton, theme }) => {
+export const getEmbeddingJsCode = ({ type, id, hideDownloadButton, theme }) => {
   return new RegExp(
     `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
@@ -13,9 +13,10 @@ var payload = {
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
-var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemeParameter(
-      theme,
-    )}bordered=true&titled=true${getParameter({ hideDownloadButton })}";`
+var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token +
+  "#${getThemeParameter(theme)}bordered=true&titled=true${getParameter({
+      hideDownloadButton,
+    })}";`
       .split("\n")
       .join("")
       .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
@@ -24,13 +25,13 @@ var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemePara
   );
 };
 
-export const IFRAME_CODE = `<iframe
-    src="{{iframeUrl}}"
+export const IFRAME_CODE = `iframe(
+    src=iframeUrl
     frameborder="0"
     width="800"
     height="600"
     allowtransparency
-></iframe>`
+)`
   .split("\n")
   .join("");
 

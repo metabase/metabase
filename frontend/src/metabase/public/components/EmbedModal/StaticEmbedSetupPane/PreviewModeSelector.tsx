@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { Box, Center, SegmentedControl, Icon } from "metabase/ui";
 
-import type { ActivePreviewPane } from "../../EmbedModal";
+import type { ActivePreviewPane } from "./types";
 
 const CODE_PREVIEW_CONTROL_OPTIONS = [
   {

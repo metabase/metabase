@@ -11,7 +11,7 @@ const defaultProps = {
 };
 
 export const CopyTextInput = forwardRef(function CopyTextInput(
-  props: TextInputProps,
+  props: TextInputProps & { value: string },
   ref: Ref<HTMLInputElement>,
 ) {
   return (

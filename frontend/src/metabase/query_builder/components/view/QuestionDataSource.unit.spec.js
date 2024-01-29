@@ -175,28 +175,12 @@ function getMetadata() {
   });
 }
 
-function getQuestion(card) {
-  return new Question(card, getMetadata());
+function getQuestion(card, metadata) {
+  return new Question(card, metadata);
 }
 
 function getAdHocQuestion(overrides) {
   return getQuestion({ ...BASE_GUI_QUESTION, ...overrides });
-}
-
-function getNativeQuestion() {
-  return getQuestion(BASE_NATIVE_QUESTION);
-}
-
-function getSavedGUIQuestion(overrides) {
-  return getQuestion({ ...BASE_GUI_QUESTION, ...SAVED_QUESTION, ...overrides });
-}
-
-function getSavedNativeQuestion(overrides) {
-  return getQuestion({
-    ...BASE_NATIVE_QUESTION,
-    ...SAVED_QUESTION,
-    ...overrides,
-  });
 }
 
 function getAdHocOrdersQuestion() {
@@ -234,42 +218,6 @@ function getNestedQuestionTableMock(isMultiSchemaDB) {
   };
 }
 
-function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
-  const dbId = isMultiSchemaDB ? MULTI_SCHEMA_DB_ID : SAMPLE_DB_ID;
-  const question = getAdHocQuestion({
-    dataset_query: {
-      type: "query",
-      database: dbId,
-      query: {
-        "source-table": SOURCE_QUESTION_VIRTUAL_ID,
-      },
-    },
-  });
-
-  question.legacyQuery({ useStructuredQuery: true }).table = () =>
-    getNestedQuestionTableMock(isMultiSchemaDB);
-
-  return question;
-}
-
-function getSavedNestedQuestion({ isMultiSchemaDB } = {}) {
-  const dbId = isMultiSchemaDB ? MULTI_SCHEMA_DB_ID : SAMPLE_DB_ID;
-  const question = getSavedGUIQuestion({
-    dataset_query: {
-      type: "query",
-      database: dbId,
-      query: {
-        "source-table": SOURCE_QUESTION_VIRTUAL_ID,
-      },
-    },
-  });
-
-  question.legacyQuery({ useStructuredQuery: true }).table = () =>
-    getNestedQuestionTableMock(isMultiSchemaDB);
-
-  return question;
-}
-
 class ErrorBoundary extends Component {
   componentDidCatch(...args) {
     console.error(...args);
@@ -282,7 +230,15 @@ class ErrorBoundary extends Component {
 }
 const SOURCE_CARD = createMockCard({ id: SOURCE_QUESTION_ID });
 
-function setup({ question, subHead = false, isObjectDetail = false } = {}) {
+function setup({
+  card,
+  subHead = false,
+  isObjectDetail = false,
+  hasPermissions = true,
+} = {}) {
+  const metadata = hasPermissions ? getMetadata() : createMockMetadata({});
+  const question = card && new Question(card, metadata);
+
   setupCardEndpoints(SOURCE_CARD);
 
   const onError = jest.fn();
@@ -295,7 +251,7 @@ function setup({ question, subHead = false, isObjectDetail = false } = {}) {
       />
     </ErrorBoundary>,
   );
-  return { onError };
+  return { onError, question };
 }
 
 jest.mock("metabase/core/components/Link", () => ({ to: href, ...props }) => (
@@ -305,100 +261,95 @@ jest.mock("metabase/core/components/Link", () => ({ to: href, ...props }) => (
 describe("QuestionDataSource", () => {
   const GUI_TEST_CASE = {
     SAVED_GUI_QUESTION: {
-      question: getSavedGUIQuestion(),
+      card: { ...BASE_GUI_QUESTION, ...SAVED_QUESTION },
       questionType: "saved GUI question",
     },
     AD_HOC_QUESTION: {
-      question: getAdHocQuestion(),
+      card: BASE_GUI_QUESTION,
       questionType: "ad-hoc GUI question",
     },
     SAVED_GUI_PRODUCTS_JOIN: {
-      question: getSavedGUIQuestion({
+      card: {
+        ...BASE_GUI_QUESTION,
+        ...SAVED_QUESTION,
         dataset_query: QUERY_WITH_PRODUCTS_JOIN,
-      }),
+      },
       questionType: "saved GUI question joining a table",
     },
     AD_HOC_PRODUCTS_JOIN: {
-      question: getAdHocQuestion({ dataset_query: QUERY_WITH_PRODUCTS_JOIN }),
+      card: { ...BASE_GUI_QUESTION, dataset_query: QUERY_WITH_PRODUCTS_JOIN },
       questionType: "ad-hoc GUI question joining a table",
     },
     SAVED_GUI_PRODUCTS_PEOPLE_JOIN: {
-      question: getSavedGUIQuestion({
+      card: {
+        ...BASE_GUI_QUESTION,
+        ...SAVED_QUESTION,
         dataset_query: QUERY_WITH_PRODUCTS_PEOPLE_JOIN,
-      }),
+      },
       questionType: "saved GUI question joining a few tables",
     },
     AD_HOC_PRODUCTS_PEOPLE_JOIN: {
-      question: getAdHocQuestion({
+      card: {
+        ...BASE_GUI_QUESTION,
         dataset_query: QUERY_WITH_PRODUCTS_PEOPLE_JOIN,
-      }),
+      },
       questionType: "ad-hoc GUI question joining a few tables",
     },
     SAVED_GUI_MULTI_SCHEMA_DB: {
-      question: getSavedGUIQuestion({
+      card: {
+        ...BASE_GUI_QUESTION,
+        ...SAVED_QUESTION,
         dataset_query: QUERY_IN_MULTI_SCHEMA_DB,
-      }),
+      },
       questionType: "saved GUI question using multi-schema DB",
     },
     AD_HOC_MULTI_SCHEMA_DB: {
-      question: getAdHocQuestion({ dataset_query: QUERY_IN_MULTI_SCHEMA_DB }),
+      card: {
+        ...BASE_GUI_QUESTION,
+        dataset_query: QUERY_IN_MULTI_SCHEMA_DB,
+      },
       questionType: "ad-hoc GUI question using multi-schema DB",
     },
     SAVED_OBJECT_DETAIL: {
-      question: getSavedGUIQuestion({ dataset_query: ORDER_DETAIL_QUERY }),
+      card: {
+        ...BASE_GUI_QUESTION,
+        ...SAVED_QUESTION,
+        dataset_query: ORDER_DETAIL_QUERY,
+      },
       questionType: "saved object detail",
     },
     AD_HOC_OBJECT_DETAIL: {
-      question: getAdHocQuestion({ dataset_query: ORDER_DETAIL_QUERY }),
+      card: { ...BASE_GUI_QUESTION, dataset_query: ORDER_DETAIL_QUERY },
       questionType: "ad-hoc object detail",
     },
   };
 
   const GUI_TEST_CASES = Object.values(GUI_TEST_CASE);
 
-  const NESTED_TEST_CASES = {
-    SAVED: {
-      question: getSavedNestedQuestion({ isMultiSchemaDB: false }),
-      questionType: "saved nested question",
-    },
-    SAVED_MULTI_SCHEMA: {
-      question: getSavedNestedQuestion({ isMultiSchemaDB: true }),
-      questionType: "saved nested question using multi-schema DB",
-    },
-    AD_HOC: {
-      question: getAdHocNestedQuestion({ isMultiSchemaDB: false }),
-      questionType: "ad-hoc nested question",
-    },
-    AD_HOC_MULTI_SCHEMA: {
-      question: getAdHocNestedQuestion({ isMultiSchemaDB: true }),
-      questionType: "ad-hoc nested question using multi-schema DB",
-    },
-  };
-
   const ALL_TEST_CASES = [
     ...GUI_TEST_CASES,
     {
-      question: getNativeQuestion(),
+      card: BASE_NATIVE_QUESTION,
       questionType: "not saved native question",
     },
     {
-      question: getSavedNativeQuestion(),
+      card: { ...BASE_NATIVE_QUESTION, ...SAVED_QUESTION },
       questionType: "saved native question",
     },
   ];
 
   it("does not fail if question is not passed", () => {
-    const { onError } = setup({ question: undefined });
+    const { onError } = setup();
     expect(onError).not.toHaveBeenCalled();
   });
 
   describe("common", () => {
     ALL_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("displays database name", () => {
-          setup({ question });
+          const { question } = setup({ card });
           const node = screen.queryByText(question.database().displayName());
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
@@ -408,19 +359,10 @@ describe("QuestionDataSource", () => {
         });
 
         it("shows nothing if a user doesn't have data permissions", () => {
-          const originalMethod = question.legacyQuery({
-            useStructuredQuery: true,
-          })._database;
-          question.legacyQuery({ useStructuredQuery: true })._database = () =>
-            null;
-
-          setup({ question });
+          setup({ card, hasPermissions: false });
           expect(
             screen.getByTestId("head-crumbs-container"),
           ).toBeEmptyDOMElement();
-
-          question.legacyQuery({ useStructuredQuery: true })._database =
-            originalMethod;
         });
       });
     });
@@ -428,11 +370,11 @@ describe("QuestionDataSource", () => {
 
   describe("GUI", () => {
     Object.values(GUI_TEST_CASE).forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("displays table name", () => {
-          setup({ question });
+          const { question } = setup({ card });
           const node = screen.queryByText(
             new RegExp(question.table().displayName()),
           );
@@ -441,7 +383,7 @@ describe("QuestionDataSource", () => {
         });
 
         it("displays table link in subhead variant", () => {
-          setup({ question, subHead: true });
+          const { question } = setup({ card, subHead: true });
           const node = screen.queryByText(
             new RegExp(question.table().displayName()),
           );
@@ -452,7 +394,7 @@ describe("QuestionDataSource", () => {
         });
 
         it("displays table link in object detail view", () => {
-          setup({ question, isObjectDetail: true });
+          const { question } = setup({ card, isObjectDetail: true });
           const node = screen.queryByText(
             new RegExp(question.table().displayName()),
           );
@@ -470,11 +412,11 @@ describe("QuestionDataSource", () => {
       GUI_TEST_CASE.SAVED_GUI_MULTI_SCHEMA_DB,
       GUI_TEST_CASE.AD_HOC_MULTI_SCHEMA_DB,
     ].forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("displays schema name", () => {
-          setup({ question });
+          const { question } = setup({ card });
           const node = screen.queryByText(question.table().schema_name);
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
@@ -491,11 +433,11 @@ describe("QuestionDataSource", () => {
       GUI_TEST_CASE.SAVED_GUI_PRODUCTS_JOIN,
       GUI_TEST_CASE.AD_HOC_PRODUCTS_JOIN,
     ].forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("displays 2 joined tables (metabase#17961)", () => {
-          setup({ question, subHead: true });
+          setup({ card, subHead: true });
 
           const orders = screen.queryByText(/Orders/);
           const products = screen.queryByText(/Products/);
@@ -518,11 +460,11 @@ describe("QuestionDataSource", () => {
       GUI_TEST_CASE.SAVED_GUI_PRODUCTS_PEOPLE_JOIN,
       GUI_TEST_CASE.AD_HOC_PRODUCTS_PEOPLE_JOIN,
     ].forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("displays > 2 joined tables (metabase#17961)", () => {
-          setup({ question, subHead: true });
+          setup({ card, subHead: true });
 
           const orders = screen.queryByText(/Orders/);
           const products = screen.queryByText(/Products/);
@@ -548,14 +490,66 @@ describe("QuestionDataSource", () => {
     });
   });
 
-  // Enable when HTTP requests mocking is more reliable than xhr-mock
   describe("Nested", () => {
+    const NESTED_QUESTION = {
+      ...BASE_GUI_QUESTION,
+      dataset_query: {
+        ...BASE_GUI_QUESTION.dataset_query,
+        query: {
+          "source-table": SOURCE_QUESTION_VIRTUAL_ID,
+        },
+      },
+    };
+
+    const SAVED_NESTED_QUESTION = {
+      ...NESTED_QUESTION,
+      ...SAVED_QUESTION,
+    };
+
+    const NESTED_TEST_CASES = {
+      SAVED: {
+        card: SAVED_NESTED_QUESTION,
+        questionType: "saved nested question",
+      },
+      SAVED_MULTI_SCHEMA: {
+        card: {
+          ...SAVED_NESTED_QUESTION,
+          dataset_query: {
+            ...SAVED_NESTED_QUESTION.dataset_query,
+            database: MULTI_SCHEMA_DB_ID,
+          },
+        },
+        questionType: "saved nested question using multi-schema DB",
+      },
+      AD_HOC: {
+        card: NESTED_QUESTION,
+        questionType: "ad-hoc nested question",
+      },
+      AD_HOC_MULTI_SCHEMA: {
+        card: {
+          ...NESTED_QUESTION,
+          dataset_query: {
+            ...NESTED_QUESTION.dataset_query,
+            database: MULTI_SCHEMA_DB_ID,
+          },
+        },
+        questionType: "ad-hoc nested question using multi-schema DB",
+      },
+    };
+
     Object.values(NESTED_TEST_CASES).forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("does not display virtual schema (metabase#12616)", () => {
-          setup({ question, subHead: true });
+          const { question } = setup({ card, subHead: true });
+
+          const isMultiSchemaDB =
+            card.dataset_query.database === MULTI_SCHEMA_DB_ID;
+
+          question.legacyQuery({ useStructuredQuery: true }).table = () =>
+            getNestedQuestionTableMock(isMultiSchemaDB);
+
           const node = screen.queryByText(
             SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
           );

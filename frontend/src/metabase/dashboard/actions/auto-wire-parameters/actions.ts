@@ -1,5 +1,4 @@
 import type {
-  Card,
   DashboardCard,
   DashCardId,
   ParameterId,
@@ -26,6 +25,7 @@ import { getDashCardById } from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
+import Question from "metabase-lib/Question";
 
 export function autoWireDashcardsWithMatchingParameters(
   parameter_id: ParameterId,
@@ -102,6 +102,12 @@ export function autoWireParametersToNewCard({
       dashboardId,
     );
 
+    const dashcardWithQuestions: Array<[StoreDashcard, Question]> =
+      dashcards.map(dashcard => [
+        dashcard,
+        new Question(dashcard.card, metadata),
+      ]);
+
     const targetDashcard: StoreDashcard = getDashCardById(
       getState(),
       dashcard_id,
@@ -118,18 +124,19 @@ export function autoWireParametersToNewCard({
       targetDashcard,
     );
 
+    const targetQuestion = new Question(targetDashcard.card, metadata);
+
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
     for (const opt of dashcardMappingOptions) {
-      for (const dashcard of dashcards) {
+      for (const [dashcard, question] of dashcardWithQuestions) {
         const param = dashcard.parameter_mappings?.find(mapping =>
           compareMappingOptionTargets(
             mapping.target,
             opt.target,
-            dashcard.card as Card,
-            targetDashcard.card as Card,
-            metadata,
+            question,
+            targetQuestion,
           ),
         );
 

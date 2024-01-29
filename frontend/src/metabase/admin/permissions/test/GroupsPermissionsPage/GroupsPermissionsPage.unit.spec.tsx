@@ -27,7 +27,9 @@ const TEST_GROUPS = [
   createMockGroup({ name: "All Users" }),
 ];
 
-const setup = async () => {
+const setup = async ({
+  initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
+} = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
@@ -50,7 +52,7 @@ const setup = async () => {
     </Route>,
     {
       withRouter: true,
-      initialRoute: `/admin/permissions/data/group/${TEST_DATABASE.id}`,
+      initialRoute,
     },
   );
 

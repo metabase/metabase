@@ -93,12 +93,17 @@ export function ViewTitleHeader(props) {
   const previousQuery = usePrevious(query);
 
   useEffect(() => {
-    if (!question.isStructured() || !previousQuestion?.isStructured()) {
+    const { isNative } = Lib.queryDisplayInfo(query);
+    const isPreviousQuestionNative =
+      previousQuery && Lib.queryDisplayInfo(previousQuery).isNative;
+
+    if (isNative || isPreviousQuestionNative) {
       return;
     }
 
     const filtersCount = Lib.filters(query, -1).length;
-    const previousFiltersCount = Lib.filters(previousQuery, -1).length;
+    const previousFiltersCount =
+      previousQuery && Lib.filters(previousQuery, -1).length;
 
     if (filtersCount > previousFiltersCount) {
       expandFilters();
@@ -297,7 +302,9 @@ function AhHocQuestionLeftSide(props) {
   } = props;
 
   const handleTitleClick = () => {
-    if (question.isQueryEditable()) {
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+
+    if (isEditable) {
       onOpenModal(MODAL_TYPES.SAVE);
     }
   };
@@ -325,7 +332,6 @@ function AhHocQuestionLeftSide(props) {
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
-            data-metabase-event="Question Data Source Click"
           />
         )}
       </ViewHeaderLeftSubHeading>
@@ -412,7 +418,7 @@ function ViewTitleHeaderRightSide(props) {
     onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const canEditQuery = question.isQueryEditable();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hasExploreResultsLink =
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
@@ -462,7 +468,6 @@ function ViewTitleHeaderRightSide(props) {
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
-          data-metabase-event="View Mode; Open Summary Widget"
         />
       )}
       {QuestionNotebookButton.shouldRender(props) && (
@@ -472,11 +477,6 @@ function ViewTitleHeaderRightSide(props) {
             question={question}
             isShowingNotebook={isShowingNotebook}
             setQueryBuilderMode={setQueryBuilderMode}
-            data-metabase-event={
-              isShowingNotebook
-                ? `Notebook Mode;Go to View Mode`
-                : `View Mode; Go to Notebook Mode`
-            }
           />
         </ViewHeaderIconButtonContainer>
       )}
@@ -516,17 +516,12 @@ function ViewTitleHeaderRightSide(props) {
       {hasSaveButton && (
         <SaveButton
           role="button"
-          disabled={!question.canRun() || !canEditQuery}
+          disabled={!question.canRun() || !isEditable}
           tooltip={{
             tooltip: t`You don't have permission to save this question.`,
-            isEnabled: !canEditQuery,
+            isEnabled: !isEditable,
             placement: "left",
           }}
-          data-metabase-event={
-            isShowingNotebook
-              ? `Notebook Mode; Click Save`
-              : `View Mode; Click Save`
-          }
           onClick={() => onOpenModal("save")}
         >
           {t`Save`}
