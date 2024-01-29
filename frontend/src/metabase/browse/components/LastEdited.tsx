@@ -69,7 +69,7 @@ export const LastEdited = ({
       <Text role="note" size="small">
         {editorFullName}
         {editorFullName && timePassed && (
-          <Text span px=".33rem">
+          <Text span px=".33rem" color="text-light">
             •
           </Text>
         )}

@@ -176,9 +176,9 @@ const CollectionHeader = ({
     <CollectionHeaderContainer id={id} role="heading">
       <CollectionHeaderGroup grow noWrap>
         <CollectionHeaderLink to={Urls.collection(collection)}>
-          <Group spacing=".33rem">
-            <Icon name="folder" color={"text-dark"} size={16} />
-            <Text>{getCollectionName(collection)}</Text>
+          <Group spacing=".25rem">
+            <Icon name="folder" color="text-dark" size={16} />
+            <Text weight="bold">{getCollectionName(collection)}</Text>
           </Group>
         </CollectionHeaderLink>
       </CollectionHeaderGroup>

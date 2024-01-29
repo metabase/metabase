@@ -13,10 +13,6 @@ export const ModelCard = styled(Card)`
   padding: 1.5rem;
   padding-bottom: 1rem;
 
-  &:hover h4 {
-    color: ${color("brand")};
-  }
-
   height: 9rem;
   display: flex;
   flex-flow: column nowrap;
@@ -24,7 +20,17 @@ export const ModelCard = styled(Card)`
   align-items: flex-start;
 
   border: 1px solid ${color("border")};
-  box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 1px 0.25rem 0 rgba(0, 0, 0, 0.06);
+  &:hover {
+    box-shadow: 0 1px 0.25rem 0 rgba(0, 0, 0, 0.14);
+    h4 {
+      color: ${color("brand")};
+    }
+  }
+  transition: box-shadow 0.15s;
+  h4 {
+    transition: color 0.15s;
+  }
 `;
 
 export const MultilineEllipsified = styled(Ellipsified)`
