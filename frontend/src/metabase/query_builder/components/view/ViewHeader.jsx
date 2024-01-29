@@ -77,6 +77,8 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
+
+  requiredTemplateTags: PropTypes.array,
 };
 
 export function ViewTitleHeader(props) {
@@ -384,6 +386,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
+  requiredTemplateTags: PropTypes.array,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -416,6 +419,7 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
+    requiredTemplateTags = [],
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -444,6 +448,13 @@ function ViewTitleHeaderRightSide(props) {
     () => (isRunning ? t`Cancel` : t`Refresh`),
     [isRunning],
   );
+
+  const isSaveDisabled = !question.canRun() || !isEditable;
+  const disabledSaveTooltip = !question.canRun()
+    ? getMissingRequiredTemplateTagsTooltip(requiredTemplateTags)
+    : !isEditable
+    ? t`You don't have permissions to save this question.`
+    : "";
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
@@ -516,10 +527,10 @@ function ViewTitleHeaderRightSide(props) {
       {hasSaveButton && (
         <SaveButton
           role="button"
-          disabled={!question.canRun() || !isEditable}
+          disabled={isSaveDisabled}
           tooltip={{
-            tooltip: t`You don't have permission to save this question.`,
-            isEnabled: !isEditable,
+            tooltip: disabledSaveTooltip,
+            isEnabled: isSaveDisabled,
             placement: "left",
           }}
           onClick={() => onOpenModal("save")}
@@ -532,3 +543,19 @@ function ViewTitleHeaderRightSide(props) {
 }
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
+
+function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
+  if (!requiredTemplateTags.length) {
+    return "";
+  }
+
+  const names = requiredTemplateTags
+    .map(t => `"${t["display-name"] ?? t.name}"`)
+    .join(", ");
+
+  if (requiredTemplateTags.length > 1) {
+    return t`The ${names} variables require default values but none were provided.`;
+  }
+
+  return `The ${names} variable requires a default value but none was provided.`;
+}

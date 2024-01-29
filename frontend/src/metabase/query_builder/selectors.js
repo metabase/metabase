@@ -994,3 +994,18 @@ export const getIsEditingInDashboard = state => {
 export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
 };
+
+export const getTemplateTags = createSelector([getCard], card => {
+  return getIn(card, ["dataset_query", "native", "template-tags"]);
+});
+
+export const getRequiredTemplateTags = createSelector(
+  [getTemplateTags],
+  templateTags => {
+    return templateTags
+      ? Object.keys(templateTags)
+          .filter(key => templateTags[key].required)
+          .map(key => templateTags[key])
+      : [];
+  },
+);
