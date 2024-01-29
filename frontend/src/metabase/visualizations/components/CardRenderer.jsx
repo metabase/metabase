@@ -3,7 +3,6 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import _ from "underscore";
-import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -101,26 +100,12 @@ class CardRenderer extends Component {
   }
 
   render() {
-    const { className, style, width, height } = this.props;
-    return (
-      <div className={cx(className, "relative")} style={style}>
-        <div
-          className={className}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width,
-            height,
-            ...style,
-          }}
-        />
-      </div>
-    );
+    return <div className={this.props.className} style={this.props.style} />;
   }
 }
 
 export default ExplicitSize({
+  wrapped: true,
   // Avoid using debounce when isDashboard=true because there should not be any initial delay when rendering cards
   refreshMode: props => (props.isDashboard ? "debounceLeading" : "throttle"),
 })(CardRenderer);

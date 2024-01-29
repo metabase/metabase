@@ -1,6 +1,7 @@
 import type { CSSProperties, ComponentType } from "react";
 import { Component } from "react";
 import ReactDOM from "react-dom";
+import cx from "classnames";
 import _ from "underscore";
 import debounce from "lodash.debounce";
 
@@ -23,6 +24,7 @@ type RefreshMode = keyof typeof REFRESH_MODE;
 
 interface ExplicitSizeProps<T> {
   selector?: string;
+  wrapped?: boolean;
   refreshMode?: RefreshMode | ((props: T) => RefreshMode);
 }
 
@@ -38,6 +40,7 @@ type BaseInnerProps = {
 
 function ExplicitSize<T extends BaseInnerProps>({
   selector,
+  wrapped = false,
   refreshMode = "throttle",
 }: ExplicitSizeProps<T> = {}) {
   return (ComposedComponent: ComponentType<T & SizeState>) => {
@@ -185,7 +188,21 @@ function ExplicitSize<T extends BaseInnerProps>({
       };
 
       render() {
-        return <ComposedComponent {...this.props} {...this.state} />;
+        if (wrapped) {
+          const { className, style = {}, ...props } = this.props;
+          const { width, height } = this.state;
+          return (
+            <div className={cx(className, "relative")} style={style}>
+              <ComposedComponent
+                style={{ position: "absolute", top: 0, left: 0, width, height }}
+                {...(props as T)}
+                {...this.state}
+              />
+            </div>
+          );
+        } else {
+          return <ComposedComponent {...this.props} {...this.state} />;
+        }
       }
     }
 
