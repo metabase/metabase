@@ -322,24 +322,25 @@
 
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [source-query {:native   {:query "select * from venues"}
-                        :type     :native
-                        :database (mt/id)}]
-      (mt/with-temp [Collection {collection-id :id} {}
-                     Card       {source-id :id}     {:table_id        nil
-                                                     :collection_id   collection-id
-                                                     :dataset_query   source-query
-                                                     :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
-                     Card       {card-id :id}       {:table_id      nil
-                                                     :collection_id collection-id
-                                                     :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
-                                                                                :source-table (str "card__" source-id)}
-                                                                     :type     :query
-                                                                     :database lib.schema.id/saved-questions-virtual-database-id}}]
-        (mt/with-test-user :rasta
-          (automagic-dashboards.test/with-dashboard-cleanup
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (t2/select-one Card :id card-id) 8)))))))
+    (mt/with-full-data-perms-for-all-users!
+      (let [source-query {:native   {:query "select * from venues"}
+                          :type     :native
+                          :database (mt/id)}]
+        (mt/with-temp [Collection {collection-id :id} {}
+                       Card       {source-id :id}     {:table_id        nil
+                                                       :collection_id   collection-id
+                                                       :dataset_query   source-query
+                                                       :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
+                       Card       {card-id :id}       {:table_id      nil
+                                                       :collection_id collection-id
+                                                       :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
+                                                                                  :source-table (str "card__" source-id)}
+                                                                       :type     :query
+                                                                       :database lib.schema.id/saved-questions-virtual-database-id}}]
+          (mt/with-test-user :rasta
+            (automagic-dashboards.test/with-dashboard-cleanup
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+              (test-automagic-analysis (t2/select-one Card :id card-id) 8))))))))
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
@@ -1216,68 +1217,69 @@
 (deftest binding-functions-with-all-same-names-and-types-test
   (testing "Ensure expected behavior when multiple columns alias to the same base column and display metadata uses the
             same name for all columns."
-    (mt/dataset test-data
-      (let [source-query {:native   {:query "SELECT LATITUDE AS L1, LATITUDE AS L2, LATITUDE AS L3 FROM PEOPLE;"}
-                          :type     :native
-                          :database (mt/id)}]
-        (mt/with-temp [Card card {:table_id        nil
-                                  :dataset_query   source-query
-                                  :result_metadata (->> (result-metadata-for-query source-query)
-                                                        (mt/with-test-user :rasta)
-                                                        (mapv (fn [m]
-                                                                (assoc m
-                                                                       :display_name "Frooby"
-                                                                       :semantic_type :type/Latitude))))}]
-          (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
-                base-context        (#'magic/make-base-context root)
-                dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
-                                     {"GenericNumber" {:field_type [:type/Number], :score 70}}
-                                     {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
-                                     {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
-                                     {"Lat" {:field_type [:type/Latitude], :score 90}}
-                                     {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
-                                     {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
-                            ;; These will be matched in our tests since this is a generic table entity.
-                bindable-dimensions (remove
-                                     #(-> % vals first :field_type first #{:entity/UserTable})
-                                     dimensions)
-                candidate-bindings  (#'interesting/candidate-bindings base-context dimensions)
-                bound-dimensions    (#'interesting/find-dimensions base-context dimensions)]
-            (testing "For a plain native query (even on a specialized table), the entity_type is :entity/GenericTable"
-              (is (= :entity/GenericTable entity_type)))
-            (testing "candidate bindings are a map of field identifier (id or name) to dimension matches."
-              (is (= #{"L1" "L2" "L3"} (set (keys candidate-bindings)))))
-            (testing "Everything except for the specialized :entity/GenericTable definitions are candidates.
+    (mt/with-full-data-perms-for-all-users!
+      (mt/dataset test-data
+        (let [source-query {:native   {:query "SELECT LATITUDE AS L1, LATITUDE AS L2, LATITUDE AS L3 FROM PEOPLE;"}
+                            :type     :native
+                            :database (mt/id)}]
+          (mt/with-temp [Card card {:table_id        nil
+                                    :dataset_query   source-query
+                                    :result_metadata (->> (result-metadata-for-query source-query)
+                                                          (mt/with-test-user :rasta)
+                                                          (mapv (fn [m]
+                                                                  (assoc m
+                                                                         :display_name "Frooby"
+                                                                         :semantic_type :type/Latitude))))}]
+            (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
+                  base-context        (#'magic/make-base-context root)
+                  dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
+                                       {"GenericNumber" {:field_type [:type/Number], :score 70}}
+                                       {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+                                       {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                                       {"Lat" {:field_type [:type/Latitude], :score 90}}
+                                       {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
+                                       {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
+                              ;; These will be matched in our tests since this is a generic table entity.
+                  bindable-dimensions (remove
+                                       #(-> % vals first :field_type first #{:entity/UserTable})
+                                       dimensions)
+                  candidate-bindings  (#'interesting/candidate-bindings base-context dimensions)
+                  bound-dimensions    (#'interesting/find-dimensions base-context dimensions)]
+              (testing "For a plain native query (even on a specialized table), the entity_type is :entity/GenericTable"
+                (is (= :entity/GenericTable entity_type)))
+              (testing "candidate bindings are a map of field identifier (id or name) to dimension matches."
+                (is (= #{"L1" "L2" "L3"} (set (keys candidate-bindings)))))
+              (testing "Everything except for the specialized :entity/GenericTable definitions are candidates.
                                   Note that this is a map of field id -> vector of passing candidate bindings with
                                   the keyed field added to the dimension as a `:matches` vector with just that field.
 
                                   Also note that the actual field names and display name are not used in candidate
                                    selection. Ultimately, the filtering was based on entity_type and semantic_type."
-              (is (=?
-                   (let [add-matches (fn [col-name]
-                                       (map
-                                        (fn [bd]
-                                          (update-vals
-                                           bd
-                                           (fn [v]
-                                             (assoc v
-                                                    :matches [{:name col-name :display_name "Frooby"}]))))
-                                        bindable-dimensions))]
-                     {"L1" (add-matches "L1")
-                      "L2" (add-matches "L2")
-                      "L3" (add-matches "L3")})
-                   candidate-bindings)))
-            (testing "Despite binding to 5 potential dimension bindings, all 3 query fields end up binding
+                (is (=?
+                     (let [add-matches (fn [col-name]
+                                         (map
+                                          (fn [bd]
+                                            (update-vals
+                                             bd
+                                             (fn [v]
+                                               (assoc v
+                                                      :matches [{:name col-name :display_name "Frooby"}]))))
+                                          bindable-dimensions))]
+                       {"L1" (add-matches "L1")
+                        "L2" (add-matches "L2")
+                        "L3" (add-matches "L3")})
+                     candidate-bindings)))
+              (testing "Despite binding to 5 potential dimension bindings, all 3 query fields end up binding
                                   to latitude."
-              (is (= ["Lat"] (keys bound-dimensions))))
-            (testing "Finally, after the candidates are scored and sorted, all 3 latitude fields end up
+                (is (= ["Lat"] (keys bound-dimensions))))
+              (testing "Finally, after the candidates are scored and sorted, all 3 latitude fields end up
                                   being bound to the Lat dimension."
-              (is (=? {"Lat" {:field_type [:entity/GenericTable :type/Latitude]
-                              :score      100
-                              :matches    [{:name "L1" :display_name "Frooby"}
-                                           {:name "L2" :display_name "Frooby"}
-                                           {:name "L3" :display_name "Frooby"}]}}
-                      bound-dimensions)))))))))
+                (is (=? {"Lat" {:field_type [:entity/GenericTable :type/Latitude]
+                                :score      100
+                                :matches    [{:name "L1" :display_name "Frooby"}
+                                             {:name "L2" :display_name "Frooby"}
+                                             {:name "L3" :display_name "Frooby"}]}}
+                        bound-dimensions))))))))))
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
@@ -1542,55 +1544,56 @@
 
 (deftest compare-to-the-rest-25278+32557-test
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
-    (mt/dataset test-data
-      (mt/with-test-user :rasta
-        (let [left                 (query/adhoc-query
-                                     {:database (mt/id)
-                                      :type     :query
-                                      :query
-                                      {:source-table (mt/id :orders)
-                                       :joins
-                                       [{:strategy     :left-join
-                                         :alias        "Products"
-                                         :condition
-                                         [:=
-                                          [:field (mt/id :orders :product_id) {:base-type :type/Integer}]
-                                          [:field (mt/id :products :id) {:base-type :type/BigInteger :join-alias "Products"}]]
-                                         :source-table (mt/id :products)}]
-                                       :aggregation  [[:avg [:field (mt/id :orders :tax) {:base-type :type/Float}]]]
-                                       :breakout     [[:field (mt/id :products :title)
-                                                       {:base-type :type/Text :join-alias "Products"}]]}})
-              right                (t2/select-one :model/Table (mt/id :orders))
-              cell-query           [:= [:field (mt/id :products :title)
-                                        {:base-type :type/Text :join-alias "Products"}]
-                                    "Intelligent Granite Hat"]
-              dashboard            (magic/automagic-analysis left {:show         nil
-                                                                   :query-filter nil
-                                                                   :comparison?  true})
-              comparison-dashboard (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
-              sample-card-title "Average of Tax per state"
-              [{base-query :dataset_query :as card-without-cell-query}
-               {filtered-query :dataset_query :as card-with-cell-query}] (->> comparison-dashboard
-                                                                              :dashcards
-                                                                              (filter (comp #{sample-card-title} :name :card))
-                                                                              (map :card))]
-          (testing "Comparison cards exist"
-            (is (some? card-with-cell-query))
-            (is (some? card-without-cell-query)))
-          (testing "The cell-query exists in only one of the cards"
-            (is (not= cell-query (get-in base-query [:query :filter])))
-            (is (= cell-query (get-in filtered-query [:query :filter]))))
-          (testing "Join aliases exist in the queries"
-            ;; The reason issues 25278 & 32557 would blow up is the lack of join aliases.
-            (is (= ["Products"] (map :alias (get-in base-query [:query :joins]))))
-            (is (= ["Products"] (map :alias (get-in filtered-query [:query :joins])))))
-          (testing "Card queries are both executable and produce different results"
-            ;; Note that issues 25278 & 32557 would blow up on the filtered queries.
-            (let [base-data           (get-in (qp/process-query base-query) [:data :rows])
-                  filtered-data       (get-in (qp/process-query filtered-query) [:data :rows])]
-              (is (some? base-data))
-              (is (some? filtered-data))
-              (is (not= base-data filtered-data)))))))))
+    (mt/with-full-data-perms-for-all-users!
+      (mt/dataset test-data
+        (mt/with-test-user :rasta
+          (let [left                 (query/adhoc-query
+                                       {:database (mt/id)
+                                        :type     :query
+                                        :query
+                                        {:source-table (mt/id :orders)
+                                         :joins
+                                         [{:strategy     :left-join
+                                           :alias        "Products"
+                                           :condition
+                                           [:=
+                                            [:field (mt/id :orders :product_id) {:base-type :type/Integer}]
+                                            [:field (mt/id :products :id) {:base-type :type/BigInteger :join-alias "Products"}]]
+                                           :source-table (mt/id :products)}]
+                                         :aggregation  [[:avg [:field (mt/id :orders :tax) {:base-type :type/Float}]]]
+                                         :breakout     [[:field (mt/id :products :title)
+                                                         {:base-type :type/Text :join-alias "Products"}]]}})
+                right                (t2/select-one :model/Table (mt/id :orders))
+                cell-query           [:= [:field (mt/id :products :title)
+                                          {:base-type :type/Text :join-alias "Products"}]
+                                      "Intelligent Granite Hat"]
+                dashboard            (magic/automagic-analysis left {:show         nil
+                                                                     :query-filter nil
+                                                                     :comparison?  true})
+                comparison-dashboard (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
+                sample-card-title "Average of Tax per state"
+                [{base-query :dataset_query :as card-without-cell-query}
+                 {filtered-query :dataset_query :as card-with-cell-query}] (->> comparison-dashboard
+                                                                                :dashcards
+                                                                                (filter (comp #{sample-card-title} :name :card))
+                                                                                (map :card))]
+            (testing "Comparison cards exist"
+              (is (some? card-with-cell-query))
+              (is (some? card-without-cell-query)))
+            (testing "The cell-query exists in only one of the cards"
+              (is (not= cell-query (get-in base-query [:query :filter])))
+              (is (= cell-query (get-in filtered-query [:query :filter]))))
+            (testing "Join aliases exist in the queries"
+              ;; The reason issues 25278 & 32557 would blow up is the lack of join aliases.
+              (is (= ["Products"] (map :alias (get-in base-query [:query :joins]))))
+              (is (= ["Products"] (map :alias (get-in filtered-query [:query :joins])))))
+            (testing "Card queries are both executable and produce different results"
+              ;; Note that issues 25278 & 32557 would blow up on the filtered queries.
+              (let [base-data           (get-in (qp/process-query base-query) [:data :rows])
+                    filtered-data       (get-in (qp/process-query filtered-query) [:data :rows])]
+                (is (some? base-data))
+                (is (some? filtered-data))
+                (is (not= base-data filtered-data))))))))))
 
 (deftest compare-to-the-rest-with-expression-16680-test
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
