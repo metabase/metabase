@@ -88,7 +88,7 @@ describe("getDefaultDisplay", () => {
   });
 
   describe("structured queries", () => {
-    it("returns 'table' display for queries without aggregations and breakouts", () => {
+    it("returns 'table' display for queries with no aggregations and no breakouts", () => {
       const query = createQuery({ metadata: SAMPLE_METADATA });
 
       expect(getDefaultDisplay(query)).toEqual({ display: "table" });
@@ -103,7 +103,7 @@ describe("getDefaultDisplay", () => {
       expect(getDefaultDisplay(query)).toEqual({ display: "scalar" });
     });
 
-    it("returns 'map' display for queries with 1 aggregation and breakout by state", () => {
+    it("returns 'map' display for queries with 1 aggregation and 1 breakout by state", () => {
       const query = createQueryWithClauses({
         query: createQuery({ metadata: SAMPLE_METADATA }),
         aggregations: [{ operatorName: "count" }],
@@ -119,7 +119,7 @@ describe("getDefaultDisplay", () => {
       });
     });
 
-    it("returns 'map' display for queries with 1 aggregation and breakout by country", () => {
+    it("returns 'map' display for queries with 1 aggregation and 1 breakout by country", () => {
       const query = createQueryWithClauses({
         query: createQuery({
           metadata: SAMPLE_METADATA,
