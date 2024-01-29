@@ -32,7 +32,6 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  #p (dissoc serialized-instance :result_metadata)
   (t2/update! model id serialized-instance))
 
 (defmulti diff-map
