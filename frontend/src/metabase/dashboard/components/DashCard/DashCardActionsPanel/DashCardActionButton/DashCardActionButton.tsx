@@ -19,12 +19,7 @@ const DashActionButton = forwardRef<HTMLAnchorElement, Props>(
     ref,
   ) {
     return (
-      <StyledAnchor
-        {...props}
-        as={as}
-        data-metabase-event={analyticsEvent}
-        ref={ref}
-      >
+      <StyledAnchor {...props} as={as} ref={ref}>
         <Tooltip tooltip={tooltip}>{children}</Tooltip>
       </StyledAnchor>
     );

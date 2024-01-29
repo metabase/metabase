@@ -293,7 +293,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
   getEditingButtons() {
     return [
       <Button
-        data-metabase-event="Dashboard;Cancel Edits"
         key="cancel"
         className="Button Button--small mr1"
         onClick={this.onRequestCancel}
@@ -360,7 +359,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             aria-label={t`Add questions`}
-            data-metabase-event="Dashboard;Add Card Sidebar"
           />
         </Tooltip>,
       );
@@ -381,10 +379,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       // Add link card button
       buttons.push(
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
-          <DashboardHeaderButton
-            onClick={() => this.onAddLinkCard()}
-            data-metabase-event={`Dashboard;Add Link Card`}
-          >
+          <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
         </Tooltip>,
@@ -434,7 +429,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
                 aria-label={t`Add action`}
-                data-metabase-event={`Dashboard;Add Action Button`}
               >
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>
@@ -455,7 +449,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       buttons.push(
         <Button
           icon="clone"
-          data-metabase-event="Dashboard;Copy"
           to={`${location.pathname}/copy`}
           as={Link}
         >{t`Make a copy`}</Button>,
@@ -469,7 +462,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             visibleOnSmallScreen={false}
             key="edit"
             aria-label={t`Edit dashboard`}
-            data-metabase-event="Dashboard;Edit"
             icon="pencil"
             onClick={() => this.handleEdit(dashboard)}
           />
@@ -566,7 +558,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         <DashboardHeaderButton
           key="expand"
           aria-label={t`Enter Fullscreen`}
-          data-metabase-event={`Dashboard;Fullscreen Mode;${!isFullscreen}`}
           icon="expand"
           className="text-brand-hover cursor-pointer"
           onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}

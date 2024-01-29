@@ -11,6 +11,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.http-client :as client]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Collection Database Field FieldValues Metric Segment Table]]
@@ -27,6 +28,7 @@
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -683,6 +685,13 @@
                                         ["CATEGORY" "PRODUCTS :type/Text :type/Category"]
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
         (is (= expected (prefix-fn (mt/id) prefix))))
+      (testing " returns sane Cache-Control headers"
+        (is (=? {"Cache-Control" "public, max-age=60"
+                 "Vary"          "Cookie"}
+                (-> (client/client-full-response (test.users/username->token :rasta) :get 200
+                                                (format "database/%s/autocomplete_suggestions" (mt/id))
+                                                :prefix "u")
+                   :headers))))
       (testing " handles large numbers of tables and fields sensibly with prefix"
         (mt/with-model-cleanup [Field Table Database]
           (let [tmp-db (first (t2/insert-returning-instances! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"}))]

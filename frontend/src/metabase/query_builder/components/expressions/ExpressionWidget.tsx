@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { isNotNull } from "metabase/lib/types";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
-import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/expressions";
@@ -20,10 +19,6 @@ import {
   RemoveLink,
 } from "./ExpressionWidget.styled";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
-
-export const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
-  "questions/query-builder/expressions",
-);
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;

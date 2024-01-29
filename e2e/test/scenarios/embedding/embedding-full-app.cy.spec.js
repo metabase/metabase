@@ -9,11 +9,16 @@ import {
   getDashboardCard,
   getTextCardDetails,
   updateDashboardCards,
+  getNextUnsavedDashboardCardId,
 } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
+
+const { ORDERS } = SAMPLE_DATABASE;
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -66,7 +71,9 @@ describeEE("scenarios > embedding > full app", () => {
 
       appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
-        cy.findByText("Our analytics").should("not.exist");
+        cy.findByRole("treeitem", { name: "Our analytics" }).should(
+          "not.exist",
+        );
       });
     });
 
@@ -151,10 +158,9 @@ describeEE("scenarios > embedding > full app", () => {
         url: "/browse",
         qs: { side_nav: false, logo: false },
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our data").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").should("not.exist");
+      cy.findByRole("heading", { name: /Our data/ }).should("be.visible");
+      cy.findByRole("treeitem", { name: /Our data/ }).should("not.exist");
+      cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
       appBar().should("not.exist");
     });
   });
@@ -165,14 +171,12 @@ describeEE("scenarios > embedding > full app", () => {
 
       cy.findByTestId("qb-header").should("be.visible");
       cy.findByTestId("qb-header-left-side").realHover();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Edited/).should("be.visible");
+      cy.button(/Edited/).should("be.visible");
 
       cy.icon("refresh").should("be.visible");
       cy.icon("notebook").should("be.visible");
       cy.button("Summarize").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter").should("be.visible");
+      cy.button("Filter").should("be.visible");
     });
 
     it("should hide the question header by a param", () => {
@@ -222,8 +226,7 @@ describeEE("scenarios > embedding > full app", () => {
           qs: { top_nav: true, new_button: true, side_nav: false },
         });
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("New").click();
+        cy.button("New").click();
         popover().findByText("Question").click();
         popover().findByText("Raw Data").click();
         popover().findByText("Orders").click();
@@ -246,8 +249,9 @@ describeEE("scenarios > embedding > full app", () => {
           qs: { side_nav: false },
         });
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Sample Database").should("be.visible");
+        cy.findByTestId("native-query-editor-container")
+          .findByText(/Sample Database/)
+          .should("be.visible");
       });
     });
 
@@ -290,10 +294,8 @@ describeEE("scenarios > embedding > full app", () => {
     it("should show the dashboard header by default", () => {
       visitDashboardUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Edited/).should("be.visible");
+      cy.findByTestId("dashboard-name-heading").should("be.visible");
+      cy.button(/Edited.*by/).should("be.visible");
     });
 
     it("should hide the dashboard header by a param", () => {
@@ -301,9 +303,9 @@ describeEE("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { header: false },
       });
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("not.exist");
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "not.exist",
+      );
     });
 
     it("should hide the dashboard's additional info by a param", () => {
@@ -345,11 +347,12 @@ describeEE("scenarios > embedding > full app", () => {
     });
 
     it("should have parameters header occupied the entire horizontal space when visiting a dashboard via navigation (metabase#30645)", () => {
+      const filterId = "50c9eac6";
       const dashboardDetails = {
         name: "interactive dashboard embedding",
         parameters: [
           {
-            id: "50c9eac6",
+            id: filterId,
             name: "ID",
             slug: "id",
             type: "id",
@@ -358,14 +361,33 @@ describeEE("scenarios > embedding > full app", () => {
       };
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          const card = getTextCardDetails({
+          const textDashcard = getTextCardDetails({
             col: 0,
             row: 0,
             size_x: 6,
             size_y: 20,
             text: "I am a very long text card",
           });
-          updateDashboardCards({ dashboard_id: dashboardId, cards: [card] });
+          const dashcard = createMockDashboardCard({
+            id: getNextUnsavedDashboardCardId(),
+            col: 8,
+            row: 0,
+            card_id: ORDERS_QUESTION_ID,
+            parameter_mappings: [
+              {
+                parameter_id: filterId,
+                card_id: ORDERS_QUESTION_ID,
+                target: [
+                  "dimension",
+                  ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                ],
+              },
+            ],
+          });
+          updateDashboardCards({
+            dashboard_id: dashboardId,
+            cards: [dashcard, textDashcard],
+          });
         },
       );
 
@@ -406,8 +428,7 @@ describeEE("scenarios > embedding > full app", () => {
     it("should show the dashboard header by default", () => {
       visitXrayDashboardUrl({ url: "/auto/dashboard/table/1" });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More X-rays").should("be.visible");
+      cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("be.visible");
     });
 
@@ -417,8 +438,7 @@ describeEE("scenarios > embedding > full app", () => {
         qs: { header: false },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More X-rays").should("be.visible");
+      cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("not.exist");
     });
   });

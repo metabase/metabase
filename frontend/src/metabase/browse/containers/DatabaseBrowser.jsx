@@ -12,7 +12,6 @@ import Link from "metabase/core/components/Link";
 
 import { BrowseHeader } from "metabase/browse/components/BrowseHeader";
 
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import { DatabaseCard, DatabaseGridItem } from "./DatabaseBrowser.styled";
 
 function DatabaseBrowser({ databases }) {
@@ -23,11 +22,7 @@ function DatabaseBrowser({ databases }) {
       <Grid>
         {databases.map(database => (
           <DatabaseGridItem key={database.id}>
-            <Link
-              to={Urls.browseDatabase(database)}
-              data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
-              display="block"
-            >
+            <Link to={Urls.browseDatabase(database)} display="block">
               <DatabaseCard>
                 <Icon
                   name="database"

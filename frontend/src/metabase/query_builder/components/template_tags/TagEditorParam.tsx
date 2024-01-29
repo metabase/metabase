@@ -311,6 +311,7 @@ class TagEditorParamInner extends Component<Props> {
               <p>
                 {t`There aren't any filter widgets for this type of field yet.`}{" "}
                 <Link
+                  // eslint-disable-next-line no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
                   to={MetabaseSettings.docsUrl(
                     "questions/native-editor/sql-parameters",
                     "the-field-filter-variable-type",

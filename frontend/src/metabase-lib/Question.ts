@@ -204,14 +204,6 @@ class Question {
   }
 
   /**
-   * @deprecated use MLv2
-   */
-  isStructured(): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return !isNative;
-  }
-
-  /**
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
@@ -494,8 +486,9 @@ class Question {
 
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
+    const isStructured = !Lib.queryDisplayInfo(this.query()).isNative;
 
-    return this.isStructured() && !Lib.hasClauses(query, -1) && hasSinglePk;
+    return isStructured && !Lib.hasClauses(query, -1) && hasSinglePk;
   }
 
   canAutoRun(): boolean {
@@ -549,8 +542,9 @@ class Question {
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
   usesMetric(metricId): boolean {
+    const isStructured = !Lib.queryDisplayInfo(this.query()).isNative;
     return (
-      this.isStructured() &&
+      isStructured &&
       _.any(
         QUERY.getAggregations(
           this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
@@ -563,8 +557,9 @@ class Question {
   }
 
   usesSegment(segmentId): boolean {
+    const isStructured = !Lib.queryDisplayInfo(this.query()).isNative;
     return (
-      this.isStructured() &&
+      isStructured &&
       QUERY.getFilters(
         this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
           useStructuredQuery: true,
@@ -1021,11 +1016,13 @@ class Question {
   }
 
   _convertParametersToMbql(): Question {
-    if (!this.isStructured()) {
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+
+    if (isNative) {
       return this;
     }
 
-    const query = this.query();
     const stageIndex = -1;
     const filters = this.parameters()
       .map(parameter =>
@@ -1045,6 +1042,10 @@ class Question {
   }
 
   query(metadata = this._metadata): Query {
+    if (this._legacyQuery() instanceof InternalQuery) {
+      throw new Error("Internal query is not supported by MLv2");
+    }
+
     const databaseId = this.datasetQuery()?.database;
 
     // cache the metadata provider we create for our metadata.
