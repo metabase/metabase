@@ -19,6 +19,7 @@ import {
 import { TYPE } from "metabase-lib/types/constants";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 
+import type Question from "metabase-lib/Question";
 import type { OnVisualizationClickType } from "./types";
 import {
   ObjectDetailsTable,
@@ -129,6 +130,7 @@ export interface DetailsTableProps {
   data: DatasetData;
   zoomedRow: unknown[];
   settings: VisualizationSettings;
+  question?: Question;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
 }
@@ -139,6 +141,7 @@ export function DetailsTable({
   settings,
   onVisualizationClick,
   visualizationIsClickable,
+  question,
 }: DetailsTableProps): JSX.Element {
   const { cols: columns } = data;
   const columnSettings = settings["table.columns"];
@@ -150,7 +153,11 @@ export function DetailsTable({
     const columnIndexes = columnSettings
       .filter(columnSetting => columnSetting?.enabled)
       .map(columnSetting =>
-        findColumnIndexForColumnSetting(columns, columnSetting),
+        findColumnIndexForColumnSetting(
+          columns,
+          columnSetting,
+          question?.query(),
+        ),
       )
       .filter(
         (columnIndex: number) =>
@@ -161,7 +168,7 @@ export function DetailsTable({
       cols: columnIndexes.map((i: number) => columns[i]) as any[],
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
-  }, [columns, zoomedRow, columnSettings]);
+  }, [columnSettings, columns, zoomedRow, question]);
 
   if (!cols?.length) {
     return (

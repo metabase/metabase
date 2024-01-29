@@ -356,6 +356,7 @@ export function ObjectDetailView({
               tableForeignKeys={tableForeignKeys}
               tableForeignKeyReferences={tableForeignKeyReferences}
               followForeignKey={onFollowForeignKey}
+              question={question}
             />
           </ObjectDetailWrapperDiv>
         )}
