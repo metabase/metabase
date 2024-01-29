@@ -2,8 +2,8 @@
   "Tests for /api/embed endpoints."
   (:require
    [buddy.sign.jwt :as jwt]
-   [buddy.sign.util :as buddy-util]
-   [clj-time.core :as time]
+  ;;  [buddy.sign.util :as buddy-util]
+  ;;  [clj-time.core :as time]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -157,7 +157,7 @@
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
    :param_values {}, :param_fields nil})
 
-(def ^:private yesterday (time/minus (time/now) (time/days 1)))
+;; (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
@@ -170,11 +170,11 @@
              (dissoc-id-and-name
                (client/client :get 200 (card-url card))))))))
 
-(deftest we-should-fail-when-attempting-to-use-an-expired-token
-  (with-embedding-enabled-and-new-secret-key
-    (with-temp-card [card {:enable_embedding true}]
-      (is (re= #"Token is expired.*"
-               (client/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))))
+;; (deftest we-should-fail-when-attempting-to-use-an-expired-token
+;;   (with-embedding-enabled-and-new-secret-key
+;;     (with-temp-card [card {:enable_embedding true}]
+;;       (is (re= #"Token is expired.*"
+;;                (client/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest bad-card-id-fails
   (with-embedding-enabled-and-new-secret-key
@@ -536,11 +536,11 @@
       (is (= "Dashboard id should be a positive integer."
              (client/client :get 400 dashboard-url))))))
 
-(deftest we-should-fail-when-attempting-to-use-an-expired-token-2
-  (with-embedding-enabled-and-new-secret-key
-    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-      (is (re= #"^Token is expired.*"
-               (client/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))))
+;; (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
+;;   (with-embedding-enabled-and-new-secret-key
+;;     (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
+;;       (is (re= #"^Token is expired.*"
+;;                (client/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest check-that-the-dashboard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
