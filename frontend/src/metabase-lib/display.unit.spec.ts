@@ -37,5 +37,20 @@ describe("getDefaultDisplay", () => {
 
       expect(getDefaultDisplay(query)).toEqual({ display: "scalar" });
     });
+
+    it("returns 'map' display for queries with 1 aggregation and breakout by state", () => {
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [{ columnName: "STATE", tableName: "PEOPLE" }],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({
+        display: "map",
+        settings: {
+          "map.type": "region",
+          "map.region": "us_states",
+        },
+      });
+    });
   });
 });
