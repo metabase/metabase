@@ -22,6 +22,7 @@ import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
+  CollectionHeaderGroup,
   CollectionHeaderLink,
   GridContainer,
   ModelCard,
@@ -171,24 +172,16 @@ const CollectionHeader = ({
   collection: CollectionEssentials;
   id: string;
 }) => {
-  const MaybeLink = ({ children }: { children: React.ReactNode }) =>
-    collection ? (
-      <Group grow noWrap>
-        <CollectionHeaderLink to={Urls.collection(collection)}>
-          {children}
-        </CollectionHeaderLink>
-      </Group>
-    ) : (
-      <>{children}</>
-    );
   return (
     <CollectionHeaderContainer id={id} role="heading">
-      <MaybeLink>
-        <Group spacing=".33rem">
-          <Icon name="folder" color={"text-dark"} size={16} />
-          <Text>{getCollectionName(collection)}</Text>
-        </Group>
-      </MaybeLink>
+      <CollectionHeaderGroup grow noWrap>
+        <CollectionHeaderLink to={Urls.collection(collection)}>
+          <Group spacing=".33rem">
+            <Icon name="folder" color={"text-dark"} size={16} />
+            <Text>{getCollectionName(collection)}</Text>
+          </Group>
+        </CollectionHeaderLink>
+      </CollectionHeaderGroup>
     </CollectionHeaderContainer>
   );
 };

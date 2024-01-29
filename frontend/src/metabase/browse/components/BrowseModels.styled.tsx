@@ -7,6 +7,7 @@ import {
 import Card from "metabase/components/Card";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
+import { Group } from "metabase/ui";
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
@@ -58,13 +59,15 @@ export const CollectionHeaderContainer = styled.div`
   &:not(:first-of-type) {
     border-top: 1px solid #f0f0f0;
   }
-  // Kludge so we can use grid-gap: 1rem
-  position: relative;
-  top: 0.5rem;
 `;
 
 export const CollectionHeaderLink = styled(Link)`
   &:hover * {
     color: ${color("brand")};
   }
+`;
+
+export const CollectionHeaderGroup = styled(Group)`
+  position: relative;
+  top: 0.5rem;
 `;
