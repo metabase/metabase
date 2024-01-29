@@ -41,7 +41,9 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
 
   const variant = subHead ? "subhead" : "head";
 
-  if (!question.isStructured() || !isMaybeBasedOnDataset(question)) {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
+  if (isNative || !isMaybeBasedOnDataset(question)) {
     return (
       <DataSourceCrumbs question={question} variant={variant} {...props} />
     );
@@ -173,7 +175,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   const parts = [];
   const query = question.query();
   const metadata = question.metadata();
-  const isStructured = question.isStructured();
+  const isStructured = !Lib.queryDisplayInfo(query).isNative;
 
   const database = metadata.database(Lib.databaseID(query));
   if (database) {

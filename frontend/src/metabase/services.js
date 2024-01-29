@@ -4,6 +4,7 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import Question from "metabase-lib/Question";
 import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
+import { isStructured } from "metabase-lib/queries/utils/card";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
 import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
@@ -59,7 +60,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   }
   if (
     question.display() !== "pivot" ||
-    !question.isStructured() ||
+    !isStructured(card) ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
   ) {

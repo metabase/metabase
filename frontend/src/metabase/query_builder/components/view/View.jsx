@@ -192,7 +192,8 @@ class View extends Component {
 
   getRightSidebar = () => {
     const { question } = this.props;
-    const isStructured = question.isStructured();
+    const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
+
     return isStructured
       ? this.getRightSidebarForStructuredQuery()
       : this.getRightSidebarForNativeQuery();
@@ -202,9 +203,10 @@ class View extends Component {
     const { question } = this.props;
     const query = question.query();
     const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
+    const isStructured = !Lib.queryDisplayInfo(query).isNative;
 
     const isNewQuestion =
-      question.isStructured() &&
+      isStructured &&
       Lib.sourceTableOrCardId(query) === null &&
       !legacyQuery.sourceQuery();
 
@@ -331,9 +333,10 @@ class View extends Component {
 
     const query = question.query();
     const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
+    const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
 
     const isNewQuestion =
-      question.isStructured() &&
+      isStructured &&
       Lib.sourceTableOrCardId(query) === null &&
       !legacyQuery.sourceQuery();
 
@@ -370,7 +373,7 @@ class View extends Component {
         <QueryBuilderViewRoot className="QueryBuilder">
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
-            {question.isStructured() && (
+            {isStructured && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}
