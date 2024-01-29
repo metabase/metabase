@@ -34,7 +34,7 @@ export const AdminNavbar = ({
 
   return (
     <AdminNavbarRoot className="Nav" aria-label={t`Navigation bar`}>
-      <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
+      <AdminLogoLink to="/admin">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />
           <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
@@ -58,7 +58,6 @@ export const AdminNavbar = ({
         {!isPaidPlain && <StoreLink />}
         <AdminExitLink
           to="/"
-          data-metabase-event="Navbar;Exit Admin"
           data-testid="exit-admin"
         >{t`Exit admin`}</AdminExitLink>
       </MobileHide>
@@ -101,9 +100,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
               currentPath={currentPath}
             />
           ))}
-          <AdminExitLink to="/" data-metabase-event="Navbar;Exit Admin">
-            {t`Exit admin`}
-          </AdminExitLink>
+          <AdminExitLink to="/">{t`Exit admin`}</AdminExitLink>
         </AdminMobileNavBarItems>
       )}
     </AdminMobileNavbar>
