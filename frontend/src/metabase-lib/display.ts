@@ -12,12 +12,16 @@ type DefaultDisplay = {
   settings?: Partial<VisualizationSettings>;
 };
 
-const isCountry = (semanticType: string): boolean => {
-  return isa(semanticType, TYPE.Country);
+const isCountry = (info: Lib.ColumnDisplayInfo): boolean => {
+  return isa(info.semanticType, TYPE.Country);
 };
 
-const isState = (semanticType: string): boolean => {
-  return isa(semanticType, TYPE.State);
+const isDate = (info: Lib.ColumnDisplayInfo): boolean => {
+  return isa(info.effectiveType, TYPE.Temporal);
+};
+
+const isState = (info: Lib.ColumnDisplayInfo): boolean => {
+  return isa(info.semanticType, TYPE.State);
 };
 
 export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
@@ -49,7 +53,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   if (aggregations.length === 1 && breakouts.length === 1) {
     const [{ columnInfo }] = infos;
 
-    if (isState(columnInfo.semanticType)) {
+    if (isState(columnInfo)) {
       return {
         display: "map",
         settings: {
@@ -59,7 +63,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    if (isCountry(columnInfo.semanticType)) {
+    if (isCountry(columnInfo)) {
       return {
         display: "map",
         settings: {
@@ -73,8 +77,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   if (aggregations.length >= 1 && breakouts.length === 1) {
     const [{ info, columnInfo }] = infos;
 
-    const isDate = false; // TODO
-    if (isDate) {
+    if (isDate(columnInfo)) {
       if (info.isTemporalExtraction) {
         return { display: "bar" };
       }
