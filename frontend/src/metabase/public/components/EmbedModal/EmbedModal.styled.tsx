@@ -1,24 +1,10 @@
-import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { Group } from "metabase/ui";
-import { ModalContentActionIcon } from "metabase/components/ModalContent";
+import { ModalHeader } from "metabase/components/ModalContent";
 
-export const EmbedTitleContainer = styled(Group)<{
-  onClick?: () => void;
-}>`
-  ${({ onClick, theme }) => {
-    return (
-      onClick &&
-      css`
-        &:hover * {
-          color: ${theme.colors.brand[1]};
-          cursor: pointer;
-        }
-      `
-    );
-  }}
-`;
+export const EmbedModalHeader = styled(ModalHeader)`
+  padding: 1.5rem 2rem;
 
-export const EmbedModalHeaderBackIcon = styled(ModalContentActionIcon)`
-  padding: 0;
+  color: ${({ theme }) => theme.fn.themeColor("text-medium")};
+
+  border-bottom: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
 `;

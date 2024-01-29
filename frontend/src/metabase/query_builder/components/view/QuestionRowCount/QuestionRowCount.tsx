@@ -74,22 +74,21 @@ function QuestionRowCount({
   className,
   onChangeLimit,
 }: QuestionRowCountProps) {
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const message = useMemo(() => {
-    if (!question.isStructured()) {
+    if (isNative) {
       return isResultDirty ? "" : getRowCountMessage(result);
     }
     return isResultDirty
       ? getLimitMessage(question, result)
       : getRowCountMessage(result);
-  }, [question, result, isResultDirty]);
+  }, [question, result, isResultDirty, isNative]);
 
   const handleLimitChange = (limit: number) => {
     onChangeLimit(limit > 0 ? limit : null);
   };
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-
-  const canChangeLimit = question.isStructured() && isEditable;
+  const canChangeLimit = !isNative && isEditable;
 
   const limit = canChangeLimit ? Lib.currentLimit(question.query(), -1) : null;
 

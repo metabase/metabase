@@ -21,6 +21,8 @@ const propTypes = {
   setParameterValue: PropTypes.func,
   setParameterIndex: PropTypes.func,
   setEditingParameter: PropTypes.func,
+  setParameterValueToDefault: PropTypes.func,
+  enableParameterRequiredBehavior: PropTypes.bool,
 };
 
 export function SyncedParametersList({
@@ -40,6 +42,8 @@ export function SyncedParametersList({
   setParameterValue,
   setParameterIndex,
   setEditingParameter,
+  setParameterValueToDefault,
+  enableParameterRequiredBehavior,
 }) {
   useSyncedQueryString(
     () => getParameterValuesBySlug(parameters),
@@ -61,6 +65,8 @@ export function SyncedParametersList({
       setParameterValue={setParameterValue}
       setParameterIndex={setParameterIndex}
       setEditingParameter={setEditingParameter}
+      setParameterValueToDefault={setParameterValueToDefault}
+      enableParameterRequiredBehavior={enableParameterRequiredBehavior}
     />
   );
 }

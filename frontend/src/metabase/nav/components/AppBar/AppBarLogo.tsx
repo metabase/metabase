@@ -4,12 +4,14 @@ import { LogoLink } from "./AppBarLogo.styled";
 export interface AppBarLogoProps {
   isSmallAppBar?: boolean;
   isLogoVisible?: boolean;
+  isNavBarEnabled?: boolean;
   onLogoClick?: () => void;
 }
 
 export function AppBarLogo({
   isLogoVisible,
   isSmallAppBar,
+  isNavBarEnabled,
   onLogoClick,
 }: AppBarLogoProps): JSX.Element | null {
   if (!isLogoVisible) {
@@ -21,7 +23,7 @@ export function AppBarLogo({
       to="/"
       isSmallAppBar={Boolean(isSmallAppBar)}
       onClick={onLogoClick}
-      data-metabase-event="Navbar;Logo"
+      disabled={!isNavBarEnabled}
       data-testid="main-logo-link"
     >
       <LogoIcon height={32} />

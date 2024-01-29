@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { Group, Icon } from "metabase/ui";
 
-import FieldSet from "metabase/components/FieldSet";
+import { FieldSet } from "metabase/components/FieldSet";
 import EventSandbox from "metabase/components/EventSandbox";
 
 export const DropdownFieldSet = styled(FieldSet)<{

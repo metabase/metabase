@@ -240,6 +240,7 @@ const getAcsCustomerUrl = () => {
 };
 
 const getDocsUrl = () => {
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
   return MetabaseSettings.docsUrl("people-and-groups/authenticating-with-saml");
 };
 
