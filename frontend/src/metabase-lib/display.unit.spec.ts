@@ -89,14 +89,13 @@ describe("getDefaultDisplay", () => {
 
   describe("structured queries", () => {
     it("returns 'table' display for queries with no aggregations and no breakouts", () => {
-      const query = createQuery({ metadata: SAMPLE_METADATA });
+      const query = createQuery();
 
       expect(getDefaultDisplay(query)).toEqual({ display: "table" });
     });
 
     it("returns 'scalar' display for queries with 1 aggregation and no breakouts", () => {
       const query = createQueryWithClauses({
-        query: createQuery({ metadata: SAMPLE_METADATA }),
         aggregations: [{ operatorName: "count" }],
       });
 
@@ -105,7 +104,6 @@ describe("getDefaultDisplay", () => {
 
     it("returns 'map' display for queries with 1 aggregation and 1 breakout by state", () => {
       const query = createQueryWithClauses({
-        query: createQuery({ metadata: SAMPLE_METADATA }),
         aggregations: [{ operatorName: "count" }],
         breakouts: [{ columnName: "STATE", tableName: "PEOPLE" }],
       });
