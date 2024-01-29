@@ -12,6 +12,7 @@ const DatabaseSslKeyDescription = (): JSX.Element | null => {
     return null;
   }
 
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
   const docsUrl = MetabaseSettings.docsUrl(
     "databases/connections/postgresql",
     "authenticate-client-certificate",

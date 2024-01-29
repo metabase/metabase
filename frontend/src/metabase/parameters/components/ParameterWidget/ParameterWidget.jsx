@@ -34,6 +34,7 @@ export class ParameterWidget extends Component {
       commitImmediately,
       parameters,
       setParameterValueToDefault,
+      enableParameterRequiredBehavior,
     } = this.props;
 
     const isEditingParameter = editingParameter?.id === parameter.id;
@@ -53,6 +54,7 @@ export class ParameterWidget extends Component {
         isFullscreen={isFullscreen}
         commitImmediately={commitImmediately}
         setParameterValueToDefault={setParameterValueToDefault}
+        enableRequiredBehavior={enableParameterRequiredBehavior}
       />
     );
   }
@@ -72,6 +74,7 @@ export class ParameterWidget extends Component {
       setValue,
       children,
       dragHandle,
+      enableParameterRequiredBehavior,
     } = this.props;
 
     const isEditingParameter =
@@ -85,7 +88,7 @@ export class ParameterWidget extends Component {
       return (
         <ParameterFieldSet
           legend={legend}
-          required={Boolean(parameter.required)}
+          required={enableParameterRequiredBehavior && parameter.required}
           noPadding={true}
           fieldHasValueOrFocus={fieldHasValueOrFocus}
           className={className}

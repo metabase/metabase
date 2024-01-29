@@ -2,7 +2,6 @@ import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import * as Lib from "metabase-lib";
 
 import {
   getParameterIconName,
@@ -61,6 +60,10 @@ class ParameterValueWidget extends Component {
     dashboard: PropTypes.object,
     question: PropTypes.object,
     setParameterValueToDefault: PropTypes.func,
+    // This means the widget will take care of the default value.
+    // Should be used for dashboards and native questions in the parameter bar,
+    // Don't use in settings sidebars.
+    enableRequiredBehavior: PropTypes.bool,
   };
 
   state = { isFocused: false };
@@ -73,13 +76,14 @@ class ParameterValueWidget extends Component {
   }
 
   onFocusChanged = isFocused => {
-    const { focusChanged: parentFocusChanged } = this.props;
+    const { focusChanged: parentFocusChanged, enableRequiredBehavior } =
+      this.props;
     if (parentFocusChanged) {
       parentFocusChanged(isFocused);
     }
     this.setState({ isFocused });
 
-    if (this.isInsideNativeQuery() && !isFocused) {
+    if (enableRequiredBehavior && !isFocused) {
       this.resetToDefault();
     }
   };
@@ -109,7 +113,7 @@ class ParameterValueWidget extends Component {
     }
 
     const icon =
-      this.isInsideNativeQuery() && this.props.parameter.required
+      this.props.enableRequiredBehavior && this.props.parameter.required
         ? this.getRequiredActionIcon()
         : this.getOptionalActionIcon();
 
@@ -148,15 +152,6 @@ class ParameterValueWidget extends Component {
         />
       );
     }
-  }
-
-  isInsideNativeQuery() {
-    const query = this.props.question?.query();
-    if (query) {
-      const { isNative } = Lib.queryDisplayInfo(query);
-      return isNative;
-    }
-    return false;
   }
 
   render() {
@@ -260,6 +255,7 @@ function Widget({
   question,
   dashboard,
   target,
+  enableRequiredBehavior,
 }) {
   const normalizedValue = Array.isArray(value)
     ? value
@@ -302,7 +298,8 @@ function Widget({
     // TODO this is due to ParameterFieldWidget not supporting focusChanged callback.
     const setValueOrDefault = value => {
       const { required, default: defaultValue } = parameter;
-      const shouldUseDefault = required && defaultValue && !value?.length;
+      const shouldUseDefault =
+        enableRequiredBehavior && required && defaultValue && !value?.length;
 
       setValue(shouldUseDefault ? defaultValue : value);
       onPopoverClose();
