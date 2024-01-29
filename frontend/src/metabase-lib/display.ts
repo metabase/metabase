@@ -12,6 +12,14 @@ type DefaultDisplay = {
   settings?: Partial<VisualizationSettings>;
 };
 
+const isCountry = (semanticType: string): boolean => {
+  return isa(semanticType, TYPE.Country);
+};
+
+const isState = (semanticType: string): boolean => {
+  return isa(semanticType, TYPE.State);
+};
+
 export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -31,17 +39,17 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
     return { display: "scalar" };
   }
 
-  const breakoutColumnsInfos = breakouts.map(breakout => {
+  const infos = breakouts.map(breakout => {
+    const info = Lib.displayInfo(query, stageIndex, breakout);
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
-    const info = Lib.displayInfo(query, stageIndex, column);
-    return info;
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    return { info, columnInfo };
   });
 
   if (aggregations.length === 1 && breakouts.length === 1) {
-    const [breakoutColumnInfo] = breakoutColumnsInfos;
+    const [{ columnInfo }] = infos;
 
-    const isState = isa(breakoutColumnInfo.semanticType, TYPE.State);
-    if (isState) {
+    if (isState(columnInfo.semanticType)) {
       return {
         display: "map",
         settings: {
@@ -51,8 +59,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    const isCountry = isa(breakoutColumnInfo.semanticType, TYPE.Country);
-    if (isCountry) {
+    if (isCountry(columnInfo.semanticType)) {
       return {
         display: "map",
         settings: {
@@ -64,11 +71,11 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length >= 1 && breakouts.length === 1) {
-    const [breakoutColumnInfo] = breakoutColumnsInfos;
+    const [{ info, columnInfo }] = infos;
 
     const isDate = false; // TODO
     if (isDate) {
-      if (breakoutColumnInfo.isTemporalExtraction) {
+      if (info.isTemporalExtraction) {
         return { display: "bar" };
       }
 
@@ -89,7 +96,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 2) {
-    const isAnyBreakoutDate = breakoutColumnsInfos.some(breakout => {
+    const isAnyBreakoutDate = infos.some(({ info, columnInfo }) => {
       const isDate = false; // TODO
       return isDate;
     });
@@ -98,8 +105,8 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "line" };
     }
 
-    const areBreakoutsCoordinates = breakoutColumnsInfos.every(breakout => {
-      return isa(breakout.semanticType, TYPE.Coordinate);
+    const areBreakoutsCoordinates = infos.every(({ info, columnInfo }) => {
+      return isa(columnInfo.semanticType, TYPE.Coordinate);
     });
     if (areBreakoutsCoordinates) {
       return {
@@ -110,7 +117,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    const areBreakoutsCategories = breakoutColumnsInfos.every(breakout => {
+    const areBreakoutsCategories = infos.every(({ info, columnInfo }) => {
       const isCategory = false; // TODO
       return isCategory;
     });
