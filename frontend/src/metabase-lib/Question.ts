@@ -343,6 +343,18 @@ class Question {
       return this.setDisplay("table");
     }
 
+    const stageIndex = -1;
+    const aggregations = Lib.aggregations(query, stageIndex);
+    const breakouts = Lib.breakouts(query, stageIndex);
+
+    if (aggregations.length === 0 && breakouts.length === 0) {
+      return this.setDisplay("table");
+    }
+
+    if (aggregations.length === 1 && breakouts.length === 0) {
+      return this.setDisplay("scalar");
+    }
+
     return this.setDisplay("table");
   }
 
