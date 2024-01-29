@@ -26,7 +26,9 @@ const setup = ({ step = LANGUAGE_STEP, locale }: SetupOpts = {}) => {
     }),
   });
 
-  renderWithProviders(<LanguageStep />, { storeInitialState: state });
+  renderWithProviders(<LanguageStep stepLabel={0} />, {
+    storeInitialState: state,
+  });
 };
 
 describe("LanguageStep", () => {

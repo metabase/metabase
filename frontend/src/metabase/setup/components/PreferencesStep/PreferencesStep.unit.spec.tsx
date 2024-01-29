@@ -20,7 +20,9 @@ const setup = ({ step = PREFERENCES_STEP }: SetupOpts = {}) => {
   });
 
   setupErrorSetupEndpoints();
-  renderWithProviders(<PreferencesStep />, { storeInitialState: state });
+  renderWithProviders(<PreferencesStep stepLabel={0} />, {
+    storeInitialState: state,
+  });
 };
 
 describe("PreferencesStep", () => {
