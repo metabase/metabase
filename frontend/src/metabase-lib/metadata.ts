@@ -20,6 +20,7 @@ import type {
   ColumnGroup,
   ColumnGroupDisplayInfo,
   ColumnMetadata,
+  DependentItem,
   DrillThru,
   DrillThruDisplayInfo,
   FilterOperator,
@@ -42,7 +43,7 @@ import type {
 } from "./types";
 
 export function metadataProvider(
-  databaseId: DatabaseId,
+  databaseId: DatabaseId | null,
   metadata: Metadata,
 ): MetadataProvider {
   return ML.metadataProvider(databaseId, metadata);
@@ -200,4 +201,8 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
    * It just only happens that the thing we're examining is (again) the query itself.
    */
   return ML.display_info(query, -1, query);
+}
+
+export function dependentMetadata(query: Query): DependentItem[] {
+  return ML.dependent_metadata(query);
 }

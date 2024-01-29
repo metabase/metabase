@@ -15,7 +15,7 @@
 
 (mu/defn schema-name :- ::lib.schema.common/non-blank-string
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
-  multiple connections from multiple metabae remain distinct. The UUID will have the first character of each section taken.
+  multiple connections from multiple metabases remain distinct. The UUID will have the first character of each section taken.
 
   (schema-name {:id 234} \"143dd8ce-e116-4c7f-8d6d-32e99eaefbbc\") ->  \"metabase_cache_1e483_1\""
   [{:keys [id] :as _database} :- [:map [:id ::lib.schema.id/database]]

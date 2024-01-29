@@ -569,9 +569,9 @@
                      env-var-value
                      db-or-cache-value
                      (cond
-                       (:default setting) default-value
-                       (:init setting)    (when-not *disable-init*
-                                            init!))]]
+                       (some? (:default setting)) default-value
+                       (:init setting)            (when-not *disable-init*
+                                                    init!))]]
      (loop [[f & more] source-fns]
        (let [v (when f (f setting))]
          (cond
@@ -900,7 +900,9 @@
 
   Style note: prefer using the setting directly instead:
 
-    (mandrill-api-key \"xyz123\")"
+    (mandrill-api-key \"xyz123\")
+
+  This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
   (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
         name                                                 (setting-name setting)]
@@ -972,6 +974,10 @@
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
       (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
         (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                             setting-name)
+                        {:setting setting})))
+      (when (and (some? (:default setting)) (:init setting))
+        (throw (ex-info (tru "Setting {0} uses both :default and :init options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
       (when (and (:enabled? setting) (:feature setting))
@@ -1086,6 +1092,12 @@
 
   The default value of the setting. This must be of the same type as the Setting type, e.g. the default for an
   `:integer` setting must be some sort of integer. (default: `nil`)
+
+  ###### `:init`
+
+  A optional 0-arity function which returns the same type as the Setting type, e.g. for an `:integer` setting must be
+  some sort of integer. This function will be used to generate an initial value for the setting the first time it is
+  accessed. This value will be saved, in case the function is expensive or non-deterministic.
 
   ###### `:type`
 
@@ -1386,18 +1398,36 @@
   (ex-info (trs "Error of type {0} thrown while parsing a setting" (type ex))
            {:ex-type (type ex)}))
 
-(defn- may-contain-raw-token? [ex setting]
-  (case (:type setting)
-    :json
-    (cond
-      (instance? JsonEOFException ex) false
-      (instance? JsonParseException ex) true
-      :else (do (log/warn ex "Unexpected exception while parsing JSON")
-                ;; err on the side of caution
-                true))
+(defmulti may-contain-raw-token?
+  "Indicate whether we must redact an exception to avoid leaking sensitive env vars"
+  (fn [_ex setting] (:type setting)))
 
-    ;; TODO: handle the remaining formats explicitly
-    true))
+;; fallback to redaction if we have not defined behaviour for a given format
+(defmethod may-contain-raw-token? :default [_ _] false)
+
+(defmethod may-contain-raw-token? :boolean [_ _] false)
+
+;; Non EOF exceptions will mention the next character
+(defmethod may-contain-raw-token? :csv [ex _] (not (instance? java.io.EOFException ex)))
+
+;; Number parsing exceptions will quote the entire input
+(defmethod may-contain-raw-token? :double [_ _] true)
+(defmethod may-contain-raw-token? :integer [_ _] true)
+(defmethod may-contain-raw-token? :positive-integer [_ _] true)
+
+;; Date parsing may quote the entire input, or a particular sub-portion, e.g. a misspelled month name
+(defmethod may-contain-raw-token? :timestamp [_ _] true)
+
+;; Keyword parsing can never fail, but let's be paranoid
+(defmethod may-contain-raw-token? :keyword [_ _] true)
+
+(defmethod may-contain-raw-token? :json [ex _]
+  (cond
+    (instance? JsonEOFException ex) false
+    (instance? JsonParseException ex) true
+    :else (do (log/warn ex "Unexpected exception while parsing JSON")
+              ;; err on the side of caution
+              true)))
 
 (defn- redact-sensitive-tokens [ex raw-value]
   (if (may-contain-raw-token? ex raw-value)
@@ -1408,18 +1438,17 @@
   "Test whether the value configured for a given setting can be parsed as the expected type.
    Returns an map containing the exception if an issue is encountered, or nil if the value passes validation."
   [setting]
-  (when (= :json (:type setting))
-    (try
-      (binding [*disable-init* true]
-        (get-value-of-type (:type setting) setting))
-      nil
-      (catch clojure.lang.ExceptionInfo e
-        (let [parse-error (or (ex-cause e) e)
-              parse-error (redact-sensitive-tokens parse-error setting)
-              env-var? (set-via-env-var? setting)]
-          (assoc (select-keys setting [:name :type])
-            :parse-error parse-error
-            :env-var? env-var?))))))
+  (try
+    (binding [*disable-init* true]
+      (get-value-of-type (:type setting) setting))
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (let [parse-error (or (ex-cause e) e)
+            parse-error (redact-sensitive-tokens parse-error setting)
+            env-var?    (set-via-env-var? setting)]
+        (assoc (select-keys setting [:name :type])
+          :parse-error parse-error
+          :env-var? env-var?)))))
 
 (defn validate-settings-formatting!
   "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
@@ -1429,7 +1458,7 @@
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
       (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
-                           #_:clj-kondo/ignore (str/upper-case (name (:type invalid-setting)))
+                           (u/upper-case-en (name (:type invalid-setting)))
                            (name (:name invalid-setting)))
                       (dissoc invalid-setting :parse-error)
                       (:parse-error invalid-setting)))

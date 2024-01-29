@@ -56,7 +56,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
 
-      cy.findByLabelText("Enable or lock parameters").as("allParameters");
+      cy.findByLabelText("Configuring parameters").as("allParameters");
 
       cy.get("@allParameters").within(() => {
         // verify that all the parameters on the dashboard are defaulted to disabled
@@ -82,7 +82,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       modal().within(() => {
         // set the locked parameter's value
-        cy.findByText("Preview locked parameters")
+        cy.findByText("Previewing locked parameters")
           .parent()
           .findByText("Id")
           .click();
@@ -430,7 +430,7 @@ function openFilterOptions(name) {
 function publishChanges(callback) {
   cy.intercept("PUT", "/api/dashboard/*").as("publishChanges");
 
-  cy.button("Publish changes").click();
+  cy.button(/^(Publish|Publish changes)$/).click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.
@@ -443,7 +443,7 @@ function publishChanges(callback) {
 }
 
 function setParameter(name, filter) {
-  cy.findByLabelText("Enable or lock parameters")
+  cy.findByLabelText("Configuring parameters")
     .parent()
     .findByText(name)
     .siblings("a")

@@ -135,3 +135,53 @@
       "Next 10 Days" (lib/time-interval created-at 10 :day)
       "Today" (lib/time-interval created-at :current :day)
       "This Month" (lib/time-interval created-at :current :month))))
+
+(deftest ^:parallel dependent-metadata-test
+  (testing "native query"
+    (is (= [{:type :database, :id (meta/id)}
+            {:type :schema,   :id (meta/id)}
+            {:type :field,    :id 1}]
+           (-> (lib/native-query meta/metadata-provider "select * {{foo}}")
+               (lib/with-template-tags {"foo" {:type :dimension
+                                               :id "1"
+                                               :name "foo"
+                                               :widget-type :text
+                                               :display-name "foo"
+                                               :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+               lib/dependent-metadata))))
+  (testing "simple query"
+    (are [query] (=? [{:type :database, :id (meta/id)}
+                      {:type :schema,   :id (meta/id)}
+                      {:type :table,    :id (meta/id :venues)}]
+                     (lib/dependent-metadata query))
+      lib.tu/venues-query
+      (lib/append-stage lib.tu/venues-query)))
+  (testing "join query"
+    (are [query] (=? [{:type :database, :id (meta/id)}
+                      {:type :schema,   :id (meta/id)}
+                      {:type :table,    :id (meta/id :venues)}
+                      {:type :table,    :id (meta/id :categories)}]
+                     (lib/dependent-metadata query))
+      lib.tu/query-with-join
+      (lib/append-stage lib.tu/query-with-join)))
+  (testing "source card based query"
+    (are [query] (=? [{:type :database, :id (meta/id)}
+                      {:type :schema,   :id (meta/id)}]
+                     (lib/dependent-metadata query))
+      lib.tu/query-with-source-card
+      (lib/append-stage lib.tu/query-with-source-card)))
+  (testing "source card based query with result metadata"
+    (are [query] (=? [{:type :database, :id (meta/id)}
+                      {:type :schema,   :id (meta/id)}
+                      {:type :field,    :id (meta/id :users :id)}]
+                     (lib/dependent-metadata query))
+      lib.tu/query-with-source-card-with-result-metadata
+      (lib/append-stage lib.tu/query-with-source-card-with-result-metadata)))
+  (testing "model based query"
+    (let [query (assoc lib.tu/query-with-source-card :lib/metadata lib.tu/metadata-provider-with-model)]
+      (are [query] (=? [{:type :database, :id (meta/id)}
+                        {:type :schema,   :id (meta/id)}
+                        {:type :table,    :id "card__1"}]
+                       (lib/dependent-metadata query))
+        query
+        (lib/append-stage query)))))

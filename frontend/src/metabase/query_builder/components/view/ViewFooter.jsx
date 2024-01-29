@@ -2,6 +2,7 @@
 import { t } from "ttag";
 import cx from "classnames";
 
+import * as Lib from "metabase-lib";
 import ButtonBar from "metabase/components/ButtonBar";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -43,7 +44,8 @@ const ViewFooter = ({
     return null;
   }
 
-  const hasDataPermission = question.isQueryEditable();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const hasDataPermission = isEditable;
   const hideChartSettings = result.error && !hasDataPermission;
 
   return (

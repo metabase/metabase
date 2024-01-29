@@ -8,6 +8,7 @@
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -760,3 +761,77 @@
               (is (=? {param-name ReferencedCardQuery}
                       (query->params-map {:template-tags template-tags
                                           :parameters    parameters}))))))))))
+
+(deftest ^:parallel handle-dashboard-parameters-without-values-test
+  (testing "dash params for a template tag may have no :value or :default (#38012)"
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                        meta/metadata-provider
+                                        [(lib.tu.macros/mbql-query orders)
+                                         (lib/with-template-tags
+                                           (lib/native-query meta/metadata-provider
+                                                             "SELECT * FROM Orders WHERE {{createdAt}}")
+                                           {"createdAt"
+                                            {:type         :dimension
+                                             :dimension    #_[:field (meta/id :orders :created-at)]
+                                             (lib/ref (meta/field-metadata :orders :created-at))
+                                             :name         "createdAt"
+                                             :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
+                                             :display-name "CreatedAt"
+                                             :widget-type  :date/all-options}})])
+        (let [template-tags {"createdAt" {:type         :dimension
+                                          :dimension    [:field (meta/id :orders :created-at) {}]
+                                          :name         "createdAt"
+                                          :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
+                                          :display-name "CreatedAt"
+                                          :widget-type  :date/all-options}}]
+
+          (testing "with no parameters given, no value"
+            (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                                  :value params/no-value}}
+                    (query->params-map {:template-tags template-tags}))))
+          (testing "with parameters given but blank, no value"
+            (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                                  :value params/no-value}}
+                    (query->params-map {:template-tags template-tags
+                                        :parameters    [{:type   :date/relative
+                                                         :value  nil
+                                                         :target [:dimension [:template-tag "createdAt"]]}
+                                                        {:type   :date/month-year
+                                                         :value  nil
+                                                         :target [:dimension [:template-tag "createdAt"]]}]}))))
+          (testing "with only the relative date parameter set, use it"
+            (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                                  :value {:type  :date/relative
+                                          :value "past30days"}}}
+                    (query->params-map {:template-tags template-tags
+                                        :parameters    [{:type   :date/relative
+                                                         :value  "past30days"
+                                                         :target [:dimension [:template-tag "createdAt"]]}
+                                                        {:type   :date/month-year
+                                                         :value  nil
+                                                         :target [:dimension [:template-tag "createdAt"]]}]}))))
+          (testing "with only the month-year parameter set, use it"
+            (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                                  :value {:type  :date/month-year
+                                          :value "2023-01"}}}
+                    (query->params-map {:template-tags template-tags
+                                        :parameters    [{:type   :date/relative
+                                                         :value  nil
+                                                         :target [:dimension [:template-tag "createdAt"]]}
+                                                        {:type   :date/month-year
+                                                         :value  "2023-01"
+                                                         :target [:dimension [:template-tag "createdAt"]]}]}))))
+          (testing "with both parameters set, use both"
+            (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                                  :value [{:type  :date/relative
+                                           :value "past30days"}
+                                          {:type  :date/month-year
+                                           :value "2023-01"}]}}
+                    (query->params-map {:template-tags template-tags
+                                        :parameters    [{:type   :date/relative
+                                                         :value  "past30days"
+                                                         :target [:dimension [:template-tag "createdAt"]]}
+                                                        {:type   :date/month-year
+                                                         :value  "2023-01"
+                                                         :target [:dimension [:template-tag "createdAt"]]}]})))))))))

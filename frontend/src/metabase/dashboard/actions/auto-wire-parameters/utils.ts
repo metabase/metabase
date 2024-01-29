@@ -15,6 +15,7 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
+import Question from "metabase-lib/Question";
 
 export function getAllDashboardCardsWithUnmappedParameters({
   dashboardState,
@@ -54,6 +55,8 @@ export function getMatchingParameterOption(
     return null;
   }
 
+  const targetQuestion = new Question(targetDashcard.card, metadata);
+
   return (
     getParameterMappingOptions(
       metadata,
@@ -64,9 +67,8 @@ export function getMatchingParameterOption(
       compareMappingOptionTargets(
         targetDimension,
         param.target,
-        targetDashcard.card,
-        dashcardToCheck.card,
-        metadata,
+        targetQuestion,
+        new Question(dashcardToCheck.card, metadata),
       ),
     ) ?? null
   );

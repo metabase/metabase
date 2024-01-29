@@ -1,5 +1,5 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
-import type * as React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -54,7 +54,7 @@ interface OwnProps {
   parameterValues?: ParameterValues;
   draftParameterValues?: ParameterValues;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface StateProps {

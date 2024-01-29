@@ -1,28 +1,23 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
-
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
-import { Icon } from "metabase/ui";
-import Link from "metabase/core/components/Link";
 
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
+import Link from "metabase/core/components/Link";
+import { Icon } from "metabase/ui";
 import {
   BrowseHeaderContent,
   BrowseHeaderRoot,
   BrowserHeaderIconContainer,
 } from "./BrowseHeader.styled";
 
-export default function BrowseHeader({ crumbs }) {
+type Crumb = { to?: string; title?: string };
+
+export const BrowseHeader = ({ crumbs = [] }: { crumbs: Crumb[] }) => {
   return (
     <BrowseHeaderRoot>
       <BrowseHeaderContent>
-        <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
+        <BrowserCrumbs crumbs={crumbs} />
         <div className="flex flex-align-right">
-          <Link
-            className="flex flex-align-right"
-            to="reference"
-            data-metabase-event="NavBar;Reference"
-          >
+          <Link className="flex flex-align-right" to="reference">
             <BrowserHeaderIconContainer>
               <Icon className="flex align-center" size={14} name="reference" />
               <span className="ml1 flex align-center text-bold">
@@ -34,4 +29,4 @@ export default function BrowseHeader({ crumbs }) {
       </BrowseHeaderContent>
     </BrowseHeaderRoot>
   );
-}
+};

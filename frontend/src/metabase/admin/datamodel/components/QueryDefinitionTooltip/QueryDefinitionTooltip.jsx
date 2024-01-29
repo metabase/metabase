@@ -2,7 +2,7 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import FieldSet from "metabase/components/FieldSet";
+import { FieldSet } from "metabase/components/FieldSet";
 import { QueryDefinition } from "../QueryDefinition";
 
 /**

@@ -130,6 +130,9 @@
       {:valid         false
        :status        "invalid"
        :error-details (trs "Token should be 64 hexadecimal characters.")})
+    ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.
+    ;; We will have taken a lock to call through to here, and could create a deadlock with the future's thread.
+    ;; See https://github.com/metabase/metabase/pull/38029/
     (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
       (try (fetch-token-and-parse-body token token-check-url site-uuid)
            (catch Exception e1
