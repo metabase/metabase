@@ -2,6 +2,7 @@ import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
 
 import {
   getParameterIconName,
@@ -35,6 +36,8 @@ import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
 
+// import { Popover } from "metabase/ui";
+
 const DATE_WIDGETS = {
   "date/single": DateSingleWidget,
   "date/range": DateRangeWidget,
@@ -64,6 +67,7 @@ class ParameterValueWidget extends Component {
     // Should be used for dashboards and native questions in the parameter bar,
     // Don't use in settings sidebars.
     enableRequiredBehavior: PropTypes.bool,
+    setForceFocus: PropTypes.func,
   };
 
   state = { isFocused: false };
@@ -97,10 +101,12 @@ class ParameterValueWidget extends Component {
     }
   }
 
-  onPopoverClose = () => {
-    if (this.valuePopover.current) {
-      this.valuePopover.current.close();
-    }
+  closePopover = () => {
+    this.valuePopover.current?.close();
+  };
+
+  openPopover = () => {
+    this.valuePopover.current?.open();
   };
 
   getTargetRef = () => {
@@ -154,6 +160,18 @@ class ParameterValueWidget extends Component {
     }
   }
 
+  // For required parameters with no default value,
+  // we want to trigger focus from the parent component.
+  UNSAFE_componentWillReceiveProps() {
+    if (!hasNoPopover(this.props.parameter)) {
+      this.props.setForceFocus?.(this.openPopover);
+    }
+  }
+
+  componentWillUnmount() {
+    this.props.setForceFocus?.(() => {});
+  }
+
   render() {
     const { parameter, value, isEditing, placeholder, className } = this.props;
     const { isFocused } = this.state;
@@ -181,7 +199,7 @@ class ParameterValueWidget extends Component {
             {...this.props}
             target={this.getTargetRef()}
             onFocusChanged={this.onFocusChanged}
-            onPopoverClose={this.onPopoverClose}
+            onPopoverClose={this.closePopover}
           />
           {this.getActionIcon()}
         </div>
@@ -229,10 +247,10 @@ class ParameterValueWidget extends Component {
         autoWidth={parameter.type === "date/all-options"}
       >
         <Widget
-          {...this.props}
+          {..._.omit(this.props, "setForceFocus")}
           target={this.getTargetRef()}
           onFocusChanged={this.onFocusChanged}
-          onPopoverClose={this.onPopoverClose}
+          onPopoverClose={this.closePopover}
         />
       </PopoverWithTrigger>
     );
@@ -256,6 +274,7 @@ function Widget({
   dashboard,
   target,
   enableRequiredBehavior,
+  setForceFocus = () => {},
 }) {
   const normalizedValue = Array.isArray(value)
     ? value
@@ -276,6 +295,7 @@ function Widget({
         commitImmediately={commitImmediately}
         placeholder={placeholder}
         focusChanged={onFocusChanged}
+        setForceFocus={setForceFocus}
       />
     );
   } else if (isNumberParameter(parameter)) {

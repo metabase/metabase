@@ -12,6 +12,7 @@ type Props = {
   placeholder?: string;
   focusChanged: (f: boolean) => void;
   disabled?: boolean;
+  setForceFocus?: (cb: () => void) => void;
 };
 
 type State = {
@@ -20,6 +21,8 @@ type State = {
 };
 
 export class TextWidget extends Component<Props, State> {
+  inputRef: HTMLInputElement | null = null;
+
   static defaultProps = {
     isEditing: false,
     commitImmediately: false,
@@ -47,6 +50,15 @@ export class TextWidget extends Component<Props, State> {
       });
     }
   }
+
+  saveRef = (ref: HTMLInputElement | null) => {
+    this.inputRef = ref;
+    this.props.setForceFocus?.(ref ? this.forceFocus : () => {});
+  };
+
+  forceFocus = () => {
+    this.inputRef?.focus();
+  };
 
   render() {
     const { setValue, className, isEditing, focusChanged, disabled } =
@@ -97,6 +109,7 @@ export class TextWidget extends Component<Props, State> {
         }}
         placeholder={isEditing ? t`Enter a default value…` : defaultPlaceholder}
         disabled={disabled}
+        ref={this.saveRef}
       />
     );
   }
