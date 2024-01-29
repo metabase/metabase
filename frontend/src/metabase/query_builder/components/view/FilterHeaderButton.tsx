@@ -2,6 +2,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import type { QueryBuilderMode } from "metabase-types/store";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import { HeaderButton } from "./ViewHeader.styled";
 
@@ -22,7 +23,6 @@ export function FilterHeaderButton({
       labelBreakpoint="sm"
       color={color("filter")}
       onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
-      data-metabase-event="View Mode; Open Filter Modal"
       data-testid="question-filter-header"
     >
       {t`Filter`}
@@ -42,9 +42,13 @@ FilterHeaderButton.shouldRender = ({
   queryBuilderMode,
   isObjectDetail,
   isActionListVisible,
-}: RenderCheckOpts) =>
-  queryBuilderMode === "view" &&
-  question.isStructured() &&
-  question.isQueryEditable() &&
-  !isObjectDetail &&
-  isActionListVisible;
+}: RenderCheckOpts) => {
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  return (
+    queryBuilderMode === "view" &&
+    !isNative &&
+    isEditable &&
+    !isObjectDetail &&
+    isActionListVisible
+  );
+};

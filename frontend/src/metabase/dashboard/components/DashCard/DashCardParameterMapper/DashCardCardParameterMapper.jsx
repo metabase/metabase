@@ -25,6 +25,7 @@ import {
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
@@ -120,7 +121,8 @@ export function DashCardCardParameterMapper({
     }
 
     const question = new Question(card, metadata);
-    return question.isQueryEditable();
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return isEditable;
   }, [card, metadata, isVirtual]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =

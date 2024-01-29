@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
-import { useEffect, useCallback } from "react";
 import { useAsync } from "react-use";
 import _ from "underscore";
 import type { Route } from "react-router";
 
-import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
 import Databases from "metabase/entities/databases";
+
+import { useTableListQuery } from "metabase/common/hooks";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { PermissionsApi } from "metabase/services";
@@ -70,26 +70,16 @@ function DataPermissionsPage({
     await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
   }, []);
 
-  const fetchTables = useCallback(
-    (dbId: DatabaseId) =>
-      dispatch(
-        Tables.actions.fetchList({
-          dbId,
-          include_hidden: true,
-          remove_inactive: true,
-        }),
-      ),
-    [dispatch],
-  );
+  const { isLoading: isLoadingTables } = useTableListQuery({
+    query: {
+      dbId: params.databaseId,
+      include_hidden: true,
+      remove_inactive: true,
+    },
+    enabled: params.databaseId !== undefined,
+  });
 
-  useEffect(() => {
-    if (params.databaseId == null) {
-      return;
-    }
-    fetchTables(params.databaseId);
-  }, [params.databaseId, fetchTables]);
-
-  if (isLoadingAllUsers || isLoadingAdminstrators) {
+  if (isLoadingAllUsers || isLoadingAdminstrators || isLoadingTables) {
     return (
       <Center h="100%">
         <Loader size="lg" />

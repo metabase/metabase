@@ -12,7 +12,6 @@ const propTypes = {
   currentUser: PropTypes.shape({
     personal_collection_id: PropTypes.number,
   }),
-  analyticsContext: PropTypes.string,
 };
 
 function mapStateToProps(state) {
@@ -21,17 +20,14 @@ function mapStateToProps(state) {
   };
 }
 
-function CollectionList({ collections, currentUser, analyticsContext }) {
+function CollectionList({ collections, currentUser }) {
   return (
     <Grid>
       {collections
         .filter(c => c.id !== currentUser.personal_collection_id)
         .map(collection => (
           <CollectionGridItem key={collection.id}>
-            <CollectionItem
-              collection={collection}
-              event={`${analyticsContext};Collection List;Collection click`}
-            />
+            <CollectionItem collection={collection} />
           </CollectionGridItem>
         ))}
     </Grid>

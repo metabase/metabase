@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import type { CollectionItem } from "metabase-types/api";
@@ -8,9 +8,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { useSearchListQuery } from "metabase/common/hooks";
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { getMainElement } from "metabase/lib/dom";
 
-import { openNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
@@ -37,12 +36,6 @@ export function ArchiveApp() {
   const dispatch = useDispatch();
   const isNavbarOpen = useSelector(getIsNavbarOpen);
   const mainElement = getMainElement();
-
-  useEffect(() => {
-    if (!isSmallScreen()) {
-      openNavbar();
-    }
-  }, []);
 
   const { data, isLoading, error } = useSearchListQuery({
     query: { archived: true },

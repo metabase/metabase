@@ -2,7 +2,7 @@ import { FilterPanel, FilterPanelButton } from "metabase/querying";
 
 import type { QueryBuilderMode } from "metabase-types/store";
 
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 
 interface FilterHeaderToggleProps {
@@ -66,11 +66,12 @@ const shouldRender = ({
   question,
   queryBuilderMode,
   isObjectDetail,
-}: RenderCheckOpts) =>
-  queryBuilderMode === "view" &&
-  question.isStructured() &&
-  question.isQueryEditable() &&
-  !isObjectDetail;
+}: RenderCheckOpts) => {
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  return (
+    queryBuilderMode === "view" && !isNative && isEditable && !isObjectDetail
+  );
+};
 
 FilterHeader.shouldRender = shouldRender;
 FilterHeaderToggle.shouldRender = shouldRender;

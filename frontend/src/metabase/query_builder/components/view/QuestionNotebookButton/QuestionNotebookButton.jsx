@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import Tooltip from "metabase/core/components/Tooltip";
 import { ButtonRoot } from "./QuestionNotebookButton.styled";
 
@@ -32,5 +33,7 @@ export function QuestionNotebookButton({
   );
 }
 
-QuestionNotebookButton.shouldRender = ({ question, isActionListVisible }) =>
-  question.isStructured() && question.isQueryEditable() && isActionListVisible;
+QuestionNotebookButton.shouldRender = ({ question, isActionListVisible }) => {
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  return !isNative && isEditable && isActionListVisible;
+};

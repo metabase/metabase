@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 export const TextEditorRoot = styled.div`
   color: #000;
@@ -97,5 +97,15 @@ export const TextEditorRoot = styled.div`
   .ace_indent-guide {
     background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAE0lEQVQImWP4////f4bLly//BwAmVgd1/w11/gAAAABJRU5ErkJggg==")
       right repeat-y;
+  }
+
+  .highlighted-code-marker {
+    position: absolute;
+
+    background: ${alpha(color("accent4"), 0.3)};
+  }
+
+  .highlighted-code-marker-row-number {
+    background: ${alpha(color("accent4"), 0.5)};
   }
 `;
