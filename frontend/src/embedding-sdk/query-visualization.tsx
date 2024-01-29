@@ -10,7 +10,6 @@ import {
   onCloseChartType,
   onOpenChartSettings,
   setUIControls,
-  updateQuestion,
 } from "metabase/query_builder/actions";
 import Question from "metabase-lib/Question";
 import { useApi } from "./hooks/use-api";
@@ -65,6 +64,13 @@ export const QueryVisualizationSdk = (
 
   const { card, result } = state;
 
+  const changeVisualization = (newQuestion: Question) => {
+    setState({
+      card: newQuestion.card(),
+      result: state.result,
+    });
+  };
+
   return (
     <LoadingAndErrorWrapper
       className="flex-full full-width"
@@ -97,7 +103,7 @@ export const QueryVisualizationSdk = (
                 onCloseChartType={onCloseChartType}
                 query={legacyQuery}
                 setUIControls={setUIControls}
-                updateQuestion={updateQuestion}
+                updateQuestion={changeVisualization}
               />
             </aside>
             <QueryVisualization
