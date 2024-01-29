@@ -1,14 +1,79 @@
-import { getDefaultDisplay } from "./display";
+import { createMockMetadata } from "__support__/metadata";
+import type { Field, Table } from "metabase-types/api";
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
-  SAMPLE_DATABASE,
-  createQuery,
-  createQueryWithClauses,
-} from "./test-helpers";
+  SAMPLE_DB_ID,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createReviewsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import { getDefaultDisplay } from "./display";
+import { createQuery, createQueryWithClauses } from "./test-helpers";
+
+const ACCOUNTS_ID = 4;
+
+const ACCOUNTS = {
+  ID: 48,
+  COUNTRY: 56,
+};
+
+const createAccountsTable = (opts?: Partial<Table>): Table =>
+  createMockTable({
+    id: ACCOUNTS_ID,
+    db_id: SAMPLE_DB_ID,
+    name: "ACCOUNTS",
+    display_name: "Accounts",
+    schema: "PUBLIC",
+    fields: [createAccountsIdField(), createAccountsCountryField()],
+    ...opts,
+  });
+
+const createAccountsIdField = (opts?: Partial<Field>): Field =>
+  createMockField({
+    id: ACCOUNTS.ID,
+    table_id: ACCOUNTS_ID,
+    name: "ID",
+    display_name: "ID",
+    base_type: "type/BigInteger",
+    effective_type: "type/BigInteger",
+    semantic_type: "type/PK",
+    fingerprint: null,
+    ...opts,
+  });
+
+const createAccountsCountryField = (opts?: Partial<Field>): Field =>
+  createMockField({
+    id: ACCOUNTS.COUNTRY,
+    table_id: ACCOUNTS_ID,
+    name: "COUNTRY",
+    display_name: "Country",
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    semantic_type: "type/Country",
+    fingerprint: null,
+    ...opts,
+  });
+
+const SAMPLE_DATABASE = createSampleDatabase({
+  tables: [
+    createAccountsTable(),
+    createOrdersTable(),
+    createPeopleTable(),
+    createProductsTable(),
+    createReviewsTable(),
+  ],
+});
+
+const SAMPLE_METADATA = createMockMetadata({ databases: [SAMPLE_DATABASE] });
 
 describe("getDefaultDisplay", () => {
   describe("native queries", () => {
     it("returns 'table' display for native queries", () => {
       const query = createQuery({
+        metadata: SAMPLE_METADATA,
         query: {
           database: SAMPLE_DATABASE.id,
           type: "native",
@@ -24,13 +89,14 @@ describe("getDefaultDisplay", () => {
 
   describe("structured queries", () => {
     it("returns 'table' display for queries without aggregations and breakouts", () => {
-      const query = createQuery();
+      const query = createQuery({ metadata: SAMPLE_METADATA });
 
       expect(getDefaultDisplay(query)).toEqual({ display: "table" });
     });
 
     it("returns 'scalar' display for queries with 1 aggregation and no breakouts", () => {
       const query = createQueryWithClauses({
+        query: createQuery({ metadata: SAMPLE_METADATA }),
         aggregations: [{ operatorName: "count" }],
       });
 
@@ -39,6 +105,7 @@ describe("getDefaultDisplay", () => {
 
     it("returns 'map' display for queries with 1 aggregation and breakout by state", () => {
       const query = createQueryWithClauses({
+        query: createQuery({ metadata: SAMPLE_METADATA }),
         aggregations: [{ operatorName: "count" }],
         breakouts: [{ columnName: "STATE", tableName: "PEOPLE" }],
       });
@@ -48,6 +115,31 @@ describe("getDefaultDisplay", () => {
         settings: {
           "map.type": "region",
           "map.region": "us_states",
+        },
+      });
+    });
+
+    it("returns 'map' display for queries with 1 aggregation and breakout by country", () => {
+      const query = createQueryWithClauses({
+        query: createQuery({
+          metadata: SAMPLE_METADATA,
+          query: {
+            database: SAMPLE_DATABASE.id,
+            type: "query",
+            query: {
+              "source-table": ACCOUNTS_ID,
+            },
+          },
+        }),
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [{ columnName: "COUNTRY", tableName: "ACCOUNTS" }],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({
+        display: "map",
+        settings: {
+          "map.type": "region",
+          "map.region": "world_countries",
         },
       });
     });
