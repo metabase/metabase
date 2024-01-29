@@ -5,7 +5,6 @@ import {
   getDashboardCard,
   editDashboard,
   showDashboardCardActions,
-  modal,
   saveDashboard,
   getDashboardCardMenu,
 } from "e2e/support/helpers";
@@ -29,7 +28,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
     showDashboardCardActions();
     cy.icon("palette").click();
 
-    modal().within(() => {
+    cy.findByRole("dialog").within(() => {
       cy.findByDisplayValue(originalCardTitle).click().clear();
       cy.button("Done").click();
     });
