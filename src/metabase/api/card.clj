@@ -472,6 +472,7 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
+  (check-card-type-and-dataset card-updates)
   (let [card-before-update   (t2/hydrate (api/write-check Card id)
                                          [:moderation_reviews :moderator_details])
         maybe-turn-to-datset (or (= "model" type) dataset)]
@@ -480,7 +481,6 @@
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
-    (check-card-type-and-dataset card-updates)
     ;; make sure we have the correct `result_metadata`
     (let [result-metadata-chan  (card/result-metadata-async {:original-query    (:dataset_query card-before-update)
                                                              :query             dataset_query
