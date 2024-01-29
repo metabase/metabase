@@ -985,24 +985,24 @@
              (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
                                                                       :dataset true
                                                                       :type :question)))))
-   (testing "can create a model using dataset"
-     (is (=? {:dataset true
-              :type    "model"}
-             (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
-                                                                      :dataset true)))))
+    (testing "can create a model using dataset"
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                       :dataset true)))))
 
-   (testing "can create a model using type"
-     (is (=? {:dataset true
-              :type    "model"}
-          (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
-                                                                   :type :model)))))
+    (testing "can create a model using type"
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                       :type :model)))))
 
-   (testing "default is a question"
-     (is (=? {:dataset false
-              :type    "question"}
-          (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
+    (testing "default is a question"
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
 
-(deftest update-card-with-type-and-dataset-test
+(deftest ^:parallel update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
     (mt/with-temp [:model/Card card {:dataset_query {}}]
       (is (=? {:dataset true
@@ -1025,7 +1025,7 @@
 
       (testing "but error if type and dataset doesn't match"
         (is (= ":dataset is inconsistent with :type"
-                (mt/user-http-request :crowberto :put 400 (str "card/" (:id card)) {:type "question" :dataset true})))))))
+               (mt/user-http-request :crowberto :put 400 (str "card/" (:id card)) {:type "question" :dataset true})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
@@ -1299,6 +1299,16 @@
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
 
+(deftest ^:parallel turn-card-to-model-change-display-test
+  (mt/with-temp [:model/Card card {:display :line}]
+    (is (=? {:display "table"}
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                  {:dataset true}))))
+
+  (mt/with-temp [:model/Card card {:display :line}]
+    (is (=? {:display "table"}
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                  {:type "model"})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Updating the positions of stuff                                         |
