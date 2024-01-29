@@ -1249,3 +1249,9 @@
   "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`."
   [src-column dst-column]
   (lib.types.isa/valid-filter-for? src-column dst-column))
+
+(defn ^:export dependent-metadata
+  "Return the IDs and types of entities the metadata about is required
+  for the FE to function properly."
+  [a-query]
+  (to-array (map clj->js (lib.core/dependent-metadata a-query))))
