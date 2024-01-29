@@ -220,20 +220,21 @@
 (deftest formatted-results-ignore-query-constraints
   (testing "POST /api/dataset/:format"
     (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
-      ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
-        (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
-                                           :query (json/generate-string
-                                                   {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (mt/id :venues)}
-                                                    :middleware
-                                                    {:add-default-userland-constraints? true
-                                                     :userland-query?                   true}}))]
-          (is (some? result))
-          (when (some? result)
-            (is (= 101
-                   (count (csv/read-csv result))))))))))
+      (mt/with-full-data-perms-for-all-users!
+        ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
+        (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+          (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                             :query (json/generate-string
+                                                     {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (mt/id :venues)}
+                                                      :middleware
+                                                      {:add-default-userland-constraints? true
+                                                       :userland-query?                   true}}))]
+            (is (some? result))
+            (when (some? result)
+              (is (= 101
+                     (count (csv/read-csv result)))))))))))
 
 (deftest export-with-remapped-fields
   (testing "POST /api/dataset/:format"

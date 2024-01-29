@@ -75,33 +75,34 @@
 
 (deftest metabot-database-happy-path-test
   (testing "POST /api/metabot/database/:database-id happy path"
-    (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
-      (mt/dataset test-data
-        (t2.with-temp/with-temp
-          [Card orders-model {:name    "Orders Model"
-                              :dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
-          (let [bot-model-selection (format "The best model is %s" (:id orders-model))
-                bot-sql-response    (format "you should do ```SELECT COUNT(*) FROM %s``` to do that."
-                                            (metabot-util/normalize-name (:name orders-model)))
-                bot-sql             (metabot-util/extract-sql bot-sql-response)
-                q                   "How many orders do I have?"]
-            (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [{:keys [prompt_template]} _]
-                                                                             (case (keyword prompt_template)
-                                                                               :infer_model {:choices [{:message {:content bot-model-selection}}]}
-                                                                               :infer_sql {:choices [{:message {:content bot-sql-response}}]}
-                                                                               {:choices [{:message {:content "{}"}}]}))
-                          metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
-                          metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 200
-                                                   (format "/metabot/database/%s" (mt/id))
-                                                   {:question q})
-                    {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
-                (is (true? (str/ends-with? query bot-sql)))
-                (is (contains? template-tags (keyword (str "#" (:id orders-model)))))))))))))
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
+        (mt/dataset test-data
+          (t2.with-temp/with-temp
+            [Card orders-model {:name    "Orders Model"
+                                :dataset_query
+                                {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (mt/id :orders)}}
+                                :dataset true}]
+            (let [bot-model-selection (format "The best model is %s" (:id orders-model))
+                  bot-sql-response    (format "you should do ```SELECT COUNT(*) FROM %s``` to do that."
+                                              (metabot-util/normalize-name (:name orders-model)))
+                  bot-sql             (metabot-util/extract-sql bot-sql-response)
+                  q                   "How many orders do I have?"]
+              (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [{:keys [prompt_template]} _]
+                                                                               (case (keyword prompt_template)
+                                                                                 :infer_model {:choices [{:message {:content bot-model-selection}}]}
+                                                                                 :infer_sql {:choices [{:message {:content bot-sql-response}}]}
+                                                                                 {:choices [{:message {:content "{}"}}]}))
+                            metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
+                            metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
+                (let [response (mt/user-http-request :rasta :post 200
+                                                     (format "/metabot/database/%s" (mt/id))
+                                                     {:question q})
+                      {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
+                  (is (true? (str/ends-with? query bot-sql)))
+                  (is (contains? template-tags (keyword (str "#" (:id orders-model))))))))))))))
 
 (deftest metabot-database-no-model-found-test
   (testing "With embeddings, you'll always get _some_ model, unless there aren't any at all."
