@@ -459,7 +459,7 @@ class Question {
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
-    return this.legacyQuery({ useStructuredQuery: true }).canRun();
+    return Lib.canRun(this.query());
   }
 
   canWrite(): boolean {
