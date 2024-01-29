@@ -73,8 +73,9 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
     }
 
     const binning = Lib.binning(breakout);
+    const isBinned = binning !== null;
 
-    if (binning) {
+    if (isBinned) {
       return { display: "bar" };
     }
 
