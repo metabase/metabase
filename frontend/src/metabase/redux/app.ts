@@ -58,7 +58,7 @@ const errorPage = handleActions(
   null,
 );
 
-const PATH_WITH_COLLAPSED_NAVBAR = /\/(model|question|dashboard|metabot).*/;
+const PATH_WITH_COLLAPSED_NAVBAR = /^\/(model|question|dashboard|metabot).*/;
 
 export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
   return (

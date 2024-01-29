@@ -12,15 +12,20 @@ import TableBrowser from "metabase/browse/containers/TableBrowser";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import { BrowseHeader } from "metabase/browse/components/BrowseHeader";
-import { SchemaGridItem, SchemaLink } from "./SchemaBrowser.styled";
+import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import {
+  SchemaBrowserContainer,
+  SchemaGridItem,
+  SchemaLink,
+} from "./SchemaBrowser.styled";
+import { BrowseHeaderContent } from "./BrowseHeader.styled";
 
 function SchemaBrowser(props) {
   const { schemas, params } = props;
   const { slug } = params;
   const dbId = Urls.extractEntityId(slug);
   return (
-    <div>
+    <SchemaBrowserContainer>
       {schemas.length === 1 ? (
         <TableBrowser
           {...props}
@@ -31,12 +36,14 @@ function SchemaBrowser(props) {
         />
       ) : (
         <>
-          <BrowseHeader
-            crumbs={[
-              { title: t`Our data`, to: "browse" },
-              { title: <Database.Name id={dbId} /> },
-            ]}
-          />
+          <BrowseHeaderContent>
+            <BrowserCrumbs
+              crumbs={[
+                { title: t`Databases`, to: "/browse/databases" },
+                { title: <Database.Name id={dbId} /> },
+              ]}
+            />
+          </BrowseHeaderContent>
           {schemas.length === 0 ? (
             <h2 className="full text-centered text-medium">{t`This database doesn't have any tables.`}</h2>
           ) : (
@@ -63,7 +70,7 @@ function SchemaBrowser(props) {
           )}
         </>
       )}
-    </div>
+    </SchemaBrowserContainer>
   );
 }
 

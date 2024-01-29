@@ -7,13 +7,13 @@ import { isSyncInProgress } from "metabase/lib/syncing";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import { Icon } from "metabase/ui";
-import { Grid } from "metabase/components/Grid";
+import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-import { BrowseHeader } from "../BrowseHeader";
+import { BrowseHeaderContent } from "../BrowseHeader.styled";
 import {
   TableActionLink,
   TableCard,
@@ -45,13 +45,15 @@ const TableBrowser = ({
 }) => {
   return (
     <>
-      <BrowseHeader
-        crumbs={[
-          { title: t`Databases`, to: "/browse/databases" },
-          getDatabaseCrumbs(dbId),
-          showSchemaInHeader && { title: schemaName },
-        ]}
-      />
+      <BrowseHeaderContent>
+        <BrowserCrumbs
+          crumbs={[
+            { title: t`Databases`, to: "/browse/databases" },
+            getDatabaseCrumbs(dbId),
+            showSchemaInHeader && { title: schemaName },
+          ]}
+        />
+      </BrowseHeaderContent>
       <TableGrid>
         {tables.map(table => (
           <TableGridItem key={table.id}>
