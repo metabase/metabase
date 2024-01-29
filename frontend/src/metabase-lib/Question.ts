@@ -336,6 +336,13 @@ class Question {
       return this;
     }
 
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+
+    if (isNative) {
+      return this.setDisplay("table");
+    }
+
     return this.setDisplay("table");
   }
 
