@@ -8,7 +8,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models
     :refer [Dashboard DashboardCard Database Field FieldValues Table]]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
@@ -677,22 +676,22 @@
                          DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
                                                           :action_id action-id
                                                           :card_id model-id}]
-            (mt/with-no-data-perms-for-all-users!
+            (mt/with-full-data-perms-for-all-users!
               (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                          dashboard-id
                                          dashcard-id)]
-                (testing "Fails with access to the DB blocked"
-                  (data-perms/set-database-permission! (perms-group/all-users) (mt/db) :perms/data-access :block)
-                  (mt/with-actions-enabled
-                    (is (partial= {:message "You don't have permissions to do that."}
-                                  (mt/user-http-request :rasta :post 403 execute-path
-                                                        {:parameters {"id" 1}})))))
                 (testing "Works with access to the DB not blocked"
-                  (data-perms/set-database-permission! (perms-group/all-users) (mt/db) :perms/data-access :unrestricted)
                   (mt/with-actions-enabled
                     (is (= {:rows-affected 1}
                            (mt/user-http-request :rasta :post 200 execute-path
-                                                 {:parameters {"id" 1}})))))))))))))
+                                                 {:parameters {"id" 1}})))))
+                (testing "Fails with access to the DB blocked"
+                  (with-all-users-data-perms! {(u/the-id (mt/db)) {:data {:native :none :schemas :block}
+                                                                   :details :yes}}
+                    (mt/with-actions-enabled
+                      (is (partial= {:message "You don't have permissions to do that."}
+                                    (mt/user-http-request :rasta :post 403 execute-path
+                                                          {:parameters {"id" 1}}))))))))))))))
 
 (deftest settings-managers-can-have-uploads-db-access-revoked
   (perms/grant-application-permissions! (perms-group/all-users) :setting)
