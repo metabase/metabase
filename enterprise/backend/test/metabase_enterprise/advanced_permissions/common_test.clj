@@ -233,7 +233,6 @@
                    Table    t3 {:db_id db-id :schema "" :name "t3"}]
       (with-all-users-data-perms! {db-id {:data       {:schemas :block :native :none}
                                           :data-model {:schemas :all}}}
-        (perms/revoke-data-perms! (perms-group/all-users) db-id)
         (testing "If data permissions are revoked, it should be a 403"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%d/schema/" db-id)))))
