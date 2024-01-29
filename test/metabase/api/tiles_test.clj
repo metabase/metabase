@@ -13,28 +13,29 @@
      (drop 1 (take 4 s))))
 
 (deftest basic-test
-  (let [venues-query {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (mt/id :venues)
-                                 :fields [[:field (mt/id :venues :name) nil]
-                                          [:field (mt/id :venues :latitude) nil]
-                                          [:field (mt/id :venues :longitude) nil]]}}]
-    (testing "GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id"
-      (is (png? (mt/user-http-request
-                 :rasta :get 200 (format "tiles/1/1/1/%d/%d"
-                                         (mt/id :venues :latitude)
-                                         (mt/id :venues :longitude))
-                 :query (json/generate-string venues-query)))))
-    (testing "Works on native queries"
-      (let [native-query {:query (:query (qp/compile venues-query))
-                          :template-tags {}}]
+  (mt/with-full-data-perms-for-all-users!
+    (let [venues-query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)
+                                   :fields [[:field (mt/id :venues :name) nil]
+                                            [:field (mt/id :venues :latitude) nil]
+                                            [:field (mt/id :venues :longitude) nil]]}}]
+      (testing "GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id"
         (is (png? (mt/user-http-request
-                   :rasta :get 200 (format "tiles/1/1/1/%s/%s"
-                                           "LATITUDE" "LONGITUDE")
-                   :query (json/generate-string
-                           {:database (mt/id)
-                            :type :native
-                            :native native-query}))))))))
+                   :rasta :get 200 (format "tiles/1/1/1/%d/%d"
+                                           (mt/id :venues :latitude)
+                                           (mt/id :venues :longitude))
+                   :query (json/generate-string venues-query)))))
+      (testing "Works on native queries"
+        (let [native-query {:query (:query (qp/compile venues-query))
+                            :template-tags {}}]
+          (is (png? (mt/user-http-request
+                     :rasta :get 200 (format "tiles/1/1/1/%s/%s"
+                                             "LATITUDE" "LONGITUDE")
+                     :query (json/generate-string
+                             {:database (mt/id)
+                              :type :native
+                              :native native-query})))))))))
 
 (deftest query->tiles-query-test
   (letfn [(clean [q]
@@ -85,24 +86,25 @@
 
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
-    (mt/dataset test-data
-      (with-redefs [api.tiles/create-tile (fn [_ points] points)
-                    api.tiles/tile->byte-array identity]
-        (let [result (mt/user-http-request
-                      :rasta :get 200 (format "tiles/7/30/49/%d/%d"
-                                              (mt/id :people :latitude)
-                                              (mt/id :people :longitude))
-                      :query (json/generate-string
-                              {:database (mt/id)
-                               :type :query
-                               :query {:source-table (mt/id :people)
-                                       :breakout [[:field (mt/id :people :latitude)]
-                                                  [:field (mt/id :people :longitude)]]
-                                       :aggregation [[:count]]}}))]
-          (is (= [[36.6163612 -94.5197949]
-                  [36.8177783 -93.8447328]
-                  [36.8311004 -95.0253779]]
-                 (take 3 result))))))))
+    (mt/with-full-data-perms-for-all-users!
+      (mt/dataset test-data
+        (with-redefs [api.tiles/create-tile (fn [_ points] points)
+                      api.tiles/tile->byte-array identity]
+          (let [result (mt/user-http-request
+                        :rasta :get 200 (format "tiles/7/30/49/%d/%d"
+                                                (mt/id :people :latitude)
+                                                (mt/id :people :longitude))
+                        :query (json/generate-string
+                                {:database (mt/id)
+                                 :type :query
+                                 :query {:source-table (mt/id :people)
+                                         :breakout [[:field (mt/id :people :latitude)]
+                                                    [:field (mt/id :people :longitude)]]
+                                         :aggregation [[:count]]}}))]
+            (is (= [[36.6163612 -94.5197949]
+                    [36.8177783 -93.8447328]
+                    [36.8311004 -95.0253779]]
+                   (take 3 result)))))))))
 
 (deftest failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"
@@ -115,15 +117,16 @@
 
 (deftest always-run-sync-test
   (testing "even if the original query was saved as `:async?` we shouldn't run the query as async"
-    (is (png? (mt/user-http-request
-               :rasta :get 200 (format "tiles/1/1/1/%d/%d"
-                                       (mt/id :venues :latitude)
-                                       (mt/id :venues :longitude))
-               :query (json/generate-string
-                       {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}
-                        :async?   true}))))))
+    (mt/with-full-data-perms-for-all-users!
+      (is (png? (mt/user-http-request
+                 :rasta :get 200 (format "tiles/1/1/1/%d/%d"
+                                         (mt/id :venues :latitude)
+                                         (mt/id :venues :longitude))
+                 :query (json/generate-string
+                         {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :venues)}
+                          :async?   true})))))))
 
 (deftest field-ref-test
   (testing "Field refs can be constructed from strings representing integer field IDs or field names"

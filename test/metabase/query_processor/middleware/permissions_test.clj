@@ -316,16 +316,16 @@
 (deftest e2e-ignore-user-supplied-perms-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `::qp.perms/perms` in the query"
     (binding [api/*current-user-id* (mt/user->id :rasta)]
-     (mt/with-no-data-perms-for-all-users!
-       (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
-       (letfn [(process-query []
-                 (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                          ::qp.perms/perms {:gtaps {:perms/data-access {(mt/id :venues) :unrestricted}}})))]
-         (testing "Make sure the middleware is actually preventing something by disabling it"
-           (with-redefs [qp.perms/remove-permissions-key identity]
-             (is (partial= {:status :completed}
-                           (process-query)))))
-         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"You do not have permissions to run this query"
-              (process-query))))))))
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
+        (letfn [(process-query []
+                  (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
+                                           ::qp.perms/perms {:gtaps {:perms/data-access {(mt/id :venues) :unrestricted}}})))]
+          (testing "Make sure the middleware is actually preventing something by disabling it"
+            (with-redefs [qp.perms/remove-permissions-key identity]
+              (is (partial= {:status :completed}
+                            (process-query)))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to run this query"
+               (process-query))))))))

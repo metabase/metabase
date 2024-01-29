@@ -39,6 +39,7 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
+;; TODO (noahmoss)
 (defn- has-segmented-query-permissions?
   "Does the Current User have segmented query permissions for `table`?"
   [table]
