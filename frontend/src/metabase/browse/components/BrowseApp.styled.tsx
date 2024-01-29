@@ -4,10 +4,14 @@ import { color } from "metabase/lib/colors";
 import EmptyState from "metabase/components/EmptyState";
 
 export const BrowseAppRoot = styled.div`
+  flex: 1;
   height: 100%;
-  padding: 1rem;
-  margin: 0 0.5rem;
 `;
+// TODO: question for Kyle: When the side nav is closed, the top nav loses its
+// border, which makes it look a bit odd when the page scrolls. So I originally
+// added a border to BrowseApproot here, but then we see both this border and
+// the top nav's border when the side nav is open, which is odd. What do you
+// think we should do?
 
 export const BrowseTabs = styled(Tabs)`
   display: flex;
@@ -15,11 +19,30 @@ export const BrowseTabs = styled(Tabs)`
   flex: 1;
 `;
 
+export const BrowseTabsList = styled(Tabs.List)`
+  padding: 0 1rem;
+  background-color: ${color("white")};
+  border-bottom-width: 1px;
+`;
+
+export const BrowseTab = styled(Tabs.Tab)`
+  top: 1px;
+  margin-bottom: 1px;
+  border-bottom-width: 3px !important;
+  padding: 10px;
+  &:hover {
+    color: ${color("brand")};
+    background-color: inherit;
+    border-color: transparent;
+  }
+`;
+
 export const BrowseTabsPanel = styled(Tabs.Panel)`
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
   height: 100%;
+  padding: 0 1rem;
 `;
 
 export const BrowseContainer = styled.div`
@@ -29,9 +52,25 @@ export const BrowseContainer = styled.div`
   height: 100%;
 `;
 
-export const BrowseDataHeader = styled.h2`
-  margin-bottom: 1rem;
+export const BrowseDataHeader = styled.header`
+  display: flex;
+  padding: 1rem;
+  padding-bottom: 0.375rem;
   color: ${color("dark")};
+  background-color: ${color("white")};
+`;
+
+export const BrowseSectionContainer = styled.div`
+  max-width: 1014px;
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  width: 100%;
+`;
+
+export const BrowseTabsContainer = styled(BrowseSectionContainer)`
+  flex-flow: column nowrap;
+  justify-content: flex-start;
 `;
 
 export const CenteredEmptyState = styled(EmptyState)`

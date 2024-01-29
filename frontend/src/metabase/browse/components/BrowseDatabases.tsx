@@ -5,14 +5,17 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import { Icon, Box } from "metabase/ui";
-import { Grid } from "metabase/components/Grid";
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import type { useDatabaseListQuery } from "metabase/common/hooks";
 
 import NoResults from "assets/img/no_results.svg";
-import { DatabaseCard, DatabaseGridItem } from "./BrowseDatabases.styled";
+import {
+  DatabaseCard,
+  DatabaseGrid,
+  DatabaseGridItem,
+} from "./BrowseDatabases.styled";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 
 export const BrowseDatabases = ({
@@ -29,7 +32,7 @@ export const BrowseDatabases = ({
   }
 
   return databases.length ? (
-    <Grid data-testid="database-browser">
+    <DatabaseGrid data-testid="database-browser">
       {databases.map(database => (
         <DatabaseGridItem key={database.id}>
           <Link to={Urls.browseDatabase(database)}>
@@ -45,7 +48,7 @@ export const BrowseDatabases = ({
           </Link>
         </DatabaseGridItem>
       ))}
-    </Grid>
+    </DatabaseGrid>
   ) : (
     <CenteredEmptyState
       title={<Box mb=".5rem">{t`No databases here yet`}</Box>}

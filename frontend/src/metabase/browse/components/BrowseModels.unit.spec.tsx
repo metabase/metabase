@@ -7,7 +7,8 @@ import {
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import { groupModels, BrowseModels, getCollectionName } from "./BrowseModels";
+import { groupModels } from "../utils";
+import { BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
   const models = mockModels.slice(0, modelCount);
@@ -360,10 +361,7 @@ describe("BrowseModels", () => {
     expect(groupedModels[3]).toHaveLength(3);
     expect(groupedModels[4][0].collection.name).toEqual("Delta");
     expect(groupedModels[4]).toHaveLength(3);
-    expect(groupedModels[5][0].collection.name).toEqual("");
-    expect(getCollectionName(groupedModels[5][0].collection)).toEqual(
-      "Our analytics",
-    );
+    expect(groupedModels[5][0].collection.name).toEqual("Our analytics");
     expect(groupedModels[5]).toHaveLength(2);
     expect(groupedModels[6][0].collection.name).toEqual("Özgür");
     expect(groupedModels[6]).toHaveLength(3);
@@ -381,10 +379,7 @@ describe("BrowseModels", () => {
     expect(groupedModels[2]).toHaveLength(3);
     expect(groupedModels[3][0].collection.name).toEqual("Delta");
     expect(groupedModels[3]).toHaveLength(3);
-    expect(groupedModels[4][0].collection.name).toEqual("");
-    expect(getCollectionName(groupedModels[4][0].collection)).toEqual(
-      "Our analytics",
-    );
+    expect(groupedModels[4][0].collection.name).toEqual("Our analytics");
     expect(groupedModels[4]).toHaveLength(2);
     expect(groupedModels[5][0].collection.name).toEqual("Zulu");
     expect(groupedModels[5]).toHaveLength(3);

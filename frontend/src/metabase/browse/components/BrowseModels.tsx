@@ -1,6 +1,6 @@
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type {
   Card,
@@ -18,28 +18,17 @@ import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
-import { isRootCollection } from "metabase/collections/utils";
+import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
+  CollectionHeaderGroup,
   CollectionHeaderLink,
   GridContainer,
   ModelCard,
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
-
-export const groupModels = (models: SearchResult[], localeCode?: string) => {
-  const groupedModels = Object.values(
-    _.groupBy(models, model => model.collection.id),
-  ).sort((a, b) =>
-    getCollectionName(a[0].collection).localeCompare(
-      getCollectionName(b[0].collection),
-      locale,
-    ),
-  );
-  return groupedModels;
-};
 
 export const BrowseModels = ({
   modelsResult,
@@ -64,11 +53,10 @@ export const BrowseModels = ({
   if (models.length) {
     return (
       <GridContainer role="grid">
-        {groupsOfModels.map((groupOfModels, index) => (
+        {groupsOfModels.map(groupOfModels => (
           <ModelGroup
-            index={index}
             models={groupOfModels}
-            key={`modelgroup-${index}`}
+            key={`modelgroup-${groupOfModels[0].collection.id}`}
             localeCode={localeCode}
           />
         ))}
@@ -93,7 +81,6 @@ export const BrowseModels = ({
 
 const ModelGroup = ({
   models,
-  index,
   localeCode,
 }: {
   models: SearchResult[];
@@ -101,16 +88,25 @@ const ModelGroup = ({
   localeCode?: string;
 }) => {
   const sortedModels = models.sort((a, b) => {
-    // If the name is undefined or blank, treat it as alphabetically last
-    const nameA = a.name?.toLowerCase() || "\uffff";
-    const nameB = b.name?.toLowerCase() || "\uffff";
+    if (!a.name && b.name) {
+      return 1;
+    }
+    if (a.name && !b.name) {
+      return -1;
+    }
+    if (!a.name && !b.name) {
+      return 0;
+    }
+    const nameA = a.name.toLowerCase();
+    const nameB = b.name.toLowerCase();
     return nameA.localeCompare(nameB, localeCode);
   });
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
-  const collectionHtmlId = `collection-${collection?.id ?? `index-${index}`}`;
+  const collectionHtmlId = `collection-${collection.id}`;
 
+  // TODO: Check padding above the collection header
   return (
     <>
       <CollectionHeader
@@ -151,6 +147,9 @@ const ModelCell = ({
       }
     : null;
 
+  const noDescription = c(
+    "Indicates that a model has no description associated with it",
+  ).t`No description.`;
   return (
     <Link
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
@@ -159,16 +158,16 @@ const ModelCell = ({
     >
       <ModelCard>
         <Title order={4} className="text-wrap" lh="1rem" mb=".5rem">
-          <MultilineEllipsified id={headingId}>
+          <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
           </MultilineEllipsified>
         </Title>
         <Text h="2rem" size="xs" mb="auto">
           <MultilineEllipsified
-            tooltipMaxWidth="100%"
+            tooltipMaxWidth="20rem"
             className={cx({ "text-light": !model.description })}
           >
-            {model.description || "No description."}{" "}
+            {model.description || noDescription}{" "}
           </MultilineEllipsified>
         </Text>
         <LastEdited
@@ -182,13 +181,6 @@ const ModelCell = ({
   );
 };
 
-export const getCollectionName = (collection: CollectionEssentials) => {
-  if (isRootCollection(collection)) {
-    return t`Our analytics`;
-  }
-  return collection?.name || t`Untitled collection`;
-};
-
 const CollectionHeader = ({
   collection,
   id,
@@ -196,24 +188,16 @@ const CollectionHeader = ({
   collection: CollectionEssentials;
   id: string;
 }) => {
-  const MaybeLink = ({ children }: { children: React.ReactNode }) =>
-    collection ? (
-      <Group grow noWrap>
-        <CollectionHeaderLink to={Urls.collection(collection)}>
-          {children}
-        </CollectionHeaderLink>
-      </Group>
-    ) : (
-      <>{children}</>
-    );
   return (
     <CollectionHeaderContainer id={id} role="heading">
-      <MaybeLink>
-        <Group spacing=".33rem">
-          <Icon name="folder" color={"text-dark"} size={16} />
-          <Text>{getCollectionName(collection)}</Text>
-        </Group>
-      </MaybeLink>
+      <CollectionHeaderGroup grow noWrap>
+        <CollectionHeaderLink to={Urls.collection(collection)}>
+          <Group spacing=".25rem">
+            <Icon name="folder" color="text-dark" size={16} />
+            <Text weight="bold">{getCollectionName(collection)}</Text>
+          </Group>
+        </CollectionHeaderLink>
+      </CollectionHeaderGroup>
     </CollectionHeaderContainer>
   );
 };
