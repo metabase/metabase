@@ -5,13 +5,17 @@
 .TableInteractive {
   color: var(--color-text-dark);
   overflow: hidden;
+  font-weight: 700;
+}
+
+.TableInteractive-headerCellData:hover {
+  background-color: var(--color--brand);
 }
 
 .TableInteractive-headerCellData .cellData {
-  font-weight: 700;
-  font-size: 10px;
-  padding: 0.25em 0.65em;
+  font-size: 12px;
   min-width: 35px;
+  border-radius: 6px;
   color: var(--color-brand);
 }
 
@@ -52,13 +56,7 @@
 .TableInteractive .TableInteractive-header,
 .TableInteractive .TableInteractive-header .TableInteractive-cellWrapper,
 .TableInteractive .TableInteractive-header .TableInteractive-cellWrapper:hover {
-  background-color: var(--color-bg-white);
   background-image: none;
-}
-
-.TableInteractive .TableInteractive-header,
-.TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
-  background-color: var(--color-bg-white);
 }
 
 /* cell overflow ellipsis */

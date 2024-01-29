@@ -7,11 +7,11 @@ import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
 export const TableInteractiveRoot = styled(TableRoot)`
   .TableInteractive-headerCellData .cellData {
-    border: 1px solid ${alpha("brand", 0.2)};
+    /* border: 1px solid ${alpha("brand", 0.2)}; */
   }
 
   .TableInteractive-headerCellData .cellData:hover {
-    border: 1px solid ${alpha("brand", 0.56)};
+    /* border: 1px solid ${alpha("brand", 0.56)}; */
   }
 
   .TableInteractive-cellWrapper:hover {
