@@ -53,7 +53,10 @@ describe("PublicDashboard", () => {
       fetchMock.get(
         `path:/api/embed/dashboard/${MOCK_TOKEN}/dashcard/${mockDashcard.id}/card/${mockDashcard.card.id}`,
         {
-          body: "Token is expired",
+          body: {
+            message: "Token is expired.",
+            error_code: "embed-token-expired",
+          },
           status: 400,
         },
       );

@@ -85,7 +85,13 @@ export interface Dataset {
   error_type?: string;
   error?: {
     status: number; // HTTP status code
-    data?: string;
+    error_code?: string;
+    data?:
+      | string
+      | {
+          error_code: string;
+          message: string;
+        };
   };
   context?: string;
   status?: string;

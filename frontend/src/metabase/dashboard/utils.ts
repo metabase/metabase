@@ -214,8 +214,10 @@ export function getDashcardResultsError(datasets: Dataset[]) {
 
   const errors = datasets.map(s => s.error).filter(Boolean);
   if (errors.length > 0) {
-    const tokenExpired = errors.some(error =>
-      error?.data?.startsWith?.("Token is expired"),
+    const tokenExpired = errors.some(
+      error =>
+        typeof error?.data == "object" &&
+        error.data.error_code === "embed-token-expired",
     );
     if (tokenExpired) {
       return {

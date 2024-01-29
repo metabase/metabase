@@ -36,7 +36,10 @@
   [handler]
   (fn [request respond _]
     (let [raise (fn [^Throwable e]
-                  (respond {:status 400, :body (.getMessage e)}))]
+                    (if (:error-code (ex-data e))
+                    (respond {:status 400, :body {:message (.getMessage e) :error_code (:error-code (ex-data e))}})
+                    (respond {:status 400, :body (.getMessage e)})))
+          ]
       (try
         (handler request respond raise)
         (catch Throwable e
