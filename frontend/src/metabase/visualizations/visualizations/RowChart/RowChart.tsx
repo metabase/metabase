@@ -73,7 +73,9 @@ import {
   getLabelsFormatter,
 } from "./utils/format";
 
-type RowChartRendererProps = RowChartProps<GroupedDatum>;
+interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
+  className?: string;
+}
 
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
