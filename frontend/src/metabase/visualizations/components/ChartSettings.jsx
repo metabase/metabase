@@ -438,19 +438,11 @@ const ChartSettingsFooter = ({ onDone, onCancel, onReset }) => (
       <Button
         borderless
         icon="refresh"
-        data-metabase-event="Chart Settings;Reset"
         onClick={onReset}
       >{t`Reset to defaults`}</Button>
     )}
-    <Button
-      onClick={onCancel}
-      data-metabase-event="Chart Settings;Cancel"
-    >{t`Cancel`}</Button>
-    <Button
-      primary
-      onClick={onDone}
-      data-metabase-event="Chart Settings;Done"
-    >{t`Done`}</Button>
+    <Button onClick={onCancel}>{t`Cancel`}</Button>
+    <Button primary onClick={onDone}>{t`Done`}</Button>
   </ChartSettingsFooterRoot>
 );
 
