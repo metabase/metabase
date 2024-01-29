@@ -401,11 +401,11 @@
           csv-col-names           (keys extant-columns)
           col-upload-types        (vals extant-columns)
           parsed-rows             (vec (parse-rows col-upload-types rows))]
-      (driver/create-table! {:driver      driver
-                             :database-id db-id
-                             :table-name  table-name
-                             :col->type   col-to-create->col-spec
-                             :primary-key auto-pk-column-keyword})
+      (driver/create-table! driver
+                            db-id
+                            table-name
+                            col-to-create->col-spec
+                            [auto-pk-column-keyword])
       (try
         (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
         {:num-rows          (count rows)

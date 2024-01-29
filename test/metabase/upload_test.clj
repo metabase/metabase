@@ -1161,11 +1161,11 @@
                             table-name)
         insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
         col->database-type (#'upload/upload-type->col-specs driver col->upload-type)
-        _ (driver/create-table! {:driver       driver/*driver*
-                                 :database-id  db-id
-                                 :table-name   schema+table-name
-                                 :column->type col->database-type
-                                 :primary-key  upload/auto-pk-column-keyword})
+        _ (driver/create-table! driver/*driver*
+                                db-id
+                                schema+table-name
+                                col->database-type
+                                [upload/auto-pk-column-keyword])
         _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)]
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
 

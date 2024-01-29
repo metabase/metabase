@@ -900,9 +900,8 @@
 (defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error.
   `primary-key` is optional and is a vector of column names that will be used as the primary key."
-  {:added "0.47.0", :arglists '([& {:keys [driver database-id table-name column->type primary-key]}])}
-  (fn [& {:keys [driver]}]
-    (the-initialized-driver driver))
+  {:added "0.47.0", :arglists '([driver database-id table-name column->type primary-key])}
+  dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti drop-table!
