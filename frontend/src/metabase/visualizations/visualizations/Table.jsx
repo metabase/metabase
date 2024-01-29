@@ -357,7 +357,7 @@ export default class Table extends Component {
           findColumnIndexForColumnSetting(
             cols,
             columnSetting,
-            question.query(),
+            // question.query(),
           ),
         )
         .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
