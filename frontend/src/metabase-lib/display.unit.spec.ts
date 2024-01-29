@@ -1,7 +1,11 @@
 import type { NativeDatasetQuery } from "metabase-types/api";
 
 import { getDefaultDisplay } from "./display";
-import { SAMPLE_DATABASE, createQuery } from "./test-helpers";
+import {
+  SAMPLE_DATABASE,
+  createQuery,
+  createQueryWithClauses,
+} from "./test-helpers";
 
 describe("getDefaultDisplay", () => {
   describe("native queries", () => {
@@ -24,6 +28,14 @@ describe("getDefaultDisplay", () => {
       const query = createQuery();
 
       expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    });
+
+    it("returns 'scalar' display for queries with 1 aggregation and no breakouts", () => {
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "scalar" });
     });
   });
 });
