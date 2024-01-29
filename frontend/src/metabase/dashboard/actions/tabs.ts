@@ -13,6 +13,7 @@ import type {
   Dispatch,
   GetState,
   SelectedTabId,
+  StoreDashboard,
   TabDeletionId,
 } from "metabase-types/store";
 import { INITIALIZE } from "metabase/dashboard/actions/core";
@@ -76,6 +77,42 @@ let tempTabId = -2;
 // Needed for testing
 export function resetTempTabId() {
   tempTabId = -2;
+}
+
+function _createInitialTabs({
+  dashId,
+  newTabId,
+  state,
+  prevDash,
+  firstTabName = t`Tab 1`,
+  secondTabName = t`Tab 2`,
+}: {
+  dashId: DashboardId;
+  newTabId: DashboardTabId;
+  state: Draft<DashboardState> | DashboardState;
+  prevDash: StoreDashboard;
+  firstTabName?: string;
+  secondTabName?: string;
+}) {
+  // 1. Create two new tabs, add to dashboard
+  const firstTabId = newTabId + 1;
+  const secondTabId = newTabId;
+  const newTabs = [
+    getDefaultTab({ tabId: firstTabId, dashId, name: firstTabName }),
+    getDefaultTab({ tabId: secondTabId, dashId, name: secondTabName }),
+  ];
+  prevDash.tabs = newTabs;
+
+  // 2. Assign existing dashcards to first tab
+  prevDash.dashcards.forEach(id => {
+    state.dashcards[id] = {
+      ...state.dashcards[id],
+      isDirty: true,
+      dashboard_tab_id: firstTabId,
+    };
+  });
+
+  return { firstTabId, secondTabId };
 }
 
 export function createNewTab() {
@@ -229,26 +266,16 @@ export const tabsReducer = createReducer<DashboardState>(
 
         // Case 2: Dashboard doesn't have tabs
 
-        // 1. Create two new tabs, add to dashboard
-        const firstTabId = tabId + 1;
-        const secondTabId = tabId;
-        const newTabs = [
-          getDefaultTab({ tabId: firstTabId, dashId, name: t`Tab 1` }),
-          getDefaultTab({ tabId: secondTabId, dashId, name: t`Tab 2` }),
-        ];
-        prevDash.tabs = [...prevTabs, ...newTabs];
+        // 1. Create two new tabs, add to dashboard, assign existing dashcards to first tab
+        const { secondTabId } = _createInitialTabs({
+          dashId,
+          newTabId: tabId,
+          state,
+          prevDash,
+        });
 
         // 2. Select second tab
         state.selectedTabId = secondTabId;
-
-        // 3. Assign existing dashcards to first tab
-        prevDash.dashcards.forEach(id => {
-          state.dashcards[id] = {
-            ...state.dashcards[id],
-            isDirty: true,
-            dashboard_tab_id: firstTabId,
-          };
-        });
       },
     );
 
@@ -262,19 +289,36 @@ export const tabsReducer = createReducer<DashboardState>(
           );
         }
         const sourceTab = prevTabs.find(tab => tab.id === sourceTabId);
-        if (!sourceTab) {
+        if (sourceTabId !== null && !sourceTab) {
           throw new Error(
             `DUPLICATED_TAB was dispatched but no tab with sourceTabId ${sourceTabId} was found`,
           );
         }
 
-        // 1. Create empty tab
-        const newTab = getDefaultTab({
-          tabId: newTabId,
-          dashId,
-          name: t`Copy of ${sourceTab.name}`,
-        });
-        prevDash.tabs = [...prevTabs, newTab];
+        // 1. Create empty tab(s)
+
+        // Case 1: Dashboard already has tabs
+        if (sourceTab !== undefined) {
+          const newTab = getDefaultTab({
+            tabId: newTabId,
+            dashId,
+            name: t`Copy of ${sourceTab.name}`,
+          });
+          prevDash.tabs = [...prevTabs, newTab];
+
+          // Case 2: Dashboard doesn't have tabs
+        } else {
+          const { firstTabId, secondTabId } = _createInitialTabs({
+            dashId,
+            prevDash,
+            state,
+            newTabId,
+            firstTabName: t`Tab 1`,
+            secondTabName: t`Copy of Tab 1`,
+          });
+          sourceTabId = firstTabId;
+          newTabId = secondTabId;
+        }
 
         // 2. Duplicate dashcards
         const sourceTabDashCards = prevDash.dashcards
@@ -290,6 +334,7 @@ export const tabsReducer = createReducer<DashboardState>(
             ...sourceDashCard,
             id: newDashCardId,
             dashboard_tab_id: newTabId,
+            isDirty: true,
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
