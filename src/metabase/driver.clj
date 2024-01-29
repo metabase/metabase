@@ -946,7 +946,7 @@
 
   - [:bigint]
   - [[:varchar 255]]
-  - [:generated-always :as :identity :primary-key]"
+  - [:generated-always :as :identity]"
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
