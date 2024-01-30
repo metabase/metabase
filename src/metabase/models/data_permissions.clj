@@ -432,3 +432,36 @@
    perm-type   :- :keyword
    value       :- :keyword]
   (set-table-permissions! group-or-id perm-type {table-or-id value}))
+
+(mu/defn set-simple-table-permission-in-groups!
+  "Sets permissions for a single table to the specified value in all of the provided groups. Does not do any coalescing
+  of table-level rows into a DB-level row. This should be used in cases where a number of tables are being updated, but
+  a bulk update is not possible, such as during sync."
+  [groups-or-ids :- [:sequential TheIdable]
+   table-or-id   :- TheIdable
+   perm-type     :- :keyword
+   value         :- :keyword]
+  (when (not= :model/Table (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
+                    {perm-type (Permissions perm-type)})))
+  (when (= value :block)
+    (throw (ex-info (tru "Block permissions must be set at the database-level only.")
+                    {})))
+  (t2/with-transaction [_conn]
+    (let [group-ids (map u/the-id groups-or-ids)
+          table     (if (map? table-or-id)
+                       table-or-id
+                       (t2/select-one [:model/Table :id :db_id :schema] :id table-or-id))
+          table-id  (u/the-id table)
+          new-perms (map
+                     (fn [group-id]
+                       (let [{:keys [id db_id schema]} table]
+                         {:perm_type   perm-type
+                          :group_id    group-id
+                          :perm_value  value
+                          :db_id       db_id
+                          :table_id    id
+                          :schema_name schema}))
+                     group-ids)]
+      (t2/delete! :model/DataPermissions :perm_type perm-type :table_id table-id {:where [:in :group_id group-ids]})
+      (t2/insert! :model/DataPermissions new-perms))))
