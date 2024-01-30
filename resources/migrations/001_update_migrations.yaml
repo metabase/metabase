@@ -5240,7 +5240,7 @@ databaseChangeLog:
                   name: width
                   type: varchar(16)
                   defaultValue: 'fixed'
-                  remarks: "The value of the dashboard's width setting Can be fixed or full"
+                  remarks: "The value of the dashboard's width setting can be fixed or full. New dashboards will be set to fixed"
 
   - changeSet:
       id: v49.2024-01-29T19:30:00
@@ -5258,14 +5258,14 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-01-29T19:56:40
       author: adam-james
-      comment: Set all existing report_dashboard width values to full.
+      comment: Dashboard width setting must have a value
       changes:
         - addNotNullConstraint:
             tableName: report_dashboard
             columnName: width
             columnDatatype: varchar(16)
             defaultNullvalue: 'full'
-            remarks: "For all existing dashboards we set the value to full which is the current behaviour"
+            remarks: "If for some reason an existing dashboard has null width value it is set to full"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
