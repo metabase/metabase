@@ -117,11 +117,11 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
     clickBehavior,
   });
 
-  const isTargetQuestionStructured = !Lib.queryDisplayInfo(
+  const isTargetQuestionNative = Lib.queryDisplayInfo(
     targetQuestion.query(),
   ).isNative;
 
-  return isTargetQuestionStructured
+  return !isTargetQuestionNative
     ? ML_Urls.getUrlWithParameters(targetQuestion, parameters, queryParams)
     : `${ML_Urls.getUrl(targetQuestion)}?${querystring.stringify(queryParams)}`;
 }
