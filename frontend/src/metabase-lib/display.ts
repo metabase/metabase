@@ -86,9 +86,8 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 2) {
-    const isAnyBreakoutDate = infos.some(({ info, columnInfo }) => {
-      const isDate = false; // TODO
-      return isDate;
+    const isAnyBreakoutDate = infos.some(({ columnInfo }) => {
+      return isDate(columnInfo);
     });
 
     if (isAnyBreakoutDate) {

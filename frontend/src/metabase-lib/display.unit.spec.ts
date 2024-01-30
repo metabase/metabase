@@ -188,15 +188,24 @@ describe("getDefaultDisplay", () => {
         query: createQueryWithClauses({
           aggregations: [{ operatorName: "count" }],
         }),
-        breakouts: [
-          {
-            columnName: "TOTAL",
-            tableName: "ORDERS",
-          },
-        ],
+        breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
       });
 
       expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    });
+
+    it("returns 'line' display for queries with 1 aggregation and 2 breakouts, at least 1 of which is date", () => {
+      const query = createQueryWithClauses({
+        query: createQueryWithClauses({
+          aggregations: [{ operatorName: "count" }],
+        }),
+        breakouts: [
+          { columnName: "CREATED_AT", tableName: "ORDERS" },
+          { columnName: "TOTAL", tableName: "ORDERS" },
+        ],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "line" });
     });
   });
 });
