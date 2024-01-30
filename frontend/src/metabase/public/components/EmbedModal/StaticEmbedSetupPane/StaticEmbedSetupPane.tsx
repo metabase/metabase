@@ -13,7 +13,10 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
 } from "metabase/public/lib/types";
-import { getSignedPreviewUrl } from "metabase/public/lib/embed";
+import {
+  getSignedPreviewUrlWithoutHash,
+  optionsToHashParams,
+} from "metabase/public/lib/embed";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 
 import { DEFAULT_DISPLAY_OPTIONS } from "./config";
@@ -110,19 +113,17 @@ export const StaticEmbedSetupPane = ({
     embeddingParams,
   });
 
-  const iframeUrl = useMemo(
+  const iframeUrlWithoutHash = useMemo(
     () =>
-      getSignedPreviewUrl(
+      getSignedPreviewUrlWithoutHash(
         siteUrl,
         resourceType,
         resource.id,
         previewParametersBySlug,
-        displayOptions,
         secretKey,
         embeddingParams,
       ),
     [
-      displayOptions,
       embeddingParams,
       previewParametersBySlug,
       resource.id,
@@ -131,6 +132,8 @@ export const StaticEmbedSetupPane = ({
       siteUrl,
     ],
   );
+
+  const iframeUrl = iframeUrlWithoutHash + optionsToHashParams(displayOptions);
 
   const handleSave = async () => {
     if (!resource.enable_embedding) {

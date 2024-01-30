@@ -85,7 +85,10 @@ export const DashboardControls = ComposedComponent =>
         };
         setValue("refresh", this.state.refreshPeriod);
         setValue("fullscreen", this.state.isFullscreen);
-        setValue("theme", this.state.theme);
+        const normalizedTheme = options.theme ?? null;
+        if (normalizedTheme !== this.state.theme) {
+          this.setTheme(normalizedTheme);
+        }
 
         delete options.night; // DEPRECATED: options.night
 
@@ -224,7 +227,6 @@ export const DashboardControls = ComposedComponent =>
             hasNightModeToggle={this.state.theme !== "transparent"}
             setRefreshElapsedHook={this.setRefreshElapsedHook}
             loadDashboardParams={this.loadDashboardParams}
-            updateDashboardParams={this.updateDashboardParams}
             onNightModeChange={this.setNightMode}
             onFullscreenChange={this.setFullscreen}
             onRefreshPeriodChange={this.setRefreshPeriod}
