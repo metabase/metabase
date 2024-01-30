@@ -5206,6 +5206,29 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v49.2023-01-24T12:00:00
+      author: piranha
+      comment: >-
+        This significantly speeds up api.database/autocomplete-fields query
+        and is an improvement for issue 30588.
+        H2 does not support this: https://github.com/h2database/h2database/issues/3535
+        Mariadb does not support this.
+        Mysql says it does, but reports an error during migration.
+      dbms: postgresql
+      changes:
+        - createIndex:
+            tableName: metabase_field
+            indexName: idx_field_name_lower
+            columns:
+              - column:
+                  name: lower(name)
+                  computed: true
+      rollback:
+        - dropIndex:
+            tableName: metabase_field
+            indexName: idx_field_name_lower
+
+  - changeSet:
       id: v49.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
