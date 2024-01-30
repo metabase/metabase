@@ -1929,31 +1929,31 @@
   (testing "PUT /api/dashboard/:id/cards accepts legacy field as parameter's target"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {}]
-      (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                               {:cards        [{:id                     -1
-                                                                :card_id                card-id
-                                                                :row                    0
-                                                                :col                    0
-                                                                :size_x                 4
-                                                                :size_y                 4
-                                                                :parameter_mappings     [{:parameter_id "abc"
-                                                                                          :card_id card-id
-                                                                                          :target [:dimension [:field-id (mt/id :venues :id)]]}]}]}))]
+      (let [resp (:cards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                               {:cards [{:id                     -1
+                                                         :card_id                card-id
+                                                         :row                    0
+                                                         :col                    0
+                                                         :size_x                 4
+                                                         :size_y                 4
+                                                         :parameter_mappings     [{:parameter_id "abc"
+                                                                                   :card_id card-id
+                                                                                   :target [:dimension [:field-id (mt/id :venues :id)]]}]}]}))]
         (is (some? (t2/select-one :model/DashboardCard (:id (first resp))))))))
 
   (testing "PUT /api/dashboard/:id/cards accepts expression as parammeter's target"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {:dataset_query (mt/mbql-query venues {:expressions {"A" [:+ (mt/$ids $venues.price) 1]}})}]
-      (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                               {:cards        [{:id                     -1
-                                                                :card_id                card-id
-                                                                :row                    0
-                                                                :col                    0
-                                                                :size_x                 4
-                                                                :size_y                 4
-                                                                :parameter_mappings     [{:parameter_id "abc"
-                                                                                          :card_id card-id
-                                                                                          :target [:dimension [:expression "A"]]}]}]}))]
+      (let [resp (:cards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                               {:cards [{:id                     -1
+                                                         :card_id                card-id
+                                                         :row                    0
+                                                         :col                    0
+                                                         :size_x                 4
+                                                         :size_y                 4
+                                                         :parameter_mappings     [{:parameter_id "abc"
+                                                                                   :card_id card-id
+                                                                                   :target [:dimension [:expression "A"]]}]}]}))]
         (is (some? (t2/select-one :model/DashboardCard (:id (first resp)))))))))
 
 (deftest new-dashboard-card-with-additional-series-test
@@ -1962,7 +1962,7 @@
                  Card      {series-id-1 :id} {:name "Series Card"}]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
-        (let [dashboard-cards (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+        (let [dashboard-cards (:dashcards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
                                                                 {:dashcards [{:id      -1
                                                                               :card_id card-id
                                                                               :row     4
