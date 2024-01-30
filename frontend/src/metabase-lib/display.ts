@@ -30,14 +30,8 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
     return { display: "scalar" };
   }
 
-  const infos = breakouts.map(breakout => {
-    const column = Lib.breakoutColumn(query, stageIndex, breakout);
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    return { breakout, columnInfo };
-  });
-
   if (aggregations.length === 1 && breakouts.length === 1) {
-    const [{ columnInfo }] = infos;
+    const [{ columnInfo }] = getBreakoutInfos(breakouts, query, stageIndex);
 
     if (isState(columnInfo)) {
       return {
@@ -61,7 +55,11 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length >= 1 && breakouts.length === 1) {
-    const [{ breakout, columnInfo }] = infos;
+    const [{ breakout, columnInfo }] = getBreakoutInfos(
+      breakouts,
+      query,
+      stageIndex,
+    );
 
     if (isDate(columnInfo)) {
       const info = Lib.displayInfo(query, stageIndex, breakout);
@@ -86,6 +84,8 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 2) {
+    const infos = getBreakoutInfos(breakouts, query, stageIndex);
+
     const isAnyBreakoutDate = infos.some(({ columnInfo }) => {
       return isDate(columnInfo);
     });
@@ -114,6 +114,18 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   return { display: "table" };
+};
+
+const getBreakoutInfos = (
+  breakouts: Lib.BreakoutClause[],
+  query: Lib.Query,
+  stageIndex: number,
+) => {
+  return breakouts.map(breakout => {
+    const column = Lib.breakoutColumn(query, stageIndex, breakout);
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    return { breakout, columnInfo };
+  });
 };
 
 const isCategory = (info: Lib.ColumnDisplayInfo): boolean => {
