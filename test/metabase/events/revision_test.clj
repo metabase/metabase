@@ -33,7 +33,6 @@
    :display                :table
    :enable_embedding       false
    :embedding_params       nil
-   :location               "collection"
    :name                   (:name card)
    :parameters             []
    :parameter_mappings     []
