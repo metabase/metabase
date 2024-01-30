@@ -449,7 +449,7 @@ class Question {
     return this.setCard(assoc(this.card(), "visualization_settings", settings));
   }
 
-  updateSettings(settings: VisualizationSettings) {
+  updateSettings(settings: Partial<VisualizationSettings>) {
     return this.setSettings({ ...this.settings(), ...settings });
   }
 
