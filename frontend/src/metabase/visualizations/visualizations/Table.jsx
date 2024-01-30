@@ -322,6 +322,7 @@ export default class Table extends Component {
     const [{ card, data }] = series;
     // construct a Question that is in-sync with query results
     const question = new Question(card, metadata);
+    const query = question.query();
 
     if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
@@ -354,11 +355,7 @@ export default class Table extends Component {
             columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
         )
         .map(columnSetting =>
-          findColumnIndexForColumnSetting(
-            cols,
-            columnSetting,
-            // question.query(),
-          ),
+          findColumnIndexForColumnSetting(cols, columnSetting, query),
         )
         .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
 
