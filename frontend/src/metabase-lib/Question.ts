@@ -856,6 +856,10 @@ class Question {
   }
 
   dependentMetadata(): DependentMetadataItem[] {
+    return [];
+  }
+
+  _dependentMetadata(): DependentMetadataItem[] {
     const dependencies = [];
 
     // we frequently treat dataset/model questions like they are already nested
