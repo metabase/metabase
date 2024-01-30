@@ -134,7 +134,9 @@
         (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
 
-(defn remove-nil-vals [m]
+(defn- remove-nil-vals
+  "Utility function to remove nil values from a map. If all values are nil, returns nil."
+  [m]
   (let [m' (reduce-kv
              (fn [acc k v]
                (cond-> acc
@@ -187,7 +189,9 @@
            {:role    "user"
             :content json-str}]}))}))
 
-(defn dashboard-summary [dashboard-id]
+(defn- dashboard-summary
+  "Create a data-oriented summary of a dashboard as input to an LLM for summarization."
+  [dashboard-id]
   (let [{dashboard-name :name :keys [parameters dashcards]}
         (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) [:dashcards
                                                                    :card
@@ -205,7 +209,7 @@
                                      (update :filter-type name)))
                                parameters))]
     {:dashboard-name    dashboard-name
-     :charts            (for [{:keys [card parameter_mappings] :as dcs} dashcards
+     :charts            (for [{:keys [card parameter_mappings]} dashcards
                               :let [{card-name :name
                                      :keys     [display
                                                 description

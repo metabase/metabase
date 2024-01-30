@@ -7,6 +7,21 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- wrap-usage
+  "A middleware that captures usage data and logs it for analytics and billing purposes."
+  [openai-fn]
+  (fn wrap-usage* [params options]
+    (let [{:keys [usage] :as response} (openai-fn params options)
+          usage-summary (merge
+                          (dissoc response :usage :choices)
+                          usage)]
+      ;(snowplow/track-event!
+      ;  ::snowplow/llm-usage
+      ;  api/*current-user-id*
+      ;  usage-summary)
+      (tap> usage-summary)
+      response)))
+
 (defn- wrap-openai-exceptions
   "Wrap our openai calls with a standard set of exceptions that will percolate up any issues to the UI as meaningful error messages."
   [openai-fn]
@@ -70,7 +85,9 @@
   Takes messages to be used as instructions and a function that will find the first valid result from the messages."
   [{:keys [messages] :as prompt}]
   {:pre [messages]}
-  ((wrap-openai-exceptions *create-chat-completion-endpoint*)
+  ((-> *create-chat-completion-endpoint*
+       wrap-usage
+       wrap-openai-exceptions)
    (merge
     {:model (metabot-settings/openai-model)
      :n     (metabot-settings/num-metabot-choices)}
