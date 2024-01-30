@@ -7,11 +7,6 @@ export const BrowseAppRoot = styled.div`
   flex: 1;
   height: 100%;
 `;
-// TODO: question for Kyle: When the side nav is closed, the top nav loses its
-// border, which makes it look a bit odd when the page scrolls. So I originally
-// added a border to BrowseApproot here, but then we see both this border and
-// the top nav's border when the side nav is open, which is odd. What do you
-// think we should do?
 
 export const BrowseTabs = styled(Tabs)`
   display: flex;
