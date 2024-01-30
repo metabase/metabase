@@ -163,7 +163,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
           }
           // When the dataset query changes, we should loose the dataset flag,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(setCardAndRun({ ...card, dataset: false }));
+          dispatch(
+            setCardAndRun({ ...card, dataset: false, type: "question" }),
+          );
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));
