@@ -385,7 +385,7 @@
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [collection_id collection_position dataset dataset_query description display name
+  [:as {{:keys [collection_id collection_position dashboard_id dataset dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   ms/NonBlankString
    dataset                [:maybe :boolean]
@@ -398,7 +398,8 @@
    collection_id          [:maybe ms/PositiveInt]
    collection_position    [:maybe ms/PositiveInt]
    result_metadata        [:maybe qr/ResultsMetadata]
-   cache_ttl              [:maybe ms/PositiveInt]}
+   cache_ttl              [:maybe ms/PositiveInt]
+   dashboard_id           [:maybe ms/PositiveInt]}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable

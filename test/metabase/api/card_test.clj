@@ -70,9 +70,9 @@
    :collection_id       nil
    :collection_position nil
    :collection_preview  true
+   :dashboard_id        nil
    :dataset_query       {}
    :dataset             false
-   :dashboard_id        nil
    :description         nil
    :display             "scalar"
    :enable_embedding    false

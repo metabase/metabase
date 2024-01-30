@@ -597,7 +597,7 @@ saved later when it is ready."
   ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} creator delay-event?]
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
-   (let [data-keys            [:dataset_query :description :display :name :visualization_settings
+   (let [data-keys            [:dashboard_id :dataset_query :description :display :name :visualization_settings
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                      :creator_id (:id creator)
