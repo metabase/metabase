@@ -55,11 +55,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();
-        cy.get("body").within(() => {
-          cy.findByText(
-            'The "TextFilter" variable requires a default value but none was provided.',
-          );
-        });
+        cy.get("body").findByText(
+          'The "TextFilter" variable requires a default value but none was provided.',
+        );
 
         SQLFilter.setDefaultValue("Some text");
         SQLFilter.getRunQueryButton().should("not.be.disabled");
@@ -136,11 +134,10 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();
-        cy.get("body").within(() => {
-          cy.findByText(
-            'The "NumberFilter" variable requires a default value but none was provided.',
-          );
-        });
+
+        cy.get("body").findByText(
+          'The "NumberFilter" variable requires a default value but none was provided.',
+        );
 
         SQLFilter.setDefaultValue("33");
         SQLFilter.getRunQueryButton().should("not.be.disabled");
@@ -237,11 +234,10 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();
-        cy.get("body").within(() => {
-          cy.findByText(
-            'The "DateFilter" variable requires a default value but none was provided.',
-          );
-        });
+
+        cy.get("body").findByText(
+          'The "DateFilter" variable requires a default value but none was provided.',
+        );
 
         setDefaultDate();
 
