@@ -6,7 +6,6 @@
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models
     :refer [Card Collection Dashboard Metric ModelIndex ModelIndexValue Segment]]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
