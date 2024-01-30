@@ -418,7 +418,7 @@
   current user is granted data permissions to the database."
   [& {:keys [schema-name table-prefix collection-id grant-permission? uploads-enabled user-id db-id sync-synchronously? csv-file-name]
       :or {schema-name         (if (driver/database-supports? driver/*driver* :schemas (mt/db))
-                                 "PUBLIC"
+                                 "public"
                                  nil)
            collection-id       nil ;; root collection
            grant-permission?   true
