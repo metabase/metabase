@@ -187,7 +187,7 @@
   :doc        false)
 
 (defsetting last-analytics-checksum
-  "Whether or not we should load Metabase analytics content on startup. Defaults to true, but can be disabled via environment variable."
+  "A place to save the analytics-checksum, to check between app startups."
   :type       :integer
   :default    0
   :visibility :internal
@@ -195,7 +195,9 @@
   :doc        false
   :export?    false)
 
-(defn- analytics-checksum []
+(defn analytics-checksum
+  "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
+  []
   (reduce
    (fn [acc file]
      (+ acc (hash (slurp file))))
