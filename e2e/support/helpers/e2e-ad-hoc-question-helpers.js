@@ -13,7 +13,7 @@ export function adhocQuestionHash(question) {
     // without "locking" the display, the QB will run its picking logic and override the setting
     question = Object.assign({}, question, { displayIsLocked: true });
   }
-  return btoa(unescape(encodeURIComponent(JSON.stringify(question))));
+  return btoa(decodeURIComponent(encodeURIComponent(JSON.stringify(question))));
 }
 
 /**

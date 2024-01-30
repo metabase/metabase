@@ -13,9 +13,9 @@ const QuestionDescription = ({
   onClick,
 }) => {
   const query = question.query();
-  const isStructured = !Lib.queryDisplayInfo(query).isNative;
+  const { isNative } = Lib.queryDisplayInfo(query);
 
-  if (isStructured) {
+  if (!isNative) {
     const stageIndex = -1;
     const aggregations = Lib.aggregations(query, stageIndex);
     const breakouts = Lib.breakouts(query, stageIndex);
