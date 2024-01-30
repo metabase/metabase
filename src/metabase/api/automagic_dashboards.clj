@@ -73,7 +73,10 @@
 
 (defn- adhoc-query-read-check
   [query]
-  (api/check-403 (query-perms/can-run-query? query))
+  (api/check-403
+   (query-perms/check-data-perms (:dataset_query query)
+                                 (query-perms/required-perms (:dataset_query query))
+                                 :throw-exceptions? false))
   query)
 
 (defn- ensure-int
