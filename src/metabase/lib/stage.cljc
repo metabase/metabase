@@ -352,3 +352,18 @@
   (if-not (has-clauses? query -1)
     (drop-stage query)
     query))
+
+(mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]
+  "Given a query and current stage, returns a tuple of `[query next-stage-number]`.
+
+  If that stage already exists, the query is unchanged. If it does not, a new (MBQL) stage is appended and its index
+  is returned."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [stage-number (lib.util/canonical-stage-index query stage-number)]
+    (if-let [next-number (lib.util/next-stage-number query stage-number)]
+      ;; There is already a next stage, so just return it.
+      [query next-number]
+      ;; Otherwise append a stage and return the new query and updated stage number.
+      (let [query (append-stage query)]
+        [query (lib.util/next-stage-number query stage-number)]))))
