@@ -94,7 +94,7 @@ function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
   return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
-    return (parameter_mappings || [])
+    const res = (parameter_mappings || [])
       .map(parameter_mapping => {
         const card = _.findWhere(cards, { id: parameter_mapping.card_id });
         return card
@@ -106,6 +106,7 @@ function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
           : null;
       })
       .filter((mapping): mapping is ExtendedMapping => mapping != null);
+    return res;
   });
 }
 
@@ -136,7 +137,11 @@ function buildFieldFilterUiParameter(
   const mappingsForParameter = mappings.filter(
     mapping => mapping.parameter_id === parameter.id,
   );
-  const mappedFields = mappingsForParameter.map(mapping => {
+  const uniqueMappingsForParameters = _.uniq(mappingsForParameter, mapping =>
+    JSON.stringify(mapping.target),
+  );
+
+  const mappedFields = uniqueMappingsForParameters.map(mapping => {
     const { target, card } = mapping;
 
     try {
@@ -157,24 +162,21 @@ function buildFieldFilterUiParameter(
     return isVariableTarget(mapping.target);
   });
 
-  const uniqueFields = _.uniq(
-    mappedFields
-      .filter(
-        (
-          mappedField,
-        ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
-          return mappedField.field != null;
-        },
-      )
-      .map(({ field, shouldResolveFkField }) => {
-        return shouldResolveFkField ? field.target ?? field : field;
-      }),
-    field => field.id,
-  );
+  const fields = mappedFields
+    .filter(
+      (
+        mappedField,
+      ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
+        return mappedField.field != null;
+      },
+    )
+    .map(({ field, shouldResolveFkField }) => {
+      return shouldResolveFkField ? field.target ?? field : field;
+    });
 
   return {
     ...parameter,
-    fields: uniqueFields,
+    fields,
     hasVariableTemplateTagTarget,
   };
 }
