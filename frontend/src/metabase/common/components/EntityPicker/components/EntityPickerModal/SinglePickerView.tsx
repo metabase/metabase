@@ -1,21 +1,18 @@
 import { Box } from "metabase/ui";
 import { color } from "metabase/lib/colors";
-import type { SearchResult } from "metabase-types/api";
-import { tabOptions, type ValidTab } from "../../utils";
-import type { EntityPickerOptions } from "../../types";
+import type { EntityPickerOptions, EntityTab, PickerItem } from "../../types";
 
 export const SinglePickerView = ({
-  model,
+  TabComponent,
   onItemSelect,
   value,
   options,
 }: {
-  model: ValidTab;
-  onItemSelect: (item: SearchResult) => void;
-  value?: Partial<SearchResult>;
+  TabComponent: EntityTab;
+  onItemSelect: (item: PickerItem) => void;
+  value?: PickerItem;
   options?: EntityPickerOptions;
 }) => {
-  const { component: PickerComponent } = tabOptions[model];
 
   return (
     <Box
@@ -25,7 +22,7 @@ export const SinglePickerView = ({
         height: 0,
       }}
     >
-      <PickerComponent
+      <TabComponent
         onItemSelect={onItemSelect}
         value={value}
         options={options}

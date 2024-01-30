@@ -18,3 +18,10 @@ export type PickerItem = Pick<
   SearchResult,
   "id" | "name" | "description" | "can_write" | "model" | "can_write"
 > & { location: string };
+
+export type EntityTab = React.FC<{
+  onItemSelect: (item: PickerItem) => void;
+  value?: PickerItem;
+  options?: EntityPickerOptions;
+}> & { displayName: string; model: string };
+

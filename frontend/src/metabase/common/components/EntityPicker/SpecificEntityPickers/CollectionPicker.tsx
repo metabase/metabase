@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import { t } from "ttag";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { useCollectionQuery } from "metabase/common/hooks";
@@ -23,7 +23,7 @@ interface CollectionPickerProps {
   options?: CollectionPickerOptions;
 }
 
-export const CollectionPicker = ({
+const CollectionPickerComponent = ({
   onItemSelect,
   value,
   options = defaultOptions,
@@ -86,6 +86,14 @@ export const CollectionPicker = ({
     />
   );
 };
+
+export const CollectionPicker = Object.assign(
+  CollectionPickerComponent,
+  {
+    displayName: t`Collection`,
+    model: 'collection',
+  },
+);
 
 const getCollectionIdPath = (
   collection: Pick<Collection, "id" | "location" | "is_personal">,

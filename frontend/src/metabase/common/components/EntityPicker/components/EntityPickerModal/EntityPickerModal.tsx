@@ -6,10 +6,11 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import type { SearchResult } from "metabase-types/api";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 
-import type { EntityPickerOptions } from "../../types";
-import { tabOptions, type ValidTab } from "../../utils";
+import type { Model } from "metabase/collections/components/PinnedItemCard/PinnedItemCard.stories";
+import type { EntityPickerOptions, EntityTab } from "../../types";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
 
+import { CollectionPicker } from "../../SpecificEntityPickers/CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 import { ButtonBar } from "./ButtonBar";
 import { TabsView } from "./TabsView";
@@ -37,7 +38,7 @@ interface EntityPickerModalProps {
   value?: Partial<SearchResult>;
   onChange: (item: SearchResult) => void;
   onClose: () => void;
-  tabs: ValidTab[];
+  tabs: EntityTab[];
   options?: EntityPickerOptions;
 }
 
@@ -49,10 +50,6 @@ export function EntityPickerModal({
   value,
   options = defaultOptions,
 }: EntityPickerModalProps) {
-  const validTabs = useMemo(
-    () => tabs.filter(tabName => tabName in tabOptions),
-    [tabs],
-  );
   const [selectedItem, setSelectedItem] = useState<SearchResult | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -76,7 +73,9 @@ export function EntityPickerModal({
     }
   };
 
-  const hasTabs = validTabs.length > 1 || searchQuery;
+  const hasTabs = tabs.length > 1 || searchQuery;
+  const tabNames = useMemo(() => tabs.map(t => t.displayName), [tabs]);
+  const tabModels = useMemo(() => tabs.map(t => t.model), [tabs]);
 
   return (
     <Modal.Root opened={open} onClose={onClose}>
@@ -87,7 +86,7 @@ export function EntityPickerModal({
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {options.showSearch && (
               <EntityPickerSearchInput
-                models={validTabs}
+                models={tabModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -100,7 +99,7 @@ export function EntityPickerModal({
           <ErrorBoundary>
             {hasTabs ? (
               <TabsView
-                tabs={validTabs}
+                tabs={tabs}
                 onItemSelect={handleItemSelect}
                 value={value}
                 searchQuery={searchQuery}
@@ -110,7 +109,7 @@ export function EntityPickerModal({
               />
             ) : (
               <SinglePickerView
-                model={tabs[0]}
+                TabComponent={tabs[0]}
                 onItemSelect={handleItemSelect}
                 value={value}
                 options={options}
@@ -137,3 +136,21 @@ export function EntityPickerModal({
     </Modal.Root>
   );
 }
+
+
+export const CollectionPickerModal = ({
+  title = t`Choose a collection`,
+  onChange,
+  onClose,
+  value,
+  options = defaultOptions,
+}: Omit<EntityPickerModalProps, "tabs">) => (
+  <EntityPickerModal
+    title={title}
+    onChange={onChange}
+    onClose={onClose}
+    value={value}
+    tabs={[CollectionPicker]}
+    options={options}
+  />
+);

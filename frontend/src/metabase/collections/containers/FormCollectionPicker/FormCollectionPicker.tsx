@@ -21,7 +21,7 @@ import type { CollectionId } from "metabase-types/api";
 
 import { useSelector } from "metabase/lib/redux";
 import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
-import { EntityPickerModal } from "metabase/common/components/EntityPicker/";
+import { CollectionPickerModal } from "metabase/common/components/EntityPicker";
 
 export interface FormCollectionPickerProps
   extends HTMLAttributes<HTMLDivElement> {
@@ -98,9 +98,8 @@ function FormCollectionPicker({
         </SelectButton>
       </FormField>
       {isPickerOpen && (
-        <EntityPickerModal
+        <CollectionPickerModal
           title={t`Select a collection`}
-          tabs={["collection"]}
           value={{ id: value, model: "collection" }}
           onChange={({ id }) => {
             setValue(canonicalCollectionId(id));
