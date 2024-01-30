@@ -416,31 +416,37 @@
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
   current user is granted data permissions to the database."
-  [& {:keys [schema-name table-prefix collection-id grant-permission? uploads-enabled user-id db-id sync-synchronously? csv-file-name]
-      :or {schema-name         (if (driver/database-supports? driver/*driver* :schemas (mt/db))
-                                 "public"
-                                 nil)
-           collection-id       nil ;; root collection
+  [& {:keys [table-prefix collection-id grant-permission? uploads-enabled user-id db-id sync-synchronously? csv-file-name]
+      :or {collection-id       nil ;; root collection
            grant-permission?   true
            uploads-enabled     true
            user-id             (mt/user->id :rasta)
            db-id               (mt/id)
            sync-synchronously? true
            ;; Make the file-name unique so the table names don't collide
-           csv-file-name       (str "example csv file " (random-uuid) ".csv")}}]
+           csv-file-name       (str "example csv file " (random-uuid) ".csv")}
+      :as args}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
-      (let [file              (csv-file-with
+      (let [db                (t2/select-one :model/Database db-id)
+            schema-name       (if (contains? args :schema-name)
+                                (:schema-name args)
+                                (when (driver/database-supports? driver/*driver* :schemas db)
+                                  ;; make sure not_public schema is created, then use it by default
+                                  (let [spec (sql-jdbc.conn/connection-details->spec driver/*driver* (:details db))]
+                                    (jdbc/execute! spec "CREATE SCHEMA IF NOT EXISTS \"not_public\";")
+                                    "not_public")))
+            file              (csv-file-with
                                ["id, name"
                                 "1, Luke Skywalker"
                                 "2, Darth Vader"]
                                csv-file-name)
             group-id          (u/the-id (perms-group/all-users))
-            can-already-read? (mi/can-read? (mt/db))
+            can-already-read? (mi/can-read? db)
             grant?            (and (not can-already-read?)
                                    grant-permission?)]
         (when grant?
-          (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
+          (perms/grant-permissions! group-id (perms/data-perms-path db-id)))
         (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
                    (upload/create-csv-upload! {:collection-id collection-id
                                                :filename      csv-file-name
@@ -449,7 +455,7 @@
                                                :schema-name   schema-name
                                                :table-prefix  table-prefix}))
           (when grant?
-            (perms/revoke-data-perms! group-id (mt/id))))))))
+            (perms/revoke-data-perms! group-id db-id)))))))
 
 (deftest load-from-csv-table-name-test
   (testing "Can upload two files with the same name"
