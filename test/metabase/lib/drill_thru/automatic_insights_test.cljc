@@ -47,22 +47,20 @@
 
 (deftest ^:parallel automatic-insights-availability-test
   (testing "automatic-insights is"
-    (testing "available for cell clicks subject to at least one breakout"
-      (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
-              :when (= click :cell)]
-        (is (= (boolean (not-empty (:dimensions context)))
-               (boolean (canned/returned test-case context :drill-thru/automatic-insights))))))
-    (testing "not available for any header clicks"
-      (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
-              :when (= click :header)]
-        (is (nil? (canned/returned test-case context :drill-thru/automatic-insights)))))
-    (testing "available for pivot and legend clicks"
-      (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
-              :when (#{:pivot :legend} click)]
-        (is (canned/returned test-case context :drill-thru/automatic-insights))))
+    (testing "available for cell clicks subject to at least one breakout; and any pivot or legend click"
+      (canned/canned-test
+        :drill-thru/automatic-insights
+        (fn [_test-case context {:keys [click]}]
+          (or ;; Any pivot or legend click is good.
+              (#{:pivot :legend} click)
+              ;; As are cell clicks with at least 1 breakout.
+              (and (= click :cell)
+                   (seq (:dimensions context)))))))
     (testing "not available at all with xrays disabled"
-      (doseq [[test-case context _details] (canned/canned-clicks metadata-no-xrays)]
-        (is (nil? (canned/returned test-case context :drill-thru/automatic-insights)))))))
+      (canned/canned-test
+        :drill-thru/automatic-insights
+        (constantly false)
+        (canned/canned-clicks metadata-no-xrays)))))
 
 (defn- auto-insights [query exp-filters]
   (let [[created-at sum] (lib/returned-columns query)

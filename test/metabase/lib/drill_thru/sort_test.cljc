@@ -8,6 +8,7 @@
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -15,10 +16,11 @@
 
 (deftest ^:parallel sort-drill-availability-test
   (testing "sort is available on column headers only"
-    (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)]
-      (if (= click :header)
-        (is (canned/returned test-case context :drill-thru/sort))
-        (is (not (canned/returned test-case context :drill-thru/sort)))))))
+    (canned/canned-test
+      :drill-thru/sort
+      (fn [_test-case context {:keys [click]}]
+        (and (= click :header)
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel sort-e2e-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
