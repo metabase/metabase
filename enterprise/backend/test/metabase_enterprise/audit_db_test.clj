@@ -131,14 +131,11 @@
                  (audit-db/ensure-audit-db-installed!))))))))
 
 (deftest should-load-audit?-test
-  (testing "resource path exists + load-analytics-content + checksums dont match => load"
-    (is (= (#'audit-db/should-load-audit? #'audit-db/analytics-dir-resource true 1 3) true)))
+  (testing "load-analytics-content + checksums dont match => load"
+    (is (= (#'audit-db/should-load-audit? true 1 3) true)))
   (testing "checksums are the same => do not load"
-    (is (= (#'audit-db/should-load-audit? #'audit-db/analytics-dir-resource true 3 3) false)))
-  (testing "no resource path => do not load"
-    (is (= (#'audit-db/should-load-audit? nil true 1 3) false)))
+    (is (= (#'audit-db/should-load-audit? true 3 3) false)))
   (testing "load-analytics-content false => do not load"
-    (is (= (#'audit-db/should-load-audit? nil false 3 5) false)))
-  (testing
-      "resource path does not exist + load-analytics-content is false + checksums do not match  => do not load"
-    (is (= (#'audit-db/should-load-audit? #'audit-db/analytics-dir-resource false 1 3) false))))
+    (is (= (#'audit-db/should-load-audit? false 3 5) false)))
+  (testing "load-analytics-content is false + checksums do not match  => do not load"
+    (is (= (#'audit-db/should-load-audit? false 1 3) false))))

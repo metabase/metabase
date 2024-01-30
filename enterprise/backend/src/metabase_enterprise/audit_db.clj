@@ -206,35 +206,33 @@
         file-seq
         (remove fs/directory?))))
 
-(defn- should-load-audit? [analytics-dir-resource load-analytics-content? current-checksum last-checksum]
-  (boolean (and analytics-dir-resource
-                load-analytics-content?
+(defn- should-load-audit? [load-analytics-content? current-checksum last-checksum]
+  (boolean (and load-analytics-content?
                 (not= current-checksum last-checksum))))
 
 (defn- maybe-load-analytics-content!
   [audit-db]
-  (let [current-checksum (analytics-checksum)
-        last-checksum (last-analytics-checksum)]
-    (when (should-load-audit? analytics-dir-resource
-                              (load-analytics-content)
-                              current-checksum
-                              last-checksum)
-      (last-analytics-checksum! current-checksum)
-      (ee.internal-user/ensure-internal-user-exists!)
-      (adjust-audit-db-to-source! audit-db)
-      (log/info "Loading Analytics Content...")
-      (ia-content->plugins (plugins/plugins-dir))
-      (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
-      ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-      (let [report (log/with-no-logs
-                     (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
-                                                          {:backfill? false}
-                                                          :token-check? false))]
-        (if (not-empty (:errors report))
-          (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
-      (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-        (adjust-audit-db-to-host! audit-db)))))
+  (when analytics-dir-resource
+    ;; can'c calculate checksum unless there is an analytics-dir resource
+    (let [current-checksum (analytics-checksum)
+          last-checksum (last-analytics-checksum)]
+      (when (should-load-audit? (load-analytics-content) current-checksum last-checksum)
+        (last-analytics-checksum! current-checksum)
+        (ee.internal-user/ensure-internal-user-exists!)
+        (adjust-audit-db-to-source! audit-db)
+        (log/info "Loading Analytics Content...")
+        (ia-content->plugins (plugins/plugins-dir))
+        (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
+        ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+        (let [report (log/with-no-logs
+                       (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
+                                                            {:backfill? false}
+                                                            :token-check? false))]
+          (if (not-empty (:errors report))
+            (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+            (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
+        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+          (adjust-audit-db-to-host! audit-db))))))
 
 (defn- maybe-install-audit-db
   []
