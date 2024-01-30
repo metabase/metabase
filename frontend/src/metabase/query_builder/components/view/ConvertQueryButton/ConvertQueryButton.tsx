@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+import * as Lib from "metabase-lib";
 import { getEngineNativeType } from "metabase/lib/engine";
 import Tooltip from "metabase/core/components/Tooltip";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -45,8 +46,9 @@ ConvertQueryButton.shouldRender = ({
   question,
   queryBuilderMode,
 }: ConvertQueryButtonOpts) => {
+  const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
   return (
-    question.isStructured() &&
+    isStructured &&
     question.database()?.native_permissions === "write" &&
     queryBuilderMode === "notebook"
   );
