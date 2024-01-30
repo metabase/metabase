@@ -226,5 +226,19 @@ describe("getDefaultDisplay", () => {
         },
       });
     });
+
+    it("returns 'table' display by default", () => {
+      const query = createQueryWithClauses({
+        query: createQueryWithClauses({
+          aggregations: [{ operatorName: "count" }, { operatorName: "avg" }],
+        }),
+        breakouts: [
+          { columnName: "LATITUDE", tableName: "PEOPLE" },
+          { columnName: "LONGITUDE", tableName: "PEOPLE" },
+        ],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    });
   });
 });
