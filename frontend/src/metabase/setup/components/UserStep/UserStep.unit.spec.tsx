@@ -21,7 +21,7 @@ const setup = ({ step = USER_STEP, user }: SetupOpts = {}) => {
     }),
   });
 
-  renderWithProviders(<UserStep />, { storeInitialState: state });
+  renderWithProviders(<UserStep stepLabel={0} />, { storeInitialState: state });
 };
 
 describe("UserStep", () => {

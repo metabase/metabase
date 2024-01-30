@@ -26,9 +26,10 @@ import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InvactiveStep";
 import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
+import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./DatabaseStep.styled";
 
-export const DatabaseStep = (): JSX.Element => {
+export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const user = useSelector(getUser);
   const database = useSelector(getDatabase);
   const engine = useSelector(getDatabaseEngine);
@@ -71,7 +72,7 @@ export const DatabaseStep = (): JSX.Element => {
     return (
       <InactiveStep
         title={getStepTitle(database, invite, isStepCompleted)}
-        label={3}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
         onStepSelect={handleStepSelect}
@@ -82,7 +83,7 @@ export const DatabaseStep = (): JSX.Element => {
   return (
     <ActiveStep
       title={getStepTitle(database, invite, isStepCompleted)}
-      label={3}
+      label={stepLabel}
     >
       <StepDescription>
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>

@@ -16,6 +16,7 @@ import {
 import { getLocales } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InvactiveStep";
+import type { NumberedStepProps } from "../types";
 import {
   LocaleGroup,
   LocaleInput,
@@ -24,7 +25,7 @@ import {
   StepDescription,
 } from "./LanguageStep.styled";
 
-export const LanguageStep = (): JSX.Element => {
+export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const locale = useSelector(getLocale);
   const localeData = useSelector(getAvailableLocales);
   const isStepActive = useSelector(state =>
@@ -54,7 +55,7 @@ export const LanguageStep = (): JSX.Element => {
     return (
       <InactiveStep
         title={t`Your language is set to ${locale?.name}`}
-        label={1}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
         onStepSelect={handleStepSelect}
@@ -63,7 +64,7 @@ export const LanguageStep = (): JSX.Element => {
   }
 
   return (
-    <ActiveStep title={t`What's your preferred language?`} label={1}>
+    <ActiveStep title={t`What's your preferred language?`} label={stepLabel}>
       <StepDescription>
         {t`This language will be used throughout Metabase and will be the default for new users.`}
       </StepDescription>

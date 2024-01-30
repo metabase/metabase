@@ -30,7 +30,9 @@ const setup = ({
     }),
   });
 
-  renderWithProviders(<DatabaseStep />, { storeInitialState: state });
+  renderWithProviders(<DatabaseStep stepLabel={0} />, {
+    storeInitialState: state,
+  });
 };
 
 describe("DatabaseStep", () => {

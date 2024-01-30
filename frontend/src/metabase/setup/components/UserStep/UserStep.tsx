@@ -14,9 +14,10 @@ import {
   getUser,
 } from "../../selectors";
 import { validatePassword } from "../../utils";
+import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./UserStep.styled";
 
-export const UserStep = (): JSX.Element => {
+export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
   const isStepActive = useSelector(state => getIsStepActive(state, USER_STEP));
@@ -38,7 +39,7 @@ export const UserStep = (): JSX.Element => {
     return (
       <InactiveStep
         title={getStepTitle(user, isStepCompleted)}
-        label={2}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
         onStepSelect={handleStepSelect}
@@ -47,7 +48,7 @@ export const UserStep = (): JSX.Element => {
   }
 
   return (
-    <ActiveStep title={getStepTitle(user, isStepCompleted)} label={2}>
+    <ActiveStep title={getStepTitle(user, isStepCompleted)} label={stepLabel}>
       {isHosted && (
         <StepDescription>
           {t`We know you’ve already created one of these.`}{" "}
