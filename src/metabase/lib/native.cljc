@@ -83,8 +83,7 @@
 (mu/defn ^:private format-template-tag-name :- [:maybe :string]
   "Parse and validate a template tag's content."
   [content :- :string]
-  (first
-    (mapcat #(re-seq % (str/trim content)) tag-regexes)))
+  (some #(re-find % (str/trim content)) tag-regexes))
 
 (mu/defn ^:private format-template-tag :- ::template-tag-with-context
   "Format a template tags name."
