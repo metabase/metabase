@@ -17,7 +17,7 @@
 
 (def tokens
   "The tokens used for template tags."
-  ["{{" "}}" "[[" "]]"])
+  #{"{{" "}}" "[[" "]]"})
 
 (defn- next-token [text start]
   (let [indexes (map #(or (str/index-of text % start) ##Inf) tokens)
