@@ -754,6 +754,7 @@
                                                               :type "number"}
                                                              value)
                             (= col :display)           :pie
+                            (= col :location)          "location"
                             (= col :made_public_by_id) (mt/user->id :crowberto)
                             (= col :embedding_params)  {:category_name "locked"}
                             (= col :public_uuid)       (str (random-uuid))
@@ -779,16 +780,16 @@
 
             (when-not (#{;; these columns are expected to not have a description because it's always
                          ;; comes with a dataset_query changes
-                         :table_id :database_id :query_type
+                         :table_id :database_id :query_type :location :dashboard_id
                          ;; we don't need a description for made_public_by_id because whenever this field changes
                          ;; public_uuid will change and we have a description for it.
                          :made_public_by_id} col)
               (testing (format "we should have a revision description for %s" col)
                 (is (some? (u/build-sentence
-                             (revision/diff-strings
-                               Dashboard
-                               before
-                               changes)))))))))))
+                            (revision/diff-strings
+                             Dashboard
+                             before
+                             changes)))))))))))
 
  ;; test tracking result_metadata for models
  (let [card-info (mt/card-with-source-metadata-for-query
