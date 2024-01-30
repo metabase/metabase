@@ -339,13 +339,9 @@ class Question {
     }
 
     const query = this.query();
-    const { display, settings } = getDefaultDisplay(query);
+    const { display, settings = {} } = getDefaultDisplay(query);
 
-    if (settings) {
-      return this.setDisplay(display).updateSettings(settings);
-    }
-
-    return this.setDisplay(display);
+    return this.setDisplay(display).updateSettings(settings);
   }
 
   _setDefaultDisplay(): Question {
