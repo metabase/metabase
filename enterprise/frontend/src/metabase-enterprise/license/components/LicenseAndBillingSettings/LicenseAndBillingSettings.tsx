@@ -12,7 +12,7 @@ import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 
 import type { TokenStatus } from "metabase/admin/settings/hooks/use-license";
 import { useLicense } from "metabase/admin/settings/hooks/use-license";
-import { useBilling } from "metabase/admin/settings/hooks/use-billing";
+import { useBillingInfo } from "metabase-enterprise/settings/hooks/use-billing-info";
 import {
   ExplorePaidPlansContainer,
   LoaderContainer,
@@ -94,7 +94,7 @@ const LicenseAndBillingSettings = ({
     loading: billingLoading,
     error: billingError,
     billingInfo,
-  } = useBilling(String(token ?? ""));
+  } = useBillingInfo();
 
   const isLoading = licenseLoading || billingLoading;
 
@@ -123,6 +123,7 @@ const LicenseAndBillingSettings = ({
   return (
     <SettingsLicenseContainer data-testid="license-and-billing-content">
       <SectionHeader>{t`Billing`}</SectionHeader>
+
       <BillingInfo
         isStoreManagedBilling={isStoreManagedBilling}
         billingInfo={billingInfo}

@@ -44,7 +44,7 @@ export const GTAPApi = {
 export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
   billingInfo: () => {
-    // TODO: use real endpoint GET("/api/billing"),
+    // TODO: use real endpoint GET("/api/ee/billing"),
     return new Promise(resolve => {
       setTimeout(() => {
         resolve({
