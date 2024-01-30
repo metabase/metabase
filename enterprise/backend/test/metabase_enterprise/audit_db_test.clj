@@ -129,3 +129,16 @@
         (testing "No exception is thrown when db has 'duplicate' entries."
           (is (= :metabase-enterprise.audit-db/no-op
                  (audit-db/ensure-audit-db-installed!))))))))
+
+(deftest should-load-audit?-test
+  (testing "no resource path => do not load"
+    (is (= (#'audit-db/should-load-audit? nil true 1 3) false)))
+  (testing "load-analytics-content false => do not load"
+    (is (= (#'audit-db/should-load-audit? nil false 3 5) false)))
+  (testing "resource path exists + load-analytics-content + checksums dont match  => load"
+    (is (= (#'audit-db/should-load-audit? #'audit-db/analytics-dir-resource true 1 3) true)))
+  (testing "checksums are the same => do not load"
+    (is (= (#'audit-db/should-load-audit? #'audit-db/analytics-dir-resource true 3 3) false)))
+  (testing
+      "resource path does not exist + load-analytics-content is false + checksums match  => do not load"
+    (is (= (#'audit-db/should-load-audit? #'audit-db/analytics-dir-resource false 1 3) false))))
