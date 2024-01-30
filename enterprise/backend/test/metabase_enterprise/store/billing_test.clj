@@ -6,6 +6,7 @@
 (deftest fetch-billing-status-test
   (testing "Errors out when the server throws an error"
     (binding [http/request (fn [& _]
-                             (throw (Exception. "network issues")))]
-      (is (= "Unable to fetch billing status: network issues"
+                             {:valid false
+                              :status "network issues"})]
+      (is (= "network issues"
              (mt/user-http-request :rasta :get 400 "/ee/billing"))))))

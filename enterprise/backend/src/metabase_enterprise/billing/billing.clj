@@ -18,14 +18,13 @@
   (memoize/ttl
    ^{::memoize/args-fn (fn [[token email language]] [token email language])}
    (fn [token email language]
-     (try
-       (http/get metabase-billing-info-url {:basic-auth   [email token]
-                                            :language     language
-                                            :content-type :json})
-       (catch Throwable e
-         (throw (ex-info (tru "Unable to fetch billing status: {0}" (ex-message e))
-                         {:status-code 400}
-                         e)))))
+     (let [payload (http/get metabase-billing-info-url {:basic-auth   [email token]
+                                                        :language     language
+                                                        :content-type :json})]
+         (if (:valid payload)
+           payload
+           (throw (ex-info (:status payload)
+                           {:status-code 400})))))
    :ttl/threshold (u/hours->ms 5)))
 
 (api/defendpoint GET "/"
