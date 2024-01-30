@@ -15,12 +15,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(def tokens
+(def separators
   "The tokens used for template tags."
   #{"{{" "}}" "[[" "]]"})
 
-(defn- next-token [text start]
-  (let [indexes (map #(or (str/index-of text % start) ##Inf) tokens)
+(defn- next-separator [text start]
+  (let [indexes (map #(or (str/index-of text % start) ##Inf) separators)
         index   (apply min indexes)]
     (if (infinite? index)
       [nil nil]
@@ -28,15 +28,15 @@
 
 (mu/defn ^:private tokenize-query :- [:sequential :string]
   "Tokenize the query for easier parsing.
-   This splits the string at the following tokens: {{ }} [[ ]],
-   and keeps the tokens in the result."
+   This splits the string at the separators defined in `separators`
+   but keeps them in the resulting sequence."
   [query-text :- ::common/non-blank-string]
   (let [cnt (count query-text)]
     (loop [idx 0
           res []]
       (if (>= idx cnt)
         res
-        (let [[jdx tok] (next-token query-text idx)]
+        (let [[jdx tok] (next-separator query-text idx)]
           (if (nil? jdx)
             (recur cnt (conj res (subs query-text idx cnt)))
             (recur (+ 2 jdx) (conj res (subs query-text idx jdx) tok))))))))
