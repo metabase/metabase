@@ -50,7 +50,7 @@ describe("getDefaultDisplay", () => {
         database: SAMPLE_DATABASE.id,
         type: "native",
         native: {
-          query: "SELECT * FROM ORDERS",
+          query: "SELECT * FROM ACCOUNTS",
         },
       },
     });
