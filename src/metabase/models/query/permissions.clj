@@ -25,7 +25,6 @@
 
 (set! *warn-on-reflection* true)
 
-
 (defn perms-exception
   "Returns an ExceptionInfo instance containing data relevant for a permissions error."
   ([required-perms]

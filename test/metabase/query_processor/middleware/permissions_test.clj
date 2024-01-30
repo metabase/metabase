@@ -7,6 +7,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
@@ -320,7 +321,7 @@
         (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
         (letfn [(process-query []
                   (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                           ::qp.perms/perms {:gtaps {:perms/data-access {(mt/id :venues) :unrestricted}}})))]
+                                           ::query-perms/perms {:gtaps {:perms/data-access {(mt/id :venues) :unrestricted}}})))]
           (testing "Make sure the middleware is actually preventing something by disabling it"
             (with-redefs [qp.perms/remove-permissions-key identity]
               (is (partial= {:status :completed}

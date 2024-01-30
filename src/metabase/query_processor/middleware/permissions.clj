@@ -75,7 +75,7 @@
   information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
   [query]
-  (dissoc query ::perms))
+  (dissoc query ::query-perms/perms))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
