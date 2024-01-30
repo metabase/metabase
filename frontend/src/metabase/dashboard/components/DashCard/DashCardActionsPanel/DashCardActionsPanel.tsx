@@ -16,7 +16,7 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { useDuplicateDashCard } from "../use-duplicate-dashcard";
+import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
