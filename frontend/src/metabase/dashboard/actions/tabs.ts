@@ -89,7 +89,7 @@ function _createInitialTabs({
 }: {
   dashId: DashboardId;
   newTabId: DashboardTabId;
-  state: Draft<DashboardState> | DashboardState; // union type needed to fix `possibly infinite` type error https://metaboat.slack.com/archives/C505ZNNH4/p1699541570878059?thread_ts=1699520485.702539&cid=C505ZNNH4
+  state: Draft<DashboardState> | DashboardState; // union type needed to fix `possibly infinite` type error
   prevDash: StoreDashboard;
   firstTabName?: string;
   secondTabName?: string;
@@ -339,7 +339,7 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          // @ts-expect-error - possibly infinite type error https://metaboat.slack.com/archives/C505ZNNH4/p1699541570878059?thread_ts=1699520485.702539&cid=C505ZNNH4
+          // @ts-expect-error - possibly infinite type error
           if (isVirtualDashCard(sourceDashCard)) {
             return;
           }
