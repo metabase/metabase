@@ -48,8 +48,8 @@
 
   ([template args revoke-fn validation-fn]
    (mt/with-test-user :rasta
-     (mt/with-full-data-perms-for-all-users!
-       (with-dashboard-cleanup
+     (with-dashboard-cleanup
+       (mt/with-full-data-perms-for-all-users!
          (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
                resp         (mt/user-http-request :rasta :get 200 api-endpoint)
                _            (dashcards-schema-check (:dashcards resp))
@@ -66,7 +66,7 @@
                         (finally
                           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
                           (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))
-              result)))))))
+             result)))))))
 
 ;;; ------------------- X-ray  -------------------
 
@@ -490,11 +490,11 @@
 (defn- card-count-check
   "Create a dashboard via API twice, once with a limit and once without, and return the results."
   [limit template args]
-  (mt/with-test-user :rasta
+  (mt/with-test-user :crowberto
     (with-dashboard-cleanup
       (let [api-endpoint  (apply format (str "automagic-dashboards/" template) args)
-            resp          (mt/user-http-request :rasta :get 200 api-endpoint)
-            slimmed       (mt/user-http-request :rasta :get 200 api-endpoint :show limit)
+            resp          (mt/user-http-request :crowberto :get 200 api-endpoint)
+            slimmed       (mt/user-http-request :crowberto :get 200 api-endpoint :show limit)
             card-count-fn (fn [dashboard] (count (keep :card (:dashcards dashboard))))]
         {:base-count (card-count-fn resp)
          :show-count (card-count-fn slimmed)}))))

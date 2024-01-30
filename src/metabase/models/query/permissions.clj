@@ -202,7 +202,7 @@
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]
       (let [paths-excluding-gtap-paths (set/difference paths (-> gtap-perms :paths))]
-        (or (perms/set-has-full-permissions? @api/*current-user-permissions-set* paths-excluding-gtap-paths)
+        (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths-excluding-gtap-paths)
             (throw (perms-exception paths)))))
     ;; Check native query access if required
     (when (= (:perms/native-query-editing required-perms) :yes)
