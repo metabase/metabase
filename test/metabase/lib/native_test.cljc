@@ -62,7 +62,6 @@
         {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar ]] }} AND ]] {{ foo }}")
         {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar [[ }} AND ]] {{ foo }}")
         {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar {{ }} AND ]] {{ foo }}")
-        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar {{ }} AND ]] {{ foo }}")
         {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo [[ }}")
         {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo ]] }}")
         {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo {{ }}")
