@@ -77,7 +77,7 @@
    :display             "scalar"
    :enable_embedding    false
    :entity_id           nil
-   :embedding_params
+   :embedding_params    nil
    :made_public_by_id   nil
    :parameters          []
    :parameter_mappings  []
