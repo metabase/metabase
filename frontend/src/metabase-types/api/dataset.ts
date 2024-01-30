@@ -143,7 +143,16 @@ export interface TemplateTag {
   type: TemplateTagType;
   dimension?: LocalFieldReference;
   "widget-type"?: string;
+
   required?: boolean;
+
+  /**
+   * optional will be true if the template tag in the query is nested in
+   * an optional block. It is a property of the query text and is therefore not
+   * not user-editable (other than editing the query directly).
+   *
+   * This is different from the `required` property, which _is_ user-editable.
+   */
   optional: boolean;
   default?: string | null;
   options?: ParameterOptions;
