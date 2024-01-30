@@ -3,10 +3,6 @@ import type { Field, Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
-  createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
-  createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -14,11 +10,7 @@ import { getDefaultDisplay } from "./display";
 import { createQuery, createQueryWithClauses } from "./test-helpers";
 
 const ACCOUNTS_ID = 4;
-
-const ACCOUNTS = {
-  ID: 48,
-  COUNTRY: 56,
-};
+const ACCOUNTS_COUNTRY_ID = 56;
 
 const createAccountsTable = (opts?: Partial<Table>): Table =>
   createMockTable({
@@ -27,26 +19,13 @@ const createAccountsTable = (opts?: Partial<Table>): Table =>
     name: "ACCOUNTS",
     display_name: "Accounts",
     schema: "PUBLIC",
-    fields: [createAccountsIdField(), createAccountsCountryField()],
-    ...opts,
-  });
-
-const createAccountsIdField = (opts?: Partial<Field>): Field =>
-  createMockField({
-    id: ACCOUNTS.ID,
-    table_id: ACCOUNTS_ID,
-    name: "ID",
-    display_name: "ID",
-    base_type: "type/BigInteger",
-    effective_type: "type/BigInteger",
-    semantic_type: "type/PK",
-    fingerprint: null,
+    fields: [createAccountsCountryField()],
     ...opts,
   });
 
 const createAccountsCountryField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: ACCOUNTS.COUNTRY,
+    id: ACCOUNTS_COUNTRY_ID,
     table_id: ACCOUNTS_ID,
     name: "COUNTRY",
     display_name: "Country",
@@ -58,13 +37,7 @@ const createAccountsCountryField = (opts?: Partial<Field>): Field =>
   });
 
 const SAMPLE_DATABASE = createSampleDatabase({
-  tables: [
-    createAccountsTable(),
-    createOrdersTable(),
-    createPeopleTable(),
-    createProductsTable(),
-    createReviewsTable(),
-  ],
+  tables: [createAccountsTable()],
 });
 
 const SAMPLE_METADATA = createMockMetadata({ databases: [SAMPLE_DATABASE] });
