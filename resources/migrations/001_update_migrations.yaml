@@ -5240,7 +5240,7 @@ databaseChangeLog:
               - column:
                   name: dashboard_id
                   type: int
-                  remarks: "Is card dependent on a dashboard. Mutually exclusive with collection_id."
+                  remarks: "If a card dependent on a dashboard, then this will be populated with the parent dashboard id."
                   constraints:
                     nullable: true
       rollback:
@@ -5248,26 +5248,6 @@ databaseChangeLog:
             tableName: report_card
             columnName: dashboard_id
 
-  - changeSet:
-      id: v49.2024-01-26T21:17:58
-      author: qwef
-      comment: >-
-        Added 0.49.0 - Add location to report_card, which will be either `dashboard` or `collection`.
-      changes:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: location
-                  type: varchar(16)
-                  remarks: "One of `dashboard` or `collection`."
-                  constraints:
-                    nullable: false
-                  defaultValue: "collection"
-      rollback:
-        - dropColumn:
-            tableName: report_card
-            columnName: location
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
