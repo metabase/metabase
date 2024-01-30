@@ -257,8 +257,8 @@
    set))
 
 (mu/defn ^:private sandbox->required-perms
-  "Calculate the set of permissions needed to run the query associated with a sandbox; this set of permissions is excluded
-  during the normal QP perms check.
+  "Calculate the permissions needed to run the query associated with a sandbox, which are implitly granted to the
+  current user during the noraml QP perms check.
 
   Background: when applying sandboxing, we don't want the QP perms check middleware to throw an Exception if the Current
   User doesn't have permissions to run the underlying sandboxed query, which will likely be greater than what they
@@ -269,8 +269,8 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-      (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
-                                  :throw-exceptions? true))
+                     (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+                                                 :throw-exceptions? true))
     {:perms/data-access (zipmap (sandbox->table-ids sandbox) (repeat :unrestricted))}))
 
 (defn- sandboxes->required-perms [sandboxes]
@@ -331,7 +331,7 @@
       original-query
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
-          (update-in [::qp.perms/perms :gtaps]
+          (update-in [::query-perms/perms :gtaps]
                      (fn [required-perms] (merge required-perms
                                                  (sandboxes->required-perms (vals table-id->gtap)))))))))
 

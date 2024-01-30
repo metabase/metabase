@@ -369,10 +369,9 @@
                    (:target (update-target))))))))))
 
 (deftest update-field-test
-  (t2.with-temp/with-temp [Table {table-id :id}   {:db_id (mt/id) :schema "PUBLIC"}
-                           Table {table-id-2 :id} {:db_id (mt/id) :schema "PUBLIC"}
-                           Field {field-id :id, table-id :table_id} {:name "Field"
-                                                                     :table_id table-id}]
+  (t2.with-temp/with-temp [Table {table-id :id}                     {:db_id (mt/id) :schema "PUBLIC"}
+                           Table {table-id-2 :id}                   {:db_id (mt/id) :schema "PUBLIC"}
+                           Field {field-id :id, table-id :table_id} {:name "Field" :table_id table-id}]
     (let [{table-id :id, schema :schema, db-id :db_id} (t2/select-one Table :id table-id)]
       (testing "PUT /api/field/:id"
         (let [endpoint (format "field/%d" field-id)]
