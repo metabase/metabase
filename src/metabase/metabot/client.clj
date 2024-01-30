@@ -1,6 +1,8 @@
 (ns metabase.metabot.client
   (:require
    [cheshire.core :as json]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
@@ -12,14 +14,12 @@
   [openai-fn]
   (fn wrap-usage* [params options]
     (let [{:keys [usage] :as response} (openai-fn params options)
-          usage-summary (merge
-                          (dissoc response :usage :choices)
-                          usage)]
-      ;(snowplow/track-event!
-      ;  ::snowplow/llm-usage
-      ;  api/*current-user-id*
-      ;  usage-summary)
-      (tap> usage-summary)
+          usage-summary (-> (dissoc response :usage :choices)
+                            (merge usage)
+                            (select-keys [:id :object :created :model :prompt_tokens :completion_tokens :total_tokens]))]
+      (snowplow/track-event! ::snowplow/llm-usage api/*current-user-id* usage-summary)
+      ;; TODO -- Remove before final PR/merge
+      ;(tap> usage-summary)
       response)))
 
 (defn- wrap-openai-exceptions

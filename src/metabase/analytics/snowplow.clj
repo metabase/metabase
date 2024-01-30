@@ -41,7 +41,8 @@
    ::timeline     "1-0-0"
    ::task         "1-0-0"
    ::action       "1-0-0"
-   ::embed_share  "1-0-0"})
+   ::embed_share  "1-0-0"
+   ::llm_usage    "1-0-0"})
 
 (def ^:private event->schema
   "The schema to use for each analytics event."
@@ -67,7 +68,8 @@
    ::csv-upload-failed              ::csvupload
    ::metabot-feedback-received      ::metabot
    ::embedding-enabled              ::embed_share
-   ::embedding-disabled             ::embed_share})
+   ::embedding-disabled             ::embed_share
+   ::llm-usage                      ::llm_usage})
 
 (defsetting analytics-uuid
   (deferred-tru
