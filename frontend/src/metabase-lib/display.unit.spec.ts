@@ -207,5 +207,24 @@ describe("getDefaultDisplay", () => {
 
       expect(getDefaultDisplay(query)).toEqual({ display: "line" });
     });
+
+    it("returns 'map' display for queries with 1 aggregation and 2 breakouts by coordinates", () => {
+      const query = createQueryWithClauses({
+        query: createQueryWithClauses({
+          aggregations: [{ operatorName: "count" }],
+        }),
+        breakouts: [
+          { columnName: "LATITUDE", tableName: "PEOPLE" },
+          { columnName: "LONGITUDE", tableName: "PEOPLE" },
+        ],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({
+        display: "map",
+        settings: {
+          "map.type": "grid",
+        },
+      });
+    });
   });
 });

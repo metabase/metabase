@@ -94,8 +94,8 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "line" };
     }
 
-    const areBreakoutsCoordinates = infos.every(({ info, columnInfo }) => {
-      return isa(columnInfo.semanticType, TYPE.Coordinate);
+    const areBreakoutsCoordinates = infos.every(({ columnInfo }) => {
+      return isCoordinate(columnInfo);
     });
     if (areBreakoutsCoordinates) {
       return {
@@ -116,6 +116,10 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   return { display: "table" };
+};
+
+const isCoordinate = (info: Lib.ColumnDisplayInfo): boolean => {
+  return isa(info.semanticType, TYPE.Coordinate);
 };
 
 const isCountry = (info: Lib.ColumnDisplayInfo): boolean => {
