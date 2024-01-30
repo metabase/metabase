@@ -80,7 +80,7 @@
 (def ^:private tag-regexes
   [snippet-tag-regex card-tag-regex variable-tag-regex])
 
-(mu/defn ^:private parse-template-tag :- [:maybe :string]
+(mu/defn ^:private format-template-tag-name :- [:maybe :string]
   "Parse and validate a template tag's content."
   [content :- :string]
   (first (first
@@ -89,7 +89,7 @@
 (mu/defn ^:private format-template-tag :- ::template-tag-with-context
   "Format a template tags name."
   [tag :- ::template-tag-with-context]
-  (update tag :name parse-template-tag))
+  (update tag :name format-template-tag-name))
 
 (mu/defn ^:private format-template-tags :- [:sequential ::template-tag-with-context]
   "Format all template tags and filter out invalid ones."
