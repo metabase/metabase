@@ -19,7 +19,7 @@ import type {
   ActivePreviewPane,
   EmbedResourceParameterWithValue,
 } from "./types";
-import PreviewPane from "./PreviewPane";
+import { PreviewPane } from "./PreviewPane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
@@ -149,16 +149,13 @@ export const ParametersSettings = ({
       previewSlot={
         <>
           <PreviewModeSelector value={activePane} onChange={onChangePane} />
-
-          {activePane === "preview" ? (
-            <PreviewPane
-              className="flex-full"
-              previewUrl={iframeUrl}
-              isTransparent={displayOptions.theme === "transparent"}
-            />
-          ) : activePane === "code" ? (
-            serverEmbedCodeSlot
-          ) : null}
+          <PreviewPane
+            hidden={activePane !== "preview"}
+            className="flex-full"
+            previewUrl={iframeUrl}
+            isTransparent={displayOptions.theme === "transparent"}
+          />
+          {activePane === "code" ? serverEmbedCodeSlot : null}
         </>
       }
     />

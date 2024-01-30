@@ -20,7 +20,7 @@ import { getPlan } from "metabase/common/utils/plan";
 
 import { PreviewModeSelector } from "./PreviewModeSelector";
 import type { ActivePreviewPane } from "./types";
-import PreviewPane from "./PreviewPane";
+import { PreviewPane } from "./PreviewPane";
 import {
   DisplayOptionSection,
   SettingsTabLayout,
@@ -218,16 +218,13 @@ export const AppearanceSettings = ({
       previewSlot={
         <>
           <PreviewModeSelector value={activePane} onChange={onChangePane} />
-
-          {activePane === "preview" ? (
-            <PreviewPane
-              className="flex-full"
-              previewUrl={iframeUrl}
-              isTransparent={displayOptions.theme === "transparent"}
-            />
-          ) : activePane === "code" ? (
-            serverEmbedCodeSlot
-          ) : null}
+          <PreviewPane
+            hidden={activePane !== "preview"}
+            className="flex-full"
+            previewUrl={iframeUrl}
+            isTransparent={displayOptions.theme === "transparent"}
+          />
+          {activePane === "code" ? serverEmbedCodeSlot : null}
         </>
       }
     />
