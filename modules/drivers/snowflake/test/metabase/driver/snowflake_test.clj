@@ -12,6 +12,9 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
@@ -453,3 +456,28 @@
             result-comment (second (re-find #"-- (\{.*\})" result-query))
             result-map (json/read-str result-comment)]
         (is (= expected-map result-map))))))
+
+(mt/defdataset dst-change
+  [["dst_tz_test" [{:field-name "dtz"
+                    :base-type :type/DateTimeWithTZ}]
+    [["2023-09-30 23:59:59 +1000"]      ; September
+     ["2023-10-01 00:00:00 +1000"]      ; October before DST starts
+     ["2023-10-01 05:00:00 +1100"]      ; October after DST starts
+     ["2023-11-01 05:00:00 +1100"]]]])  ; November
+
+(deftest date-bucketing-test
+  (testing "#37065"
+    (mt/test-driver :snowflake
+      (mt/dataset dst-change
+        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              ds-tz-test (lib.metadata/table metadata-provider (mt/id :dst_tz_test))
+              dtz        (lib.metadata/field metadata-provider (mt/id :dst_tz_test :dtz))
+              query      (-> (lib/query metadata-provider ds-tz-test)
+                             (lib/breakout dtz)
+                             (lib/aggregate (lib/count)))]
+          (mt/with-native-query-testing-context query
+            (is (= [["2023-09-30T00:00:00+10:00" 1]
+                    ["2023-10-01T00:00:00+10:00" 2]
+                    ["2023-11-01T00:00:00+11:00" 1]]
+                   (mt/with-temporary-setting-values [report-timezone "Australia/Sydney"]
+                     (mt/rows (qp/process-query query)))))))))))

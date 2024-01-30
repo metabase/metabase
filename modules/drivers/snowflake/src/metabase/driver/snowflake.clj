@@ -221,8 +221,12 @@
 
 (defn- date-trunc
   [unit expr]
-  (-> [:date_trunc unit expr]
-      (h2x/with-database-type-info (h2x/database-type expr))))
+  (let [acceptable-types (case unit
+                           (:millisecond :second :minute :hour) #{"time" "timestamp"}
+                           (:day :week :month :quarter :year)   #{"date" "timestamp"})
+        expr             (h2x/cast-unless-type-in "timestamp" acceptable-types expr)]
+    (-> [:date_trunc unit expr]
+        (h2x/with-database-type-info (h2x/database-type expr)))))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:snowflake :minute]          [_ _ expr] (date-trunc :minute expr))
