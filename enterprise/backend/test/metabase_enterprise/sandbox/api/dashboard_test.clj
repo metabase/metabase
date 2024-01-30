@@ -77,7 +77,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (met/with-gtaps {:gtaps {:venues {}}}
-        (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
+        (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures!
          (fn [{:keys [card-id mappings add-card! dashcards]}]
            (testing "Should be able to add a card with `parameter_mapping` with only sandboxed perms"
              (perms/grant-permissions! (perms-group/all-users) (perms/table-sandboxed-query-path (mt/id :venues)))
@@ -93,7 +93,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (met/with-gtaps {:gtaps {:venues {}}}
-        (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures
+        (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures!
          (fn [{:keys [dashboard-id card-id update-mappings! new-mappings]}]
            (testing "Should be able to update `:parameter_mappings` *with* only sandboxed perms"
              (perms/grant-permissions! (perms-group/all-users) (perms/table-sandboxed-query-path (mt/id :venues)))
