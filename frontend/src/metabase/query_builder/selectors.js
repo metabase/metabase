@@ -1001,11 +1001,10 @@ export const getTemplateTags = createSelector([getCard], card =>
 
 export const getRequiredTemplateTags = createSelector(
   [getTemplateTags],
-  templateTags => {
-    return templateTags
+  templateTags =>
+    templateTags
       ? Object.keys(templateTags)
           .filter(key => templateTags[key].required)
           .map(key => templateTags[key])
-      : [];
-  },
+      : [],
 );
