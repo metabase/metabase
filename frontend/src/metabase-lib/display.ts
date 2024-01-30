@@ -129,7 +129,11 @@ const getBreakoutColumnInfos = (
 };
 
 const isCategory = (info: Lib.ColumnDisplayInfo): boolean => {
-  return isa(info.semanticType, TYPE.Category);
+  return (
+    isa(info.effectiveType, TYPE.Boolean) ||
+    isa(info.semanticType, TYPE.Category) ||
+    isa(info.semanticType, TYPE.Address)
+  );
 };
 
 const isCoordinate = (info: Lib.ColumnDisplayInfo): boolean => {
@@ -141,7 +145,10 @@ const isCountry = (info: Lib.ColumnDisplayInfo): boolean => {
 };
 
 const isDate = (info: Lib.ColumnDisplayInfo): boolean => {
-  return isa(info.effectiveType, TYPE.Temporal);
+  return (
+    isa(info.effectiveType, TYPE.Temporal) ||
+    isa(info.semanticType, TYPE.Temporal)
+  );
 };
 
 const isState = (info: Lib.ColumnDisplayInfo): boolean => {
