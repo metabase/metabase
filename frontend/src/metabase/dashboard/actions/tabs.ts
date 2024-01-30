@@ -5,7 +5,6 @@ import { arrayMove } from "@dnd-kit/sortable";
 
 import type {
   DashCardId,
-  DashboardCard,
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
@@ -322,10 +321,9 @@ export const tabsReducer = createReducer<DashboardState>(
         }
 
         // 2. Duplicate dashcards
-        const sourceTabDashCards: DashboardCard[] | Draft<DashboardCard>[] = // type def needed to fix `possibly infinite` type error
-          prevDash.dashcards
-            .map(id => state.dashcards[id])
-            .filter(dashCard => dashCard.dashboard_tab_id === sourceTabId);
+        const sourceTabDashCards = prevDash.dashcards
+          .map(id => state.dashcards[id])
+          .filter(dashCard => dashCard.dashboard_tab_id === sourceTabId);
 
         sourceTabDashCards.forEach(sourceDashCard => {
           const newDashCardId = generateTemporaryDashcardId();
@@ -340,6 +338,7 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
+          // @ts-expect-error - possibly infinite type error https://metaboat.slack.com/archives/C505ZNNH4/p1699541570878059?thread_ts=1699520485.702539&cid=C505ZNNH4
           if (isVirtualDashCard(sourceDashCard)) {
             return;
           }
