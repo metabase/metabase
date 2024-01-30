@@ -384,7 +384,7 @@
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (defn- check-card-type-and-dataset
-  "Check if the value of card type and datset is consistent, returns 400 if not."
+  "Check if the value of card type and dataset is consistent, returns 400 if not."
   [{:keys [dataset type]}]
   ;; if dataset is true then type must be model
   ;; if dataset is false, then type can't be model
@@ -473,9 +473,9 @@
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
   (check-card-type-and-dataset card-updates)
-  (let [card-before-update   (t2/hydrate (api/write-check Card id)
-                                         [:moderation_reviews :moderator_details])
-        maybe-turn-to-datset (or (= "model" type) dataset)]
+  (let [card-before-update    (t2/hydrate (api/write-check Card id)
+                                          [:moderation_reviews :moderator_details])
+        maybe-turn-to-dataset (or (= "model" type) dataset)]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
@@ -486,11 +486,11 @@
                                                              :query             dataset_query
                                                              :metadata          result_metadata
                                                              :original-metadata (:result_metadata card-before-update)
-                                                             :dataset?          (if (some? maybe-turn-to-datset)
-                                                                                  maybe-turn-to-datset
+                                                             :dataset?          (if (some? maybe-turn-to-dataset)
+                                                                                  maybe-turn-to-dataset
                                                                                   (card/is-model? card-before-update))})
           card-updates          (merge card-updates
-                                       (when maybe-turn-to-datset
+                                       (when maybe-turn-to-dataset
                                          {:display :table}))
           metadata-timeout      (a/timeout card/metadata-sync-wait-ms)
           [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
