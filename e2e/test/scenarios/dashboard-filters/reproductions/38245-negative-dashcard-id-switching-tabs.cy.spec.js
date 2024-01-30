@@ -1,44 +1,13 @@
-// import {
-//   restore,
-//   openNavigationSidebar,
-//   visitDashboard,
-//   createDashboardWithTabs,
-// } from "e2e/support/helpers";
-import { restore, visitDashboard } from "e2e/support/helpers";
-// import {
-//   ORDERS_DASHBOARD_ID,
-//   ORDERS_DASHBOARD_DASHCARD_ID,
-//   ORDERS_QUESTION_ID,
-//   ORDERS_COUNT_QUESTION_ID,
-//   ORDERS_BY_YEAR_QUESTION_ID,
-//   ADMIN_PERSONAL_COLLECTION_ID,
-//   NORMAL_PERSONAL_COLLECTION_ID,
-// } from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
 import {
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-// import { createMockDashboardCard } from "metabase-types/api/mocks";
-const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
-
-// const ratingFilter = {
-//   name: "Text",
-//   slug: "text",
-//   id: "5dfco74e",
-//   type: "string/=",
-//   sectionId: "string",
-// };
-
-// const paramDashboard = {
-//   name: "Dashboard With Params",
-//   parameters: [ratingFilter],
-// };
-
-// const regularDashboard = {
-//   name: "Dashboard Without Params",
-// };
+  editDashboard,
+  getDashboardCard,
+  goToTab,
+  openQuestionsSidebar,
+  popover,
+  restore,
+  sidebar,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 const TAB_1 = {
   id: 1,
@@ -59,47 +28,48 @@ const DASHBOARD_TEXT_FILTER = {
 
 describe("issue 38245", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
-  it("should do something", () => {
+  it("should not make a request to the server if the parameters are not saved (metabase#38245)", () => {
     createDashboardWithTabs({
       tabs: [TAB_1, TAB_2],
       parameters: [DASHBOARD_TEXT_FILTER],
-      dashcards: [
-        createMockDashboardCard({
-          id: -1,
-          card_id: ORDERS_QUESTION_ID,
-          dashboard_tab_id: TAB_1.id,
-          parameter_mappings: [
-            createTextFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
-          ],
-          size_x: 5,
-          size_y: 5,
-        }),
-      ],
+      dashcards: [],
     }).then(dashboard => visitDashboard(dashboard.id));
+
+    editDashboard();
+    openQuestionsSidebar();
+
+    sidebar().findByText("Orders").click();
+
+    cy.wait("@cardQuery");
+
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText(DASHBOARD_TEXT_FILTER.name)
+      .click();
+
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("Select…").click();
+    });
+
+    popover().findByText("Source").click();
+
+    goToTab(TAB_2.name);
+    goToTab(TAB_1.name);
+
+    cy.log("cardQuery with not saved parameters leads to 500 response");
+    cy.wait("@cardQuery");
+
+    cy.get("@cardQuery.all").should("have.length", 2);
+    cy.get("@cardQuery").should(({ response }) => {
+      expect(response.statusCode).not.to.eq(500);
+    });
   });
 });
-
-const createTextFilterMapping = ({ card_id }) => {
-  const fieldRef = [
-    "field",
-    PEOPLE.NAME,
-    {
-      "base-type": "type/Text",
-      "source-field": ORDERS.USER_ID,
-    },
-  ];
-
-  return {
-    card_id,
-    parameter_id: DASHBOARD_TEXT_FILTER.id,
-    target: ["dimension", fieldRef],
-  };
-};
 
 function createDashboardWithTabs({ dashcards, tabs, ...dashboardDetails }) {
   return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
