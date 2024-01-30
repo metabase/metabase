@@ -153,7 +153,7 @@ export interface TemplateTag {
    *
    * This is different from the `required` property, which _is_ user-editable.
    */
-  optional: boolean;
+  readonly optional: boolean;
   default?: string | null;
   options?: ParameterOptions;
 
