@@ -194,6 +194,17 @@ describe("getDefaultDisplay", () => {
       expect(getDefaultDisplay(query)).toEqual({ display: "table" });
     });
 
+    it("returns 'bar' display for queries with aggregations and 1 breakout by category", () => {
+      const query = createQueryWithClauses({
+        query: createQueryWithClauses({
+          aggregations: [{ operatorName: "count" }],
+        }),
+        breakouts: [{ columnName: "CATEGORY", tableName: "PRODUCTS" }],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+    });
+
     it("returns 'line' display for queries with 1 aggregation and 2 breakouts, at least 1 of which is date", () => {
       const query = createQueryWithClauses({
         query: createQueryWithClauses({
@@ -225,6 +236,20 @@ describe("getDefaultDisplay", () => {
           "map.type": "grid",
         },
       });
+    });
+
+    it("returns 'bar' display for queries with aggregations and 2 breakouts by category", () => {
+      const query = createQueryWithClauses({
+        query: createQueryWithClauses({
+          aggregations: [{ operatorName: "count" }],
+        }),
+        breakouts: [
+          { columnName: "CATEGORY", tableName: "PRODUCTS" },
+          { columnName: "VENDOR", tableName: "PRODUCTS" },
+        ],
+      });
+
+      expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
     });
 
     it("returns 'table' display by default", () => {

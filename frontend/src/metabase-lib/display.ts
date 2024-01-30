@@ -79,8 +79,7 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "bar" };
     }
 
-    const isCategory = false; // TODO
-    if (isCategory) {
+    if (isCategory(columnInfo)) {
       return { display: "bar" };
     }
   }
@@ -89,7 +88,6 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
     const isAnyBreakoutDate = infos.some(({ columnInfo }) => {
       return isDate(columnInfo);
     });
-
     if (isAnyBreakoutDate) {
       return { display: "line" };
     }
@@ -106,9 +104,8 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    const areBreakoutsCategories = infos.every(({ info, columnInfo }) => {
-      const isCategory = false; // TODO
-      return isCategory;
+    const areBreakoutsCategories = infos.every(({ columnInfo }) => {
+      return isCategory(columnInfo);
     });
     if (areBreakoutsCategories) {
       return { display: "bar" };
@@ -116,6 +113,10 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   return { display: "table" };
+};
+
+const isCategory = (info: Lib.ColumnDisplayInfo): boolean => {
+  return isa(info.semanticType, TYPE.Category);
 };
 
 const isCoordinate = (info: Lib.ColumnDisplayInfo): boolean => {
