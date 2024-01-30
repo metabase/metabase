@@ -185,6 +185,13 @@ export function deleteTab(tabName) {
   });
 }
 
+export function duplicateTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Duplicate").click();
+  });
+}
+
 export function goToTab(tabName) {
   cy.findByRole("tab", { name: tabName }).click();
 }

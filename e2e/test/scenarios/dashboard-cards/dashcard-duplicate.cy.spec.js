@@ -1,5 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  dashboardCards,
+  duplicateTab,
   filterWidget,
   findDashCardAction,
   getDashboardCard,
@@ -91,5 +93,35 @@ describe("scenarios > dashboard cards > duplicate", () => {
     cy.button("Add filter").click();
 
     cy.findAllByText("Incredible Bronze Pants").should("have.length", 2);
+  });
+
+  it("should allow the user to duplicate a tab", () => {
+    // 1. Confirm duplication works
+    cy.get("@dashboardId").then(dashboardId => {
+      visitDashboard(dashboardId);
+      cy.findByLabelText("Edit dashboard").click();
+    });
+
+    duplicateTab("Tab 1");
+
+    dashboardCards().within(() => {
+      cy.findByText("Products");
+    });
+    saveDashboard();
+
+    dashboardCards().within(() => {
+      cy.findByText("Products");
+    });
+
+    // 2. Confirm filter still works
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+    });
+    cy.button("Add filter").click();
+
+    dashboardCards().within(() => {
+      cy.findByText("Incredible Bronze Pants");
+    });
   });
 });
