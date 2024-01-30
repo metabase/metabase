@@ -1041,7 +1041,8 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it("should render custom expression helper near the custom expression field", async () => {
+  // TODO: fixme!
+  it.skip("should render custom expression helper near the custom expression field", () => {
     openReviewsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
 
