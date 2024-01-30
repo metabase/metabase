@@ -105,11 +105,10 @@
          (u/url? field-value))
     :type/URL
 
-    ;; TODO: Following never worked! -- params for starts-with
     ;; 2. json?
     (and (string? field-value)
-         (or (str/starts-with? "{" field-value)
-             (str/starts-with? "[" field-value)))
+         (or (str/starts-with? field-value "{")
+             (str/starts-with? field-value "[")))
     (when-let [j (u/ignore-exceptions (json/parse-string field-value))]
       (when (or (map? j)
                 (sequential? j))
