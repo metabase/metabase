@@ -14,14 +14,22 @@ export function areLegacyQueriesEqual(
   return ML.query_EQ_(query1, query2, fieldIds);
 }
 
-export function findMatchingColumn(
+declare function FindMatchingColumnFn(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
   columns: ColumnMetadata[],
-): ColumnMetadata | null {
-  return ML.find_matching_column(query, stageIndex, column, columns);
-}
+): ColumnMetadata | null;
+
+declare function FindMatchingColumnFn(
+  fieldRef: FieldReference,
+  columns: ColumnMetadata[],
+): ColumnMetadata | null;
+
+// TODO: I tried passing both fieldRef and column into a variant with 2 params
+// and got an error
+export const findMatchingColumn: typeof FindMatchingColumnFn =
+  ML.find_matching_column;
 
 export function findColumnIndexesFromLegacyRefs(
   query: Query,

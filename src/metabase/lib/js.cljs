@@ -1175,8 +1175,11 @@
    - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
 
    Returns the matching column, or nil if no match is found."
-  [a-query stage-number a-ref columns]
+  ([a-query stage-number a-ref columns]
   (lib.core/find-matching-column a-query stage-number a-ref columns))
+
+  ([a-ref columns]
+  (lib.core/find-matching-column a-ref columns)))
 
 (defn ^:export has-clauses
   "Does given query stage have any clauses?"
