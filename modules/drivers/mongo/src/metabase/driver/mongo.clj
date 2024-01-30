@@ -8,10 +8,11 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.execute :as mongo.execute]
-   [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -42,10 +43,10 @@
 
 (defmethod driver/can-connect? :mongo
   [_ db-details]
-  (mongo.jdw/with-mongo-client [^MongoClient c db-details]
-    (let [db-names (mongo.jdw/list-database-names c)]
-      (mongo.jdw/with-mongo-database [^MongoDatabase db db-details]
-        (let [db-stats (mongo.jdw/run-command db {:dbStats 1})]
+  (mongo.connection/with-mongo-client [^MongoClient c db-details]
+    (let [db-names (mongo.util/list-database-names c)]
+      (mongo.connection/with-mongo-database [^MongoDatabase db db-details]
+        (let [db-stats (mongo.util/run-command db {:dbStats 1})]
           (and
            ;; 1. check db.dbStats command completes successfully
            (= (float (:ok db-stats))
@@ -94,7 +95,7 @@
 
 (defmethod driver/sync-in-context :mongo
   [_ database do-sync-fn]
-  (mongo.jdw/with-mongo-client [_ database]
+  (mongo.connection/with-mongo-client [_ database]
     (do-sync-fn)))
 
 (defn- val->semantic-type [field-value]
@@ -104,6 +105,7 @@
          (u/url? field-value))
     :type/URL
 
+    ;; TODO: Following never worked! -- params for starts-with
     ;; 2. json?
     (and (string? field-value)
          (or (str/starts-with? "{" field-value)
@@ -176,8 +178,8 @@
 
 (defmethod driver/dbms-version :mongo
   [_driver database]
-  (mongo.jdw/with-mongo-database [db database]
-    (let [build-info (mongo.jdw/run-command db {:buildInfo 1} :keywordize false)
+  (mongo.connection/with-mongo-database [db database]
+    (let [build-info (mongo.util/run-command db {:buildInfo 1} :keywordize false)
           version-array (get build-info "versionArray")
           sanitized-version-array (into [] (take-while nat-int?) version-array)]
       (when (not= (take 3 version-array) (take 3 sanitized-version-array))
@@ -188,14 +190,15 @@
 
 (defmethod driver/describe-database :mongo
   [_ database]
-  (mongo.jdw/with-mongo-database [^MongoDatabase db database]
-    {:tables (set (for [collection (disj (into #{} (mongo.jdw/list-collection-names db)) "system.indexes")]
+  (mongo.connection/with-mongo-database [^MongoDatabase db database]
+    ;; TODO: factor next line!
+    {:tables (set (for [collection (disj (into #{} (mongo.util/list-collection-names db)) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
 (defmethod driver/describe-table-indexes :mongo
   [_ database table]
-  (mongo.jdw/with-mongo-database [^MongoDatabase db database]
-    (->> (mongo.jdw/list-indexes db (:name table))
+  (mongo.connection/with-mongo-database [^MongoDatabase db database]
+    (->> (mongo.util/list-indexes db (:name table))
          (map (fn [index]
                 ;; for text indexes, column names are specified in the weights
                 (if (contains? index "textIndexVersion")
@@ -212,8 +215,8 @@
          set)))
 
 (defn- sample-documents [^MongoDatabase db table sort-direction]
-  (let [coll (mongo.jdw/collection db (:name table))]
-    (mongo.jdw/do-find coll {:limit metadata-queries/nested-field-sample-limit
+  (let [coll (mongo.util/collection db (:name table))]
+    (mongo.util/do-find coll {:limit metadata-queries/nested-field-sample-limit
                              :skip 0
                              :sort-criteria {:_id sort-direction}
                              :batch-size 256})))
@@ -239,7 +242,7 @@
 
 (defmethod driver/describe-table :mongo
   [_ database table]
-  (mongo.jdw/with-mongo-database [^MongoDatabase db database]
+  (mongo.connection/with-mongo-database [^MongoDatabase db database]
     (let [column-info (table-sample-column-info db table)]
       {:schema nil
        :name   (:name table)
@@ -308,7 +311,7 @@
 
 (defmethod driver/execute-reducible-query :mongo
   [_ query context respond]
-  (mongo.jdw/with-mongo-client [_ (lib.metadata/database (qp.store/metadata-provider))]
+  (mongo.connection/with-mongo-client [_ (lib.metadata/database (qp.store/metadata-provider))]
     (mongo.execute/execute-reducible-query query context respond)))
 
 (defmethod driver/substitute-native-parameters :mongo

@@ -9,7 +9,8 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
+   [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.util :as mongo.util]
    [metabase.test.data.interface :as tx])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
@@ -57,7 +58,7 @@
                    {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
-  (mongo.jdw/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :server dbdef)]
+  (mongo.connection/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :server dbdef)]
     (.drop db)))
 
 (def ^:dynamic *remove-nil?*
@@ -68,18 +69,18 @@
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
   (when-not skip-drop-db?
     (destroy-db! driver dbdef))
-  (mongo.jdw/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :db dbdef)]
+  (mongo.connection/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :db dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
       (doseq [{:keys [field-name indexed?]} field-definitions]
         (when indexed?
-          (mongo.jdw/create-index (mongo.jdw/collection db table-name) {field-name 1})))
+          (mongo.util/create-index (mongo.util/collection db table-name) {field-name 1})))
       (let [field-names (for [field-definition field-definitions]
                           (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            (mongo.jdw/insert-one (mongo.jdw/collection db (name table-name))
+            (mongo.util/insert-one (mongo.util/collection db (name table-name))
                                   (into (ordered-map/ordered-map :_id (inc i))
                                         (cond->> (zipmap field-names row)
                                           *remove-nil?* (m/remove-vals nil?))))

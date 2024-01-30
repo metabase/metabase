@@ -9,7 +9,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
    [metabase.driver.mongo.operators :refer [$add $addToSet $and $avg $concat $cond
                                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
                                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min

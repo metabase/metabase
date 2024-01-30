@@ -3,8 +3,11 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
+   [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.conversion :as mongo.conversion]
+   [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.driver.mongo.util :as mongo.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -113,7 +116,7 @@
                                  (.get object part-name)))
                              row
                              col-parts)]
-              (mongo.jdw/from-document val true)))
+              (mongo.conversion/from-document val true)))
           row-col-names)))
 
 (defn- post-process-row [row-col-names]
@@ -145,7 +148,7 @@
    ^ClientSession session
    stages timeout-ms]
   (let [coll      (.getCollection db coll)
-        pipe      (java.util.ArrayList. ^java.util.Collection (mongo.jdw/to-document stages))
+        pipe      (java.util.ArrayList. ^java.util.Collection (mongo.conversion/to-document stages))
         aggregate (.aggregate coll session pipe)]
     (init-aggregate! aggregate timeout-ms)))
 
@@ -186,7 +189,7 @@
   [^MongoDatabase db
    ^ClientSession session]
   (let [session-id (.. session getServerSession getIdentifier)
-        kill-cmd (mongo.jdw/to-document {:killSessions [session-id]})]
+        kill-cmd (mongo.conversion/to-document {:killSessions [session-id]})]
     (.runCommand db kill-cmd)))
 
 (defn execute-reducible-query
@@ -195,9 +198,9 @@
   {:pre [(string? collection-name) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
-        client-database (mongo.jdw/database mongo.jdw/*mongo-client*
-                                            (mongo.jdw/db-name (lib.metadata/database (qp.store/metadata-provider))))]
-    (with-open [session ^ClientSession (start-session! mongo.jdw/*mongo-client*)]
+        client-database (mongo.util/database mongo.connection/*mongo-client*
+                                            (mongo.db/db-name (lib.metadata/database (qp.store/metadata-provider))))]
+    (with-open [session ^ClientSession (start-session! mongo.connection/*mongo-client*)]
       (a/go
         (when (a/<! (qp.context/canceled-chan context))
           (kill-session! client-database session)))

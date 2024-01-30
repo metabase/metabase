@@ -3,8 +3,8 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.async.streaming-response :as streaming-response]
+   [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.execute :as mongo.execute]
-   [metabase.driver.mongo.java-driver-wrapper :as mongo.jdw]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.test :as mt])
@@ -21,7 +21,7 @@
       (next [_] (let [i @counter]
                   (vswap! counter inc)
                   (if (< i (count rows))
-                    (mongo.jdw/to-document (get rows i))
+                    (mongo.conversion/to-document (get rows i))
                     (throw (NoSuchElementException. (str "no element at " i))))))
       (close [_]))))
 
