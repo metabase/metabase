@@ -804,36 +804,35 @@
    :native   (mt/compile query)})
 
 (deftest updating-card-updates-metadata
-  (mt/with-full-data-perms-for-all-users!
-    (let [query          (updating-card-updates-metadata-query)
-          modified-query (mt/mbql-query venues {:fields [$id $name $price]})]
-      (testing "Updating query updates metadata"
-        (doseq [[query-type query modified-query] [["mbql" query modified-query]
-                                                   ["native" (to-native query) (to-native modified-query)]]]
-          (testing (str "For: " query-type)
-            (mt/with-model-cleanup [:model/Card]
-              (let [{metadata :result_metadata
-                     card-id  :id :as card} (mt/user-http-request
-                                              :rasta :post 200
-                                              "card"
-                                              (card-with-name-and-query "card-name"
-                                                                        query))
-                    ;; simulate a user changing the query without rerunning the query
-                    updated   (mt/user-http-request
-                                :rasta :put 200 (str "card/" card-id)
-                                (assoc card :dataset_query modified-query))
-                    retrieved (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
-                (is (= ["ID" "NAME"] (map norm metadata)))
-                (is (= ["ID" "NAME" "PRICE"]
-                       (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
-                (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
-                  (is (=
-                        (-> updated
-                            (update :last-edit-info dissoc :timestamp)
-                            (dissoc :collection))
-                        (-> retrieved
-                            (update :last-edit-info dissoc :timestamp)
-                            (dissoc :collection)))))))))))))
+  (let [query          (updating-card-updates-metadata-query)
+        modified-query (mt/mbql-query venues {:fields [$id $name $price]})]
+    (testing "Updating query updates metadata"
+      (doseq [[query-type query modified-query] [["mbql" query modified-query]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
+        (testing (str "For: " query-type)
+          (mt/with-model-cleanup [:model/Card]
+            (let [{metadata :result_metadata
+                   card-id  :id :as card} (mt/user-http-request
+                                            :crowberto :post 200
+                                            "card"
+                                            (card-with-name-and-query "card-name"
+                                                                      query))
+                  ;; simulate a user changing the query without rerunning the query
+                  updated   (mt/user-http-request
+                              :crowberto :put 200 (str "card/" card-id)
+                              (assoc card :dataset_query modified-query))
+                  retrieved (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
+              (is (= ["ID" "NAME"] (map norm metadata)))
+              (is (= ["ID" "NAME" "PRICE"]
+                     (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
+              (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
+                (is (=
+                      (-> updated
+                          (update :last-edit-info dissoc :timestamp)
+                          (dissoc :collection))
+                      (-> retrieved
+                          (update :last-edit-info dissoc :timestamp)
+                          (dissoc :collection))))))))))))
 
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
@@ -890,52 +889,50 @@
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-full-data-perms-for-all-users!
-        (let [card-name (mt/random-name)]
-          (t2.with-temp/with-temp [Collection collection]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-            (mt/with-model-cleanup [:model/Card]
-              ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
-              (let [orig       sql-jdbc.execute/execute-statement!
-                    sql-result (atom nil)]
-                (with-redefs [sql-jdbc.execute/execute-statement!
-                              (fn [driver stmt sql]
-                                (reset! sql-result sql)
-                                (orig driver stmt sql))]
-                  (mt/user-http-request
-                   :rasta :post 200 "card"
-                   (assoc (card-with-name-and-query card-name)
-                          :dataset_query      (mt/native-query {:query "SELECT count(*) AS \"count\" FROM VENUES"})
-                          :collection_id      (u/the-id collection))))
-                (testing "check the correct metadata was fetched and was saved in the DB"
-                  (is (= [{:base_type     (count-base-type)
-                           :effective_type (count-base-type)
-                           :display_name  "count"
-                           :name          "count"
-                           :semantic_type :type/Quantity
-                           :fingerprint   {:global {:distinct-count 1
-                                                    :nil%           0.0},
-                                           :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
-                           :field_ref     [:field "count" {:base-type (count-base-type)}]}]
-                         (t2/select-one-fn :result_metadata :model/Card :name card-name))))
-                (testing "Was the user id found in the generated SQL?"
-                  (is (= true
-                         (boolean
-                          (when-let [s @sql-result]
-                            (re-find (re-pattern (str "userID: " (mt/user->id :rasta)))
-                                     s))))))))))))))
+      (let [card-name (mt/random-name)]
+        (t2.with-temp/with-temp [Collection collection]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (mt/with-model-cleanup [:model/Card]
+            ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
+            (let [orig       sql-jdbc.execute/execute-statement!
+                  sql-result (atom nil)]
+              (with-redefs [sql-jdbc.execute/execute-statement!
+                            (fn [driver stmt sql]
+                              (reset! sql-result sql)
+                              (orig driver stmt sql))]
+                (mt/user-http-request
+                 :crowberto :post 200 "card"
+                 (assoc (card-with-name-and-query card-name)
+                        :dataset_query      (mt/native-query {:query "SELECT count(*) AS \"count\" FROM VENUES"})
+                        :collection_id      (u/the-id collection))))
+              (testing "check the correct metadata was fetched and was saved in the DB"
+                (is (= [{:base_type     (count-base-type)
+                         :effective_type (count-base-type)
+                         :display_name  "count"
+                         :name          "count"
+                         :semantic_type :type/Quantity
+                         :fingerprint   {:global {:distinct-count 1
+                                                  :nil%           0.0},
+                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
+                         :field_ref     [:field "count" {:base-type (count-base-type)}]}]
+                       (t2/select-one-fn :result_metadata :model/Card :name card-name))))
+              (testing "Was the user id found in the generated SQL?"
+                (is (= true
+                       (boolean
+                        (when-let [s @sql-result]
+                          (re-find (re-pattern (str "userID: " (mt/user->id :crowberto)))
+                                   s)))))))))))))
 
 (deftest create-card-with-collection-position
   (testing "Make sure we can create a Card with a Collection position"
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [card-name (mt/random-name)]
         (t2.with-temp/with-temp [Collection collection]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:collection_id       (u/the-id collection)
                      :collection_position 1
                      :name                card-name}
-                    (mt/user-http-request :rasta :post 200 "card"
+                    (mt/user-http-request :crowberto :post 200 "card"
                                           (assoc (card-with-name-and-query card-name)
                                                  :collection_id (u/the-id collection), :collection_position 1))))
             (is (=? {:collection_id       (u/the-id collection)
@@ -2718,61 +2715,60 @@
 
 (deftest dataset-card-3
   (testing "Cards preserve edits to metadata when query changes"
-    (mt/with-full-data-perms-for-all-users!
-      (let [query          (mt/mbql-query venues {:fields [$id $name]})
-            modified-query (mt/mbql-query venues {:fields [$id $name $price]})
-            norm           (comp u/upper-case-en :name)
-            to-native      (fn [q]
-                             {:database (:database q)
-                              :type     :native
-                              :native   (mt/compile q)})
-            update-card!  (fn [card]
-                            (mt/user-http-request :rasta :put 200
-                                                  (str "card/" (u/the-id card)) card))]
-        (doseq [[query-type query modified-query] [["mbql"   query modified-query]
-                                                   ["native" (to-native query) (to-native modified-query)]]]
-          (testing (str "For: " query-type)
-            (mt/with-model-cleanup [:model/Card]
-              (let [{metadata :result_metadata
-                     card-id  :id :as card} (mt/user-http-request
-                                             :rasta :post 200
-                                             "card"
-                                             (assoc (card-with-name-and-query "card-name"
-                                                                              query)
-                                                    :dataset true))]
-                (is (= ["ID" "NAME"] (map norm metadata)))
+    (let [query          (mt/mbql-query venues {:fields [$id $name]})
+          modified-query (mt/mbql-query venues {:fields [$id $name $price]})
+          norm           (comp u/upper-case-en :name)
+          to-native      (fn [q]
+                           {:database (:database q)
+                            :type     :native
+                            :native   (mt/compile q)})
+          update-card!  (fn [card]
+                          (mt/user-http-request :crowberto :put 200
+                                                (str "card/" (u/the-id card)) card))]
+      (doseq [[query-type query modified-query] [["mbql"   query modified-query]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
+        (testing (str "For: " query-type)
+          (mt/with-model-cleanup [:model/Card]
+            (let [{metadata :result_metadata
+                   card-id  :id :as card} (mt/user-http-request
+                                           :crowberto :post 200
+                                           "card"
+                                           (assoc (card-with-name-and-query "card-name"
+                                                                            query)
+                                                  :dataset true))]
+              (is (= ["ID" "NAME"] (map norm metadata)))
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
+                     (->> (update-card!
+                           (assoc card
+                                  :result_metadata (map #(assoc % :display_name "EDITED DISPLAY") metadata)))
+                          :result_metadata (map :display_name))))
+              ;; simulate a user changing the query without rerunning the query
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
+                     (->> (update-card! (assoc card
+                                               :dataset_query modified-query
+                                               :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
+                                                                     metadata)))
+                          :result_metadata
+                          (map (comp u/upper-case-en :display_name)))))
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
+                     (map (comp u/upper-case-en :display_name)
+                          (t2/select-one-fn :result_metadata :model/Card :id card-id))))
+              (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                       (->> (update-card!
-                             (assoc card
-                                    :result_metadata (map #(assoc % :display_name "EDITED DISPLAY") metadata)))
-                            :result_metadata (map :display_name))))
-                ;; simulate a user changing the query without rerunning the query
-                (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
-                       (->> (update-card! (assoc card
-                                                 :dataset_query modified-query
-                                                 :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
-                                                                       metadata)))
+                       (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))
+              (testing "Descriptions can be cleared (#20517)"
+                (is (= ["foo" "foo"]
+                       (->> (update-card! (update card
+                                                  :result_metadata (fn [m]
+                                                                     (map #(assoc % :description "foo") m))))
                             :result_metadata
-                            (map (comp u/upper-case-en :display_name)))))
-                (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
-                       (map (comp u/upper-case-en :display_name)
-                            (t2/select-one-fn :result_metadata :model/Card :id card-id))))
-                (testing "Even if you only send the new query and not existing metadata"
-                  (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                         (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))
-                (testing "Descriptions can be cleared (#20517)"
-                  (is (= ["foo" "foo"]
-                         (->> (update-card! (update card
-                                                    :result_metadata (fn [m]
-                                                                       (map #(assoc % :description "foo") m))))
-                              :result_metadata
-                              (map :description))))
-                  (is (= ["" ""]
-                         (->> (update-card! (update card
-                                                    :result_metadata (fn [m]
-                                                                       (map #(assoc % :description "") m))))
-                              :result_metadata
-                              (map :description)))))))))))))
+                            (map :description))))
+                (is (= ["" ""]
+                       (->> (update-card! (update card
+                                                  :result_metadata (fn [m]
+                                                                     (map #(assoc % :description "") m))))
+                            :result_metadata
+                            (map :description))))))))))))
 
 (deftest dataset-card-4
   (testing "Cards preserve edits to `visibility_type` (#22520)"
@@ -3046,77 +3042,75 @@
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
 
 (deftest paramters-using-old-style-field-values
-  (mt/with-full-data-perms-for-all-users!
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+      (testing "without search query"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (param-values-url field-filter-card (:field-values param-keys)))]
+          (is (false? (:has_more_values response)))
+          (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                           (-> response :values set)))))
+      (testing "with search query"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (param-values-url field-filter-card
+                                                               (:field-values param-keys)
+                                                               "bar"))]
+          (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                           (-> response :values set)))
+          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
+  (testing "Old style, inferred parameters from native template-tags"
     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
+      (t2/update! :model/Card (:id field-filter-card) {:parameters []})
       (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
         (testing "without search query"
-          (let [response (mt/user-http-request :rasta :get 200
+          (let [response (mt/user-http-request :crowberto :get 200
                                                (param-values-url field-filter-card (:field-values param-keys)))]
             (is (false? (:has_more_values response)))
             (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
                              (-> response :values set)))))
         (testing "with search query"
-          (let [response (mt/user-http-request :rasta :get 200
+          (let [response (mt/user-http-request :crowberto :get 200
                                                (param-values-url field-filter-card
                                                                  (:field-values param-keys)
                                                                  "bar"))]
             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                              (-> response :values set)))
-            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
-    (testing "Old style, inferred parameters from native template-tags"
-      (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-        ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
-        (t2/update! :model/Card (:id field-filter-card) {:parameters []})
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
-          (testing "without search query"
-            (let [response (mt/user-http-request :rasta :get 200
-                                                 (param-values-url field-filter-card (:field-values param-keys)))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                               (-> response :values set)))))
-          (testing "with search query"
-            (let [response (mt/user-http-request :rasta :get 200
-                                                 (param-values-url field-filter-card
-                                                                   (:field-values param-keys)
-                                                                   "bar"))]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))))))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
 (deftest parameters-with-field-to-field-remapping-test
-  (mt/with-full-data-perms-for-all-users!
-    (let [param-key "id_param_id"]
-      (t2.with-temp/with-temp
-        [:model/Card card {:dataset_query
-                           {:database (mt/id)
-                            :type     :native
-                            :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{ID}}"
-                                       :template-tags {"ID" {:id           param-key
-                                                             :name         "ID"
-                                                             :display_name "ID"
-                                                             :type         :dimension
-                                                             :dimension    [:field (mt/id :venues :id) nil]
-                                                             :required     true}}}}
-                           :name       "native card with ID field filter"
-                           :parameters [{:id     param-key,
-                                         :type   :id,
-                                         :target [:dimension [:template-tag "ID"]],
-                                         :name   "ID",
-                                         :slug   "ID"}]}]
-        (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
-          (is (= :type/Name
-                 (t2/select-one-fn :semantic_type :model/Field (mt/id :venues :name)))
-              "venues.name has semantic_type=type/Name, so it will be searched")
-          (testing "without search query"
-            (mt/let-url [url (param-values-url card param-key)]
-              (is (partial= {:has_more_values false
-                             :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
-                            (mt/user-http-request :rasta :get 200 url)))))
-          (testing "with search query"
-            (mt/let-url [url (param-values-url card param-key "pan")]
-              (is (partial= {:has_more_values true
-                             :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
-                            (mt/user-http-request :rasta :get 200 url))))))))))
+  (let [param-key "id_param_id"]
+    (t2.with-temp/with-temp
+      [:model/Card card {:dataset_query
+                         {:database (mt/id)
+                          :type     :native
+                          :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{ID}}"
+                                     :template-tags {"ID" {:id           param-key
+                                                           :name         "ID"
+                                                           :display_name "ID"
+                                                           :type         :dimension
+                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                           :required     true}}}}
+                         :name       "native card with ID field filter"
+                         :parameters [{:id     param-key,
+                                       :type   :id,
+                                       :target [:dimension [:template-tag "ID"]],
+                                       :name   "ID",
+                                       :slug   "ID"}]}]
+      (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
+        (is (= :type/Name
+               (t2/select-one-fn :semantic_type :model/Field (mt/id :venues :name)))
+            "venues.name has semantic_type=type/Name, so it will be searched")
+        (testing "without search query"
+          (mt/let-url [url (param-values-url card param-key)]
+            (is (partial= {:has_more_values false
+                           :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
+                          (mt/user-http-request :crowberto :get 200 url)))))
+        (testing "with search query"
+          (mt/let-url [url (param-values-url card param-key "pan")]
+            (is (partial= {:has_more_values true
+                           :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
+                          (mt/user-http-request :crowberto :get 200 url)))))))))
 
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]

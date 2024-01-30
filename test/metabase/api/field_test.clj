@@ -82,11 +82,10 @@
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"
-    (mt/with-full-data-perms-for-all-users!
-      ;; TODO -- why doesn't this come back as a dictionary ?
-      (is (= [["count" 75]
-              ["distincts" 75]]
-             (mt/user-http-request :rasta :get 200 (format "field/%d/summary" (mt/id :categories :name))))))))
+    ;; TODO -- why doesn't this come back as a dictionary ?
+    (is (= [["count" 75]
+            ["distincts" 75]]
+           (mt/user-http-request :crowberto :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
 
 (defn simple-field-details [field]
   (select-keys field [:name
@@ -247,33 +246,32 @@
 
 (deftest field-values-test
   (testing "GET /api/field/:id/values"
-    (mt/with-full-data-perms-for-all-users!
-      (testing "Should return something useful for a field whose `has_field_values` is `list`"
-        (mt/with-temp-copy-of-db
-          ;; clear out existing human_readable_values in case they're set
-          (when-let [id (field-values-id :venues :price)]
-            (t2/update! FieldValues id {:human_readable_values nil}))
-          (t2/update! Field (mt/id :venues :price) {:has_field_values "list"})
-          ;; now update the values via the API
-          (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
+    (testing "Should return something useful for a field whose `has_field_values` is `list`"
+      (mt/with-temp-copy-of-db
+        ;; clear out existing human_readable_values in case they're set
+        (when-let [id (field-values-id :venues :price)]
+          (t2/update! FieldValues id {:human_readable_values nil}))
+        (t2/update! Field (mt/id :venues :price) {:has_field_values "list"})
+        ;; now update the values via the API
+        (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
+               (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
 
-      (testing "Should return nothing for a field whose `has_field_values` is not `list`"
-          (is (= {:values [], :field_id (mt/id :venues :id), :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :id))))))
+    (testing "Should return nothing for a field whose `has_field_values` is not `list`"
+        (is (= {:values [], :field_id (mt/id :venues :id), :has_more_values false}
+               (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :id))))))
 
-      (testing "Sensitive fields do not have field values and should return empty"
-        (is (= {:values [], :field_id (mt/id :users :password), :has_more_values false}
-               (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))
+    (testing "Sensitive fields do not have field values and should return empty"
+      (is (= {:values [], :field_id (mt/id :users :password), :has_more_values false}
+             (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :users :password))))))
 
-      (testing "External remapping"
-        (mt/with-column-remappings [venues.category_id categories.name]
-          (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:has_field_values "list"}
-            (is (partial= {:field_id (mt/id :venues :category_id)
-                           :values   [[1 "African"]
-                                      [2 "American"]
-                                      [3 "Artisan"]]}
-                   (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :category_id)))))))))))
+    (testing "External remapping"
+      (mt/with-column-remappings [venues.category_id categories.name]
+        (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:has_field_values "list"}
+          (is (partial= {:field_id (mt/id :venues :category_id)
+                         :values   [[1 "African"]
+                                    [2 "American"]
+                                    [3 "Artisan"]]}
+                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :category_id))))))))))
 
 (def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 

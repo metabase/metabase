@@ -1217,69 +1217,68 @@
 (deftest binding-functions-with-all-same-names-and-types-test
   (testing "Ensure expected behavior when multiple columns alias to the same base column and display metadata uses the
             same name for all columns."
-    (mt/with-full-data-perms-for-all-users!
-      (mt/dataset test-data
-        (let [source-query {:native   {:query "SELECT LATITUDE AS L1, LATITUDE AS L2, LATITUDE AS L3 FROM PEOPLE;"}
-                            :type     :native
-                            :database (mt/id)}]
-          (mt/with-temp [Card card {:table_id        nil
-                                    :dataset_query   source-query
-                                    :result_metadata (->> (result-metadata-for-query source-query)
-                                                          (mt/with-test-user :rasta)
-                                                          (mapv (fn [m]
-                                                                  (assoc m
-                                                                         :display_name "Frooby"
-                                                                         :semantic_type :type/Latitude))))}]
-            (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
-                  base-context        (#'magic/make-base-context root)
-                  dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
-                                       {"GenericNumber" {:field_type [:type/Number], :score 70}}
-                                       {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
-                                       {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
-                                       {"Lat" {:field_type [:type/Latitude], :score 90}}
-                                       {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
-                                       {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
-                              ;; These will be matched in our tests since this is a generic table entity.
-                  bindable-dimensions (remove
-                                       #(-> % vals first :field_type first #{:entity/UserTable})
-                                       dimensions)
-                  candidate-bindings  (#'interesting/candidate-bindings base-context dimensions)
-                  bound-dimensions    (#'interesting/find-dimensions base-context dimensions)]
-              (testing "For a plain native query (even on a specialized table), the entity_type is :entity/GenericTable"
-                (is (= :entity/GenericTable entity_type)))
-              (testing "candidate bindings are a map of field identifier (id or name) to dimension matches."
-                (is (= #{"L1" "L2" "L3"} (set (keys candidate-bindings)))))
-              (testing "Everything except for the specialized :entity/GenericTable definitions are candidates.
+    (mt/dataset test-data
+      (let [source-query {:native   {:query "SELECT LATITUDE AS L1, LATITUDE AS L2, LATITUDE AS L3 FROM PEOPLE;"}
+                          :type     :native
+                          :database (mt/id)}]
+        (mt/with-temp [Card card {:table_id        nil
+                                  :dataset_query   source-query
+                                  :result_metadata (->> (result-metadata-for-query source-query)
+                                                        (mt/with-test-user :crowberto)
+                                                        (mapv (fn [m]
+                                                                (assoc m
+                                                                       :display_name "Frooby"
+                                                                       :semantic_type :type/Latitude))))}]
+          (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
+                base-context        (#'magic/make-base-context root)
+                dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
+                                     {"GenericNumber" {:field_type [:type/Number], :score 70}}
+                                     {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+                                     {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                                     {"Lat" {:field_type [:type/Latitude], :score 90}}
+                                     {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
+                                     {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
+                            ;; These will be matched in our tests since this is a generic table entity.
+                bindable-dimensions (remove
+                                     #(-> % vals first :field_type first #{:entity/UserTable})
+                                     dimensions)
+                candidate-bindings  (#'interesting/candidate-bindings base-context dimensions)
+                bound-dimensions    (#'interesting/find-dimensions base-context dimensions)]
+            (testing "For a plain native query (even on a specialized table), the entity_type is :entity/GenericTable"
+              (is (= :entity/GenericTable entity_type)))
+            (testing "candidate bindings are a map of field identifier (id or name) to dimension matches."
+              (is (= #{"L1" "L2" "L3"} (set (keys candidate-bindings)))))
+            (testing "Everything except for the specialized :entity/GenericTable definitions are candidates.
                                   Note that this is a map of field id -> vector of passing candidate bindings with
                                   the keyed field added to the dimension as a `:matches` vector with just that field.
 
                                   Also note that the actual field names and display name are not used in candidate
                                    selection. Ultimately, the filtering was based on entity_type and semantic_type."
-                (is (=?
-                     (let [add-matches (fn [col-name]
-                                         (map
-                                          (fn [bd]
-                                            (update-vals
-                                             bd
-                                             (fn [v]
-                                               (assoc v
-                                                      :matches [{:name col-name :display_name "Frooby"}]))))
-                                          bindable-dimensions))]
-                       {"L1" (add-matches "L1")
-                        "L2" (add-matches "L2")
-                        "L3" (add-matches "L3")})
-                     candidate-bindings)))
-              (testing "Despite binding to 5 potential dimension bindings, all 3 query fields end up binding
+              (is (=?
+                   (let [add-matches (fn [col-name]
+                                       (map
+                                        (fn [bd]
+                                          (update-vals
+                                           bd
+                                           (fn [v]
+                                             (assoc v
+                                                    :matches [{:name col-name :display_name "Frooby"}]))))
+                                        bindable-dimensions))]
+                     {"L1" (add-matches "L1")
+                      "L2" (add-matches "L2")
+                      "L3" (add-matches "L3")})
+                   candidate-bindings)))
+            (testing "Despite binding to 5 potential dimension bindings, all 3 query fields end up binding
                                   to latitude."
-                (is (= ["Lat"] (keys bound-dimensions))))
-              (testing "Finally, after the candidates are scored and sorted, all 3 latitude fields end up
+              (is (= ["Lat"] (keys bound-dimensions))))
+            (testing "Finally, after the candidates are scored and sorted, all 3 latitude fields end up
                                   being bound to the Lat dimension."
-                (is (=? {"Lat" {:field_type [:entity/GenericTable :type/Latitude]
-                                :score      100
-                                :matches    [{:name "L1" :display_name "Frooby"}
-                                             {:name "L2" :display_name "Frooby"}
-                                             {:name "L3" :display_name "Frooby"}]}}
-                        bound-dimensions))))))))))
+              (is (=? {"Lat" {:field_type [:entity/GenericTable :type/Latitude]
+                              :score      100
+                              :matches    [{:name "L1" :display_name "Frooby"}
+                                           {:name "L2" :display_name "Frooby"}
+                                           {:name "L3" :display_name "Frooby"}]}}
+                      bound-dimensions)))))))))
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
@@ -1544,123 +1543,121 @@
 
 (deftest compare-to-the-rest-25278+32557-test
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
-    (mt/with-full-data-perms-for-all-users!
-      (mt/dataset test-data
-        (mt/with-test-user :rasta
-          (let [left                 (query/adhoc-query
-                                       {:database (mt/id)
-                                        :type     :query
-                                        :query
-                                        {:source-table (mt/id :orders)
-                                         :joins
-                                         [{:strategy     :left-join
-                                           :alias        "Products"
-                                           :condition
-                                           [:=
-                                            [:field (mt/id :orders :product_id) {:base-type :type/Integer}]
-                                            [:field (mt/id :products :id) {:base-type :type/BigInteger :join-alias "Products"}]]
-                                           :source-table (mt/id :products)}]
-                                         :aggregation  [[:avg [:field (mt/id :orders :tax) {:base-type :type/Float}]]]
-                                         :breakout     [[:field (mt/id :products :title)
-                                                         {:base-type :type/Text :join-alias "Products"}]]}})
-                right                (t2/select-one :model/Table (mt/id :orders))
-                cell-query           [:= [:field (mt/id :products :title)
-                                          {:base-type :type/Text :join-alias "Products"}]
-                                      "Intelligent Granite Hat"]
-                dashboard            (magic/automagic-analysis left {:show         nil
-                                                                     :query-filter nil
-                                                                     :comparison?  true})
-                comparison-dashboard (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
-                sample-card-title "Average of Tax per state"
-                [{base-query :dataset_query :as card-without-cell-query}
-                 {filtered-query :dataset_query :as card-with-cell-query}] (->> comparison-dashboard
-                                                                                :dashcards
-                                                                                (filter (comp #{sample-card-title} :name :card))
-                                                                                (map :card))]
+    (mt/dataset test-data
+      (mt/with-test-user :crowberto
+        (let [left                 (query/adhoc-query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query
+                                      {:source-table (mt/id :orders)
+                                       :joins
+                                       [{:strategy     :left-join
+                                         :alias        "Products"
+                                         :condition
+                                         [:=
+                                          [:field (mt/id :orders :product_id) {:base-type :type/Integer}]
+                                          [:field (mt/id :products :id) {:base-type :type/BigInteger :join-alias "Products"}]]
+                                         :source-table (mt/id :products)}]
+                                       :aggregation  [[:avg [:field (mt/id :orders :tax) {:base-type :type/Float}]]]
+                                       :breakout     [[:field (mt/id :products :title)
+                                                       {:base-type :type/Text :join-alias "Products"}]]}})
+              right                (t2/select-one :model/Table (mt/id :orders))
+              cell-query           [:= [:field (mt/id :products :title)
+                                        {:base-type :type/Text :join-alias "Products"}]
+                                    "Intelligent Granite Hat"]
+              dashboard            (magic/automagic-analysis left {:show         nil
+                                                                   :query-filter nil
+                                                                   :comparison?  true})
+              comparison-dashboard (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
+              sample-card-title "Average of Tax per state"
+              [{base-query :dataset_query :as card-without-cell-query}
+               {filtered-query :dataset_query :as card-with-cell-query}] (->> comparison-dashboard
+                                                                              :dashcards
+                                                                              (filter (comp #{sample-card-title} :name :card))
+                                                                              (map :card))]
+          (testing "Comparison cards exist"
+            (is (some? card-with-cell-query))
+            (is (some? card-without-cell-query)))
+          (testing "The cell-query exists in only one of the cards"
+            (is (not= cell-query (get-in base-query [:query :filter])))
+            (is (= cell-query (get-in filtered-query [:query :filter]))))
+          (testing "Join aliases exist in the queries"
+            ;; The reason issues 25278 & 32557 would blow up is the lack of join aliases.
+            (is (= ["Products"] (map :alias (get-in base-query [:query :joins]))))
+            (is (= ["Products"] (map :alias (get-in filtered-query [:query :joins])))))
+          (testing "Card queries are both executable and produce different results"
+            ;; Note that issues 25278 & 32557 would blow up on the filtered queries.
+            (let [base-data           (get-in (qp/process-query base-query) [:data :rows])
+                  filtered-data       (get-in (qp/process-query filtered-query) [:data :rows])]
+              (is (some? base-data))
+              (is (some? filtered-data))
+              (is (not= base-data filtered-data)))))))))
+
+(deftest compare-to-the-rest-with-expression-16680-test
+  (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
+    (mt/dataset test-data
+      (mt/with-test-user :crowberto
+        (let [left                 (query/adhoc-query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query
+                                      {:source-table (mt/id :orders)
+                                       :expressions  {"TestColumn" [:+ 1 1]}
+                                       :aggregation  [[:count]]
+                                       :breakout     [[:expression "TestColumn"]
+                                                      [:field (mt/id :orders :created_at)
+                                                       {:temporal-unit :month}]]}})
+              right                (t2/select-one :model/Table (mt/id :orders))
+              cell-query           [:and
+                                    [:= [:expression "TestColumn"] 2]
+                                    [:= [:field (mt/id :orders :created_at)
+                                         {:temporal-unit :month}]
+                                     "2019-02-01T00:00:00Z"]]
+              dashboard            (magic/automagic-analysis left {:show         nil
+                                                                   :query-filter nil
+                                                                   :comparison?  true})
+              {:keys [dashcards]} (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
+              ;; Select a few cards to compare -- there are many more but we're just going to sample
+              distinct-values-card-label "Distinct values"
+              [{base-query :dataset_query :as card-without-cell-query}
+               {filtered-query :dataset_query :as card-with-cell-query}] (->> dashcards
+                                                                              (filter (comp #{distinct-values-card-label} :name :card))
+                                                                              (map :card))
+
+              series-card-label    "Number of Orders per day of the week (Number of Orders where TestColumn is 2 and Created At is in February 2019)"
+              {[{series-dataset-query :dataset_query}] :series
+               {card-dataset-query :dataset_query} :card
+               :as                                     series-card} (some
+                                                                      (fn [{{card-name :name} :card :as dashcard}]
+                                                                        (when (= series-card-label card-name)
+                                                                          dashcard))
+                                                                      dashcards)]
+          (testing "Comparisons that exist on two cards"
             (testing "Comparison cards exist"
               (is (some? card-with-cell-query))
               (is (some? card-without-cell-query)))
             (testing "The cell-query exists in only one of the cards"
               (is (not= cell-query (get-in base-query [:query :filter])))
               (is (= cell-query (get-in filtered-query [:query :filter]))))
-            (testing "Join aliases exist in the queries"
-              ;; The reason issues 25278 & 32557 would blow up is the lack of join aliases.
-              (is (= ["Products"] (map :alias (get-in base-query [:query :joins]))))
-              (is (= ["Products"] (map :alias (get-in filtered-query [:query :joins])))))
+            (testing "Expressions exist in the queries"
+              (is (= {"TestColumn" [:+ 1 1]} (get-in base-query [:query :expressions])))
+              (is (= {"TestColumn" [:+ 1 1]} (get-in filtered-query [:query :expressions]))))
             (testing "Card queries are both executable and produce different results"
-              ;; Note that issues 25278 & 32557 would blow up on the filtered queries.
-              (let [base-data           (get-in (qp/process-query base-query) [:data :rows])
-                    filtered-data       (get-in (qp/process-query filtered-query) [:data :rows])]
+              (let [base-data     (get-in (qp/process-query base-query) [:data :rows])
+                    filtered-data (get-in (qp/process-query filtered-query) [:data :rows])]
                 (is (some? base-data))
                 (is (some? filtered-data))
-                (is (not= base-data filtered-data))))))))))
-
-(deftest compare-to-the-rest-with-expression-16680-test
-  (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
-    (mt/with-full-data-perms-for-all-users!
-      (mt/dataset test-data
-        (mt/with-test-user :rasta
-          (let [left                 (query/adhoc-query
-                                       {:database (mt/id)
-                                        :type     :query
-                                        :query
-                                        {:source-table (mt/id :orders)
-                                         :expressions  {"TestColumn" [:+ 1 1]}
-                                         :aggregation  [[:count]]
-                                         :breakout     [[:expression "TestColumn"]
-                                                        [:field (mt/id :orders :created_at)
-                                                         {:temporal-unit :month}]]}})
-                right                (t2/select-one :model/Table (mt/id :orders))
-                cell-query           [:and
-                                      [:= [:expression "TestColumn"] 2]
-                                      [:= [:field (mt/id :orders :created_at)
-                                           {:temporal-unit :month}]
-                                       "2019-02-01T00:00:00Z"]]
-                dashboard            (magic/automagic-analysis left {:show         nil
-                                                                     :query-filter nil
-                                                                     :comparison?  true})
-                {:keys [dashcards]} (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
-                ;; Select a few cards to compare -- there are many more but we're just going to sample
-                distinct-values-card-label "Distinct values"
-                [{base-query :dataset_query :as card-without-cell-query}
-                 {filtered-query :dataset_query :as card-with-cell-query}] (->> dashcards
-                                                                                (filter (comp #{distinct-values-card-label} :name :card))
-                                                                                (map :card))
-
-                series-card-label    "Number of Orders per day of the week (Number of Orders where TestColumn is 2 and Created At is in February 2019)"
-                {[{series-dataset-query :dataset_query}] :series
-                 {card-dataset-query :dataset_query} :card
-                 :as                                     series-card} (some
-                                                                        (fn [{{card-name :name} :card :as dashcard}]
-                                                                          (when (= series-card-label card-name)
-                                                                            dashcard))
-                                                                        dashcards)]
-            (testing "Comparisons that exist on two cards"
-              (testing "Comparison cards exist"
-                (is (some? card-with-cell-query))
-                (is (some? card-without-cell-query)))
-              (testing "The cell-query exists in only one of the cards"
-                (is (not= cell-query (get-in base-query [:query :filter])))
-                (is (= cell-query (get-in filtered-query [:query :filter]))))
-              (testing "Expressions exist in the queries"
-                (is (= {"TestColumn" [:+ 1 1]} (get-in base-query [:query :expressions])))
-                (is (= {"TestColumn" [:+ 1 1]} (get-in filtered-query [:query :expressions]))))
-              (testing "Card queries are both executable and produce different results"
-                (let [base-data     (get-in (qp/process-query base-query) [:data :rows])
-                      filtered-data (get-in (qp/process-query filtered-query) [:data :rows])]
-                  (is (some? base-data))
-                  (is (some? filtered-data))
-                  (is (not= base-data filtered-data)))))
-            (testing "Comparisons that exist on the same card"
-              (testing "Both series (original and comparison) are present on the same chart"
-                (is (= ["Number of Orders per day of the week (Number of Orders where TestColumn is 2 and Created At is in February 2019)"
-                        "Number of Orders per day of the week (All Orders)"]
-                       (get-in series-card [:visualization_settings :graph.series_labels]))))
-              (testing "Both the series and card datasets are present and queryable"
-                (is (some? series-dataset-query))
-                (is (= 7 (:row_count (qp/process-query series-dataset-query))))
-                (is (some? card-dataset-query))
-                (is (= 7 (:row_count (qp/process-query card-dataset-query))))))))))))
+                (is (not= base-data filtered-data)))))
+          (testing "Comparisons that exist on the same card"
+            (testing "Both series (original and comparison) are present on the same chart"
+              (is (= ["Number of Orders per day of the week (Number of Orders where TestColumn is 2 and Created At is in February 2019)"
+                      "Number of Orders per day of the week (All Orders)"]
+                     (get-in series-card [:visualization_settings :graph.series_labels]))))
+            (testing "Both the series and card datasets are present and queryable"
+              (is (some? series-dataset-query))
+              (is (= 7 (:row_count (qp/process-query series-dataset-query))))
+              (is (some? card-dataset-query))
+              (is (= 7 (:row_count (qp/process-query card-dataset-query)))))))))))
 
 (deftest preserve-entity-element-test
   (testing "Join preservation scenarios: merge, empty expressions, no expressions, no card"
@@ -1697,76 +1694,75 @@
 
 (deftest compare-to-the-rest-15655-test
   (testing "Questions based on native questions should produce a valid dashboard."
-    (mt/with-full-data-perms-for-all-users!
-      (mt/dataset test-data
-        (mt/with-test-user :rasta
-          (let [native-query {:native   {:query "select * from people"}
-                              :type     :native
-                              :database (mt/id)}]
-            (mt/with-temp
-              [Card {native-card-id :id :as native-card} {:table_id        nil
-                                                          :name            "15655"
-                                                          :dataset_query   native-query
-                                                          :result_metadata (mt/with-test-user :rasta (result-metadata-for-query native-query))}
-               ;card__19169
-               Card card {:table_id      (mt/id :orders)
-                          :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
-                                                     :aggregation  [[:count]]
-                                                     :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}
-                                          :type     :query
-                                          :database (mt/id)}}]
-              (let [{:keys [description dashcards] :as dashboard} (magic/automagic-analysis card {})]
-                (testing "Questions based on native queries produce a dashboard"
-                  (is (= "A closer look at the metrics and dimensions used in this saved question."
-                         description))
-                  (is (set/subset?
-                        #{{:group-name "# A look at the SOURCE fields", :card-name nil}
-                          {:group-name "## The number of 15655 over time", :card-name nil}
-                          {:group-name nil, :card-name "Over time"}
-                          {:group-name nil, :card-name "Number of 15655 per day of the week"}
-                          {:group-name "## How this metric is distributed across different categories", :card-name nil}
-                          {:group-name nil, :card-name "Number of 15655 per NAME over time"}
-                          {:group-name nil, :card-name "Number of 15655 per CITY over time"}
-                          {:group-name "## Overview", :card-name nil}
-                          {:group-name nil, :card-name "Count"}
-                          {:group-name nil, :card-name "How the SOURCE is distributed"}
-                          {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                          {:group-name nil, :card-name "SOURCE by NAME"}
-                          {:group-name nil, :card-name "SOURCE by CITY"}}
-                        (set (map (fn [dashcard]
-                                    {:group-name (get-in dashcard [:visualization_settings :text])
-                                     :card-name  (get-in dashcard [:card :name])})
-                                  dashcards)))))
-                (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
-                      {comparison-description :description
-                       comparison-dashcards   :dashcards
-                       transient_name         :transient_name} (comparison/comparison-dashboard
-                                                                 dashboard
-                                                                 card
-                                                                 native-card
-                                                                 {:left {:cell-query cell-query}})]
-                  (testing "Questions based on native queries produce a comparable dashboard"
-                    (is (= "Comparison of Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
-                           transient_name))
-                    (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
-                           comparison-description))
-                    (is (= (take 10
-                                 [{:group-name nil, :card-name "SOURCE by CITY"}
-                                  {:group-name nil, :card-name "SOURCE by CITY"}
-                                  {:group-name nil, :card-name "SOURCE by NAME"}
-                                  {:group-name nil, :card-name "SOURCE by NAME"}
-                                  {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                                  {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
-                                  {:group-name nil, :card-name "Distinct values"}
-                                  {:group-name nil, :card-name "Distinct values"}
-                                  {:group-name nil, :card-name "Null values"}
-                                  {:group-name nil, :card-name "Null values"}])
-                           (->> comparison-dashcards
-                                (take 10)
-                                (map (fn [dashcard]
-                                       {:group-name (get-in dashcard [:visualization_settings :text])
-                                        :card-name  (get-in dashcard [:card :name])})))))
-                    (mapv (fn [dashcard]
-                            {:group-name (get-in dashcard [:visualization_settings :text])
-                             :card-name  (get-in dashcard [:card :name])})
-                          comparison-dashcards)))))))))))
+    (mt/dataset test-data
+      (mt/with-test-user :crowberto
+        (let [native-query {:native   {:query "select * from people"}
+                            :type     :native
+                            :database (mt/id)}]
+          (mt/with-temp
+            [Card {native-card-id :id :as native-card} {:table_id        nil
+                                                        :name            "15655"
+                                                        :dataset_query   native-query
+                                                        :result_metadata (mt/with-test-user :crowberto (result-metadata-for-query native-query))}
+             ;card__19169
+             Card card {:table_id      (mt/id :orders)
+                        :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
+                                                   :aggregation  [[:count]]
+                                                   :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}
+                                        :type     :query
+                                        :database (mt/id)}}]
+            (let [{:keys [description dashcards] :as dashboard} (magic/automagic-analysis card {})]
+              (testing "Questions based on native queries produce a dashboard"
+                (is (= "A closer look at the metrics and dimensions used in this saved question."
+                       description))
+                (is (set/subset?
+                      #{{:group-name "# A look at the SOURCE fields", :card-name nil}
+                        {:group-name "## The number of 15655 over time", :card-name nil}
+                        {:group-name nil, :card-name "Over time"}
+                        {:group-name nil, :card-name "Number of 15655 per day of the week"}
+                        {:group-name "## How this metric is distributed across different categories", :card-name nil}
+                        {:group-name nil, :card-name "Number of 15655 per NAME over time"}
+                        {:group-name nil, :card-name "Number of 15655 per CITY over time"}
+                        {:group-name "## Overview", :card-name nil}
+                        {:group-name nil, :card-name "Count"}
+                        {:group-name nil, :card-name "How the SOURCE is distributed"}
+                        {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                        {:group-name nil, :card-name "SOURCE by NAME"}
+                        {:group-name nil, :card-name "SOURCE by CITY"}}
+                      (set (map (fn [dashcard]
+                                  {:group-name (get-in dashcard [:visualization_settings :text])
+                                   :card-name  (get-in dashcard [:card :name])})
+                                dashcards)))))
+              (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
+                    {comparison-description :description
+                     comparison-dashcards   :dashcards
+                     transient_name         :transient_name} (comparison/comparison-dashboard
+                                                               dashboard
+                                                               card
+                                                               native-card
+                                                               {:left {:cell-query cell-query}})]
+                (testing "Questions based on native queries produce a comparable dashboard"
+                  (is (= "Comparison of Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
+                         transient_name))
+                  (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
+                         comparison-description))
+                  (is (= (take 10
+                               [{:group-name nil, :card-name "SOURCE by CITY"}
+                                {:group-name nil, :card-name "SOURCE by CITY"}
+                                {:group-name nil, :card-name "SOURCE by NAME"}
+                                {:group-name nil, :card-name "SOURCE by NAME"}
+                                {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                                {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
+                                {:group-name nil, :card-name "Distinct values"}
+                                {:group-name nil, :card-name "Distinct values"}
+                                {:group-name nil, :card-name "Null values"}
+                                {:group-name nil, :card-name "Null values"}])
+                         (->> comparison-dashcards
+                              (take 10)
+                              (map (fn [dashcard]
+                                     {:group-name (get-in dashcard [:visualization_settings :text])
+                                      :card-name  (get-in dashcard [:card :name])})))))
+                  (mapv (fn [dashcard]
+                          {:group-name (get-in dashcard [:visualization_settings :text])
+                           :card-name  (get-in dashcard [:card :name])})
+                        comparison-dashcards))))))))))
