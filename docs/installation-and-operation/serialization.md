@@ -304,8 +304,8 @@ You can initiate imports and exports of serialized Metabase data via the API.
 
 There are two endpoints:
 
-- `/ee/serialization/export/`
-- `/ee/serialization/import/`
+- `/api/ee/serialization/export/`
+- `/api/ee/serialization/import/`
 
 For now, these endpoints are synchronous. If the serialization process takes too long, the request can time out. In this case, we suggest using the CLI commands.
 
