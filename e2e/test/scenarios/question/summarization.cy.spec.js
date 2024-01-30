@@ -285,7 +285,7 @@ describe("scenarios > question > summarize sidebar", () => {
     popover().contains("199 distinct values");
   });
 
-  it("should render custom expression helper near the custom expression field", async () => {
+  it("should render custom expression helper near the custom expression field", () => {
     openReviewsTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
 

@@ -684,7 +684,7 @@ describe("scenarios > question > custom column", () => {
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
 
-  it("should render custom expression helper near the custom expression field", async () => {
+  it("should render custom expression helper near the custom expression field", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
