@@ -1,8 +1,10 @@
 (ns metabase.lib.drill-thru.test-util.canned
   (:require
+   [clojure.test :refer [is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.util :as u]))
 
 (defn- base-context [column value]
   {:column     column
@@ -305,3 +307,17 @@
             (click tc :header "PRODUCT_ID" :basic :fk)
             (click tc :header "CREATED_AT" :basic :datetime)])]
         (apply concat))))
+
+(defn canned-test
+  "Given a drill type (eg. `:drill-thru/fk-filter`) and a `pred` function, calls
+  `(pred test-case context click-details)`. If the predicate is truthy, expects that drill to be returned, and not to be
+  returned if falsy."
+  {:style/ident 1}
+  [drill pred]
+  (doseq [[tc context click-details] (canned-clicks)
+          :let [exp? (pred tc context click-details)]]
+    (testing (str "Should " (when-not exp? "not ") "return " drill " when:"
+                  "\nTest case = \n" (u/pprint-to-str tc)
+                  "\nContext = \n"   (u/pprint-to-str context)
+                  "\nClick = \n"     (u/pprint-to-str click))
+      (is (= exp? (returned tc context drill))))))
