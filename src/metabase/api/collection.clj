@@ -322,7 +322,7 @@
   (for [row rows]
     (dissoc row
             :description :display :authority_level :moderated_status :icon :personal_owner_id
-            :collection_preview :dataset_query)))
+            :collection_preview :dataset_query :location)))
 
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
@@ -351,7 +351,7 @@
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
-            :collection_preview :dataset_query)))
+            :collection_preview :dataset_query :location)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
@@ -359,7 +359,7 @@
     (dissoc row
             :description :collection_position :display :authority_level
             :moderated_status :icon :personal_owner_id :collection_preview
-            :dataset_query)))
+            :dataset_query :location)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
@@ -450,7 +450,7 @@
 
 (defn- post-process-card-row [row]
   (-> row
-      (dissoc :authority_level :icon :personal_owner_id :dataset_query)
+      (dissoc :authority_level :icon :personal_owner_id :dataset_query :location)
       (update :collection_preview api/bit->boolean)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
