@@ -117,7 +117,7 @@
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+              (let [{:keys [message]} (mt/user-http-request :crowberto :post 400
                                                             (format "/metabot/database/%s" (mt/id))
                                                             {:question q})]
                 (is (true? (str/includes? message (format "Query '%s' didn't find a good match to your data." q))))))))))))

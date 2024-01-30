@@ -1505,31 +1505,32 @@
 
 (defn do-with-add-card-parameter-mapping-permissions-fixtures! [f]
   (mt/with-temp-copy-of-db
-    (mt/with-temp [Dashboard {dashboard-id :id} {:parameters [{:name "Category ID"
-                                                               :slug "category_id"
-                                                               :id   "_CATEGORY_ID_"
-                                                               :type "category"}]}
-                   Card      {card-id :id} {:database_id   (mt/id)
-                                            :table_id      (mt/id :venues)
-                                            :dataset_query (mt/mbql-query venues)}]
-      (let [mappings [{:parameter_id "_CATEGORY_ID_"
-                       :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]]
-        ;; TODO -- check series as well?
-        (f {:dashboard-id dashboard-id
-            :card-id      card-id
-            :mappings     mappings
-            :add-card!    (fn [expected-status-code]
-                            (mt/user-http-request :rasta
-                                                  :put expected-status-code (format "dashboard/%d" dashboard-id)
-                                                  {:dashcards [{:id                 -1
-                                                                :card_id            card-id
-                                                                :row                0
-                                                                :col                0
-                                                                :size_x             4
-                                                                :size_y             4
-                                                                :parameter_mappings mappings}]
-                                                   :tabs      []}))
-            :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))})))))
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [Dashboard {dashboard-id :id} {:parameters [{:name "Category ID"
+                                                                 :slug "category_id"
+                                                                 :id   "_CATEGORY_ID_"
+                                                                 :type "category"}]}
+                     Card      {card-id :id} {:database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (mt/mbql-query venues)}]
+        (let [mappings [{:parameter_id "_CATEGORY_ID_"
+                         :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]]
+          ;; TODO -- check series as well?
+          (f {:dashboard-id dashboard-id
+              :card-id      card-id
+              :mappings     mappings
+              :add-card!    (fn [expected-status-code]
+                              (mt/user-http-request :rasta
+                                                    :put expected-status-code (format "dashboard/%d" dashboard-id)
+                                                    {:dashcards [{:id                 -1
+                                                                  :card_id            card-id
+                                                                  :row                0
+                                                                  :col                0
+                                                                  :size_x             4
+                                                                  :size_y             4
+                                                                  :parameter_mappings mappings}]
+                                                     :tabs      []}))
+              :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))}))))))
 
 (defn- dashcard-like-response
   [id]
