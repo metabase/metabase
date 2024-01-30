@@ -69,13 +69,13 @@
           (recur tags tail in-optional-block in-template-tag current-template-text))))))
 
 (def ^:private variable-tag-regex
-  #"^([A-Za-z0-9_\.]+)$")
+  #"^[A-Za-z0-9_\.]+$")
 
 (def ^:private snippet-tag-regex
-  #"^(snippet:\s*[^}]+)$")
+  #"^snippet:\s*[^}]+$")
 
 (def ^:private card-tag-regex
-  #"^#[0-9]+(-[a-z0-9-]*)?$")
+  #"^#[0-9]+(?:-[a-z0-9-]*)?$")
 
 (def ^:private tag-regexes
   [snippet-tag-regex card-tag-regex variable-tag-regex])
@@ -83,8 +83,8 @@
 (mu/defn ^:private format-template-tag-name :- [:maybe :string]
   "Parse and validate a template tag's content."
   [content :- :string]
-  (first (first
-    (mapcat #(re-seq % (str/trim content)) tag-regexes))))
+  (first
+    (mapcat #(re-seq % (str/trim content)) tag-regexes)))
 
 (mu/defn ^:private format-template-tag :- ::template-tag-with-context
   "Format a template tags name."
