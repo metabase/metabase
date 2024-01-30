@@ -15,7 +15,7 @@ import {
 } from "../../selectors";
 import { getLocales } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InvactiveStep";
+import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
 import {
   LocaleGroup,

@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { UserInfo } from "metabase-types/store";
 import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InvactiveStep";
+import { InactiveStep } from "../InactiveStep";
 import { UserForm } from "../UserForm";
 import { selectStep, submitUser } from "../../actions";
 import { USER_STEP } from "../../constants";
