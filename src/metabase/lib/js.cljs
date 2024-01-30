@@ -663,7 +663,7 @@
 
 (defn- normalize-legacy-ref
   [a-ref]
-  (if (#{:metric :segment} (first a-ref))
+  (if (#{:aggregation :metric :segment} (first a-ref))
     (subvec a-ref 0 2)
     (update a-ref 2 update-vals #(if (qualified-keyword? %)
                                    (u/qualified-name %)
@@ -673,12 +673,13 @@
   "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
   return it as a legacy JSON field ref.
   For compatibility reasons, segment and metric references are always returned without options."
-  [column]
-  (-> column
-      lib.core/ref
-      lib.convert/->legacy-MBQL
-      normalize-legacy-ref
-      clj->js))
+  [a-query stage-number column]
+  (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+    (-> column
+        lib.core/ref
+        lib.convert/->legacy-MBQL
+        normalize-legacy-ref
+        clj->js)))
 
 (defn- legacy-ref->pMBQL [a-legacy-ref]
   (-> a-legacy-ref
