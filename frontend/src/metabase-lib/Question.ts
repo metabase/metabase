@@ -855,7 +855,7 @@ class Question {
     return this.card().result_metadata ?? [];
   }
 
-  dependentMetadata(): DependentMetadataItem[] {
+  dependentMetadata(): Lib.DependentItem[] {
     return [];
   }
 
