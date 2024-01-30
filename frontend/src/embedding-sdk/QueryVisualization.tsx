@@ -80,7 +80,9 @@ export const QueryVisualizationSdk = (
     >
       {() => {
         const question = new Question(card, metadata);
-        const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
+        const legacyQuery = question.legacyQuery({
+          useStructuredQuery: true,
+        });
 
         return (
           <div

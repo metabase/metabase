@@ -6,8 +6,10 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { getStore } from "metabase/store";
 import reducers from "metabase/reducers-main";
 import registerVisualizations from "metabase/visualizations/register";
+import GlobalStyles from "metabase/styled-components/containers/GlobalStyles/GlobalStyles";
 
 import { EmbeddingContext } from "./context";
+import "./styles.css";
 
 export const MetabaseProvider = ({
   children,
@@ -33,7 +35,10 @@ export const MetabaseProvider = ({
     >
       <Provider store={store}>
         <EmotionCacheProvider>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <GlobalStyles />
+            {children}
+          </ThemeProvider>
         </EmotionCacheProvider>
       </Provider>
     </EmbeddingContext.Provider>

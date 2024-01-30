@@ -1,7 +1,6 @@
 const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 
@@ -35,6 +34,7 @@ const CSS_CONFIG = {
     ? "[name]__[local]___[hash:base64:5]"
     : "[hash:base64:5]",
   importLoaders: 1,
+  import: true,
 };
 
 // TODO: Add types generation for SDK
@@ -77,10 +77,7 @@ module.exports = env => {
           test: /\.css$/,
           use: [
             {
-              loader: MiniCssExtractPlugin.loader,
-              options: {
-                publicPath: "./",
-              },
+              loader: "style-loader",
             },
             { loader: "css-loader", options: CSS_CONFIG },
             { loader: "postcss-loader" },
@@ -169,11 +166,6 @@ module.exports = env => {
     //   ],
     // },
     plugins: [
-      // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
-      new MiniCssExtractPlugin({
-        filename: "[name].css",
-        chunkFilename: "[id].css",
-      }),
       new NodePolyfillPlugin(), // for crypto, among others
       // https://github.com/remarkjs/remark/discussions/903
       new webpack.ProvidePlugin({
