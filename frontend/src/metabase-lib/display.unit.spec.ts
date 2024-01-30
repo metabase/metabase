@@ -165,9 +165,7 @@ describe("getDefaultDisplay", () => {
 
   it("returns 'bar' display for queries with aggregations and 1 breakout with binning", () => {
     const query = createQueryWithClauses({
-      query: createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-      }),
+      aggregations: [{ operatorName: "count" }],
       breakouts: [
         {
           columnName: "TOTAL",
@@ -182,9 +180,7 @@ describe("getDefaultDisplay", () => {
 
   it("returns 'table' display for queries with aggregations and 1 breakout without binning", () => {
     const query = createQueryWithClauses({
-      query: createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-      }),
+      aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
     });
 
@@ -193,9 +189,7 @@ describe("getDefaultDisplay", () => {
 
   it("returns 'bar' display for queries with aggregations and 1 breakout by category", () => {
     const query = createQueryWithClauses({
-      query: createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-      }),
+      aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CATEGORY", tableName: "PRODUCTS" }],
     });
 
@@ -204,9 +198,7 @@ describe("getDefaultDisplay", () => {
 
   it("returns 'line' display for queries with 1 aggregation and 2 breakouts, at least 1 of which is date", () => {
     const query = createQueryWithClauses({
-      query: createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-      }),
+      aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CREATED_AT", tableName: "ORDERS" },
         { columnName: "TOTAL", tableName: "ORDERS" },
@@ -218,9 +210,7 @@ describe("getDefaultDisplay", () => {
 
   it("returns 'map' display for queries with 1 aggregation and 2 breakouts by coordinates", () => {
     const query = createQueryWithClauses({
-      query: createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-      }),
+      aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "LATITUDE", tableName: "PEOPLE" },
         { columnName: "LONGITUDE", tableName: "PEOPLE" },
@@ -237,9 +227,7 @@ describe("getDefaultDisplay", () => {
 
   it("returns 'bar' display for queries with aggregations and 2 breakouts by category", () => {
     const query = createQueryWithClauses({
-      query: createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-      }),
+      aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CATEGORY", tableName: "PRODUCTS" },
         { columnName: "VENDOR", tableName: "PRODUCTS" },
@@ -251,12 +239,7 @@ describe("getDefaultDisplay", () => {
 
   it("returns 'table' display by default", () => {
     const query = createQueryWithClauses({
-      query: createQueryWithClauses({
-        aggregations: [
-          { operatorName: "count" },
-          { operatorName: "cum-count" },
-        ],
-      }),
+      aggregations: [{ operatorName: "count" }, { operatorName: "cum-count" }],
       breakouts: [
         { columnName: "LATITUDE", tableName: "PEOPLE" },
         { columnName: "LONGITUDE", tableName: "PEOPLE" },
