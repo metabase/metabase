@@ -8,7 +8,6 @@ import {
   getIsEditingParameter,
   getClickBehaviorSidebarDashcard,
   getDashboardComplete,
-  getCanSaveDashboard,
 } from "metabase/dashboard/selectors";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 import Field from "metabase-lib/metadata/Field";
@@ -403,6 +402,4 @@ describe("dashboard/selectors", () => {
       expect(cards[0].card.id).toBe(2);
     });
   });
-
-  describe("getCanSaveDashboard", () => {});
 });

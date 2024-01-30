@@ -25,7 +25,6 @@ import type {
   EditParameterSidebarState,
   State,
 } from "metabase-types/store";
-import { isParameterValueEmpty } from "metabase-lib/parameters/utils/parameter-values";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -321,6 +320,19 @@ export const getParameters = createSelector(
   },
 );
 
+export const getRequiredParameters = createSelector(
+  [getParameters],
+  parameters => parameters.filter(param => param.required),
+);
+
+export const getMissingRequiredParameters = createSelector(
+  [getRequiredParameters],
+  requiredParameters =>
+    requiredParameters.filter(
+      param => !param.default || param?.default.length === 0,
+    ),
+);
+
 export const getParameterMappingOptions = createSelector(
   [getMetadata, getEditingParameter, getCard, getDashCard],
   (metadata, parameter, card, dashcard) => {
@@ -348,19 +360,3 @@ export const getTabs = createSelector([getDashboard], dashboard => {
 export function getSelectedTabId(state: State) {
   return state.dashboard.selectedTabId;
 }
-
-// Currently used only with regards to required parameters having default values,
-// but could be extended should we want any additional pre-save logic.
-// TODO add an explanatory message as to why it is disabled?
-export const getCanSaveDashboard = createSelector(
-  [getIsEditing, getParameters],
-  (isEditing, parameters) => {
-    if (!isEditing) {
-      return false;
-    }
-
-    return parameters
-      .filter(param => param.required)
-      .every(param => !isParameterValueEmpty(param.default));
-  },
-);
