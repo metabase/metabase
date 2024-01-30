@@ -155,6 +155,9 @@ function computeComparison({
 function getCurrentMetricData({ series, insights, settings }) {
   const [
     {
+      card: {
+        dataset_query: { type: queryType },
+      },
       data: { rows, cols },
     },
   ] = series;
@@ -190,6 +193,7 @@ function getCurrentMetricData({ series, insights, settings }) {
     dateColumn,
     dateColumnSettings,
     dateUnit,
+    queryType,
   };
 
   const formatOptions = {
@@ -510,12 +514,33 @@ function computeComparisonStrPreviousValue({
 }
 
 function formatDateStr({ date, dateUnitSettings, options, formatValue }) {
-  const { dateColumn, dateColumnSettings, dateUnit } = dateUnitSettings;
+  const { dateColumn, dateColumnSettings, dateUnit, queryType } =
+    dateUnitSettings;
 
   if (isEmpty(dateUnit)) {
     return formatValue(date, {
       ...dateColumnSettings,
       column: dateColumn,
+    });
+  }
+
+  // since native queries are custom and do not go through the query builder
+  // the represented date for date ranges (year, month, day, ...)
+  // can be at the start of a range, middle of a range, end of range, or
+  // however the sql writer decides they want the aggregated date range to be
+  // represented as.
+  // - 2023-01-01 can represent the year 2023
+  // - 2023-12-31 can represent the year 2023
+  // - etc.
+  // this adjusts the date to be the start of that range,
+  // i.e. what formatDateTimeRangeWithUnit expects
+  // ! STILL NEED TO CONSIDER THE IMPLICATIONS OF THIS ON ALL NATIVE QUERIES
+  // !!!!!!!!
+  if (queryType === "native") {
+    const adjustedDate = moment.parseZone(date).startOf(dateUnit).format();
+    return formatDateTimeRangeWithUnit([adjustedDate], dateUnit, {
+      ...options,
+      compact: true,
     });
   }
 
