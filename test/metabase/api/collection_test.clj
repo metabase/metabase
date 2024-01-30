@@ -726,6 +726,29 @@
                            (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items")
                                                         :models "dashboard" :models "card")))))))))))
 
+(deftest collection-items-logical-ui-location
+  (testing "GET /api/collection/:id/items"
+    (testing "Includes a logical ui location"
+      (letfn [(path [& cs] (apply collection/location-path (map :id cs)))]
+        (t2.with-temp/with-temp [Collection c1 {:name "C1"}
+                                 Collection c2 {:name "C2"
+                                                :location (path c1)}
+                                 Collection c3 {:name "C3"
+                                                :location (path c1 c2)}
+                                 Collection c4 {:name "C4"
+                                                :location (path c1 c2 c3)}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) c1)
+          (perms/revoke-collection-permissions! (perms-group/all-users) c2)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) c3)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) c4)
+          ;; user can see c3 and c4
+          (let [response (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id c3)))]
+            (is (= 1 (:total response)))
+            (let [{:keys [location ui-logical-location]} (-> response :data first)]
+             (is (= (path c1 c2 c3) location))
+             (testing "the unreadable collections are removed from the `ui-logical-path`"
+               (is (= (path c3) ui-logical-location))))))))))
+
 (deftest collection-items-archived-parameter-test
   (testing "GET /api/collection/:id/items"
     (testing "Let's make sure the `archived` option works."
