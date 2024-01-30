@@ -35,6 +35,7 @@
   (mt/test-drivers #{:postgres :h2 :mysql}
     (testing "Audit DB content is not installed when it is not found"
       (t2/delete! :model/Database :is_audit true)
+      (audit-db/last-analytics-checksum! 0)
       (with-redefs [audit-db/analytics-dir-resource nil]
         (is (nil? @#'audit-db/analytics-dir-resource))
         (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
@@ -42,7 +43,8 @@
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
             "No cards created for Audit DB."))
-      (t2/delete! :model/Database :is_audit true))
+      (t2/delete! :model/Database :is_audit true)
+      (audit-db/last-analytics-checksum! 0))
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
