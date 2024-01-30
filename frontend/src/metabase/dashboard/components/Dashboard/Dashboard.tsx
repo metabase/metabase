@@ -466,6 +466,7 @@ function DashboardInner(props: DashboardProps) {
       setParameterIndex={setParameterIndex}
       setEditingParameter={setEditingParameter}
       setParameterValueToDefault={setParameterValueToDefault}
+      enableParameterRequiredBehavior
     />
   );
 
