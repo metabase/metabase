@@ -995,9 +995,9 @@ export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
 };
 
-export const getTemplateTags = createSelector([getCard], card => {
-  return getIn(card, ["dataset_query", "native", "template-tags"]);
-});
+export const getTemplateTags = createSelector([getCard], card =>
+  getIn(card, ["dataset_query", "native", "template-tags"]),
+);
 
 export const getRequiredTemplateTags = createSelector(
   [getTemplateTags],
