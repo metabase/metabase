@@ -313,114 +313,132 @@ For now, these endpoints are synchronous. If the serialization process takes too
 
 You can append optional parameters to tell Metabase what to include or exclude from the export. You can also combine parameters (excluding, of course, `all_collections` and selective collections).
 
-So, assuming you're testing on `localhost`.
-
-Here are some examples:
-
-Select which collections to export:
-
-```html
-http://localhost:3000/api/ee/serialization/export?collection=1&collection=2
-```
-
-Exclude all collections:
+So, assuming you're testing on `localhost`, and you want to exclude all collections from the export, you'd format the URL like so:
 
 ```html
 http://localhost:3000/api/ee/serialization/export?all_collections=false
 ```
 
+You can include multiple parameters, separated by `&`. For example, to exclude both the settings and the data model from the export:
+
+```html
+http://localhost:3000/api/ee/serialization/export?data_model=false&settings=false
+```
+
+### Example params
+
+Select which collections to export:
+
+```html
+collection=1&collection=2
+```
+
+Exclude all collections:
+
+```html
+all_collections=false
+```
+
 Exclude settings:
 
 ```html
-http://localhost:3000/api/ee/serialization/export?settings=false
+settings=false
 ```
 
 Exclude the data model:
 
 ```
-http://localhost:3000/api/ee/serialization/export?data_model=false
+data_model=false
 ```
 
 Include field values:
 
 ```
-http://localhost:3000/api/ee/serialization/export?field_values=true
+field_values=true
 ```
 
 Include secrets:
 
 ```html
-http://localhost:3000/api/ee/serialization/export?database_secrets=true (add
-secrets)
+database_secrets=true
 ```
 
-Specify the directory name.
+Specify the directory name:
 
 ```
-http://localhost:3000/api/ee/serialization/export?dirname=app_data
+dirname=name_of_your_directory
 ```
 
-### You must compress your files when serializing via the network
+### You must compress your files when serializing via API calls
 
-To keep files sizes over the network under control, both the `export` and `import` commands expect GZIP-compressed Tar files (`.tgz`).
+To keep file sizes over the network under control, both the `export` and `import` endpoints expect GZIP-compressed Tar files (`.tgz`).
 
 ### Compress a directory
 
-To compress a directory (e.g., a directory named `yamls`).
+To compress a directory (e.g., a directory named `metabase_data`).
 
 ```sh
-tar -czf yamls.tgz yamls
+tar -czf  metabase_data
 ```
 
-### Uncompress a directory
+### Extract a directory
 
-To uncompress
+To extract/unzip a directory:
 
 ```sh
-tar -xvf compressed_file.tgz
+tar -xvf  metabase_data.tgz
 ```
 
-### Logs are added to the export and import output.
+### Logs are added to the export and import output
 
 In the export, it is added in the compressed directory as export.log
-In the import, it is exported directly. The user can add the -o - flag to export logs directly into the terminal or -o import.log to save to a file.
 
-### Example export request
+In the import, the logs are exported directly. You can add the `-o -` flag to export logs directly into the terminal or `-o import.log` to save to a file.
 
-To export the contents of your Metabase:
+### Example export request with `curl`
 
-```sh
- curl \
--H 'x-metabase-session: token' \
--X POST 'http://localhost:3000/api/ee/serialization/export' \
--o yamls.tgz
-```
+To export the contents of your Metabase, first set up an [API key](../people-and-groups/api-keys.md) and assign the key to the Admin group.
 
-This command will download the files as GZIP-compressed Tar file. You'll need to uncompress the file:
+Then run:
 
 ```sh
-tar -xvf yamls.tgz
+  curl \
+  -H 'x-api-key: YOUR_API_KEY' \
+  -X POST 'http://localhost:3000/api/ee/serialization/export' \
+  -o metabase_data.tgz
 ```
 
-Substiture that last `yamls` with whatever you want to call the directory of uncompressed yaml files that contain your serialized Metabase data.
+Substituting `YOUR_API_KEY` with your API key. This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 
-### Example import request
-
-Let's say you have your YAML files in a directory called `yamls`. Before importing those files to your target Metabase, you'll need to compress those files.
+You'll then need to unzip the compressed file:
 
 ```sh
-tar -czf yamls.tgz yamls
+tar -xvf metabase_data.tgz
 ```
 
-Then
+The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export.
+
+### Example import request with `curl`
+
+To import contents into your Metabase, first set up an [API key](../people-and-groups/api-keys.md) and assign the key to the Admin group.
+
+Let's say you have your YAML files with Metabase application data in a directory called `metabase_data`. Before importing those files to your target Metabase, you'll need to compress those files.
+
+```sh
+tar -czf metabase_data.tgz metabase_data
+```
+
+Then post to the `/api/ee/serialization/import`. From the directory where you've stored your GZIP-compressed file, run:
 
 ```sh
 curl -X POST \
--H 'x-metabase-session: token' \
--F file=@yamls.tgz \
+-H 'x-api-key: YOUR_API_KEY' \
+-F file=@metabase_data.tgz \
 'http://localhost:3000/api/ee/serialization/import' \
 -o -
 ```
+
+Substituting `YOUR_API_KEY` with your API key.
 
 ## Further reading
 
