@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import { usePrevious } from "react-use";
 
 import * as Lib from "metabase-lib";
@@ -449,16 +449,12 @@ function ViewTitleHeaderRightSide(props) {
     [isRunning],
   );
 
-  const missingValueRequiredTTags = requiredTemplateTags.filter(
-    t => t.required && !t.default,
-  );
-
   const isSaveDisabled = !question.canRun() || !isEditable;
-  const disabledSaveTooltip = !question.canRun()
-    ? getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags)
-    : !isEditable
-    ? t`You don't have permissions to save this question.`
-    : "";
+  const disabledSaveTooltip = getDisabledSaveTooltip(
+    question,
+    isEditable,
+    requiredTemplateTags,
+  );
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
@@ -548,18 +544,35 @@ function ViewTitleHeaderRightSide(props) {
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
 
+function getDisabledSaveTooltip(question, isEditable, requiredTemplateTags) {
+  if (!isEditable) {
+    return t`You don't have permissions to save this question.`;
+  }
+
+  const missingValueRequiredTTags = requiredTemplateTags.filter(
+    t => t.required && !t.default,
+  );
+
+  if (!question.canRun()) {
+    return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
+  }
+
+  // Having an empty tooltip text is ok because it won't be shown.
+  return "";
+}
+
 function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
   if (!requiredTemplateTags.length) {
     return "";
   }
 
   const names = requiredTemplateTags
-    .map(t => `"${t["display-name"] ?? t.name}"`)
+    .map(tag => `"${tag["display-name"] ?? tag.name}"`)
     .join(", ");
 
-  if (requiredTemplateTags.length > 1) {
-    return t`The ${names} variables require default values but none were provided.`;
-  }
-
-  return `The ${names} variable requires a default value but none was provided.`;
+  return ngettext(
+    msgid`The ${names} variable requires a default value but none was provided.`,
+    `The ${names} variables require default values but none were provided.`,
+    names.length,
+  );
 }
