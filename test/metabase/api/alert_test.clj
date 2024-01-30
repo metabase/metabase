@@ -12,7 +12,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-test :as pulse-test]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
@@ -631,7 +630,7 @@
                                   (dissoc (default-alert-req card pc {} []) :channels))))))))
 
 (deftest alert-event-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (mt/with-non-admin-groups-no-root-collection-perms
       (t2.with-temp/with-temp [Collection collection {}
                                Card       card {:name          "My question"
@@ -928,7 +927,7 @@
 
 (deftest alert-unsubscribe-event-test
   (testing "Alert has two recipients, and non-admin unsubscribes"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (mt/with-temp [Card                  card  (basic-alert-query)
                      Pulse                 alert (basic-alert)
                      PulseCard             _     (pulse-card alert card)

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import Q from "metabase/components/QueryButton/QueryButton.css";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import S from "./FieldToGroupBy.css";
 
 const FieldToGroupBy = ({

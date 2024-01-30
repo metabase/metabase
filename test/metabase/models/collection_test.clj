@@ -13,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -40,8 +39,8 @@
 (deftest format-personal-collection-name-length-test
   (testing "test that an unrealistically long collection name with unicode letters is still less than the max length for a slug (metabase#33917)"
     (mt/with-temporary-setting-values [site-locale "ru"]
-      (is (< (count (#'collection/slugify (collection/format-personal-collection-name (repeat 20 "\u0411") ; Cyrillic "b" character
-                                                                                      (repeat 20 "\u0411")
+      (is (< (count (#'collection/slugify (collection/format-personal-collection-name (apply str (repeat 34 "Б"))
+                                                                                      (apply str (repeat 35 "Б"))
                                                                                       "MetaBase@metabase.com"
                                                                                       :site)))
              (var-get #'collection/collection-slug-max-length))))))
@@ -1690,14 +1689,14 @@
       (with-redefs [perms/default-audit-collection          (constantly audit-collection)
                     perms/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (premium-features-test/with-additional-premium-features #{:audit-app}
+          (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))
                 "Admin isn't able to write to audit collection")
             (is (not (mi/can-write? audit-card))
                 "Admin isn't able to write to audit collection card")
             (is (not (mi/can-write? audit-dashboard))
                 "Admin isn't able to write to audit collection dashboard"))
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (is (not (mi/can-read? audit-collection))
                 "Admin isn't able to read audit collection when audit app isn't enabled")
             (is (not (mi/can-read? audit-card))

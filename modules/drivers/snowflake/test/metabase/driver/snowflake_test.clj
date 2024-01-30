@@ -6,13 +6,18 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.snowflake :as driver.snowflake]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -52,7 +57,40 @@
     (is (= [100]
            (mt/first-row
             (mt/run-mbql-query venues
-              {:aggregation [[:count]]}))))))
+                               {:aggregation [[:count]]}))))))
+
+(deftest ^:parallel quote-name-test
+  (is (nil? (#'driver.snowflake/quote-name nil)))
+  (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
+  (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
+
+(deftest ^:parallel connection-details->spec-test
+  (let [details {:role nil
+                 :warehouse "COMPUTE_WH"
+                 :additional-options nil
+                 :db "v3_sample-dataset"
+                 :password "passwd"
+                 :quote-db-name false
+                 :let-user-control-scheduling false
+                 :private-key-options "uploaded"
+                 :private-key-source nil
+                 :port nil
+                 :advanced-options true
+                 :private-key-id 1
+                 :schema-filters-type "all"
+                 :account "ls10467.us-east-2.aws"
+                 :private-key-value nil
+                 :tunnel-enabled false
+                 :engine :snowflake
+                 :private-key-creator-id 3
+                 :user "SNOWFLAKE_DEVELOPER"
+                 :private-key-created-at "2024-01-05T19:10:30.861839Z"}]
+    (testing "Database name is quoted iff quoting is requested (#27856)"
+      (are [quote? result] (=? {:db result}
+                               (let [details (assoc details :quote-db-name quote?)]
+                                 (sql-jdbc.conn/connection-details->spec :snowflake details)))
+        true "\"v3_sample-dataset\""
+        false "v3_sample-dataset"))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
@@ -107,6 +145,26 @@
                (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
                                                                    (update :database-name #(str "v4_" %))))))))))
 
+(deftest ^:parallel simple-select-probe-query-test
+  (testing "the simple-select-probe-query used by have-select-privilege? should be qualified with the Database name. Ignore blank keys."
+    (mt/test-driver :snowflake
+      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                        {:database (assoc (mt/db)
+                                                          :details {:db     " "
+                                                                    :dbname "dbname"})})
+        (is (= ["SELECT TRUE AS \"_\" FROM \"dbname\".\"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
+               (sql-jdbc.describe-database/simple-select-probe-query :snowflake "PUBLIC" "table")))))))
+
+(deftest ^:parallel have-select-privilege?-test
+  (mt/test-driver :snowflake
+    (qp.store/with-metadata-provider (mt/id)
+      (sql-jdbc.execute/do-with-connection-with-options
+       :snowflake
+       (mt/db)
+       nil
+       (fn [^java.sql.Connection conn]
+         (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
+
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -132,22 +190,54 @@
           (is (= expected
                  (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
 
+(deftest describe-database-default-schema-test
+  (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
+    (mt/test-driver :snowflake
+      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db {:database-name "Default-Schema-Test"})
+                               ;; simulate a DB default schema or session schema by including it in the connection
+                               ;; details... see
+                               ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706219065462619?thread_ts=1706156558.940489&cid=C04DN5VRQM6
+                               :schema "PUBLIC"
+                               :schema-filters-type "inclusion"
+                               :schema-filters-patterns "Test-Schema")
+            db-name     (:db details)
+            schema-name "Test-Schema"
+            table-name  "Test-Table"
+            field-name  "Test-ID"
+            spec        (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        ;; create the snowflake DB
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake spec nil
+         (fn [^java.sql.Connection conn]
+           (doseq [stmt (letfn [(identifier [& args]
+                                  (str/join \. (map #(str \" % \") args)))]
+                          [(format "DROP DATABASE IF EXISTS %s;" (identifier db-name))
+                           (format "CREATE DATABASE %s;" (identifier db-name))
+                           (format "CREATE SCHEMA %s;" (identifier db-name schema-name))
+                           (format "CREATE TABLE %s (%s INTEGER AUTOINCREMENT);" (identifier db-name schema-name table-name) (identifier field-name))
+                           (format "GRANT SELECT ON %s TO PUBLIC;" (identifier db-name schema-name table-name))])]
+             (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))))
+        ;; fetch metadata
+        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details details}]
+          (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
+                  (driver/describe-database :snowflake database))))))))
+
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
     (testing "describe-database views"
       (let [details (mt/dbdef->connection-details :snowflake :db {:database-name "views_test"})
+            db-name (:db details)
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
         ;; create the snowflake DB
-        (jdbc/execute! spec ["DROP DATABASE IF EXISTS \"views_test\";"]
-                       {:transaction? false})
-        (jdbc/execute! spec ["CREATE DATABASE \"views_test\";"]
-                       {:transaction? false})
+        (doseq [stmt [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)
+                      (format "CREATE DATABASE \"%s\";" db-name)]]
+          (jdbc/execute! spec [stmt] {:transaction? false}))
         ;; create the DB object
-        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details (assoc details :db "views_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details details}]
           (let [sync! #(sync/sync-database! database)]
             ;; create a view
-            (doseq [statement ["CREATE VIEW \"views_test\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";"
-                               "GRANT SELECT ON \"views_test\".\"PUBLIC\".\"example_view\" TO PUBLIC;"]]
+            (doseq [statement [(format "CREATE VIEW \"%s\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";" db-name)
+                               (format "GRANT SELECT ON \"%s\".\"PUBLIC\".\"example_view\" TO PUBLIC;" db-name)]]
               (jdbc/execute! spec [statement]))
             ;; now sync the DB
             (sync!)
@@ -179,7 +269,7 @@
                      (set (t2/select [:model/Field :name :base_type]
                                      :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id db-id))))))))))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (= {:name   "categories"
@@ -201,7 +291,7 @@
                          :json-unfolding    false}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :categories))))))))
 
-(deftest describe-table-fks-test
+(deftest ^:parallel describe-table-fks-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table-fks uses the NAME FROM DETAILS too"
       (is (= #{{:fk-column-name   "category_id"
@@ -336,7 +426,7 @@
                 (is (= [[friday-int 1]]
                        (mt/rows (qp/process-query query))))))))))))
 
-(deftest normalize-test
+(deftest ^:parallel normalize-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
       (t2.with-temp/with-temp [Database db {:name    "Legacy Snowflake DB"
@@ -346,7 +436,7 @@
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
 
-(deftest set-role-statement-test
+(deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
     ;; No special characters
     (is (= "USE ROLE MY_ROLE;"        (driver.sql/set-role-statement :snowflake "MY_ROLE")))

@@ -7,7 +7,7 @@ import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Schemas from "metabase/entities/schemas";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type Schema from "metabase-lib/metadata/Schema";
@@ -75,7 +75,7 @@ const MetadataSchemaList = ({
   }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 
   return (
-    <div className="MetadataEditor-table-list AdminList flex-no-shrink">
+    <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
       <div className="AdminList-search">
         <Icon name="search" size={16} />
         <input
@@ -103,7 +103,7 @@ const MetadataSchemaList = ({
           />
         ))}
       </ul>
-    </div>
+    </aside>
   );
 };
 

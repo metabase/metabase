@@ -799,3 +799,28 @@
               {:keys [content]} (body/render :line :inline "UTC" card nil (:data query-results))]
           (testing "Content is generated (rather than an exception being thrown)"
             (is (= :div (first content)))))))))
+
+(deftest unknown-column-settings-test
+  (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
+    (mt/dataset test-data
+      (let [q   {:database (mt/id)
+                 :type     :query
+                 :query
+                 {:source-table (mt/id :reviews)
+                  :aggregation  [[:sum [:field (mt/id :reviews :rating) {:base-type :type/Integer}]]],
+                  :breakout     [[:field (mt/id :reviews :created_at) {:base-type :type/DateTime, :temporal-unit :week}]
+                                 [:field (mt/id :reviews :reviewer) {:base-type :type/Text}]],
+                  :filter       [:between [:field (mt/id :reviews :product_id) {:base-type :type/Integer}] 0 10]}}
+            viz {:pivot_table.column_split
+                 {:rows    [[:field (mt/id :reviews :reviewer) {:base-type :type/Text}]],
+                  :columns [[:field (mt/id :reviews :created_at) {:base-type :type/DateTime, :temporal-unit :week}]],
+                  :values  [[:aggregation 0]]}
+                 :column_settings
+                 {(format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/DateTime\"}]]" (mt/id :reviews :created_at))
+                  {:pivot_table.column_sort_order "ascending"}}}]
+        (mt/dataset test-data
+          (mt/with-temp [Card                 {card-id :id} {:display                :pivot
+                                                             :dataset_query          q
+                                                             :visualization_settings viz}]
+            (testing "the render succeeds with unknown column settings keys"
+              (is (seq (render.tu/render-card-as-hickory card-id))))))))))

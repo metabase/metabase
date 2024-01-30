@@ -4,10 +4,9 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, Box } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 
-import { Box } from "metabase/ui";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";

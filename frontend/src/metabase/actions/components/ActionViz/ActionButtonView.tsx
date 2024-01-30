@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { StyledButton, StyledButtonContent } from "./ActionButton.styled";

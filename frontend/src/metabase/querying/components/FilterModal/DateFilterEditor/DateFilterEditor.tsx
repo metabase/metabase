@@ -1,8 +1,8 @@
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Flex, Grid, Popover } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Button, Flex, Grid, Popover, Icon } from "metabase/ui";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type {

@@ -28,7 +28,9 @@ describe("StructuredQuery nesting", () => {
     it("should nest correctly", () => {
       const { ordersTable } = setup();
       const q = ordersTable.legacyQuery();
-      expect(q.legacyQuery()).toEqual({ "source-table": ORDERS_ID });
+      expect(q.legacyQuery()).toEqual({
+        "source-table": ORDERS_ID,
+      });
       expect(q.nest().legacyQuery()).toEqual({
         "source-query": { "source-table": ORDERS_ID },
       });
@@ -138,7 +140,9 @@ describe("StructuredQuery nesting", () => {
       const metadata = ordersTable.metadata;
       const question = ordersTable.question();
       const dataset = question.setId(1).setDataset(true);
-      const nestedDatasetQuery = dataset.composeDataset().legacyQuery();
+      const nestedDatasetQuery = dataset
+        .composeDataset()
+        .legacyQuery({ useStructuredQuery: true });
       expect(
         // get a list of all dimension options for the nested query
         nestedDatasetQuery

@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t, jt } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Text from "metabase/components/type/Text";
 import Link from "metabase/core/components/Link";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";

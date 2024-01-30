@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
@@ -65,13 +65,14 @@ export const SearchInputContainer = styled.div<{
     width: 2rem;
     height: 2rem;
     border-radius: 99px;
-
+    border-color: transparent;
     ${props =>
       props.isActive &&
       css`
         width: 100%;
+        border-color: ${color("border")};
         ${activeInputCSS};
-      `}
+      `};
   }
 
   ${breakpointMinSmall} {

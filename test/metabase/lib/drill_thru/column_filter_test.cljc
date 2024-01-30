@@ -232,3 +232,22 @@
                                           [:field {} "ALIAS_CREATED_AT"]
                                           [:relative-datetime {} :current :day]]]}]}
                 (lib/drill-thru query -1 drill "=" (lib/relative-datetime :current :day))))))))
+
+(deftest ^:parallel column-filter-join-alias-test
+  (testing "an input column with `:source/fields`, `:source-alias` and no `:join-alias` should work properly (#36861)"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                   [(lib/= (meta/field-metadata :orders :product-id)
+                                                           (meta/field-metadata :products :id))])))
+          columns   (lib/returned-columns query)
+          category  (-> (m/find-first #(= (:name %) "CATEGORY") columns)
+                        (dissoc :join-alias :metabase.lib.join/join-alias)
+                        (assoc :lib/source :source/fields))
+          context   {:column     category
+                     :column-ref (lib/ref category)
+                     :value      nil}
+          drills    (lib/available-drill-thrus query -1 context)
+          colfilter (m/find-first #(= (:type %) :drill-thru/column-filter) drills)]
+      (is (= "Products" (:source-alias category)))
+      (is (= "Products" (-> context :column-ref second :join-alias)))
+      (is (some? (:column colfilter))))))

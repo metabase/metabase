@@ -12,3 +12,11 @@ export function getIsWhiteLabeling(state: State) {
 export function getApplicationName(state: State) {
   return PLUGIN_SELECTORS.getApplicationName(state);
 }
+
+export function getCanWhitelabel(state: State) {
+  return PLUGIN_SELECTORS.canWhitelabel(state);
+}
+
+export function getShowMetabaseLinks(state: State) {
+  return PLUGIN_SELECTORS.getShowMetabaseLinks(state);
+}

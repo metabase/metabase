@@ -93,7 +93,6 @@ describe("parameters/utils/targets", () => {
       expect(
         getParameterTargetField(
           ["variable", ["template-tag", "foo"]],
-          metadata,
           question,
         ),
       ).toBe(null);
@@ -114,7 +113,7 @@ describe("parameters/utils/targets", () => {
         },
       });
 
-      expect(getParameterTargetField(target, metadata, question)).toEqual(
+      expect(getParameterTargetField(target, question)).toEqual(
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),
@@ -129,7 +128,7 @@ describe("parameters/utils/targets", () => {
       const question = db.question({
         "source-table": PRODUCTS_ID,
       });
-      expect(getParameterTargetField(target, metadata, question)).toEqual(
+      expect(getParameterTargetField(target, question)).toEqual(
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),

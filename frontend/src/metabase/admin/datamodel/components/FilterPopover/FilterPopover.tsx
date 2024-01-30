@@ -6,7 +6,7 @@ import { usePrevious } from "react-use";
 
 import { color } from "metabase/lib/colors";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
@@ -93,7 +93,7 @@ export function FilterPopover({
   useEffect(() => {
     if (
       filter &&
-      filter.legacyQuery() === previousQuery &&
+      filter.legacyQuery({ useStructuredQuery: true }) === previousQuery &&
       legacyQuery !== previousQuery
     ) {
       setFilter(filter.setQuery(legacyQuery));
@@ -142,13 +142,14 @@ export function FilterPopover({
     const field = dimension?.field();
     const newFilter =
       !filter ||
-      filter.legacyQuery() !== dimension.legacyQuery() ||
+      filter.legacyQuery({ useStructuredQuery: true }) !==
+        dimension.legacyQuery({ useStructuredQuery: true }) ||
       field?.isDate?.()
         ? new Filter(
             [],
             null,
-            dimension.legacyQuery() ||
-              (filter && filter.legacyQuery()) ||
+            dimension.legacyQuery({ useStructuredQuery: true }) ||
+              (filter && filter.legacyQuery({ useStructuredQuery: true })) ||
               legacyQuery,
           )
         : filter;
@@ -212,7 +213,8 @@ export function FilterPopover({
             isTopLevel
               ? legacyQuery.topLevelFilterFieldOptionSections()
               : (
-                  (filter && filter.legacyQuery()) ||
+                  (filter &&
+                    filter.legacyQuery({ useStructuredQuery: true })) ||
                   legacyQuery
                 ).filterFieldOptionSections(filter, {
                   includeSegments: showCustom,

@@ -61,7 +61,9 @@ const setup = () => {
                 ["2016-01-01T00:00:00-04:00", 500],
                 ["2017-01-01T00:00:00-04:00", 1500],
               ],
-              cols: question.legacyQuery().columns(),
+              cols: question
+                .legacyQuery({ useStructuredQuery: true })
+                .columns(),
             },
           },
         ]}

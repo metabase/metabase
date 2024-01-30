@@ -42,8 +42,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -1731,14 +1729,14 @@
                                   :col          3
                                   :series       [{:name "Series Card 1"}]}
               revisions-after    (get-revision-count)]
-          (is (=? [updated-card-1
-                   updated-card-2
-                   new-card]
-                  cards))
-          ;; dashcard 3 is deleted
-          (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
-          (testing "only one revision is created from the request"
-            (is (= 1 (- revisions-after revisions-before)))))))))
+         (is (=? [updated-card-1
+                  updated-card-2
+                  new-card]
+                 cards))
+;; dashcard 3 is deleted
+         (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
+         (testing "only one revision is created from the request"
+           (is (= 1 (- revisions-after revisions-before)))))))))
 
 (deftest e2e-update-tabs-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
@@ -2029,7 +2027,7 @@
       (mt/with-actions-test-data
         (doseq [enable-actions? [true false]
                 encrypt-db?     [true false]]
-          (mt/with-temp-env-var-value [mb-encryption-secret-key encrypt-db?]
+          (mt/with-temp-env-var-value! [mb-encryption-secret-key encrypt-db?]
             (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable-actions?}}
               (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
                 (mt/with-temp [Dashboard     {dashboard-id :id} {}
@@ -2816,7 +2814,7 @@
           ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
-          (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
+          (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
@@ -2832,6 +2830,23 @@
                  (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                       (mt/user-http-request :rasta :get 200)
                       (chain-filter-test/take-n-values 3)))))))))
+
+(deftest block-data-should-not-expose-field-values
+  (testing "block data perms should not allow access to field values (private#196)"
+    (when config/ee-available?
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp-copy-of-db
+          (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+            (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                            {:schemas :block})
+            (is (= "You don't have permissions to do that."
+                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                        (mt/user-http-request :rasta :get 403))))
+            (testing "search"
+              (is (= "You don't have permissions to do that."
+                     (->> (chain-filter-search-url (:id dashboard) (:category-name param-keys) "BBQ")
+                          (mt/user-http-request :rasta :get 403)))))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
@@ -3932,7 +3947,7 @@
                                          dashboard-id
                                          dashcard-id)]
                 (testing "with :advanced-permissions feature flag"
-                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                  (mt/with-premium-features #{:advanced-permissions}
                     (testing "for non-magic group"
                       (mt/with-temp [PermissionsGroup {group-id :id} {}
                                      PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
@@ -4050,3 +4065,31 @@
             (testing "We have values and they all match the expression concatenation"
               (is (pos? (count values)))
               (is (every? (partial re-matches #"[^🦜]+🦜🦜🦜[^🦜]+") (map first values))))))))))
+
+(deftest param-values-permissions-test
+  (testing "Users without permissions should not see all options in a dashboard filter (private#196)"
+    (when config/ee-available?
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp-copy-of-db
+          (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+            (testing "Return values with access"
+              (is (=? {:values (comp #(contains? % ["African"]) set)}
+                      (mt/user-http-request :rasta :get 200
+                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+            (testing "Return values with no self-service (#26874)"
+              (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+              (is (=? {:values (comp #(contains? % ["African"]) set)}
+                      (mt/user-http-request :rasta :get 200
+                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+            (testing "Return values for admin"
+              (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                              {:schemas :block})
+              (is (=? {:values (comp #(contains? % ["African"]) set)}
+                      (mt/user-http-request :crowberto :get 200
+                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+            (testing "Don't return with block perms."
+              (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                              {:schemas :block})
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403
+                                           (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))))

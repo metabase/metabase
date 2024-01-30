@@ -19,6 +19,8 @@ import { ModelIndexes } from "metabase/entities/model-indexes";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Revision from "metabase/entities/revisions";
+import * as Lib from "metabase-lib";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -36,6 +38,7 @@ import {
   getResultsMetadata,
   getTransformedSeries,
   isBasedOnExistingQuestion,
+  getParameters,
 } from "../../selectors";
 
 import { updateUrl } from "../navigation";
@@ -73,12 +76,17 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
       Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
     );
     const card = Questions.HACK_getObjectFromAction(action);
+    const question = new Question(
+      card,
+      getMetadata(getState()),
+      outdatedQuestion.parameters(),
+    );
 
     dispatch(loadMetadataForCard(card));
 
     dispatch(
       runQuestionQuery({
-        overrideWithCard: card,
+        overrideWithQuestion: question,
         shouldUpdateUrl: false,
       }),
     );
@@ -187,8 +195,9 @@ export const apiCreateQuestion = question => {
 
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
+    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
     const questionToCreate = questionWithVizSettings
-      .setLegacyQuery(question.legacyQuery().clean({ skipFilters: true }))
+      .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
     const createdQuestion = await reduxCreateQuestion(
       questionToCreate,
@@ -239,7 +248,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       );
     }
 
-    if (question.isStructured()) {
+    const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
+
+    if (isStructured) {
       rerunQuery = rerunQuery ?? isResultDirty;
     }
 
@@ -249,13 +260,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
+    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
     const questionToUpdate = questionWithVizSettings
-      // Before we clean the query, we make sure question is not treated as a dataset
-      // as calling table() method down the line would bring unwanted consequences
-      // such as dropping joins (as joins are treated differently between pure questions and datasets)
-      .setLegacyQuery(
-        question.setDataset(false).legacyQuery().clean({ skipFilters: true }),
-      )
+      .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
@@ -304,6 +311,22 @@ export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => {
     return { id: parameterId, value: normalizeValue(value) };
+  },
+);
+
+export const SET_PARAMETER_VALUE_TO_DEFAULT =
+  "metabase/qb/SET_PARAMETER_VALUE_TO_DEFAULT";
+export const setParameterValueToDefault = createThunkAction(
+  SET_PARAMETER_VALUE_TO_DEFAULT,
+  parameterId => (dispatch, getState) => {
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+    const defaultValue = parameter?.default;
+
+    if (defaultValue) {
+      dispatch(setParameterValue(parameterId, defaultValue));
+    }
   },
 );
 

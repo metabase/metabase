@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Toggle from "metabase/core/components/Toggle";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
@@ -14,7 +14,7 @@ import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
 import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import DefaultParametersSection from "./DefaultParametersSection";
-import CaveatMessage from "./CaveatMessage";
+import { CaveatMessage } from "./CaveatMessage";
 import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 

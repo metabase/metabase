@@ -16,7 +16,7 @@ const metadata = createMockMetadata({
 
 const ordersTable = metadata.table(ORDERS_ID);
 
-const query = ordersTable.legacyQuery();
+const query = ordersTable.legacyQuery({ useStructuredQuery: true });
 
 function filter(mbql) {
   return new Filter(mbql, 0, query);
@@ -187,7 +187,7 @@ describe("Filter", () => {
       ).toEqual([null, ["field", ORDERS.TOTAL, null]]);
     });
     it("should set joined-field for new filter clause", () => {
-      const q = ordersTable.legacyQuery().join({
+      const q = ordersTable.legacyQuery({ useStructuredQuery: true }).join({
         alias: "foo",
         "source-table": PEOPLE_ID,
       });

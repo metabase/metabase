@@ -22,6 +22,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           padding: compact ? `${rem(3)} ${rem(7)}` : `${rem(11)} ${rem(15)}`,
           fontSize: theme.fontSizes.md,
           lineHeight: theme.lineHeight,
+          overflow: "hidden",
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
             [`.${getStylesRef("leftIcon")}`]: {
@@ -34,6 +35,9 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
         },
         label: {
           ref: getStylesRef("label"),
+          display: "inline-block",
+          height: "auto",
+          textOverflow: "ellipsis",
         },
         leftIcon: {
           ref: getStylesRef("leftIcon"),

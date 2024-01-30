@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import type * as Lib from "metabase-lib";
 import { isNumber } from "metabase/lib/types";
-import { Flex, Grid, NumberInput, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, Grid, NumberInput, Text, Icon } from "metabase/ui";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
@@ -71,7 +71,7 @@ export function CoordinateFilterEditor({
   };
 
   return (
-    <Grid mih="4.5rem" grow>
+    <Grid grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />

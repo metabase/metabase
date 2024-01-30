@@ -8,6 +8,7 @@ import type {
   StructuredDatasetQuery,
   FieldId,
 } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import type Database from "metabase-lib/metadata/Database";
 import type Question from "metabase-lib/Question";
@@ -97,17 +98,17 @@ export function checkDatabaseCanPersistDatasets(database?: Database | null) {
 }
 
 export function checkCanBeModel(question: Question) {
-  const query = question.legacyQuery();
-
   if (!checkDatabaseSupportsModels(question.database())) {
     return false;
   }
 
-  if (!question.isNative()) {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
+  if (!isNative) {
     return true;
   }
 
-  return (query as NativeQuery)
+  return (question.legacyQuery() as NativeQuery)
     .templateTags()
     .every(isSupportedTemplateTagForModel);
 }

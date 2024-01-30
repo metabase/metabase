@@ -10,7 +10,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Dashboard DashboardCard Metric Pulse Segment]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -21,7 +20,7 @@
 
 (clojure.test/use-fixtures :once
   (fn [test-fn]
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (test-fn))))
 
 (deftest card-create-test
@@ -338,7 +337,7 @@
 
 (deftest subscription-send-event-test
   (testing :subscription-send
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (let [id 1]
         (mt/with-test-user :rasta
           (events/publish-event! :event/subscription-send {:id      id

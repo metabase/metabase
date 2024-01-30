@@ -7,10 +7,7 @@ import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import {
-  updateDateTimeFilter,
-  updateNumericFilter,
-} from "metabase-lib/queries/utils/actions";
+import * as Lib from "metabase-lib";
 import { isStructured } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 
@@ -351,7 +348,7 @@ function getYAxisProps(props, yExtents, datas) {
 
 /// make the `onBrushChange()` and `onBrushEnd()` functions we'll use later, as well as an `isBrushing()` function to check
 /// current status.
-function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
+function makeBrushChangeFunctions({ series, onChangeCardAndRun, metadata }) {
   let _isBrushing = false;
 
   const isBrushing = () => _isBrushing;
@@ -362,23 +359,44 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
 
   function onBrushEnd(range) {
     _isBrushing = false;
+
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
-      const query = new Question(card).legacyQuery();
+      const question = new Question(card, metadata);
+      const query = question.query();
+      const stageIndex = -1;
+
       const [start, end] = range;
+
       if (isDimensionTimeseries(series)) {
+        const nextQuery = Lib.updateTemporalFilter(
+          query,
+          stageIndex,
+          column,
+          new Date(start).toISOString(),
+          new Date(end).toISOString(),
+        );
+        const updatedQuestion = question.setQuery(nextQuery);
+        const nextCard = updatedQuestion.card();
+
         onChangeCardAndRun({
-          nextCard: updateDateTimeFilter(query, column, start, end)
-            .question()
-            .card(),
+          nextCard,
           previousCard: card,
         });
       } else {
+        const nextQuery = Lib.updateNumericFilter(
+          query,
+          stageIndex,
+          column,
+          start,
+          end,
+        );
+        const updatedQuestion = question.setQuery(nextQuery);
+        const nextCard = updatedQuestion.card();
+
         onChangeCardAndRun({
-          nextCard: updateNumericFilter(query, column, start, end)
-            .question()
-            .card(),
+          nextCard,
           previousCard: card,
         });
       }

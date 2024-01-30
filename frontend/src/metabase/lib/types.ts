@@ -3,9 +3,9 @@ export const isNotNull = <T>(value: T | null | undefined): value is T => {
 };
 
 export const isNotFalsy = <T>(
-  value: T | null | undefined | false,
+  value: T | null | undefined | false | "",
 ): value is T => {
-  return value != null;
+  return value != null && value !== false && value !== "";
 };
 
 export const isNumber = (value: unknown): value is number => {

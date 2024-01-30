@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import * as ML from "cljs/metabase.lib.js";
+import * as Lib from "metabase-lib";
 import type {
   Card,
   DatabaseId,
@@ -102,6 +102,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   /* Query superclass methods */
+
+  /**
+   * @deprecated use MLv2
+   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -155,13 +159,6 @@ export default class NativeQuery extends AtomicQuery {
   engine(): string | null | undefined {
     const database = this._database();
     return database && database.engine;
-  }
-
-  // Whether the user can modify and run this query
-  // Determined based on availability of database metadata and native database permissions
-  isEditable(): boolean {
-    const database = this._database();
-    return database != null && database.native_permissions === "write";
   }
 
   /* Methods unique to this query type */
@@ -315,6 +312,11 @@ export default class NativeQuery extends AtomicQuery {
         if (!dimension) {
           return new ValidationError(t`Invalid template tag: ${tag.name}`);
         }
+        if (tag.required && !tag.default) {
+          return new ValidationError(
+            t`Missing default value for a required template tag: ${tag.name}`,
+          );
+        }
 
         return dimension.validateTemplateTag();
       })
@@ -363,7 +365,9 @@ export default class NativeQuery extends AtomicQuery {
     });
   }
 
-  variables(variableFilter: VariableFilter = () => true): Variable[] {
+  variables(
+    variableFilter: VariableFilter = () => true,
+  ): TemplateTagVariable[] {
     return this.templateTags()
       .filter(tag => tag.type !== "dimension")
       .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
@@ -431,7 +435,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     return queryText && this.supportsNativeParameters()
-      ? ML.extract_template_tags(queryText, this.templateTagsMap())
+      ? Lib.extractTemplateTags(queryText, this.templateTagsMap())
       : {};
   }
 

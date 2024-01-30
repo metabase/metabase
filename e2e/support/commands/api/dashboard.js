@@ -3,9 +3,10 @@ Cypress.Commands.add(
   (
     {
       name = "Test Dashboard",
+      auto_apply_filters,
       enable_embedding,
       embedding_params,
-      auto_apply_filters,
+      dashcards,
       ...dashboardDetails
     } = {},
     { wrapId = false, idAlias = "dashboardId" } = {},
@@ -18,11 +19,16 @@ Cypress.Commands.add(
         if (wrapId) {
           cy.wrap(body.id).as(idAlias);
         }
-        if (enable_embedding != null || auto_apply_filters != null) {
+        if (
+          enable_embedding != null ||
+          auto_apply_filters != null ||
+          Array.isArray(dashcards)
+        ) {
           cy.request("PUT", `/api/dashboard/${body.id}`, {
+            auto_apply_filters,
             enable_embedding,
             embedding_params,
-            auto_apply_filters,
+            dashcards,
           });
         }
       },

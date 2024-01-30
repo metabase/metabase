@@ -23,11 +23,13 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
 
 export function getParameterTargetField(
   target: ParameterTarget,
-  metadata: Metadata,
   question: Question,
 ) {
   if (isDimensionTarget(target)) {
-    const query = question.legacyQuery() as NativeQuery | StructuredQuery;
+    const query = question.legacyQuery({ useStructuredQuery: true }) as
+      | NativeQuery
+      | StructuredQuery;
+    const metadata = question.metadata();
     const dimension = Dimension.parseMBQL(target[1], metadata, query);
 
     return dimension?.field();
@@ -58,23 +60,22 @@ export function getTargetFieldFromCard(
   metadata: Metadata,
 ) {
   const question = new Question(card, metadata);
-  const field = getParameterTargetField(target, metadata, question);
+  const field = getParameterTargetField(target, question);
   return field ?? null;
 }
 
 export function compareMappingOptionTargets(
   target1: ParameterTarget,
   target2: ParameterTarget,
-  card1: Card,
-  card2: Card,
-  metadata: Metadata,
+  question1: Question,
+  question2: Question,
 ) {
   if (!isDimensionTarget(target1) || !isDimensionTarget(target2)) {
     return false;
   }
 
-  const fieldReference1 = getTargetFieldFromCard(target1, card1, metadata);
-  const fieldReference2 = getTargetFieldFromCard(target2, card2, metadata);
+  const fieldReference1 = getParameterTargetField(target1, question1);
+  const fieldReference2 = getParameterTargetField(target2, question2);
 
   return fieldReference1?.id === fieldReference2?.id;
 }

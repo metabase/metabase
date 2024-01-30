@@ -20,6 +20,7 @@
   :type       :boolean
   :default    false
   :visibility :authenticated
+  :export?    true
   :audit      :getter
   :setter     (fn [new-value]
                 (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding))

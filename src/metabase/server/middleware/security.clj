@@ -168,10 +168,11 @@
     "X-Content-Type-Options"            "nosniff"}))
 
 (defn- add-security-headers* [request response]
-  (update response :headers merge (security-headers
-                                   :nonce          (:nonce request)
-                                   :allow-iframes? ((some-fn request.u/public? request.u/embed?) request)
-                                   :allow-cache?   (request.u/cacheable? request))))
+  ;; merge is other way around so that handler can override headers
+  (update response :headers #(merge %2 %1) (security-headers
+                                            :nonce          (:nonce request)
+                                            :allow-iframes? ((some-fn request.u/public? request.u/embed?) request)
+                                            :allow-cache?   (request.u/cacheable? request))))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers."

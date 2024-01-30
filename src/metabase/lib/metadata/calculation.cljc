@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata.calculation
   (:require
+   #?(:clj [metabase.config :as config])
    [clojure.string :as str]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -97,10 +98,15 @@
 
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
-  (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-             (pr-str x)
-             `display-name-method
-             (lib.dispatch/dispatch-value x))
+  ;; This was suspected as hurting performance, going to skip it in prod for now
+  (when #?(:clj          (not config/is-prod?)
+           :cljs         true ;; the linter complains when :cljs is not here(?)
+           :cljs-dev     true
+           :cljs-release false)
+    (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
+               (pr-str x)
+               `display-name-method
+               (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause: just use the name of the clause.
@@ -375,6 +381,8 @@
         :is-breakout            (= source :source/breakouts)})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
+     (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
+       {:is-temporal-extraction (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)})
      (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
@@ -545,9 +553,9 @@
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
-  have appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field. (I think we only include
-  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
-  check here.)
+  have (1) appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field, and (2) have a numeric
+  `:id`, i.e. be a real database column that can be used in a JOIN condition. (I think we only include this information
+  for Databases that support FKs and joins, so I don't think we need to do an additional DB feature check here.)
 
   Does not include columns from any Tables that are already explicitly joined.
 
@@ -556,6 +564,8 @@
   (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
     (into []
           (comp (filter :fk-target-field-id)
+                (filter :id)
+                (filter (comp number? :id))
                 (map (fn [{source-field-id :id, :keys [fk-target-field-id] :as source}]
                        (-> (lib.metadata/field query fk-target-field-id)
                            (assoc ::source-field-id source-field-id

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Flex, Grid, TextInput } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, Grid, TextInput, Icon } from "metabase/ui";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import type * as Lib from "metabase-lib";
@@ -66,7 +66,7 @@ export function StringFilterEditor({
   };
 
   return (
-    <Grid mih="4.5rem" grow>
+    <Grid grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />

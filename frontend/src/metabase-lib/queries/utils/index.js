@@ -1,5 +1,4 @@
 import _ from "underscore";
-import { copy } from "metabase/lib/utils";
 
 import * as QUERY from "./query";
 import * as FieldRef from "./field-ref";
@@ -9,37 +8,6 @@ export * from "./field-ref";
 // The backend won't return more than 2,000 rows so in cases where we
 // need to communicate or use that, use this constant
 export const HARD_ROW_LIMIT = 2000;
-
-const NEW_QUERY_TEMPLATES = {
-  query: {
-    database: null,
-    type: "query",
-    query: {
-      "source-table": null,
-    },
-  },
-  native: {
-    database: null,
-    type: "native",
-    native: {
-      query: "",
-    },
-  },
-};
-
-export function createQuery(type = "query", databaseId, tableId) {
-  const dataset_query = copy(NEW_QUERY_TEMPLATES[type]);
-
-  if (databaseId) {
-    dataset_query.database = databaseId;
-  }
-
-  if (type === "query" && databaseId && tableId) {
-    dataset_query.query["source-table"] = tableId;
-  }
-
-  return dataset_query;
-}
 
 export function isStructured(dataset_query) {
   return dataset_query && dataset_query.type === "query";

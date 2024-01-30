@@ -47,7 +47,8 @@ export class AggregationWidget extends Component {
   render() {
     const {
       aggregation,
-      query = aggregation.query && aggregation.legacyQuery(),
+      query = aggregation.query &&
+        aggregation.legacyQuery({ useStructuredQuery: true }),
       children,
       className,
     } = this.props;

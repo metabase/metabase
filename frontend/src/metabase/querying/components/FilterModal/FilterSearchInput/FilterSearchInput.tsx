@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
-import { Flex, TextInput } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
-import { isSearchActive } from "../utils";
+import { Flex, TextInput, Icon } from "metabase/ui";
 
 const SEARCH_TIMEOUT = 200;
 
@@ -17,8 +15,6 @@ export function FilterSearchInput({
   onChange,
 }: FilterSearchInputProps) {
   const [inputText, setInputText] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
-  const isActive = isFocused || isSearchActive(inputText);
 
   useDebounce(
     () => inputText !== searchText && onChange(inputText),
@@ -32,12 +28,9 @@ export function FilterSearchInput({
         type="search"
         value={inputText}
         icon={<Icon name="search" />}
-        variant={isActive ? "default" : "unstyled"}
         placeholder={t`Search for a column…`}
         aria-hidden
         onChange={event => setInputText(event.currentTarget.value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
       />
     </Flex>
   );

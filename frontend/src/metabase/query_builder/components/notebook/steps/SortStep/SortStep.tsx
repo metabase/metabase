@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";

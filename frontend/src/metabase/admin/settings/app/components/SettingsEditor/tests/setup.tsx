@@ -15,6 +15,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupApiKeyEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -61,6 +62,7 @@ export const setup = async ({
     setupEnterprisePlugins();
   }
 
+  setupApiKeyEndpoints([]);
   setupSettingsEndpoints(settings);
   setupPropertiesEndpoints(settingValuesWithToken);
 

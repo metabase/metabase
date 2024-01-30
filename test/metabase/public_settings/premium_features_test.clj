@@ -3,8 +3,8 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
-   [clojure.set :as set]
    [clojure.test :refer :all]
+   [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.user :refer [User]]
@@ -13,67 +13,8 @@
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
-   [metabase.test.util.thread-local :as tu.thread-local]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
-
-(defn do-with-premium-features [features thunk]
-  (let [features (set (map name features))]
-    (testing (format "\nWith premium token features = %s" (pr-str features))
-      ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
-      ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
-      ;; See [[with-premium-features-test]] below.
-      (let [thunk (^:once fn* []
-                   (binding [premium-features/*token-features* (constantly features)]
-                     (thunk)))]
-        (if tu.thread-local/*thread-local*
-          (thunk)
-          (with-redefs [premium-features/*token-features* (constantly features)]
-            (thunk)))))))
-
-;; TODO -- move this to a shared `metabase-enterprise.test` namespace. Consider adding logic that will alias stuff in
-;; `metabase-enterprise.test` in `metabase.test` as well *if* EE code is available
-(defmacro with-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use
-  testing feature-flagging.
-
-    (with-premium-features #{:audit-app}
-      ;; audit app will be enabled for body, but no other premium features
-      ...)
-
-  Normally, this will only change the premium features for the current thread, but if used
-  inside [[metabase.test/test-helpers-set-global-values!]], it will affect premium features globally (i.e., it will
-  use [[with-redefs]] instead of [[binding]])."
-  {:style/indent 1}
-  [features & body]
-  `(do-with-premium-features ~features (^:once fn* [] ~@body)))
-
-(deftest with-premium-features-test
-  (testing "Make sure with-premium-features global nested inside local works correctly"
-    (with-premium-features #{}
-      (is (= #{}
-             (premium-features/*token-features*)))
-      (mt/test-helpers-set-global-values!
-        (with-premium-features #{:audit-app}
-          (is (= #{"audit-app"}
-                 (premium-features/*token-features*))))))))
-
-(defmacro with-additional-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to the union of `features` and
-  the current feature set. Intended for use testing feature-flagging, if you don't want to override other features
-  that are already enabled.
-
-    (with-additional-premium-features #{:audit-app}
-      ;; audit app will be enabled for body, as well as any that are already enabled
-      ...)
-
-  Normally, this will only change the premium features for the current thread, but if used
-  inside [[metabase.test/test-helpers-set-global-values!]], it will affect premium features globally (i.e., it will
-  use [[with-redefs]] instead of [[binding]])."
-  {:style/indent 1}
-  [features & body]
-  `(do-with-premium-features (set/union (premium-features/*token-features*) ~features)
-                             (^:once fn* [] ~@body)))
 
 (defn- token-status-response
   [token premium-features-response]
@@ -193,20 +134,20 @@
                (greeting :rasta))))
 
       (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
-        (with-premium-features #{:special-greeting}
+        (mt/with-premium-features #{:special-greeting}
           (is (= "Hi rasta, you're an extra special EE customer!"
                  (special-greeting :rasta))))
 
-        (with-premium-features #{}
+        (mt/with-premium-features #{}
           (is (= "Hi rasta, you're not extra special :("
                  (special-greeting :rasta)))))
 
       (testing "when :fallback is a function, it is run when the required token is not present"
-        (with-premium-features #{:special-greeting}
+        (mt/with-premium-features #{:special-greeting}
           (is (= "Hi rasta, you're an extra special EE customer!"
                  (special-greeting-or-custom :rasta))))
 
-        (with-premium-features #{}
+        (mt/with-premium-features #{}
           (is (= "Hi rasta, you're an EE customer but not extra special."
                  (special-greeting-or-custom :rasta))))))))
 
@@ -240,12 +181,12 @@
       (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid input: \[\"should be a keyword\"\]"
+                            #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
 
    (testing "Return schemas are validated for OSS implementations"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid output: \[\"should be a keyword\"\]"
+                            #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta.*"
                             (greeting-with-invalid-oss-return-schema :rasta)))))
 
   (when config/ee-available?
@@ -254,16 +195,15 @@
              (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid input: \[\"should be a keyword\"\]"
+                            #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
-
     (testing "Only EE schema is validated if EE implementation is called"
       (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
              (greeting-with-invalid-oss-return-schema :rasta)))
 
-      (with-premium-features #{:custom-feature}
+      (mt/with-premium-features #{:custom-feature}
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid output: \[\"should be a keyword\"\]"
+                              #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta, the schema was valid.*"
                               (greeting-with-invalid-ee-return-schema :rasta)))))
 
     (testing "EE schema is not validated if OSS fallback is called"

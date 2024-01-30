@@ -185,7 +185,7 @@ describeEE("formatting > sandboxes", () => {
       });
     });
 
-    describe("table sandboxed on a saved parametrized SQL question", () => {
+    describe("table sandboxed on a saved parameterized SQL question", () => {
       it("should show filtered categories", () => {
         openPeopleTable();
         cy.get(".TableInteractive-headerCellData").should("have.length", 4);
@@ -445,7 +445,7 @@ describeEE("formatting > sandboxes", () => {
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Category is Doohickey");
+      cy.findByText("Products → Category is Doohickey");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
     });

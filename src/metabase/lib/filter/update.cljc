@@ -125,6 +125,21 @@
    {:query query, :has-seen-column? false}
    (lib.breakout/breakouts query stage-number)))
 
+;;; just for [[update-temporal-filter]], we will also support plain JavaScript `Date`s and moment.js Moments. We
+;;; should probably do this more generally, since `::lib.schema.literal/temporal` accepts `java.time` instances in
+;;; JVM... this is experimental for now to see if this works without too much trouble, we can generalize this more in
+;;; the future if it works nicely.
+(mr/def ::temporal-literal
+  #?(:clj
+     ::lib.schema.literal/temporal
+
+     :cljs
+     [:or
+      ::lib.schema.literal/temporal
+      [:fn
+       {:error/message "Instance of a JS Date"}
+       #(instance? js/Date %)]]))
+
 (mu/defn update-temporal-filter :- ::lib.schema/query
   "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts. For use powering the
   brush zoom-in in timeseries visualizations.
@@ -137,10 +152,20 @@
   ([query           :- ::lib.schema/query
     stage-number    :- :int
     temporal-column :- ::lib.schema.metadata/column
-    start           :- ::lib.schema.literal/temporal
-    end             :- ::lib.schema.literal/temporal]
-   (let [query (remove-existing-filters-against-column query stage-number temporal-column)
-         unit  (lib.temporal-bucket/raw-temporal-bucket temporal-column)]
+    start           :- ::temporal-literal
+    end             :- ::temporal-literal]
+   (let [query        (remove-existing-filters-against-column query stage-number temporal-column)
+         unit         (lib.temporal-bucket/raw-temporal-bucket temporal-column)
+         ;; convert start and end to plain strings if they are JavaScript Date instances. The truncation stuff will
+         ;; work better because the ISO-8601 Strings let us differentiate between Dates/DateTimes/Times better than
+         ;; raw Date does. Also, the FE won't have to worry about converting it later
+         maybe-string #?(:clj identity
+                         :cljs (fn [t]
+                                 (cond-> t
+                                   (not (string? t))
+                                   (shared.ut/format-for-base-type ((some-fn :effective-type :base-type) temporal-column)))))
+         start        (maybe-string start)
+         end          (maybe-string end)]
      (if-not unit
        ;; Temporal column is not bucketed: we don't need to update any temporal units here. Add/update a `:between`
        ;; filter.

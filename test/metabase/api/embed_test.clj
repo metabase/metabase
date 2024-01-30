@@ -231,47 +231,50 @@
                                  :default nil}]}
                   (client/client :get 200 (card-url card {:params {:c nil}})))))))))
 
-(deftest parameters-should-include-template-tags
+(deftest parameters-should-include-legacy-template-tags
   (testing "parameters should get from both template-tags and card.parameters"
-    ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
-    ;; because doing such migration is costly.
-    ;; so there are cards where some parameters in template-tags does not exist in card.parameters
-    ;; that why we need to keep concat both of them then dedupe by id
+     ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+     ;; because doing such migration is costly.
+     ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+     ;; that why we need to keep concat both of them then dedupe by id
     (with-embedding-enabled-and-new-secret-key
-      (with-temp-card [card {:enable_embedding true
-                             :dataset_query    {:database (mt/id)
-                                                :type     :native
-                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
-                                                                           :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
-                                                                           :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
-                                                                           :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
-                             :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
-                                                {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
-                                                {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
-                                                 :values_source_type "static-list"  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
-                             :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
-        (let [parameters (:parameters (client/client :get 200 (card-url card)))]
-          (is (= [;; the parmeter with id = "c" exists in both card.parameters and tempalte-tags should have info
-                  ;; merge of both places
-                  {:id "c",
-                   :type "date/single",
-                   :display_name "c",
-                   :target ["variable" ["template-tag" "c"]],
-                   :name "c",
-                   :slug "c",
-                   ;; order importance: the default from template-tag is in the final result
-                   :default "C TAG"
-                   :values_source_type    "static-list"
-                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
-                  ;; the parameter id = "d" is in template-tags, but not card.parameters,
-                  ;; when fetching card we should get it returned
-                  {:id "d",
-                   :type "date/single",
-                   :target ["variable" ["template-tag" "d"]],
-                   :name "d",
-                   :slug "d",
-                   :default "D TAG"}]
-                 parameters)))))))
+      (with-temp-card [card (public-test/card-with-embedded-params)]
+        (is (= [;; the parameter with id = "c" exists in both card.parameters and tempalte-tags should have info
+                ;; merge of both places
+                {:id "c",
+                 :type "date/single",
+                 :display_name "c",
+                 :target ["variable" ["template-tag" "c"]],
+                 :name "c",
+                 :slug "c",
+                                    ;; order importance: the default from template-tag is in the final result
+                 :default "C TAG"
+                 :required false
+                 :values_source_type    "static-list"
+                 :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
+                                    ;; the parameter id = "d" is in template-tags, but not card.parameters,
+                                    ;; when fetching card we should get it returned
+                {:id "d",
+                 :type "date/single",
+                 :target ["variable" ["template-tag" "d"]],
+                 :name "d",
+                 :slug "d",
+                 :default "D TAG"
+                 :required false}]
+               (:parameters (client/client :get 200 (card-url card)))))))))
+
+(deftest parameters-should-include-relevant-template-tags-only
+  (testing "should work with non-parameter template tags"
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-card [card (public-test/card-with-snippet-and-card-template-tags)]
+        (is (= [{:type "date/single",
+                 :name "a",
+                 :id "a",
+                 :default "A TAG",
+                 :target ["variable" ["template-tag" "a"]],
+                 :slug "a"
+                 :required false}]
+               (:parameters (client/client :get 200 (card-url card)))))))))
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
 
@@ -494,13 +497,13 @@
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
-   (with-embedding-enabled-and-new-secret-key
-     (mt/with-temp [Card card (card-with-date-field-filter)]
-       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-       (binding [client/*url-prefix* ""]
-         (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-           (is (= "count\n107\n"
-                  (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
+    (with-embedding-enabled-and-new-secret-key
+      (mt/with-temp [Card card (card-with-date-field-filter)]
+        ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+        (binding [client/*url-prefix* ""]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+            (is (= "count\n107\n"
+                   (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------

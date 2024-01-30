@@ -3,8 +3,6 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-
 export const ActionSettingsWrapper = styled.div`
   display: flex;
   height: 80vh;
@@ -80,16 +78,4 @@ export const ModalActions = styled.div`
   gap: 1rem;
   padding: 1rem;
   border-top: 1px solid ${color("border")};
-`;
-
-export const ExplainerText = styled.p`
-  margin-left: ${space(3)};
-  margin-right: ${space(3)};
-
-  color: ${color("text-medium")};
-`;
-
-export const BrandLinkWithLeftMargin = styled(ExternalLink)`
-  margin-left: ${space(1)};
-  color: ${color("brand")};
 `;

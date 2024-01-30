@@ -36,8 +36,6 @@ describe("issue 21452", () => {
     cy.findByDisplayValue("Cumulative sum of Quantity").clear().type("Foo");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Display type").click();
-    // Blur will result in another POST request which is expected
-    cy.wait("@dataset");
     // Dismiss the popup and close settings
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
@@ -49,7 +47,7 @@ describe("issue 21452", () => {
       testPairedTooltipValues("Foo", "3,236");
     });
 
-    cy.get("@dataset.all").should("have.length", 2);
+    cy.get("@dataset.all").should("have.length", 1);
   });
 });
 

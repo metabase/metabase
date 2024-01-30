@@ -11,7 +11,7 @@ function _QueryDefinition({ className, object, metadata }) {
       dataset_query: { type: "query", query: object.definition },
     },
     metadata,
-  ).legacyQuery();
+  ).legacyQuery({ useStructuredQuery: true });
   const aggregations = query.aggregations();
   const filters = query.filters();
   return (

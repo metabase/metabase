@@ -96,14 +96,27 @@
    [:trial         {:optional true} :boolean]
    [:valid-thru    {:optional true} ms/NonBlankString]]) ; ISO 8601 timestamp
 
-(defn- fetch-token-and-parse-body
-  [token base-url]
+
+(defn- fetch-token-and-parse-body*
+  [token base-url site-uuid]
   (some-> (token-status-url token base-url)
           (http/get {:query-params {:users      (cached-active-users-count)
-                                    :site-uuid  (setting/get :site-uuid-for-premium-features-token-checks)
+                                    :site-uuid  site-uuid
                                     :mb-version (:tag config/mb-version-info)}})
           :body
           (json/parse-string keyword)))
+
+(defn- fetch-token-and-parse-body
+  [token base-url site-uuid]
+  (let [fut    (future (fetch-token-and-parse-body* token base-url site-uuid))
+        result (deref fut fetch-token-status-timeout-ms ::timed-out)]
+    (if (not= result ::timed-out)
+      result
+      (do
+        (future-cancel fut)
+        {:valid         false
+         :status        (tru "Unable to validate token")
+         :error-details (tru "Token validation timed out.")}))))
 
 (mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
@@ -117,32 +130,29 @@
       {:valid         false
        :status        "invalid"
        :error-details (trs "Token should be 64 hexadecimal characters.")})
-    (let [fut    (future
-                   (try (fetch-token-and-parse-body token token-check-url)
-                        (catch Exception e1
-                          (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-                          ;; Try the fallback URL, which was the default URL prior to 45.2
-                          (try (fetch-token-and-parse-body token store-url)
-                               ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                               ;; first error and return a generic message about the token being invalid. This message
-                               ;; will get displayed in the Settings page in the admin panel so we do not want something
-                               ;; complicated
-                               (catch Exception e2
-                                 (log/error e2 (trs "Error fetching token status from {0}:" store-url))
-                                 (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                                   (or
-                                     body
-                                     {:valid         false
-                                      :status        (tru "Unable to validate token")
-                                      :error-details (.getMessage e1)})))))))
-          result (deref fut fetch-token-status-timeout-ms ::timed-out)]
-      (if (= result ::timed-out)
-        (do
-          (future-cancel fut)
-          {:valid         false
-           :status        (tru "Unable to validate token")
-           :error-details (tru "Token validation timed out.")})
-        result))))
+    ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.
+    ;; We will have taken a lock to call through to here, and could create a deadlock with the future's thread.
+    ;; See https://github.com/metabase/metabase/pull/38029/
+    (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+      (try (fetch-token-and-parse-body token token-check-url site-uuid)
+           (catch Exception e1
+             ;; Unwrap exception from inside the future
+             (let [e1 (ex-cause e1)]
+               (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+               ;; Try the fallback URL, which was the default URL prior to 45.2
+               (try (fetch-token-and-parse-body token store-url site-uuid)
+                    ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                    ;; first error and return a generic message about the token being invalid. This message
+                    ;; will get displayed in the Settings page in the admin panel so we do not want something
+                    ;; complicated
+                    (catch Exception e2
+                      (log/error (ex-cause e2) (trs "Error fetching token status from {0}:" store-url))
+                      (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                        (or
+                          body
+                          {:valid         false
+                           :status        (tru "Unable to validate token")
+                           :error-details (.getMessage e1)}))))))))))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
@@ -305,13 +315,15 @@
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
   :embedding
+  :export? true
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
-  :whitelabel)
+  :whitelabel
+  :export? true)
 
 (define-premium-feature enable-audit-app?
   "Should we enable the Audit Logs interface in the Admin UI?"
@@ -331,7 +343,8 @@
 
 (define-premium-feature enable-sandboxes?
   "Should we enable data sandboxes (row-level permissions)?"
-  :sandboxes)
+  :sandboxes
+  :export? true)
 
 (define-premium-feature enable-sso-jwt?
   "Should we enable JWT-based authentication?"

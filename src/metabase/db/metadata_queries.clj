@@ -8,7 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.schema.helpers :as helpers]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.util :as u]
@@ -27,12 +27,52 @@
       :data
       :rows))
 
+(defn- partition-field->filter-form
+  "Given a partition field, returns the default value can be used to query."
+  [field]
+  (let [field-form [:field (:id field) {:base-type (:base_type field)}]]
+    (condp #(isa? %2 %1) (:base_type field)
+      :type/Number   [:> field-form -9223372036854775808]
+      :type/Date     [:> field-form "0001-01-01"]
+      :type/DateTime [:> field-form "0001-01-01T00:00:00"])))
+
+(defn- query-with-default-partitioned-field-filter
+  [query table-id]
+  (let [;; In bigquery, range or datetime partitioned table can have only one partioned field,
+        ;; Ingestion time partitioned table can use either _PARTITIONDATE or _PARTITIONTIME as
+        ;; partitioned field
+        partition-field (or (t2/select-one :model/Field
+                                           :table_id table-id
+                                           :database_partitioned true
+                                           :active true
+                                           ;; prefer _PARTITIONDATE over _PARTITIONTIME for ingestion time query
+                                           {:order-by [[:name :asc]]})
+                            (throw (ex-info (format "No partitioned field found for table: %d" table-id)
+                                            {:table_id table-id})))
+        filter-form     (partition-field->filter-form partition-field)]
+    (update query :filter (fn [existing-filter]
+                            (if (some? existing-filter)
+                              [:and existing-filter filter-form]
+                              filter-form)))))
+
+(defn- field-mbql-query
+  [table mbql-query]
+  (cond-> mbql-query
+    true
+    (assoc :source-table (:id table))
+
+    ;; Some table requires a filter to be able to query the data
+    ;; Currently this only applied to Partitioned table in bigquery where the partition field
+    ;; is required as a filter.
+    ;; In the future we probably want this to be dispatched by database engine type
+    (:database_require_filter table)
+    (query-with-default-partitioned-field-filter (:id table))))
+
 (defn- field-query [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
-  (qp-query (t2/select-one-fn :db_id Table, :id table-id)
-            ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
-            ;; macro for building queries. Do not remove
-            (assoc mbql-query :source-table table-id)))
+  (let [table (t2/select-one :model/Table :id table-id)]
+    (qp-query (:db_id table)
+              (field-mbql-query table mbql-query))))
 
 (def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
@@ -126,7 +166,11 @@
                                                  [:expression expression-name]
                                                  [:field (u/the-id field) nil])))
                           :limit        limit}
-                   order-by (assoc :order-by order-by))
+                   order-by
+                   (assoc :order-by order-by)
+
+                   (:database_require_filter table)
+                   (query-with-default-partitioned-field-filter (:id table)))
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
@@ -147,9 +191,8 @@
     fields :- [:sequential (ms/InstanceOf :model/Field)]
     rff    :- fn?
     opts   :- TableRowsSampleOptions]
-   (let [query (table-rows-sample-query table fields opts)
-         qp    (requiring-resolve 'metabase.query-processor/process-query)]
-     (qp query rff nil))))
+   (let [query (table-rows-sample-query table fields opts)]
+     (qp/process-query query rff nil))))
 
 (defmethod driver/table-rows-sample :default
   [_driver table fields rff opts]

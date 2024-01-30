@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
 

@@ -19,7 +19,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
@@ -54,6 +53,7 @@
    :database_id                false
    :dataset_query              nil
    :description                nil
+   :display                    nil
    :id                         true
    :initial_sync_status        nil
    :model_id                   false
@@ -107,8 +107,8 @@
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
     (merge
@@ -245,6 +245,7 @@
              [:like [:lower :description]       "%foo%"] [:inline 0]
              [:like [:lower :collection_name]   "%foo%"] [:inline 0]
              [:like [:lower :collection_type]   "%foo%"] [:inline 0]
+             [:like [:lower :display]           "%foo%"] [:inline 0]
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
@@ -326,14 +327,14 @@
            :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}
            :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
           (testing "when has both :content-verification features"
-            (premium-features-test/with-premium-features #{:content-verification}
+            (mt/with-premium-features #{:content-verification}
               (mt/with-verified-cards [v-card-id v-model-id]
                 (is (= #{"card" "dataset"}
                        (set (mt/user-http-request :crowberto :get 200 "search/models"
                                                   :q search-term
                                                   :verified true)))))))
           (testing "when has :content-verification feature only"
-            (premium-features-test/with-premium-features #{:content-verification}
+            (mt/with-premium-features #{:content-verification}
               (mt/with-verified-cards [v-card-id]
                 (is (= #{"card"}
                        (set (mt/user-http-request :crowberto :get 200 "search/models"
@@ -354,7 +355,8 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil))]
+                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
+                         :dataset_query nil :display "table"))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -1143,7 +1145,7 @@
        :model/Card {_model-id :id}  {:name (format "%s Normal Model" search-term) :dataset true}
        :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}]
       (mt/with-verified-cards [v-card-id v-model-id]
-        (premium-features-test/with-premium-features #{:content-verification}
+        (mt/with-premium-features #{:content-verification}
           (testing "Able to filter only verified items"
             (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
               (testing "do not returns duplicated verified cards"
@@ -1176,7 +1178,7 @@
                           (map :model)
                           set))))))
 
-        (premium-features-test/with-premium-features #{:content-verification}
+        (mt/with-premium-features #{:content-verification}
           (testing "Returns verified cards and models only if :content-verification is enabled"
             (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
 
@@ -1191,7 +1193,7 @@
                             set)))))))
 
         (testing "error if doesn't have premium-features"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (is (= "Content Management or Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                    (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true)))))))))
 

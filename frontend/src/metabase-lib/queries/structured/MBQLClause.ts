@@ -38,7 +38,7 @@ export default class MBQLArrayClause extends Array {
   /**
    * returns the parent query object
    */
-  legacyQuery(): StructuredQuery {
+  legacyQuery(_opts: { useStructuredQuery: true } = {}): StructuredQuery {
     return this._query;
   }
 

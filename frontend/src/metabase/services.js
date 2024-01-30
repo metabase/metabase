@@ -4,6 +4,7 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import Question from "metabase-lib/Question";
 import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
+import { isStructured } from "metabase-lib/queries/utils/card";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
 import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
@@ -59,7 +60,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   }
   if (
     question.display() !== "pivot" ||
-    !question.isStructured() ||
+    !isStructured(card) ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
   ) {
@@ -452,6 +453,8 @@ export const PermissionsApi = {
   groups: GET("/api/permissions/group"),
   groupDetails: GET("/api/permissions/group/:id"),
   graph: GET("/api/permissions/graph"),
+  graphForGroup: GET("/api/permissions/graph/group/:groupId"),
+  graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
   createGroup: POST("/api/permissions/group"),
   memberships: GET("/api/permissions/membership"),
@@ -599,4 +602,13 @@ export const MetabotApi = {
   databasePrompt: POST("/api/metabot/database/:databaseId"),
   databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
   sendFeedback: POST("/api/metabot/feedback"),
+};
+
+export const ApiKeysApi = {
+  list: GET("/api/api-key"),
+  create: POST("/api/api-key"),
+  count: GET("/api/api-key/count"),
+  delete: DELETE("/api/api-key/:id"),
+  edit: PUT("/api/api-key/:id"),
+  regenerate: PUT("/api/api-key/:id/regenerate"),
 };

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Flex, Modal, Stack, Tabs, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Button, Flex, Modal, Stack, Tabs, Text, Icon } from "metabase/ui";
+
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
 import { FilterSearchInput } from "./FilterSearchInput";

@@ -10,7 +10,6 @@
    [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
    [metabase.models.permissions :as perms]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -27,7 +26,7 @@
     (is (fn? (get-method audit.i/internal-query :metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed))))
 
   (testing "test that a query will fail if not ran by an admin"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (is (= {:status "failed", :error "You don't have permissions to do that."}
              (-> (mt/user-http-request :lucky :post 202 "dataset"
                                        {:type :internal
@@ -35,7 +34,7 @@
                  (select-keys [:status :error]))))))
 
   (testing "ok, now try to run it. Should fail because we don't have audit-app enabled"
-    (premium-features-test/with-premium-features nil
+    (mt/with-premium-features nil
       (is (= {:status "failed", :error "Audit App queries are not enabled on this instance."}
              (-> (mt/user-http-request :crowberto :post 202 "dataset"
                                        {:type :internal
@@ -47,7 +46,7 @@
                              user  [group]]
       (perms/grant-application-permissions! group :monitoring)
       (testing "still fail if advanced-permissions is disabled"
-        (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-premium-features #{:audit-app}
           (is (= {:status "failed", :error "You don't have permissions to do that."}
                  (-> (mt/user-http-request user :post 202 "dataset"
                                            {:type :internal
@@ -55,7 +54,7 @@
                      (select-keys [:status :error]))))))
 
       (testing "run successfully if advanced-permissions enabled)"
-        (premium-features-test/with-premium-features #{:audit-app :advanced-permissions}
+        (mt/with-premium-features #{:audit-app :advanced-permissions}
           (is (= {:status "completed"}
                  (-> (mt/user-http-request user :post 202 "dataset"
                                            {:type :internal
@@ -184,7 +183,7 @@
 (deftest all-queries-test
   (mt/with-test-user :crowberto
     (with-temp-objects [objects]
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (doseq [query-type (all-query-methods)]
           (testing query-type
             (do-tests-for-query-type query-type objects)))))))
@@ -193,7 +192,7 @@
   (testing "User name fallback to email, implemented in `metabase-enterprise.audit-app.pages.common/user-full-name` works in audit queries."
     (mt/with-test-user :crowberto
       (mt/test-helpers-set-global-values!
-        (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-premium-features #{:audit-app}
           (mt/with-temp [User a {:first_name "a" :last_name nil :email "a@metabase.com"}
                          User b {:first_name nil :last_name "b" :email "b@metabase.com"}
                          User c {:first_name nil :last_name nil :email "c@metabase.com"}]
@@ -210,7 +209,7 @@
   (testing "User login method takes into account both the google_auth and sso_source columns"
     (mt/with-test-user :crowberto
       (mt/test-helpers-set-global-values!
-        (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-premium-features #{:audit-app}
           (mt/with-temp [User a {:email "a@metabase.com" :sso_source nil}
                          User b {:email "b@metabase.com" :sso_source :google}
                          User c {:email "c@metabase.com" :sso_source :saml}
@@ -228,7 +227,7 @@
 (deftest active-and-new-by-time-test
   (testing "The active-and-new-by-time audit query correctly returns results (#32244)"
     (mt/with-test-user :crowberto
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (let [results (mt/user-http-request :crowberto :post 202 "dataset"
                                             {:type :internal
                                              :fn   "metabase-enterprise.audit-app.pages.users/active-and-new-by-time"

@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import { Flex, Grid, MultiSelect, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, Grid, MultiSelect, Text, Icon } from "metabase/ui";
+
 import type { SegmentItem } from "../types";
 
 interface SegmentFilterEditorProps {
@@ -33,7 +33,7 @@ export function SegmentFilterEditor({
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name="filter" />
-          <Text color="text.2" weight="bold">
+          <Text color="text-dark" weight="bold">
             {t`Filter down to a segment`}
           </Text>
         </Flex>

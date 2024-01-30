@@ -1,13 +1,34 @@
 import fetchMock from "fetch-mock";
 import type {
   CollectionPermissionsGraph,
-  PermissionsGraph,
+  Group,
+  Database,
 } from "metabase-types/api";
 
-export const setupPermissionsGraphEndpoint = (
-  permissionsGraph: PermissionsGraph,
+import { createMockPermissionsGraph } from "metabase-types/api/mocks/permissions";
+
+export const setupPermissionsGraphEndpoints = (
+  groups: Omit<Group, "members">[],
+  databases: Database[],
 ) => {
-  fetchMock.get("path:/api/permissions/graph", permissionsGraph);
+  fetchMock.get(
+    "path:/api/permissions/graph",
+    createMockPermissionsGraph({ groups, databases }),
+  );
+
+  groups.forEach(group => {
+    fetchMock.get(
+      `path:/api/permissions/graph/group/${group.id}`,
+      createMockPermissionsGraph({ groups: [group], databases }),
+    );
+  });
+
+  databases.forEach(database => {
+    fetchMock.get(
+      `path:/api/permissions/graph/db/${database.id}`,
+      createMockPermissionsGraph({ groups, databases: [database] }),
+    );
+  });
 };
 
 export const setupCollectionPermissionsGraphEndpoint = (

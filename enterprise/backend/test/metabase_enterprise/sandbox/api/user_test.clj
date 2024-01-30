@@ -5,7 +5,6 @@
    [metabase-enterprise.test :as met]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -24,7 +23,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "user")))
       (testing "Should return themselves when the user is a segmented group manager"
-        (premium-features-test/with-premium-features #{:advanced-permissions}
+        (mt/with-premium-features #{:advanced-permissions}
           (mt/with-group [group {:name "a group"}]
             (let [membership (t2/select-one PermissionsGroupMembership
                                             :group_id (u/the-id group)
@@ -42,7 +41,7 @@
     (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (mt/user-http-request :crowberto :get 402 "mt/user/attributes"))))
 
-  (premium-features-test/with-premium-features #{:sandboxes}
+  (mt/with-premium-features #{:sandboxes}
     (testing "requires admin"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "mt/user/attributes"))))
@@ -61,7 +60,7 @@
     (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {}))))
 
-  (premium-features-test/with-premium-features #{:sandboxes}
+  (mt/with-premium-features #{:sandboxes}
     (testing "requires admin"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (format "mt/user/%d/attributes" (mt/user->id :rasta)) {}))))

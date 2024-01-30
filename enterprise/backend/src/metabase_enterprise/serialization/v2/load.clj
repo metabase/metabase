@@ -82,10 +82,13 @@
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [abort-on-error] :or {abort-on-error true}}]
+  [ingestion & {:keys [abort-on-error backfill?]
+                :or {abort-on-error true
+                     backfill? true}}]
   ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies guide
   ;; the import, and make sure all containers are imported before contents, etc.
-  (serdes.backfill/backfill-ids!)
+  (when backfill?
+    (serdes.backfill/backfill-ids!))
   (let [contents (serdes.ingest/ingest-list ingestion)
         ctx      {:expanding #{}
                   :seen      #{}

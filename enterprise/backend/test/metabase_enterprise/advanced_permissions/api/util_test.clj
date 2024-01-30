@@ -7,8 +7,6 @@
    [metabase.api.common :as api]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -69,7 +67,7 @@
   `(do-with-impersonations-for-user ~impersonations-and-attributes-map :rasta (fn [~'&group] ~@body)))
 
 (deftest impersonated-user-test
-  (premium-features-test/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions}
     (testing "Returns true when a user has an active connection impersonation policy"
       (with-impersonations {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
                             :attributes     {"KEY" "VAL"}}

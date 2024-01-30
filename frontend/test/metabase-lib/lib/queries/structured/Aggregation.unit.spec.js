@@ -18,7 +18,9 @@ const metadata = createMockMetadata({
   metrics: [TOTAL_ORDER_VALUE_METRIC],
 });
 
-const query = metadata.table(ORDERS_ID).legacyQuery();
+const query = metadata
+  .table(ORDERS_ID)
+  .legacyQuery({ useStructuredQuery: true });
 
 function aggregationForMBQL(mbql) {
   return new Aggregation(mbql, 0, query);

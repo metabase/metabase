@@ -17,8 +17,6 @@
     :refer [Permissions table-query-path]]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.table :refer [Table]]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -39,7 +37,7 @@
 (deftest audit-db-basic-query-test
   (mt/test-drivers #{:postgres :h2 :mysql}
     (audit-db-test/with-audit-db-restoration
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (mt/with-test-user :crowberto
           (testing "A query using a saved audit model as the source table runs succesfully"
             (let [audit-card (t2/select-one :model/Card :database_id perms/audit-db-id :dataset true)]
@@ -62,7 +60,7 @@
 (deftest audit-db-disallowed-queries-test
   (mt/test-drivers #{:postgres :h2 :mysql}
     (audit-db-test/with-audit-db-restoration
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (mt/with-test-user :crowberto
           (testing "Native queries are not allowed to be run on audit DB views, even by admins"
             (is (thrown-with-msg?
@@ -100,7 +98,7 @@
                        :query    {:source-table (u/the-id audit-view)}})))))))))))
 
 (deftest permissions-instance-analytics-audit-v2-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (mt/with-temp [PermissionsGroup {group-id :id}    {}
                    Database         {database-id :id} {}
                    Table            view-table        {:db_id database-id :name "v_users"}

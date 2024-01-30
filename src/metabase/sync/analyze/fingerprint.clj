@@ -67,16 +67,16 @@
                (fn [fingerprints]
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
-                             (instance? Throwable fingerprint)
-                             (update count-info :failed-fingerprints inc)
+                            (instance? Throwable fingerprint)
+                            (update count-info :failed-fingerprints inc)
 
-                             (some-> fingerprint :global :distinct-count zero?)
-                             (update count-info :no-data-fingerprints inc)
+                            (some-> fingerprint :global :distinct-count zero?)
+                            (update count-info :no-data-fingerprints inc)
 
-                             :else
-                             (do
-                               (save-fingerprint! field fingerprint)
-                               (update count-info :updated-fingerprints inc))))
+                            :else
+                            (do
+                             (save-fingerprint! field fingerprint)
+                             (update count-info :updated-fingerprints inc))))
                          (empty-stats-map (count fingerprints))
                          (map vector fields fingerprints)))))
         driver (driver.u/database->driver (table/database table))
@@ -187,7 +187,7 @@
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
   (seq (t2/select Field
-         (honeysql-for-fields-that-need-fingerprint-updating table))))
+                  (honeysql-for-fields-that-need-fingerprint-updating table))))
 
 ;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
 (mu/defn fingerprint-fields!

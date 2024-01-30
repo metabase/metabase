@@ -11,8 +11,6 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -69,7 +67,7 @@
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
-    (premium-features-test/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:advanced-permissions}
       (let [db-name "conn_impersonation_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -101,7 +99,7 @@
 
 (deftest conn-impersonation-test-snowflake
   (mt/test-driver :snowflake
-    (premium-features-test/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:advanced-permissions}
       (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                   :attributes     {"impersonation_attr" "LIMITED.ROLE"}}
         ;; Test database initially has no default role set. All queries should fail, even for non-impersonated users,

@@ -8,8 +8,8 @@ import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import Radio from "metabase/core/components/Radio";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import { EntityName } from "metabase/entities/containers/EntityName";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -20,6 +20,7 @@ import type {
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import { GTAPApi } from "metabase/services";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import AttributeMappingEditor, {
   AttributeOptionsEmptyState,
@@ -142,9 +143,8 @@ const EditSandboxingModal = ({
             <div className="pb2">
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-            {/* @ts-ignore */}
             <QuestionPicker
+              maxHeight={undefined}
               value={policy.card_id}
               onChange={(card_id: number) => setPolicy({ ...policy, card_id })}
             />
@@ -204,8 +204,7 @@ const EditSandboxingModal = ({
           <div className="flex align-center my2 text-error">
             {typeof error === "string"
               ? error
-              : // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
+              : // @ts-expect-error provide correct type for error
                 error.data.message ?? ERROR_MESSAGE}
           </div>
         )}
@@ -319,9 +318,8 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
       const fieldRef = target[1];
 
       return (
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         <QuestionLoader
+          questionHash={undefined}
           questionId={policy.card_id}
           questionObject={
             policy.card_id == null
@@ -334,12 +332,24 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
               return null;
             }
 
-            const dimension = question
-              .legacyQuery()
-              .parseFieldReference(fieldRef);
+            const query = question.query();
+            const stageIndex = -1;
+            const columns = Lib.visibleColumns(query, stageIndex);
+            const [index] = Lib.findColumnIndexesFromLegacyRefs(
+              query,
+              stageIndex,
+              columns,
+              [fieldRef],
+            );
+            const column = columns[index];
+            if (!column) {
+              return null;
+            }
+
+            const columnInfo = Lib.displayInfo(query, stageIndex, column);
             return (
               <span>
-                <strong>{dimension?.render()}</strong> field
+                <strong>{columnInfo.displayName}</strong> field
               </span>
             );
           }}

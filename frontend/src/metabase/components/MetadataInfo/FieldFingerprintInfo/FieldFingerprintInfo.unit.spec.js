@@ -19,8 +19,12 @@ const metadata = getMetadata(state);
 function setup(field) {
   return renderWithProviders(
     <div data-testid="container">
-      <FieldFingerprintInfo field={field} />
+      <FieldFingerprintInfo
+        field={field}
+        timezone={field.table?.database?.timezone}
+      />
     </div>,
+    { storeInitialState: state },
   );
 }
 

@@ -38,7 +38,7 @@ const makeQuery = (query = {}): StructuredQuery => {
       },
       database: SAMPLE_DB_ID,
     })
-    .legacyQuery() as StructuredQuery;
+    .legacyQuery({ useStructuredQuery: true }) as StructuredQuery;
 };
 
 const numericQuery = makeQuery({

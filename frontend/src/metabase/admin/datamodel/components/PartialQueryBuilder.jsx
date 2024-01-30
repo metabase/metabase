@@ -55,7 +55,7 @@ class PartialQueryBuilder extends Component {
 
     // only set the query if it doesn't already have an aggregation or filter
     const question = getSegmentOrMetricQuestion(value, table, metadata);
-    if (!question.legacyQuery().isRaw()) {
+    if (!question.legacyQuery({ useStructuredQuery: true }).isRaw()) {
       return;
     }
 
@@ -78,7 +78,7 @@ class PartialQueryBuilder extends Component {
     const { features, value, metadata, table, previewSummary } = this.props;
 
     const question = getSegmentOrMetricQuestion(value, table, metadata);
-    const legacyQuery = question.legacyQuery();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
     const query = question.query();
     const previewUrl = Urls.serializedQuestion(question.card());
 
@@ -97,7 +97,6 @@ class PartialQueryBuilder extends Component {
             <span className="text-bold px3">{previewSummary}</span>
             <Link
               to={previewUrl}
-              data-metabase-event="Data Model;Preview Click"
               target={window.OSX ? null : "_blank"}
               rel="noopener noreferrer"
               className="Button Button--primary"

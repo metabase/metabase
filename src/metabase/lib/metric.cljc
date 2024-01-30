@@ -2,6 +2,7 @@
   "A Metric is a saved MBQL query stage snippet with EXACTLY ONE `:aggregation` and optionally a `:filter` (boolean)
   expression. Can be passed into the `:aggregation`s list."
   (:require
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -97,18 +98,19 @@
    (available-metrics query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (when-let [source-table-id (lib.util/source-table-id query)]
-     (let [metrics (lib.metadata.protocols/metrics (lib.metadata/->metadata-provider query) source-table-id)
-           metric-aggregations (into {}
-                                     (keep-indexed (fn [index aggregation-clause]
-                                                     (when (lib.util/clause-of-type? aggregation-clause :metric)
-                                                       [(get aggregation-clause 2) index])))
-                                     (:aggregation (lib.util/query-stage query stage-number)))]
-       (cond
-         (empty? metrics)             nil
-         (empty? metric-aggregations) (vec metrics)
-         :else                        (mapv (fn [metric-metadata]
-                                              (let [aggregation-pos (-> metric-metadata :id metric-aggregations)]
-                                                (cond-> metric-metadata
-                                                  aggregation-pos (assoc :aggregation-position aggregation-pos))))
-                                            metrics))))))
+   (when (zero? (lib.util/canonical-stage-index query stage-number))
+     (when-let [source-table-id (lib.util/source-table-id query)]
+       (let [metrics (lib.metadata.protocols/metrics (lib.metadata/->metadata-provider query) source-table-id)
+             metric-aggregations (into {}
+                                       (keep-indexed (fn [index aggregation-clause]
+                                                       (when (lib.util/clause-of-type? aggregation-clause :metric)
+                                                         [(get aggregation-clause 2) index])))
+                                       (lib.aggregation/aggregations query stage-number))]
+         (cond
+           (empty? metrics)             nil
+           (empty? metric-aggregations) (vec metrics)
+           :else                        (mapv (fn [metric-metadata]
+                                                (let [aggregation-pos (-> metric-metadata :id metric-aggregations)]
+                                                  (cond-> metric-metadata
+                                                    aggregation-pos (assoc :aggregation-position aggregation-pos))))
+                                              metrics)))))))

@@ -5,7 +5,7 @@ import cx from "classnames";
 import { color as c } from "metabase/lib/colors";
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
 

@@ -10,7 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.internal :as internal]
    [metabase.config :as config]
-   [metabase.logger :as mb.logger]
+   [metabase.logger :as logger]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -171,7 +171,7 @@
                                          (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :id]\n"
                                               "Please add them to the schema or remove them from the API client"))
                       entry))
-                  (mb.logger/messages))))
+                  (logger/messages))))
 
       (is (= {:errors
               {:address

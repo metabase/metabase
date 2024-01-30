@@ -233,3 +233,33 @@
         (check-error-location (bar "good input" 2 3 4 5))))
     (testing "sanity check-error-location that it works"
       (is (= :yes (works? "valid input"))))))
+
+(deftest instrumentation-can-be-omitted
+  (testing "omission in macroexpansion"
+    (testing "returns a simple fn*"
+      (binding [mu.fn/*skip-ns-decision-fn* (constantly true)]
+        (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
+          (is (= expansion '(fn* ([] "foo")))))))
+    (testing "returns an instrumented fn"
+      (binding [mu.fn/*skip-ns-decision-fn* (constantly false)]
+        (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
+          (is (= (take 2 expansion)
+                 '(let* [&f (clojure.core/fn [] "foo")]
+                    ,,,)))))))
+  (testing "by default, instrumented forms are emitted"
+    (let [f (mu.fn/fn :- :int [] "schemas aren't checked if this is returned")]
+      (try (f)
+           (is false "(f) did not throw")
+           (catch Exception e
+             (is (=? {:type ::mu.fn/invalid-output} (ex-data e)))))))
+  (testing "when skip-ns-decision-fn returns true, unvalidated form is emitted"
+    (binding [mu.fn/*skip-ns-decision-fn* (constantly (fn [_ns] true))]
+      ;; we have to use eval here because `mu.fn/fn` is expanded at _read_ time and we want to change the
+      ;; expansion via [[*skip-ns-decision-fn*]]. So that's why we call eval here. Could definitely use some
+      ;; macroexpansion tests as well.
+      (let [f (eval `(mu.fn/fn :- :int [] "schemas aren't checked if this is returned"))]
+        (try (f)
+             (is (= "schemas aren't checked if this is returned"
+                    (f)))
+             (catch Exception _e
+               (is false "it threw a schema error")))))))

@@ -17,7 +17,7 @@ export const getAutocompleteOverrides =
         maxDropdownHeight: 512,
       }),
       styles: (theme, _, { size = "md" }) => ({
-        ...getSelectInputOverrides(theme),
+        ...getSelectInputOverrides(theme, size),
         ...getSelectItemsOverrides(theme, size),
       }),
     },

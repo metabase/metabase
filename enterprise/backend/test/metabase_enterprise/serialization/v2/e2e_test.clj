@@ -20,7 +20,6 @@
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
@@ -108,10 +107,10 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (let [extraction (atom nil)
           entities   (atom nil)]
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         ;; TODO Generating some nested collections would make these tests more robust, but that's difficult.
         ;; There are handwritten tests for storage and ingestion that check out the nesting, at least.
-        (ts/with-source-db
+        (ts/with-db source-db
           (testing "insert"
             (test-gen/insert!
               {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
@@ -309,7 +308,7 @@
               (is (.exists (io/file dump-dir "settings.yaml")))))
 
           (testing "ingest and load"
-            (ts/with-dest-db
+            (ts/with-db dest-db
               (testing "ingested set matches extracted set"
                 (let [extracted-set (set (map (comp #'ingest/strip-labels serdes/path) @extraction))]
                   (is (= (count extracted-set)
@@ -419,7 +418,7 @@
 
               (testing "for settings"
                 (let [settings (get @entities "Setting")]
-                  (is (every? @#'setting/exported-settings
+                  (is (every? @#'setting/export?
                               (set (map (comp symbol :key) settings))))
                   (is (= (into {} (for [{:keys [key value]} settings]
                                     [key value]))
@@ -430,8 +429,8 @@
 (deftest card-and-dashboard-has-parameter-with-source-is-card-test
   (testing "Dashboard and Card that has parameter with source is a card must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (ts/with-source-and-dest-dbs
-        (ts/with-source-db
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
           ;; preparation
           (mt/test-helpers-set-global-values!
             (mt/with-temp
@@ -491,39 +490,39 @@
 
                   (storage/store! (seq extraction) dump-dir)))
 
-              (testing "ingest and load"
-                (ts/with-dest-db
-                  ;; ingest
-                  (testing "doing ingestion"
-                    (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                        "successful"))
+             (testing "ingest and load"
+               (ts/with-db dest-db
+                 ;; ingest
+                 (testing "doing ingestion"
+                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                       "successful"))
 
-                  (let [dash1d  (t2/select-one Dashboard :name (:name dash1s))
-                        card1d  (t2/select-one Card :name (:name card1s))
-                        card2d  (t2/select-one Card :name (:name card2s))
-                        field1d (t2/select-one Field :name (:name field1s))]
-                    (testing "parameter on dashboard is loaded correctly"
-                      (is (= {:card_id     (:id card1d),
-                              :value_field [:field (:id field1d) nil]}
-                             (-> dash1d
-                                 :parameters
-                                 first
-                                 :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                 (let [dash1d  (t2/select-one Dashboard :name (:name dash1s))
+                       card1d  (t2/select-one Card :name (:name card1s))
+                       card2d  (t2/select-one Card :name (:name card2s))
+                       field1d (t2/select-one Field :name (:name field1s))]
+                   (testing "parameter on dashboard is loaded correctly"
+                     (is (= {:card_id     (:id card1d),
+                             :value_field [:field (:id field1d) nil]}
+                            (-> dash1d
+                                :parameters
+                                first
+                                :values_source_config)))
+                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
-                    (testing "parameter on card is loaded correctly"
-                      (is (= {:card_id     (:id card1d),
-                              :value_field [:field (:id field1d) nil]}
-                             (-> card2d
-                                 :parameters
-                                 first
-                                 :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
+                   (testing "parameter on card is loaded correctly"
+                     (is (= {:card_id     (:id card1d),
+                             :value_field [:field (:id field1d) nil]}
+                            (-> card2d
+                                :parameters
+                                first
+                                :values_source_config)))
+                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-source-and-dest-dbs
-      (ts/with-source-db
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
         (let [link-card-viz-setting (fn [model id]
                                       {:virtual_card {:display "link"}
                                        :link         {:entity {:id    id
@@ -601,7 +600,7 @@
 
             (testing "ingest and load"
               ;; ingest
-              (ts/with-dest-db
+              (ts/with-db dest-db
                 (testing "doing ingestion"
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
@@ -634,46 +633,61 @@
 
 (deftest dashcards-with-series-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-source-and-dest-dbs
-      (ts/with-source-db
-        (t2.with-temp/with-temp
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (mt/with-temp
           [:model/Collection {coll-id :id} {:name "Some Collection"}
            :model/Card {c1-id :id :as c1} {:name "Some Question", :collection_id coll-id}
            :model/Card {c2-id :id :as c2} {:name "Series Question A", :collection_id coll-id}
            :model/Card {c3-id :id :as c3} {:name "Series Question B", :collection_id coll-id}
            :model/Dashboard {dash-id :id :as dash} {:name "Shared Dashboard", :collection_id coll-id}
            :model/DashboardCard {dc1-id :id} {:card_id c1-id, :dashboard_id dash-id}
-           :model/DashboardCard _ {:card_id c1-id, :dashboard_id dash-id}
+           :model/DashboardCard {dc2-id :id} {:card_id c2-id, :dashboard_id dash-id}
            :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
            :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
+          (testing "sense check what hydrated dashcards look like on the source DB"
+            (let [hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
+                                         (t2/hydrate [:dashcards :series])
+                                         :dashcards
+                                         (->> (m/index-by :id)))]
+              (is (=? {dc1-id {:series [{:id c2-id}
+                                        {:id c3-id}]}
+                       dc2-id {:series []}}
+                      hydrated-dashcards))))
           (testing "extract and store"
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
               (storage/store! (seq extraction) dump-dir)))
           (testing "ingest and load"
-            (ts/with-dest-db
+            (ts/with-db dest-db
               (testing "doing ingestion"
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful"))
               (testing "Series are loaded correctly"
-                (let [new-dc1-id (t2/select-one-pk :model/DashboardCard :card_id (:id c1))
-                      new-dc2-id (t2/select-one-pk :model/DashboardCard :card_id (:id c2))
+                (let [new-c1-id  (t2/select-one-pk :model/Card :name (:name c1))
                       new-c2-id  (t2/select-one-pk :model/Card :name (:name c2))
                       new-c3-id  (t2/select-one-pk :model/Card :name (:name c3))
-                      hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
-                                             (t2/hydrate [:dashcards :series])
-                                             :dashcards
-                                             (->> (m/index-by :id)))]
+                      new-dc1-id (t2/select-one-pk :model/DashboardCard :card_id new-c1-id)
+                      new-dc2-id (t2/select-one-pk :model/DashboardCard :card_id new-c2-id)
+                      new-hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
+                                                 (t2/hydrate [:dashcards :series])
+                                                 :dashcards
+                                                 (->> (m/index-by :id)))]
+                  (is (some? new-c1-id))
+                  (is (some? new-c2-id))
+                  (is (some? new-c3-id))
+                  (is (some? new-dc1-id))
+                  (is (some? new-dc2-id))
                   (testing "Series hydrate on the dashboard correctly"
                     (is (=? {new-dc1-id {:series [{:id new-c2-id}
-                                                  {:id new-c3-id}]}}
-                            hydrated-dashcards))
-                    (is (not (contains? (hydrated-dashcards new-dc2-id) :series)))))))))))))
+                                                  {:id new-c3-id}]}
+                             new-dc2-id {:series []}}
+                            new-hydrated-dashcards))))))))))))
 
 (deftest dashboard-with-tabs-test
   (testing "Dashboard with tabs must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-     (ts/with-source-and-dest-dbs
-       (ts/with-source-db
+     (ts/with-dbs [source-db dest-db]
+       (ts/with-db source-db
          ;; preparation
          (t2.with-temp/with-temp
            [Dashboard           {dashboard-id :id
@@ -702,7 +716,7 @@
              (storage/store! (seq extraction) dump-dir))
 
            (testing "ingest and load"
-             (ts/with-dest-db
+             (ts/with-db dest-db
                ;; ingest
                (testing "doing ingestion"
                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
@@ -740,9 +754,9 @@
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (premium-features-test/with-premium-features #{:serialization}
-        (ts/with-source-and-dest-dbs
-          (ts/with-source-db
+      (mt/with-premium-features #{:serialization}
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
@@ -750,16 +764,16 @@
                     "works"))
 
               (testing "import (v2-load) command"
-                (ts/with-dest-db
+                (ts/with-db dest-db
                   (testing "doing ingestion"
                     (is (cmd/v2-load! dump-dir {})
                         "works"))))))))))
 
   (testing "without :serialization feature enabled"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (premium-features-test/with-premium-features #{}
-        (ts/with-source-and-dest-dbs
-          (ts/with-source-db
+      (mt/with-premium-features #{}
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
@@ -768,7 +782,7 @@
                     "throws"))
 
               (testing "import (v2-load) command"
-                (ts/with-dest-db
+                (ts/with-db dest-db
                   (testing "doing ingestion"
                     (is (thrown-with-msg? Exception #"Please upgrade"
                                           (cmd/v2-load! dump-dir {}))
@@ -779,8 +793,8 @@
     (let [old-ids (atom nil)
           card1s  (atom nil)]
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        (ts/with-source-and-dest-dbs
-          (ts/with-source-db
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
             (mt/dataset test-data
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
@@ -811,7 +825,7 @@
                   (reset! card1s card)
                   (storage/store! (extract/extract {}) dump-dir)))))
 
-          (ts/with-dest-db
+          (ts/with-db dest-db
             ;; ensure there is something in db so that test-data gets different field ids for sure
             (mt/dataset office-checkins
               (mt/db))

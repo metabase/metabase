@@ -14,7 +14,6 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -82,7 +81,7 @@
 (deftest create-superuser-test
   (testing "POST /api/setup"
     (testing "Check that we can create a new superuser via setup-token"
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (let [email (mt/random-email)]
           (with-setup! {:user {:email email}}
             (testing "new User should be created"
@@ -102,7 +101,7 @@
   (testing "POST /api/setup"
     (testing "Check that a second admin can be created during setup, and that an invite email is sent successfully and
              a Snowplow analytics event is sent"
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (mt/with-fake-inbox
           (snowplow-test/with-fake-snowplow-collector
             (let [email              (mt/random-email)
@@ -603,15 +602,15 @@
 
 (deftest user-defaults-test
   (testing "with no user defaults configured"
-    (mt/with-temp-env-var-value [mb-user-defaults nil]
+    (mt/with-temp-env-var-value! [mb-user-defaults nil]
       (is (= "Not found." (client/client :get "setup/user_defaults")))))
 
   (testing "with defaults containing no token"
-    (mt/with-temp-env-var-value [mb-user-defaults "{}"]
+    (mt/with-temp-env-var-value! [mb-user-defaults "{}"]
       (is (= "Not found." (client/client :get "setup/user_defaults")))))
 
   (testing "with valid configuration"
-    (mt/with-temp-env-var-value [mb-user-defaults "{\"token\":\"123456\",\"email\":\"john.doe@example.com\"}"]
+    (mt/with-temp-env-var-value! [mb-user-defaults "{\"token\":\"123456\",\"email\":\"john.doe@example.com\"}"]
       (testing "with mismatched token"
         (is (= "You don't have permissions to do that." (client/client :get "setup/user_defaults?token=987654"))))
       (testing "with valid token"

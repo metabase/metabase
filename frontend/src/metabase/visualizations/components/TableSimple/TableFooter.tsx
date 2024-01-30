@@ -3,7 +3,7 @@ import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 

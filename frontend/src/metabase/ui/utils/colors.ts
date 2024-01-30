@@ -23,6 +23,7 @@ const ORIGINAL_COLORS = [
 const CUSTOM_COLORS = [
   "brand",
   "brand-lighter",
+  "text-white",
   "text-light",
   "text-medium",
   "text-dark",
@@ -34,6 +35,7 @@ const CUSTOM_COLORS = [
   "bg-black",
   "success",
   "error",
+  "white",
 ];
 
 function getColorShades(color: string): ColorShades {

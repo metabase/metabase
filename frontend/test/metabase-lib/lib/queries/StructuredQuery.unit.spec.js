@@ -115,7 +115,9 @@ function makeQueryWithoutNumericFields() {
     ],
   });
 
-  return new Question(questionDetail, metadata).legacyQuery();
+  return new Question(questionDetail, metadata).legacyQuery({
+    useStructuredQuery: true,
+  });
 }
 
 // no numeric fields, but have linked table (FK) with a numeric field
@@ -172,7 +174,9 @@ function makeQueryWithLinkedTable() {
     ],
   });
 
-  return new Question(questionDetail, metadata).legacyQuery();
+  return new Question(questionDetail, metadata).legacyQuery({
+    useStructuredQuery: true,
+  });
 }
 
 const getShortName = aggregation => aggregation.short;
@@ -296,7 +300,9 @@ describe("StructuredQuery", () => {
     });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
-        expect(query.legacyQuery()["source-table"]).toBe(ORDERS_ID);
+        expect(
+          query.legacyQuery({ useStructuredQuery: true })["source-table"],
+        ).toBe(ORDERS_ID);
       });
     });
     describe("setDatabase", () => {
@@ -316,22 +322,6 @@ describe("StructuredQuery", () => {
     describe("canRun", () => {
       it("runs a valid query", () => {
         expect(query.canRun()).toBe(true);
-      });
-    });
-    describe("isEditable", () => {
-      it("A valid query should be editable", () => {
-        expect(query.isEditable()).toBe(true);
-      });
-
-      it("should be not editable when database object is missing", () => {
-        const q = makeQuery();
-        q._database = () => null;
-        expect(q.isEditable()).toBe(false);
-      });
-    });
-    describe("isEmpty", () => {
-      it("tells that a non-empty query is not empty", () => {
-        expect(query.isEmpty()).toBe(false);
       });
     });
   });
@@ -433,7 +423,9 @@ describe("StructuredQuery", () => {
 
     describe("addAggregation", () => {
       it("adds an aggregation", () => {
-        expect(query.aggregate(["count"]).legacyQuery()).toEqual({
+        expect(
+          query.aggregate(["count"]).legacyQuery({ useStructuredQuery: true }),
+        ).toEqual({
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });

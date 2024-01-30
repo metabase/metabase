@@ -24,7 +24,7 @@
     (let [legacy-pulse (->> (t2/select :model/Pulse :dashboard_id nil :alert_condition nil :archived false)
                             (map #(assoc % :url (urls/legacy-pulse-url (:id %)))))]
       (doseq [admin (t2/select :model/User :is_superuser true)]
-        (email/send-message-or-throw!
+        (email/send-email-retrying!
          {:recipients   [(:email admin)]
           :message-type :html
           :subject      "[Metabase] Removal of legacy pulses in upcoming Metabase release"

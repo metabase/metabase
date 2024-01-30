@@ -91,7 +91,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
     const table = getStructuredQueryTable(
       nestedQuestion,
-      nestedQuestion.legacyQuery(),
+      nestedQuestion.legacyQuery({ useStructuredQuery: true }),
     );
 
     it("should return a table", () => {
@@ -106,7 +106,10 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
   describe("Model card", () => {
     const model = checkNotNull(metadata.question(modelCard.id));
-    const table = getStructuredQueryTable(model, model.legacyQuery());
+    const table = getStructuredQueryTable(
+      model,
+      model.legacyQuery({ useStructuredQuery: true }),
+    );
 
     it("should return a nested card table using the given query's question", () => {
       expect(table?.getPlainObject()).toEqual(
@@ -135,7 +138,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
     const table = getStructuredQueryTable(
       sourceQueryQuestion,
-      sourceQueryQuestion.legacyQuery(),
+      sourceQueryQuestion.legacyQuery({ useStructuredQuery: true }),
     );
 
     it("should return a virtual table based on the nested query", () => {
@@ -179,8 +182,8 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
 
     const table = getStructuredQueryTable(
-      ordersTable.legacyQuery().question(),
-      ordersTable.legacyQuery(),
+      ordersTable.legacyQuery({ useStructuredQuery: true }).question(),
+      ordersTable.legacyQuery({ useStructuredQuery: true }),
     );
 
     it("should return the concrete table stored on the Metadata object", () => {

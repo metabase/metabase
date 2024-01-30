@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 import { replace } from "react-router-redux";
-import { isSmallScreen } from "metabase/lib/dom";
-import { openNavbar } from "metabase/redux/app";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { addUndo } from "metabase/redux/undo";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -27,13 +25,21 @@ import { HomeContent } from "../HomeContent";
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
 export const HomePage = (): JSX.Element => {
-  const { databases, models, isMetabotEnabled, isLoading, error } =
-    useMetabot();
-  useNavbar();
-  useDashboardPage();
+  const {
+    databases,
+    models,
+    isMetabotEnabled,
+    isLoading: isLoadingMetabot,
+    error,
+  } = useMetabot();
+  const { isLoadingDash } = useDashboardPage();
 
-  if ((isLoading || error) && isMetabotEnabled) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if ((isLoadingMetabot || error) && isMetabotEnabled) {
+    return <LoadingAndErrorWrapper loading={isLoadingMetabot} error={error} />;
+  }
+
+  if (isLoadingDash) {
+    return <LoadingAndErrorWrapper loading={isLoadingDash} error={error} />;
   }
 
   return (
@@ -41,16 +47,6 @@ export const HomePage = (): JSX.Element => {
       <HomeContent />
     </HomeLayout>
   );
-};
-
-const useNavbar = () => {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (!isSmallScreen()) {
-      dispatch(openNavbar());
-    }
-  }, [dispatch]);
 };
 
 const useMetabot = () => {
@@ -100,7 +96,12 @@ const useDashboardPage = () => {
       !isLoadingDash &&
       !dashboard?.archived
     ) {
-      dispatch(replace(`/dashboard/${dashboardId}`));
+      dispatch(
+        replace({
+          pathname: `/dashboard/${dashboardId}`,
+          state: { preserveNavbarState: true },
+        }),
+      );
 
       if (!hasDismissedToast) {
         dispatch(
@@ -128,4 +129,8 @@ const useDashboardPage = () => {
     isLoadingDash,
     dashboard?.archived,
   ]);
+
+  return {
+    isLoadingDash: isLoadingDash || isLoadingSettings,
+  };
 };

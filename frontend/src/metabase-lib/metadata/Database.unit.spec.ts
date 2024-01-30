@@ -179,7 +179,9 @@ describe("Database", () => {
       const database = setup();
       const question = database.question();
 
-      expect(question.legacyQuery()).toBeInstanceOf(StructuredQuery);
+      expect(question.legacyQuery({ useStructuredQuery: true })).toBeInstanceOf(
+        StructuredQuery,
+      );
       expect(question.metadata()).toEqual(database.metadata);
     });
 

@@ -37,9 +37,10 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
-   [metabase.test.util.random :as tu.random]
+   [metabase.test.util.public-settings :as tu.public-setings]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util.random :as u.random]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -82,8 +83,9 @@
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
-  tu.random/keep-me
+  tu.public-setings/keep-me
   tu.thread-local/keep-me
+  u.random/keep-me
   tu/keep-me
   tx.env/keep-me
   tx/keep-me)
@@ -240,7 +242,7 @@
   with-non-admin-groups-no-root-collection-perms
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph
-  with-temp-env-var-value
+  with-temp-env-var-value!
   with-temp-dir
   with-temp-file
   with-temp-scheduler
@@ -266,7 +268,11 @@
   with-clock
   with-single-admin-user]
 
- [tu.random
+ [tu.public-setings
+  with-premium-features
+  with-additional-premium-features]
+
+ [u.random
   random-name
   random-hash
   random-email]

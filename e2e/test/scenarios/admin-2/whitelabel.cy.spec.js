@@ -282,6 +282,42 @@ describeEE("formatting > whitelabel", () => {
         .should("not.exist");
     });
   });
+
+  describe("Landing Page", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/setting/landing-page").as("putLandingPage");
+      cy.intercept("GET", "/api/setting").as("getSettings");
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+    });
+
+    it("should allow users to provide internal urls", () => {
+      cy.findByTestId("landing-page").click().clear().type("/test-1").blur();
+      cy.wait(["@putLandingPage", "@getSettings"]);
+
+      cy.findByTestId("landing-page-error").should("not.exist");
+      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.url().should("include", "/test-1");
+    });
+
+    it("should not allow users to provide external urls", () => {
+      cy.findByTestId("landing-page").click().clear().type("/test-2").blur();
+      cy.wait(["@putLandingPage", "@getSettings"]);
+
+      // set to valid value then test invalid value is not persisted
+      cy.findByTestId("landing-page")
+        .click()
+        .clear()
+        .type("https://google.com")
+        .blur();
+      cy.findByTestId("landing-page-error")
+        .findByText("This field must be a relative URL.")
+        .should("exist");
+
+      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.url().should("include", "/test-2");
+    });
+  });
 });
 
 function changeLoadingMessage(message) {

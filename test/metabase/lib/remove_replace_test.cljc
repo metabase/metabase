@@ -252,6 +252,10 @@
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/remove-clause 0 (first aggregations))))))))
 
+(defn- by-desired-alias
+  [columns desired-alias]
+  (m/find-first (comp #{desired-alias} :lib/desired-column-alias) columns))
+
 (deftest ^:parallel remove-clause-aggregation-with-ref-test
   (testing "removing an aggregation removes references in order-by (#12625)"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -263,7 +267,7 @@
       (is (=? {:stages [(complement :order-by)]}
               (lib/remove-clause query (last aggregations))))
       (let [query (lib/append-stage query)
-            sum-col (m/find-first (comp #{"sum_2"} :lib/desired-column-alias) (lib/visible-columns query))
+            sum-col (by-desired-alias (lib/visible-columns query) "sum_2")
             query (lib/order-by query sum-col)]
         (is (=? {:stages [(complement :order-by) (complement :order-by)]}
                 (lib/remove-clause query 0 (last aggregations))))))))
@@ -422,16 +426,33 @@
     (is (not= aggregations replaced-aggregations))
     (is (= 2 (count replaced-aggregations)))
     (is (= (second aggregations) (second replaced-aggregations)))
-    (testing "replacing with dependent should cascade"
-      (is (=? {:stages [{:aggregation [[:sum {} [:field {} (meta/id :venues :price)]]
+    (testing "replacing with dependent should cascade keeping valid parts"
+      (is (=? {:stages [{:aggregation [[:max {} [:field {} (meta/id :venues :price)]]
                                        (second aggregations)]
-                         :expressions (symbol "nil #_\"key is not present.\"")}
-                        (complement :filters)]}
+                         :expressions [[:aggregation {:lib/expression-name "expr"} string?]]}
+                        {:filters [[:= {} [:field {} "max"] 1]]}]}
               (-> query
                   (as-> <> (lib/expression <> "expr" (lib/aggregation-ref <> 0)))
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
-                  (lib/replace-clause 0 (first aggregations) (lib/sum (meta/field-metadata :venues :price)))))))))
+                  (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price)))))))
+    (testing "replacing with dependent should cascade removing invalid parts"
+      (is (=? {:stages [{:aggregation [[:sum {} [:field {} (meta/id :products :id)]]
+                                       [:max {} [:field {} (meta/id :products :price)]]]}
+                        (fn [stage] (not-any? stage [:filters :expressions]))]}
+              (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                  (lib/aggregate (lib/sum (meta/field-metadata :products :id)))
+                  (lib/aggregate (lib/max (meta/field-metadata :products :created-at)))
+                  (lib/append-stage)
+                  (as-> <>
+                        (lib/expression <> "max month" (lib/get-month (lib/ref (m/find-first (comp #{"max"} :name)
+                                                                                             (lib/orderable-columns <>)))))
+                    (lib/filter <> (lib/= (lib/ref (m/find-first (comp #{"max month"} :name)
+                                                                 (lib/filterable-columns <>)))
+                                          1))
+                    (lib/replace-clause <> 0
+                                          (second (lib/aggregations <> 0))
+                                          (lib/max (meta/field-metadata :products :price))))))))))
 
 (deftest ^:parallel replace-metric-test
   (testing "replacing with metric should work"
@@ -1284,3 +1305,111 @@
                       {:lib/type :mbql.stage/mbql
                        :filters [[:< {} [:field {:base-type :type/Integer} "name length"] 23]]}]}
             replaced))))
+
+(deftest ^:parallel replace-unrelated-type-test
+  (let [people-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+        query (as-> people-query q
+                (lib/expression q "created at" (meta/field-metadata :people :created-at))
+                (lib/filter q (lib/not-null (lib/expression-ref q "created at"))))]
+    (testing "replaced when there's no type conflict"
+      (is (=? {:stages [{:lib/type :mbql.stage/mbql
+                         :expressions [[:field {:effective-type :type/BigInteger, :lib/expression-name "id"}
+                                        (meta/id :people :id)]]
+                         :filters [[:not-null {} [:expression {:effective-type :type/BigInteger} "id"]]]}]}
+              (lib/replace-clause query 0
+                                  (first (lib/expressions query 0))
+                                  (lib/with-expression-name
+                                    (lib/ref (meta/field-metadata :people :id))
+                                    "id")))))
+    (testing "removed when types conflict"
+      (let [query (lib/filter query 0 (lib/= (lib/get-week (lib/expression-ref query "created at") :iso) 3))]
+        (is (= 2 (count (lib/filters query 0))))
+        (is (=? {:stages [{:lib/type :mbql.stage/mbql
+                           :expressions [[:field {:effective-type :type/BigInteger, :lib/expression-name "id"}
+                                          (meta/id :people :id)]]
+                           :filters [[:not-null {} [:expression {:effective-type :type/BigInteger} "id"]]]}]}
+                (lib/replace-clause query 0
+                                    (first (lib/expressions query 0))
+                                    (lib/with-expression-name
+                                      (lib/ref (meta/field-metadata :people :id))
+                                      "id"))))))))
+
+(def ^:private join-query
+   (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+         created-at-col (meta/field-metadata :products :created-at)
+         products-summarized (-> products-query
+                                 (lib/breakout (meta/field-metadata :products :category))
+                                 (lib/breakout (->> (lib/available-temporal-buckets products-query created-at-col)
+                                                    (m/find-first (comp #{:month} :unit))
+                                                    (lib/with-temporal-bucket created-at-col)))
+                                 (lib/aggregate (lib/min created-at-col))
+                                 (lib/aggregate (lib/avg (meta/field-metadata :products :price)))
+                                 (lib/aggregate (lib/with-expression-name
+                                                  (lib/distinct (meta/field-metadata :products :id))
+                                                  "product count"))
+                                 lib/append-stage)
+         summarized-cols (lib/returned-columns products-summarized)
+         orders-join (-> (lib/join-clause (meta/table-metadata :orders)
+                                          [(lib/< (by-desired-alias summarized-cols "min")
+                                                  (meta/field-metadata :orders :created-at))])
+                         (lib/with-join-fields [(meta/field-metadata :orders :created-at)
+                                                (meta/field-metadata :orders :quantity)]))
+         joined-query (lib/join products-summarized orders-join)
+         joined-query-cols (lib/visible-columns joined-query)]
+     (-> joined-query
+         (lib/filter (lib/< (by-desired-alias joined-query-cols "Orders - Min of Created At__TOTAL") 100))
+         (lib/filter (lib/> (lib/get-month (by-desired-alias joined-query-cols "min")) 6))
+         (lib/filter (lib/= (by-desired-alias joined-query-cols "product count") 3)))))
+
+;; TODO: do something about automagic join aliases getting out of date
+(deftest ^:parallel replace-unrelated-type-affecting-join-test
+  (testing "replaced when there's no type conflict"
+    (is (=? {:stages
+             [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]
+                          [:field {:effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
+                           (meta/id :products :created-at)]]
+               :aggregation [[:max {} [:field {:effective-type :type/DateTimeWithLocalTZ}
+                                       (meta/id :products :created-at)]]
+                             [:avg {} [:field {:effective-type :type/Float}
+                                       (meta/id :products :price)]]
+                             [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}
+                                                                 (meta/id :products :id)]]]}
+              {:joins [{:stages
+                        [{:source-table (meta/id :orders)}],
+                        :fields [[:field {:effective-type :type/DateTimeWithLocalTZ
+                                          :join-alias "Orders - Min of Created At"}
+                                  (meta/id :orders :created-at)]
+                                 [:field {:effective-type :type/Integer
+                                          :join-alias "Orders - Min of Created At"}
+                                  (meta/id :orders :quantity)]],
+                        :conditions [[:< {}
+                                      [:field {:effective-type :type/DateTimeWithLocalTZ} "max"]
+                                      [:field {:effective-type :type/DateTimeWithLocalTZ
+                                               :join-alias "Orders - Min of Created At"}
+                                       (meta/id :orders :created-at)]]]
+                        :alias "Orders - Min of Created At"}]
+               :filters [[:< {}
+                          [:field {:effective-type :type/Float
+                                   :join-alias "Orders - Min of Created At"}
+                           (meta/id :orders :total)]
+                          100]
+                         [:> {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ} "max"]] 6]
+                         [:= {} [:field {:effective-type :type/Integer} "product count"] 3]]}]}
+            (lib/replace-clause join-query 0
+                                (first (lib/aggregations join-query 0))
+                                (lib/max (by-name (lib/orderable-columns join-query 0) "CREATED_AT"))))))
+  (testing "removed when types conflict"
+    (is (=? {:stages
+             [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]
+                          [:field {:effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
+                           (meta/id :products :created-at)]]
+               :aggregation [[:min {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ}
+                                                      (meta/id :products :created-at)]]]
+                             [:avg {} [:field {:effective-type :type/Float}
+                                       (meta/id :products :price)]]
+                             [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}
+                                                                 (meta/id :products :id)]]]}
+              {}]}
+            (lib/replace-clause join-query 0
+                                (first (lib/aggregations join-query 0))
+                                (lib/min (lib/get-month (by-name (lib/orderable-columns join-query 0) "CREATED_AT"))))))))

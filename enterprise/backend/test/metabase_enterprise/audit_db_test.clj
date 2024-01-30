@@ -5,14 +5,17 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
+   [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
@@ -21,7 +24,7 @@
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
   `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
-     (mt/with-temp-env-var-value [mb-load-analytics-content (not audit-collection-exists?#)]
+     (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
        (mbc/ensure-audit-db-installed!)
        (try
          ~@body
@@ -69,7 +72,7 @@
         (t2/update! Database :is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
-  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+  (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
      (let [plugins-dir (plugins/plugins-dir)]
        (fs/create-dirs plugins-dir)
@@ -82,7 +85,7 @@
        (fs/delete-tree (plugins/plugins-dir))))))
 
 (deftest all-instance-analytics-content-is-copied-from-mb-plugins-dir-test
-  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+  (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
       (#'audit-db/ia-content->plugins (plugins/plugins-dir))
       (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
@@ -106,3 +109,23 @@
            #"Cannot sync Database: It is the audit db."
            (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
     (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
+
+(deftest no-backfill-occurs-when-loading-analytics-content-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [c1-instance (t2/insert-returning-instance! :model/Collection
+                                                     {:entity_id nil,
+                                                      :name      "My Duped Collection",
+                                                      :location  "/"})]
+      ;; fill in the entity_id for c1:
+      (serdes.backfill/backfill-ids-for! :model/Collection)
+      ;; insert c2, which will have the same entity id:
+      (let [c2-instance (t2/insert-returning-instance! :model/Collection (dissoc c1-instance :id))]
+        (testing "c1 and c2 hash to the same entity id."
+          (is (= (u/generate-nano-id (serdes/identity-hash c1-instance))
+                 (u/generate-nano-id (serdes/identity-hash c2-instance)))))
+        (testing "A backfill with 'duplicate' rows (with different ids)."
+          (is (thrown? Exception
+                       (serdes.backfill/backfill-ids-for! :model/Collection))))
+        (testing "No exception is thrown when db has 'duplicate' entries."
+          (is (= :metabase-enterprise.audit-db/no-op
+                 (audit-db/ensure-audit-db-installed!))))))))

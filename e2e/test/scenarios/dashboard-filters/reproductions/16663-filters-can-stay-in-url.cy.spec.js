@@ -1,8 +1,12 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addOrUpdateDashboardCard,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   query: {
@@ -10,18 +14,16 @@ const questionDetails = {
   },
 };
 
-const parameters = [
-  {
-    name: "Quarter and Year",
-    slug: "quarter_and_year",
-    id: "f8ae0c97",
-    type: "date/quarter-year",
-    sectionId: "date",
-    default: "Q1-2023",
-  },
-];
+const FILTER = {
+  name: "Quarter and Year",
+  slug: "quarter_and_year",
+  id: "f8ae0c97",
+  type: "date/quarter-year",
+  sectionId: "date",
+  default: "Q1-2023",
+};
 
-const dashboardDetails = { parameters };
+const dashboardDetails = { parameters: [FILTER] };
 
 describe("issue 16663", () => {
   beforeEach(() => {
@@ -37,6 +39,28 @@ describe("issue 16663", () => {
       ({ body: dashboardCard }) => {
         const { dashboard_id } = dashboardCard;
 
+        addOrUpdateDashboardCard({
+          dashboard_id: dashboardCard.dashboard_id,
+          card_id: dashboardCard.card_id,
+          card: {
+            parameter_mappings: [
+              {
+                parameter_id: FILTER.id,
+                card_id: dashboardCard.card_id,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    {
+                      "base-type": "type/DateTime",
+                    },
+                  ],
+                ],
+              },
+            ],
+          },
+        });
         visitDashboard(dashboard_id);
       },
     );

@@ -65,7 +65,7 @@ function buildTextTagOption(tagName) {
 /**
  *
  * @param {import("metabase-lib/metadata/Metadata").default} metadata
- * @param {import("metabase-types/api").ParameterTarget|null} parameter
+ * @param {import("metabase-types/api").Parameter|null} parameter
  * @param {import("metabase-types/api").Card} card
  * @param {import("metabase-types/store").DashboardCard|null} [dashcard]
  * @returns {*}
@@ -97,8 +97,9 @@ export function getParameterMappingOptions(
   }
 
   const question = new Question(card, metadata);
+  const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
   const options = [];
-  if (question.isStructured() || question.isDataset()) {
+  if (isStructured || question.isDataset()) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
     const query = question.isDataset()

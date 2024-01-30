@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import ReadOnlyNotebook from "metabase/query_builder/components/notebook/ReadOnlyNotebook";
@@ -28,14 +29,13 @@ export function QueryViewer({ datasetQuery }: { datasetQuery: DatasetQuery }) {
   }, [card, dispatch]);
 
   const question = new Question(card, metadata);
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  const query = question.legacyQuery();
-
-  if (question.isNative()) {
+  if (isNative) {
     return (
       <NativeQueryEditor
         question={question}
-        query={query}
+        query={question.legacyQuery()}
         location={{ query: {} }}
         readOnly
         viewHeight={800}
@@ -45,7 +45,8 @@ export function QueryViewer({ datasetQuery }: { datasetQuery: DatasetQuery }) {
     );
   }
 
-  if (query.tables()) {
+  const database = question.database();
+  if (database && database.tables) {
     return <ReadOnlyNotebook question={question} />;
   }
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
   CodeContainer,

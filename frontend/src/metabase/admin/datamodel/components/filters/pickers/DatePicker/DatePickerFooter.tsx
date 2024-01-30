@@ -3,7 +3,7 @@ import { t } from "ttag";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import {
   computeFilterTimeRange,
   getTimeComponent,

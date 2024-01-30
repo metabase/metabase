@@ -4,8 +4,6 @@
    [java-time.api :as t]
    [metabase.models :refer [Card Dashboard Database PersistedInfo TaskHistory]]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor.card :as qp.card]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
@@ -14,7 +12,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest query-cache-ttl-hierarchy-test
-  (premium-features-test/with-premium-features #{:cache-granular-controls}
+  (mt/with-premium-features #{:cache-granular-controls}
     (mt/discard-setting-changes [enable-query-caching]
       (public-settings/enable-query-caching! true)
       ;; corresponding OSS tests in metabase.query-processor.card-test
@@ -75,7 +73,7 @@
 (deftest model-caching-granular-controls-test
   (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls enabled, don't refresh any tables in an 'off' or 'deletable' state"
-      (premium-features-test/with-premium-features #{:cache-granular-controls}
+      (mt/with-premium-features #{:cache-granular-controls}
         (with-temp-persist-models [db creating]
           (testing "Calls refresh on each persisted-info row"
             (let [card-ids (atom #{})
@@ -94,7 +92,7 @@
                                            :task "persist-refresh"
                                            {:order-by [[:id :desc]]}))))))))
     (testing "with :cache-granular-controls disabled, refresh tables in an 'off' state, but not 'deletable'"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (with-temp-persist-models [db creating off]
             (testing "Calls refresh on each persisted-info row"
               (let [card-ids (atom #{})
@@ -112,7 +110,7 @@
                                              :task "persist-refresh"
                                              {:order-by [[:id :desc]]}))))))))
     (testing "with :cache-granular-controls enabled, deletes any tables with state=deletable or state=off"
-        (premium-features-test/with-premium-features #{:cache-granular-controls}
+        (mt/with-premium-features #{:cache-granular-controls}
           (with-temp-persist-models [pdeletable poff]
             (let [deletable-persisted-infos [pdeletable poff]
                   called-on (atom #{})
@@ -134,7 +132,7 @@
                                              :task "unpersist-tables"
                                              {:order-by [[:id :desc]]}))))))))
     (testing "with :cache-granular-controls disabled, deletes any tables with state=deletable, but not state=off"
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (with-temp-persist-models [pdeletable poff]
           (let [called-on (atom #{})
                 test-refresher (reify task.persist-refresh/Refresher

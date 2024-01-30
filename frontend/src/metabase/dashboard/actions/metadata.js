@@ -25,7 +25,9 @@ const loadMetadataForCards = cards => (dispatch, getState) => {
 
   return dispatch(
     loadMetadataForQueries(
-      questions.map(question => question.legacyQuery()),
+      questions.map(question =>
+        question.legacyQuery({ useStructuredQuery: true }),
+      ),
       questions.map(question => question.dependentMetadata()),
     ),
   );
