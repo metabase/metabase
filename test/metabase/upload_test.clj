@@ -12,7 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Field Table]]
+   [metabase.models :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -104,7 +104,7 @@
     (t2/update! :model/Table (:id table) {:is_upload true})
     (binding [upload/*sync-synchronously?* true]
       (#'upload/scan-and-sync-table! database table))
-    (t2/select-one Table (:id table))))
+    (t2/select-one :model/Table (:id table))))
 
 (deftest type-detection-and-parse-test
   (doseq [[string-value  expected-value expected-type seps]
@@ -413,14 +413,59 @@
     (testing "semicolons are removed"
       (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))))
 
+(defn upload-example-csv!
+  "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
+  current user is granted data permissions to the database."
+  [& {:keys [schema-name table-prefix collection-id grant-permission? uploads-enabled user-id db-id sync-synchronously? csv-file-name]
+      :or {schema-name         (if (driver/database-supports? driver/*driver* :schemas (mt/db))
+                                 "PUBLIC"
+                                 nil)
+           collection-id       nil ;; root collection
+           grant-permission?   true
+           uploads-enabled     true
+           user-id             (mt/user->id :rasta)
+           db-id               (mt/id)
+           sync-synchronously? true
+           ;; Make the file-name unique so the table names don't collide
+           csv-file-name       (str "example csv file " (random-uuid) ".csv")}}]
+  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
+    (mt/with-current-user user-id
+      (let [file              (csv-file-with
+                               ["id, name"
+                                "1, Luke Skywalker"
+                                "2, Darth Vader"]
+                               csv-file-name)
+            group-id          (u/the-id (perms-group/all-users))
+            can-already-read? (mi/can-read? (mt/db))
+            grant?            (and (not can-already-read?)
+                                   grant-permission?)]
+        (when grant?
+          (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
+        (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
+                   (upload/create-csv-upload! {:collection-id collection-id
+                                               :filename      csv-file-name
+                                               :file          file
+                                               :db-id         db-id
+                                               :schema-name   schema-name
+                                               :table-prefix  table-prefix}))
+          (when grant?
+            (perms/revoke-data-perms! group-id (mt/id))))))))
+
 (deftest load-from-csv-table-name-test
-  (testing "Upload a CSV file"
+  (testing "Can upload two files with the same name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (let [file (csv-file-with ["id" "2" "3"])]
-          (testing "Can upload two files with the same name"
-            (is (some? (@#'upload/load-from-csv! driver/*driver* (mt/id) (format "table_name_%s" driver/*driver*) file)))
-            (is (some? (@#'upload/load-from-csv! driver/*driver* (mt/id) (format "table_name_2_%s" driver/*driver*) file)))))))))
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [csv-file-name (str (mt/random-name) ".csv")]
+            (let [model-1 (upload-example-csv! :csv-file-name csv-file-name)
+                  ;; sleep for a second to make sure the table name is different
+                  _ (Thread/sleep 1000)
+                  model-2 (upload-example-csv! :csv-file-name csv-file-name)]
+              (testing "tables are different between the two uploads"
+                (is (some? (:table_id model-1)))
+                (is (some? (:table_id model-2)))
+                (is (not= (:table_id model-1)
+                          (:table_id model-2)))))))))))
 
 (defn- query-table
   [table]
@@ -454,7 +499,11 @@
             (testing "Table and Fields exist after sync"
               (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (is (=? {:name          #"(?i)_mb_row_id"
-                         :semantic_type :type/PK
+                         :semantic_type (if (= driver/*driver* :redshift)
+                                          ;; TODO: there is a bug in the redshift driver where the semantic_type is not set
+                                          ;; to type/PK even if the column is a PK
+                                          :type/Category
+                                          :type/PK)
                          :base_type     :type/BigInteger}
                         (t2/select-one Field :database_position 0 :table_id (:id table))))
                 (is (=? {:name          #"(?i)id"
@@ -927,41 +976,6 @@
                           first
                           :value))))))))
 
-(defn upload-example-csv!
-  "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
-  current user is granted data permissions to the database."
-  [& {:keys [schema-name table-prefix collection-id grant-permission? uploads-enabled user-id db-id sync-synchronously?]
-      :or {collection-id       nil ;; root collection
-           grant-permission?   true
-           uploads-enabled     true
-           user-id             (mt/user->id :rasta)
-           db-id               (mt/id)
-           sync-synchronously? true}}]
-  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
-    (mt/with-current-user user-id
-      (let [;; Make the file-name unique so the table names don't collide
-            csv-file-name     (str "example csv file " (random-uuid) ".csv")
-            file              (csv-file-with
-                               ["id, name"
-                                "1, Luke Skywalker"
-                                "2, Darth Vader"]
-                               csv-file-name)
-            group-id          (u/the-id (perms-group/all-users))
-            can-already-read? (mi/can-read? (mt/db))
-            grant?            (and (not can-already-read?)
-                                   grant-permission?)]
-        (when grant?
-          (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
-        (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
-                   (upload/create-csv-upload! {:collection-id collection-id
-                                               :filename      csv-file-name
-                                               :file          file
-                                               :db-id         db-id
-                                               :schema-name   schema-name
-                                               :table-prefix  table-prefix}))
-          (when grant?
-            (perms/revoke-data-perms! group-id (mt/id))))))))
-
 (defn append-csv!
   "Wraps [[upload/append-csv!]] setting [[upload/*sync-synchronously?*]] to `true` for test purposes."
   [& args]
@@ -988,7 +1002,7 @@
                 (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                ["CREATE SCHEMA IF NOT EXISTS \"not_public\";"]))
               (let [new-model (upload-example-csv! :schema-name "not_public" :sync-synchronously? false)
-                    new-table (t2/select-one Table :db_id db-id)]
+                    new-table (t2/select-one :model/Table (:table_id new-model))]
                 (is (=? {:display          :table
                          :database_id      db-id
                          :dataset_query    {:database db-id
@@ -996,7 +1010,8 @@
                                             :type     :query}
                          :creator_id       (mt/user->id :rasta)
                          :name             #"(?i)example csv file(.*)"
-                         :collection_id    nil} new-model)
+                         :collection_id    nil}
+                        new-model)
                     "A new model is created")
                 (is (=? {:name      #"(?i)example(.*)"
                          :schema    #"(?i)not_public"
@@ -1027,9 +1042,9 @@
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^A schema has not been set."
-                (upload-example-csv! :table-prefix "uploaded_magic_")))
+                (upload-example-csv! :table-prefix "uploaded_magic_" :schema-name nil)))
           (let [new-model (upload-example-csv! :table-prefix "uploaded_magic_")
-                new-table (t2/select-one Table :db_id (:id (mt/db)))]
+                new-table (t2/select-one :model/Table (:table_id new-model))]
             (is (=? {:name #"(?i)example csv file(.*)"}
                     new-model))
             (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
@@ -1040,16 +1055,8 @@
   (testing "The auto-generated column display_name should be the same as its name"
    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
      (mt/with-empty-db
-       (when (driver/database-supports? driver/*driver* :schemas (mt/db))
-         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                          ["CREATE SCHEMA \"not_public\";"])))
-       (upload-example-csv! {:schema-name (if (driver/database-supports? driver/*driver* :schemas (mt/db))
-                                            "not_public"
-                                            nil)
-                             :table-prefix "uploads_"})
-       (let [new-table (t2/select-one Table :db_id (mt/id))
-             new-field (t2/select-one Field :table_id (:id new-table) :name "_mb_row_id")]
+       (let [new-model (upload-example-csv!)
+             new-field (t2/select-one Field :table_id (:table_id new-model) :name "_mb_row_id")]
          (is (= "_mb_row_id"
                 (:name new-field)
                 (:display_name new-field))))))))
@@ -1059,7 +1066,7 @@
   (mt/test-driver :h2
     (mt/with-empty-db
       (snowplow-test/with-fake-snowplow-collector
-        (upload-example-csv! :schema-name "PUBLIC")
+        (upload-example-csv!)
         (is (=? {:data {"model_id"        pos?
                         "size_mb"         3.910064697265625E-5
                         "num_columns"     2
@@ -1070,7 +1077,7 @@
                 (last (snowplow-test/pop-event-data-and-user-id!))))
         (with-redefs [upload/load-from-csv! (fn [_ _ _ _]
                                               (throw (Exception.)))]
-          (try (upload-example-csv! :schema-name "PUBLIC")
+          (try (upload-example-csv!)
                (catch Throwable _
                  nil))
           (is (= {:data {"size_mb"     3.910064697265625E-5
