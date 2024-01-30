@@ -79,7 +79,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     const question = new Question(
       card,
       getMetadata(getState()),
-      outdatedQuestion.parameters(),
+      outdatedQuestion._parameterValues,
     );
 
     dispatch(loadMetadataForCard(card));
