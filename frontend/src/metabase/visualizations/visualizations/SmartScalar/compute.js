@@ -155,6 +155,9 @@ function computeComparison({
 function getCurrentMetricData({ series, insights, settings }) {
   const [
     {
+      card: {
+        dataset_query: { type: questionType },
+      },
       data: { rows, cols },
     },
   ] = series;
@@ -182,7 +185,14 @@ function getCurrentMetricData({ series, insights, settings }) {
   const metricInsight = insights?.find(
     insight => insight.col === metricColumn.name,
   );
-  const dateUnit = metricInsight?.unit;
+
+  // ! WILL HAVE TO UPDATE TREND CHARTS COMPARISON TYPES FOR QUERIES THAT ARE NATIVE
+  // ! BECAUSE THEY WOULD SUPPLY AN INVALID COMPARISON TYPE
+  // ! (SINCE DATEUNIT IS STILL SUPPLIED)
+  // ! AND THEY MIGHT HAVE AN INVALID COMPARISON TYPE IF WE NO LONGER USE THE DATEUNIT.
+  // ! PERIODS AGO COMPARISON TYPES WILL NEED TO BE CONVERTED TO PREVIOUS VALUE IF WE
+  // ! END UP GOING THIS ROUTE
+  const dateUnit = questionType !== "native" ? metricInsight?.unit : undefined;
   const dateColumn = cols[dimensionColIndex];
   const dateColumnSettings = settings?.column?.(dateColumn) ?? {};
 
