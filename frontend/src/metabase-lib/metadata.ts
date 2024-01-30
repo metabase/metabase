@@ -20,6 +20,7 @@ import type {
   ColumnGroup,
   ColumnGroupDisplayInfo,
   ColumnMetadata,
+  DependentItem,
   DrillThru,
   DrillThruDisplayInfo,
   FilterOperator,
@@ -200,4 +201,8 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
    * It just only happens that the thing we're examining is (again) the query itself.
    */
   return ML.display_info(query, -1, query);
+}
+
+export function dependentMetadata(query: Query): DependentItem[] {
+  return ML.dependent_metadata(query);
 }
