@@ -94,9 +94,7 @@
 (mu/defn ^:private format-template-tags :- [:sequential ::template-tag-with-context]
   "Format all template tags and filter out invalid ones."
   [tags :- [:sequential ::template-tag-with-context]]
-  (remove (comp nil? :name)
-  (map format-template-tag tags)))
-
+  (filter :name (map format-template-tag tags)))
 
 (mu/defn ^:private recognize-template-tags :- [:sequential ::template-tag-with-context]
   "Find all template tags and test if they are optional."
