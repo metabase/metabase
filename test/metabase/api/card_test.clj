@@ -72,11 +72,13 @@
    :collection_preview  true
    :dataset_query       {}
    :dataset             false
+   :dashboard_id        nil
    :description         nil
    :display             "scalar"
    :enable_embedding    false
    :entity_id           nil
    :embedding_params    nil
+   :location            "collection"
    :made_public_by_id   nil
    :parameters          []
    :parameter_mappings  []
@@ -1006,8 +1008,8 @@
   (testing "GET /api/card/:id"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Collection collection {}
-                     :model/Card       card {:collection_id (u/the-id collection)
-                                             :dataset_query (mt/mbql-query venues)}]
+                     :model/Card      card {:collection_id (u/the-id collection)
+                                            :dataset_query (mt/mbql-query venues)}]
         (testing "You have to have Collection perms to fetch a Card"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "card/" (u/the-id card))))))
