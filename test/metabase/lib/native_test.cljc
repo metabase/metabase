@@ -27,7 +27,8 @@
 
 (deftest ^:parallel snippet-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
-    #{"snippet:   foo"} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
+    #{"snippet:   foo  "} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
+    #{"snippet:   foo  "} "SELECT * FROM table WHERE {{  snippet:   foo  }} AND some_field IS NOT NULL"
     #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
     ;; TODO: This logic should trim the whitespace and unify these two snippet names.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
