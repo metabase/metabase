@@ -419,7 +419,7 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    requiredTemplateTags = [],
+    requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -544,13 +544,17 @@ function ViewTitleHeaderRightSide(props) {
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
 
-function getDisabledSaveTooltip(question, isEditable, requiredTemplateTags) {
+function getDisabledSaveTooltip(
+  question,
+  isEditable,
+  requiredTemplateTags = [],
+) {
   if (!isEditable) {
     return t`You don't have permissions to save this question.`;
   }
 
   const missingValueRequiredTTags = requiredTemplateTags.filter(
-    t => t.required && !t.default,
+    tag => tag.required && !tag.default,
   );
 
   if (!question.canRun()) {
