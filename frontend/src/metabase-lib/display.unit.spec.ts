@@ -230,7 +230,10 @@ describe("getDefaultDisplay", () => {
     it("returns 'table' display by default", () => {
       const query = createQueryWithClauses({
         query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }, { operatorName: "avg" }],
+          aggregations: [
+            { operatorName: "count" },
+            { operatorName: "cum-count" },
+          ],
         }),
         breakouts: [
           { columnName: "LATITUDE", tableName: "PEOPLE" },
