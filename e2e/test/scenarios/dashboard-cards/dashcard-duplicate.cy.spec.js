@@ -1,13 +1,17 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  filterWidget,
   findDashCardAction,
   getDashboardCard,
-  getDashboardCards,
+  popover,
   restore,
   saveDashboard,
   visitDashboard,
 } from "e2e/support/helpers";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -28,6 +32,24 @@ const MAPPED_QUESTION_CREATE_INFO = {
   query: { "source-table": PRODUCTS_ID },
 };
 
+function createMappedDashcard(mappedQuestionId) {
+  return createMockDashboardCard({
+    id: 1,
+    card_id: mappedQuestionId,
+    parameter_mappings: [
+      {
+        parameter_id: PARAMETER.CATEGORY.id,
+        card_id: mappedQuestionId,
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      },
+    ],
+    row: 0,
+    col: 0,
+    size_x: 10,
+    size_y: 5,
+  });
+}
+
 describe("scenarios > dashboard cards > duplicate", () => {
   beforeEach(() => {
     restore();
@@ -38,7 +60,7 @@ describe("scenarios > dashboard cards > duplicate", () => {
         cy.createDashboard(DASHBOARD_CREATE_INFO).then(
           ({ body: { id: dashboardId } }) => {
             cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-              dashcards: getDashboardCards(mappedQuestionId),
+              dashcards: [createMappedDashcard(mappedQuestionId)],
             }).then(() => {
               cy.wrap(dashboardId).as("dashboardId");
             });
@@ -49,18 +71,25 @@ describe("scenarios > dashboard cards > duplicate", () => {
   });
 
   it("should allow the user to duplicate a dashcard", () => {
+    // 1. Confirm duplication works
     cy.get("@dashboardId").then(dashboardId => {
       visitDashboard(dashboardId);
       cy.findByLabelText("Edit dashboard").click();
     });
 
     findDashCardAction(getDashboardCard(0), "Duplicate").click();
-    cy.findAllByText("Orders").should("have.length", 2);
+    cy.findAllByText("Products").should("have.length", 2);
 
     saveDashboard();
+    cy.findAllByText("Products").should("have.length", 2);
 
-    cy.findAllByText("Orders").should("have.length", 2);
+    // 2. Confirm filter still works
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+    });
+    cy.button("Add filter").click();
 
-    // TODO confirm parameter mapping is preserve
+    cy.findAllByText("Incredible Bronze Pants").should("have.length", 2);
   });
 });
