@@ -1255,3 +1255,8 @@
   for the FE to function properly."
   [a-query]
   (to-array (map clj->js (lib.core/dependent-metadata a-query))))
+
+(defn ^:export can-run
+  "Returns true if the query is runnable."
+  [a-query]
+  (lib.core/can-run a-query))
