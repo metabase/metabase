@@ -38,7 +38,7 @@
         res
         (let [[jdx tok] (next-separator query-text idx)]
           (if (nil? jdx)
-            (recur cnt (conj res (subs query-text idx cnt)))
+            (conj res (subs query-text idx cnt))
             (recur (+ 2 jdx) (conj res (subs query-text idx jdx) tok))))))))
 
 (mr/def ::template-tag-with-context
