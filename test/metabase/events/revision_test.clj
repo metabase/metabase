@@ -46,6 +46,7 @@
    :cache_ttl           nil
    :auto_apply_filters  true
    :name                (:name dashboard)
+   :width               (:width dashboard)
    :tabs                []
    :cards               []
    :archived            false
