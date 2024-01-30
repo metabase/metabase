@@ -11,7 +11,11 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { useDatabaseListQuery } from "metabase/common/hooks";
 
 import NoResults from "assets/img/no_results.svg";
-import { DatabaseCard, DatabaseGrid, DatabaseGridItem } from "./BrowseDatabases.styled";
+import {
+  DatabaseCard,
+  DatabaseGrid,
+  DatabaseGridItem,
+} from "./BrowseDatabases.styled";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 
 export const BrowseDatabases = ({
