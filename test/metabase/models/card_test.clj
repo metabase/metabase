@@ -754,7 +754,7 @@
                                                               :type "number"}
                                                              value)
                             (= col :display)           :pie
-                            (= col :location)          "location"
+                            (= col :location)          "collection"
                             (= col :made_public_by_id) (mt/user->id :crowberto)
                             (= col :embedding_params)  {:category_name "locked"}
                             (= col :public_uuid)       (str (random-uuid))
