@@ -56,51 +56,44 @@
 (defn create! [model & {:as properties}]
  (first (t2/insert-returning-instances! model (merge (t2.with-temp/with-temp-defaults model) properties))))
 
+(defmacro with-db [data-source & body]
+  `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
+     ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
+     ;;   redefs not great for parallelism
+    (testing (format "\nApp DB = %s" (pr-str (.url ~data-source)))
+      ~@body)) )
+
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
-  (let [db-name           (str db-name-prefix (mt/random-name))
+  (let [db-name           (str db-name-prefix "-" (mt/random-name))
         connection-string (format "jdbc:h2:mem:%s" db-name)
         data-source       (mdb.data-source/raw-connection-string->DataSource connection-string)]
     ;; DB should stay open as long as `conn` is held open.
     (with-open [_conn (.getConnection data-source)]
-      (letfn [(do-with-app-db [thunk]
-                (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 data-source)]
-                  (testing (format "\nApp DB = %s" (pr-str connection-string))
-                    (thunk))))]
-        (do-with-app-db mdb/setup-db!)
-        (f do-with-app-db)))))
+      (with-db data-source (mdb/setup-db!))
+      (f data-source))))
 
-(defn do-with-source-and-dest-dbs [f]
-  (do-with-in-memory-h2-db
-   "source-"
-   (fn [do-with-source-db]
-     (do-with-in-memory-h2-db
-      "dest-"
-      (fn [do-with-dest-db]
-        (f do-with-source-db do-with-dest-db))))))
+(defn do-with-dbs
+  "Given a function with the given arity, create an in-memory db for each argument and then call the fn with these dbs"
+  [arity f]
+  (if (zero? arity)
+    (f)
+    (recur (dec arity)
+           (fn [& args]
+             (do-with-in-memory-h2-db
+               (str "db-" arity)
+               (fn [data-source]
+                 (apply f data-source args)))))))
 
-(defmacro with-source-and-dest-dbs
-  "Creates and sets up two in-memory H2 application databases, a source database and an application database. For
-  testing load/dump/serialization stuff. To use the source DB, use [[with-source-db]], which makes binds it as the
-  current application database; [[with-dest-db]] binds the destination DB as the current application database."
+(defmacro with-dbs
+  "Create and set up in-memory H2 application databases for each symbol in the bindings vector, each of which is then
+   bound to the corresponding data-source when executing the body. You can then use [[with-db]] to make any of these
+   data-sources the current application database.
+
+   This is particularly useful for load/dump/serialization tests, where you need both a source and application db."
   {:style/indent 0}
-  [& body]
-  ;; this is implemented by introducing the anaphors `&do-with-source-db` and `&do-with-dest-db` which are used by
-  ;; [[with-source-db]] and [[with-dest-db]]
-  `(do-with-source-and-dest-dbs
-    (fn [~'&do-with-source-db ~'&do-with-dest-db]
-      ~@body)))
-
-(defmacro with-source-db
-  "For use with [[with-source-and-dest-dbs]]. Makes the source DB the current application database."
-  {:style/indent 0}
-  [& body]
-  `(~'&do-with-source-db (fn [] ~@body)))
-
-(defmacro with-dest-db
-  "For use with [[with-source-and-dest-dbs]]. Makes the destination DB the current application database."
-  {:style/indent 0}
-  [& body]
-  `(~'&do-with-dest-db (fn [] ~@body)))
+  [bindings & body]
+  (let [arity (count bindings)]
+    `(do-with-dbs ~arity (fn ~bindings ~@body))))
 
 (defn random-dump-dir [prefix]
   (str (u.files/get-path (System/getProperty "java.io.tmpdir") prefix (mt/random-name))))

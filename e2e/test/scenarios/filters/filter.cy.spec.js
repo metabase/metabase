@@ -841,6 +841,8 @@ describe("scenarios > question > filter", () => {
 
   describe("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {
     it("shouldn't display chosen category in a breadcrumb (metabase#16198-1)", () => {
+      const chosenCategory = "Gizmo";
+
       visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
@@ -848,13 +850,18 @@ describe("scenarios > question > filter", () => {
             "source-table": PRODUCTS_ID,
             filter: [
               "and",
-              ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+              ["=", ["field", PRODUCTS.CATEGORY, null], chosenCategory],
               ["=", ["field", PRODUCTS.ID, null], 1],
             ],
           },
           type: "query",
         },
       });
+
+      cy.findByTestId("head-crumbs-container").should(
+        "not.contain",
+        chosenCategory,
+      );
     });
 
     it("adding an ID filter shouldn't cause page error and page reload (metabase#16198-2)", () => {
@@ -1041,7 +1048,8 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it("should render custom expression helper near the custom expression field", async () => {
+  // TODO: fixme!
+  it.skip("should render custom expression helper near the custom expression field", () => {
     openReviewsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
 

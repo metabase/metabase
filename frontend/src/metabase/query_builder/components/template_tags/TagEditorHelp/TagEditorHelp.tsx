@@ -209,7 +209,6 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
         <Button
           medium
           className="mt1"
-          data-metabase-event="QueryBuilder;Template Tag Example Query Used"
           onClick={() => setDatasetQuery(datasetQuery, true)}
         >
           {t`Try it`}
@@ -318,7 +317,6 @@ export const TagEditorHelp = ({
               "questions/native-editor/sql-parameters",
             )}
             target="_blank"
-            data-metabase-event="QueryBuilder;Template Tag Documentation Click"
           >{t`Read the full documentation`}</ExternalLink>
         </p>
       )}

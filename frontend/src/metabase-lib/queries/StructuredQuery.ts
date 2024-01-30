@@ -127,13 +127,6 @@ class StructuredQuery extends AtomicQuery {
   /* Query superclass methods */
 
   /**
-   * @returns true if this query is in a state where it can be run.
-   */
-  canRun() {
-    return !!(this._sourceTableId() || this.sourceQuery());
-  }
-
-  /**
    * @returns true if we have metadata for the root source table loaded
    */
   hasMetadata(): boolean {
