@@ -25,6 +25,7 @@ import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./visualizations/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
 import { Heading } from "./visualizations/Heading";
+import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 
 export default function () {
   registerVisualization(Scalar);
@@ -48,5 +49,6 @@ export default function () {
   registerVisualization(PivotTable);
   registerVisualization(ActionViz);
   registerVisualization(Heading);
+  registerVisualization(DashCardPlaceholder);
   setDefaultVisualization(Table);
 }

@@ -7,14 +7,18 @@ import Questions from "metabase/entities/questions";
 import {
   getPositionForNewDashCard,
   DEFAULT_CARD_SIZE,
+  GRID_WIDTH,
 } from "metabase/lib/dashboard_grid";
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+
 import { trackCardCreated, trackQuestionReplaced } from "../analytics";
+import { layoutOptions } from "../sections";
 import { getDashCardById, getDashboardId } from "../selectors";
 import { isVirtualDashCard } from "../utils";
+
 import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
@@ -86,9 +90,9 @@ export const replaceCard =
     const dashboardId = getDashboardId(getState());
 
     let dashcard = getDashCardById(getState(), dashcardId);
-    if (isVirtualDashCard(dashcard)) {
-      return;
-    }
+    // if (isVirtualDashCard(dashcard)) {
+    //   return;
+    // }
 
     await dispatch(Questions.actions.fetch({ id: nextCardId }));
     const card = Questions.selectors
@@ -276,5 +280,41 @@ export const addActionToDashboard =
         dashcardOverrides: dashcardOverrides,
         tabId,
       }),
+    );
+  };
+
+export const addSectionToDashboard =
+  ({ dashId, tabId, layoutId }) =>
+  (dispatch, getState) => {
+    const layout = layoutOptions.find(l => l.id === layoutId);
+
+    if (!layout) {
+      return;
+    }
+
+    const dashboardState = getState().dashboard;
+    const dashcards = getExistingDashCards(
+      dashboardState.dashboards,
+      dashboardState.dashcards,
+      dashId,
+      tabId,
+    );
+
+    const position = getPositionForNewDashCard(
+      dashcards,
+      GRID_WIDTH,
+      30, // a lot of free height
+    );
+
+    const newDashcards = layout.getLayout(position);
+
+    newDashcards.forEach(dc =>
+      dispatch(
+        addDashCardToDashboard({
+          dashId,
+          tabId,
+          dashcardOverrides: dc,
+        }),
+      ),
     );
   };

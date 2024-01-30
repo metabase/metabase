@@ -14,7 +14,7 @@ import ActionButton from "metabase/components/ActionButton";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
@@ -25,6 +25,7 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
 import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
 import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
+import { layoutOptions } from "metabase/dashboard/sections";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import { getPulseFormInput } from "metabase/pulse/selectors";
@@ -35,6 +36,7 @@ import {
 } from "metabase/dashboard/selectors";
 import {
   addActionToDashboard,
+  addSectionToDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
@@ -161,6 +163,7 @@ interface DispatchProps {
       displayType: ActionDisplayType;
     },
   ) => void;
+  addSectionToDashboard: (opts: NewDashCardOpts & { layoutId: number }) => void;
   dismissAllUndo: () => void;
 }
 
@@ -188,6 +191,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
   toggleSidebar,
   addActionToDashboard,
+  addSectionToDashboard,
   dismissAllUndo,
 };
 
@@ -235,6 +239,14 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       tabId: this.props.selectedTabId,
       displayType: "button",
       action: {},
+    });
+  }
+
+  onAddSection(layoutId: number) {
+    this.props.addSectionToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+      layoutId,
     });
   }
 
@@ -382,6 +394,28 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
+        </Tooltip>,
+      );
+
+      buttons.push(
+        <Tooltip key="add-section" tooltip={t`Add section`}>
+          <Menu>
+            <Menu.Target>
+              <DashboardHeaderButton>
+                <Icon name="table_spaced" size={18} />
+              </DashboardHeaderButton>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {layoutOptions.map(option => (
+                <Menu.Item
+                  key={option.id}
+                  onClick={() => this.onAddSection(option.id)}
+                >
+                  {option.label}
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
         </Tooltip>,
       );
 
