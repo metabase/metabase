@@ -315,7 +315,7 @@
                                                                          :info {:card-id (u/the-id card)})))))))))
 
 (deftest e2e-ignore-user-supplied-perms-test
-  (testing "You shouldn't be able to bypass security restrictions by passing in `::qp.perms/perms` in the query"
+  (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/perms` in the query"
     (binding [api/*current-user-id* (mt/user->id :rasta)]
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)

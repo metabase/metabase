@@ -24,7 +24,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -380,7 +379,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::qp.perms/perms :gtaps])))
+    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::query-perms/perms :gtaps])))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

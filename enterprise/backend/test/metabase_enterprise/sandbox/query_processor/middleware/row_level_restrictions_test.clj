@@ -17,10 +17,12 @@
    [metabase.models :refer [Card Collection Field Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
+   [metabase.query-processor.middleware.process-userland-query-test
+    :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -33,6 +35,9 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(comment
+  query-perms/keep-me)
 
 (defn- identifier
   ([table-key]
@@ -212,7 +217,7 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::qp.perms/perms                           {:gtaps {:perms/data-access {(mt/id :checkins) :unrestricted
+                   ::query-perms/perms                        {:gtaps {:perms/data-access {(mt/id :checkins) :unrestricted
                                                                                            (mt/id :venues) :unrestricted}
                                                                        :perms/native-query-editing :no}}})
 
@@ -244,7 +249,7 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::qp.perms/perms                           {:gtaps {:perms/native-query-editing :yes}}})
+                   ::query-perms/perms                        {:gtaps {:perms/native-query-editing :yes}}})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))
