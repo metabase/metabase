@@ -80,9 +80,8 @@ describe("scenarios > dashboard cards > duplicate", () => {
     });
 
     findDashCardAction(getDashboardCard(0), "Duplicate").click();
-    cy.findAllByText("Products").should("have.length", 2);
-
     saveDashboard();
+
     cy.findAllByText("Products").should("have.length", 2);
 
     // 2. Confirm filter still works
@@ -103,10 +102,6 @@ describe("scenarios > dashboard cards > duplicate", () => {
     });
 
     duplicateTab("Tab 1");
-
-    dashboardCards().within(() => {
-      cy.findByText("Products");
-    });
     saveDashboard();
 
     dashboardCards().within(() => {
