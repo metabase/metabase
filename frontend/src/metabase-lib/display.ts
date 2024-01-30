@@ -11,7 +11,7 @@ type DefaultDisplay = {
   settings?: Partial<VisualizationSettings>;
 };
 
-export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
+export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   const { isNative } = Lib.queryDisplayInfo(query);
 
   if (isNative) {

@@ -6,7 +6,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { getDefaultDisplay } from "./display";
+import { defaultDisplay } from "./display";
 import { createQuery, createQueryWithClauses } from "./test-helpers";
 
 const ACCOUNTS_ID = 4;
@@ -42,7 +42,7 @@ const SAMPLE_DATABASE = createSampleDatabase({
 
 const SAMPLE_METADATA = createMockMetadata({ databases: [SAMPLE_DATABASE] });
 
-describe("getDefaultDisplay", () => {
+describe("defaultDisplay", () => {
   it("returns 'table' display for native queries", () => {
     const query = createQuery({
       metadata: SAMPLE_METADATA,
@@ -55,13 +55,13 @@ describe("getDefaultDisplay", () => {
       },
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    expect(defaultDisplay(query)).toEqual({ display: "table" });
   });
 
   it("returns 'table' display for queries with no aggregations and no breakouts", () => {
     const query = createQuery();
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    expect(defaultDisplay(query)).toEqual({ display: "table" });
   });
 
   it("returns 'scalar' display for queries with 1 aggregation and no breakouts", () => {
@@ -69,7 +69,7 @@ describe("getDefaultDisplay", () => {
       aggregations: [{ operatorName: "count" }],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "scalar" });
+    expect(defaultDisplay(query)).toEqual({ display: "scalar" });
   });
 
   it("returns 'map' display for queries with 1 aggregation and 1 breakout by state", () => {
@@ -78,7 +78,7 @@ describe("getDefaultDisplay", () => {
       breakouts: [{ columnName: "STATE", tableName: "PEOPLE" }],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({
+    expect(defaultDisplay(query)).toEqual({
       display: "map",
       settings: {
         "map.type": "region",
@@ -103,7 +103,7 @@ describe("getDefaultDisplay", () => {
       breakouts: [{ columnName: "COUNTRY", tableName: "ACCOUNTS" }],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({
+    expect(defaultDisplay(query)).toEqual({
       display: "map",
       settings: {
         "map.type": "region",
@@ -124,7 +124,7 @@ describe("getDefaultDisplay", () => {
       ],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+    expect(defaultDisplay(query)).toEqual({ display: "bar" });
   });
 
   it("returns 'line' display for queries with aggregations and 1 breakout by date without temporal bucketing", () => {
@@ -133,7 +133,7 @@ describe("getDefaultDisplay", () => {
       breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "line" });
+    expect(defaultDisplay(query)).toEqual({ display: "line" });
   });
 
   it("returns 'bar' display for queries with aggregations and 1 breakout with binning", () => {
@@ -148,7 +148,7 @@ describe("getDefaultDisplay", () => {
       ],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+    expect(defaultDisplay(query)).toEqual({ display: "bar" });
   });
 
   it("returns 'table' display for queries with aggregations and 1 breakout without binning", () => {
@@ -157,7 +157,7 @@ describe("getDefaultDisplay", () => {
       breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    expect(defaultDisplay(query)).toEqual({ display: "table" });
   });
 
   it("returns 'bar' display for queries with aggregations and 1 breakout by category", () => {
@@ -166,7 +166,7 @@ describe("getDefaultDisplay", () => {
       breakouts: [{ columnName: "CATEGORY", tableName: "PRODUCTS" }],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+    expect(defaultDisplay(query)).toEqual({ display: "bar" });
   });
 
   it("returns 'line' display for queries with 1 aggregation and 2 breakouts, at least 1 of which is date", () => {
@@ -178,7 +178,7 @@ describe("getDefaultDisplay", () => {
       ],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "line" });
+    expect(defaultDisplay(query)).toEqual({ display: "line" });
   });
 
   it("returns 'map' display for queries with 1 aggregation and 2 breakouts by coordinates", () => {
@@ -190,7 +190,7 @@ describe("getDefaultDisplay", () => {
       ],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({
+    expect(defaultDisplay(query)).toEqual({
       display: "map",
       settings: {
         "map.type": "grid",
@@ -207,7 +207,7 @@ describe("getDefaultDisplay", () => {
       ],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+    expect(defaultDisplay(query)).toEqual({ display: "bar" });
   });
 
   it("returns 'table' display by default", () => {
@@ -219,6 +219,6 @@ describe("getDefaultDisplay", () => {
       ],
     });
 
-    expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    expect(defaultDisplay(query)).toEqual({ display: "table" });
   });
 });

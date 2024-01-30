@@ -60,7 +60,6 @@ import {
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
 
-import { getDefaultDisplay } from "./display";
 import type { Query } from "./types";
 
 export type QuestionCreatorOpts = {
@@ -339,7 +338,7 @@ class Question {
     }
 
     const query = this.query();
-    const { display, settings = {} } = getDefaultDisplay(query);
+    const { display, settings = {} } = Lib.defaultDisplay(query);
 
     return this.setDisplay(display).updateSettings(settings);
   }
