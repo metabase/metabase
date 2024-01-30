@@ -33,11 +33,9 @@
 ;; TODO: keywordize!
 (defn run-command
   "Run command. Return results"
-  ;; TODO: default
-  ([^MongoDatabase db cmd & opts]
+  ([^MongoDatabase db cmd & {:as opts}]
    ;; Initializing opts bc just passing forward -- this is probably silly!
-   (let [opts (merge {:keywordize true}
-                     opts)
+   (let [opts (merge {:keywordize true} opts)
          cmd-doc (mongo.conversion/to-document cmd)]
      (-> (.runCommand db cmd-doc)
          (mongo.conversion/from-document opts)))))
