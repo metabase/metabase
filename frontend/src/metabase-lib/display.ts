@@ -31,10 +31,9 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   const infos = breakouts.map(breakout => {
-    const info = Lib.displayInfo(query, stageIndex, breakout);
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    return { breakout, info, columnInfo };
+    return { breakout, columnInfo };
   });
 
   if (aggregations.length === 1 && breakouts.length === 1) {
@@ -62,9 +61,11 @@ export const getDefaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length >= 1 && breakouts.length === 1) {
-    const [{ breakout, info, columnInfo }] = infos;
+    const [{ breakout, columnInfo }] = infos;
 
     if (isDate(columnInfo)) {
+      const info = Lib.displayInfo(query, stageIndex, breakout);
+
       if (info.isTemporalExtraction) {
         return { display: "bar" };
       }
