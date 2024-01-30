@@ -550,7 +550,7 @@ function getDisabledSaveTooltip(
   requiredTemplateTags = [],
 ) {
   if (!isEditable) {
-    return t`You don't have permissions to save this question.`;
+    return t`You don't have permission to save this question.`;
   }
 
   const missingValueRequiredTTags = requiredTemplateTags.filter(

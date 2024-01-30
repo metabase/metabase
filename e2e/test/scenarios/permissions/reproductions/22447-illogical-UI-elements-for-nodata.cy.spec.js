@@ -40,7 +40,7 @@ describe("UI elements that make no sense for users without data permissions (met
 
     cy.get("@saveButton").realHover();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You don't have permissions to save this question.");
+    cy.findByText("You don't have permission to save this question.");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.icon("refresh").should("not.exist");
