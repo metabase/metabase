@@ -54,6 +54,12 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.getRunQueryButton().should("be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
+        SQLFilter.getSaveQueryButton().realHover();
+        // eslint-disable-next-line no-unscoped-text-selectors -- tooltips are rendered in the body
+        cy.findByText(
+          'The "TextFilter" variable requires a default value but none was provided.',
+        );
+
         SQLFilter.setDefaultValue("Some text");
         SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
@@ -127,6 +133,12 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.toggleRequired();
         SQLFilter.getRunQueryButton().should("be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
+
+        SQLFilter.getSaveQueryButton().realHover();
+        // eslint-disable-next-line no-unscoped-text-selectors -- tooltips are rendered in the body
+        cy.findByText(
+          'The "NumberFilter" variable requires a default value but none was provided.',
+        );
 
         SQLFilter.setDefaultValue("33");
         SQLFilter.getRunQueryButton().should("not.be.disabled");
@@ -221,6 +233,12 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.toggleRequired();
         SQLFilter.getRunQueryButton().should("be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
+
+        SQLFilter.getSaveQueryButton().realHover();
+        // eslint-disable-next-line no-unscoped-text-selectors -- tooltips are rendered in the body
+        cy.findByText(
+          'The "DateFilter" variable requires a default value but none was provided.',
+        );
 
         setDefaultDate();
 

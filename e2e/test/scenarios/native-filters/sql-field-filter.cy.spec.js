@@ -53,6 +53,12 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.getRunQueryButton().should("be.disabled");
       SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
+      SQLFilter.getSaveQueryButton().realHover();
+      // eslint-disable-next-line no-unscoped-text-selectors -- tooltips are rendered in the body
+      cy.findByText(
+        'The "Filter" variable requires a default value but none was provided.',
+      );
+
       setDefaultFieldValue(4);
 
       SQLFilter.getRunQueryButton().should("not.be.disabled");

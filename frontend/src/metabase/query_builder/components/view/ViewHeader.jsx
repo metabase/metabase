@@ -577,6 +577,6 @@ function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
   return ngettext(
     msgid`The ${names} variable requires a default value but none was provided.`,
     `The ${names} variables require default values but none were provided.`,
-    names.length,
+    requiredTemplateTags.length,
   );
 }
