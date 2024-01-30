@@ -70,203 +70,199 @@ const SAMPLE_DATABASE = createSampleDatabase({
 const SAMPLE_METADATA = createMockMetadata({ databases: [SAMPLE_DATABASE] });
 
 describe("getDefaultDisplay", () => {
-  describe("native queries", () => {
-    it("returns 'table' display for native queries", () => {
-      const query = createQuery({
-        metadata: SAMPLE_METADATA,
-        query: {
-          database: SAMPLE_DATABASE.id,
-          type: "native",
-          native: {
-            query: "SELECT * FROM ORDERS",
-          },
+  it("returns 'table' display for native queries", () => {
+    const query = createQuery({
+      metadata: SAMPLE_METADATA,
+      query: {
+        database: SAMPLE_DATABASE.id,
+        type: "native",
+        native: {
+          query: "SELECT * FROM ORDERS",
         },
-      });
+      },
+    });
 
-      expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+    expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+  });
+
+  it("returns 'table' display for queries with no aggregations and no breakouts", () => {
+    const query = createQuery();
+
+    expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+  });
+
+  it("returns 'scalar' display for queries with 1 aggregation and no breakouts", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({ display: "scalar" });
+  });
+
+  it("returns 'map' display for queries with 1 aggregation and 1 breakout by state", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "STATE", tableName: "PEOPLE" }],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({
+      display: "map",
+      settings: {
+        "map.type": "region",
+        "map.region": "us_states",
+      },
     });
   });
 
-  describe("structured queries", () => {
-    it("returns 'table' display for queries with no aggregations and no breakouts", () => {
-      const query = createQuery();
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "table" });
-    });
-
-    it("returns 'scalar' display for queries with 1 aggregation and no breakouts", () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "scalar" });
-    });
-
-    it("returns 'map' display for queries with 1 aggregation and 1 breakout by state", () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-        breakouts: [{ columnName: "STATE", tableName: "PEOPLE" }],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({
-        display: "map",
-        settings: {
-          "map.type": "region",
-          "map.region": "us_states",
-        },
-      });
-    });
-
-    it("returns 'map' display for queries with 1 aggregation and 1 breakout by country", () => {
-      const query = createQueryWithClauses({
-        query: createQuery({
-          metadata: SAMPLE_METADATA,
+  it("returns 'map' display for queries with 1 aggregation and 1 breakout by country", () => {
+    const query = createQueryWithClauses({
+      query: createQuery({
+        metadata: SAMPLE_METADATA,
+        query: {
+          database: SAMPLE_DATABASE.id,
+          type: "query",
           query: {
-            database: SAMPLE_DATABASE.id,
-            type: "query",
-            query: {
-              "source-table": ACCOUNTS_ID,
-            },
+            "source-table": ACCOUNTS_ID,
           },
-        }),
-        aggregations: [{ operatorName: "count" }],
-        breakouts: [{ columnName: "COUNTRY", tableName: "ACCOUNTS" }],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({
-        display: "map",
-        settings: {
-          "map.type": "region",
-          "map.region": "world_countries",
         },
-      });
+      }),
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "COUNTRY", tableName: "ACCOUNTS" }],
     });
 
-    it("returns 'bar' display for queries with aggregations and 1 breakout by date with temporal bucketing", () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-        breakouts: [
-          {
-            columnName: "CREATED_AT",
-            tableName: "ORDERS",
-            temporalBucketName: "Day of month",
-          },
-        ],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+    expect(getDefaultDisplay(query)).toEqual({
+      display: "map",
+      settings: {
+        "map.type": "region",
+        "map.region": "world_countries",
+      },
     });
+  });
 
-    it("returns 'line' display for queries with aggregations and 1 breakout by date without temporal bucketing", () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-        breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "line" });
-    });
-
-    it("returns 'bar' display for queries with aggregations and 1 breakout with binning", () => {
-      const query = createQueryWithClauses({
-        query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }],
-        }),
-        breakouts: [
-          {
-            columnName: "TOTAL",
-            tableName: "ORDERS",
-            binningStrategyName: "10 bins",
-          },
-        ],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
-    });
-
-    it("returns 'table' display for queries with aggregations and 1 breakout without binning", () => {
-      const query = createQueryWithClauses({
-        query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }],
-        }),
-        breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "table" });
-    });
-
-    it("returns 'bar' display for queries with aggregations and 1 breakout by category", () => {
-      const query = createQueryWithClauses({
-        query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }],
-        }),
-        breakouts: [{ columnName: "CATEGORY", tableName: "PRODUCTS" }],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
-    });
-
-    it("returns 'line' display for queries with 1 aggregation and 2 breakouts, at least 1 of which is date", () => {
-      const query = createQueryWithClauses({
-        query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }],
-        }),
-        breakouts: [
-          { columnName: "CREATED_AT", tableName: "ORDERS" },
-          { columnName: "TOTAL", tableName: "ORDERS" },
-        ],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "line" });
-    });
-
-    it("returns 'map' display for queries with 1 aggregation and 2 breakouts by coordinates", () => {
-      const query = createQueryWithClauses({
-        query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }],
-        }),
-        breakouts: [
-          { columnName: "LATITUDE", tableName: "PEOPLE" },
-          { columnName: "LONGITUDE", tableName: "PEOPLE" },
-        ],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({
-        display: "map",
-        settings: {
-          "map.type": "grid",
+  it("returns 'bar' display for queries with aggregations and 1 breakout by date with temporal bucketing", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        {
+          columnName: "CREATED_AT",
+          tableName: "ORDERS",
+          temporalBucketName: "Day of month",
         },
-      });
+      ],
     });
 
-    it("returns 'bar' display for queries with aggregations and 2 breakouts by category", () => {
-      const query = createQueryWithClauses({
-        query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }],
-        }),
-        breakouts: [
-          { columnName: "CATEGORY", tableName: "PRODUCTS" },
-          { columnName: "VENDOR", tableName: "PRODUCTS" },
+    expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+  });
+
+  it("returns 'line' display for queries with aggregations and 1 breakout by date without temporal bucketing", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({ display: "line" });
+  });
+
+  it("returns 'bar' display for queries with aggregations and 1 breakout with binning", () => {
+    const query = createQueryWithClauses({
+      query: createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      }),
+      breakouts: [
+        {
+          columnName: "TOTAL",
+          tableName: "ORDERS",
+          binningStrategyName: "10 bins",
+        },
+      ],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+  });
+
+  it("returns 'table' display for queries with aggregations and 1 breakout without binning", () => {
+    const query = createQueryWithClauses({
+      query: createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      }),
+      breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({ display: "table" });
+  });
+
+  it("returns 'bar' display for queries with aggregations and 1 breakout by category", () => {
+    const query = createQueryWithClauses({
+      query: createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      }),
+      breakouts: [{ columnName: "CATEGORY", tableName: "PRODUCTS" }],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+  });
+
+  it("returns 'line' display for queries with 1 aggregation and 2 breakouts, at least 1 of which is date", () => {
+    const query = createQueryWithClauses({
+      query: createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      }),
+      breakouts: [
+        { columnName: "CREATED_AT", tableName: "ORDERS" },
+        { columnName: "TOTAL", tableName: "ORDERS" },
+      ],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({ display: "line" });
+  });
+
+  it("returns 'map' display for queries with 1 aggregation and 2 breakouts by coordinates", () => {
+    const query = createQueryWithClauses({
+      query: createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      }),
+      breakouts: [
+        { columnName: "LATITUDE", tableName: "PEOPLE" },
+        { columnName: "LONGITUDE", tableName: "PEOPLE" },
+      ],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({
+      display: "map",
+      settings: {
+        "map.type": "grid",
+      },
+    });
+  });
+
+  it("returns 'bar' display for queries with aggregations and 2 breakouts by category", () => {
+    const query = createQueryWithClauses({
+      query: createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      }),
+      breakouts: [
+        { columnName: "CATEGORY", tableName: "PRODUCTS" },
+        { columnName: "VENDOR", tableName: "PRODUCTS" },
+      ],
+    });
+
+    expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+  });
+
+  it("returns 'table' display by default", () => {
+    const query = createQueryWithClauses({
+      query: createQueryWithClauses({
+        aggregations: [
+          { operatorName: "count" },
+          { operatorName: "cum-count" },
         ],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "bar" });
+      }),
+      breakouts: [
+        { columnName: "LATITUDE", tableName: "PEOPLE" },
+        { columnName: "LONGITUDE", tableName: "PEOPLE" },
+      ],
     });
 
-    it("returns 'table' display by default", () => {
-      const query = createQueryWithClauses({
-        query: createQueryWithClauses({
-          aggregations: [
-            { operatorName: "count" },
-            { operatorName: "cum-count" },
-          ],
-        }),
-        breakouts: [
-          { columnName: "LATITUDE", tableName: "PEOPLE" },
-          { columnName: "LONGITUDE", tableName: "PEOPLE" },
-        ],
-      });
-
-      expect(getDefaultDisplay(query)).toEqual({ display: "table" });
-    });
+    expect(getDefaultDisplay(query)).toEqual({ display: "table" });
   });
 });
