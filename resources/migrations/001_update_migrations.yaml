@@ -5240,7 +5240,7 @@ databaseChangeLog:
               - column:
                   name: dashboard_id
                   type: int
-                  remarks: "If a card dependent on a dashboard, then this will be populated with the parent dashboard id."
+                  remarks: "`dashboard_id` will be populated when this card is dependent on a dashboard"
                   constraints:
                     nullable: true
       rollback:
