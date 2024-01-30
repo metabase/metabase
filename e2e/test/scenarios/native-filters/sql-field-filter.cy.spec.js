@@ -54,10 +54,11 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
       SQLFilter.getSaveQueryButton().realHover();
-      // eslint-disable-next-line no-unscoped-text-selectors -- tooltips are rendered in the body
-      cy.findByText(
-        'The "Filter" variable requires a default value but none was provided.',
-      );
+      cy.get("body").within(() => {
+        cy.findByText(
+          'The "Filter" variable requires a default value but none was provided.',
+        );
+      });
 
       setDefaultFieldValue(4);
 
