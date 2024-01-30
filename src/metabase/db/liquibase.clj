@@ -170,10 +170,10 @@
   skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
   using them.
 
-  (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date)"
+  IMPORTANT: this function takes `data-source` but not `liquibase` because `.listUnrunChangeSets` is buggy. See #38257."
   [^DataSource data-source]
   (with-liquibase [liquibase (.getConnection data-source)]
-     (.listUnrunChangeSets liquibase nil (LabelExpression.))))
+    (.listUnrunChangeSets liquibase nil (LabelExpression.))))
 
 (defn- migration-lock-exists?
   "Is a migration lock in place for `liquibase`?"
