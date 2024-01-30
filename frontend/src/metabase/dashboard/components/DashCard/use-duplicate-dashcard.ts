@@ -59,6 +59,8 @@ export function useDuplicateDashCard({
     // We don't have card (question) data for virtual dashcards (text, heading, link, action)
     if (!isVirtualDashCard(dashcard) && dashcard.card_id !== null) {
       dispatch(
+        // Manually copying the card data by dispatching the `FETCH_CARD_DATA` action directly,
+        // as opposed to using the `fetchCardData` thunk, will send a request to re-fetch the data
         createAction(FETCH_CARD_DATA)({
           dashcard_id: newId,
           card_id: dashcard.card_id,
