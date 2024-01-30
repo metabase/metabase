@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { Collection, CollectionId, SearchResult } from "metabase-types/api";
-
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { useCollectionQuery } from "metabase/common/hooks";
 import { LoadingSpinner, NestedItemPicker } from "../components";
@@ -31,36 +30,46 @@ export const CollectionPicker = ({
 }: CollectionPickerProps) => {
   const [path, setPath] = useState<PickerState<PickerItem>>(() =>
     getStateFromIdPath({
-      idPath: [null, 'root'],
+      idPath: [null as unknown as CollectionId, "root"],
       namespace: options.namespace,
-    }));
+    }),
+  );
 
   const { data: currentCollection, isLoading: loadingCurrentCollection } =
     useCollectionQuery({ id: value?.id, enabled: !!value?.id });
 
-  const onFolderSelect = ({
-    folder
-  }: {
-    folder: Partial<SearchResult>;
-  }) => {
+  const onFolderSelect = ({ folder }: { folder: PickerItem }) => {
     const newPath = getStateFromIdPath({
-      idPath: getCollectionIdPath(folder as Collection),
+      idPath: getCollectionIdPath(folder),
       namespace: options.namespace,
     });
     setPath(newPath);
     onItemSelect(folder);
   };
 
-  useEffect(function setInitialPath () {
-    if (currentCollection) {
-      const newPath = getStateFromIdPath({
-        idPath: getCollectionIdPath(currentCollection),
-        namespace: options.namespace,
-      });
+  useEffect(
+    function setInitialPath() {
+      if (currentCollection?.id) {
+        const newPath = getStateFromIdPath({
+          idPath: getCollectionIdPath({
+            id: currentCollection.id,
+            location: currentCollection.location,
+            is_personal: currentCollection.is_personal,
+          }),
+          namespace: options.namespace,
+        });
 
-      setPath(newPath);
-    }
-  }, [currentCollection, options.namespace]);
+        setPath(newPath);
+      }
+      // we need to trigger this effect on these properties because the object reference isn't stable
+    },
+    [
+      currentCollection?.id,
+      currentCollection?.location,
+      currentCollection?.is_personal,
+      options.namespace,
+    ],
+  );
 
   if (loadingCurrentCollection) {
     return <LoadingSpinner />;
@@ -78,23 +87,27 @@ export const CollectionPicker = ({
   );
 };
 
-const getCollectionIdPath = (collection: Collection): CollectionId[] => {
+const getCollectionIdPath = (
+  collection: Pick<Collection, "id" | "location" | "is_personal">,
+): CollectionId[] => {
   const pathFromRoot =
     collection?.location?.split("/").filter(Boolean).map(Number) ?? [];
 
-
-  const path = collection.is_personal || collection.id === "root"
-    ? [null, ...pathFromRoot, collection.id]
-    : [null, "root", ...pathFromRoot, collection.id];
+  const path =
+    collection.is_personal || collection.id === "root"
+      ? [null, ...pathFromRoot, collection.id]
+      : [null, "root", ...pathFromRoot, collection.id];
 
   return path as CollectionId[];
-}
+};
 
 const getStateFromIdPath = ({
-  idPath, namespace
+  idPath,
+  namespace,
 }: {
-  idPath: CollectionId[]; namespace?: 'snippets'
-}): PickerState<SearchResult> => {
+  idPath: CollectionId[];
+  namespace?: "snippets";
+}): PickerState<PickerItem> => {
   // TODO: handle collections buried in another user's personal collection 😱
   return idPath.map((id, index) => {
     const nextLevelId = idPath[index + 1] ?? null;
@@ -103,7 +116,7 @@ const getStateFromIdPath = ({
       return {
         selectedItem: {
           model: "collection",
-          id: nextLevelId
+          id: nextLevelId,
         },
       };
     }

@@ -1,18 +1,16 @@
 import { useState, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { SearchResult } from "metabase-types/api";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
-import Collections from "metabase/entities/collections";
 
 import type { EntityPickerOptions } from "../../types";
 import { tabOptions, type ValidTab } from "../../utils";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
 
-import { NewCollectionModal } from "./NewCollectionModal";
+import { NewCollectionDialog } from "./NewCollectionDialog";
 import { ButtonBar } from "./ButtonBar";
 import { TabsView } from "./TabsView";
 import { SinglePickerView } from "./SinglePickerView";
@@ -51,13 +49,12 @@ export function EntityPickerModal({
   value,
   options = defaultOptions,
 }: EntityPickerModalProps) {
-  const dispatch = useDispatch();
   const validTabs = useMemo(
     () => tabs.filter(tabName => tabName in tabOptions),
     [tabs],
   );
   const [selectedItem, setSelectedItem] = useState<SearchResult | null>(null);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
@@ -68,9 +65,7 @@ export function EntityPickerModal({
 
   const handleItemSelect = useCallback(
     (item: SearchResult) => {
-      options.hasConfirmButtons
-        ? setSelectedItem(item)
-        : onChange(item);
+      options.hasConfirmButtons ? setSelectedItem(item) : onChange(item);
     },
     [onChange, options],
   );
@@ -79,13 +74,6 @@ export function EntityPickerModal({
     if (selectedItem) {
       onChange(selectedItem);
     }
-  };
-
-  const onCreateNewCollection = async ({ name }: { name: string }) => {
-    await dispatch(
-      Collections.actions.create({ name, parent_id: selectedItem?.id }),
-    );
-    setCreateModalOpen(false);
   };
 
   const hasTabs = validTabs.length > 1 || searchQuery;
@@ -135,22 +123,16 @@ export function EntityPickerModal({
                 canConfirm={!!selectedItem && selectedItem?.can_write !== false}
                 allowCreateNew={options.allowCreateNew}
                 currentCollection={selectedItem}
-                onCreateNew={() => setCreateModalOpen(true)}
+                onCreateNew={() => setCreateDialogOpen(true)}
               />
             )}
           </ErrorBoundary>
         </ModalBody>
-        <Modal
-          title="Create New"
-          opened={createModalOpen}
-          onClose={() => setCreateModalOpen(false)}
-        >
-          <NewCollectionModal
-            onClose={() => setCreateModalOpen(false)}
-            parentCollection={selectedItem}
-            handleCreateNewCollection={onCreateNewCollection}
-          />
-        </Modal>
+        <NewCollectionDialog
+          isOpen={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          parentCollection={selectedItem}
+        />
       </ModalContent>
     </Modal.Root>
   );

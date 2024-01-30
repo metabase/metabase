@@ -1,8 +1,15 @@
-import { Box , Text, ScrollArea, NavLink, Loader, Center, Icon } from 'metabase/ui';
-import type { CollectionItem } from "metabase-types/api";
+import {
+  Box,
+  Text,
+  ScrollArea,
+  NavLink,
+  Loader,
+  Center,
+  Icon,
+} from "metabase/ui";
+import type { PickerItem } from "../../types";
 import { getIcon, isSelectedItem } from "../../utils";
 import { PickerColumn } from "./ItemList.styled";
-
 
 export const ItemList = ({
   items,
@@ -11,10 +18,10 @@ export const ItemList = ({
   selectedItem,
   folderModel,
 }: {
-  items?: CollectionItem[];
+  items?: PickerItem[];
   isLoading: boolean;
-  onClick: (item: CollectionItem) => void;
-  selectedItem: CollectionItem | null;
+  onClick: (item: PickerItem) => void;
+  selectedItem: PickerItem | null;
   folderModel: string;
 }) => {
   if (isLoading) {
@@ -48,7 +55,7 @@ export const ItemList = ({
           const isFolder = folderModel.includes(item.model);
           const isSelected = isSelectedItem(item, selectedItem);
           return (
-            <div key={`${item.model ?? 'collection'}-${item.id}`}>
+            <div key={`${item.model ?? "collection"}-${item.id}`}>
               <NavLink
                 rightSection={
                   isFolder ? <Icon name="chevronright" size={10} /> : null

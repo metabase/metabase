@@ -1,12 +1,12 @@
-import type { CollectionItem } from "metabase-types/api";
 import { useSearchListQuery } from "metabase/common/hooks";
 
+import type { PickerItem } from "../../types";
 import { ItemList } from "./ItemList";
 
 export interface EntityItemListProps {
   query: any;
   onClick: (val: any) => void;
-  selectedItem: CollectionItem | null;
+  selectedItem: PickerItem | null;
   folderModel: string;
 }
 
@@ -16,7 +16,7 @@ export const EntityItemList = ({
   selectedItem,
   folderModel,
 }: EntityItemListProps) => {
-  const { data, isLoading } = useSearchListQuery({ query });
+  const { data, isLoading } = useSearchListQuery<PickerItem>({ query });
 
   return (
     <ItemList

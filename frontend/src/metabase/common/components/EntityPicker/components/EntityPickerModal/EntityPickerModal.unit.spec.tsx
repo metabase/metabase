@@ -1,10 +1,5 @@
-import { renderWithProviders, screen } from "__support__/ui";
-
-import {
-  EntityPickerModal,
-  EntityPickerModalOptions,
-} from "./EntityPickerModal";
 import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -12,8 +7,10 @@ import {
   createMockSearchResults,
   createMockUser,
 } from "metabase-types/api/mocks";
-import userEvent from "@testing-library/user-event";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { ValidTab } from "../../utils";
+import { EntityPickerModal } from "./EntityPickerModal";
+import type { EntityPickerModalOptions } from "./EntityPickerModal";
 
 interface setupProps {
   title?: string;
@@ -99,7 +96,7 @@ describe("EntityPickerModal", () => {
   });
 
   //We call onChange too much at the moment
-  it.skip("When disabling confirm buttons, clicking an item should trigger onChange", async () => {
+  it("When disabling confirm buttons, clicking an item should trigger onChange", async () => {
     const onChange = jest.fn();
     setup({
       onChange,

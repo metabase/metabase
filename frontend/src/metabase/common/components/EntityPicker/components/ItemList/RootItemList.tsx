@@ -1,22 +1,23 @@
 import { useAsync } from "react-use";
 import { useSelector } from "metabase/lib/redux";
-import type { SearchResult, CollectionItem } from "metabase-types/api";
 import { CollectionsApi, UserApi } from "metabase/services";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import type { EntityPickerOptions } from "../../types";
-import { ItemList } from "./ItemList";
+import type { EntityPickerOptions, PickerItem } from "../../types";
 
+import { ItemList } from "./ItemList";
 
 const personalCollectionsRoot = {
   ...PERSONAL_COLLECTIONS,
   can_write: false,
   model: "collection",
-} as unknown as SearchResult;
+  location: "/",
+  description: "",
+} as unknown as PickerItem;
 
 interface RootItemListProps {
   onClick: (val: any) => void;
-  selectedItem: CollectionItem | null;
+  selectedItem: PickerItem | null;
   folderModel: string;
   options: EntityPickerOptions;
 }
@@ -35,7 +36,7 @@ export const RootItemList = ({
   const isAdmin = useSelector(getUserIsAdmin);
 
   const { value: data, loading: isLoading } = useAsync(async () => {
-    const collectionsData: CollectionItem[] = [];
+    const collectionsData: PickerItem[] = [];
 
     if (options.showRootCollection || options.namespace === "snippets") {
       const ourAnalytics = await CollectionsApi.getRoot({
@@ -60,7 +61,7 @@ export const RootItemList = ({
       });
 
       if (isAdmin) {
-        collectionsData.push(personalCollectionsRoot as unknown as CollectionItem);
+        collectionsData.push(personalCollectionsRoot);
       }
     }
 

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import type { CollectionItem, Collection } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 import { useCollectionListQuery } from "metabase/common/hooks";
-import type { EntityPickerOptions } from "../../types";
+import type { EntityPickerOptions, PickerItem } from "../../types";
 import { ItemList } from "./ItemList";
 
 interface PersonalCollectionsItemListProps {
-  onClick: (val: CollectionItem) => void;
-  selectedItem: CollectionItem | null;
+  onClick: (val: PickerItem) => void;
+  selectedItem: PickerItem | null;
   folderModel: string;
   options: EntityPickerOptions;
 }
@@ -19,9 +19,10 @@ export const PersonalCollectionsItemList = ({
   // TODO: see if we can make personal-only flag faster
   const { data: collections, isLoading } = useCollectionListQuery();
 
-  const topLevelPersonalCollections = useMemo(() =>
-    getSortedTopLevelPersonalCollections(collections)
-  , [collections]);
+  const topLevelPersonalCollections = useMemo(
+    () => getSortedTopLevelPersonalCollections(collections) as PickerItem[],
+    [collections],
+  );
 
   return (
     <ItemList
@@ -34,14 +35,16 @@ export const PersonalCollectionsItemList = ({
   );
 };
 
-const getSortedTopLevelPersonalCollections = (personalCollections?: Collection[]) =>
+const getSortedTopLevelPersonalCollections = (
+  personalCollections?: Collection[],
+) =>
   personalCollections
     ?.filter(isRootPersonalCollection)
     .map((collection: Collection) => ({
       ...collection,
-      model: 'collection',
-    }) as unknown as CollectionItem)
-    .sort((a,b) => a?.name.localeCompare(b.name)) ?? [];
+      model: "collection",
+    }))
+    .sort((a, b) => a?.name.localeCompare(b.name)) ?? [];
 
 const isRootPersonalCollection = (collection: Collection) =>
-  collection.is_personal && collection.location === '/';
+  collection.is_personal && collection.location === "/";
