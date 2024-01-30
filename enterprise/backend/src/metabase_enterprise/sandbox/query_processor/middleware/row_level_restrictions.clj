@@ -258,7 +258,7 @@
 
 (mu/defn ^:private sandbox->required-perms
   "Calculate the permissions needed to run the query associated with a sandbox, which are implitly granted to the
-  current user during the noraml QP perms check.
+  current user during the normal QP perms check.
 
   Background: when applying sandboxing, we don't want the QP perms check middleware to throw an Exception if the Current
   User doesn't have permissions to run the underlying sandboxed query, which will likely be greater than what they
