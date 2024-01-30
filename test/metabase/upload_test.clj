@@ -442,8 +442,8 @@
                                 "2, Darth Vader"]
                                csv-file-name)
             group-id          (u/the-id (perms-group/all-users))
-            can-already-read? (mi/can-read? db)
-            grant?            (and (not can-already-read?)
+            grant?            (and db
+                                   (not (mi/can-read? db))
                                    grant-permission?)]
         (when grant?
           (perms/grant-permissions! group-id (perms/data-perms-path db-id)))
