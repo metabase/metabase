@@ -61,7 +61,7 @@ export function useDashboardTabs({ location }: { location: Location }) {
     tabs,
     selectedTabId,
     createNewTab: () => dispatch(createNewTab()),
-    duplicateTab: (tabId: SelectedTabId) => dispatch(duplicateTab(tabId!)), // TODO remove non-null assertion
+    duplicateTab: (tabId: SelectedTabId) => dispatch(duplicateTab(tabId)),
     deleteTab,
     renameTab: (tabId: SelectedTabId, name: string) =>
       dispatch(renameTab({ tabId, name })),

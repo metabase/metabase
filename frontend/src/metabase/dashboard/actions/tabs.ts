@@ -5,6 +5,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 
 import type {
   DashCardId,
+  DashboardCard,
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
@@ -30,7 +31,7 @@ import { generateTemporaryDashcardId } from "./cards";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
 type DuplicateTabPayload = {
-  sourceTabId: DashboardTabId;
+  sourceTabId: DashboardTabId | null;
   newTabId: DashboardTabId;
 };
 type DeleteTabPayload = {
@@ -89,7 +90,7 @@ function _createInitialTabs({
 }: {
   dashId: DashboardId;
   newTabId: DashboardTabId;
-  state: Draft<DashboardState> | DashboardState;
+  state: Draft<DashboardState> | DashboardState; // union type needed to fix `possibly infinite` type error https://metaboat.slack.com/archives/C505ZNNH4/p1699541570878059?thread_ts=1699520485.702539&cid=C505ZNNH4
   prevDash: StoreDashboard;
   firstTabName?: string;
   secondTabName?: string;
@@ -125,7 +126,7 @@ export function createNewTab() {
 
 const duplicateTabAction = createAction<DuplicateTabPayload>(DUPLICATE_TAB);
 
-export function duplicateTab(sourceTabId: DashboardTabId) {
+export function duplicateTab(sourceTabId: DashboardTabId | null) {
   const newTabId = tempTabId;
   tempTabId -= 2;
 
@@ -321,9 +322,10 @@ export const tabsReducer = createReducer<DashboardState>(
         }
 
         // 2. Duplicate dashcards
-        const sourceTabDashCards = prevDash.dashcards
-          .map(id => state.dashcards[id])
-          .filter(dashCard => dashCard.dashboard_tab_id === sourceTabId);
+        const sourceTabDashCards: DashboardCard[] | Draft<DashboardCard>[] = // type def needed to fix `possibly infinite` type error
+          prevDash.dashcards
+            .map(id => state.dashcards[id])
+            .filter(dashCard => dashCard.dashboard_tab_id === sourceTabId);
 
         sourceTabDashCards.forEach(sourceDashCard => {
           const newDashCardId = generateTemporaryDashcardId();
@@ -339,7 +341,6 @@ export const tabsReducer = createReducer<DashboardState>(
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
           if (isVirtualDashCard(sourceDashCard)) {
-            // TODO fix typescript error
             return;
           }
           if (sourceDashCard.card_id === null) {
