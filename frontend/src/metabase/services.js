@@ -605,8 +605,8 @@ export const MetabotApi = {
   databasePrompt: POST("/api/metabot/database/:databaseId"),
   databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
   sendFeedback: POST("/api/metabot/feedback"),
-  summarizeCard: POST("/api/metabot/card/summarize"),
-  summarizeDashboard: GET("/api/metabot/dashboard/summarize/:dashboardId"),
+  summarizeCard: POST("/api/ee/autodescribe/card/summarize"),
+  summarizeDashboard: GET("/api/ee/autodescribe/dashboard/summarize/:dashboardId"),
 };
 
 export const ApiKeysApi = {
