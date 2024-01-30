@@ -5228,6 +5228,45 @@ databaseChangeLog:
             tableName: metabase_field
             indexName: idx_field_name_lower
 
+  - changeSet:
+      id: v49.2024-01-29T19:26:40
+      author: adam-james
+      comment: Add width setting to Dashboards
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: width
+                  type: varchar(16)
+                  defaultValue: 'fixed'
+                  remarks: "The value of the dashboard's width setting Can be fixed or full"
+
+  - changeSet:
+      id: v49.2024-01-29T19:30:00
+      author: adam-james
+      comment: Update existing report_dashboard width values to full
+      changes:
+        - update:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: width
+                  value: 'full'
+      rollback: []
+
+  - changeSet:
+      id: v49.2024-01-29T19:56:40
+      author: adam-james
+      comment: Set all existing report_dashboard width values to full.
+      changes:
+        - addNotNullConstraint:
+            tableName: report_dashboard
+            columnName: width
+            columnDatatype: varchar(16)
+            defaultNullvalue: 'full'
+            remarks: "For all existing dashboards we set the value to full which is the current behaviour"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
