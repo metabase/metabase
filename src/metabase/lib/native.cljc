@@ -17,30 +17,22 @@
 
 (def separators
   "The tokens used for template tags."
-  #{"{{" "}}" "[[" "]]"})
-
-(defn- next-separator
-  "Finds the next separator in the query.
-   Assumes all separators have a len of 2 characters."
-  [text start]
-  (when-let [indexes (seq (keep #(str/index-of text % start) separators))]
-    (let [index (apply min indexes)]
-      [index (subs text index (+ 2 index))])))
+  ["{{" "}}" "[[" "]]"])
 
 (mu/defn ^:private tokenize-query :- [:sequential :string]
   "Tokenize the query for easier parsing.
    This splits the string at the separators defined in `separators`
    but keeps them in the resulting sequence."
-  [query-text :- ::common/non-blank-string]
-  (let [cnt (count query-text)]
-    (loop [idx 0
-          res []]
-      (if (>= idx cnt)
-        res
-        (let [[jdx tok] (next-separator query-text idx)]
-          (if (nil? jdx)
-            (conj res (subs query-text idx cnt))
-            (recur (+ (count tok) jdx) (conj res (subs query-text idx jdx) tok))))))))
+  [query-text :- :string]
+  (let [maximum (count query-text)
+        indexes (map #(or (str/index-of query-text %) maximum) separators)
+        index   (apply min indexes)]
+    (if (= index maximum)
+      [query-text]
+      (let [before (subs query-text 0 index)
+            separator (separators (first (keep-indexed #(if (= index %2) %1 nil) indexes)))
+            after (subs query-text (+ index (count separator)))]
+        (lazy-cat [before separator] (tokenize-query after))))))
 
 (mr/def ::template-tag-with-context
    [:map
