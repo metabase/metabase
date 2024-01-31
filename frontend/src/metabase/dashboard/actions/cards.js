@@ -24,6 +24,7 @@ import {
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
+import { addDashCardToDashboard } from "./cards-typed";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
@@ -140,42 +141,6 @@ export const undoRemoveCardFromDashboard = createThunkAction(
       return { dashcardId };
     },
 );
-
-export const addDashCardToDashboard = function ({
-  dashId,
-  dashcardOverrides,
-  tabId,
-}) {
-  return function (dispatch, getState) {
-    const visualization = getVisualizationRaw([dashcardOverrides]);
-    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
-
-    const dashboardState = getState().dashboard;
-
-    const dashcard = {
-      id: generateTemporaryDashcardId(),
-      card_id: null,
-      card: null,
-      dashboard_id: dashId,
-      dashboard_tab_id: tabId ?? null,
-      series: [],
-      ...getPositionForNewDashCard(
-        getExistingDashCards(
-          dashboardState.dashboards,
-          dashboardState.dashcards,
-          dashId,
-          tabId,
-        ),
-        createdCardSize.width,
-        createdCardSize.height,
-      ),
-      parameter_mappings: [],
-      visualization_settings: {},
-    };
-    _.extend(dashcard, dashcardOverrides);
-    dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
-  };
-};
 
 export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
   trackCardCreated("text", dashId);
