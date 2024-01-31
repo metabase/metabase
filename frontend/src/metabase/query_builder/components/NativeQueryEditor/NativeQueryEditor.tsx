@@ -128,7 +128,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   runQuestionQuery: (opts?: {
-    overrideWithCard?: Card;
+    overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
   setNativeEditorSelectedRange: (range: Ace.Range) => void;
@@ -383,10 +383,10 @@ export class NativeQueryEditor extends Component<
     const selectedText = this._editor?.getSelectedText();
 
     if (selectedText) {
-      const temporaryCard = query.setQueryText(selectedText).question().card();
+      const temporaryQuestion = query.setQueryText(selectedText).question();
 
       runQuestionQuery({
-        overrideWithCard: temporaryCard,
+        overrideWithQuestion: temporaryQuestion,
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
