@@ -19,17 +19,19 @@
   "The tokens used for template tags."
   #{"{{" "}}" "[[" "]]"})
 
-(defn- next-separator [text start]
-  (let [indexes (map #(or (str/index-of text % start) ##Inf) separators)
-        index   (apply min indexes)]
-    (if (infinite? index)
-      [nil nil]
+(defn- next-separator
+  "Finds the next separator in the query.
+   Assumes all separators have a len of 2 characters."
+  [text start]
+  (when-let [indexes (seq (keep #(str/index-of text % start) separators))]
+    (let [index (apply min indexes)]
       [index (subs text index (+ 2 index))])))
 
 (mu/defn ^:private tokenize-query :- [:sequential :string]
   "Tokenize the query for easier parsing.
    This splits the string at the separators defined in `separators`
-   but keeps them in the resulting sequence."
+   but keeps them in the resulting sequence.
+   Assumes all separators have a len of 2 characters."
   [query-text :- ::common/non-blank-string]
   (let [cnt (count query-text)]
     (loop [idx 0
