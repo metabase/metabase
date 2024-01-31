@@ -6,10 +6,10 @@
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models
     :refer [Card Collection Dashboard Metric ModelIndex ModelIndexValue Segment]]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
@@ -55,17 +55,13 @@
                _            (dashcards-schema-check (:dashcards resp))
                result       (validation-fn resp)]
            (when (and result
-                      (try
-                        (testing "Endpoint should return 403 if user does not have permissions"
-                          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
-                          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-                          (revoke-fn)
-                          (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
-                            (is (= "You don't have permissions to do that."
-                                   result))))
-                        (finally
-                          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
-                          (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))
+                      (testing "Endpoint should return 403 if user does not have permissions"
+                        (perms.test-util/with-no-data-perms-for-all-users!
+                          (perms.test-util/with-no-perms-for-all-users!
+                            (revoke-fn)
+                            (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
+                              (is (= "You don't have permissions to do that."
+                                     result)))))))
              result)))))))
 
 ;;; ------------------- X-ray  -------------------

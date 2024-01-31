@@ -8,9 +8,9 @@
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
+   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.table :as table]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -53,7 +53,7 @@
   (classloader/require 'metabase.query-processor)
   (into {} (for [col (mw.session/with-current-user nil
                        ((resolve 'metabase.query-processor/query->expected-cols)
-                        {:database (table/table-id->database-id table-id)
+                        {:database (database/table-id->database-id table-id)
                          :type     :query
                          :query    {:source-table table-id}}))]
              [(:name col) col])))
