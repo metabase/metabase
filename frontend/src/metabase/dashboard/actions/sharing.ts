@@ -1,15 +1,22 @@
 import type { Dashboard, DashboardId } from "metabase-types/api";
-import type { Dispatch, EmbedOptions } from "metabase-types/store";
-import { createAction } from "metabase/lib/redux";
+import type { Dispatch } from "metabase-types/store";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { DashboardApi } from "metabase/services";
 
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { setSidebar, closeSidebar } from "./ui";
 
 type DashboardIdPayload = {
   id: DashboardId;
+};
+
+type PublishEmbeddingPayload = {
+  id: DashboardId;
+  enable_embedding: boolean;
+  embedding_params: EmbeddingParameters;
 };
 
 export const setSharing = (isSharing: boolean) => (dispatch: Dispatch) => {
@@ -24,20 +31,23 @@ export const setSharing = (isSharing: boolean) => (dispatch: Dispatch) => {
   }
 };
 
-export const UPDATE_ENABLE_EMBEDDING =
-  "metabase/dashboard/UPDATE_ENABLE_EMBEDDING";
-export const updateEnableEmbedding = createAction(
-  UPDATE_ENABLE_EMBEDDING,
-  ({ id }: DashboardIdPayload, enable_embedding: boolean) =>
-    DashboardApi.update({ id, enable_embedding }),
-);
+export const PUBLISH_EMBEDDING = "metabase/dashboard/PUBLISH_EMBEDDING";
+export const publishEmbedding = createThunkAction(
+  PUBLISH_EMBEDDING,
+  ({ id, enable_embedding, embedding_params }: PublishEmbeddingPayload) =>
+    async () => {
+      const result = await DashboardApi.update({
+        id,
+        enable_embedding,
+        embedding_params,
+      });
 
-export const UPDATE_EMBEDDING_PARAMS =
-  "metabase/dashboard/UPDATE_EMBEDDING_PARAMS";
-export const updateEmbeddingParams = createAction(
-  UPDATE_EMBEDDING_PARAMS,
-  ({ id }: DashboardIdPayload, embedding_params: EmbedOptions) =>
-    DashboardApi.update({ id, embedding_params }),
+      return {
+        id,
+        enable_embedding: result.enable_embedding,
+        embedding_params: result.embedding_params,
+      };
+    },
 );
 
 export const CREATE_PUBLIC_LINK = "metabase/dashboard/CREATE_PUBLIC_LINK";

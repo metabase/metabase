@@ -18,8 +18,10 @@ export interface EmbedModalContentProps {
   resourceType: EmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
-  onUpdateEnableEmbedding: (enableEmbedding: boolean) => void;
-  onUpdateEmbeddingParams: (embeddingParams: EmbeddingParameters) => void;
+  onPublishEmbedding: (
+    enable: boolean,
+    params: EmbeddingParameters,
+  ) => Promise<void>;
 
   onCreatePublicLink: () => void;
   onDeletePublicLink: () => void;
@@ -37,8 +39,7 @@ export const EmbedModalContent = (
     resource,
     resourceType,
     resourceParameters,
-    onUpdateEnableEmbedding,
-    onUpdateEmbeddingParams,
+    onPublishEmbedding,
     onCreatePublicLink,
     onDeletePublicLink,
     getPublicUrl,
@@ -66,8 +67,7 @@ export const EmbedModalContent = (
       resource={resource}
       resourceType={resourceType}
       resourceParameters={resourceParameters}
-      onUpdateEmbeddingParams={onUpdateEmbeddingParams}
-      onUpdateEnableEmbedding={onUpdateEnableEmbedding}
+      onPublishEmbedding={onPublishEmbedding}
     />
   );
 };

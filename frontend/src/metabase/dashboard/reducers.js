@@ -16,8 +16,6 @@ import {
   ADD_CARD_TO_DASH,
   CREATE_PUBLIC_LINK,
   DELETE_PUBLIC_LINK,
-  UPDATE_EMBEDDING_PARAMS,
-  UPDATE_ENABLE_EMBEDDING,
   SET_DASHCARD_ATTRIBUTES,
   SET_MULTIPLE_DASHCARD_ATTRIBUTES,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
@@ -45,6 +43,7 @@ import {
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
   fetchDashboard,
+  PUBLISH_EMBEDDING,
 } from "./actions";
 import {
   calculateDashCardRowAfterUndo,
@@ -131,21 +130,15 @@ const dashboards = handleActions(
       next: (state, { payload }) =>
         assocIn(state, [payload.id, "public_uuid"], null),
     },
-    [UPDATE_EMBEDDING_PARAMS]: {
-      next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.id, "embedding_params"],
-          payload.embedding_params,
-        ),
-    },
-    [UPDATE_ENABLE_EMBEDDING]: {
-      next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.id, "enable_embedding"],
-          payload.enable_embedding,
-        ),
+    [PUBLISH_EMBEDDING]: {
+      next: (state, { payload: { id, enable_embedding, embedding_params } }) =>
+        produce(state, draftState => {
+          const draftDashboard = draftState[id];
+          draftDashboard.enable_embedding = enable_embedding;
+          if (enable_embedding) {
+            draftDashboard.embedding_params = embedding_params;
+          }
+        }),
     },
     [Dashboards.actionTypes.UPDATE]: {
       next: (state, { payload }) => {

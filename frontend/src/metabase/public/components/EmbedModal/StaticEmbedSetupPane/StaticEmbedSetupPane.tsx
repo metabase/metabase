@@ -35,18 +35,17 @@ export interface StaticEmbedSetupPaneProps {
   resourceType: EmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
-  onUpdateEnableEmbedding: (enableEmbedding: boolean) => void | Promise<void>;
-  onUpdateEmbeddingParams: (
-    embeddingParams: EmbeddingParameters,
-  ) => void | Promise<void>;
+  onPublishEmbedding: (
+    enable: boolean,
+    params: EmbeddingParameters,
+  ) => Promise<void>;
 }
 
 export const StaticEmbedSetupPane = ({
   resource,
   resourceType,
   resourceParameters,
-  onUpdateEnableEmbedding,
-  onUpdateEmbeddingParams,
+  onPublishEmbedding,
 }: StaticEmbedSetupPaneProps): JSX.Element => {
   const [activePane, setActivePane] = useState<ActivePreviewPane>("code");
 
@@ -130,14 +129,11 @@ export const StaticEmbedSetupPane = ({
   );
 
   const handleSave = async () => {
-    if (!resource.enable_embedding) {
-      await onUpdateEnableEmbedding(true);
-    }
-    await onUpdateEmbeddingParams(embeddingParams);
+    await onPublishEmbedding(true, embeddingParams);
   };
 
   const handleUnpublish = async () => {
-    await onUpdateEnableEmbedding(false);
+    await onPublishEmbedding(false, embeddingParams);
   };
 
   const handleDiscard = () => {
