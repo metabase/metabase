@@ -6,6 +6,7 @@
    [metabase.api.activity :as api.activity]
    [metabase.api.alert :as api.alert]
    [metabase.api.api-key :as api.api-key]
+   [metabase.api.autoarchive :as api.autoarchive]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.card :as api.card]
@@ -71,6 +72,7 @@
   (context "/action"               [] (+auth api.action/routes))
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
+  (context "/autoarchive"          [] (+auth api.autoarchive/routes))
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
   (context "/card"                 [] (+auth api.card/routes))
   (context "/bookmark"             [] (+auth api.bookmark/routes))
