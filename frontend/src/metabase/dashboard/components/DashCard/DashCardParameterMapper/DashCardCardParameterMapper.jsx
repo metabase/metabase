@@ -26,16 +26,13 @@ import {
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import * as Lib from "metabase-lib";
+import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import Question from "metabase-lib/Question";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 import { normalize } from "metabase-lib/queries/utils/normalize";
-import {
-  getEditingParameter,
-  getParameterTarget,
-  getParameterMappingOptions,
-} from "../../../selectors";
+import { getEditingParameter, getParameterTarget } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
 import {
@@ -63,7 +60,6 @@ function formatSelected({ name, sectionName }) {
 const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
-  mappingOptions: getParameterMappingOptions(state, props),
   metadata: getMetadata(state),
 });
 
@@ -87,12 +83,17 @@ export function DashCardCardParameterMapper({
   dashcard,
   editingParameter,
   target,
-  mappingOptions,
   metadata,
   setParameterMapping,
   isMobile,
 }) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+
+  const mappingOptions = useMemo(
+    () =>
+      getParameterMappingOptions(metadata, editingParameter, card, dashcard),
+    [card, dashcard, editingParameter, metadata],
+  );
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
