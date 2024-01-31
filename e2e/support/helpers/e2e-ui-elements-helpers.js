@@ -34,7 +34,7 @@ export function leftSidebar() {
 }
 
 export function navigationSidebar() {
-  return cy.get("#root aside").first();
+  return cy.findByTestId("main-navbar-root");
 }
 
 export function appBar() {

@@ -192,8 +192,9 @@ class View extends Component {
 
   getRightSidebar = () => {
     const { question } = this.props;
-    const isStructured = question.isStructured();
-    return isStructured
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    return !isNative
       ? this.getRightSidebarForStructuredQuery()
       : this.getRightSidebarForNativeQuery();
   };
@@ -202,9 +203,10 @@ class View extends Component {
     const { question } = this.props;
     const query = question.query();
     const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
+    const { isNative } = Lib.queryDisplayInfo(query);
 
     const isNewQuestion =
-      question.isStructured() &&
+      !isNative &&
       Lib.sourceTableOrCardId(query) === null &&
       !legacyQuery.sourceQuery();
 
@@ -229,7 +231,14 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, card, height, isDirty, isNativeEditorOpen } = this.props;
+    const {
+      question,
+      card,
+      height,
+      isDirty,
+      isNativeEditorOpen,
+      setParameterValueToDefault,
+    } = this.props;
     const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
@@ -253,6 +262,7 @@ class View extends Component {
           isOpen={legacyQuery.isEmpty() || isDirty}
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
+          setParameterValueToDefault={setParameterValueToDefault}
         />
       </NativeQueryEditorContainer>
     );
@@ -323,9 +333,10 @@ class View extends Component {
 
     const query = question.query();
     const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
+    const { isNative } = Lib.queryDisplayInfo(question.query());
 
     const isNewQuestion =
-      question.isStructured() &&
+      !isNative &&
       Lib.sourceTableOrCardId(query) === null &&
       !legacyQuery.sourceQuery();
 
@@ -362,7 +373,7 @@ class View extends Component {
         <QueryBuilderViewRoot className="QueryBuilder">
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
-            {question.isStructured() && (
+            {!isNative && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}

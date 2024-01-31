@@ -15,7 +15,7 @@ jobs:
     outputs:
       codeql: ${{ steps.changes.outputs.codeql }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
         id: changes
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:

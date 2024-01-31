@@ -54,7 +54,7 @@ jobs:
       TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           # Important because we need previous commits hashes to find and download the uberjar!
           fetch-depth: 20

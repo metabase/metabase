@@ -62,7 +62,10 @@ const defaultConfig = {
 
     on(
       "file:preprocessor",
-      createBundler({ plugins: [NodeModulesPolyfillPlugin()] }),
+      createBundler({
+        plugins: [NodeModulesPolyfillPlugin()],
+        sourcemap: "inline",
+      }),
     );
 
     /********************************************************************

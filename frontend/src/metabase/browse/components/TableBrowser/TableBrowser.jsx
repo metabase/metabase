@@ -9,21 +9,21 @@ import { isSyncInProgress } from "metabase/lib/syncing";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import { Icon } from "metabase/ui";
-import { Grid } from "metabase/components/Grid";
-
 import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/urls";
 import { RELOAD_INTERVAL } from "../../constants";
-import { BrowseHeader } from "../BrowseHeader";
+import { BrowseHeaderContent } from "../BrowseHeader.styled";
 import {
   TableActionLink,
   TableCard,
+  TableGrid,
   TableGridItem,
   TableLink,
 } from "./TableBrowser.styled";
@@ -50,15 +50,17 @@ const TableBrowser = ({
   showSchemaInHeader = true,
 }) => {
   return (
-    <div>
-      <BrowseHeader
-        crumbs={[
-          { title: t`Our data`, to: "/browse/databases" },
-          getDatabaseCrumbs(dbId),
-          showSchemaInHeader && { title: schemaName },
-        ]}
-      />
-      <Grid>
+    <>
+      <BrowseHeaderContent>
+        <BrowserCrumbs
+          crumbs={[
+            { title: t`Databases`, to: "/browse/databases" },
+            getDatabaseCrumbs(dbId),
+            showSchemaInHeader && { title: schemaName },
+          ]}
+        />
+      </BrowseHeaderContent>
+      <TableGrid>
         {tables.map(table => (
           <TableGridItem key={table.id}>
             <TableCard hoverable={!isSyncInProgress(table)}>
@@ -77,8 +79,8 @@ const TableBrowser = ({
             </TableCard>
           </TableGridItem>
         ))}
-      </Grid>
-    </div>
+      </TableGrid>
+    </>
   );
 };
 

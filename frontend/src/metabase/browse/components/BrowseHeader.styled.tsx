@@ -1,8 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const BrowseHeaderRoot = styled.div``;
-
 export const BrowseHeaderContent = styled.div`
   display: flex;
   align-items: center;

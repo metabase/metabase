@@ -20,7 +20,7 @@ jobs:
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
         id: changes
@@ -34,7 +34,7 @@ jobs:
     outputs:
       matrix: ${{ steps.e2e-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Generate matrix for E2E tests
         id: e2e-matrix
         uses: ./.github/actions/build-e2e-matrix
@@ -55,7 +55,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -100,7 +100,7 @@ jobs:
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
@@ -225,7 +225,7 @@ jobs:
       !cancelled() && needs.build.result == 'success'
     name: percy-visual-regression-tests
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers

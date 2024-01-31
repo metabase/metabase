@@ -142,7 +142,6 @@ function MainNavbarView({
                 url={BROWSE_URL}
                 isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
                 onClick={onItemSelect}
-                data-metabase-event="NavBar;Data Browse"
               >
                 {t`Browse data`}
               </PaddedSidebarLink>
@@ -154,7 +153,6 @@ function MainNavbarView({
                     ADD_YOUR_OWN_DATA_URL,
                   )}
                   onClick={onItemSelect}
-                  data-metabase-event="NavBar;Add your own data"
                 >
                   {t`Add your own data`}
                 </AddYourOwnDataLink>

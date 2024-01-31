@@ -134,6 +134,7 @@ Metabase's reference documentation.
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
 - [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
+- [API keys](./people-and-groups/api-keys.md)
 
 #### Paid SSO options
 

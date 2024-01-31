@@ -7,6 +7,7 @@ import {
   editDashboard,
   setFilter,
   saveDashboard,
+  selectDashboardFilter,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -84,8 +85,7 @@ describe("issue 32444", () => {
 
   it("should not reload dashboard cards not connected to a filter (metabase#32444)", () => {
     cy.createDashboardWithQuestions({
-      dashboardName: "Dashboard with a card and filter",
-      questions: [questionWithFilter],
+      questions: [question1Details, questionWithFilter],
     }).then(({ dashboard }) => {
       cy.intercept(
         "POST",
@@ -95,15 +95,24 @@ describe("issue 32444", () => {
       visitDashboard(dashboard.id);
       editDashboard(dashboard.id);
 
+      cy.get("@getCardQuery.all").should("have.length", 2);
+
       setFilter("Text or Category", "Is");
+      selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Title");
+      cy.findAllByTestId("dashcard")
+        .eq(1)
+        .findByLabelText("Disconnect")
+        .click();
+
       saveDashboard();
 
       cy.wait("@getCardQuery");
-      cy.get("@getCardQuery.all").should("have.length", 1);
+      cy.get("@getCardQuery.all").should("have.length", 4);
 
-      addFilterValue(5);
+      addFilterValue("Aerodynamic Bronze Hat");
 
-      cy.get("@getCardQuery.all").should("have.length", 1);
+      cy.wait("@getCardQuery");
+      cy.get("@getCardQuery.all").should("have.length", 5);
     });
   });
 });
@@ -174,6 +183,6 @@ const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {
 
 function addFilterValue(value) {
   filterWidget().click();
-  cy.findByPlaceholderText("Enter some text").type(`${value}{enter}`);
+  cy.findByText(value).click();
   cy.button("Add filter").click();
 }

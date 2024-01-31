@@ -128,7 +128,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   runQuestionQuery: (opts?: {
-    overrideWithCard?: Card;
+    overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
   setNativeEditorSelectedRange: (range: Ace.Range) => void;
@@ -137,6 +137,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
+  setParameterValueToDefault: (parameterId: ParameterId) => void;
   onOpenModal: (modalType: string) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
@@ -383,10 +384,10 @@ export class NativeQueryEditor extends Component<
     const selectedText = this._editor?.getSelectedText();
 
     if (selectedText) {
-      const temporaryCard = query.setQueryText(selectedText).question().card();
+      const temporaryQuestion = query.setQueryText(selectedText).question();
 
       runQuestionQuery({
-        overrideWithCard: temporaryCard,
+        overrideWithQuestion: temporaryQuestion,
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
@@ -765,6 +766,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery,
       sidebarFeatures,
       canChangeDatabase,
+      setParameterValueToDefault,
     } = this.props;
 
     const isPromptInputVisible = this.isPromptInputVisible();
@@ -802,6 +804,8 @@ export class NativeQueryEditor extends Component<
                 parameters={parameters}
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
+                setParameterValueToDefault={setParameterValueToDefault}
+                enableParameterRequiredBehavior
               />
             )}
             {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (

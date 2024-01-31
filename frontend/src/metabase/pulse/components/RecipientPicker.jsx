@@ -58,7 +58,7 @@ export default class RecipientPicker extends Component {
 
     return (
       <div>
-        <div className="bordered rounded" style={{ padding: "2px" }}>
+        <div style={{ padding: "2px" }}>
           <TokenField
             value={recipients}
             options={users ? users.map(user => ({ value: user })) : []}

@@ -85,9 +85,7 @@ describe("scenarios > question > native", () => {
       parseSpecialCharSequences: false,
     });
     cy.findByTestId("sidebar-right")
-      .findByText("Required?")
-      .parent()
-      .find("input")
+      .findByText("Always require a value")
       .click();
     cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
     runQuery();

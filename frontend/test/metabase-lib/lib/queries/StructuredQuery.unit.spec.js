@@ -294,9 +294,6 @@ describe("StructuredQuery", () => {
       it("Expect a reset query to not have a selected database", () => {
         expect(query.reset()._database()).toBe(null);
       });
-      it("Expect a reset query to not be runnable", () => {
-        expect(query.reset().canRun()).toBe(false);
-      });
     });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
@@ -314,14 +311,6 @@ describe("StructuredQuery", () => {
     describe("_sourceTableId", () => {
       it("Return the right table id", () => {
         expect(query._sourceTableId()).toBe(ORDERS_ID);
-      });
-    });
-  });
-
-  describe("QUERY STATUS METHODS", () => {
-    describe("canRun", () => {
-      it("runs a valid query", () => {
-        expect(query.canRun()).toBe(true);
       });
     });
   });

@@ -4,6 +4,7 @@ import {
   filterWidget,
   popover,
 } from "e2e/support/helpers";
+import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
@@ -46,6 +47,51 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         cy.findAllByText("Doohickey").should("not.exist");
       });
     });
+
+    describe("required tag", () => {
+      it("needs a default value to run or save the query", () => {
+        SQLFilter.toggleRequired();
+        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
+
+        SQLFilter.getSaveQueryButton().realHover();
+        cy.get("body").findByText(
+          'The "TextFilter" variable requires a default value but none was provided.',
+        );
+
+        SQLFilter.setDefaultValue("Some text");
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
+        SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+      });
+
+      it("when there's a default value, enabling required sets it as a parameter value", () => {
+        SQLFilter.setDefaultValue("New value");
+        filterWidget().find("input").invoke("val", "");
+        SQLFilter.toggleRequired();
+        filterWidget().find("input").should("have.value", "New value");
+      });
+
+      it("when there's a default value and input is empty, blur sets default value back", () => {
+        SQLFilter.setDefaultValue("default");
+        SQLFilter.toggleRequired();
+        filterWidget().within(() => {
+          cy.get("input")
+            .type("{selectAll}{backspace}")
+            .should("have.value", "");
+          cy.get("input").blur().should("have.value", "default");
+        });
+      });
+
+      it("when there's a default value and template tag is required, can reset it back", () => {
+        SQLFilter.setDefaultValue("default");
+        SQLFilter.toggleRequired();
+        filterWidget().within(() => {
+          cy.get("input").type("abc").should("have.value", "defaultabc");
+          cy.icon("refresh").click();
+          cy.get("input").should("have.value", "default");
+        });
+      });
+    });
   });
 
   describe("should work for number", () => {
@@ -78,6 +124,52 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       cy.get(".Visualization").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
+      });
+    });
+
+    describe("required tag", () => {
+      it("needs a default value to run or save the query", () => {
+        SQLFilter.toggleRequired();
+        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
+
+        SQLFilter.getSaveQueryButton().realHover();
+
+        cy.get("body").findByText(
+          'The "NumberFilter" variable requires a default value but none was provided.',
+        );
+
+        SQLFilter.setDefaultValue("33");
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
+        SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+      });
+
+      it("when there's a default value, enabling required sets it as a parameter value", () => {
+        SQLFilter.setDefaultValue("3");
+        filterWidget().find("input").invoke("val", "");
+        SQLFilter.toggleRequired();
+        filterWidget().find("input").should("have.value", "3");
+      });
+
+      it("when there's a default value and input is empty, blur sets default value back", () => {
+        SQLFilter.setDefaultValue("3");
+        SQLFilter.toggleRequired();
+        filterWidget().within(() => {
+          cy.get("input")
+            .type("{selectAll}{backspace}")
+            .should("have.value", "");
+          cy.get("input").blur().should("have.value", "3");
+        });
+      });
+
+      it("when there's a default value and template tag is required, can reset it back", () => {
+        SQLFilter.setDefaultValue("3");
+        SQLFilter.toggleRequired();
+        filterWidget().within(() => {
+          cy.get("input").type(".11").should("have.value", "3.11");
+          cy.icon("refresh").click();
+          cy.get("input").should("have.value", "3");
+        });
       });
     });
   });
@@ -122,6 +214,58 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       cy.get(".Visualization").within(() => {
         cy.findByText("No results!");
+      });
+    });
+
+    function setDefaultDate(year = "2024", month = "01", day = "22") {
+      cy.findByTestId("sidebar-content")
+        .findByText("Select a default value…")
+        .click();
+      popover().within(() => {
+        DateFilter.setSingleDate(`${month}/${day}/${year}`);
+        cy.findByText("Update filter").click();
+      });
+    }
+
+    describe("required tag", () => {
+      it("needs a default value for to run or save query", () => {
+        SQLFilter.toggleRequired();
+        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
+
+        SQLFilter.getSaveQueryButton().realHover();
+
+        cy.get("body").findByText(
+          'The "DateFilter" variable requires a default value but none was provided.',
+        );
+
+        setDefaultDate();
+
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
+        SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+      });
+
+      it("when there's a default value, enabling required sets it as a parameter value", () => {
+        setDefaultDate("2023", "11", "01");
+        filterWidget().icon("close").click();
+        SQLFilter.toggleRequired();
+        filterWidget()
+          .findByTestId("field-set-content")
+          .should("have.text", "November 1, 2023");
+      });
+
+      it("when there's a default value and template tag is required, can reset it back", () => {
+        setDefaultDate("2023", "11", "01");
+        SQLFilter.toggleRequired();
+        filterWidget().click();
+        popover().within(() => {
+          cy.findByText("15").click();
+          cy.findByText("Update filter").click();
+        });
+        filterWidget().icon("refresh").click();
+        filterWidget()
+          .findByTestId("field-set-content")
+          .should("have.text", "November 1, 2023");
       });
     });
   });

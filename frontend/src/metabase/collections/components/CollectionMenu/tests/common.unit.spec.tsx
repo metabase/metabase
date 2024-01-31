@@ -4,7 +4,7 @@ import { getIcon, queryIcon, screen } from "__support__/ui";
 import { setup } from "./setup";
 
 describe("CollectionMenu", () => {
-  it("should be able to edit collection permissions with admin access", () => {
+  it("should be able to edit collection permissions with admin access", async () => {
     setup({
       collection: createMockCollection({
         can_write: true,
@@ -13,7 +13,7 @@ describe("CollectionMenu", () => {
     });
 
     userEvent.click(getIcon("ellipsis"));
-    expect(screen.getByText("Edit permissions")).toBeInTheDocument();
+    expect(await screen.findByText("Edit permissions")).toBeInTheDocument();
   });
 
   it("should not be able to edit collection permissions without admin access", () => {
@@ -53,7 +53,7 @@ describe("CollectionMenu", () => {
     expect(screen.queryByText("Edit permissions")).not.toBeInTheDocument();
   });
 
-  it("should be able to move and archive a collection with write access", () => {
+  it("should be able to move and archive a collection with write access", async () => {
     setup({
       collection: createMockCollection({
         can_write: true,
@@ -61,7 +61,7 @@ describe("CollectionMenu", () => {
     });
 
     userEvent.click(getIcon("ellipsis"));
-    expect(screen.getByText("Move")).toBeInTheDocument();
+    expect(await screen.findByText("Move")).toBeInTheDocument();
     expect(screen.getByText("Archive")).toBeInTheDocument();
   });
 

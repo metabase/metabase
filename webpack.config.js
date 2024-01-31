@@ -238,6 +238,7 @@ const config = (module.exports = {
     new NodePolyfillPlugin(), // for crypto, among others
     new webpack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
+      MB_LOG_ANALYTICS: "false",
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),
