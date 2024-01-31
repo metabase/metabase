@@ -81,7 +81,7 @@
   [snippet-tag-regex card-tag-regex variable-tag-regex])
 
 (mu/defn ^:private format-template-tag-name :- [:maybe :string]
-  "Parse and validate a template tag's content."
+  "Format and validate a template tag's content."
   [content :- :string]
   (second (some #(re-find % (str/triml content)) tag-regexes)))
 
