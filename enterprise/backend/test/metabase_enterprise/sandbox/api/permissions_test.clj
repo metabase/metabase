@@ -50,13 +50,13 @@
 
                "when changing permissions for schema to unrestricted access"
                {:updated-db-perms (constantly {:native :none, :schemas {:PUBLIC :all}})
-                :expected-perms   (constantly {:schemas {:PUBLIC "all"}})}
+                :expected-perms   (constantly {:schemas "all"})}
 
                "when changing permissions for Table to :query [grant full query perms]"
                {:updated-db-perms (fn []
                                     {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:query :all}}}})
                 :expected-perms   (fn []
-                                    {:schemas {:PUBLIC {(mt/id :venues) {:query "all"}}}})}}]
+                                    {:schemas {:PUBLIC {(mt/id :venues) "all"}}})}}]
         (met/with-gtaps {:gtaps {:venues {}}}
           (testing message
             (testing "sanity check"

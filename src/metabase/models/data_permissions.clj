@@ -376,7 +376,7 @@
                                               :db_id       db-id
                                               :table_id    (:id table)
                                               :schema_name (:schema table)})
-                                               other-tables)
+                                           other-tables)
                   all-new-table-perms (concat other-new-perms new-perms)]
               ;; When you set the perms/data-access at a granular level, then we
               ;; need to update perms/native-query-editing to false, since to have native query editing, you need

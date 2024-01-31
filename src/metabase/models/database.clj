@@ -107,8 +107,12 @@
       ;; tables.
       (if (:is_audit database)
         (doseq [group non-admin-groups]
+          (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
           (data-perms/set-database-permission! group database :perms/native-query-editing :no))
         (do
+          (data-perms/set-database-permission! all-users-group database :perms/data-access :unrestricted)
+          (doseq [group non-magic-groups]
+            (data-perms/set-database-permission! group database :perms/data-access :no-self-service))
           (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
           (doseq [group non-magic-groups]
             (data-perms/set-database-permission! group database :perms/native-query-editing :no))))

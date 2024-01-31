@@ -42,14 +42,16 @@
       (let [all-users-group-id (u/the-id (perms-group/all-users))]
         (is (= {all-users-group-id
                 {db-id
-                 {:perms/native-query-editing :yes
+                 {:perms/data-access          :unrestricted
+                  :perms/native-query-editing :yes
                   :perms/manage-database      :no}}}
                (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
 
       ;; Other groups should have no DB-level perms
       (is (= {group-id
               {db-id
-               {:perms/native-query-editing :no
+               {:perms/data-access          :no-self-service
+                :perms/native-query-editing :no
                 :perms/manage-database      :no}}}
              (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
 
