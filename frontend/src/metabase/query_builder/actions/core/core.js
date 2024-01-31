@@ -7,7 +7,7 @@ import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
-import { MetabotApi } from "metabase/services";
+import { LlmTaskAutoDescribe } from "metabase/services";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -213,7 +213,7 @@ export const apiGetCardSummary = async (question, state) => {
     .setQuery(cleanQuery)
     .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
-  const response = await MetabotApi.summarizeCard(newQuestion.card());
+  const response = await LlmTaskAutoDescribe.summarizeCard(newQuestion.card());
 
   return response;
 };
