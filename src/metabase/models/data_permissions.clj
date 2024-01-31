@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -98,6 +99,22 @@
   (let [ordered-values (-> Permissions perm-type :values)]
     (first (filter (set perm-values) ordered-values))))
 
+(defmethod coalesce :perms/data-access
+  [perm-type perm-values]
+  (let [perm-values    (set perm-values)
+        ordered-values (-> Permissions perm-type :values)]
+    (if (and (perm-values :block)
+             (not (perm-values :unrestricted)))
+      ;; Block in one group overrides no-self-service in another, but not unrestricted
+      :block
+      (first (filter perm-values ordered-values)))))
+
+(defn- is-superuser?
+  [user-id]
+  (if (= user-id api/*current-user-id*)
+    api/*is-superuser?*
+    (t2/select-one-fn :is_superuser :model/User :id user-id)))
+
 (mu/defn database-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
   multiple permissions for the given type in different groups, they are coalesced into a single value."
@@ -105,7 +122,7 @@
   (when (not= :model/Database (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
-  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+  (if (is-superuser? user-id)
     (most-permissive-value perm-type)
     (let [perm-values (t2/select-fn-set :value
                                         :model/DataPermissions
@@ -127,7 +144,7 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
-  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+  (if (is-superuser? user-id)
     (most-permissive-value perm-type)
     (let [perm-values (t2/select-fn-set :value
                                         :model/DataPermissions
@@ -145,6 +162,25 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
+(mu/defn user-has-block-perms-for-database? :- :boolean
+  "Returns a Boolean indicating whether the given user should have block permissions enforced for the given database.
+  This is a standalone function because block perms are only set at the database-level, but :perms/data-access is
+  generally checked at the table-level, except in the case of block perms."
+  [user-id database-id]
+  (if (is-superuser? user-id)
+    false
+    (let [perm-values (t2/select-fn-set :value
+                                        :model/DataPermissions
+                                        {:select [[:p.perm_value :value]]
+                                         :from [[:permissions_group_membership :pgm]]
+                                         :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                                                [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                                         :where [:and
+                                                 [:= :pgm.user_id user-id]
+                                                 [:= :p.perm_type (u/qualified-name :perms/data-access)]
+                                                 [:= :p.db_id database-id]]})]
+      (= (coalesce :perms/data-access perm-values)
+         :block))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
@@ -163,7 +199,7 @@
   This is intended to be used for logging and debugging purposes, to see what a user's real permissions are at a glance. Enforcement
   should happen via `database-permission-for-user` and `table-permission-for-user`."
   [user-id & {:keys [db-id perm-type]}]
-  (if (t2/select-one-fn :is_superuser :model/User :id user-id)
+  (if (is-superuser? user-id)
     (admin-permission-graph :db-id db-id :perm-type perm-type)
     (let [data-perms    (t2/select :model/DataPermissions
                                    {:select [[:p.perm_type :perm-type]
