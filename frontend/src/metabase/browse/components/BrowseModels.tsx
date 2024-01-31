@@ -1,4 +1,4 @@
-import { cloneElement, useContext, useEffect, useState } from "react";
+import { cloneElement, useContext, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 import cx from "classnames";
 import { c, t } from "ttag";
@@ -21,6 +21,7 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
+import NoResults from "assets/img/no_results.svg";
 import { getCollectionName, groupModels, getPageWidth } from "../utils";
 import { LastEdited } from "./LastEdited";
 import { CenteredEmptyState } from "./BrowseApp.styled";
@@ -33,15 +34,14 @@ import {
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 
-import NoResults from "assets/img/no_results.svg";
-import type { ReactJSXElement } from "@emotion/react/types/jsx-namespace";
+const emptyArray: SearchResult[] = [];
 
 export const BrowseModels = ({
   modelsResult,
 }: {
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
 }) => {
-  const { data: models = [], error, isLoading } = modelsResult;
+  const { data: models = emptyArray, error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
   // This provides a ref to the <main> rendered by AppContent in App.tsx
@@ -52,49 +52,58 @@ export const BrowseModels = ({
   const itemMinWidth = 15 * rem;
   const defaultItemHeight = 10 * rem;
   const headerHeight = 3 * rem;
-  let modelsFiltered = models.filter(
-    model => !isInstanceAnalyticsCollection(model.collection),
-  );
-  modelsFiltered = [
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-    ...modelsFiltered,
-  ];
-  const groupsOfModels = groupModels(modelsFiltered, localeCode);
+
+  const groupsOfModels: SearchResult[][] = useMemo(() => {
+    const modelsFiltered = models.filter(
+      model => !isInstanceAnalyticsCollection(model.collection),
+    );
+    // modelsFiltered = [
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    //   ...modelsFiltered,
+    // ];
+    return groupModels(modelsFiltered, localeCode);
+  }, [models, localeCode]);
 
   useEffect(() => {
     const configureGrid = () => {
       if (!contentViewport) {
         return;
       }
-      const gridOptions = getGridOptions(
+      const gridOptions = getGridOptions({
+        groupsOfModels,
         gridGapSize,
         itemMinWidth,
         contentViewport,
-      );
+        localeCode,
+      });
       setGridOptions(gridOptions);
     };
     configureGrid();
     window.addEventListener("resize", configureGrid);
     return () => window.removeEventListener("resize", configureGrid);
-  }, [models, gridGapSize, itemMinWidth, contentViewport]);
+  }, [groupsOfModels, gridGapSize, itemMinWidth, contentViewport, localeCode]);
+
+  // TODO: Use a callback function for setGridOptions
 
   const [gridOptions, setGridOptions] = useState<{
     columnCount: number;
     width: number;
     columnWidth: number;
+    cells: Cell[];
+    rowCount: number;
   } | null>(null);
 
   if (error || isLoading || !gridOptions) {
@@ -107,14 +116,7 @@ export const BrowseModels = ({
     );
   }
 
-  const { columnCount } = gridOptions;
-
-  const getRowHeight = ({ index: rowIndex }: { index: number }) => {
-    const cellIndex = rowIndex * columnCount;
-    return cellIsInHeaderRow(cells[cellIndex])
-      ? headerHeight
-      : defaultItemHeight;
-  };
+  const { cells, columnCount, rowCount, width, columnWidth } = gridOptions;
 
   const cellRenderer = (props: GridCellProps) =>
     renderItem({
@@ -123,32 +125,30 @@ export const BrowseModels = ({
       columnCount,
     });
 
-  if (gridOptions && modelsFiltered.length) {
-    return ({ height }: { height: number }) => (
+  const getRowHeight = ({ index: rowIndex }: { index: number }) => {
+    const cellIndex = rowIndex * columnCount;
+    return cellIsInHeaderRow(cells[cellIndex])
+      ? headerHeight
+      : defaultItemHeight;
+  };
+
+  if (groupsOfModels.length) {
+    return (
       <AutoSizer disableHeight>
-        {() => (
+        {({ height }: { height: number }) => (
           <GridContainer
             role="grid"
             data-testid="model-browser"
-            columnCount={gridOptions.columnCount}
-            rowCount={gridOptions.rowCount}
-            width={gridOptions.width}
-            columnWidth={gridOptions.columnWidth}
+            columnCount={columnCount}
+            rowCount={rowCount}
+            width={width}
+            columnWidth={columnWidth}
             gap={gridGapSize}
             autoHeight
-            height={height}
+            height={height || 100}
             rowHeight={getRowHeight}
             cellRenderer={cellRenderer}
-          >
-            {groupsOfModels.map(groupOfModels => (
-              <ModelGroup
-                models={groupOfModels}
-                key={`modelgroup-${groupOfModels[0].collection.id}`}
-                localeCode={localeCode}
-                columnCount={gridOptions.columnCount}
-              />
-            ))}
-          </GridContainer>
+          />
         )}
       </AutoSizer>
     );
@@ -178,11 +178,19 @@ const BlankCellInHeader = (props: { style?: React.CSSProperties }) => (
   <div {...props} />
 );
 
-const getGridOptions = (
-  gridGapSize: number,
-  itemMinWidth: number,
-  contentViewport: HTMLElement,
-) => {
+const getGridOptions = ({
+  groupsOfModels,
+  gridGapSize,
+  itemMinWidth,
+  contentViewport,
+  localeCode,
+}: {
+  groupsOfModels: SearchResult[][];
+  gridGapSize: number;
+  itemMinWidth: number;
+  contentViewport: HTMLElement;
+  localeCode?: string;
+}) => {
   const width = getPageWidth(contentViewport, gridGapSize);
 
   const calculateColumnCount = (width: number) => {
@@ -196,10 +204,18 @@ const getGridOptions = (
   const columnCount = calculateColumnCount(width);
   const columnWidth = calculateItemWidth(width, columnCount);
 
+  const cells: Cell[] = groupsOfModels.flatMap(
+    (groupOfModels: SearchResult[]) =>
+      getCellsForGroup({ models: groupOfModels, localeCode, columnCount }),
+  );
+  const rowCount = Math.ceil(cells.length / columnCount);
+
   return {
+    cells,
     columnCount,
     columnWidth,
     width,
+    rowCount,
   };
 };
 
@@ -213,7 +229,7 @@ type RenderItemFunction = (
     groupLabel?: string;
     cells: Cell[];
   },
-) => JSX.Element | null;
+) => Cell | null;
 
 const renderItem: RenderItemFunction = ({
   columnCount,
@@ -258,7 +274,7 @@ const getCellsForGroup = ({
   /** This id is used by aria-labelledby */
   const collectionHtmlId = `collection-${collection.id}`;
 
-  const cells: JSX.Element[] = [];
+  const cells: Cell[] = [];
 
   cells.push(
     <CollectionHeader
