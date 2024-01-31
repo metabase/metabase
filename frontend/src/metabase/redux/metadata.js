@@ -314,6 +314,10 @@ export const loadMetadataForQuestions = (questions, options) => dispatch => {
         return Schemas.actions.fetchList({ dbId: id }, options);
       }
 
+      if (type === "database") {
+        return Databases.actions.fetchDatabaseMetadata({ id }, options);
+      }
+
       console.warn(`loadMetadataForQuestions: type ${type} not implemented`);
       return null;
     })
