@@ -43,6 +43,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -582,29 +583,30 @@
 (deftest param-values-test
   (testing "Don't return `param_values` for Fields for which the current User has no data perms."
     (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-      (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :venues)))
-      (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
-                     Card          {card-id :id}      {:name "Dashboard Test Card"}
-                     DashboardCard {_ :id}            {:dashboard_id       dashboard-id
-                                                       :card_id            card-id
-                                                       :parameter_mappings [{:card_id      card-id
-                                                                             :parameter_id "foo"
-                                                                             :target       [:dimension
-                                                                                            [:field (mt/id :venues :name) nil]]}
-                                                                            {:card_id      card-id
-                                                                             :parameter_id "bar"
-                                                                             :target       [:dimension
-                                                                                            [:field (mt/id :categories :name) nil]]}]}]
+      (perms.test-util/with-no-data-perms-for-all-users!
+        (perms.test-util/with-perm-for-group-and-table!
+            (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted
+          (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
+                         Card          {card-id :id}      {:name "Dashboard Test Card"}
+                         DashboardCard {_ :id}            {:dashboard_id       dashboard-id
+                                                           :card_id            card-id
+                                                           :parameter_mappings [{:card_id      card-id
+                                                                                 :parameter_id "foo"
+                                                                                 :target       [:dimension
+                                                                                                [:field (mt/id :venues :name) nil]]}
+                                                                                {:card_id      card-id
+                                                                                 :parameter_id "bar"
+                                                                                 :target       [:dimension
+                                                                                                [:field (mt/id :categories :name) nil]]}]}]
 
-        (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
-                                                               "25°"
-                                                               "33 Taps"]
-                                       :field_id              (mt/id :venues :name)
-                                       :human_readable_values []}}
-               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                 (into {} (for [[field-id m] response]
-                            [field-id (update m :values (partial take 3))])))))))))
+            (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
+                                                                   "25°"
+                                                                   "33 Taps"]
+                                           :field_id              (mt/id :venues :name)
+                                           :human_readable_values []}}
+                   (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
+                     (into {} (for [[field-id m] response]
+                                [field-id (update m :values (partial take 3))])))))))))))
 
 (deftest fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
@@ -3337,10 +3339,10 @@
                    (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name]))))))
       (testing "should check perms for the Fields in question"
         (mt/with-temp-copy-of-db
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (is (= "You don't have permissions to do that."
+          (perms.test-util/with-no-data-perms-for-all-users!
+            (is (= "You don't have permissions to do that."
                (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
-                         :filtered [%venues.price] :filtering [%categories.name])))))))))
+                         :filtered [%venues.price] :filtering [%categories.name]))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
