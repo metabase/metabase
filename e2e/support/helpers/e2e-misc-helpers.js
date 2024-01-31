@@ -219,6 +219,14 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
   });
 }
 
+/**
+ * Visit a dashboard by using its previously saved dashboard id alias.
+ * @param {string} alias
+ */
+export function visitDashboardAlias(alias) {
+  cy.get(alias).then(id => visitDashboard(id));
+}
+
 function hasAccess(statusCode) {
   return statusCode !== 403;
 }
