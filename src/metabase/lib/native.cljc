@@ -83,7 +83,7 @@
 (mu/defn ^:private format-template-tag-name :- [:maybe :string]
   "Format and validate a template tag's content."
   [content :- :string]
-  (second (some #(re-find % (str/triml content)) tag-regexes)))
+  (second (some #(re-matches % (str/triml content)) tag-regexes)))
 
 (mu/defn ^:private format-template-tag :- ::template-tag-with-context
   "Format a template tags name."
