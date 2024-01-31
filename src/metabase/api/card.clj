@@ -473,9 +473,12 @@
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
   (check-card-type-and-dataset card-updates)
-  (let [card-before-update    (t2/hydrate (api/write-check Card id)
-                                          [:moderation_reviews :moderator_details])
-        maybe-turn-to-dataset (or (= "model" type) dataset)]
+  (let [card-before-update     (t2/hydrate (api/write-check Card id)
+                                           [:moderation_reviews :moderator_details])
+        is-model-after-update? (cond
+                                (some? type)    (= "model" type)
+                                (some? dataset) dataset
+                                :else           (card/is-model? card-before-update))]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
@@ -486,11 +489,10 @@
                                                              :query             dataset_query
                                                              :metadata          result_metadata
                                                              :original-metadata (:result_metadata card-before-update)
-                                                             :dataset?          (if (some? maybe-turn-to-dataset)
-                                                                                  maybe-turn-to-dataset
-                                                                                  (card/is-model? card-before-update))})
+                                                             :dataset?          is-model-after-update?})
           card-updates          (merge card-updates
-                                       (when maybe-turn-to-dataset
+                                       (when (and (or (some? type) (some? dataset))
+                                                  is-model-after-update?)
                                          {:display :table}))
           metadata-timeout      (a/timeout card/metadata-sync-wait-ms)
           [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
