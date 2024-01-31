@@ -106,23 +106,10 @@ describe("deprecated metadata actions", () => {
     it("should send requests for any tables/fields needed by the query", () => {
       const question = {
         dependentMetadata: () => [
-          {
-            type: "table",
-            id: 1,
-          },
-          {
-            type: "table",
-            id: 1,
-          },
-          {
-            foreignTables: true,
-            type: "table",
-            id: 2,
-          },
-          {
-            type: "field",
-            id: 3,
-          },
+          { type: "table", id: 1 },
+          { type: "table", id: 1 },
+          { type: "table", id: 2 },
+          { type: "field", id: 3 },
         ],
       };
 
@@ -131,11 +118,11 @@ describe("deprecated metadata actions", () => {
         { id: 1 },
         undefined,
       );
-      expect(Tables.actions.fetchMetadataAndForeignTables).toHaveBeenCalledWith(
+      expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
         { id: 2 },
         undefined,
       );
-      expect(Tables.actions.fetchMetadata.mock.calls.length).toBe(1);
+      expect(Tables.actions.fetchMetadata).toHaveBeenCalledTimes(2);
 
       expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 }, undefined);
     });
