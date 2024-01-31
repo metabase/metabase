@@ -18,6 +18,7 @@ import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
@@ -38,7 +39,10 @@ export const BrowseModels = ({
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
-  const groupsOfModels = groupModels(models, localeCode);
+  const modelsFiltered = models.filter(
+    model => !isInstanceAnalyticsCollection(model.collection),
+  );
+  const groupsOfModels = groupModels(modelsFiltered, localeCode);
 
   if (error || isLoading) {
     return (
@@ -50,7 +54,7 @@ export const BrowseModels = ({
     );
   }
 
-  if (models.length) {
+  if (modelsFiltered.length) {
     return (
       <GridContainer role="grid">
         {groupsOfModels.map(groupOfModels => (
