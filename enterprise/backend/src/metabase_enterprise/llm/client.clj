@@ -110,6 +110,10 @@
     ([params]
      (wrap-find-result* params nil))))
 
+(re-matches
+  #"(?s)\s*```(?:json)?(.*)```\s*"
+  "```json\n{\n  \"friendly_title\": \"Overview of Orders Data 📊\",\n  \"friendly_summary\": \"This table displays detailed information about customer orders, including IDs, user and product IDs, subtotal, tax, total amount, discount, creation date, and quantity.\"\n}\n```")
+
 (defn wrap-parse-json
   "Parse a JSON result from the response. Note that this must be called after
   wrap-find-result or similar such that the response is a string."
@@ -119,7 +123,12 @@
       (let [response (openai-fn params options)]
         (if (string? response)
           (try
-            (postprocess-fn (json/parse-string response true))
+            ;; Usually you just get json back, but sometimes you get a markdown block.
+            (let [md-regex #"(?s)\s*```(?:json)?(.*)```\s*"
+                  response (or
+                             (second (re-matches md-regex response))
+                             response)]
+              (postprocess-fn (json/parse-string response true)))
             (catch Exception e
               (throw
                 (do
