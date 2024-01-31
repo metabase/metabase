@@ -17,6 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.related :as related]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    #_{:clj-kondo/ignore [:consistent-alias]}
@@ -471,10 +472,10 @@
   {id ms/PositiveInt}
   (let [table (api/write-check (t2/select-one Table :id id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (mw.session/as-admin
       ;; async so as not to block the UI
       (sync.concurrent/submit-task
        (fn []

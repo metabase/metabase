@@ -119,16 +119,17 @@
 
 (deftest transform-test
   (testing "Run the transform and make sure it produces the correct result"
-    (mt/with-test-user :rasta
-      (with-test-domain-entity-specs
-        (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
-                [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
-                [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
-               (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
-                (-> (tf/apply-transform! (mt/id) "PUBLIC" test-transform-spec)
-                    first
-                    :dataset_query
-                    qp/process-query))))))))
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (with-test-domain-entity-specs
+          (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
+                  [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
+                  [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
+                 (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
+                  (-> (tf/apply-transform! (mt/id) "PUBLIC" test-transform-spec)
+                      first
+                      :dataset_query
+                      qp/process-query)))))))))
 
 (deftest correct-transforms-for-table-test
   (testing "Can we find the right transform(s) for a given table"
