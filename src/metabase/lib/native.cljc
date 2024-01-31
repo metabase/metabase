@@ -15,24 +15,18 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(def separators
-  "The tokens used for template tags."
-  ["{{" "}}" "[[" "]]"])
+(def separator-pattern
+  "The pattern used to split text at the first separator."
+  #"(.*?)(\{\{|}}|\[\[|]])(.*)")
 
 (mu/defn ^:private tokenize-query :- [:sequential :string]
   "Tokenize the query for easier parsing.
-   This splits the string at the separators defined in `separators`
+   This splits the string at the separators defined in `separator-pattern`
    but keeps them in the resulting sequence."
   [query-text :- :string]
-  (let [maximum (count query-text)
-        indexes (map #(or (str/index-of query-text %) maximum) separators)
-        index   (apply min indexes)]
-    (if (= index maximum)
-      [query-text]
-      (let [before (subs query-text 0 index)
-            separator (separators (first (keep-indexed #(if (= index %2) %1 nil) indexes)))
-            after (subs query-text (+ index (count separator)))]
-        (lazy-cat [before separator] (tokenize-query after))))))
+  (if-let [[_ before separator after] (re-matches separator-pattern query-text)]
+    (lazy-cat [before separator] (tokenize-query after))
+    [query-text]))
 
 (mr/def ::template-tag-with-context
    [:map
