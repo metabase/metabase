@@ -459,6 +459,49 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
   });
 });
 
+describe("scenarios > question > native", { tags: "@mongo" }, () => {
+  const MONGO_DB_NAME = "QA Mongo4";
+
+  before(() => {
+    cy.intercept("POST", "/api/card").as("createQuestion");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    restore("mongo-4");
+    cy.signInAsNormalUser();
+  });
+
+  it("shows format query button only for sql queries", () => {
+    openNativeEditor({ newMenuItemTitle: "Native query" });
+    popover().findByText(MONGO_DB_NAME).click();
+    cy.findByLabelText("Format query").should("not.exist");
+
+    cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
+    popover().findByText("Sample Database").click();
+
+    cy.findByTestId("native-query-editor")
+      .as("nativeQueryEditor")
+      .type("select * from orders", {
+        parseSpecialCharSequences: false,
+      });
+
+    cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
+
+    cy.findByLabelText("Format query").click();
+
+    cy.wait("@sqlFormatter");
+
+    cy.findByTestId("native-query-editor")
+      .get(".ace_text-layer")
+      .get(".ace_line")
+      .as("lines");
+
+    cy.get("@lines").eq(0).should("have.text", "SELECT");
+    cy.get("@lines").eq(1).should("have.text", "  *");
+    cy.get("@lines").eq(2).should("have.text", "FROM");
+    cy.get("@lines").eq(3).should("have.text", "  orders");
+  });
+});
+
 const runQuery = () => {
   cy.findByTestId("native-query-editor-container").within(() => {
     cy.button("Get Answer").click();

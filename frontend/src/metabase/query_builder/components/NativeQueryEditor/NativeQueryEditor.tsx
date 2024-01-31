@@ -20,6 +20,7 @@ import "ace/snippets/json";
 import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
+import * as Lib from "metabase-lib";
 
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
@@ -725,11 +726,10 @@ export class NativeQueryEditor extends Component<
   };
 
   formatQuery = async () => {
-    const engine = this.props.question?.database?.()?.engine;
-    const queryText = this._editor?.getValue();
-    if (!queryText || !engine) {
-      return;
-    }
+    const { question } = this.props;
+    const query = question.query();
+    const engine = Lib.engine(query);
+    const queryText = Lib.rawNativeQuery(query);
 
     this.handleQueryUpdate(await formatQuery(queryText, engine));
     this._editor?.focus();

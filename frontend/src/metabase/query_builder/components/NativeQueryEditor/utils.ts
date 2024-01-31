@@ -102,8 +102,11 @@ export function formatQuery(queryText: string, engine: string) {
     keywordCase: "upper",
     linesBetweenQueries: 2,
     paramTypes: {
-      // Snippets, parameters, nested questions
-      custom: [{ regex: "\\{\\{[^\\{\\}]*\\}\\}" }],
+      // Snippets, parameters, nested questions, and optional clauses
+      custom: [
+        { regex: "\\{\\{[^\\{\\}]*\\}\\}" },
+        { regex: "\\[\\[((.|\\n|\\r)*?)\\]\\]" },
+      ],
     },
   });
 }
