@@ -1,30 +1,30 @@
 (ns metabase-enterprise.billing.billing
   "`/api/ee/billing/` endpoint(s)"
   (:require
+   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [compojure.core :as compojure :refer [GET PUT]]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String metabase-billing-info-url "http://example.com")
+(def ^:private ^String metabase-billing-info-url (str premium-features/store-url "/api/v2/metabase/billing_info"))
 
 (def ^:private ^{:arglists '([token email language])} fetch-billing-status*
   (memoize/ttl
    ^{::memoize/args-fn (fn [[token email language]] [token email language])}
    (fn [token email language]
-     (let [payload (http/get metabase-billing-info-url {:basic-auth   [email token]
-                                                        :language     language
-                                                        :content-type :json})]
-         (if (:valid payload)
-           payload
-           (throw (ex-info (:status payload)
-                           {:status-code 400})))))
+     (some-> metabase-billing-info-url
+             (http/get {:basic-auth   [email token]
+                        :language     language
+                        :content-type :json})
+             :body
+             (json/parse-string keyword)))
    :ttl/threshold (u/hours->ms 5)))
 
 (api/defendpoint GET "/"
