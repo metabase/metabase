@@ -9,13 +9,13 @@ interface UseBillingInfoState {
   billingInfo: BillingInfo | undefined;
 }
 
+type GetBillingInfo = () => Promise<BillingInfoResponse>;
 export const useBillingInfo = (): UseBillingInfoState => {
-  const response = useAsync<() => Promise<BillingInfoResponse>>(
-    StoreApi.billingInfo,
-  );
+  const response = useAsync<GetBillingInfo>(StoreApi.billingInfo);
 
   const errorMessage = response.error
-    ? response.error.message ||
+    ? (response.error as any).data ||
+      response.error.message ||
       response.error.toString() ||
       t`An error occurred`
     : undefined;
