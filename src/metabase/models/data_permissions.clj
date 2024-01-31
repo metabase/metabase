@@ -1,5 +1,6 @@
 (ns metabase.models.data-permissions
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase.api.common :as api]
@@ -433,10 +434,9 @@
    value       :- :keyword]
   (set-table-permissions! group-or-id perm-type {table-or-id value}))
 
-(mu/defn set-simple-table-permission-in-groups!
-  "Sets permissions for a single table to the specified value in all of the provided groups. Does not do any coalescing
-  of table-level rows into a DB-level row. This should be used in cases where a number of tables are being updated, but
-  a bulk update is not possible, such as during sync."
+(mu/defn set-new-table-permissions!
+  "Sets permissions for a single table to the specified value in all the provided groups.
+  Does not update any groups where the permission is already set at the database level."
   [groups-or-ids :- [:sequential TheIdable]
    table-or-id   :- TheIdable
    perm-type     :- :keyword
@@ -447,21 +447,28 @@
   (when (= value :block)
     (throw (ex-info (tru "Block permissions must be set at the database-level only.")
                     {})))
-  (t2/with-transaction [_conn]
-    (let [group-ids (map u/the-id groups-or-ids)
-          table     (if (map? table-or-id)
-                       table-or-id
-                       (t2/select-one [:model/Table :id :db_id :schema] :id table-or-id))
-          table-id  (u/the-id table)
-          new-perms (map
-                     (fn [group-id]
-                       (let [{:keys [id db_id schema]} table]
-                         {:perm_type   perm-type
-                          :group_id    group-id
-                          :perm_value  value
-                          :db_id       db_id
-                          :table_id    id
-                          :schema_name schema}))
-                     group-ids)]
-      (t2/delete! :model/DataPermissions :perm_type perm-type :table_id table-id {:where [:in :group_id group-ids]})
-      (t2/insert! :model/DataPermissions new-perms))))
+  (when (seq groups-or-ids)
+    (t2/with-transaction [_conn]
+      (let [group-ids         (map u/the-id groups-or-ids)
+            table             (if (map? table-or-id)
+                                table-or-id
+                                (t2/select-one [:model/Table :id :db_id :schema] :id table-or-id))
+            db-id             (:db_id table)
+            db-level-perms    (t2/select :model/DataPermissions
+                                         :perm_type (u/qualified-name perm-type)
+                                         :db_id     db-id
+                                         :table_id  nil
+                                         {:where [:in :group_id group-ids]})
+            db-level-group-ids (set (map :group_id db-level-perms))
+            granular-group-ids (set/difference (set group-ids) db-level-group-ids)
+            new-perms (map
+                       (fn [group-id]
+                         (let [{:keys [id db_id schema]} table]
+                           {:perm_type   perm-type
+                            :group_id    group-id
+                            :perm_value  value
+                            :db_id       db_id
+                            :table_id    id
+                            :schema_name schema}))
+                       granular-group-ids)]
+        (t2/insert! :model/DataPermissions new-perms)))))
