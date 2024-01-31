@@ -30,8 +30,7 @@
 (mu/defn ^:private tokenize-query :- [:sequential :string]
   "Tokenize the query for easier parsing.
    This splits the string at the separators defined in `separators`
-   but keeps them in the resulting sequence.
-   Assumes all separators have a len of 2 characters."
+   but keeps them in the resulting sequence."
   [query-text :- ::common/non-blank-string]
   (let [cnt (count query-text)]
     (loop [idx 0
@@ -41,7 +40,7 @@
         (let [[jdx tok] (next-separator query-text idx)]
           (if (nil? jdx)
             (conj res (subs query-text idx cnt))
-            (recur (+ 2 jdx) (conj res (subs query-text idx jdx) tok))))))))
+            (recur (+ (count tok) jdx) (conj res (subs query-text idx jdx) tok))))))))
 
 (mr/def ::template-tag-with-context
    [:map
