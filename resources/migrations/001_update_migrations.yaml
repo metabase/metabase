@@ -5228,7 +5228,7 @@ databaseChangeLog:
             tableName: metabase_field
             indexName: idx_field_name_lower
 
-    - changeSet:
+  - changeSet:
       id: v49.2024-01-22T11:50:00
       author: qnkhuat
       comment: Add `report_card.type`
