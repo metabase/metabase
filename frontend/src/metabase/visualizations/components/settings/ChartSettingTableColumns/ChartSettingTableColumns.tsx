@@ -39,10 +39,9 @@ export const ChartSettingTableColumns = ({
     [question, onChange],
   );
 
-  const isStructured =
-    question && !Lib.queryDisplayInfo(question.query()).isNative;
+  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
 
-  if (isStructured) {
+  if (question && !isNative) {
     const query = question.query();
 
     return (

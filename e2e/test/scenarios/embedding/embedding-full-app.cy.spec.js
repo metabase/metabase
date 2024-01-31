@@ -9,11 +9,16 @@ import {
   getDashboardCard,
   getTextCardDetails,
   updateDashboardCards,
+  getNextUnsavedDashboardCardId,
 } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
+
+const { ORDERS } = SAMPLE_DATABASE;
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -342,11 +347,12 @@ describeEE("scenarios > embedding > full app", () => {
     });
 
     it("should have parameters header occupied the entire horizontal space when visiting a dashboard via navigation (metabase#30645)", () => {
+      const filterId = "50c9eac6";
       const dashboardDetails = {
         name: "interactive dashboard embedding",
         parameters: [
           {
-            id: "50c9eac6",
+            id: filterId,
             name: "ID",
             slug: "id",
             type: "id",
@@ -355,14 +361,33 @@ describeEE("scenarios > embedding > full app", () => {
       };
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          const card = getTextCardDetails({
+          const textDashcard = getTextCardDetails({
             col: 0,
             row: 0,
             size_x: 6,
             size_y: 20,
             text: "I am a very long text card",
           });
-          updateDashboardCards({ dashboard_id: dashboardId, cards: [card] });
+          const dashcard = createMockDashboardCard({
+            id: getNextUnsavedDashboardCardId(),
+            col: 8,
+            row: 0,
+            card_id: ORDERS_QUESTION_ID,
+            parameter_mappings: [
+              {
+                parameter_id: filterId,
+                card_id: ORDERS_QUESTION_ID,
+                target: [
+                  "dimension",
+                  ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                ],
+              },
+            ],
+          });
+          updateDashboardCards({
+            dashboard_id: dashboardId,
+            cards: [dashcard, textDashcard],
+          });
         },
       );
 
