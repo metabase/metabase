@@ -5,9 +5,9 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [tru]])
   (:import
+   (java.text NumberFormat)
    (java.time LocalDate)
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder ResolverStyle)
-   (java.text NumberFormat)
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
@@ -162,7 +162,10 @@
 (defn- parse-as-biginteger
   "Parses a string representing a number as a java.math.BigInteger, rounding down if necessary."
   [number-separators s]
-  (biginteger (parse-number number-separators s)))
+  (let [n (parse-number number-separators s)]
+    (when-not (zero? (mod n 1))
+      (throw (IllegalArgumentException. (tru "''{0}'' is not an integer" s))))
+    (biginteger n)))
 
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` column type that will parse a string value (from a CSV) into a value
