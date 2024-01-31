@@ -86,7 +86,7 @@ jobs:
           --config-file e2e/test/scenarios/cross-version/target/shared/cross-version-target.config.js \
           --spec e2e/test/scenarios/cross-version/target/**/*.cy.spec.js
     - name: Upload Cypress Artifacts upon failure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: cypress-artifacts-${{ matrix.version.source}}-to-${{ matrix.version.target }}

@@ -51,7 +51,7 @@ jobs:
       - name: Build static-viz frontend
         run: yarn build-static-viz
       - name: Upload Static Viz Bundle Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist

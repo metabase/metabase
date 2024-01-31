@@ -193,7 +193,7 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: cypress-recording-${{ matrix.name }}-${{ matrix.edition }}
