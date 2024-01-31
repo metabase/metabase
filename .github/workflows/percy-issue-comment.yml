@@ -19,7 +19,7 @@ jobs:
         with:
           app_id: ${{ secrets.METABASE_BOT_APP_ID }}
           private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ needs.pr_info.outputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -62,7 +62,7 @@ jobs:
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ needs.pr_info.outputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
