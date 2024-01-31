@@ -123,7 +123,6 @@ describe("deprecated metadata actions", () => {
             type: "field",
             id: 3,
           },
-          { type: "card", id: 4 },
         ],
       };
 
