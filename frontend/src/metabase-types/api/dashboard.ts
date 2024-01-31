@@ -72,7 +72,7 @@ export type VirtualCard = Partial<Card> & {
 };
 
 export type DashboardCard = BaseDashboardCard & {
-  card_id: CardId | null;
+  card_id: CardId | null; // will be null for virtual card
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];

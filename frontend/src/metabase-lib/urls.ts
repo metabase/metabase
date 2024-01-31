@@ -55,7 +55,9 @@ export function getUrlWithParameters(
   const includeDisplayIsLocked = true;
   const { isEditable } = Lib.queryDisplayInfo(question.query());
 
-  if (question.isStructured()) {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
+  if (!isNative) {
     let questionWithParameters = question.setParameters(parameters);
 
     if (isEditable) {

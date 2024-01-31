@@ -149,6 +149,7 @@
    #'auto-parse-filter-values/auto-parse-filter-values
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'optimize-temporal-filters/optimize-temporal-filters
+   #'qp.constraints/maybe-add-default-userland-constraints
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
    #'check-features/check-features])
@@ -382,7 +383,7 @@
     (f (f query rff context)) -> (f query rff context)"
   (concat
    default-middleware
-   [#'qp.constraints/add-default-userland-constraints
+   [#'qp.constraints/mark-needs-default-userland-constraints
     #'process-userland-query/process-userland-query
     #'catch-exceptions/catch-exceptions]))
 

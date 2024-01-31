@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import { usePrevious } from "react-use";
 
 import * as Lib from "metabase-lib";
@@ -77,6 +77,8 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
+
+  requiredTemplateTags: PropTypes.array,
 };
 
 export function ViewTitleHeader(props) {
@@ -93,12 +95,17 @@ export function ViewTitleHeader(props) {
   const previousQuery = usePrevious(query);
 
   useEffect(() => {
-    if (!question.isStructured() || !previousQuestion?.isStructured()) {
+    const { isNative } = Lib.queryDisplayInfo(query);
+    const isPreviousQuestionNative =
+      previousQuery && Lib.queryDisplayInfo(previousQuery).isNative;
+
+    if (isNative || isPreviousQuestionNative) {
       return;
     }
 
     const filtersCount = Lib.filters(query, -1).length;
-    const previousFiltersCount = Lib.filters(previousQuery, -1).length;
+    const previousFiltersCount =
+      previousQuery && Lib.filters(previousQuery, -1).length;
 
     if (filtersCount > previousFiltersCount) {
       expandFilters();
@@ -379,6 +386,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
+  requiredTemplateTags: PropTypes.array,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -411,6 +419,7 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
+    requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -438,6 +447,13 @@ function ViewTitleHeaderRightSide(props) {
   const getRunButtonLabel = useCallback(
     () => (isRunning ? t`Cancel` : t`Refresh`),
     [isRunning],
+  );
+
+  const isSaveDisabled = !question.canRun() || !isEditable;
+  const disabledSaveTooltip = getDisabledSaveTooltip(
+    question,
+    isEditable,
+    requiredTemplateTags,
   );
 
   return (
@@ -511,10 +527,10 @@ function ViewTitleHeaderRightSide(props) {
       {hasSaveButton && (
         <SaveButton
           role="button"
-          disabled={!question.canRun() || !isEditable}
+          disabled={isSaveDisabled}
           tooltip={{
-            tooltip: t`You don't have permission to save this question.`,
-            isEnabled: !isEditable,
+            tooltip: disabledSaveTooltip,
+            isEnabled: isSaveDisabled,
             placement: "left",
           }}
           onClick={() => onOpenModal("save")}
@@ -527,3 +543,40 @@ function ViewTitleHeaderRightSide(props) {
 }
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
+
+function getDisabledSaveTooltip(
+  question,
+  isEditable,
+  requiredTemplateTags = [],
+) {
+  if (!isEditable) {
+    return t`You don't have permission to save this question.`;
+  }
+
+  const missingValueRequiredTTags = requiredTemplateTags.filter(
+    tag => tag.required && !tag.default,
+  );
+
+  if (!question.canRun()) {
+    return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
+  }
+
+  // Having an empty tooltip text is ok because it won't be shown.
+  return "";
+}
+
+function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
+  if (!requiredTemplateTags.length) {
+    return "";
+  }
+
+  const names = requiredTemplateTags
+    .map(tag => `"${tag["display-name"] ?? tag.name}"`)
+    .join(", ");
+
+  return ngettext(
+    msgid`The ${names} variable requires a default value but none was provided.`,
+    `The ${names} variables require default values but none were provided.`,
+    requiredTemplateTags.length,
+  );
+}
