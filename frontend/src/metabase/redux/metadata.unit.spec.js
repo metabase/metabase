@@ -104,8 +104,7 @@ describe("deprecated metadata actions", () => {
     });
 
     it("should send requests for any tables/fields needed by the query", () => {
-      // TODO: update this to a question
-      const query = {
+      const question = {
         dependentMetadata: () => [
           {
             type: "table",
@@ -128,7 +127,7 @@ describe("deprecated metadata actions", () => {
         ],
       };
 
-      loadMetadataForQuestion(query)(dispatch);
+      loadMetadataForQuestion(question)(dispatch);
       expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
         { id: 1 },
         undefined,
