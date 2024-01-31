@@ -315,7 +315,7 @@ export const loadMetadataForQuestions = (questions, options) => dispatch => {
       }
 
       if (type === "database") {
-        return Databases.actions.fetchDatabaseMetadata({ id }, options);
+        return Databases.actions.fetch({ id }, options);
       }
 
       console.warn(`loadMetadataForQuestions: type ${type} not implemented`);
