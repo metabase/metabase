@@ -17,12 +17,21 @@
              (do
                (when-not (.-__mbcache ^js x)
                  (set! (.-__mbcache ^js x) (atom {})))
+               (when-not js/window.__mbcache_stats
+                 (set! js/window.__mbcache_stats (js-obj)))
                (if-let [cache (.-__mbcache ^js x)]
                  (if-let [cached (get @cache subkey)]
-                   cached
+                   (do
+                     (if-let [^js stats (aget js/window.__mbcache_stats subkey)]
+                       (set! (.-hits stats) (inc (.-hits stats)))
+                       (aset js/window.__mbcache_stats subkey (js-obj "hits" 1 "misses" 0)))
+                     cached)
                    ;; Cache miss - generate the value and cache it.
                    (let [value (f x)]
                      (swap! cache assoc subkey value)
+                     (if-let [^js stats (aget js/window.__mbcache_stats subkey)]
+                       (set! (.-misses stats) (inc (.-misses stats)))
+                       (aset js/window.__mbcache_stats subkey (js-obj "hits" 0 "misses" 1)))
                      value))
                  (f x)))
              (f x))))
