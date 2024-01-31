@@ -128,16 +128,20 @@
   [conn-or-data-source :- [:or (ms/InstanceOfClass java.sql.Connection) (ms/InstanceOfClass javax.sql.DataSource)]
    f                   :- fn?]
   ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
-  (binding [t2.conn/*current-connectable* conn-or-data-source]
-    (if (instance? java.sql.Connection conn-or-data-source)
-      (f (->> conn-or-data-source liquibase-connection database (liquibase conn-or-data-source)))
-      ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
-      ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
-      ;; it's safe to assume the caller is managing its lifecycle.
-      (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
-                  liquibase-conn (liquibase-connection conn)
-                  database       (database liquibase-conn)]
-        (f (liquibase conn database))))))
+  (let [f* (fn [liquibase]
+             ;; trigger liquibase to create databasechangelog tables if needed
+             (.checkLiquibaseTables liquibase false (.getDatabaseChangeLog liquibase) nil nil)
+             (f liquibase))]
+    (binding [t2.conn/*current-connectable* conn-or-data-source]
+      (if (instance? java.sql.Connection conn-or-data-source)
+        (f* (->> conn-or-data-source liquibase-connection database (liquibase conn-or-data-source)))
+        ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
+        ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
+        ;; it's safe to assume the caller is managing its lifecycle.
+        (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
+                    liquibase-conn (liquibase-connection conn)
+                    database       (database liquibase-conn)]
+          (f* (liquibase conn database)))))))
 
 (defmacro with-liquibase
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
@@ -222,8 +226,8 @@
     (do
      (log/info (trs "Database has unrun migrations. Checking if migraton lock is cleared..."))
      (wait-for-migration-lock-to-be-cleared liquibase)
-    ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
-    ;; sure something still needs to be done...
+     ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
+     ;; sure something still needs to be done...
      (let [to-run-migrations      (unrun-migrations data-source)
            unrun-migrations-count (count to-run-migrations)]
        (if (pos? unrun-migrations-count)
