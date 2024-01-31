@@ -1,4 +1,5 @@
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import type { BaseDashboardCard } from "metabase-types/api";
 import {
   createHeadingDashcard,
   createPlaceholderDashCard,
@@ -9,10 +10,23 @@ type LayoutOpts = {
   row: number;
 };
 
+type LayoutFn = (opts: LayoutOpts) => BaseDashboardCard[];
+
+export type LayoutOption = {
+  id: number;
+  label: string;
+  getLayout: LayoutFn;
+};
+
 const HEADING_HEIGHT = 1;
 
 export function layout1({ col, row }: LayoutOpts) {
-  const heading = createHeadingDashcard({ col, row, sizeY: HEADING_HEIGHT });
+  const heading = createHeadingDashcard({
+    col,
+    row,
+    size_x: GRID_WIDTH,
+    size_y: HEADING_HEIGHT,
+  });
 
   const nextRow = row + HEADING_HEIGHT;
   const scalarCardWidth = 7;
@@ -51,7 +65,12 @@ export function layout1({ col, row }: LayoutOpts) {
 }
 
 export function layout2({ col, row }: LayoutOpts) {
-  const heading = createHeadingDashcard({ col, row, sizeY: HEADING_HEIGHT });
+  const heading = createHeadingDashcard({
+    col,
+    row,
+    size_x: GRID_WIDTH,
+    size_y: HEADING_HEIGHT,
+  });
 
   const nextRow = row + HEADING_HEIGHT;
   const scalarCardWidth = GRID_WIDTH / 3;
@@ -91,7 +110,7 @@ export function layout2({ col, row }: LayoutOpts) {
   return [heading, ...scalarCards, largeCard];
 }
 
-export const layoutOptions = [
+export const layoutOptions: LayoutOption[] = [
   {
     id: 1,
     label: "Layout 1",

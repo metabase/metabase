@@ -74,6 +74,7 @@ import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
 } from "./DashboardHeader.styled";
+import { SectionLayoutPreviewTooltip } from "./SectionLayoutPreviewTooltip";
 
 type NewDashCardOpts = {
   dashId: DashboardId;
@@ -407,12 +408,15 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             </Menu.Target>
             <Menu.Dropdown>
               {layoutOptions.map(option => (
-                <Menu.Item
+                <SectionLayoutPreviewTooltip
                   key={option.id}
-                  onClick={() => this.onAddSection(option.id)}
+                  layout={option}
+                  position="left"
                 >
-                  {option.label}
-                </Menu.Item>
+                  <Menu.Item onClick={() => this.onAddSection(option.id)}>
+                    {option.label}
+                  </Menu.Item>
+                </SectionLayoutPreviewTooltip>
               ))}
             </Menu.Dropdown>
           </Menu>
