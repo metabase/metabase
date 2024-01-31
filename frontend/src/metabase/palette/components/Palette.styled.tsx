@@ -35,7 +35,8 @@ export const PaletteModal = styled(Modal)`
 export const PaletteItemDisplay = styled.li`
   list-style: none;
   display: flex;
-  padding: 0.5rem;
+  width: 100%;
+margin-bottom: 0.5rem;
   // fix later
   & button span {
     display: flex;
@@ -52,3 +53,19 @@ export const PaletteResultIcon = styled(Icon)`
 export const PaletteResultButton = styled(Button)`
   // fix later
 `;
+
+export const PaletteResultList = styled.ul`
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  flex-flow: column nowrap;
+  margin-top: 1rem;
+  padding: 0;
+`;
+
+export const PaletteModalContainer = styled.div`
+  display: flex;
+  flex-flow: column nowrap;
+  flex: 1;
+`
+
