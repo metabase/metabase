@@ -860,7 +860,7 @@ class Question {
   }
 
   dependentMetadata(): Lib.DependentItem[] {
-    return [];
+    return Lib.dependentMetadata(this.query());
   }
 
   _dependentMetadata(): DependentMetadataItem[] {
