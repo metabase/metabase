@@ -34,6 +34,7 @@ import {
 } from "./BrowseModels.styled";
 
 import NoResults from "assets/img/no_results.svg";
+import type { ReactJSXElement } from "@emotion/react/types/jsx-namespace";
 
 export const BrowseModels = ({
   modelsResult,
@@ -168,7 +169,7 @@ export const BrowseModels = ({
   );
 };
 
-type Cell = React.ReactElement | null;
+type Cell = JSX.Element;
 
 const BlankCell = (props: { style?: React.CSSProperties }) => (
   <div {...props} />
@@ -229,14 +230,16 @@ const renderItem: RenderItemFunction = ({
     : null;
 };
 
-const ModelGroup = ({
-  models,
-  localeCode,
-  columnCount,
-}: {
+type ModelGroupProps = {
   models: SearchResult[];
   localeCode: string | undefined;
   columnCount: number;
+};
+
+const ModelGroup: React.FC<ModelGroupProps> = ({
+  models,
+  localeCode,
+  columnCount,
 }) => {
   const sortedModels = models.sort((a, b) => {
     if (!a.name && b.name) {
@@ -257,7 +260,7 @@ const ModelGroup = ({
   /** This id is used by aria-labelledby */
   const collectionHtmlId = `collection-${collection.id}`;
 
-  const cells = [];
+  const cells: JSX.Element[] = [];
 
   cells.push(
     <CollectionHeader
@@ -281,8 +284,7 @@ const ModelGroup = ({
     const endOfLoop = m === sortedModels.length - 1;
     if (endOfLoop) {
       const countOfModelsInLastRowOfGroup = sortedModels.length % columnCount;
-      const blankCellsNeeded =
-        columnCount - countOfModelsInLastRowOfGroup;
+      const blankCellsNeeded = columnCount - countOfModelsInLastRowOfGroup;
       for (let i = 0; i < blankCellsNeeded; i++) {
         cells.push(<BlankCell />);
       }
