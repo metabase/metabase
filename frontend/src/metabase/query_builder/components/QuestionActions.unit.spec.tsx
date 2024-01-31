@@ -82,7 +82,7 @@ describe("QuestionActions", () => {
     },
   );
 
-  it("should allow to edit the model only with write permissions", () => {
+  it("should allow to edit the model only with write permissions", async () => {
     setup({
       card: createMockCard({
         dataset: true,
@@ -91,11 +91,13 @@ describe("QuestionActions", () => {
     });
 
     userEvent.click(getIcon("ellipsis"));
+    await screen.findByRole("dialog");
+
     expect(screen.getByText("Edit query definition")).toBeInTheDocument();
     expect(screen.getByText("Edit metadata")).toBeInTheDocument();
   });
 
-  it("should not allow to edit the model without write permissions", () => {
+  it("should not allow to edit the model without write permissions", async () => {
     setup({
       card: createMockCard({
         dataset: true,
@@ -104,6 +106,8 @@ describe("QuestionActions", () => {
     });
 
     userEvent.click(getIcon("ellipsis"));
+    await screen.findByRole("dialog");
+
     expect(screen.queryByText("Edit query definition")).not.toBeInTheDocument();
     expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
   });
