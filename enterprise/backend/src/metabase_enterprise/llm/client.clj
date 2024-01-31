@@ -144,6 +144,7 @@
               (ex-info
                 "Response was not a string"
                 {:message     "Response was not a string"
+                 :response    response
                  :status-code 500}))))))
      ([params] (wrap-parse-json* params nil))))
   ([openai-fn] (wrap-parse-json openai-fn identity)))
@@ -161,13 +162,17 @@
   "The endpoint used to invoke the remote LLM"
   default-chat-completion-endpoint)
 
-(def create-chat-completion
+(defn create-chat-completion
   "Call the llm service and return the response.
   Takes messages to be used as instructions and a function that will find the
   first valid result from the messages.
 
+  This is a function since we don't want to capture the scope of the
+  *create-chat-completion-endpoint* var in the event that it needs to be rebound.
+
   As with all middlewares, note that preprocessing middlewares happen from the
   bottom up and postprocessing middlewares happen from the top down."
+  []
   (-> *create-chat-completion-endpoint*
       wrap-ee-auth
       wrap-model-defaults
@@ -177,9 +182,9 @@
 
 (comment
   ;; Example usage
-  (create-chat-completion
-    {:messages [{:role "system" :content "You are a helpful assistant."}
-                {:role "user" :content "Who won the world series in 2020?"}
-                {:role "assistant" :content "The Los Angeles Dodgers won the World Series in 2020."}
-                {:role "user" :content "Where was it played?"}]})
+  ((create-chat-completion)
+   {:messages [{:role "system" :content "You are a helpful assistant."}
+               {:role "user" :content "Who won the world series in 2020?"}
+               {:role "assistant" :content "The Los Angeles Dodgers won the World Series in 2020."}
+               {:role "user" :content "Where was it played?"}]})
   )

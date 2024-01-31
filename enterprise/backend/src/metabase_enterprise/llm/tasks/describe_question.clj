@@ -31,7 +31,7 @@
                                     {:friendly_title   "%%FILL_THIS_TITLE_IN%%"
                                      :friendly_summary "%%FILL_THIS_SUMMARY_IN%%"})
         json-str             (json/generate-string summary-with-prompts)
-        client               (-> llm-client/create-chat-completion
+        client               (-> (llm-client/create-chat-completion)
                                  (llm-client/wrap-parse-json
                                    (fn [rsp] (rename-keys rsp {:friendly_title   :title
                                                                :friendly_summary :description}))))]
