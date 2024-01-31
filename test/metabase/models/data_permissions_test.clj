@@ -194,7 +194,7 @@
               {:perms/data-access :unrestricted
                :perms/native-query-editing :yes}
               database-id-2
-              {:perms/data-access :no-self-service
+              {:perms/data-access :block
                :perms/native-query-editing :no}}
              (data-perms/permissions-for-user user-id-1))))
 
@@ -217,7 +217,7 @@
         (data-perms/set-table-permission! group-id-1 table-id-2 :perms/data-access :unrestricted)
         (is (partial=
              {database-id-1
-              {:perms/data-access {table-id-1 :no-self-service
+              {:perms/data-access {table-id-1 :block
                                    table-id-2 :unrestricted}}}
              (data-perms/permissions-for-user user-id-1))))
 

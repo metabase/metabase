@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models
     :refer [Dashboard DashboardCard Database Field FieldValues Table]]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
    [metabase.models.permissions :as perms]
@@ -25,7 +26,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; TODO: change this namespace to use the version in metabase.test
-(defn- do-with-all-user-data-perms
+(defn- do-with-all-user-data-perms!
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
@@ -33,6 +34,7 @@
       (memoize/memo-clear! @#'field/cached-perms-object-set)
       (perms.test-util/with-restored-perms!
         (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
+        (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
         (f)))))
 
 (defmacro ^:private with-all-users-data-perms!
@@ -40,7 +42,7 @@
   permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
   {:style/indent 1}
   [graph & body]
-  `(do-with-all-user-data-perms ~graph (fn [] ~@body)))
+  `(do-with-all-user-data-perms! ~graph (fn [] ~@body)))
 
 (deftest current-user-test
   (testing "GET /api/user/current returns additional fields if advanced-permissions is enabled"
@@ -230,7 +232,6 @@
                    Table    t3 {:db_id db-id :schema "" :name "t3"}]
       (with-all-users-data-perms! {db-id {:data       {:schemas :block :native :none}
                                           :data-model {:schemas :all}}}
-        (perms/revoke-data-perms! (perms-group/all-users) db-id)
         (testing "If data permissions are revoked, it should be a 403"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%d/schema/" db-id)))))
@@ -368,7 +369,9 @@
                    (:target (update-target))))))))))
 
 (deftest update-field-test
-  (t2.with-temp/with-temp [Field {field-id :id, table-id :table_id} {:name "Field "}]
+  (t2.with-temp/with-temp [Table {table-id :id}                     {:db_id (mt/id) :schema "PUBLIC"}
+                           Table {table-id-2 :id}                   {:db_id (mt/id) :schema "PUBLIC"}
+                           Field {field-id :id, table-id :table_id} {:name "Field" :table_id table-id}]
     (let [{table-id :id, schema :schema, db-id :db_id} (t2/select-one Table :id table-id)]
       (testing "PUT /api/field/:id"
         (let [endpoint (format "field/%d" field-id)]
@@ -388,8 +391,8 @@
               (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
 
           (testing "a non-admin cannot update field metadata if they only have data model permissions for other tables"
-            (with-all-users-data-perms! {db-id {:data-model {:schemas {schema {table-id       :none
-                                                                               (inc table-id) :all}}}}}
+            (with-all-users-data-perms! {db-id {:data-model {:schemas {schema {table-id   :none
+                                                                               table-id-2 :all}}}}}
               (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
 
           (testing "a non-admin can update field metadata if they have data model perms for the DB"
@@ -453,7 +456,8 @@
                (mt/user-http-request :rasta :get 403 (format "field/%d?include_editable_data_model=true" (mt/id :users :name)))))))))
 
 (deftest update-table-test
-  (t2.with-temp/with-temp [Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+  (t2.with-temp/with-temp [Table {table-id :id}   {:db_id (mt/id) :schema "PUBLIC"}
+                           Table {table-id-2 :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "PUT /api/table/:id"
       (let [endpoint (format "table/%d" table-id)]
         (testing "a non-admin cannot update table metadata if the advanced-permissions feature flag is not present"
@@ -471,8 +475,8 @@
             (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
 
         (testing "a non-admin cannot update table metadata if they only have data model permissions for other tables"
-          (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id       :none
-                                                                                 (inc table-id) :all}}}}}
+          (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id   :none
+                                                                                 table-id-2 :all}}}}}
             (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
 
         (testing "a non-admin can update table metadata if they have data model perms for the DB"
@@ -671,21 +675,22 @@
                          DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
                                                           :action_id action-id
                                                           :card_id model-id}]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
-                                       dashboard-id
-                                       dashcard-id)]
-              (testing "Fails with access to the DB blocked"
-                (with-all-users-data-perms! {(u/the-id (mt/db)) {:data    {:native :none :schemas :block}
-                                                                 :details :yes}}
+            (mt/with-full-data-perms-for-all-users!
+              (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
+                                         dashboard-id
+                                         dashcard-id)]
+                (testing "Works with access to the DB not blocked"
                   (mt/with-actions-enabled
-                    (is (partial= {:message "You don't have permissions to do that."}
-                                  (mt/user-http-request :rasta :post 403 execute-path
-                                                        {:parameters {"id" 1}}))))))
-              (testing "Works with access to the DB not blocked"
-                (mt/with-actions-enabled
-                  (is (= {:rows-affected 1}
-                         (mt/user-http-request :rasta :post 200 execute-path
-                                               {:parameters {"id" 1}}))))))))))))
+                    (is (= {:rows-affected 1}
+                           (mt/user-http-request :rasta :post 200 execute-path
+                                                 {:parameters {"id" 1}})))))
+                (testing "Fails with access to the DB blocked"
+                  (with-all-users-data-perms! {(u/the-id (mt/db)) {:data {:native :none :schemas :block}
+                                                                   :details :yes}}
+                    (mt/with-actions-enabled
+                      (is (partial= {:message "You don't have permissions to do that."}
+                                    (mt/user-http-request :rasta :post 403 execute-path
+                                                          {:parameters {"id" 1}}))))))))))))))
 
 (deftest settings-managers-can-have-uploads-db-access-revoked
   (perms/grant-application-permissions! (perms-group/all-users) :setting)
@@ -724,7 +729,7 @@
                         clojure.lang.ExceptionInfo
                         #"You don't have permissions to do that\."
                         (upload-csv!)))))
-              (with-all-users-data-perms! {db-id {:data {:native :write, :schemas ["not_public"]}}}
+              (with-all-users-data-perms! {db-id {:data {:native :write, :schemas {"not_public" :all}}}}
                 (is (some? (upload-csv!)))))))))))
 
 (deftest append-csv-data-perms-test

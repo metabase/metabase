@@ -21,16 +21,16 @@
                                           [:field (mt/id :venues :longitude) nil]]}}]
     (testing "GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id"
       (is (png? (mt/user-http-request
-                 :rasta :get 200 (format "tiles/1/1/1/%d/%d"
-                                         (mt/id :venues :latitude)
-                                         (mt/id :venues :longitude))
+                 :crowberto :get 200 (format "tiles/1/1/1/%d/%d"
+                                             (mt/id :venues :latitude)
+                                             (mt/id :venues :longitude))
                  :query (json/generate-string venues-query)))))
     (testing "Works on native queries"
       (let [native-query {:query (:query (qp/compile venues-query))
                           :template-tags {}}]
         (is (png? (mt/user-http-request
-                   :rasta :get 200 (format "tiles/1/1/1/%s/%s"
-                                           "LATITUDE" "LONGITUDE")
+                   :crowberto :get 200 (format "tiles/1/1/1/%s/%s"
+                                               "LATITUDE" "LONGITUDE")
                    :query (json/generate-string
                            {:database (mt/id)
                             :type :native
@@ -89,7 +89,7 @@
       (with-redefs [api.tiles/create-tile (fn [_ points] points)
                     api.tiles/tile->byte-array identity]
         (let [result (mt/user-http-request
-                      :rasta :get 200 (format "tiles/7/30/49/%d/%d"
+                      :crowberto :get 200 (format "tiles/7/30/49/%d/%d"
                                               (mt/id :people :latitude)
                                               (mt/id :people :longitude))
                       :query (json/generate-string
@@ -116,9 +116,9 @@
 (deftest always-run-sync-test
   (testing "even if the original query was saved as `:async?` we shouldn't run the query as async"
     (is (png? (mt/user-http-request
-               :rasta :get 200 (format "tiles/1/1/1/%d/%d"
-                                       (mt/id :venues :latitude)
-                                       (mt/id :venues :longitude))
+               :crowberto :get 200 (format "tiles/1/1/1/%d/%d"
+                                           (mt/id :venues :latitude)
+                                           (mt/id :venues :longitude))
                :query (json/generate-string
                        {:database (mt/id)
                         :type     :query
