@@ -65,7 +65,6 @@ export const getDashboardActions = (
             disabled={!canManageSubscriptions}
             onClick={onSharingClick}
             aria-label="subscriptions"
-            data-metabase-event="Dashboard;Subscriptions"
           />
         </Tooltip>,
       );
@@ -83,7 +82,6 @@ export const getDashboardActions = (
     buttons.push(
       <RefreshWidgetButton
         key="refresh"
-        data-metabase-event="Dashboard;Refresh Menu Open"
         period={refreshPeriod}
         setRefreshElapsedHook={setRefreshElapsedHook}
         onChangePeriod={onRefreshPeriodChange}
@@ -97,7 +95,7 @@ export const getDashboardActions = (
         key="night"
         tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
       >
-        <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
+        <span>
           <DashboardHeaderButton
             icon={
               <NightModeButtonIcon
@@ -118,9 +116,7 @@ export const getDashboardActions = (
         key="fullscreen"
         tooltip={isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`}
       >
-        <span
-          data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
-        >
+        <span>
           <DashboardHeaderButton
             icon={<FullScreenButtonIcon isFullscreen={isFullscreen} />}
             onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}

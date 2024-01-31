@@ -989,6 +989,23 @@
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 
+(defsetting ^:private test-no-default-setting
+  "Setting with a falsey default"
+  :visibility :internal
+  :type       :boolean)
+
+(defsetting ^:private test-falsey-default-setting
+  "Setting with a falsey default"
+  :visibility :internal
+  :type       :boolean
+  :default    false)
+
+(deftest ^:parallel falsey-default-setting-test
+  (testing "We should use default values even if they are falsey"
+    (is (= false (test-falsey-default-setting))))
+  (testing "We should return no value for an uninitialized setting with no default or initializer"
+    (is (= nil (test-no-default-setting)))))
+
 (defsetting ^:private test-integer-setting
   "test Setting"
   :visibility :internal

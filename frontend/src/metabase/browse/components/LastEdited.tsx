@@ -10,7 +10,7 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 dayjs.extend(updateLocale);
 dayjs.extend(relativeTime);
 
-const relativeTimeConfig: Record<string, unknown> = {
+const timeFormattingRules: Record<string, unknown> = {
   m: t`${1}min`,
   mm: t`${"%d"}min`,
   h: t`${1}h`,
@@ -21,7 +21,7 @@ const relativeTimeConfig: Record<string, unknown> = {
   MM: t`${"%d"}mo`,
   y: t`${1}yr`,
   yy: t`${"%d"}yr`,
-  // For any number of seconds, just show 1min
+  // Display any number of seconds as "1min"
   s: () => t`${1}min`,
   ss: () => t`${1}min`,
   // Don't use "ago"
@@ -30,45 +30,50 @@ const relativeTimeConfig: Record<string, unknown> = {
   future: t`${"%s"} from now`,
 };
 
-dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
-
-const getHowLongAgo = (timestamp: string) => {
+const getTimePassedSince = (timestamp: string) => {
   const date = dayjs(timestamp);
   if (timestamp && date.isValid()) {
-    return date.fromNow();
+    const locale = dayjs.locale();
+    const cachedRules = dayjs.Ls[locale].relativeTime;
+    dayjs.updateLocale(locale, { relativeTime: timeFormattingRules });
+    const timePassed = date.fromNow();
+    dayjs.updateLocale(locale, { relativeTime: cachedRules });
+    return timePassed;
   } else {
     return t`(invalid date)`;
   }
 };
 
 export const LastEdited = ({
-  lastEditorFullName,
+  editorFullName,
   timestamp,
 }: {
-  lastEditorFullName: string | null;
+  editorFullName: string | null;
   timestamp: string;
 }) => {
-  const howLongAgo = getHowLongAgo(timestamp);
-  const timeLabel = timestamp ? howLongAgo : "";
+  const timePassed = getTimePassedSince(timestamp);
+  const timeLabel = timestamp ? timePassed : "";
   const formattedDate = formatDateTimeWithUnit(timestamp, "day", {});
   const time = (
     <time key="time" dateTime={timestamp}>
       {formattedDate}
     </time>
   );
+
   const tooltipLabel = c(
-    "{0} is the full name (or if this is unavailable, the email address) of the last person who edited a model. {1} is a phrase like '5 months ago'",
-  ).jt`Last edited by ${lastEditorFullName}${(<br key="br" />)}${time}`;
+    "{0} is the full name (or if this is unavailable, the email address) of the last person who edited a model. {1} is a date",
+  ).jt`Last edited by ${editorFullName}${(<br key="br" />)}${time}`;
+
   return (
     <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
       <Text role="note" size="small">
-        {lastEditorFullName}
-        {lastEditorFullName && howLongAgo && (
-          <Text span px=".33rem">
+        {editorFullName}
+        {editorFullName && timePassed && (
+          <Text span px=".33rem" color="text-light">
             •
           </Text>
         )}
-        {howLongAgo}
+        {timePassed}
       </Text>
     </Tooltip>
   );

@@ -133,7 +133,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
     - name: Check out the code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ needs.release-artifact.outputs.commit }}
     - name: Prepare front-end environment
@@ -193,7 +193,7 @@ jobs:
           echo "VERSION=${{ needs.release-artifact.outputs.oss_version }}" >> $GITHUB_ENV
         fi
     - name: Check out the code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ needs.release-artifact.outputs.commit }}
     - uses: actions/download-artifact@v3

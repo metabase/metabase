@@ -32,7 +32,7 @@ jobs:
       INTERACTIVE: false
     steps:
     - name: Check out the code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Prepare front-end environment
@@ -94,7 +94,7 @@ jobs:
     - name: Verify the intended tag of the container image
       run: echo "Container image will be tagged as ${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}"
     - name: Check out the code (Dockerfile needed)
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Download uploaded artifacts to insert into container
@@ -211,7 +211,7 @@ jobs:
       - name: Verify the intended tag of the container image
         run: echo "Container image will be tagged as ${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}"
       - name: Check out the code (Dockerfile needed)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.commit }}
       - name: Download uploaded artifacts to insert into container
