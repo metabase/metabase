@@ -155,7 +155,7 @@
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card
-          (card/is-model? card) (t2/hydrate :persisted)))))
+          (card/model? card) (t2/hydrate :persisted)))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
@@ -473,9 +473,12 @@
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
   (check-card-type-and-dataset card-updates)
-  (let [card-before-update    (t2/hydrate (api/write-check Card id)
-                                          [:moderation_reviews :moderator_details])
-        maybe-turn-to-dataset (or (= "model" type) dataset)]
+  (let [card-before-update     (t2/hydrate (api/write-check Card id)
+                                           [:moderation_reviews :moderator_details])
+        is-model-after-update? (cond
+                                (some? type)    (= "model" type)
+                                (some? dataset) dataset
+                                :else           (card/model? card-before-update))]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
@@ -486,11 +489,10 @@
                                                              :query             dataset_query
                                                              :metadata          result_metadata
                                                              :original-metadata (:result_metadata card-before-update)
-                                                             :dataset?          (if (some? maybe-turn-to-dataset)
-                                                                                  maybe-turn-to-dataset
-                                                                                  (card/is-model? card-before-update))})
+                                                             :dataset?          is-model-after-update?})
           card-updates          (merge card-updates
-                                       (when maybe-turn-to-dataset
+                                       (when (and (or (some? type) (some? dataset))
+                                                  is-model-after-update?)
                                          {:display :table}))
           metadata-timeout      (a/timeout card/metadata-sync-wait-ms)
           [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
@@ -731,7 +733,7 @@
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (card/is-model? card)
+      (when-not (card/model? card)
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
       (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
@@ -743,7 +745,7 @@
   {card-id ms/PositiveInt}
   (api/let-404 [card           (t2/select-one Card :id card-id)
                 persisted-info (t2/select-one PersistedInfo :card_id card-id)]
-    (when (not (card/is-model? card))
+    (when (not (card/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))

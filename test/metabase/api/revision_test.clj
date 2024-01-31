@@ -355,7 +355,7 @@
                :has_multiple_changes false}
               {:description          "changed the display from table to scalar, modified the query and edited the metadata."
                :has_multiple_changes true}
-              {:description          "type changed from question to model and edited the metadata."
+              {:description          "turned this to a model and edited the metadata."
                :has_multiple_changes true}
               {:description          "renamed this Card from \"A card\" to \"New name\"."
                :has_multiple_changes false}

@@ -92,7 +92,7 @@
               {:name "Spots by State", :private true})))))
 
   (testing "Check that several changes are handled nicely"
-    (is (= (str "type changed from question to model, made it private and renamed it from \"Tips by State\" to \"Spots by State\".")
+    (is (= "turned this to a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
              ((get-method revision/diff-strings :default)
               Card
@@ -426,7 +426,7 @@
                                                   :is_creation  false}))
 
          (testing "changes contains unspecified keys will not be mentioned"
-           (is (= {:description          "type changed from question to model."
+           (is (= {:description          "turned this to a model."
                    :has_multiple_changes false}
                   (#'revision/revision-description-info model
                                                         {:object       {:type        "question"

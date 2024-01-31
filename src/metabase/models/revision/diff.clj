@@ -77,6 +77,9 @@
     (deferred-tru "modified the query")
 
     ;; report_card.type
+    [:type "question" "model"]
+    (deferred-tru "turned this to a model")
+
     [:type old new]
     (deferred-tru "type changed from {0} to {1}" old new)
 
