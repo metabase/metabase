@@ -645,7 +645,7 @@
                                                                  "33 Taps"]
                                          :field_id              (mt/id :venues :name)
                                          :human_readable_values []}}
-                 (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "public/dashboard/" uuid)))]
+                 (let [response (:param_values (mt/user-http-request :crowberto :get 200 (str "public/dashboard/" uuid)))]
                    (into {} (for [[field-id m] response]
                               [field-id (update m :values (partial take 3))]))))))))))
 
