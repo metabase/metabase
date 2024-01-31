@@ -678,7 +678,51 @@
 ;;; |  hydrate based_on_upload for FE
 ;;; +--------------------------------
 
-(mi/define-simple-hydration-method based-on-upload
+(defn uploadable-tables
+  "Returns the subset of tables where the user can upload to the table."
+  [table-ids]
+  (if (empty? table-ids)
+    #{}
+    (let [tables (m/index-by :id (t2/select :model/Table :id [:in table-ids]))
+          ;; TODO: consider dropping the check on databases, it might not be necessary.
+          db-ids (set (map :db_id (vals tables)))
+          dbs    (m/index-by :id (t2/select :model/Database :id [:in db-ids]))
+          get-db (fn [table] (get dbs (:db_id table)))]
+      (set (filter #(can-upload-to-table? (get-db %) %) (vals tables))))))
+
+(defn- no-joins?
+  [query]
+  (let [query (lib.convert/->pMBQL query)
+        all-joins (mapcat (fn [stage]
+                            (lib/joins query stage))
+                          (range (lib/stage-count query)))]
+    (empty? all-joins)))
+
+(mu/defn model-hydrate-based-on-upload
+  "Hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
+  [models :- [:sequential [:map
+                           [:dataset_query ms/Map]
+                           [:table_id      ms/PositiveInt]
+                           [:query_type    [:or :string :keyword]]
+                           [:is_upload {:optional true} :boolean]]]]
+  (let [table-ids (->> models
+                       ;; as an optimization, we might already know that the question is based on an upload
+                       ;; with a provided is_upload key
+                       (remove #(false? (:is_upload %)))
+                       (map :table_id models)
+                       set)
+        uploadable-table-ids (->> (uploadable-tables table-ids)
+                                  (map :id)
+                                  set)
+        based-on-upload-model? (fn [model]
+                                 (and (= (name (:query_type model)) "query")
+                                      (no-joins? (:dataset_query model))
+                                      (contains? uploadable-table-ids (:table_id model))))]
+    (map #(assoc % :based_on_upload (when (based-on-upload-model? %)
+                                      (:table_id %)))
+         models)))
+
+(mi/define-batched-hydration-method based-on-upload
   :based_on_upload
   "Add based_on_upload=<table-id> to a card if:
     - the card is a model
@@ -687,14 +731,6 @@
     - the user has permissions to upload to the table
     - uploads are enabled
   Otherwise based_on_upload is nil."
-  [card]
-  (when (and (:dataset card)
-             (= (:query_type card) :query)
-             (let [query (lib.convert/->pMBQL (:dataset_query card))
-                   all-joins (mapcat (fn [stage]
-                                       (lib/joins query stage))
-                                     (range (lib/stage-count query)))]
-               (empty? all-joins))
-             (let [table (t2/select-one :model/Table :id (:table_id card))]
-               (can-upload-to-table? (table/database table) table)))
-    (:table_id card)))
+  [cards]
+  (let [models-by-id (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))]
+    (map #(or (models-by-id (:id %)) %) cards)))

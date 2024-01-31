@@ -32,6 +32,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -394,6 +395,9 @@
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
                    [:= :dataset dataset?]]}
+      (cond-> dataset?
+        (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
+            (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
@@ -402,7 +406,14 @@
 
 (defmethod post-process-collection-children :dataset
   [_ rows]
-  (post-process-collection-children :card rows))
+  (let [dataset_queries (map :dataset_query rows)]
+    (->> rows
+         (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))
+         upload/model-hydrate-based-on-upload
+         (map (fn [dq row] (-> row
+                               (assoc :dataset_query dq)
+                               (dissoc :table_id :query_type :is_upload))) dataset_queries)
+         (post-process-collection-children :card))))
 
 (defmethod collection-children-query :card
   [_ collection options]
@@ -597,7 +608,8 @@
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
-   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]])
+   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
+   [:table_id :integer] [:is_upload :boolean] :query_type])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."

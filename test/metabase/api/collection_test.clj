@@ -639,6 +639,42 @@
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
 
+(deftest collection-items-based-on-upload-test
+  (testing "GET /api/collection/:id/items"
+    (testing "check that based_on_upload is returned for cards correctly"
+      (mt/with-driver :h2 ; just test on H2 because failure should be independent of drivers
+        ;; needs to match :based_on_upload hydration on cards
+        (mt/with-temporary-setting-values [uploads-enabled true]
+          (mt/with-temp [:model/Collection collection     {}
+                         :model/Database   {db-id :id}    {:engine "h2"}
+                         :model/Table      {table-id :id} {:db_id     db-id
+                                                           :is_upload true}
+                         :model/Card       {card-id :id
+                                            :as     card} {:collection_id (u/the-id collection)
+                                                           :dataset       true
+                                                           :dataset_query {:type     :query
+                                                                           :database db-id
+                                                                           :query    {:source-table table-id}}}]
+            (mt/with-test-user :crowberto
+              (testing "Sense check: cards based on uploads have based_on_upload=<table-id> if they meet all the criteria"
+                (is (= table-id (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
+              (is (= (mt/obj->json->obj
+                      [{:id                  card-id
+                        :based_on_upload     table-id
+                        :name                (:name card)
+                        :collection_position nil
+                        :collection_preview  true
+                        :database_id         db-id
+                        :display             "table"
+                        :description         nil
+                        :entity_id           (:entity_id card)
+                        :moderated_status    nil
+                        :model               "dataset"
+                        :fully_parameterized true}])
+                       (mt/obj->json->obj
+                        (:data (mt/user-http-request :crowberto :get 200
+                                                     (str "collection/" (u/the-id collection) "/items")))))))))))))
+
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"
     (testing "Database id is returned for items in which dataset is true"
