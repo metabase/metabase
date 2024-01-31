@@ -16,17 +16,14 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -258,9 +255,9 @@
    (remove nil?)
    set))
 
-(mu/defn ^:private sandbox->perms-set :- [:set perms.u/PathSchema]
-  "Calculate the set of permissions needed to run the query associated with a sandbox; this set of permissions is excluded
-  during the normal QP perms check.
+(mu/defn ^:private sandbox->required-perms
+  "Calculate the permissions needed to run the query associated with a sandbox, which are implitly granted to the
+  current user during the normal QP perms check.
 
   Background: when applying sandboxing, we don't want the QP perms check middleware to throw an Exception if the Current
   User doesn't have permissions to run the underlying sandboxed query, which will likely be greater than what they
@@ -271,12 +268,12 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-      (query-perms/perms-set (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
-                             :throw-exceptions? true))
-    (set (map perms/table-query-path (sandbox->table-ids sandbox)))))
+                     (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+                                                 :throw-exceptions? true))
+    {:perms/data-access (zipmap (sandbox->table-ids sandbox) (repeat :unrestricted))}))
 
-(defn- sandboxes->perms-set [sandboxes]
-  (set (mapcat sandbox->perms-set sandboxes)))
+(defn- sandboxes->required-perms [sandboxes]
+  (apply m/deep-merge (map sandbox->required-perms sandboxes)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -333,7 +330,9 @@
       original-query
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
-          (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (sandboxes->perms-set (vals table-id->gtap)))))))))
+          (update-in [::query-perms/perms :gtaps]
+                     (fn [required-perms] (merge required-perms
+                                                 (sandboxes->required-perms (vals table-id->gtap)))))))))
 
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
@@ -380,7 +379,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::qp.perms/perms :gtaps])))
+    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::query-perms/perms :gtaps])))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]
