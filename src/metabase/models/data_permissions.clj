@@ -92,17 +92,18 @@
   - Given a set with values, we select the most permissive option in the set.
     (coalesce :settings-access #{:view :no-access}) => :view"
   {:arglists '([perm-type perm-values])}
-  (fn [perm-type _perm-values] perm-type))
+  (fn [perm-type _perm-values] (keyword perm-type)))
 
 (defmethod coalesce :default
   [perm-type perm-values]
-  (let [perm-type (keyword perm-type)
+  (let [perm-type      (keyword perm-type)
         ordered-values (-> Permissions perm-type :values)]
     (first (filter (set perm-values) ordered-values))))
 
 (defmethod coalesce :perms/data-access
   [perm-type perm-values]
-  (let [perm-values    (set perm-values)
+  (let [perm-type      (keyword perm-type)
+        perm-values    (set perm-values)
         ordered-values (-> Permissions perm-type :values)]
     (if (and (perm-values :block)
              (not (perm-values :unrestricted)))
