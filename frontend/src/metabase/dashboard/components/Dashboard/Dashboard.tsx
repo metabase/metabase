@@ -152,6 +152,7 @@ interface DashboardProps {
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
   setParameterValueToDefault: (id: ParameterId) => void;
+  setParameterRequired: (id: ParameterId, value: boolean) => void;
   setEditingParameter: (id: ParameterId) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
