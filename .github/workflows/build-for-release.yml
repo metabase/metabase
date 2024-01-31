@@ -156,7 +156,7 @@ jobs:
         distribution: 'temurin'
         java-version: ${{ needs.get-build-requirements.outputs.java_version }}
     - name: Setup Node.js ${{ needs.get-build-requirements.outputs.node_version }}
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
     - name: Check out the code

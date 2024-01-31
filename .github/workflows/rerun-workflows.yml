@@ -23,7 +23,7 @@ jobs:
           echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
           echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: lts/Hydrogen # 18.x.x
       - run: npm install @slack/web-api
