@@ -14,11 +14,23 @@ Metabase starts out with a default top-level collection which is called **Our an
 
 ## Collection permission levels
 
-- **Curate access**: the user can edit, move, archive, and pin items saved in this collection, and can save or move new items into it. They can also create new sub-collections within this collection. In order to archive a sub-collection within this collection, they'll need to have Curate access for it and any and all collections within it.
-- **View access**: people in the group can see all the questions, dashboards, and models in the collection. If a person lacks permission to view some or all of the questions included in a given dashboard, then those questions will be invisible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the person lacks access to the underlying data used in the question._
-- **No access**: the people in the group won't see this collection listed, and they'll lack access to any of the items saved within it.
+### Curate access
 
-### Setting permissions for collections
+The group can edit, move, archive, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection.
+
+### View access
+
+The group can see all the questions, dashboards, and models in the collection. If a dashboard in this collection includes questions saved to other collections, the group will need view or curate access to that collection in order to view the question.
+
+### No access
+
+The group won't see this collection listed, and they'll lack access to any of the items saved within it.
+
+## Collection vs data permissions
+
+Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or to creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
+
+## Setting permissions for collections
 
 You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
 
@@ -30,11 +42,11 @@ If you want to see the bigger picture of what permissions your user groups have 
 
 Just like with data access permissions, collection permissions are _additive_, meaning that if a user belongs to more than one group, if one of their groups has a more restrictive setting for a collection than another one of their groups, they'll be given the _more permissive_ setting. This is especially important to remember when dealing with the All Users group: since all users are members of this group, if you give the All Users group Curate access to a collection, then _all_ users will be given Curate access for that collection, even if they also belong to a group with _less_ access than that.
 
-### Permissions and sub-collections
+## Permissions and sub-collections
 
 A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
-### Archiving collections
+## Archiving collections
 
 Users with curate permission for a collection can archive collections. Click the edit icon in the top-right of the collection screen and select **Archive this collection** to archive it. This will also archive all questions, dashboards, models, and all other sub-collections and their contents. Importantly, this will also remove any archived questions from all dashboards that use them.
 
