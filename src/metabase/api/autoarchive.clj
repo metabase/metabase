@@ -17,10 +17,11 @@
   (->> (t2/query {:select   [:rc.id :rc.name :rc.created_at [:vl.timestamp :last_viewed] [:vl.model :model]]
                   :from     [[:report_card :rc]]
                   :join     [[:view_log :vl] [:= :rc.id :vl.model_id]]
-                  :where    [:and [:= :vl.model "card"]]})
+                  :where    [:and
+                             [:= :vl.model "card"]]})
        (map ->auto-archivable)))
 
-(api/defendpoint GET "/" []
+(api/defendpoint GET "/:collection-id" []
   {}
   (auto-archivable-questions))
 
