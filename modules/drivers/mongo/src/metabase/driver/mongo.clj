@@ -200,21 +200,22 @@
 (defmethod driver/describe-table-indexes :mongo
   [_ database table]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
-    (->> (mongo.util/list-indexes db (:name table))
-         (map (fn [index]
+    (let [collection (mongo.util/collection db (:name table))]
+      (->> (mongo.util/list-indexes collection :keywordize false)
+           (map (fn [index]
                 ;; for text indexes, column names are specified in the weights
-                (if (contains? index "textIndexVersion")
-                  (get index "weights")
-                  (get index "key"))))
-         (map (comp name first keys))
-         ;; mongo support multi key index, aka nested fields index, so we need to split the keys
-         ;; and represent it as a list of field names
-         (map #(if (str/includes? % ".")
-                 {:type  :nested-column-index
-                  :value (str/split % #"\.")}
-                 {:type  :normal-column-index
-                  :value %}))
-         set)))
+                  (if (contains? index "textIndexVersion")
+                    (get index "weights")
+                    (get index "key"))))
+           (map (comp name first keys))
+           ;; mongo support multi key index, aka nested fields index, so we need to split the keys
+           ;; and represent it as a list of field names
+           (map #(if (str/includes? % ".")
+                   {:type  :nested-column-index
+                    :value (str/split % #"\.")}
+                   {:type  :normal-column-index
+                    :value %}))
+           set))))
 
 (defn- sample-documents [^MongoDatabase db table sort-direction]
   (let [coll (mongo.util/collection db (:name table))]
