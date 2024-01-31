@@ -22,9 +22,11 @@
   "Stores an instance of `MongoClient` bound by [[with-mongo-client]]."
   nil)
 
-;; TODO: ADD explanation from notion doc.
 (defn db-details->connection-string
-  "Generate connection string from database details."
+  "Generate connection string from database details.
+
+   - `?authSource` is always prestent because we are using `dbname`.
+   - We let the user override options we are passing in by means of `additional-options`."
   [{:keys [use-conn-uri conn-uri host port user authdb pass dbname additional-options use-srv ssl] :as _db-details}]
   ;; Connection string docs:
   ;; http://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-core/com/mongodb/ConnectionString.html
