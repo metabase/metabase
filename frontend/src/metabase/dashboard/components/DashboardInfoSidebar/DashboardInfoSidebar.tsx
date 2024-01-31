@@ -6,7 +6,7 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { Button, Group, Switch } from "metabase/ui";
-import { MetabotApi } from "metabase/services";
+import { LlmTaskAutoDescribe } from "metabase/services";
 
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
@@ -54,7 +54,7 @@ export function DashboardInfoSidebar({
 
   const [{ loading, value: description }, fetchSuggestion] =
     useAsyncFn(async () => {
-      const response = await MetabotApi.summarizeDashboard({
+      const response = await LlmTaskAutoDescribe.summarizeDashboard({
         dashboardId: dashboard.id,
       });
 

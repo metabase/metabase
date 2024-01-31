@@ -609,6 +609,9 @@ export const MetabotApi = {
   databasePrompt: POST("/api/metabot/database/:databaseId"),
   databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
   sendFeedback: POST("/api/metabot/feedback"),
+};
+
+export const LlmTaskAutoDescribe = {
   summarizeCard: POST("/api/ee/autodescribe/card/summarize"),
   summarizeDashboard: GET(
     "/api/ee/autodescribe/dashboard/summarize/:dashboardId",
