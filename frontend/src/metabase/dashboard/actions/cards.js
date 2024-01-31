@@ -4,82 +4,23 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import Questions from "metabase/entities/questions";
 
-import {
-  getPositionForNewDashCard,
-  DEFAULT_CARD_SIZE,
-} from "metabase/lib/dashboard_grid";
 import { createCard } from "metabase/lib/card";
 
-import { getVisualizationRaw } from "metabase/visualizations";
 import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { trackCardCreated, trackQuestionReplaced } from "../analytics";
 import { getDashCardById, getDashboardId } from "../selectors";
 import { isVirtualDashCard } from "../utils";
 import {
-  ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
   UNDO_REMOVE_CARD_FROM_DASH,
   setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
-import { getExistingDashCards } from "./utils";
 import { addDashCardToDashboard } from "./cards-typed";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
-
-let tempId = -1;
-
-export function generateTemporaryDashcardId() {
-  return tempId--;
-}
-
-export const addCardToDashboard =
-  ({ dashId, cardId, tabId }) =>
-  async (dispatch, getState) => {
-    await dispatch(Questions.actions.fetch({ id: cardId }));
-    const card = Questions.selectors
-      .getObject(getState(), { entityId: cardId })
-      .card();
-    const visualization = getVisualizationRaw([{ card }]);
-    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
-
-    const dashboardState = getState().dashboard;
-
-    const dashcardId = generateTemporaryDashcardId();
-    const dashcard = {
-      id: dashcardId,
-      dashboard_id: dashId,
-      dashboard_tab_id: tabId ?? null,
-      card_id: card.id,
-      card: card,
-      series: [],
-      ...getPositionForNewDashCard(
-        getExistingDashCards(
-          dashboardState.dashboards,
-          dashboardState.dashcards,
-          dashId,
-          tabId,
-        ),
-        createdCardSize.width,
-        createdCardSize.height,
-      ),
-      parameter_mappings: [],
-      visualization_settings: {},
-    };
-    dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
-    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-
-    await dispatch(loadMetadataForDashboard([dashcard]));
-
-    dispatch(
-      autoWireParametersToNewCard({
-        dashboard_id: dashId,
-        dashcard_id: dashcardId,
-      }),
-    );
-  };
 
 export const replaceCard =
   ({ dashcardId, nextCardId }) =>

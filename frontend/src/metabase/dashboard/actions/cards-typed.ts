@@ -1,7 +1,9 @@
 import { createAction } from "metabase/lib/redux";
+import Questions from "metabase/entities/questions";
 import { getDefaultSize } from "metabase/visualizations";
 
 import type {
+  CardId,
   DashboardCard,
   DashboardId,
   DashboardTabId,
@@ -12,7 +14,10 @@ import {
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
 
+import { autoWireParametersToNewCard } from "./auto-wire-parameters/actions";
 import { ADD_CARD_TO_DASH } from "./core";
+import { fetchCardData } from "./data-fetching";
+import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
 
 type NewDashCardOpts = {
@@ -23,6 +28,12 @@ type NewDashCardOpts = {
 type AddDashCardOpts = NewDashCardOpts & {
   dashcardOverrides: Partial<DashboardCard>;
 };
+
+let tempId = -1;
+
+export function generateTemporaryDashcardId() {
+  return tempId--;
+}
 
 export const addDashCardToDashboard =
   ({ dashId, tabId, dashcardOverrides }: AddDashCardOpts) =>
@@ -63,10 +74,32 @@ export const addDashCardToDashboard =
     };
 
     dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
+
+    return dashcard;
   };
 
-let tempId = -1;
+type AddCardToDashboardOpts = NewDashCardOpts & {
+  cardId: CardId;
+};
 
-function generateTemporaryDashcardId() {
-  return tempId--;
-}
+export const addCardToDashboard =
+  ({ dashId, tabId, cardId }: AddCardToDashboardOpts) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    await dispatch(Questions.actions.fetch({ id: cardId }));
+    const card = Questions.selectors
+      .getObject(getState(), { entityId: cardId })
+      .card();
+
+    const dashcardId = generateTemporaryDashcardId();
+    const dashcard = dispatch(
+      addDashCardToDashboard({
+        dashId,
+        tabId,
+        dashcardOverrides: { id: dashcardId, card, card_id: cardId },
+      }),
+    );
+
+    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
+    await dispatch(loadMetadataForDashboard([dashcard]));
+    dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
+  };
