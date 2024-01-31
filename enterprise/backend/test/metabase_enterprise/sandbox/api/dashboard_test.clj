@@ -6,6 +6,7 @@
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.params.chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
@@ -77,29 +78,31 @@
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (met/with-gtaps {:gtaps {:venues {}}}
-        (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
+        (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures!
          (fn [{:keys [card-id mappings add-card! dashcards]}]
-           (testing "Should be able to add a card with `parameter_mapping` with only sandboxed perms"
-             (perms/grant-permissions! (perms-group/all-users) (perms/table-sandboxed-query-path (mt/id :venues)))
-             (is (=? [{:card_id            card-id
-                       :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
-                                             :target       ["dimension" ["field" (mt/id :venues :category_id) nil]]}]}]
-                     (:dashcards (add-card! 200))))
-             (is (=? [{:card_id            card-id
-                       :parameter_mappings mappings}]
-                     (dashcards))))))))))
+           (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
+           (add-card! 403)
+           (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted)
+           (is (=? [{:card_id            card-id
+                     :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                           :target       ["dimension" ["field" (mt/id :venues :category_id) nil]]}]}]
+                   (:dashcards (add-card! 200))))
+           (is (=? [{:card_id            card-id
+                     :parameter_mappings mappings}]
+                   (dashcards)))))))))
 
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (met/with-gtaps {:gtaps {:venues {}}}
-        (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures
+        (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures!
          (fn [{:keys [dashboard-id card-id update-mappings! new-mappings]}]
-           (testing "Should be able to update `:parameter_mappings` *with* only sandboxed perms"
-             (perms/grant-permissions! (perms-group/all-users) (perms/table-sandboxed-query-path (mt/id :venues)))
-             (update-mappings! 200)
-             (is (= new-mappings
-                    (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
+           (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
+           (update-mappings! 403)
+           (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted)
+           (update-mappings! 200)
+           (is (= new-mappings
+                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"

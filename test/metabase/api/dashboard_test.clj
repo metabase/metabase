@@ -35,6 +35,7 @@
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter :as chain-filter]
@@ -646,7 +647,7 @@
                                                                "33 Taps"]
                                        :field_id              (mt/id :venues :name)
                                        :human_readable_values []}}
-               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
+               (let [response (:param_values (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id)))]
                  (into {} (for [[field-id m] response]
                             [field-id (update m :values (partial take 3))])))))))))
 
@@ -1525,34 +1526,34 @@
 ;;; |                                          PUT /api/dashboard/:id/cards                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
+(defn do-with-add-card-parameter-mapping-permissions-fixtures! [f]
   (mt/with-temp-copy-of-db
-    (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-    (mt/with-temp [Dashboard {dashboard-id :id} {:parameters [{:name "Category ID"
-                                                               :slug "category_id"
-                                                               :id   "_CATEGORY_ID_"
-                                                               :type "category"}]}
-                   Card      {card-id :id} {:database_id   (mt/id)
-                                            :table_id      (mt/id :venues)
-                                            :dataset_query (mt/mbql-query venues)}]
-      (let [mappings [{:parameter_id "_CATEGORY_ID_"
-                       :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]]
-        ;; TODO -- check series as well?
-        (f {:dashboard-id dashboard-id
-            :card-id      card-id
-            :mappings     mappings
-            :add-card!    (fn [expected-status-code]
-                            (mt/user-http-request :rasta
-                                                  :put expected-status-code (format "dashboard/%d" dashboard-id)
-                                                  {:dashcards [{:id                 -1
-                                                                :card_id            card-id
-                                                                :row                0
-                                                                :col                0
-                                                                :size_x             4
-                                                                :size_y             4
-                                                                :parameter_mappings mappings}]
-                                                   :tabs      []}))
-            :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))})))))
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [Dashboard {dashboard-id :id} {:parameters [{:name "Category ID"
+                                                                 :slug "category_id"
+                                                                 :id   "_CATEGORY_ID_"
+                                                                 :type "category"}]}
+                     Card      {card-id :id} {:database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (mt/mbql-query venues)}]
+        (let [mappings [{:parameter_id "_CATEGORY_ID_"
+                         :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]]
+          ;; TODO -- check series as well?
+          (f {:dashboard-id dashboard-id
+              :card-id      card-id
+              :mappings     mappings
+              :add-card!    (fn [expected-status-code]
+                              (mt/user-http-request :rasta
+                                                    :put expected-status-code (format "dashboard/%d" dashboard-id)
+                                                    {:dashcards [{:id                 -1
+                                                                  :card_id            card-id
+                                                                  :row                0
+                                                                  :col                0
+                                                                  :size_x             4
+                                                                  :size_y             4
+                                                                  :parameter_mappings mappings}]
+                                                     :tabs      []}))
+              :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))}))))))
 
 (defn- dashcard-like-response
   [id]
@@ -1565,8 +1566,8 @@
       dashboard/dashcards
       (t2/hydrate :series)))
 
-(defn do-with-update-cards-parameter-mapping-permissions-fixtures [f]
-  (do-with-add-card-parameter-mapping-permissions-fixtures
+(defn do-with-update-cards-parameter-mapping-permissions-fixtures! [f]
+  (do-with-add-card-parameter-mapping-permissions-fixtures!
    (fn [{:keys [dashboard-id card-id mappings]}]
      (t2.with-temp/with-temp [DashboardCard dashboard-card {:dashboard_id       dashboard-id
                                                             :card_id            card-id
@@ -1951,31 +1952,31 @@
   (testing "PUT /api/dashboard/:id/cards accepts legacy field as parameter's target"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {}]
-      (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                               {:cards        [{:id                     -1
-                                                                :card_id                card-id
-                                                                :row                    0
-                                                                :col                    0
-                                                                :size_x                 4
-                                                                :size_y                 4
-                                                                :parameter_mappings     [{:parameter_id "abc"
-                                                                                          :card_id card-id
-                                                                                          :target [:dimension [:field-id (mt/id :venues :id)]]}]}]}))]
+      (let [resp (:cards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                               {:cards [{:id                     -1
+                                                         :card_id                card-id
+                                                         :row                    0
+                                                         :col                    0
+                                                         :size_x                 4
+                                                         :size_y                 4
+                                                         :parameter_mappings     [{:parameter_id "abc"
+                                                                                   :card_id card-id
+                                                                                   :target [:dimension [:field-id (mt/id :venues :id)]]}]}]}))]
         (is (some? (t2/select-one :model/DashboardCard (:id (first resp))))))))
 
   (testing "PUT /api/dashboard/:id/cards accepts expression as parammeter's target"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {:dataset_query (mt/mbql-query venues {:expressions {"A" [:+ (mt/$ids $venues.price) 1]}})}]
-      (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                               {:cards        [{:id                     -1
-                                                                :card_id                card-id
-                                                                :row                    0
-                                                                :col                    0
-                                                                :size_x                 4
-                                                                :size_y                 4
-                                                                :parameter_mappings     [{:parameter_id "abc"
-                                                                                          :card_id card-id
-                                                                                          :target [:dimension [:expression "A"]]}]}]}))]
+      (let [resp (:cards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                               {:cards [{:id                     -1
+                                                         :card_id                card-id
+                                                         :row                    0
+                                                         :col                    0
+                                                         :size_x                 4
+                                                         :size_y                 4
+                                                         :parameter_mappings     [{:parameter_id "abc"
+                                                                                   :card_id card-id
+                                                                                   :target [:dimension [:expression "A"]]}]}]}))]
         (is (some? (t2/select-one :model/DashboardCard (:id (first resp)))))))))
 
 (deftest new-dashboard-card-with-additional-series-test
@@ -1984,7 +1985,7 @@
                  Card      {series-id-1 :id} {:name "Series Card"}]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
-        (let [dashboard-cards (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+        (let [dashboard-cards (:dashcards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
                                                                 {:dashcards [{:id      -1
                                                                               :card_id card-id
                                                                               :row     4
@@ -2061,20 +2062,20 @@
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (do-with-add-card-parameter-mapping-permissions-fixtures
+      (do-with-add-card-parameter-mapping-permissions-fixtures!
        (fn [{:keys [card-id mappings add-card! dashcards]}]
          (is (=? {:message "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
                  (add-card! 403)))
          (is (= []
                 (dashcards)))
          (testing "Permissions for a different table in the same DB should not count"
-           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :categories)))
+           (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/data-access :unrestricted)
            (is (=? {:message  "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
                    (add-card! 403)))
            (is (= []
                   (dashcards))))
          (testing "If they have data permissions, it should be ok"
-           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
+           (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted)
            (is (=? [{:card_id            card-id
                      :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
                                            :target       ["dimension" ["field" (mt/id :venues :category_id) nil]]}]}]
@@ -2175,7 +2176,7 @@
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (do-with-update-cards-parameter-mapping-permissions-fixtures
+      (do-with-update-cards-parameter-mapping-permissions-fixtures!
        (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
          (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
            (is (=? {:message  "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
@@ -2187,7 +2188,7 @@
            (is (= (:size_x new-dashcard-info)
                   (t2/select-one-fn :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
-           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
+           (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted)
            (update-mappings! 200)
            (is (= new-mappings
                   (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
@@ -2784,75 +2785,77 @@
 
 (deftest dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
-    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-      ;; make sure we have a clean start
-      (field-values/clear-field-values-for-field! (mt/id :categories :name))
-      (testing "Show me names of categories"
-        (is (= {:values          [["African"] ["American"] ["Artisan"]]
-                :has_more_values false}
-               (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                                         (:id dashboard)
-                                                                                         (:category-name param-keys)))))))
-      (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
-        (testing "\nShow me names of categories that have expensive venues (price = 4)"
-          (is (= {:values          [["Japanese"] ["Steakhouse"]]
-                  :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
-      ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
-      ;; middleware does the right thing and converts the values to a vector
-      (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys))]
-        (testing "\nmultiple values"
-          (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
-            (is (= {:values          [["American"] ["Asian"] ["BBQ"]]
-                    :has_more_values false}
-                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url
-                                                                            (keyword (:price param-keys)) 3
-                                                                            (keyword (:price param-keys)) 4))))))))
-    (testing "Should require perms for the Dashboard"
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
-          (with-chain-filter-fixtures [{:keys [dashboard param-keys]} {:collection_id (:id collection)}]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url
-                                                          (:id dashboard)
-                                                          (:category-name param-keys)))))))))
-
-    (testing "Should work if Dashboard has multiple mappings for a single param"
-      (with-chain-filter-fixtures [{:keys [dashboard card dashcard param-keys]}]
-        (mt/with-temp [Card          card-2 (dissoc card :id :entity_id)
-                       DashboardCard _dashcard-2 (-> dashcard
-                                                     (dissoc :id :card_id :entity_id)
-                                                     (assoc  :card_id (:id card-2)))]
+    (mt/with-full-data-perms-for-all-users!
+      (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+        ;; make sure we have a clean start
+        (field-values/clear-field-values-for-field! (mt/id :categories :name))
+        (testing "Show me names of categories"
           (is (= {:values          [["African"] ["American"] ["Artisan"]]
                   :has_more_values false}
-                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
-                      (mt/user-http-request :rasta :get 200)
-                      (chain-filter-test/take-n-values 3)))))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
+                                                                                           (:id dashboard)
+                                                                                           (:category-name param-keys)))))))
+        (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
+          (testing "\nShow me names of categories that have expensive venues (price = 4)"
+            (is (= {:values          [["Japanese"] ["Steakhouse"]]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
+        ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
+        ;; middleware does the right thing and converts the values to a vector
+        (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys))]
+          (testing "\nmultiple values"
+            (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
+              (is (= {:values          [["American"] ["Asian"] ["BBQ"]]
+                      :has_more_values false}
+                     (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url
+                                                                              (keyword (:price param-keys)) 3
+                                                                              (keyword (:price param-keys)) 4))))))))
+      (testing "Should require perms for the Dashboard"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (t2.with-temp/with-temp [Collection collection]
+            (with-chain-filter-fixtures [{:keys [dashboard param-keys]} {:collection_id (:id collection)}]
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (chain-filter-values-url
+                                                            (:id dashboard)
+                                                            (:category-name param-keys)))))))))
 
-    (testing "should check perms for the Fields in question"
-      (mt/with-temp-copy-of-db
-        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-
-          ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
-          ;; but 200 on calls that we could just use the cache.
-          ;; It's not ideal and we definitely need to have a consistent behavior
-          (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
+      (testing "Should work if Dashboard has multiple mappings for a single param"
+        (with-chain-filter-fixtures [{:keys [dashboard card dashcard param-keys]}]
+          (mt/with-temp [Card          card-2 (dissoc card :id :entity_id)
+                         DashboardCard _dashcard-2 (-> dashcard
+                                                       (dissoc :id :card_id :entity_id)
+                                                       (assoc  :card_id (:id card-2)))]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                         (mt/user-http-request :rasta :get 200)
-                        (chain-filter-test/take-n-values 3))))))))
+                        (chain-filter-test/take-n-values 3)))))))
 
-    (testing "missing data perms should not affect perms for the Fields in question when users have collection access"
-      (mt/with-temp-copy-of-db
-        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (is (= {:values          [["African"] ["American"] ["Artisan"]]
-                  :has_more_values false}
-                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
-                      (mt/user-http-request :rasta :get 200)
-                      (chain-filter-test/take-n-values 3)))))))))
+      (testing "should check perms for the Fields in question"
+        (mt/with-temp-copy-of-db
+          (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
+
+            ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
+            ;; but 200 on calls that we could just use the cache.
+            ;; It's not ideal and we definitely need to have a consistent behavior
+            (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
+              (is (= {:values          [["African"] ["American"] ["Artisan"]]
+                      :has_more_values false}
+                     (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                          (mt/user-http-request :rasta :get 200)
+                          (chain-filter-test/take-n-values 3))))))))
+
+      (testing "missing data perms should not affect perms for the Fields in question when users have collection access"
+        (mt/with-temp-copy-of-db
+          (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+            (is (= {:values          [["African"] ["American"] ["Artisan"]]
+                    :has_more_values false}
+                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                        (mt/user-http-request :rasta :get 200)
+                        (chain-filter-test/take-n-values 3))))))))))
 
 (deftest block-data-should-not-expose-field-values
   (testing "block data perms should not allow access to field values (private#196)"
