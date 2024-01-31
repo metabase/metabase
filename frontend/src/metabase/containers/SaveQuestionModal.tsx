@@ -285,8 +285,8 @@ export const SaveQuestionModal = ({
                             <div>
                               <span className="suggestionLoading3">✨</span>
                               <span className="suggestionLoading2">✨</span>
-                              <span className="suggestionLoading">✨ </span>
-                              Metabot be Grooving
+                              <span className="suggestionLoading">✨</span>
+                              Generating question title and description
                               <span className="suggestionLoading"> ✨</span>
                               <span className="suggestionLoading2">✨</span>
                               <span className="suggestionLoading3">✨</span>
