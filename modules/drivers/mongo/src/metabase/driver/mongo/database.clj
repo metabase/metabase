@@ -1,8 +1,5 @@
 (ns metabase.driver.mongo.database
-  "This namespace contains functions for work with mongo specific database and database details structure database.
-   eg. normalization
-   
-   TODO proper docstring"
+  "This namespace contains functions for work with mongo specific database and database details."
   (:require
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.secret :as secret]
@@ -27,8 +24,7 @@
     (throw (ex-info (tru "No database name specified in URI.")
                     {:host host}))))
 
-;; TODO: comment
-(defn update-ssl-db-details
+(defn- update-ssl-db-details
   [db-details]
   (-> db-details
       (assoc :client-ssl-key (secret/get-secret-string db-details "client-ssl-key"))
@@ -38,8 +34,7 @@
               :client-ssl-key-source)))
 
 (defn details-normalized
-  "Return _normalized_ database `:details` for `x`, where `x` could be a database id, database name, database object
-   (as returned eg. by call to `(toucan2.core/select-one :model/Database)`)"
+  "Gets db-details for `database`. Details are then validated and ssl related keys are updated."
   [database]
   (let [db-details
         (cond
