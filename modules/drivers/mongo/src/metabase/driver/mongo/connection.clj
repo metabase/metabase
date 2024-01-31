@@ -9,15 +9,17 @@
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs #_tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
    (com.mongodb ConnectionString MongoClientSettings MongoClientSettings$Builder)
    (com.mongodb.connection SslSettings$Builder)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:dynamic *mongo-client*
-  "Stores an instance of MongoClient bound by [[with-mongo-client]]."
+  "Stores an instance of `MongoClient` bound by [[with-mongo-client]]."
   nil)
 
 ;; TODO: ADD explanation from notion doc.
@@ -44,9 +46,9 @@
      (when (seq additional-options) (str "&" additional-options)))))
 
 (defn- maybe-add-ssl-context-to-builder!
-  "!!! This function modifies its mutable object param!"
+  "Add ssl context to `builder` using `_db-details. Modifies `builder` object which is arg (!) of this fn."
   [^MongoClientSettings$Builder builder
-   {:keys [ssl-cert ssl-use-client-auth client-ssl-cert client-ssl-key]}]
+   {:keys [ssl-cert ssl-use-client-auth client-ssl-cert client-ssl-key] :as _db-details}]
   (let [server-cert? (not (str/blank? ssl-cert))
         client-cert? (and ssl-use-client-auth
                           (not-any? str/blank? [client-ssl-cert client-ssl-key]))]
@@ -63,8 +65,8 @@
 
 (defn db-details->mongo-client-settings
   "Generate `MongoClientSettings` from `db-details`. `ConnectionString` is generated and applied to
-   `MongoClientSettings$Builder` first. Then ssl context is udated in the `builder`. Afterwards, `MongoClientSettings`
-   are built using `.build`."
+   `MongoClientSettings$Builder` first. Then ssl context is udated in the `builder` object.
+   Afterwards, `MongoClientSettings` are built using `.build`."
   ^MongoClientSettings
   [{:keys [use-conn-uri ssl] :as db-details}]
   (let [connection-string (-> db-details
@@ -76,7 +78,9 @@
       (maybe-add-ssl-context-to-builder! builder db-details))
     (.build builder)))
 
-(defn do-with-mongo-client [thunk database]
+(defn do-with-mongo-client
+  "Implementation of [[with-mongo-client]]."
+  [thunk database]
   (let [db-details (mongo.db/details-normalized database)]
     (ssh/with-ssh-tunnel [details-with-tunnel db-details]
       (let [client (mongo.util/mongo-client (db-details->mongo-client-settings details-with-tunnel))]
@@ -89,19 +93,28 @@
             (log/debug (u/format-color 'cyan (trs "Closed MongoClient.")))))))))
 
 (defmacro with-mongo-client
+  "Create instance of `MongoClient` for `database` and bind it to [[*mongo-client*]]. `database could anything
+   digestable by [[mongo.db/details-normalized]]. Call of this macro in its body will reuse existing
+   [[*mongo-client*]]."
+  {:clj-kondo/lint-as 'clojure.core/let
+   :clj-kondo/ignore [:unresolved-symbol :type-mismatch]}
   [[client-sym database] & body]
   `(let [f# (fn [~client-sym] ~@body)]
      (if (nil? *mongo-client*)
        (do-with-mongo-client f# ~database)
        (f# *mongo-client*))))
 
-(defn do-with-mongo-database [thunk database*]
-  ;; here we do not need normalization? -- we do bc of details..
-  (let [db-name (-> database* mongo.db/details-normalized mongo.db/details->db-name)]
-    (with-mongo-client [c database*]
+(defn do-with-mongo-database
+  "Implementation of [[with-mongo-database]]."
+  [thunk database]
+  (let [db-name (-> database mongo.db/details-normalized mongo.db/details->db-name)]
+    (with-mongo-client [c database]
       (thunk (mongo.util/database c db-name)))))
 
 (defmacro with-mongo-database
+  "Utility for accessing database directly instead of a client. For more info see [[with-mongo-client]]."
+  {:clj-kondo/lint-as 'clojure.core/let
+   :clj-kondo/ignore [:unresolved-symbol :type-mismatch]}
   [[db-sym database] & body]
   `(let [f# (fn [~db-sym] ~@body)]
      (do-with-mongo-database f# ~database)))
