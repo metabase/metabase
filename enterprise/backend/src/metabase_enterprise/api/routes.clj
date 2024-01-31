@@ -13,7 +13,7 @@
    [metabase-enterprise.audit-app.api.routes :as audit-app]
    [metabase-enterprise.content-verification.api.routes
     :as content-verification]
-   [metabase-enterprise.metabot.autodescribe :as llm.auto]
+   [metabase-enterprise.llm.api :as llm.api]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -44,4 +44,4 @@
    (compojure/context
     "/autodescribe" []
     ;; TODO -- Create token with :enable-llm-autodescription set to true
-    (ee.api.common/+require-premium-feature :serialization (deferred-tru "LLM Auto-description") llm.auto/routes))))
+    (ee.api.common/+require-premium-feature :serialization (deferred-tru "LLM Auto-description") llm.api/routes))))

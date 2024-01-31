@@ -1,12 +1,11 @@
-(ns metabase-enterprise.metabot.autodescribe
+(ns metabase-enterprise.llm.api
   (:require
    [cheshire.core :as json]
    [clojure.set :refer [rename-keys]]
    [clojure.walk :as walk]
    [compojure.core :refer [GET POST]]
+   [metabase-enterprise.llm.client :as llm-client]
    [metabase.api.common :as api]
-   [metabase.metabot.client :as metabot-client]
-   [metabase.metabot.util :as metabot-util]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util.malli.schema :as ms]
@@ -41,31 +40,30 @@
                                   :friendly_summary    "%%FILL_THIS_SUMMARY_IN%%"}
                                  visualization_settings
                                  (assoc :visualization_settings visualization_settings))
-        json-str               (json/generate-string description)]
+        json-str               (json/generate-string description)
+        client                 (-> llm-client/create-chat-completion
+                                   (llm-client/wrap-parse-json
+                                     (fn [rsp] (rename-keys rsp {:friendly_title   :title
+                                                                 :friendly_summary :description}))))]
     {:summary
-     (metabot-util/find-result
-       (fn [rsp] (-> rsp
-                     (json/parse-string true)
-                     (rename-keys {:friendly_title   :title
-                                   :friendly_summary :description})))
-       (metabot-client/invoke-metabot
-         {:messages
-          [{:role    "system"
-            :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
+     (client
+       {:messages
+        [{:role    "system"
+          :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
                         \"friendly_summary\" keys in a json fragment. You like to occasionally use emojis to express
                         yourself but are otherwise very serious and professional."}
-           {:role    "assistant"
-            :content (cond-> "The \"display\" key is how I intend to present the final data."
-                       (seq visualization_settings)
-                       (str " The \"visualization_settings\" key has chart settings."))}
-           {:role    "assistant"
-            :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
-           {:role    "assistant"
-            :content "Just return a json map with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
-           {:role    "assistant"
-            :content "The \"friendly_title\" must be no more than 64 characters long."}
-           {:role    "user"
-            :content json-str}]}))}))
+         {:role    "assistant"
+          :content (cond-> "The \"display\" key is how I intend to present the final data."
+                     (seq visualization_settings)
+                     (str " The \"visualization_settings\" key has chart settings."))}
+         {:role    "assistant"
+          :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
+         {:role    "assistant"
+          :content "Return only a json object with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
+         {:role    "assistant"
+          :content "The \"friendly_title\" must be no more than 64 characters long."}
+         {:role    "user"
+          :content json-str}]})}))
 
 (defn- dashboard-summary
   "Create a data-oriented summary of a dashboard as input to an LLM for summarization."
@@ -113,49 +111,49 @@
   "Create a human-friendly summary of a dashboard. Returns a map of the form:
   {:summary {:description \"Some inferred description\"}}"
   [dashboard-id]
-  (let [dashboard-summary (dashboard-summary dashboard-id)
+  (let [dashboard-summary    (dashboard-summary dashboard-id)
         summary-with-prompts (merge dashboard-summary
                                     {:description "%%FILL_THIS_DESCRIPTION_IN%%"
-                                     :keywords "%%FILL_THESE_KEYWORDS_IN%%"
-                                     :questions "%%FILL_THESE_QUESTIONS_IN%%"})
-        json-str (json/generate-string summary-with-prompts)]
+                                     :keywords    "%%FILL_THESE_KEYWORDS_IN%%"
+                                     :questions   "%%FILL_THESE_QUESTIONS_IN%%"})
+        json-str             (json/generate-string summary-with-prompts)
+        client               (-> llm-client/create-chat-completion
+                                 (llm-client/wrap-parse-json
+                                   (fn [{:keys [description keywords questions]}]
+                                     {:description (format "Keywords: %s\n\nDescription: %s\n\nQuestions:\n%s"
+                                                           keywords
+                                                           description
+                                                           questions)})))]
     {:summary
-     (metabot-util/find-result
-       (fn [rsp]
-         (let [{:keys [description keywords questions]} (json/parse-string rsp true)]
-           {:description (format "Keywords: %s\n\nDescription: %s\n\nQuestions:\n%s"
-                                 keywords
-                                 description
-                                 questions)}))
-       (metabot-client/invoke-metabot
-         {:messages
-          [{:role    "system"
-            :content "You are a helpful assistant that summarizes dashboards I am generating for my customers by
+     (client
+       {:messages
+        [{:role    "system"
+          :content "You are a helpful assistant that summarizes dashboards I am generating for my customers by
              filling in the missing \"description\", \"keywords\", and \"questions\" keys in a json fragment."}
-           {:role    "assistant"
-            :content "The \"description\" key is a user friendly description of the dashboard containing up to
+         {:role    "assistant"
+          :content "The \"description\" key is a user friendly description of the dashboard containing up to
             two sentences. This description may not be more than 256 characters."}
-           {:role    "assistant"
-            :content "The \"keywords\" key is 3-5 single-quoted, comma-separated key words
+         {:role    "assistant"
+          :content "The \"keywords\" key is 3-5 single-quoted, comma-separated key words
             describing the dashboard (e.g. 'keyword1', 'key word'). Keywords might be used to categorize, concisely
             describe, or label the entire dashboard."}
-           {:role    "assistant"
-            :content "The \"questions\" key contains a markdown-formatted hyphenated list of up to 5 questions this
+         {:role    "assistant"
+          :content "The \"questions\" key contains a markdown-formatted hyphenated list of up to 5 questions this
             dashboard might help a user answer. Each question should be on its own line."}
-           {:role    "assistant"
-            :content "The parts you replace are \"%%FILL_THIS_DESCRIPTION_IN%%\", \"%%FILL_THESE_KEYWORDS_IN%%\",
+         {:role    "assistant"
+          :content "The parts you replace are \"%%FILL_THIS_DESCRIPTION_IN%%\", \"%%FILL_THESE_KEYWORDS_IN%%\",
             and \"%%FILL_THESE_QUESTIONS_IN%%\"."}
-           {:role    "assistant"
-            :content "Just return a json map with the \"description\", \"keywords\", and \"questions\" fields and
-            nothing else."}
-           {:role    "user"
-            :content json-str}]}))}))
+         {:role    "assistant"
+          :content "Return only a json object with the \"description\", \"keywords\", and \"questions\" fields and nothing else."}
+         {:role    "user"
+          :content json-str}]}
+       {})}))
 
 (api/defendpoint POST "/card/summarize"
   "Summarize a question."
   [:as {{:keys [collection_id collection_position dataset dataset_query description display
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl]
-         :as body} :body}]
+         :as   body} :body}]
   {dataset                [:maybe :boolean]
    dataset_query          ms/Map
    parameters             [:maybe [:sequential ms/Parameter]]
