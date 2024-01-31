@@ -78,6 +78,7 @@
     "react-ace": "^9.5.0",
     "react-ansi-style": "^1.0.0",
     "react-beautiful-dnd": "^13.1.1",
+    "react-cmdk": "^1.3.9",
     "react-collapse": "^4.0.3",
     "react-color": "^2.14.1",
     "react-copy-to-clipboard": "^5.0.1",

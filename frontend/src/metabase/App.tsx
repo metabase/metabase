@@ -116,7 +116,7 @@ function App({
             <UndoListing />
             <StatusListing />
             {paletteOpen && (
-              <Palette closePalette={() => setPaletteOpen(false)} />
+              <Palette open={paletteOpen} setOpen={setPaletteOpen} />
             )}
             <NewModals />
           </AppContentContainer>

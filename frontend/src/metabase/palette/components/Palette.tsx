@@ -1,4 +1,4 @@
-import type { ChangeEventHandler } from "react";
+import type { ChangeEventHandler, Dispatch, SetStateAction } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Flex } from "metabase/ui";
 import {
@@ -13,11 +13,23 @@ import {
   PaletteResultIcon,
   PaletteResultList,
 } from "./Palette.styled";
+import "react-cmdk/dist/cmdk.css";
+import CommandPalette, { filterItems, getItemIndex } from "react-cmdk";
 
-export const Palette = ({ closePalette }: { closePalette: () => void }) => {
+export const Palette = ({
+  open,
+  setOpen,
+}: {
+  open: boolean;
+  setOpen: Dispatch<SetStateAction<boolean>>;
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState<"root">("root");
+  // this could become useState<"root" | "projects"> etc as we add pages
+
   const items: CommandPaletteAction[] = useCommandPalette({ query }).results;
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const focusableElementsRef = useRef<Map<
     string,
@@ -34,10 +46,6 @@ export const Palette = ({ closePalette }: { closePalette: () => void }) => {
     }
     if (!focusableElementsRef.current) {
       focusableElementsRef.current = new Map();
-      focusableElementsRef.current.set(
-        "metabase-palette-input",
-        inputRef.current,
-      );
     }
     return focusableElementsRef.current;
   };
@@ -45,21 +53,31 @@ export const Palette = ({ closePalette }: { closePalette: () => void }) => {
   useEffect(() => {
     const focusAdjacentButton = (direction: "up" | "down") => {
       const delta = direction === "up" ? -1 : 1;
-      if (!document.activeElement) {
+      if (activeItemId === null) {
         return;
       }
-      const activeId = document.activeElement.id;
       const focusables = getFocusableElementsMap();
       if (!focusables) {
         return;
       }
       const ids = [...focusables.keys()];
-      const activeIndex = ids.indexOf(activeId);
+      const activeIndex = ids.indexOf(activeItemId);
       if (activeIndex === -1) {
         return;
       }
-      const targetId = ids[(activeIndex + delta) % ids.length];
-      focusables.get(targetId)?.focus();
+      const targetIndex = Math.min(
+        Math.max(activeIndex + delta, 0),
+        ids.length - 1,
+      );
+      const targetId = ids[targetIndex];
+      setActiveItemId(targetId);
+      // for (const [id, element] of focusables.entries()) {
+      //   if (targetId === id) {
+      //     element.classList.add("active");
+      //   } else {
+      //     element.classList.remove("active");
+      //   }
+      // }
     };
     if (!modalRef.current) {
       return;
@@ -73,7 +91,7 @@ export const Palette = ({ closePalette }: { closePalette: () => void }) => {
         return;
       }
       if (e.key === "Escape") {
-        closePalette();
+        setOpen(false);
       }
       if (e.key === "ArrowDown") {
         focusAdjacentButton("down");
@@ -87,38 +105,62 @@ export const Palette = ({ closePalette }: { closePalette: () => void }) => {
     return () => {
       modal.removeEventListener("keydown", onKeyDown);
     };
-  }, [closePalette, modalRef, inputRef]);
+  }, [setOpen, modalRef, inputRef]);
 
   return (
-    <PaletteModal onClose={closePalette}>
+    <PaletteModal onClose={() => setOpen(false)}>
       <PaletteModalContainer ref={modalRef}>
-        <PaletteInput
-          onChange={handleInputChange}
-          ref={inputRef}
-          placeholder="Jump to..."
-        />
-        <PaletteResultList>
-          {items.map(({ id, name, icon, run }) => (
-            <PaletteItemDisplay key={id}>
-              <Flex>
-                <Button
-                  onClick={() => {
-                    run();
-                  }}
-                  id={getButtonId(id)}
-                  ref={(node: HTMLButtonElement | null) =>
-                    node
-                      ? getFocusableElementsMap()?.set(getButtonId(id), node)
-                      : getFocusableElementsMap()?.delete(getButtonId(id))
-                  }
-                >
-                  <PaletteResultIcon name={icon} />
-                  {name}
-                </Button>
-              </Flex>
-            </PaletteItemDisplay>
-          ))}
-        </PaletteResultList>
+        <CommandPalette
+          onChangeSearch={setQuery}
+          onChangeOpen={setOpen}
+          search={query}
+          isOpen={open}
+          page={page}
+        >
+          <PaletteInput
+            onChange={handleInputChange}
+            ref={inputRef}
+            placeholder="Jump to..."
+          />
+          <CommandPalette.Page id="root">
+            {items.map(({ id, name, icon, run }, index) => (
+<CommandPalette.List key={list.id} heading={list.heading}>
+              {list.items.map(({ id, ...rest }) => (
+                <CommandPalette.ListItem
+                  key={id}
+                  index={getItemIndex(filteredItems, id)}
+                  {...rest}
+                />
+              ))}
+            </CommandPalette.List>
+              <PaletteItemDisplay key={id}>
+                <Flex>
+                  <Button
+                    onClick={() => {
+                      run();
+                    }}
+                    className={
+                      // Either the first item or the explicitly highlighted item is the active one
+                      (activeItemId === null && index === 0) ||
+                      activeItemId === id
+                        ? "active"
+                        : ""
+                    }
+                    id={getButtonId(id)}
+                    ref={(node: HTMLButtonElement | null) =>
+                      node
+                        ? getFocusableElementsMap()?.set(getButtonId(id), node)
+                        : getFocusableElementsMap()?.delete(getButtonId(id))
+                    }
+                  >
+                    <PaletteResultIcon name={icon} />
+                    {name}
+                  </Button>
+                </Flex>
+              </PaletteItemDisplay>
+            ))}
+          </PaletteResultList>
+        </CommandPalette>
       </PaletteModalContainer>
     </PaletteModal>
   );
