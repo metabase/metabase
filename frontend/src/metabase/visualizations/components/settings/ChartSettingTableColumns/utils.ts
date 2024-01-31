@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -180,9 +180,10 @@ export const enableColumnInQuery = (
   }
 
   const displayInfo = Lib.displayInfo(query, STAGE_INDEX, metadataColumn);
-  return displayInfo.selected
+  const newQuery = displayInfo.selected
     ? query
     : Lib.addField(query, STAGE_INDEX, metadataColumn);
+  return Lib.dropStageIfEmpty(newQuery, STAGE_INDEX);
 };
 
 export const disableColumnInQuery = (
@@ -193,7 +194,8 @@ export const disableColumnInQuery = (
     return query;
   }
 
-  return Lib.removeField(query, STAGE_INDEX, metadataColumn);
+  const newQuery = Lib.removeField(query, STAGE_INDEX, metadataColumn);
+  return Lib.dropStageIfEmpty(newQuery, STAGE_INDEX);
 };
 
 export const findColumnSettingIndex = (
@@ -222,7 +224,7 @@ export const addColumnInSettings = (
   if (settingIndex >= 0) {
     newSettings[settingIndex] = { ...newSettings[settingIndex], enabled: true };
   } else {
-    const fieldRef = Lib.legacyRef(column);
+    const fieldRef = Lib.legacyRef(query, STAGE_INDEX, column);
     newSettings.push({ name, fieldRef, enabled: true });
   }
 

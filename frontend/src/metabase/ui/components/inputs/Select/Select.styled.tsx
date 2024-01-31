@@ -17,11 +17,11 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       itemComponent: SelectItem,
       maxDropdownHeight: 512,
       clearButtonProps: {
-        color: "text.2",
+        color: "text-dark",
       },
     }),
     styles: (theme, _, { size = "md" }) => ({
-      ...getSelectInputOverrides(theme),
+      ...getSelectInputOverrides(theme, size),
       ...getSelectItemsOverrides(theme, size),
     }),
   },
@@ -29,6 +29,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
 
 export const getSelectInputOverrides = (
   theme: MantineTheme,
+  size: MantineSize | number,
 ): Record<string, CSSObject> => {
   return {
     root: {
@@ -41,7 +42,9 @@ export const getSelectInputOverrides = (
       },
     },
     label: {
+      color: theme.fn.themeColor("text-medium"),
       ref: getStylesRef("label"),
+      fontSize: getSize({ size, sizes: theme.fontSizes }),
     },
     description: {
       ref: getStylesRef("description"),
@@ -51,25 +54,27 @@ export const getSelectInputOverrides = (
     },
     wrapper: {
       ref: getStylesRef("wrapper"),
-      color: theme.colors.text[2],
-
+      color: theme.fn.themeColor("text-dark"),
+      "&:not(:only-child)": {
+        marginTop: theme.spacing.xs,
+      },
       [`&:has(.${getStylesRef("input")}[data-disabled])`]: {
         opacity: 1,
         pointerEvents: "auto",
         [`.${getStylesRef("input")}`]: {
-          color: theme.colors.text[2],
-          backgroundColor: theme.colors.bg[0],
+          color: theme.fn.themeColor("text-dark"),
+          backgroundColor: theme.fn.themeColor("bg-light"),
           "&::placeholder": {
-            color: theme.colors.text[0],
+            color: theme.fn.themeColor("text-light"),
           },
         },
         [`.${getStylesRef("rightSection")}`]: {
-          color: theme.colors.text[0],
+          color: theme.fn.themeColor("text-light"),
         },
       },
       [`&:has(.${getStylesRef("input")}[data-invalid])`]: {
         [`.${getStylesRef("rightSection")}`]: {
-          color: theme.colors.error[0],
+          color: theme.fn.themeColor("error"),
         },
       },
     },
@@ -82,7 +87,7 @@ export const getSelectInputOverrides = (
     },
     rightSection: {
       ref: getStylesRef("rightSection"),
-      color: theme.colors.text[2],
+      color: theme.fn.themeColor("text-dark"),
 
       svg: {
         color: "inherit !important",
@@ -124,16 +129,20 @@ export const getSelectItemsOverrides = (
       padding: "0.75rem",
     },
     item: {
-      color: theme.colors.text[2],
+      color: theme.fn.themeColor("text-dark"),
       fontSize: getSize({ size, sizes: ITEM_FONT_SIZES }),
       lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
       padding: theme.spacing.sm,
       "&[data-hovered]": {
-        color: theme.colors.brand[1],
-        backgroundColor: theme.colors.brand[0],
+        color: theme.fn.themeColor("brand"),
+        backgroundColor: theme.fn.themeColor("brand-lighter"),
+      },
+      "&[data-selected]": {
+        color: theme.fn.themeColor("text-white"),
+        backgroundColor: theme.fn.themeColor("brand"),
       },
       "&[data-disabled]": {
-        color: theme.colors.text[0],
+        color: theme.fn.themeColor("text-light"),
       },
     },
     separator: {
@@ -145,12 +154,12 @@ export const getSelectItemsOverrides = (
           display: "block",
           marginTop: rem(px(theme.spacing.sm) - 1),
           marginBottom: theme.spacing.xs,
-          borderTop: `1px solid ${theme.colors.border[0]}`,
+          borderTop: `1px solid ${theme.fn.themeColor("border")}`,
         },
       },
     },
     separatorLabel: {
-      color: theme.colors.text[0],
+      color: theme.fn.themeColor("text-light"),
       fontSize: getSize({ size, sizes: SEPARATOR_FONT_SIZES }),
       marginTop: "0 !important",
       paddingTop: theme.spacing.xs,
@@ -161,7 +170,7 @@ export const getSelectItemsOverrides = (
       },
     },
     nothingFound: {
-      color: theme.colors.text[0],
+      color: theme.fn.themeColor("text-light"),
       fontSize: getSize({ size, sizes: ITEM_FONT_SIZES }),
       lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
       padding: theme.spacing.sm,

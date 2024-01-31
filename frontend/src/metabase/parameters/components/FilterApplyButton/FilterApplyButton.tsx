@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import {
@@ -25,7 +26,7 @@ export function FilterApplyButton() {
 
   return (
     <ApplyButton primary onClick={handleApplyFilters}>
-      Apply
+      {t`Apply`}
     </ApplyButton>
   );
 }

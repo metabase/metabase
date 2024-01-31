@@ -1,8 +1,8 @@
 (ns ^:mb/once metabase.search.filter-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
    [metabase.test :as mt]))
@@ -131,9 +131,18 @@
            (:where (search.filter/build-filters
                     base-search-query "card" default-search-ctx))))
 
-    (is (= [:and [:= :table.active true] [:= :table.visibility_type nil]]
+    (is (= [:and
+            [:= :table.active true]
+            [:= :table.visibility_type nil]
+            [:not [:= :table.db_id perms/audit-db-id]]]
            (:where (search.filter/build-filters
                     base-search-query "table"  default-search-ctx))))))
+
+(deftest ^:parallel build-table-filter-always-ignores-audit-tables
+  (is (contains?
+         (set (:where (search.filter/build-filters
+                       base-search-query "table"  default-search-ctx)))
+         [:not [:= :table.db_id perms/audit-db-id]])))
 
 (deftest ^:parallel build-filter-with-search-string-test
   (testing "with search string"
@@ -287,7 +296,7 @@
 
 (deftest build-verified-filter-test
   (testing "verified filter"
-    (premium-features-test/with-premium-features #{:content-verification}
+    (mt/with-premium-features #{:content-verification}
       (testing "for cards"
         (is (= (merge
                 base-search-query
@@ -314,7 +323,7 @@
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))
 
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (testing "for cards without ee features"
         (is (= (merge
                 base-search-query

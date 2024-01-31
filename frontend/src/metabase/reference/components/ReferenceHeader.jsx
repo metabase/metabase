@@ -6,7 +6,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import L from "metabase/components/List/List.css";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import S from "./ReferenceHeader.css";
 
@@ -38,7 +38,6 @@ const ReferenceHeader = ({
             <Link
               to={headerLink}
               className={cx("Button", "Button--borderless", "ml3")}
-              data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
             >
               <div className="flex align-center relative">
                 <span className="mr1 flex-no-shrink">{t`See this ${type}`}</span>

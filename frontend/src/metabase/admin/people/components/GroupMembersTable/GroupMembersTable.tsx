@@ -1,15 +1,19 @@
-import { Fragment, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useAsync } from "react-use";
+import { Tooltip, Text, Icon } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
-import { Icon } from "metabase/core/components/Icon";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
+import Link from "metabase/core/components/Link";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import User from "metabase/entities/users";
 
-import type { Group, Member, User as IUser } from "metabase-types/api";
+import { ApiKeysApi } from "metabase/services";
+import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
 import { isNotNull } from "metabase/lib/types";
@@ -56,6 +60,15 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
+  const { loading, value: apiKeys } = useAsync(async () => {
+    const apiKeys = await (ApiKeysApi.list() as Promise<ApiKey[]>);
+    const filteredApiKeys = apiKeys?.filter(
+      (apiKey: ApiKey) => apiKey.group.id === group.id,
+    );
+
+    return filteredApiKeys ?? [];
+  }, [group.id]);
+
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
   const canRemove = (user: IUser) =>
@@ -85,8 +98,12 @@ function GroupMembersTable({
     [groupMemberships],
   );
 
+  if (loading) {
+    return <LoadingAndErrorWrapper loading={loading} />;
+  }
+
   return (
-    <Fragment>
+    <>
       <AdminContentTable columnTitles={columnTitles}>
         {showAddUser && (
           <AddMemberRow
@@ -96,6 +113,9 @@ function GroupMembersTable({
             onDone={handleAddUser}
           />
         )}
+        {apiKeys?.map((apiKey: ApiKey) => (
+          <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
+        ))}
         {groupUsers.map((user: IUser) => {
           return (
             <UserRow
@@ -127,7 +147,7 @@ function GroupMembersTable({
           <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
         </div>
       )}
-    </Fragment>
+    </>
   );
 }
 
@@ -205,3 +225,24 @@ function getName(user: IUser): string {
 
   return name;
 }
+
+const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
+  return (
+    <tr>
+      <td>
+        <Text weight="bold">{apiKey.name}</Text>
+      </td>
+      <td>
+        <Text weight="bold" color="text-medium">{t`API Key`}</Text>
+      </td>
+      <td>{/* api keys don't have real emails */}</td>
+      <td className="text-right">
+        <Link to="/admin/settings/authentication/api-keys">
+          <Tooltip label={t`Manage API keys`} position="left">
+            <Icon name="link" size={16} />
+          </Tooltip>
+        </Link>
+      </td>
+    </tr>
+  );
+};

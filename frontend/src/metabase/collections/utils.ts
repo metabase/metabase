@@ -159,15 +159,15 @@ export function canArchiveItem(item: CollectionItem, collection: Collection) {
 }
 
 export function isPreviewShown(item: CollectionItem) {
-  return isPreviewEnabled(item) && isFullyParametrized(item);
+  return isPreviewEnabled(item) && isFullyParameterized(item);
 }
 
 export function isPreviewEnabled(item: CollectionItem) {
   return item.collection_preview ?? true;
 }
 
-export function isFullyParametrized(item: CollectionItem) {
-  return item.fully_parametrized ?? true;
+export function isFullyParameterized(item: CollectionItem) {
+  return item.fully_parameterized ?? true;
 }
 
 export function coerceCollectionId(

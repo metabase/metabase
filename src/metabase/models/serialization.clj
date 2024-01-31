@@ -1218,19 +1218,22 @@
       (m/update-existing-in [:target :dimension] mbql-fully-qualified-names->ids)))
 
 (defn- export-viz-click-behavior-mappings
-  "The `:parameterMappings` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
+  "The `:parameterMapping` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
   been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
   ported by [[export-viz-click-behavior-mapping]]."
   [mappings]
   (into {} (for [[kw-key mapping] mappings
-                 :let [k (name kw-key)]]
+                 ;; Mapping keyword shouldn't been a keyword in the first place, it's just how it's processed after
+                 ;; being selected from db. In an ideal world we'd either have different data layout for
+                 ;; click_behavior or not convert it's keys to a keywords. We need its full content here.
+                 :let [k (u/qualified-name kw-key)]]
              (if (mb.viz/dimension-param-mapping? mapping)
                [(json-ids->fully-qualified-names k)
                 (export-viz-click-behavior-mapping mapping)]
                [k mapping]))))
 
 (defn- import-viz-click-behavior-mappings
-  "The exported form of `:parameterMappings` on a `:click_behavior` viz settings is a map of JSON strings which contain
+  "The exported form of `:parameterMapping` on a `:click_behavior` viz settings is a map of JSON strings which contain
   fully qualified names. These must be parsed, imported, JSONified and then turned back into keywords, since that's the
   form used internally."
   [mappings]

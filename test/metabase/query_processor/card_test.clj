@@ -55,7 +55,9 @@
                      Card card {:database_id (u/the-id db)}]
         (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
-(defn- field-filter-query []
+(defn field-filter-query
+  "A query with a Field Filter parameter"
+  []
   {:database (mt/id)
    :type     :native
    :native   {:template-tags {"date" {:id           "_DATE_"
@@ -66,7 +68,9 @@
                                       :widget-type  :date/all-options}}
               :query         "SELECT count(*)\nFROM CHECKINS\nWHERE {{date}}"}})
 
-(defn- non-field-filter-query []
+(defn non-field-filter-query
+  "A query with a parameter that is not a Field Filter"
+  []
   {:database (mt/id)
    :type     :native
    :native   {:template-tags {"id"
@@ -78,6 +82,25 @@
                                :default      "1"}}
               :query         "SELECT *\nFROM ORDERS\nWHERE id = {{id}}"}})
 
+(defn non-parameter-template-tag-query
+  "A query with template tags that aren't parameters"
+  []
+  (assoc (non-field-filter-query)
+         "abcdef"
+         {:id           "abcdef"
+          :name         "#1234"
+          :display-name "#1234"
+          :type         :card
+          :card-id      1234}
+
+         "xyz"
+         {:id           "xyz"
+          :name         "snippet: My Snippet"
+          :display-name "Snippet: My Snippet"
+          :type         :snippet
+          :snippet-name "My Snippet"
+          :snippet-id   1}))
+
 (deftest card-template-tag-parameters-test
   (testing "Card with a Field filter parameter"
     (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
@@ -88,21 +111,7 @@
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id)))))
   (testing "Should ignore native query snippets and source card IDs"
-    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (assoc (non-field-filter-query)
-                                                                       "abcdef"
-                                                                       {:id           "abcdef"
-                                                                        :name         "#1234"
-                                                                        :display-name "#1234"
-                                                                        :type         :card
-                                                                        :card-id      1234}
-
-                                                                       "xyz"
-                                                                       {:id           "xyz"
-                                                                        :name         "snippet: My Snippet"
-                                                                        :display-name "Snippet: My Snippet"
-                                                                        :type         :snippet
-                                                                        :snippet-name "My Snippet"
-                                                                        :snippet-id   1})}]
+    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (non-parameter-template-tag-query)}]
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id))))))
 

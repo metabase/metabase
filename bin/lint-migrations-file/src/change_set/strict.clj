@@ -8,8 +8,26 @@
 
 (comment change.strict/keep-me)
 
+(def id-timestamp-format-re
+  "Timestamp is of format `yyyy-MM-dd'T'HH:mm:ss`.
+  E.g: v49.2023-12-14T08:54:54"
+  #"^v\d{2,}\.(\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9])$")
+
+(def id-number-format-re
+  "E.g: v49.00-008
+  This format should no longer be used for new migrations, use `id-timestamp-format-re` instead."
+  #"^v\d{2,}\.\d{2}-\d{3}$")
+
 (s/def ::id (s/and string?
-                   #(re-matches #"^v\d{2,}\.\d{2}-\d{3}$" %)))
+                   (s/or
+                    ;; new ids should conform this format
+                    :id-with-timestamp ;; e.g: v49.2023-12-14T08:54:54
+                    (s/and #(re-matches id-timestamp-format-re %))
+                    :id-with-old-verion-format ;; e.g: v49.00-008
+                    (s/and #(re-matches id-number-format-re %)
+                           ;; the cut off id for this old format is v49.00-060
+                           ;; see #36787 for context
+                           #(neg? (compare % "v49.00-061"))))))
 
 (s/def ::author string?)
 

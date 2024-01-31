@@ -6,6 +6,8 @@ redirect_from:
 
 # MySQL
 
+> We recommend using MySQL version 8.0.33 or higher, though older versions may work. If you're using MariaDB: version 10.4 or higher.
+
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 ## Settings

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.common-test
   (:require
-   [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -14,8 +13,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
@@ -27,11 +24,12 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+;; TODO: change this namespace to use the version in metabase.test
 (defn- do-with-all-user-data-perms
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
-    (premium-features-test/with-additional-premium-features #{:advanced-permissions}
+    (mt/with-additional-premium-features #{:advanced-permissions}
       (memoize/memo-clear! @#'field/cached-perms-object-set)
       (perms.test-util/with-restored-perms!
         (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
@@ -46,7 +44,7 @@
 
 (deftest current-user-test
   (testing "GET /api/user/current returns additional fields if advanced-permissions is enabled"
-    (premium-features-test/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:advanced-permissions}
       (letfn [(user-permissions [user]
                 (-> (mt/user-http-request user :get 200 "user/current")
                     :permissions))]
@@ -376,7 +374,7 @@
         (let [endpoint (format "field/%d" field-id)]
           (testing "a non-admin cannot update field metadata if the advanced-permissions feature flag is not present"
             (with-all-users-data-perms! {db-id {:data-model {:schemas {schema {table-id :all}}}}}
-              (premium-features-test/with-premium-features #{}
+              (mt/with-premium-features #{}
                 (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 4"}))))
 
           (testing "a non-admin cannot update field metadata if they have no data model permissions for the DB"
@@ -460,7 +458,7 @@
       (let [endpoint (format "table/%d" table-id)]
         (testing "a non-admin cannot update table metadata if the advanced-permissions feature flag is not present"
           (with-all-users-data-perms! {(mt/id) {:data-model {:schemas :all}}}
-            (premium-features-test/with-premium-features #{}
+            (mt/with-premium-features #{}
               (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"}))))
 
         (testing "a non-admin cannot update table metadata if they have no data model permissions for the DB"
@@ -520,16 +518,16 @@
                        Field {field-2-id :id} {:table_id table-id}]
           (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
             (mt/user-http-request :rasta :put 403 (format "table/%d/fields/order" table-id)
-                                  {:request-options {:body (json/encode [field-2-id field-1-id])}}))
+                                  [field-2-id field-1-id]))
 
           (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
             (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
-                                  {:request-options {:body (json/encode [field-2-id field-1-id])}})))))))
+                                  [field-2-id field-1-id])))))))
 
 (deftest audit-log-generated-when-table-manual-scan
   (t2.with-temp/with-temp [Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "An audit log entry is generated when a manually triggered re-scan occurs"
-      (premium-features-test/with-additional-premium-features #{:audit-app}
+      (mt/with-additional-premium-features #{:audit-app}
         (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
           (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id))))
       (is (= table-id (:model_id (mt/latest-audit-log-entry :table-manual-scan))))
@@ -586,7 +584,7 @@
     (t2.with-temp/with-temp [Database {db-id :id}]
       (testing "A non-admin cannot update database metadata if the advanced-permissions feature flag is not present"
         (with-all-users-data-perms! {db-id {:details :yes}}
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"}))))))
 
@@ -607,39 +605,40 @@
         (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))))
 
 (deftest db-operations-test
-  (mt/with-temp! [Database    {db-id :id}     {:engine "h2", :details (:details (mt/db))}
-                  Table       {table-id :id}  {:db_id db-id}
-                  Field       {field-id :id}  {:table_id table-id}
-                  FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
-    (with-redefs [api.database/*rescan-values-async* false]
-      (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
-        (with-all-users-data-perms! {db-id {:details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [Database    {db-id :id}     {:engine "h2", :details (:details (mt/db))}
+                   Table       {table-id :id}  {:db_id db-id}
+                   Field       {field-id :id}  {:table_id table-id}
+                   FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
+      (with-redefs [api.database/*rescan-values-async* false]
+        (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
+          (with-all-users-data-perms! {db-id {:details :yes}}
+            (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
 
-      (testing "A non-admin can discard saved field values if they have DB details permissions"
-        (with-all-users-data-perms! {db-id {:details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
+        (testing "A non-admin can discard saved field values if they have DB details permissions"
+          (with-all-users-data-perms! {db-id {:details :yes}}
+            (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
 
-      (testing "A non-admin with no data access can discard field values if they have DB details perms"
-        (t2/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
-        (with-all-users-data-perms! {db-id {:data    {:schemas :block :native :none}
-                                            :details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
-        (is (= nil (t2/select-one-fn :values FieldValues, :field_id field-id)))
-        (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" db-id)))
-
-      ;; Use test database for rescan_values tests so we can verify that scan actually succeeds
-      (testing "A non-admin can trigger a re-scan of field values if they have DB details permissions"
-        (with-all-users-data-perms! {(mt/id) {:details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
-
-      (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
-        (t2/delete! FieldValues :field_id (mt/id :venues :price))
-        (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
-        (with-all-users-data-perms! {(mt/id) {:data   {:schemas :block :native :none}
+        (testing "A non-admin with no data access can discard field values if they have DB details perms"
+          (t2/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
+          (with-all-users-data-perms! {db-id {:data    {:schemas :block :native :none}
                                               :details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
-        (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))))
+            (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
+          (is (= nil (t2/select-one-fn :values FieldValues, :field_id field-id)))
+          (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" db-id)))
+
+        ;; Use test database for rescan_values tests so we can verify that scan actually succeeds
+        (testing "A non-admin can trigger a re-scan of field values if they have DB details permissions"
+          (with-all-users-data-perms! {(mt/id) {:details :yes}}
+            (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
+
+        (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
+          (t2/delete! FieldValues :field_id (mt/id :venues :price))
+          (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
+          (with-all-users-data-perms! {(mt/id) {:data    {:schemas :block :native :none}
+                                                :details :yes}}
+            (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
+          (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price)))))))))
 
 (deftest fetch-db-test
   (t2.with-temp/with-temp [Database {db-id :id}]
@@ -801,7 +800,7 @@
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
+          (jdbc/execute! conn-spec "CREATE SCHEMA IF NOT EXISTS \"not_public\"; CREATE TABLE IF NOT EXISTS \"not_public\".\"table_name\" (id INTEGER);"))
         (sync/sync-database! (mt/db))
         (let [db-id     (u/the-id (mt/db))
               table-id (t2/select-one-pk :model/Table :db_id db-id)]

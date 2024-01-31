@@ -57,6 +57,15 @@ Default: `null`
 
 The email address users should be referred to if they encounter a problem.
 
+### `MB_AGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 10000
+
+Maximum number of rows to return for aggregated queries via the API. Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
+
+See also [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](#mb_unaggregated_query_row_limit).
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 Type: boolean<br>
@@ -184,6 +193,13 @@ Default: `50`<br>
 Since: v35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
+
+### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
+
+Type: integer<br>
+Default: `20`<br>
+
+Limits the number of rows Metabase will include in tables sent as attachments with dashboard subscriptions and alerts. Range: 1-100.
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
@@ -440,7 +456,7 @@ Secret key used to sign JSON Web Tokens for requests to /api/embed endpoints.
 
 The secret should be kept safe (treated like a password) and recommended to be a 64 character string.
 
-This is for Static embedding, and has nothing to do with JWT SSO authentication, which is [MB_JWT_*](#mb_jwt_enabled).
+This is for Static embedding, and has nothing to do with JWT SSO authentication (see [`MB_JWT_ENABLED`](#mb_jwt_enabled)).
 
 ### `MB_EMOJI_IN_LOGS`
 
@@ -535,6 +551,18 @@ Maximum number of connections to the data source databases. The maximum is for e
 Change this to a higher value if you notice that regular usage consumes all or close to all connections. When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
 
 See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size) for setting maximum connections to the Metabase application database.
+
+### `MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
+
+Type: integer<br>
+Default: `1200`<br>
+Since: v47.4
+
+Metabase's query processor will normally kill connections when their queries time out, but in practice some connections can be severed and go undetected by Metabase, staying alive even after a query returns or times out. This environment variable tells  Metabase how long to wait before killing connections if no response is received from the connection.
+
+This variable affects connections that are severed and undetected by Metabase (that is, in situations where Metabase never receives a connection closed signal and is treating an inactive connection as active). You may want to adjust this variable's value if your connection is unreliable or is a dynamic connections behind a SSH tunnel where the connection to the SSH tunnel host may stay active even after the connection from the SSH tunnel host to your database is severed.
+
+Unless set otherwise, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -1309,6 +1337,14 @@ Since: v42.0
 
 Set the system files channel used by Metabase to store images. This channel has to be public, and is not intended to be used by humans. The Slack App has to be invited into this channel.
 
+### `MB_JETTY_SKIP_SNI`
+
+Type: string<br>
+Default: `"true"`<br>
+Since: v48.4
+
+Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=false`, or use another SSL certificate that exactly matches the domain name of the server.
+
 ### `MB_SOURCE_ADDRESS_HEADER`
 
 Type: string<br>
@@ -1354,3 +1390,12 @@ Default: `null`<br>
 Since: v41.0
 
 Allowed email address domain(s) for new Subscriptions and Alerts. Specify multiple domain comma-separated. When not defined, all domains are allowed.
+
+### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 2000
+
+Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575, and less than the number configured in `MB_AGGREGATED_QUERY_ROW_LIMIT`. This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
+
+See also [`MB_AGGREGATED_QUERY_ROW_LIMIT`](#mb_aggregated_query_row_limit).

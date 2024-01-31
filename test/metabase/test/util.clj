@@ -41,9 +41,9 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
-   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -113,11 +113,11 @@
               :database_id            (data/id)
               :dataset_query          {}
               :display                :table
-              :name                   (tu.random/random-name)
+              :name                   (u.random/random-name)
               :visualization_settings {}}))
 
    :model/Collection
-   (fn [_] (default-created-at-timestamped {:name (tu.random/random-name)}))
+   (fn [_] (default-created-at-timestamped {:name (u.random/random-name)}))
 
    :model/Action
    (fn [_] {:creator_id (rasta-id)})
@@ -125,7 +125,7 @@
    :model/Dashboard
    (fn [_] (default-timestamped
              {:creator_id (rasta-id)
-              :name       (tu.random/random-name)}))
+              :name       (u.random/random-name)}))
 
    :model/DashboardCard
    (fn [_] (default-timestamped
@@ -140,7 +140,7 @@
    :model/DashboardTab
    (fn [_]
      (default-timestamped
-       {:name     (tu.random/random-name)
+       {:name     (u.random/random-name)
         :position 0}))
 
    :model/Database
@@ -148,18 +148,18 @@
              {:details   {}
               :engine    :h2
               :is_sample false
-              :name      (tu.random/random-name)}))
+              :name      (u.random/random-name)}))
 
    :model/Dimension
    (fn [_] (default-timestamped
-             {:name (tu.random/random-name)
+             {:name (u.random/random-name)
               :type "internal"}))
 
    :model/Field
    (fn [_] (default-timestamped
              {:database_type "VARCHAR"
               :base_type     :type/Text
-              :name          (tu.random/random-name)
+              :name          (u.random/random-name)
               :position      1
               :table_id      (data/id :checkins)}))
 
@@ -179,17 +179,17 @@
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
              {:creator_id (user-id :crowberto)
-              :name       (tu.random/random-name)
+              :name       (u.random/random-name)
               :content    "1 = 1"}))
 
    :model/PersistedInfo
-   (fn [_] {:question_slug (tu.random/random-name)
-            :query_hash    (tu.random/random-hash)
-            :definition    {:table-name        (tu.random/random-name)
+   (fn [_] {:question_slug (u.random/random-name)
+            :query_hash    (u.random/random-hash)
+            :definition    {:table-name        (u.random/random-name)
                             :field-definitions (repeatedly
                                                  4
-                                                 #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
-            :table_name    (tu.random/random-name)
+                                                 #(do {:field-name (u.random/random-name) :base-type "type/Text"}))}
+            :table_name    (u.random/random-name)
             :active        true
             :state         "persisted"
             :refresh_begin (t/zoned-date-time)
@@ -197,12 +197,12 @@
             :creator_id    (rasta-id)})
 
    :model/PermissionsGroup
-   (fn [_] {:name (tu.random/random-name)})
+   (fn [_] {:name (u.random/random-name)})
 
    :model/Pulse
    (fn [_] (default-timestamped
              {:creator_id (rasta-id)
-              :name       (tu.random/random-name)}))
+              :name       (u.random/random-name)}))
 
    :model/PulseCard
    (fn [_] {:position    0
@@ -236,14 +236,14 @@
    (fn [_] (default-timestamped
              {:db_id  (data/id)
               :active true
-              :name   (tu.random/random-name)}))
+              :name   (u.random/random-name)}))
 
    :model/TaskHistory
    (fn [_]
      (let [started (t/zoned-date-time)
            ended   (t/plus started (t/millis 10))]
        {:db_id      (data/id)
-        :task       (tu.random/random-name)
+        :task       (u.random/random-name)
         :started_at started
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
@@ -267,10 +267,10 @@
         :creator_id   (rasta-id)}))
 
    :model/User
-   (fn [_] {:first_name  (tu.random/random-name)
-            :last_name   (tu.random/random-name)
-            :email       (tu.random/random-email)
-            :password    (tu.random/random-name)
+   (fn [_] {:first_name  (u.random/random-name)
+            :last_name   (u.random/random-name)
+            :email       (u.random/random-email)
+            :password    (u.random/random-name)
             :date_joined (t/zoned-date-time)
             :updated_at  (t/zoned-date-time)})})
 
@@ -303,10 +303,10 @@
       u/lower-case-en
       keyword))
 
-(defn do-with-temp-env-var-value
-  "Impl for [[with-temp-env-var-value]] macro."
+(defn do-with-temp-env-var-value!
+  "Impl for [[with-temp-env-var-value!]] macro."
   [env-var-keyword value thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value!")
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
@@ -319,20 +319,20 @@
           ;; flush the cache again so the original value of any env var Settings get restored
           (setting.cache/restore-cache!))))))
 
-(defmacro with-temp-env-var-value
+(defmacro with-temp-env-var-value!
   "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
   any env var Settings will see the updated value, and resets the cache again at the conclusion of `body` so the
   original values are restored.
 
-    (with-temp-env-var-value [mb-send-email-on-first-login-from-new-device \"FALSE\"]
+    (with-temp-env-var-value! [mb-send-email-on-first-login-from-new-device \"FALSE\"]
       ...)"
   [[env-var value & more :as bindings] & body]
   {:pre [(vector? bindings) (even? (count bindings))]}
-  `(do-with-temp-env-var-value
+  `(do-with-temp-env-var-value!
     ~(->lisp-case-keyword env-var)
     ~value
     (fn [] ~@(if (seq more)
-               [`(with-temp-env-var-value ~(vec more) ~@body)]
+               [`(with-temp-env-var-value! ~(vec more) ~@body)]
                body))))
 
 (setting/defsetting with-temp-env-var-value-test-setting
@@ -344,7 +344,7 @@
 (deftest with-temp-env-var-value-test
   (is (= "abc"
          (with-temp-env-var-value-test-setting)))
-  (with-temp-env-var-value [mb-with-temp-env-var-value-test-setting "def"]
+  (with-temp-env-var-value! [mb-with-temp-env-var-value-test-setting "def"]
     (testing "env var value"
       (is (= "def"
              (env/env :mb-with-temp-env-var-value-test-setting))))
@@ -360,7 +360,7 @@
              (with-temp-env-var-value-test-setting)))))
 
   (testing "override multiple env vars"
-    (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
+    (with-temp-env-var-value! [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
       (testing "Should convert values to strings"
         (is (= "123"
                (:some-fake-env-var env/env))))
@@ -372,8 +372,8 @@
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException
                  (macroexpand form))
-      (list `with-temp-env-var-value '[a])
-      (list `with-temp-env-var-value '[a b c]))))
+      (list `with-temp-env-var-value! '[a])
+      (list `with-temp-env-var-value! '[a b c]))))
 
 (defn- upsert-raw-setting!
   [original-value setting-k value]
@@ -393,13 +393,15 @@
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as [[binding]].
 
-  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
+  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value!]].
 
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
 
+  If `skip-init`?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
+
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
-  [setting-k value thunk & {:keys [raw-setting?]}]
+  [setting-k value thunk & {:keys [raw-setting? skip-init?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
   (initialize/initialize-if-needed! :db :plugins)
@@ -410,17 +412,19 @@
                           (when-not raw-setting?
                             (throw e))))]
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
-      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
+      (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
-                             (#'setting/get setting-k))]
+                             (if skip-init?
+                               (setting/read-setting setting-k)
+                               (setting/get setting-k)))]
         (try
           (try
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
               (with-redefs [setting/has-feature? (constantly true)]
-                (setting/set! setting-k value)))
+                (setting/set! setting-k value :bypass-read-only? true)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
                               {:setting  setting-k
@@ -435,7 +439,7 @@
                 (restore-raw-setting! original-value setting-k)
                 ;; bypass the feature check when reset settings to the original value
                 (with-redefs [setting/has-feature? (constantly true)]
-                  (setting/set! setting-k original-value)))
+                  (setting/set! setting-k original-value :bypass-read-only? true)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
                                 {:setting        setting-k
@@ -451,7 +455,7 @@
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
   If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
-  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
+  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value!]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
@@ -479,7 +483,8 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (do-with-temporary-setting-value setting-k (setting/get setting-k) thunk)))
+        (let [value (setting/read-setting setting-k)]
+          (do-with-temporary-setting-value setting-k value thunk :skip-init? true))))
     thunk
     settings)))
 
@@ -723,7 +728,7 @@
   (testing "Make sure the with-model-cleanup macro actually works as expected"
     (t2.with-temp/with-temp [Card other-card]
       (let [card-count-before (t2/count Card)
-            card-name         (tu.random/random-name)]
+            card-name         (u.random/random-name)]
         (with-model-cleanup [Card]
           (t2/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
@@ -959,6 +964,12 @@
            :namespace (name ~collection-namespace))
     (fn [] ~@body)))
 
+(defmacro with-non-admin-groups-no-collection-perms
+  "Temporarily remove perms for the provided collection for all Groups besides the Admin group (which cannot have them
+  removed)."
+  [collection & body]
+  `(do-with-non-admin-groups-no-collection-perms ~collection (fn [] ~@body)))
+
 (defn do-with-all-users-permission
   "Call `f` without arguments in a context where the ''All Users'' group
   is granted the permission specified by `permission-path`.
@@ -968,6 +979,25 @@
   (t2.with-temp/with-temp [Permissions _ {:group_id (:id (perms-group/all-users))
                                           :object permission-path}]
     (f)))
+
+(defn do-with-all-user-data-perms-graph
+  "Implementation for [[with-all-users-data-perms]]"
+  [graph f]
+  (let [all-users-group-id  (u/the-id (perms-group/all-users))
+        current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
+    (try
+      (with-model-cleanup [Permissions]
+        (u/ignore-exceptions
+         (@#'perms/update-group-permissions! all-users-group-id graph))
+        (f))
+      (finally
+        (u/ignore-exceptions
+         (@#'perms/update-group-permissions! all-users-group-id current-graph))))))
+
+(defmacro with-all-users-data-perms-graph
+  "Runs `body` with data perms for the All Users group temporarily set to the values in `graph`."
+  [graph & body]
+  `(do-with-all-user-data-perms-graph ~graph (fn [] ~@body)))
 
 (defmacro with-all-users-permission
   "Run `body` with the ''All Users'' group being granted the permission
@@ -1148,7 +1178,7 @@
   {:pre [(or (string? filename) (nil? filename))]}
   (let [filename (if (string? filename)
                    filename
-                   (tu.random/random-name))
+                   (u.random/random-name))
         filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") filename))]
     ;; delete file if it already exists
     (io/delete-file (io/file filename) :silently)

@@ -1,4 +1,5 @@
 import {
+  getNotebookStep,
   restore,
   openOrdersTable,
   openReviewsTable,
@@ -9,7 +10,7 @@ import {
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
@@ -130,6 +131,29 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.get(".List-section--expanded .List-item-title")
       .contains("Created At")
       .should("have.length", 1);
+  });
+
+  it("should display breakouts group for all FKs (metabase#36122)", () => {
+    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: PRODUCTS.ID,
+    });
+
+    openReviewsTable({ mode: "notebook" });
+    summarize({ mode: "notebook" });
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    popover().within(() => {
+      cy.findAllByTestId("dimension-list-item")
+        .eq(3)
+        .should("have.text", "Rating");
+      cy.get(".List-section-header").should("have.length", 3);
+      cy.get(".List-section-header").eq(0).should("have.text", "Review");
+      cy.get(".List-section-header").eq(1).should("have.text", "Product");
+      cy.get(".List-section-header").eq(2).should("have.text", "Rating");
+    });
   });
 
   it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {

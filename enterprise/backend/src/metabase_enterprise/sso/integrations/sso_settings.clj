@@ -23,6 +23,29 @@
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
   (mc/validator GroupMappings))
 
+(defsetting saml-user-provisioning-enabled?
+  (deferred-tru "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
+don''t have one.")
+  :type    :boolean
+  :default true
+  :feature :sso-saml
+  :audit   :getter)
+
+(defsetting jwt-user-provisioning-enabled?
+  (deferred-tru "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who
+don''t have one.")
+  :type    :boolean
+  :default true
+  :feature :sso-jwt
+  :audit   :getter)
+
+(defsetting ldap-user-provisioning-enabled?
+  (deferred-tru "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
+don''t have one.")
+  :type    :boolean
+  :default true
+  :audit   :getter)
+
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
 using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml")

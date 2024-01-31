@@ -24,6 +24,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -128,7 +129,11 @@
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
   [a-query stage-number]
-  (to-array (lib.order-by/orderable-columns a-query stage-number)))
+  ;; Attaches the cached columns directly to this query, in case it gets called again.
+  (lib.cache/side-channel-cache
+    (keyword "orderable-columns" (str "stage-" stage-number)) a-query
+    (fn [_]
+      (to-array (lib.order-by/orderable-columns a-query stage-number)))))
 
 ;; Display-info =====================================================================================================
 ;; This is a complicated stack of caches and inner functions, so some guidance is in order.
@@ -215,17 +220,6 @@
     (keyword "display-info-outer" (str "stage-" stage-number)) x
     #(display-info* a-query stage-number %)))
 
-(defn ^:export field-id
-  "Find the field id for something or nil."
-  [field-metadata]
-  (lib.core/field-id field-metadata))
-
-(defn ^:export legacy-card-or-table-id
-  "Find the legacy card id or table id for a given ColumnMetadata or nil.
-   Returns a either `\"card__<id>\"` or integer table id."
-  [field-metadata]
-  (lib.core/legacy-card-or-table-id field-metadata))
-
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
   ([orderable]
@@ -255,7 +249,11 @@
   To break out by a given column, the corresponding element of the result has to be added to the query using
   [[breakout]]."
   [a-query stage-number]
-  (to-array (lib.core/breakoutable-columns a-query stage-number)))
+  ;; Attaches the cached columns directly to this query, in case it gets called again.
+  (lib.cache/side-channel-cache
+    (keyword "breakoutable-columns" (str "stage-" stage-number)) a-query
+    (fn [_]
+      (to-array (lib.core/breakoutable-columns a-query stage-number)))))
 
 (defn ^:export breakouts
   "Get the breakout clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
@@ -267,6 +265,11 @@
   "Add an `order-by` clause to `a-query`. Returns updated query."
   [a-query stage-number x]
   (lib.core/breakout a-query stage-number (lib.core/ref x)))
+
+(defn ^:export breakout-column
+  "Returns the `:metadata/column` corresponding to this breakout clause."
+  [a-query stage-number breakout-clause]
+  (lib.core/breakout-column a-query stage-number breakout-clause))
 
 (defn ^:export binning
   "Retrieve the current binning state of a `:field` clause, field metadata, etc. as an opaque object, or `nil` if it
@@ -342,6 +345,41 @@
                                     ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
                                     (assoc inner-query :fields (frequencies fields)))))))
 
+(defn- compare-legacy-field-refs
+  [[key1 id1 opts1]
+   [key2 id2 opts2]]
+  ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
+  ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
+  (letfn [(clean-opts [o1 o2]
+            (not-empty
+              (cond-> o1
+                (not (:base-type o2))      (dissoc :base-type)
+                (not (:effective-type o2)) (dissoc :effective-type))))]
+    (= [key1 id1 (clean-opts opts1 opts2)]
+       [key2 id2 (clean-opts opts2 opts1)])))
+
+(defn- query=* [x y]
+  (cond
+    (and (vector? x)
+         (vector? y)
+         (= (first x) (first y) :field))
+    (compare-legacy-field-refs x y)
+
+    ;; Otherwise this is a duplicate of clojure.core/=.
+    (and (map? x) (map? y))
+    (and (= (set (keys x)) (set (keys y)))
+         (every? (fn [[k v]]
+                   (query=* v (get y k)))
+                 x))
+
+    (and (sequential? x) (sequential? y))
+    (and (= (count x) (count y))
+         (every? true? (map query=* x y)))
+
+    ;; Either mismatched map/sequence/nil/etc., or primitives like strings.
+    ;; Either way, = does the right thing.
+    :else (= x y)))
+
 (defn ^:export query=
   "Returns whether the provided queries should be considered equal.
 
@@ -356,7 +394,7 @@
   ([query1 query2 field-ids]
    (let [n1 (prep-query-for-equals query1 field-ids)
          n2 (prep-query-for-equals query2 field-ids)]
-     (= n1 n2))))
+     (query=* n1 n2))))
 
 (defn ^:export group-columns
   "Given a group of columns returned by a function like [[metabase.lib.js/orderable-columns]], group the columns
@@ -419,6 +457,11 @@
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
+(defn ^:export aggregation-column
+  "Returns the `:metadata/column` corresponding to this aggregation clause."
+  [a-query stage-number aggregation-clause]
+  (lib.core/aggregation-column a-query stage-number aggregation-clause))
+
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and
    a `column`.
@@ -451,7 +494,11 @@
 (defn ^:export filterable-columns
   "Get the available filterable columns for the stage with `stage-number` of the query `a-query`."
   [a-query stage-number]
-  (to-array (lib.core/filterable-columns a-query stage-number)))
+  ;; Attaches the cached columns directly to this query, in case it gets called again.
+  (lib.cache/side-channel-cache
+    (keyword "filterable-columns" (str "stage-" stage-number)) a-query
+    (fn [_]
+      (to-array (lib.core/filterable-columns a-query stage-number)))))
 
 (defn ^:export filterable-column-operators
   "Returns the operators for which `filterable-column` is applicable."
@@ -472,7 +519,11 @@
 (defn ^:export expression-clause
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [an-operator args options]
-  (lib.core/expression-clause (keyword an-operator) args (js->clj options :keywordize-keys true)))
+  (-> (lib.core/expression-clause
+        (keyword an-operator)
+        args
+        (js->clj options :keywordize-keys true))
+      (lib.core/normalize)))
 
 (defn ^:export expression-parts
   "Returns the parts (operator, args, and optionally, options) of `expression-clause`."
@@ -533,7 +584,11 @@
 (defn ^:export fieldable-columns
   "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query."
   [a-query stage-number]
-  (to-array (lib.core/fieldable-columns a-query stage-number)))
+  ;; Attaches the cached columns directly to this query, in case it gets called again.
+  (lib.cache/side-channel-cache
+    (keyword "fieldable-columns" (str "stage-" stage-number)) a-query
+    (fn [_]
+      (to-array (lib.core/fieldable-columns a-query stage-number)))))
 
 (defn ^:export add-field
   "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
@@ -561,18 +616,19 @@
   [a-query stage-number column]
   (lib.core/remove-field a-query stage-number column))
 
-(defn ^:export find-visible-column-for-legacy-ref
-  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
-  only meant for use with `:field` clauses."
-  [a-query stage-number a-legacy-ref]
-  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
-  (lib.core/find-visible-column-for-legacy-ref a-query stage-number a-legacy-ref))
-
 (defn ^:export find-column-for-legacy-ref
   "Given a sequence of `columns` (column metadatas), return the one that is the best fit for `legacy-ref`."
   [a-query stage-number a-legacy-ref columns]
   ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
   (lib.core/find-column-for-legacy-ref a-query stage-number a-legacy-ref columns))
+
+(defn- visible-columns*
+  "Inner implementation for [[visible-columns]], which wraps this with caching."
+  [a-query stage-number]
+  (let [stage          (lib.util/query-stage a-query stage-number)
+        vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
+        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
 
 ;; TODO: Added as an expedient to fix metabase/metabase#32373. Due to the interaction with viz-settings, this issue
 ;; was difficult to fix entirely within MLv2. Once viz-settings are ported, this function should not be needed, and the
@@ -582,22 +638,32 @@
 
   Does not pass any options to [[visible-columns]], so it uses the defaults."
   [a-query stage-number]
-  (let [stage          (lib.util/query-stage a-query stage-number)
-        vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
-        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
+  ;; Attaches the cached columns directly to this query, in case it gets called again.
+  (lib.cache/side-channel-cache
+    (keyword "visible-columns" (str "stage-" stage-number)) a-query
+    (fn [_]
+      (visible-columns* a-query stage-number))))
 
-(defn ^:export returned-columns
-  "Return a sequence of column metadatas for columns returned by the query."
+(defn- returned-columns*
+  "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
   (let [stage (lib.util/query-stage a-query stage-number)]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
          (map #(assoc % :selected? true))
          to-array)))
 
+(defn ^:export returned-columns
+  "Return a sequence of column metadatas for columns returned by the query."
+  [a-query stage-number]
+  ;; Attaches the cached columns directly to this query, in case it gets called again.
+  (lib.cache/side-channel-cache
+    (keyword "returned-columns" (str "stage-" stage-number)) a-query
+    (fn [_]
+      (returned-columns* a-query stage-number))))
+
 (defn- normalize-legacy-ref
   [a-ref]
-  (if (#{:metric :segment} (first a-ref))
+  (if (#{:aggregation :metric :segment} (first a-ref))
     (subvec a-ref 0 2)
     (update a-ref 2 update-vals #(if (qualified-keyword? %)
                                    (u/qualified-name %)
@@ -607,12 +673,13 @@
   "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
   return it as a legacy JSON field ref.
   For compatibility reasons, segment and metric references are always returned without options."
-  [column]
-  (-> column
-      lib.core/ref
-      lib.convert/->legacy-MBQL
-      normalize-legacy-ref
-      clj->js))
+  [a-query stage-number column]
+  (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+    (-> column
+        lib.core/ref
+        lib.convert/->legacy-MBQL
+        normalize-legacy-ref
+        clj->js)))
 
 (defn- legacy-ref->pMBQL [a-legacy-ref]
   (-> a-legacy-ref
@@ -735,10 +802,15 @@
 (defn ^:export expressionable-columns
   "Return an array of Column metadatas about the columns that can be used in an expression in a given stage of `a-query`.
    Pass the current `expression-position` or `null` for new expressions."
-  ([a-query expression-position]
-   (expressionable-columns a-query expression-position))
-  ([a-query stage-number expression-position]
-   (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
+  [a-query stage-number expression-position]
+  (lib.cache/side-channel-cache
+    ;; Caching is based on both the stage and expression position, since they can return different sets.
+    ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
+    ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
+    ;; support that currently.
+    (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
+    (fn [_]
+      (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
 
 (defn ^:export suggested-join-conditions
   "Return suggested default join conditions when constructing a join against `joinable`, e.g. a Table, Saved
@@ -903,11 +975,21 @@
   [a-query]
   (name (lib.core/engine a-query)))
 
+(defn ^:export segment-metadata
+  "Get metadata for the Segment with `segment-id`, if it can be found."
+  [metadata-providerable segment-id]
+  (lib.metadata/segment metadata-providerable segment-id))
+
 (defn ^:export available-segments
   "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
   metadata objects."
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
+
+(defn ^:export metric-metadata
+  "Get metadata for the Metric with `metric-id`, if it can be found."
+  [metadata-providerable metric-id]
+  (lib.metadata/metric metadata-providerable metric-id))
 
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
@@ -920,6 +1002,8 @@
   something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
   selected columns (those in the join's `:fields`) will include `:selected true` information."
   [a-query stage-number join-or-joinable]
+  ;; TODO: It's not practical to cache this currently. We need to be able to key off the query and the joinable, which
+  ;; is not supported by the lib.cache system.
   (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
 
 (defn ^:export table-or-card-metadata
@@ -959,6 +1043,16 @@
     ;; Sometimes the FE has result metadata from the QP, without the required :lib/source-uuid on it.
     ;; We have the UUID for the aggregation in its ref, so use that here.
     (some-> a-ref first (= :aggregation)) (assoc :lib/source-uuid (last a-ref))))
+
+(defn ^:export legacy-column->metadata
+  "Given a JS `DatasetColumn`, return a CLJS `:metadata/column` for the same.
+
+  This properly handles fields, expressions and aggregations."
+  [a-query stage-number ^js js-column]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (let [column-ref (when-let [a-ref (.-field_ref js-column)]
+                       (legacy-ref->pMBQL a-ref))]
+      (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
@@ -1084,6 +1178,11 @@
   [a-query stage-number a-ref columns]
   (lib.core/find-matching-column a-query stage-number a-ref columns))
 
+(defn ^:export has-clauses
+  "Does given query stage have any clauses?"
+  [a-query stage-number]
+  (lib.core/has-clauses? a-query stage-number))
+
 (defn ^:export stage-count
   "Returns the count of stages in query"
   [a-query]
@@ -1114,7 +1213,7 @@
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
-                      (= (first legacy-expr) :aggregation-options))
+                      (#{:aggregation-options :value} (first legacy-expr)))
                  (get 1))))))
 
 (defn ^:export field-values-search-info
@@ -1125,3 +1224,39 @@
       (update :has-field-values name)
       (update-keys cljs-key->js-key)
       clj->js))
+
+(defn ^:export update-lat-lon-filter
+  "Add or update a filter against a `latitude-column` and `longitude-column`."
+  [a-query stage-number latitude-column longitude-column bounds]
+  (let [bounds           (js->clj bounds :keywordize-keys true)
+        latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
+        longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
+    (lib.core/update-lat-lon-filter a-query stage-number latitude-column longitude-column bounds)))
+
+(defn ^:export update-numeric-filter
+  "Add or update a filter against `numeric-column`."
+  [a-query stage-number numeric-column start end]
+  (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
+    (lib.core/update-numeric-filter a-query stage-number numeric-column start end)))
+
+(defn ^:export update-temporal-filter
+  "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts."
+  [a-query stage-number temporal-column start end]
+  (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
+    (lib.core/update-temporal-filter a-query stage-number temporal-column start end)))
+
+(defn ^:export valid-filter-for?
+  "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`."
+  [src-column dst-column]
+  (lib.types.isa/valid-filter-for? src-column dst-column))
+
+(defn ^:export dependent-metadata
+  "Return the IDs and types of entities the metadata about is required
+  for the FE to function properly."
+  [a-query]
+  (to-array (map clj->js (lib.core/dependent-metadata a-query))))
+
+(defn ^:export can-run
+  "Returns true if the query is runnable."
+  [a-query]
+  (lib.core/can-run a-query))

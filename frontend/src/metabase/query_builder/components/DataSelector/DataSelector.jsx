@@ -8,7 +8,7 @@ import cx from "classnames";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
@@ -26,10 +26,7 @@ import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
-import {
-  SearchResults,
-  convertSearchResultToTableLikeItem,
-} from "./data-search";
+import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 import DataBucketPicker from "./DataSelectorDataBucketPicker";
 import DatabasePicker from "./DataSelectorDatabasePicker";
@@ -793,7 +790,7 @@ export class UnconnectedDataSelector extends Component {
 
   onChangeTable = async table => {
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table?.id);
+      this.props.setSourceTableFn(table?.id, table?.db_id);
     }
     await this.nextStep({ selectedTableId: table?.id });
   };
@@ -926,10 +923,11 @@ export class UnconnectedDataSelector extends Component {
 
   isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
 
-  handleSavedQuestionSelect = async tableOrModelId => {
-    await this.props.fetchFields(tableOrModelId);
+  handleSavedQuestionSelect = async tableOrCardId => {
+    await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(tableOrModelId);
+      const table = this.props.metadata.table(tableOrCardId);
+      this.props.setSourceTableFn(tableOrCardId, table.db_id);
     }
     this.popover.current.toggle();
     this.handleClose();
@@ -954,10 +952,11 @@ export class UnconnectedDataSelector extends Component {
     });
 
   handleSearchItemSelect = async item => {
-    const table = convertSearchResultToTableLikeItem(item);
-    await this.props.fetchFields(table.id);
+    const tableOrCardId = getSearchItemTableOrCardId(item);
+    await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table.id);
+      const table = this.props.metadata.table(tableOrCardId);
+      this.props.setSourceTableFn(table.id, table.db_id);
     }
     this.popover.current.toggle();
     this.handleClose();

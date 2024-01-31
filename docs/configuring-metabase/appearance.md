@@ -77,6 +77,14 @@ This message is the text Metabase presents when it's loading a query. Options in
 - "Running query..."
 - "Loading results..."
 
+## Help link in the settings menu
+
+The Settings menu (the "gear" menu in the upper right of your Metabase) includes a **Help** option that links to a [Metabase help page](https://www.metabase.com/help/) by default. You can change this menu Help item by selecting one of the following options:
+
+- Link to [Metabase help](https://www.metabase.com/help/) (default)
+- Hide it (the Settings menu won't display the Help option at all).
+- Go to a custom destination. Enter a URL that the Settings menu's Help option should link to. Valid URLs include http, https, and mailto URLs.
+
 ## Metabot
 
 ![Metabot toggle](./images/metabot.png)

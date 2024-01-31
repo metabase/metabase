@@ -3,7 +3,7 @@ import { Component } from "react";
 
 import _ from "underscore";
 import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 export default class ParameterTargetList extends Component {
   props;

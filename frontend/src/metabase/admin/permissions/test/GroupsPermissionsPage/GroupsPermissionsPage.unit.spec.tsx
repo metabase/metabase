@@ -8,11 +8,10 @@ import {
 } from "__support__/ui";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockPermissionsGraph } from "metabase-types/api/mocks/permissions";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import {
   setupDatabasesEndpoints,
-  setupPermissionsGraphEndpoint,
+  setupPermissionsGraphEndpoints,
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
@@ -28,14 +27,11 @@ const TEST_GROUPS = [
   createMockGroup({ name: "All Users" }),
 ];
 
-const TEST_PERMISSIONS_GRAPH = createMockPermissionsGraph({
-  groups: TEST_GROUPS,
-  databases: [TEST_DATABASE],
-});
-
-const setup = async () => {
+const setup = async ({
+  initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
+} = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
-  setupPermissionsGraphEndpoint(TEST_PERMISSIONS_GRAPH);
+  setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
 
   fetchMock.get(
@@ -56,7 +52,7 @@ const setup = async () => {
     </Route>,
     {
       withRouter: true,
-      initialRoute: `/admin/permissions/data/group/${TEST_DATABASE.id}`,
+      initialRoute,
     },
   );
 

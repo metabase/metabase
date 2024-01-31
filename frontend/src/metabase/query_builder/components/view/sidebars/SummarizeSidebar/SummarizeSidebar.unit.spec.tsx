@@ -58,7 +58,7 @@ function setup({
       : new Question(card, metadata);
 
   function Wrapper() {
-    const [query, setQuery] = useState(question._getMLv2Query());
+    const [query, setQuery] = useState(question.query());
 
     return (
       <SummarizeSidebar

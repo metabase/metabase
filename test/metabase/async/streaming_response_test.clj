@@ -105,9 +105,10 @@
             session-token      (client/authenticate (mt/user->credentials :lucky))
             url                (client/build-url "dataset" nil)
             request            (client/build-request-map session-token
-                                                              {:database (mt/id)
-                                                               :type     "native"
-                                                               :native   {:query {:sleep 2000}}})]
+                                                         {:database (mt/id)
+                                                          :type     "native"
+                                                          :native   {:query {:sleep 2000}}}
+                                                         nil)]
         (testing (format "%d simultaneous queries" num-requests)
           (dotimes [_ num-requests]
             (future (http/post url request)))
@@ -123,7 +124,7 @@
 
 (deftest cancelation-test
   (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (with-redefs [streaming-response/async-cancellation-poll-interval-ms 50]
         (with-test-driver-db!
           (reset! canceled? false)
@@ -133,7 +134,8 @@
                   request       (client/build-request-map session-token
                                                           {:database (mt/id)
                                                            :type     "native"
-                                                           :native   {:query {:sleep 5000}}})
+                                                           :native   {:query {:sleep 5000}}}
+                                                          nil)
                   futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
               (is (future? futur))
               ;; wait a little while for the query to start running -- this should usually happen fairly quickly

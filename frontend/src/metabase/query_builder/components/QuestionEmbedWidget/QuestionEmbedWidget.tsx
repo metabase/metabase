@@ -3,16 +3,18 @@ import type { EmbedOptions } from "metabase-types/store";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { publicQuestion } from "metabase/lib/urls";
-import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
-import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
+import {
+  EmbedModal,
+  EmbedModalContent,
+} from "metabase/public/components/EmbedModal";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
 import {
   createPublicLink,
   deletePublicLink,
-  updateEnableEmbedding,
   updateEmbeddingParams,
+  updateEnableEmbedding,
 } from "../../actions";
 
 type QuestionEmbedWidgetProps = {
@@ -34,21 +36,16 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
     dispatch(updateEmbeddingParams(card, embeddingParams));
 
   const getPublicQuestionUrl = (
-    {
-      public_uuid,
-    }: {
-      public_uuid: string;
-    },
-    extension: ExportFormatType,
-  ) => publicQuestion({ uuid: public_uuid, type: extension });
+    publicUuid: string,
+    extension?: ExportFormatType,
+  ) => publicQuestion({ uuid: publicUuid, type: extension });
 
   return (
     <EmbedModal onClose={onClose}>
-      {({ embedType, setEmbedType }) => (
+      {({ embedType, goToNextStep }) => (
         <EmbedModalContent
-          {...props}
           embedType={embedType}
-          setEmbedType={setEmbedType}
+          goToNextStep={goToNextStep}
           className={className}
           resource={card}
           resourceType="question"

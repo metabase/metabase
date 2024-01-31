@@ -4,6 +4,7 @@
    [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -346,6 +347,14 @@
         (resolve-expression query stage-number)
         (expression-metadata query stage-number)
         lib.ref/ref)))
+
+(def ^:private expression-validator
+  (mc/validator ::lib.schema.expression/expression))
+
+(defn expression-clause?
+  "Returns true if `expression-clause` is indeed an expression clause, false otherwise."
+  [expression-clause]
+  (expression-validator expression-clause))
 
 (mu/defn with-expression-name :- ::lib.schema.expression/expression
   "Return a new expression clause like `an-expression-clause` but with name `new-name`.

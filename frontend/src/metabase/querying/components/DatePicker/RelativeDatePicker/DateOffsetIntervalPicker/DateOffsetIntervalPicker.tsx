@@ -1,7 +1,15 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
-import { Button, Divider, Group, NumberInput, Select, Text } from "metabase/ui";
+import {
+  Icon,
+  Button,
+  Divider,
+  Group,
+  NumberInput,
+  Select,
+  Text,
+} from "metabase/ui";
+
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,
@@ -114,7 +122,7 @@ export function DateOffsetIntervalPicker({
       </PickerGrid>
       <Divider />
       <Group px="md" py="sm" spacing="sm" position="apart">
-        <Group c="text.1" spacing="sm">
+        <Group c="text-medium" spacing="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

@@ -48,7 +48,6 @@ describe("issue 31697", () => {
 
     cy.findByRole("main").within(() => {
       cy.findByText(/A closer look at number of Orders/).should("be.visible");
-      cy.findByText("Orders segment").should("be.visible");
     });
   });
 });

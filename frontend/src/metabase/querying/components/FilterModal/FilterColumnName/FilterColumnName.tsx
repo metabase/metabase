@@ -23,7 +23,7 @@ export function FilterColumnName({
 
   if (!isSearching || !columnInfo.table) {
     return (
-      <Text color="text.2" weight="bold">
+      <Text color="text-dark" weight="bold">
         {isSearching ? columnInfo.longDisplayName : columnInfo.displayName}
       </Text>
     );
@@ -31,9 +31,9 @@ export function FilterColumnName({
 
   return (
     <Group fw="bold" spacing="xs">
-      <Text color="text.2">{columnInfo.displayName}</Text>
-      <Text color="text.0">{t`in`}</Text>
-      <Text color="text.2">{columnInfo.table.displayName}</Text>
+      <Text color="text-dark">{columnInfo.displayName}</Text>
+      <Text color="text-light">{t`in`}</Text>
+      <Text color="text-dark">{columnInfo.table.displayName}</Text>
     </Group>
   );
 }

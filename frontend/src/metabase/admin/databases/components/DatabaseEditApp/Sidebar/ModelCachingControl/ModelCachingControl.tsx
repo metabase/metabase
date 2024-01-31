@@ -5,9 +5,15 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import ActionButton from "metabase/components/ActionButton";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
+import {
+  PERSIST_DATABASE,
+  UNPERSIST_DATABASE,
+} from "metabase/admin/databases/database";
+
 import { MetabaseApi } from "metabase/services";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { useDispatch } from "metabase/lib/redux";
 import type Database from "metabase-lib/metadata/Database";
 import { getModelCacheSchemaName } from "metabase-lib/metadata/utils/models";
 
@@ -51,6 +57,7 @@ function isLackPermissionsError(response: ErrorResponse) {
 
 function ModelCachingControl({ database }: Props) {
   const [error, setError] = useState<string | null>(null);
+  const dispatch = useDispatch();
 
   const databaseId = database.id;
   const isEnabled = database.isPersisted();
@@ -67,8 +74,10 @@ function ModelCachingControl({ database }: Props) {
     try {
       if (isEnabled) {
         await MetabaseApi.db_unpersist({ dbId: databaseId });
+        await dispatch({ type: UNPERSIST_DATABASE });
       } else {
         await MetabaseApi.db_persist({ dbId: databaseId });
+        await dispatch({ type: PERSIST_DATABASE });
       }
     } catch (error) {
       const response = error as ErrorResponse;

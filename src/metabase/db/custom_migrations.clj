@@ -10,6 +10,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -24,6 +25,7 @@
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
+   (java.util Locale)
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
@@ -81,6 +83,14 @@
   [name & migration-body]
   `(define-reversible-migration ~name (do ~@migration-body) (no-op ~(str name))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    HELPERS                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; metabase.util/upper-case-en
+(defn- upper-case-en
+  [s]
+  (.toUpperCase (str s) (Locale/US)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -889,3 +899,137 @@
 
 (define-migration MigrateRemoveAdminFromGroupMappingIfNeeded
   (migrate-remove-admin-from-group-mapping-if-needed))
+
+(defn- db-type->to-unified-columns
+  "Each unified column is 3 items sequence [table-name, column-name, is-nullable?]"
+  [db-type]
+  (case db-type
+    :h2      [[:activity :timestamp false]
+              [:application_permissions_revision :created_at false]
+              [:collection_permission_graph_revision :created_at false]
+              [:core_session :created_at false]
+              [:core_user :date_joined false]
+              [:core_user :last_login true]
+              [:core_user :updated_at true]
+              [:dependency :created_at false]
+              [:dimension :created_at false]
+              [:dimension :updated_at false]
+              [:metabase_database :created_at false]
+              [:metabase_database :updated_at false]
+              [:metabase_field :created_at false]
+              [:metabase_field :updated_at false]
+              [:metabase_field :last_analyzed true]
+              [:metabase_fieldvalues :created_at false]
+              [:metabase_table :created_at false]
+              [:metabase_table :updated_at false]
+              [:metric :created_at false]
+              [:metric :updated_at false]
+              [:permissions_revision :created_at false]
+              [:pulse :created_at false]
+              [:pulse :updated_at false]
+              [:pulse_channel :created_at false]
+              [:pulse_channel :updated_at false]
+              [:recent_views :timestamp false]
+              [:report_card :created_at false]
+              [:report_cardfavorite :created_at false]
+              [:report_cardfavorite :updated_at false]
+              [:report_dashboard :created_at false]
+              [:report_dashboard :updated_at false]
+              [:report_dashboardcard :created_at false]
+              [:report_dashboardcard :updated_at false]
+              [:segment :created_at false]
+              [:segment :updated_at false]]
+    :mysql   [[:activity :timestamp false]
+              [:application_permissions_revision :created_at false]
+              [:collection_permission_graph_revision :created_at false]
+              [:core_session :created_at false]
+              [:core_user :date_joined false]
+              [:core_user :last_login true]
+              [:core_user :updated_at true]
+              [:dependency :created_at false]
+              [:dimension :created_at false]
+              [:dimension :updated_at false]
+              [:metabase_field :created_at false]
+              [:metabase_field :last_analyzed true]
+              [:metabase_field :updated_at false]
+              [:metabase_fieldvalues :created_at false]
+              [:metabase_table :created_at false]
+              [:metabase_table :updated_at false]
+              [:metric :created_at false]
+              [:metric :updated_at false]
+              [:permissions_revision :created_at false]
+              [:pulse :created_at false]
+              [:pulse :updated_at false]
+              [:pulse_channel :created_at false]
+              [:pulse_channel :updated_at false]
+              [:recent_views :timestamp false]
+              [:report_card :created_at false]
+              [:report_cardfavorite :created_at false]
+              [:report_cardfavorite :updated_at false]
+              [:report_dashboard :created_at false]
+              [:report_dashboard :updated_at false]
+              [:segment :created_at false]
+              [:segment :updated_at false]]
+   :postgres [[:application_permissions_revision :created_at false]
+              [:collection_permission_graph_revision :created_at false]
+              [:core_user :updated_at true]
+              [:dimension :updated_at false]
+              [:dimension :created_at false]
+              [:permissions_revision :created_at false]
+              [:recent_views :timestamp false]]))
+
+(defn- alter-table-column-type-sql
+  [db-type table column ttype nullable?]
+  (let [ttype (name ttype)
+        db-type (if (and (= db-type :mysql)
+                     (with-open [conn (.getConnection (mdb.connection/data-source))]
+                       (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+                 :mariadb
+                 db-type)]
+    (case db-type
+      :postgres
+      (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s), ALTER COLUMN %s %s"
+              table column ttype column ttype column (if nullable? "DROP NOT NULL" "SET NOT NULL"))
+
+      :mysql
+      (format "ALTER TABLE `%s` MODIFY `%s` %s %s"
+              table column ttype (if nullable? "NULL" "NOT NULL"))
+
+      ;; maridb will automatically add extra on update set current_timestamp if you don't have a default value for not
+      ;; nullable columns.
+      ;; We don't want this property for created_at columns. so adding a default value here to avoid that default extra
+      :mariadb
+      (format "ALTER TABLE `%s` MODIFY `%s` %s %s"
+              table column ttype (if nullable? "NULL" "NOT NULL DEFAULT CURRENT_TIMESTAMP"))
+
+      :h2
+      (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" %s %s"
+              (upper-case-en table) (upper-case-en column) ttype (if nullable? "NULL" "NOT NULL")))))
+
+(defn- unify-time-column-type!
+  [direction]
+  (let [db-type        (mdb.connection/db-type)
+        columns        (db-type->to-unified-columns db-type)
+        timestamp-type (case db-type
+                         (:postgres :h2) "TIMESTAMP WITH TIME ZONE"
+                         :mysql          "TIMESTAMP(6)")
+        datetime-type (case db-type
+                        (:postgres :h2) "TIMESTAMP WITHOUT TIME ZONE"
+                        :mysql          "DATETIME")
+        target-type    (case direction
+                         :up timestamp-type
+                         :down datetime-type)]
+    (doseq [[table column nullable?] columns
+            ;; core_user.updated_at is referenced in a view in postgres, and PG doesn't allow changing column types if a
+            ;; view depends on it. so we need to drop the view before changing the type, then re-create it again
+            :let [is-pg-specical-case? (= [db-type table column]
+                                          [:postgres :core_user :updated_at])]]
+      (when is-pg-specical-case?
+        (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
+      (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
+      (when is-pg-specical-case?
+        (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))
+
+(define-reversible-migration UnifyTimeColumnsType
+  (unify-time-column-type! :up)
+  (unify-time-column-type! :down))

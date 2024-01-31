@@ -167,6 +167,20 @@
            ["My favorite number is 86"   "My favorite number is 86"   vchar-type]
            ;; Date-related
            [" 2022-01-01 "                    #t "2022-01-01"             date-type]
+           [" 2022-02-30 "                    " 2022-02-30 "              vchar-type]
+           [" -2022-01-01 "                   #t "-2022-01-01"            date-type]
+           [" Jan 30 2018"                    #t "2018-01-30"             date-type]
+           [" Jan 30 -2018"                   #t "-2018-01-30"            date-type]
+           [" Jan 30, 2018"                   #t "2018-01-30"             date-type]
+           [" Feb 30, 2018"                   " Feb 30, 2018"             vchar-type]
+           [" 30 Jan 2018"                    #t "2018-01-30"             date-type]
+           [" 30 Jan, 2018"                   #t "2018-01-30"             date-type]
+           [" January 30 2018"                #t "2018-01-30"             date-type]
+           [" January 30, 2018"               #t "2018-01-30"             date-type]
+           [" 30 January 2018"                #t "2018-01-30"             date-type]
+           [" 30 January, 2018"               #t "2018-01-30"             date-type]
+           [" Sunday, January 30 2000"        #t "2000-01-30"             date-type]
+           [" Sunday, January 30, 2000"       #t "2000-01-30"             date-type]
            [" 2022-01-01T01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01t01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01 01:00 "              #t "2022-01-01T01:00"       datetime-type]
@@ -1221,7 +1235,7 @@
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
       (testing "The CSV file must not be empty"
-        (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
+        (is (= {:message "The CSV file is missing columns that are in the table: \"name\".",
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
       (testing "Uploads must be supported"
@@ -1272,7 +1286,7 @@
                  "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
 
                  [""]
-                 "The CSV file contains extra columns that are not in the table: \"id\", \"name\"."
+                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
 
                  ["_mb_row_id,extra 1, extra 2"]
                  "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]

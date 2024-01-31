@@ -10,6 +10,7 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.card-test :as qp.card-test]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -326,6 +327,38 @@
      (t2.with-temp/with-temp [:model/Card card {:visualization_settings original}]
        (is (= expected
               (t2/select-one-fn :visualization_settings :model/Card :id (u/the-id card))))))))
+
+(deftest template-tag-parameters-test
+  (testing "Card with a Field filter parameter"
+    (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/field-filter-query)}]
+      (is (= [{:id "_DATE_",
+               :type :date/all-options,
+               :target [:dimension [:template-tag "date"]],
+               :name "Check-In Date",
+               :slug "date",
+               :default nil
+               :required false}]
+             (card/template-tag-parameters card)))))
+  (testing "Card with a non-Field-filter parameter"
+    (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-field-filter-query)}]
+      (is (= [{:id "_ID_",
+               :type :number/=,
+               :target [:variable [:template-tag "id"]],
+               :name "Order ID",
+               :slug "id",
+               :default "1"
+               :required true}]
+             (card/template-tag-parameters card)))))
+  (testing "Should ignore native query snippets and source card IDs"
+    (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-parameter-template-tag-query)}]
+      (is (= [{:id "_ID_",
+               :type :number/=,
+               :target [:variable [:template-tag "id"]],
+               :name "Order ID",
+               :slug "id",
+               :default "1"
+               :required true}]
+             (card/template-tag-parameters card))))))
 
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"

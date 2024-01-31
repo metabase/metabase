@@ -578,7 +578,17 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it("should apply filters to the series selecting area range", () => {
+  it("should apply brush filters to the series selecting area range when axis is a number", () => {
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.QUANTITY]],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
     cy.viewport(1280, 800);
 
     visitQuestionAdhoc({
@@ -587,18 +597,21 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cy.get(".Visualization")
-      .trigger("mousedown", 100, 200)
-      .trigger("mousemove", 230, 200)
-      .trigger("mouseup", 230, 200);
+      .trigger("mousedown", 180, 200)
+      .trigger("mousemove", 180, 200)
+      .trigger("mouseup", 220, 200);
 
     cy.wait("@dataset");
 
     cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Created At is Apr 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
+      "contain.text",
+      "Quantity is between",
     );
-
-    cy.get(".Visualization .dot").should("have.length", 6);
+    const X_AXIS_VALUE = 8;
+    cy.get(".CardVisualization").within(() => {
+      cy.get(".x-axis-label").should("have.text", "Quantity");
+      cy.findByText(X_AXIS_VALUE);
+    });
   });
 });
 

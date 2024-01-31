@@ -18,6 +18,37 @@ export type DashboardSidebarName =
   | "sharing"
   | "info";
 
+interface BaseSidebarState {
+  name?: DashboardSidebarName;
+  props: Record<string, unknown> & {
+    dashcardId?: DashCardId;
+  };
+}
+
+type ClickBehaviorSidebarProps = {
+  dashcardId: DashCardId;
+};
+
+export interface ClickBehaviorSidebarState extends BaseSidebarState {
+  name: "clickBehavior";
+  props: ClickBehaviorSidebarProps;
+}
+
+type EditParameterSidebarProps = {
+  dashcardId?: DashCardId;
+  parameterId: ParameterId;
+};
+
+export interface EditParameterSidebarState extends BaseSidebarState {
+  name: "editParameter";
+  props: EditParameterSidebarProps;
+}
+
+export type DashboardSidebarState =
+  | BaseSidebarState
+  | ClickBehaviorSidebarState
+  | EditParameterSidebarState;
+
 export type StoreDashboardTab = DashboardTab & {
   isRemoved?: boolean;
 };
@@ -25,9 +56,11 @@ export type StoreDashboardTab = DashboardTab & {
 export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
   dashcards: DashCardId[];
   tabs?: StoreDashboardTab[];
+  isDirty?: boolean;
 };
 
 export type StoreDashcard = DashboardCard & {
+  isAdded?: boolean;
   isDirty?: boolean;
   isRemoved?: boolean;
 };
@@ -51,6 +84,7 @@ export interface DashboardState {
   dashcardData: DashCardDataMap;
 
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
+  draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
 
   loadingDashCards: {
     loadingIds: DashCardId[];
@@ -69,10 +103,7 @@ export interface DashboardState {
 
   slowCards: Record<DashCardId, unknown>;
 
-  sidebar: {
-    name?: DashboardSidebarName;
-    props: Record<string, unknown>;
-  };
+  sidebar: DashboardSidebarState;
 
   missingActionParameters: unknown;
 

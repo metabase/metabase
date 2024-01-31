@@ -47,12 +47,13 @@
                                                                         :b {:type "date", :name "b", :display_name "b" :id "b"}
                                                                         :c {:type "date", :name "c", :display_name "c" :id "c"}
                                                                         :d {:type "date", :name "d", :display_name "d" :id "d"}}}}}]
-            (is (= [{:id      "d"
-                     :type    "date/single"
-                     :target  ["variable" ["template-tag" "d"]]
-                     :name    "d"
-                     :slug    "d"
-                     :default nil}]
+            (is (= [{:id       "d"
+                     :type     "date/single"
+                     :target   ["variable" ["template-tag" "d"]]
+                     :name     "d"
+                     :slug     "d"
+                     :default  nil
+                     :required false}]
                    (-> (mt/user-http-request :crowberto :get 200 (card-url card {:_embedding_params {:a "locked"
                                                                                                       :b "disabled"
                                                                                                       :c "enabled"

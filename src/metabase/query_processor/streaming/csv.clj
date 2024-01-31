@@ -27,7 +27,7 @@
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-        ordered-formatters (volatile! {})]
+        ordered-formatters (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
         (let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings))]

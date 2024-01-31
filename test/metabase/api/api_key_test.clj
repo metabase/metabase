@@ -5,7 +5,6 @@
    [metabase.http-client :as client]
    [metabase.models.api-key :as api-key]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -100,13 +99,13 @@
 (deftest api-count-works
   (mt/with-empty-h2-app-db
     (is (zero? (mt/user-http-request :crowberto :get 200 "api-key/count")))
-    (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  "prefix_key"
+    (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
                                               :name          "my cool name"
                                               :user_id       (mt/user->id :crowberto)
                                               :creator_id    (mt/user->id :crowberto)
                                               :updated_by_id (mt/user->id :crowberto)}]
       (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count")))
-      (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  "some_other_key"
+      (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
                                                 :name          "my cool OTHER name"
                                                 :user_id       (mt/user->id :crowberto)
                                                 :creator_id    (mt/user->id :crowberto)
@@ -242,7 +241,7 @@
         (mt/user-http-request :crowberto :delete 404 (format "api-key/%s" id))))))
 
 (deftest api-key-operations-are-audit-logged
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (mt/with-empty-h2-app-db
       (t2.with-temp/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}
                                :model/PermissionsGroup {group-id-2 :id} {:name "Less Cool Friends"}]

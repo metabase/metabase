@@ -1,7 +1,6 @@
-import { useMemo } from "react";
 import { t } from "ttag";
-import { Flex, Grid, MultiSelect, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, Grid, MultiSelect, Text, Icon } from "metabase/ui";
+
 import type { SegmentItem } from "../types";
 
 interface SegmentFilterEditorProps {
@@ -13,17 +12,14 @@ export function SegmentFilterEditor({
   segmentItems,
   onChange,
 }: SegmentFilterEditorProps) {
-  const data = useMemo(() => {
-    return segmentItems.map((segmentItem, segmentIndex) => ({
-      value: String(segmentIndex),
-      label: segmentItem.displayName,
-      isSelected: segmentItem.filterPositions.length > 0,
-    }));
-  }, [segmentItems]);
+  const options = segmentItems.map((segmentItem, segmentIndex) => ({
+    value: String(segmentIndex),
+    label: segmentItem.displayName,
+    isSelected: segmentItem.filterPositions.length > 0,
+  }));
 
-  const value = useMemo(() => {
-    return data.filter(item => item.isSelected).map(item => item.value);
-  }, [data]);
+  const data = options.map(({ value, label }) => ({ value, label }));
+  const value = options.filter(item => item.isSelected).map(item => item.value);
 
   const handleChange = (newValue: string[]) => {
     const newSegments = newValue
@@ -37,7 +33,7 @@ export function SegmentFilterEditor({
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name="filter" />
-          <Text color="text.2" weight="bold">
+          <Text color="text-dark" weight="bold">
             {t`Filter down to a segment`}
           </Text>
         </Flex>
@@ -48,6 +44,7 @@ export function SegmentFilterEditor({
           value={value}
           placeholder={t`Filter segments`}
           nothingFound={t`No matching segment found.`}
+          aria-label={t`Filter segments`}
           searchable
           onChange={handleChange}
         />

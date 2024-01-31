@@ -25,7 +25,7 @@ export const getMultiSelectOverrides =
         dropdownComponent: SelectDropdown,
         itemComponent: SelectItem,
         clearButtonProps: {
-          color: "text.2",
+          color: "text-dark",
         },
       },
       styles: (
@@ -33,7 +33,7 @@ export const getMultiSelectOverrides =
         { invalid }: MultiSelectStylesParams,
         { size = "md" },
       ) => ({
-        ...getSelectInputOverrides(theme),
+        ...getSelectInputOverrides(theme, size),
         ...getSelectItemsOverrides(theme, size),
         values: {
           minHeight: getSize({ size, sizes: SIZES }),
@@ -45,7 +45,9 @@ export const getMultiSelectOverrides =
         },
         searchInput: {
           "&::placeholder": {
-            color: invalid ? theme.colors.error[0] : theme.colors.text[0],
+            color: invalid
+              ? theme.fn.themeColor("error")
+              : theme.fn.themeColor("text-light"),
           },
           "&::-webkit-search-cancel-button": {
             display: "none",
@@ -58,11 +60,11 @@ export const getMultiSelectOverrides =
           fontWeight: "normal",
           fontSize: theme.fontSizes.xs,
           borderRadius: theme.radius.xs,
-          color: theme.colors.text[2],
-          backgroundColor: theme.colors.bg[1],
+          color: theme.fn.themeColor("text-dark"),
+          backgroundColor: theme.fn.themeColor("bg-medium"),
         },
         defaultValueRemove: {
-          color: theme.colors.text[2],
+          color: theme.fn.themeColor("text-dark"),
           width: rem(12),
           height: rem(12),
           minWidth: rem(12),

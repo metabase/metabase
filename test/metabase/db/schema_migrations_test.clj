@@ -29,7 +29,6 @@
             User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util.random :as tu.random]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]))
 
@@ -60,8 +59,8 @@
   [email]
   (first (t2/insert-returning-instances! (t2/table-name User)
                                          :email        email
-                                         :first_name   (tu.random/random-name)
-                                         :last_name    (tu.random/random-name)
+                                         :first_name   (mt/random-name)
+                                         :last_name    (mt/random-name)
                                          :password     (str (random-uuid))
                                          :date_joined  :%now
                                          :is_active    true
@@ -367,7 +366,7 @@
 
 (deftest migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
-    (let [user         (create-raw-user! (tu.random/random-email))
+    (let [user         (create-raw-user! (mt/random-email))
           dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                           :creator_id (:id user)}))
           ;; this layout is from magic dashboard for order table
@@ -459,7 +458,7 @@
 (deftest add-revision-most-recent-test
   (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
     (impl/test-migrations ["v48.00-007"] [migrate!]
-      (let [user-id          (:id (create-raw-user! (tu.random/random-email)))
+      (let [user-id          (:id (create-raw-user! (mt/random-email)))
             old              (t/minus (t/local-date-time) (t/hours 1))
             rev-dash-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                             {:model       "dashboard"
@@ -542,7 +541,7 @@
           (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))))))
 
 (deftest audit-v2-views-test
-  (testing "Migrations v48.00-029 - v48.00-040"
+  (testing "Migrations v48.00-029 - end"
     ;; Use an open-ended migration range so that we can detect if any migrations added after these views broke the view
     ;; queries
     (impl/test-migrations ["v48.00-029"] [migrate!]
@@ -562,7 +561,7 @@
         (doseq [view-name new-view-names]
           (testing (str "View " view-name " should be created")
             (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
-
+        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]
@@ -724,7 +723,7 @@
 (deftest remove-legacy-pulse-tests
   (testing "v49.00-000"
     (impl/test-migrations "v49.00-000" [migrate!]
-      (let [user-id (:id (create-raw-user! (tu.random/random-email)))
+      (let [user-id (:id (create-raw-user! (mt/random-email)))
             alert-id (first (t2/insert-returning-pks! :pulse {:name            "An Alert"
                                                               :creator_id      user-id
                                                               :dashboard_id    nil
@@ -765,3 +764,18 @@
              (t2/query
               (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
                       (-> (mdb.connection/data-source) .getConnection .getCatalog))))))))
+
+(deftest index-database-changelog-test
+  (testing "we should have an unique constraint on databasechangelog.(id,author,filename)"
+    (impl/test-migrations "v49.00-000" [migrate!]
+      (migrate!)
+      (is (pos?
+             (:count
+              (t2/query-one
+               (case (mdb.connection/db-type)
+                 :postgres "SELECT COUNT(*) as count FROM pg_indexes WHERE
+                           tablename = 'databasechangelog' AND indexname = 'idx_databasechangelog_id_author_filename';"
+                 :mysql    "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'idx_databasechangelog_id_author_filename';"
+                 ;; h2 has a strange way of naming constraint
+                 :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
+                           WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))

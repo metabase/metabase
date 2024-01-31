@@ -3,7 +3,7 @@ import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { EditWidgetConfig } from "metabase/visualizations/components/settings/ChartSettingTableColumns/types";
 import type Question from "metabase-lib/Question";
 import { DatasetColumnSelector } from "./DatasetColumnSelector";
@@ -31,7 +31,7 @@ export const ChartSettingTableColumns = ({
   const handleChange = useCallback(
     (newValue: TableColumnOrderSetting[], newQuery?: Lib.Query) => {
       if (newQuery) {
-        onChange(newValue, question?._setMLv2Query(newQuery));
+        onChange(newValue, question?.setQuery(newQuery));
       } else {
         onChange(newValue);
       }
@@ -39,8 +39,10 @@ export const ChartSettingTableColumns = ({
     [question, onChange],
   );
 
-  if (question?.isStructured()) {
-    const query = question._getMLv2Query();
+  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
+
+  if (question && !isNative) {
+    const query = question.query();
 
     return (
       <QueryColumnSelector

@@ -81,6 +81,7 @@
   :type       :keyword
   :default    :simple
   :visibility :settings-manager
+  :export?    true
   :audit      :raw-value
   :getter     (fn []
                 (let [strategy (setting/get-value-of-type :keyword :humanization-strategy)

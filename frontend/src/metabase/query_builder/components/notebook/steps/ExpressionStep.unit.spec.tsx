@@ -16,7 +16,7 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
 
   const step = createMockNotebookStep({
     type: "expression",
-    topLevelQuery: query,
+    query,
   });
 
   function getRecentQuery(): Lib.Query {
@@ -29,9 +29,8 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
     <ExpressionStep
       step={step}
       color="#93A1AB"
-      query={step.query}
       stageIndex={step.stageIndex}
-      topLevelQuery={step.topLevelQuery}
+      query={step.query}
       updateQuery={updateQuery}
       isLastOpened={false}
       reportTimezone="UTC"

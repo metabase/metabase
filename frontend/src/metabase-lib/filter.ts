@@ -2,6 +2,7 @@
 import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
+import type { DatasetColumn } from "metabase-types/api";
 import {
   isBoolean,
   isTime,
@@ -872,4 +873,64 @@ function deserializeExcludeDatePart(
     default:
       return null;
   }
+}
+
+type UpdateLatLonFilterBounds = {
+  north: number;
+  west: number;
+  east: number;
+  south: number;
+};
+
+/**
+ * Add or update a filter against latitude and longitude columns. Used to power the 'brush filter' for map
+   visualizations.
+ */
+export function updateLatLonFilter(
+  query: Query,
+  stageIndex: number,
+  latitudeColumn: DatasetColumn,
+  longitudeColumn: DatasetColumn,
+  bounds: UpdateLatLonFilterBounds,
+): Query {
+  return ML.update_lat_lon_filter(
+    query,
+    stageIndex,
+    latitudeColumn,
+    longitudeColumn,
+    bounds,
+  );
+}
+
+/**
+ * Add or update a filter against a numeric column. Used to power the 'brush filter'.
+ */
+export function updateNumericFilter(
+  query: Query,
+  stageIndex: number,
+  numericColumn: DatasetColumn,
+  start: number,
+  end: number,
+): Query {
+  return ML.update_numeric_filter(query, stageIndex, numericColumn, start, end);
+}
+
+/**
+ * Add or update a filter against a temporal column. Used to power the 'brush filter' for a timeseries visualization.
+ * `start` and `end` should be ISO-8601 formatted strings.
+ */
+export function updateTemporalFilter(
+  query: Query,
+  stageIndex: number,
+  temporalColumn: DatasetColumn,
+  start: string | Date,
+  end: string | Date,
+): Query {
+  return ML.update_temporal_filter(
+    query,
+    stageIndex,
+    temporalColumn,
+    start,
+    end,
+  );
 }

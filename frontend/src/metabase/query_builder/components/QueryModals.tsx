@@ -27,7 +27,7 @@ import { FilterModal } from "metabase/querying";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
-import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
+import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import type { Alert, Card, Collection, User } from "metabase-types/api";
@@ -238,7 +238,7 @@ class QueryModals extends Component<QueryModalsProps> {
       case MODAL_TYPES.FILTERS:
         return (
           <FilterModal
-            query={question._getMLv2Query()}
+            query={question.query()}
             onSubmit={this.onQueryChange}
             onClose={onCloseModal}
           />

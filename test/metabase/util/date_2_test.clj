@@ -332,6 +332,12 @@
         (is (= expected
                (u.date/truncate #_Tuesday #t "2021-02-23" :week)))))))
 
+(deftest ^:parallel bucket-test
+  (are [unit expected] (= expected
+                          (u.date/bucket #t "2024-01-03" unit))
+    :month         #t "2024-01-01"
+    :month-of-year 1))
+
 (deftest ^:parallel add-test
   (testing "with 2 args (datetime relative to now)"
     (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))

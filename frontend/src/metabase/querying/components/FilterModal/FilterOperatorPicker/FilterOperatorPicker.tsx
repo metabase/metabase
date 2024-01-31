@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Button, Menu } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Button, Menu, Icon } from "metabase/ui";
 
 type Option<T> = {
   name: string;
@@ -32,7 +31,7 @@ export function FilterOperatorPicker<T extends string>({
         <Button
           variant="subtle"
           disabled={disabled}
-          color="brand.1"
+          color="brand"
           td={disabled ? "none" : "underline"}
           rightIcon={<Icon name="chevrondown" size={8} />}
           p="xs"

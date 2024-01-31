@@ -7,7 +7,7 @@ export const getStaticChartTheme = (
 ): RowChartTheme => {
   return {
     axis: {
-      color: getColor("bg-dark"),
+      color: getColor("border"),
       ticks: {
         size: 12,
         weight: 700,

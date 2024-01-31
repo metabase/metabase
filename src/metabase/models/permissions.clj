@@ -98,7 +98,7 @@
   perform various CRUD actions are defined by [[metabase.models.interface/can-read?]] (in the API sense, not in the
   run-query sense) and [[metabase.models.interface/can-write?]] as well as the
   newer [[metabase.models.interface/can-create?]] and [[metabase.models.interface/can-update?]] methods.
-  Implementations for these methods live in `metabase.model.*` namespaces.
+  Implementations for these methods live in `metabase.models.*` namespaces.
 
   The implementation of these methods is up to individual models. The majority of implementations check whether
   [[metabase.api.common/*current-user-permissions-set*]] includes permissions for a given path (action)

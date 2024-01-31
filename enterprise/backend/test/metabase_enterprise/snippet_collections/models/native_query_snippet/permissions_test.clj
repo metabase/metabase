@@ -8,8 +8,6 @@
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -27,7 +25,7 @@
                   (is (= expected
                          (has-perms-for-id?)))))))]
     (testing "if EE perms aren't enabled: "
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (testing "should NOT be allowed if you don't have native perms for at least one DB"
           (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
             (test-perms* false)))
@@ -36,7 +34,7 @@
             (test-perms* true)))))
 
     (testing "if EE perms are enabled: "
-      (premium-features-test/with-premium-features #{:snippet-collections}
+      (mt/with-premium-features #{:snippet-collections}
         (with-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
           (testing "should be allowed if you have collection perms, native perms for at least one DB, and are not sandboxed"
             (grant-collection-perms!)

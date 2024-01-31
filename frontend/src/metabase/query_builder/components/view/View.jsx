@@ -14,7 +14,6 @@ import { TimeseriesChrome } from "metabase/querying";
 import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
@@ -93,12 +92,10 @@ class View extends Component {
     const isSaved = question.isSaved();
 
     if (isShowingSummarySidebar) {
-      const query = question._getMLv2Query();
-      const legacyQuery = question.query();
+      const query = question.query();
       return (
         <SummarizeSidebar
           query={query}
-          legacyQuery={legacyQuery}
           onQueryChange={nextQuery => {
             const datesetQuery = Lib.toLegacyQuery(nextQuery);
             const nextQuestion = question.setDatasetQuery(datesetQuery);
@@ -156,7 +153,11 @@ class View extends Component {
 
     if (isShowingTemplateTagsEditor) {
       return (
-        <TagEditorSidebar {...this.props} onClose={toggleTemplateTagsEditor} />
+        <TagEditorSidebar
+          {...this.props}
+          query={question.legacyQuery()}
+          onClose={toggleTemplateTagsEditor}
+        />
       );
     }
 
@@ -191,18 +192,23 @@ class View extends Component {
 
   getRightSidebar = () => {
     const { question } = this.props;
-    const isStructured = question.isStructured();
-    return isStructured
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    return !isNative
       ? this.getRightSidebarForStructuredQuery()
       : this.getRightSidebarForNativeQuery();
   };
 
   renderHeader = () => {
-    const { query } = this.props;
-    const isStructured = query instanceof StructuredQuery;
+    const { question } = this.props;
+    const query = question.query();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
+    const { isNative } = Lib.queryDisplayInfo(query);
 
     const isNewQuestion =
-      isStructured && !query.sourceTableId() && !query.sourceQuery();
+      !isNative &&
+      Lib.sourceTableOrCardId(query) === null &&
+      !legacyQuery.sourceQuery();
 
     return (
       <Motion
@@ -225,8 +231,15 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, query, card, height, isDirty, isNativeEditorOpen } =
-      this.props;
+    const {
+      question,
+      card,
+      height,
+      isDirty,
+      isNativeEditorOpen,
+      setParameterValueToDefault,
+    } = this.props;
+    const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
     // they open an ad-hoc GUI question using the model as a data source
@@ -235,7 +248,8 @@ class View extends Component {
     // So the model is opened as an underlying native question and the query editor becomes visible
     // This check makes it hide the editor in this particular case
     // More details: https://github.com/metabase/metabase/pull/20161
-    if (question.isDataset() && !question.isQueryEditable()) {
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    if (question.isDataset() && !isEditable) {
       return null;
     }
 
@@ -243,22 +257,25 @@ class View extends Component {
       <NativeQueryEditorContainer>
         <NativeQueryEditor
           {...this.props}
+          query={legacyQuery}
           viewHeight={height}
-          isOpen={query.isEmpty() || isDirty}
+          isOpen={legacyQuery.isEmpty() || isDirty}
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
+          setParameterValueToDefault={setParameterValueToDefault}
         />
       </NativeQueryEditorContainer>
     );
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const { query, mode, parameters, isLiveResizable, setParameterValue } =
+    const { question, mode, parameters, isLiveResizable, setParameterValue } =
       this.props;
 
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
     const queryMode = mode && mode.queryMode();
-    const isNative = query instanceof NativeQuery;
-    const validationError = _.first(query.validate?.());
+    const isNative = legacyQuery instanceof NativeQuery;
+    const validationError = _.first(legacyQuery.validate?.());
     const isSidebarOpen = leftSidebar || rightSidebar;
 
     return (
@@ -297,7 +314,6 @@ class View extends Component {
   render() {
     const {
       question,
-      query,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -315,15 +331,19 @@ class View extends Component {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
-    const isStructured = query instanceof StructuredQuery;
+    const query = question.query();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
+    const { isNative } = Lib.queryDisplayInfo(question.query());
 
     const isNewQuestion =
-      isStructured && !query.sourceTableId() && !query.sourceQuery();
+      !isNative &&
+      Lib.sourceTableOrCardId(query) === null &&
+      !legacyQuery.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
       return (
         <NewQuestionView
-          query={query}
+          question={question}
           updateQuestion={updateQuestion}
           className="full-height"
         />
@@ -353,7 +373,7 @@ class View extends Component {
         <QueryBuilderViewRoot className="QueryBuilder">
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
-            {isStructured && (
+            {!isNative && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}

@@ -11,7 +11,7 @@ import {
 } from "metabase/lib/colors/groups";
 
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Select, { Option } from "metabase/core/components/Select";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
@@ -206,12 +206,7 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
     they meet certain conditions.`}
     </div>
     <div className="mt2">
-      <Button
-        borderless
-        icon="add"
-        onClick={onAdd}
-        data-metabase-event="Chart Settings;Table Formatting;Add Rule"
-      >
+      <Button borderless icon="add" onClick={onAdd}>
         {t`Add a rule`}
       </Button>
     </div>
@@ -523,21 +518,11 @@ const RuleEditor = ({
       ) : null}
       <div className="mt4">
         {rule.columns.length === 0 ? (
-          <Button
-            primary
-            onClick={onRemove}
-            data-metabase-event="Chart Settings;Table Formatting;"
-          >
+          <Button primary onClick={onRemove}>
             {isNew ? t`Cancel` : t`Delete`}
           </Button>
         ) : (
-          <Button
-            primary
-            onClick={onDone}
-            data-metabase-event={`Chart Setttings;Table Formatting;${
-              isNew ? "Add Rule" : "Update Rule"
-            };Rule Type ${rule.type} Color`}
-          >
+          <Button primary onClick={onDone}>
             {isNew ? t`Add rule` : t`Update rule`}
           </Button>
         )}

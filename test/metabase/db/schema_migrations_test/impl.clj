@@ -11,6 +11,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
@@ -22,8 +23,10 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log])
   (:import
+   (java.time OffsetDateTime)
    (liquibase LabelExpression)
    (liquibase.changelog  ChangeLogHistoryServiceFactory)
    (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult)))
@@ -85,6 +88,9 @@
   [[conn-binding db-type] & body]
   `(do-with-temp-empty-app-db ~db-type (fn [~(vary-meta conn-binding assoc :tag 'java.sql.Connection)] ~@body)))
 
+(def ^:private timestamp-migration-id-re
+  #"^v(\d{2,})\.(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})$")
+
 (defn- migration->number [id]
   (if (integer? id)
     id
@@ -95,6 +101,11 @@
                 1000.0)))
         (when (re-matches #"^\d+$" id)
           (Integer/parseUnsignedInt id))
+        (when-let [[_ major-version timestamp] (re-matches timestamp-migration-id-re id)]
+          (let [unix-timestamp (-> (u.date/parse timestamp)
+                                   ^OffsetDateTime (u.date/with-time-zone-same-instant (t/zone-id "UTC"))
+                                   .toInstant .getEpochSecond)]
+            (parse-double (format "%d.%d" (* (parse-long major-version) 100) unix-timestamp))))
         (throw (ex-info (format "Invalid migration ID: %s" id) {:id id})))))
 
 (deftest migration->number-test
@@ -104,7 +115,9 @@
   (is (= 4301.009
          (migration->number "v43.01-009")))
   (is (= 4301.01
-         (migration->number "v43.01-010"))))
+         (migration->number "v43.01-010")))
+  (is (= 4900.16725312
+         (migration->number "v49.2023-01-01T00:00:00"))))
 
 (defn- migration-id-in-range?
   "Whether `id` should be considered to be between `start-id` and `end-id`, inclusive. Handles both legacy plain-integer

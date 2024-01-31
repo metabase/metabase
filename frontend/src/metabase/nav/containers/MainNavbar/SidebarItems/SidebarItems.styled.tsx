@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import Tooltip from "metabase/core/components/Tooltip";
 import Link from "metabase/core/components/Link";

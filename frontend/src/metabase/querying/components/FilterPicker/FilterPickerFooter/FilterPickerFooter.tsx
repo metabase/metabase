@@ -16,7 +16,7 @@ export function FilterPickerFooter({
   children,
 }: FilterPickerFooterProps) {
   return (
-    <FilterFooterRoot p="sm" justify="space-between">
+    <FilterFooterRoot px="md" py="sm" justify="space-between">
       {isValidElement(children) ? children : <Box />}
       <Button type="submit" variant="filled" disabled={!canSubmit}>
         {isNew ? t`Add filter` : t`Update filter`}

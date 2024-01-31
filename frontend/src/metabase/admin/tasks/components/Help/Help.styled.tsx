@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const HelpRoot = styled.div`
-  padding: 2rem;
+  padding-left: 1rem;
 `;
 
 export const HelpBody = styled.div`

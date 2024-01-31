@@ -53,7 +53,7 @@
                   (str "Cannot add a " unit " interval to a " expr-type " expression")))
               intervals)))))
 
-(defn- plus-minus-temporal-schema
+(defn- plus-minus-temporal-interval-schema
   "Create a schema for `:+` or `:-` with temporal args: <temporal> ± <interval(s)> in any order"
   [tag]
   [:and
@@ -77,11 +77,6 @@
    [:= tag]
    [:schema [:ref ::common/options]]
    [:repeat {:min 2} [:schema [:ref ::expression/number]]]])
-
-(defn- plus-minus-schema [tag]
-  [:or
-   (plus-minus-temporal-schema tag)
-   (plus-minus-numeric-schema tag)])
 
 (defn- type-of-numeric-arithmetic-args
   "Given a sequence of args to a numeric arithmetic expression like `:+`, determine the type returned by the expression
@@ -115,24 +110,50 @@
 
 (defn- type-of-arithmetic-args
   "Given a sequence of `args` to an arithmetic expression like `:+`, determine the overall type that the expression
-  returns. There are two types of arithmetic expressions:
+  returns. There are three types of arithmetic expressions:
 
   * Ones consisting of numbers. See [[type-of-numeric-arithmetic-args]].
 
   * Ones consisting of a temporal value like a Date plus one or more `:interval` clauses, in any order. See
+    [[type-of-temporal-arithmetic-args]].
+
+  * Ones consisting of exactly two temporal values being subtracted to produce an `:interval`. See
     [[type-of-temporal-arithmetic-args]]."
-  [args]
-  (if (some #(isa? (expression/type-of %) :type/Interval) args)
+  [tag args]
+  (cond
     ;; temporal value + intervals
+    (some #(isa? (expression/type-of %) :type/Interval) args)
     (type-of-temporal-arithmetic-args args)
-    (type-of-numeric-arithmetic-args args)))
+
+    ;; the difference of exactly two temporal values
+    (and (= tag :-)
+         (= (count args) 2)
+         (or (every? #(isa? (expression/type-of %) :type/Date) args)
+             (every? #(isa? (expression/type-of %) :type/DateTime) args)))
+    :type/Interval
+
+    ;; fall back to numeric args
+    :else (type-of-numeric-arithmetic-args args)))
+
+(def ^:private temporal-difference-schema
+  [:cat
+   {:error/message ":- clause taking the difference of two temporal expressions"}
+   [:= :-]
+   [:schema [:ref ::common/options]]
+   [:schema [:ref ::expression/temporal]]
+   [:schema [:ref ::expression/temporal]]])
 
 (mbql-clause/define-mbql-clause :+
-  (plus-minus-schema :+))
+  [:or
+   (plus-minus-temporal-interval-schema :+)
+   (plus-minus-numeric-schema :+)])
 
 ;;; TODO -- should `:-` support just a single arg (for numbers)? What about `:+`?
 (mbql-clause/define-mbql-clause :-
-  (plus-minus-schema :-))
+  [:or
+   (plus-minus-temporal-interval-schema :-)
+   temporal-difference-schema
+   (plus-minus-numeric-schema :-)])
 
 (mbql-clause/define-catn-mbql-clause :*
   [:args ::args.numbers])
@@ -150,8 +171,8 @@
 
 ;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.metadata.calculation/type-of-method]]
 (defmethod expression/type-of-method :lib.type-of/type-is-type-of-arithmetic-args
-  [[_tag _opts & args]]
-  (type-of-arithmetic-args args))
+  [[tag _opts & args]]
+  (type-of-arithmetic-args tag args))
 
 (mbql-clause/define-tuple-mbql-clause :abs
   [:schema [:ref ::expression/number]])

@@ -59,7 +59,6 @@ import {
   getMode,
   getModalSnippet,
   getSnippetCollectionId,
-  getQuery,
   getQuestion,
   getOriginalQuestion,
   getQueryStartTime,
@@ -89,6 +88,7 @@ import {
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
   getShouldShowUnsavedChangesWarning,
+  getRequiredTemplateTags,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -122,7 +122,6 @@ const mapStateToProps = (state, props) => {
     nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
 
-    query: getQuery(state),
     metadata: getMetadata(state),
 
     timelines: getFilteredTimelines(state),
@@ -181,6 +180,8 @@ const mapStateToProps = (state, props) => {
     loadingMessage: getWhiteLabeledLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
+
+    requiredTemplateTags: getRequiredTemplateTags(state),
   };
 };
 

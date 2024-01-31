@@ -43,7 +43,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 
@@ -86,7 +86,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 
@@ -119,7 +119,7 @@ describe("scenarios > embedding > questions ", () => {
       });
     });
 
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 
@@ -155,7 +155,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 
@@ -196,7 +196,7 @@ describe("scenarios > embedding > questions ", () => {
 
     visitQuestion(ORDERS_QUESTION_ID);
 
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 

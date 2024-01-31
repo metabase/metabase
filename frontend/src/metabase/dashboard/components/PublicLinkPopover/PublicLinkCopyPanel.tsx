@@ -41,7 +41,7 @@ export const PublicLinkCopyPanel = ({
       placeholder={loading ? t`Loading…` : undefined}
       value={url ?? undefined}
       inputWrapperOrder={["label", "input", "error", "description"]}
-      rightSection={<PublicLinkCopyButton value={url} />}
+      rightSection={url && <PublicLinkCopyButton value={url} />}
     />
     <Box pos="relative">
       <Group mt="sm" pos="absolute" w="100%" position="apart" align="center">
@@ -57,7 +57,7 @@ export const PublicLinkCopyPanel = ({
             >
               <RemoveLinkAnchor
                 fz="sm"
-                c="error.0"
+                c="error"
                 fw={700}
                 onClick={onRemoveLink}
               >
@@ -74,7 +74,7 @@ export const PublicLinkCopyPanel = ({
                 data-testid="extension-option"
                 key={extension}
                 tt="uppercase"
-                c={extension === selectedExtension ? "brand.1" : "text.0"}
+                c={extension === selectedExtension ? "brand" : "text-light"}
                 fw={700}
                 onClick={() =>
                   onChangeExtension?.(

@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
 
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import AccordionList from "metabase/core/components/AccordionList";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";

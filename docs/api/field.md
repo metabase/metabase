@@ -69,8 +69,9 @@ Get the count and distinct count of `Field` with ID.
 
 ## `GET /api/field/:id/values`
 
-If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or remapped Field), and (if
-  defined by a User) a map of human-readable remapped values.
+If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or
+  remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
+  `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them.
 
 ### PARAMS:
 
@@ -146,7 +147,7 @@ Update `Field` with ID.
 
 *  **`coercion_strategy`** nullable value must be a valid coercion strategy (keyword or string).
 
-*  **`has_field_values`** nullable enum of auto-list, search, list, none
+*  **`has_field_values`** nullable :metabase.lib.schema.metadata/column.has-field-values
 
 *  **`settings`** nullable Value must be a map.
 

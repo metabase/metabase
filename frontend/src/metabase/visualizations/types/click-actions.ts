@@ -1,5 +1,5 @@
 import type React from "react";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type { Dispatch, GetState } from "metabase-types/store";
 import type { Series, VisualizationSettings, Card } from "metabase-types/api";
 import type * as Lib from "metabase-lib";

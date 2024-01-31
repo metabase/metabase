@@ -4,7 +4,11 @@ title: Uploading data
 
 # Uploading data
 
-You can upload data in CSV format to Metabase and start asking questions about it. This feature is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
+Once you've [enabled uploads](#enabling-uploads), you can [upload files](../exploration-and-organization/collections.md#uploading-data) in CSV format to a collection in Metabase.
+
+![Upload CSV data to a collection in Metabase](./images/upload-to-collection.png)
+
+Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
 
 ## Enabling uploads
 
@@ -29,7 +33,7 @@ You can also upload data to the Sample Database included with Metabase (an H2 da
 For more, check out:
 
 - [Adding and managing databases](./connecting.md)
-- [Database users, roles, and privileges](./users-roles-privileges.md)
+- [Database users, roles, and privileges](./users-roles-privileges.md#privileges-to-enable-uploads)
 
 ### Select the database and schema that you want to store the data in
 
@@ -63,7 +67,7 @@ CSV files cannot exceed 50 MB in size.
 
 > While Metabase limits uploads to 50 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [NGINX is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 50 MB. People on Metabase Cloud don't have to worry about this.
 
-If you have a file larger than 200 MB, the workaround here is to:
+If you have a file larger than 50 MB, the workaround here is to:
 
 1. Split the data into multiple files.
 2. Upload those files one by one. Metabase will create a new model for each sheet.
@@ -87,7 +91,7 @@ Represents the year, month, day, hour. Minutes, seconds, and fractional seconds 
 
 **Format**: `yyyy-MM-ddTHH:mm:ss.SSS`. The "T" separator could also be a space (" ").
 
-**Examples**: 
+**Examples**:
 
 - `2023-01-01 00`
 - `2023-01-01 00:00:00.000`
@@ -98,12 +102,12 @@ Represents the year, month, day, hour. Minutes, seconds, and fractional seconds 
 
 Represents the datetime with an offset from Coordinated Universal Time (UTC). Minutes and seconds in the offset are optional.
 
-**Formats**: 
+**Formats**:
 
 Datetime formats:
 
-- `yyyy-MM-ddTHH:mm`. 
-- `yyyy-MM-ddTHH:mm:ss`. 
+- `yyyy-MM-ddTHH:mm`.
+- `yyyy-MM-ddTHH:mm:ss`.
 - `yyyy-MM-ddTHH:mm:ss.SSS` (and any number of S's).
 
 The "T" separator could also be a space (" ").
@@ -111,9 +115,9 @@ The "T" separator could also be a space (" ").
 Offsets:
 
 - `Z` (for UTC)
-- `+HH` or `-HH` 
-- `+HH:mm` or `-HH:mm` 
-- `+HH:mm:ss` or `-HH:mm:ss` 
+- `+HH` or `-HH`
+- `+HH:mm` or `-HH:mm`
+- `+HH:mm:ss` or `-HH:mm:ss`
 
 **Examples**:
 

@@ -32,30 +32,9 @@ const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
 
 const TEST_CASES = [
-  { case: "question", subject: QUESTION_NAME },
-  { case: "dashboard", subject: DASHBOARD_NAME },
+  { case: "question", subject: QUESTION_NAME, confirmSave: true },
+  { case: "dashboard", subject: DASHBOARD_NAME, confirmSave: false },
 ];
-
-/**
- * Our app registers beforeunload event listener e.g. when editing a native SQL question.
- * Cypress does not automatically close the browser prompt and does not allow manually
- * interacting with it (unlike with window.confirm). The test will hang forever with
- * the prompt displayed and will eventually time out. We need to work around this by
- * monkey-patching window.addEventListener to ignore beforeunload event handlers.
- *
- * @see https://github.com/cypress-io/cypress/issues/2118
- */
-Cypress.on("window:load", window => {
-  const addEventListener = window.addEventListener;
-
-  window.addEventListener = function (event) {
-    if (event === "beforeunload") {
-      return;
-    }
-
-    return addEventListener.apply(this, arguments);
-  };
-});
 
 describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
@@ -700,10 +679,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
-          openStaticEmbeddingModal();
-
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Publish").click();
+          openStaticEmbeddingModal({
+            activeTab: "parameters",
+            confirmSave: test.confirmSave,
+          });
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
           visitIframe();
@@ -1156,8 +1135,16 @@ const testQuery = {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
     breakout: [
-      ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
-      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      [
+        "field",
+        PEOPLE.SOURCE,
+        { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+      ],
+      [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ],
     ],
   },
   database: SAMPLE_DB_ID,

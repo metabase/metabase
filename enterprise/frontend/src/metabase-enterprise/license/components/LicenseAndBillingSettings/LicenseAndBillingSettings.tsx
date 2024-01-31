@@ -130,7 +130,7 @@ const LicenseAndBillingSettings = ({
 
         {!isStoreManagedBilling && (
           <>
-            <Text color="text.1">
+            <Text color="text-medium">
               {t`To manage your billing preferences, please email `}
               <Anchor href="mailto:billing@metabase.com">
                 billing@metabase.com

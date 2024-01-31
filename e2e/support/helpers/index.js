@@ -1,4 +1,5 @@
 export * from "./e2e-action-helpers";
+export * from "./e2e-api-key-helpers";
 export * from "./e2e-setup-helpers";
 export * from "./e2e-ui-elements-helpers";
 export * from "./e2e-dashboard-helpers";

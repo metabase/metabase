@@ -28,7 +28,7 @@ export function getCardUiParameters(
     const target: ParameterTarget | undefined = (
       parameter as ParameterWithTarget
     ).target;
-    const field = getParameterTargetField(target, metadata, question);
+    const field = getParameterTargetField(target, question);
     if (field) {
       return {
         ...parameter,

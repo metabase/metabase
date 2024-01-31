@@ -22,7 +22,7 @@ export const SearchUserPickerContent = styled(Stack)`
 `;
 
 export const SearchUserSelectBox = styled(Stack)`
-  border: ${({ theme }) => theme.colors.border[0]} 1px solid;
+  border: ${({ theme }) => theme.fn.themeColor("border")} 1px solid;
   border-radius: ${({ theme }) => theme.radius.md};
 `;
 
@@ -30,7 +30,7 @@ export const SelectedUserButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`
   ${({ theme }) => {
-    const primaryColor = theme.colors.brand[1];
+    const primaryColor = theme.fn.themeColor("brand");
     const backgroundColor = theme.fn.lighten(primaryColor, 0.8);
     const hoverBackgroundColor = theme.fn.lighten(primaryColor, 0.6);
 

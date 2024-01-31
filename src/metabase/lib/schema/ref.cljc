@@ -79,7 +79,8 @@
    ::common/options
    [:map
     [:name {:optional true} ::common/non-blank-string]
-    [:display-name {:optional true} ::common/non-blank-string]]])
+    [:display-name {:optional true} ::common/non-blank-string]
+    [:lib/source-name {:optional true} ::common/non-blank-string]]])
 
 (mbql-clause/define-mbql-clause :aggregation
   [:tuple

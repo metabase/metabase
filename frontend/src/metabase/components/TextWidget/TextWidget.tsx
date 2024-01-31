@@ -35,8 +35,6 @@ export class TextWidget extends Component<Props, State> {
     };
   }
 
-  static noPopover = true;
-
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }

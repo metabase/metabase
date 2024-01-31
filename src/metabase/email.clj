@@ -7,6 +7,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.retry :as retry]
    [postal.core :as postal]
    [postal.support :refer [make-props]])
   (:import
@@ -133,35 +134,42 @@
         (and (sequential? message) (every? map? message))
         (string? message)))]])
 
-(mu/defn send-message-or-throw!
+(defn send-message-or-throw!
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
-  does not catch and swallow thrown exceptions, it will bubble up."
+  does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
+  the caller has its own retry logic."
   {:style/indent 0}
-  [{:keys [subject recipients message-type message] :as email} :- EmailMessage]
+  [{:keys [subject recipients message-type message] :as email}]
   (try
-   (when-not (email-smtp-host)
-     (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
-   ;; Now send the email
-   (let [to-type (if (:bcc? email) :bcc :to)]
-     (send-email! (smtp-settings)
-                  (merge
-                   {:from    (if-let [from-name (email-from-name)]
-                               (str from-name " <" (email-from-address) ">")
-                               (email-from-address))
-                    to-type  recipients
-                    :subject subject
-                    :body    (case message-type
-                               :attachments message
-                               :text        message
-                               :html        [{:type    "text/html; charset=utf-8"
-                                              :content message}])}
-                   (when-let [reply-to (email-reply-to)]
-                     {:reply-to reply-to}))))
-   (catch Throwable e
-     (prometheus/inc :metabase-email/message-errors)
-     (throw e))
-   (finally
-    (prometheus/inc :metabase-email/messages))))
+    (when-not (email-smtp-host)
+      (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
+    ;; Now send the email
+    (let [to-type (if (:bcc? email) :bcc :to)]
+      (send-email! (smtp-settings)
+                   (merge
+                    {:from    (if-let [from-name (email-from-name)]
+                                (str from-name " <" (email-from-address) ">")
+                                (email-from-address))
+                     to-type  recipients
+                     :subject subject
+                     :body    (case message-type
+                                :attachments message
+                                :text        message
+                                :html        [{:type    "text/html; charset=utf-8"
+                                               :content message}])}
+                    (when-let [reply-to (email-reply-to)]
+                      {:reply-to reply-to}))))
+    (catch Throwable e
+      (prometheus/inc :metabase-email/message-errors)
+      (when (not= :smtp-host-not-set (:cause (ex-data e)))
+        (throw e)))
+    (finally
+      (prometheus/inc :metabase-email/messages))))
+
+(mu/defn send-email-retrying!
+  "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
+  [email :- EmailMessage]
+  ((retry/decorate send-message-or-throw!) email))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
@@ -175,16 +183,16 @@
   either `:text` or `:html` or `:attachments`.
 
     (email/send-message!
-     :subject      \"[Metabase] Password Reset Request\"
-     :recipients   [\"cam@metabase.com\"]
-     :message-type :text
-     :message      \"How are you today?\")
+     {:subject      \"[Metabase] Password Reset Request\"
+      :recipients   [\"cam@metabase.com\"]
+      :message-type :text
+      :message      \"How are you today?\")}
 
   Upon success, this returns the `:message` that was just sent. (TODO -- confirm this.) This function will catch and
   log any exception, returning a [[SMTPStatus]]."
   [& {:as msg-args}]
   (try
-    (send-message-or-throw! msg-args)
+    (send-email-retrying! msg-args)
     (catch Throwable e
       (log/warn e (trs "Failed to send email"))
       {::error e})))

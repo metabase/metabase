@@ -18,6 +18,8 @@
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
 
+  :metabase/defsetting-must-specify-export {:level :warning}
+
   ;;
   ;; disabled linters
   ;;
@@ -417,6 +419,7 @@
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
   honeysql.util/defalias                                                               clojure.core/def
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
+  metabase-enterprise.serialization.test-util/with-dbs                                 clojure.core/fn
   metabase.actions.test-util/with-actions                                              clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
   metabase.api.search-test/do-test-users                                               clojure.core/let
@@ -531,7 +534,7 @@
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.pulse-test/with-dashboard-subscription-in-collection                                                      hooks.common/with-four-bindings
    metabase.models.pulse-test/with-pulse-in-collection                                                                       hooks.common/with-four-bindings
-   metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/defsetting
+   metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
    metabase.public-settings.premium-features/defenterprise                                                                   hooks.metabase.public-settings.premium-features/defenterprise
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
@@ -565,9 +568,9 @@
    metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
-   metabase.test/with-temp!                                                                                                  hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
-   metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values}
+   metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job
@@ -595,11 +598,11 @@
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world
    metabase.shared.util.namespaces/import-fn                                    macros.metabase.shared.util.namespaces/import-fn
    metabase.test.data.users/with-group-for-user                                 macros.metabase.test.data.users/with-group-for-user
-   metabase.test.util/with-temp-env-var-value                                   macros.metabase.test.util/with-temp-env-var-value
+   metabase.test.util/with-temp-env-var-value!                                  macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                         macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.test/with-group-for-user                                            macros.metabase.test.data.users/with-group-for-user
    metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
-   metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
+   metabase.test/with-temp-env-var-value!                                       macros.metabase.test.util/with-temp-env-var-value!
    metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
 
  :config-in-comment
@@ -635,10 +638,17 @@
  :config-in-ns
  {test-namespaces
   {:linters
-   {:inline-def                                    {:level :off}
-    :missing-docstring                             {:level :off}
-    :private-call                                  {:level :off}
-    :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
+   {:inline-def                                          {:level :off}
+    :missing-docstring                                   {:level :off}
+    :private-call                                        {:level :off}
+    :metabase/defsetting-must-specify-export             {:level :off}
+    :hooks.metabase.test.data/mbql-query-first-arg       {:level :error}
+    :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}}
+   :hooks
+   {:analyze-call
+    {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
 
   source-namespaces
   {:linters

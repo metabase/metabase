@@ -12,6 +12,7 @@ import {
 const DataSourceSelectorsPropTypes = {
   isNativeEditorOpen: PropTypes.bool,
   query: PropTypes.object,
+  question: PropTypes.object,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
@@ -54,12 +55,13 @@ const PlaceholderPropTypes = {
 const DataSourceSelectors = ({
   isNativeEditorOpen,
   query,
+  question,
   readOnly,
   setDatabaseId,
   setTableId,
   editorContext,
 }) => {
-  const database = query.database();
+  const database = question.database();
 
   const databases = useMemo(() => {
     const allDatabases = query

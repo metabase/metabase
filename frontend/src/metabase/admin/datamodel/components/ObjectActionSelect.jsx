@@ -2,7 +2,7 @@ import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { capitalize } from "metabase/lib/formatting";
@@ -42,7 +42,6 @@ export default class ObjectActionsSelect extends Component {
             <li>
               <ActionLink
                 to={"/admin/datamodel/" + objectType + "/" + object.id}
-                data-metabase-event={"Data Model;" + objectType + " Edit Page"}
               >
                 {t`Edit`} {capitalize(objectType)}
               </ActionLink>
@@ -56,7 +55,6 @@ export default class ObjectActionsSelect extends Component {
                   object.id +
                   "/revisions"
                 }
-                data-metabase-event={"Data Model;" + objectType + " History"}
               >
                 {t`Revision History`}
               </ActionLink>

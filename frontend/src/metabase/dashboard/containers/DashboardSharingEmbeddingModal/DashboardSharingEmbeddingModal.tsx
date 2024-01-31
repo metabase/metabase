@@ -2,8 +2,10 @@ import type { Dashboard } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
-import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
+import {
+  EmbedModal,
+  EmbedModalContent,
+} from "metabase/public/components/EmbedModal";
 import { getParameters } from "metabase/dashboard/selectors";
 
 import {
@@ -14,7 +16,6 @@ import {
 } from "../../actions";
 
 export type DashboardSharingEmbeddingModalProps = {
-  isLinkEnabled: boolean;
   className?: string;
   dashboard: Dashboard;
   isOpen: boolean;
@@ -24,7 +25,7 @@ export type DashboardSharingEmbeddingModalProps = {
 export const DashboardSharingEmbeddingModal = (
   props: DashboardSharingEmbeddingModalProps,
 ) => {
-  const { className, dashboard, isOpen, onClose, isLinkEnabled } = props;
+  const { className, dashboard, isOpen, onClose } = props;
 
   const parameters = useSelector(getParameters);
 
@@ -38,17 +39,14 @@ export const DashboardSharingEmbeddingModal = (
   const updateDashboardEmbeddingParams = (embeddingParams: EmbedOptions) =>
     dispatch(updateEmbeddingParams(dashboard, embeddingParams));
 
-  const getPublicUrl = ({ public_uuid }: { public_uuid: string }) =>
-    Urls.publicDashboard(public_uuid);
+  const getPublicUrl = (publicUuid: string) => Urls.publicDashboard(publicUuid);
 
   return (
     <EmbedModal isOpen={isOpen} onClose={onClose}>
-      {({ embedType, setEmbedType }) => (
+      {({ embedType, goToNextStep }) => (
         <EmbedModalContent
-          {...props}
-          isLinkEnabled={isLinkEnabled ?? true}
           embedType={embedType}
-          setEmbedType={setEmbedType}
+          goToNextStep={goToNextStep}
           className={className}
           resource={dashboard}
           resourceParameters={parameters}
@@ -57,7 +55,6 @@ export const DashboardSharingEmbeddingModal = (
           onDeletePublicLink={deletePublicDashboardLink}
           onUpdateEnableEmbedding={updateDashboardEnableEmbedding}
           onUpdateEmbeddingParams={updateDashboardEmbeddingParams}
-          onClose={onClose}
           getPublicUrl={getPublicUrl}
         />
       )}

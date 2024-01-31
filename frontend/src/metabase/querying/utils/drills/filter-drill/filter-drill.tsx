@@ -30,7 +30,7 @@ export function getFilterPopover({
         filter={initialFilter}
         onChange={filter => {
           const nextQuery = Lib.filter(query, stageIndex, filter);
-          const nextQuestion = question._setMLv2Query(nextQuery);
+          const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();
           onChangeCardAndRun({ nextCard });
           onClose();

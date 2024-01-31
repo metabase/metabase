@@ -367,6 +367,7 @@
 (defmethod serdes/load-xform "DashboardCard"
   [dashcard]
   (-> dashcard
+      ;; Deliberately not doing anything to :series, they get handled by load-one! below
       (dissoc :serdes/meta)
       (update :card_id                serdes/*import-fk* :model/Card)
       (update :action_id              serdes/*import-fk* :model/Action)
@@ -375,3 +376,23 @@
       (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes/import-parameter-mappings)
       (update :visualization_settings serdes/import-visualization-settings)))
+
+(defn- dashboard-card-series-xform
+  [ingested]
+  (-> ingested
+      (update :card_id          serdes/*import-fk* :model/Card)
+      (update :dashboardcard_id serdes/*import-fk* :model/DashboardCard)))
+
+(defmethod serdes/load-one! "DashboardCard"
+  [ingested maybe-local]
+  (let [dashcard ((get-method serdes/load-one! :default) (dissoc ingested :series) maybe-local)]
+    ;; drop all existing series for this card and recreate them
+    ;; TODO: this is unnecessary, but it is simple to implement
+    (t2/delete! :model/DashboardCardSeries :dashboardcard_id (:id dashcard))
+    (doseq [[idx single-series] (map-indexed vector (:series ingested))] ;; a single series has a :card_id only
+      ;; instead of load-one! we use load-insert! here because :serdes/meta isn't necessary because no other
+      ;; entities depend on DashboardCardSeries
+      (serdes/load-insert! "DashboardCardSeries" (-> single-series
+                                                     (assoc :dashboardcard_id (:entity_id dashcard)
+                                                            :position idx)
+                                                     dashboard-card-series-xform)))))

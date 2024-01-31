@@ -6,7 +6,7 @@ import type {
   SearchResult,
   UserId,
 } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type { SearchFilterKeys } from "metabase/search/constants";
 
 export interface WrappedResult extends SearchResult {

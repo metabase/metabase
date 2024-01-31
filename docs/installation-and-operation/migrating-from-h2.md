@@ -15,7 +15,7 @@ Metabase ships with an embedded H2 application database that you should avoid us
 
 If you want to run Metabase in production, you'll need to use a production-ready application database to store your application data. You can switch from using the default H2 application database at any time, but if you're planning on running Metabase in production, the sooner you migrate to a production application database, the better. If you keeping running Metabase with the default H2 application database, and you don't regularly back it up, the application database could get corrupted, and you could end up losing all of your questions, dashboards, collections, and other Metabase data.
 
-The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file. 
+The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file.
 
 ### Avoid migrating and upgrading at the same time
 
@@ -26,8 +26,8 @@ You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase
 ## Supported databases for storing your Metabase application data
 
 - [PostgreSQL](https://www.postgresql.org/). Minimum version: `9.4`.
-- [MySQL](https://www.mysql.com/). Minimum version: `8.0.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
-- [MariaDB](https://mariadb.org/). Minimum version: `10.2.2`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
+- [MySQL](https://www.mysql.com/). Minimum version: `8.0.17`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
+- [MariaDB](https://mariadb.org/). Minimum version: `10.4.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 
 Go with whichever database you're familiar with. If you're not familiar with any of these, or not sure which to pick, go with Postgres.
 

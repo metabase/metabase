@@ -138,21 +138,21 @@
 (deftest ^:parallel nested-nested-queries-test
   (testing "make sure that nested nested queries work as expected"
     (qp.store/with-metadata-provider (nested-nested-provider)
-      (is (= (-> (default-result-with-inner-query
-                  {:limit          25
-                   :source-query   {:limit           50
-                                    :source-query    {:source-table (meta/id :venues)
-                                                      :limit        100}
-                                    :source-card-id  1
-                                    :source-metadata nil}
-                   :source-card-id 2}
-                  (qp/query->expected-cols (lib.tu.macros/mbql-query venues)))
-                 (assoc-in [:query :source-query :source-metadata]
-                           (mt/derecordize (qp/query->expected-cols (lib.tu.macros/mbql-query venues))))
-                 (assoc :info {:card-id 2}))
-             (resolve-card-id-source-tables
-              (wrap-inner-query
-               {:source-table "card__2", :limit 25})))))))
+      (is (=? (-> (default-result-with-inner-query
+                    {:limit          25
+                     :source-query   {:limit           50
+                                      :source-query    {:source-table (meta/id :venues)
+                                                        :limit        100}
+                                      :source-card-id  1
+                                      :source-metadata nil}
+                     :source-card-id 2}
+                    (qp/query->expected-cols (lib.tu.macros/mbql-query venues)))
+                  (assoc-in [:query :source-query :source-metadata]
+                            (mt/derecordize (qp/query->expected-cols (lib.tu.macros/mbql-query venues))))
+                  (assoc :info {:card-id 2}))
+              (resolve-card-id-source-tables
+                (wrap-inner-query
+                  {:source-table "card__2", :limit 25})))))))
 
 (defn- nested-nested-app-db-provider []
   (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))

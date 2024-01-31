@@ -184,7 +184,7 @@ describe("DatabasePromptBanner", () => {
     expect(getHelpLink).toBeInTheDocument();
     expect(getHelpLink).toHaveAttribute(
       "href",
-      "https://metabase.com/help/connect",
+      "https://metabase.com/help/connect?email=admin%40metabase.test&site_url=http%3A%2F%2Flocalhost%3A3000",
     );
 
     const connectDatabaseLink = screen.getByRole("link", {
@@ -217,7 +217,7 @@ describe("DatabasePromptBanner", () => {
     expect(getHelpLink).toBeInTheDocument();
     expect(getHelpLink).toHaveAttribute(
       "href",
-      "https://metabase.com/help/connect",
+      "https://metabase.com/help/connect?email=admin%40metabase.test&site_url=http%3A%2F%2Flocalhost%3A3000",
     );
 
     expect(

@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 
 import type {
@@ -18,7 +18,7 @@ import { SidebarItem } from "../SidebarItem";
 import { BehaviorOptionIcon } from "./TypeSelector.styled";
 
 interface BehaviorOptionProps {
-  value: ClickBehaviorType | "menu";
+  value: ClickBehaviorType;
   dashcard: DashboardCard;
   icon: IconName;
   hasNextStep: boolean;
@@ -82,8 +82,8 @@ export function TypeSelector({
   const handleSelect = useCallback(
     value => {
       if (value !== clickBehavior.type) {
-        updateSettings(value === "menu" ? undefined : { type: value });
-      } else if (value !== "menu") {
+        updateSettings(value === "actionMenu" ? undefined : { type: value });
+      } else if (value !== "actionMenu") {
         moveToNextPage();
       }
     },
@@ -101,7 +101,7 @@ export function TypeSelector({
             disabled={value === "crossfilter" && parameters.length === 0}
             onClick={() => handleSelect(value)}
             icon={icon}
-            hasNextStep={value !== "menu"}
+            hasNextStep={value !== "actionMenu"}
           />
         </div>
       ))}

@@ -8,10 +8,10 @@ export const getPaperOverrides = (): MantineThemeOverride["components"] => ({
     },
     styles: (theme, _params: PaperStylesParams) => ({
       root: {
-        color: theme.colors.text[2],
+        color: theme.fn.themeColor("text-dark"),
         backgroundColor: theme.white,
         "&[data-with-border]": {
-          borderColor: theme.colors.border[0],
+          borderColor: theme.fn.themeColor("border"),
         },
       },
     }),

@@ -85,9 +85,7 @@ describe("scenarios > question > native", () => {
       parseSpecialCharSequences: false,
     });
     cy.findByTestId("sidebar-right")
-      .findByText("Required?")
-      .parent()
-      .find("input")
+      .findByText("Always require a value")
       .click();
     cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
     runQuery();
@@ -129,7 +127,7 @@ describe("scenarios > question > native", () => {
     cy.location("pathname").should("match", /\/question\/\d+/);
   });
 
-  it.skip(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332, metabase#37100)`, () => {
+  it(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332, metabase#37100)`, () => {
     const FILTERS = ["Is not", "Does not contain"];
 
     const questionDetails = {

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import QueryViewer from "metabase/query_builder/containers/QueryViewer";
+import { QueryViewer } from "metabase-enterprise/audit_app/components/QueryViewer";
 import { serializeCardForUrl } from "metabase/lib/card";
 
 import * as QueryDetailCards from "../lib/cards/query_detail";

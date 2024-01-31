@@ -7,7 +7,6 @@
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase.cmd :as cmd]
    [metabase.models :refer [Card Dashboard DashboardCard Database User]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -27,7 +26,7 @@
     ;;
     ;; making use of the functionality in the [[metabase.db.schema-migrations-test.impl]] namespace for this (since it
     ;; already does what we need)
-    (premium-features-test/with-premium-features #{:serialization}
+    (mt/with-premium-features #{:serialization}
       (mt/with-empty-h2-app-db
         ;; create a single dummy User to own a Card and a Database for it to reference
         (let [user  (t2/insert! (t2/table-name User)
@@ -63,7 +62,7 @@
 
 (deftest blank-target-db-test
   (testing "Loading a dump into an empty app DB still works (#16639)"
-    (premium-features-test/with-premium-features #{:serialization}
+    (mt/with-premium-features #{:serialization}
       (let [dump-dir                 (ts/random-dump-dir "serdes-")
             user-pre-insert-called?  (atom false)]
         (log/infof "Dumping to %s" dump-dir)
@@ -78,12 +77,12 @@
 
 (deftest mode-update-remove-cards-test
   (testing "--mode update should remove Cards in a Dashboard if they're gone from the serialized YAML (#20786)"
-    (premium-features-test/with-premium-features #{:serialization}
+    (mt/with-premium-features #{:serialization}
       (ts/with-random-dump-dir [dump-dir "serialization"]
         (let [dashboard-yaml-filename (str dump-dir "/collections/root/dashboards/Dashboard.yaml")]
-          (ts/with-source-and-dest-dbs
+          (ts/with-dbs [source-db dest-db]
             (testing "create 2 questions in the source and add them to a dashboard"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (let [{db-id :id, :as db} (ts/create! Database :name "My_Database")]
                   (mt/with-db db
                     (let [{user-id :id}      (ts/create! User, :is_superuser true)
@@ -109,7 +108,7 @@
                                                  {:card_id "/collections/root/cards/Card_2"}]}
                               yaml))))
             (testing "load into destination"
-              (ts/with-dest-db
+              (ts/with-db dest-db
                 (testing "Create admin user"
                   (is (some? (ts/create! User, :is_superuser true)))
                   (is (t2/exists? User :is_superuser true)))
@@ -119,12 +118,12 @@
                   (is (= 2 (t2/count Card)) "# Cards")
                   (is (= 2 (t2/count DashboardCard)) "# DashboardCards") >)))
             (testing "remove one of the questions in the source's dashboard"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (t2/delete! Card :name "Card_2")
                 (is (= 1 (t2/count Card)) "# Cards")
                 (is (= 1 (t2/count DashboardCard)) "# DashboardCards")))
             (testing "dump again"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (cmd/dump dump-dir))
               (testing "Verify dump only contains one Card"
                 (is (.exists (io/file dashboard-yaml-filename)))
@@ -132,7 +131,7 @@
                   (is (partial= {:dashboard_cards [{:card_id "/collections/root/cards/Card_1"}]}
                                 yaml)))))
             (testing "load again, with --mode update, destination Dashboard should now only have one question."
-              (ts/with-dest-db
+              (ts/with-db dest-db
                 (is (nil? (cmd/load dump-dir "--mode" "update", "--on-error" "abort")))
                 (is (= 1 (t2/count Dashboard)) "# Dashboards")
                 (testing "Don't delete the Card even tho it was deleted. Just delete the DashboardCard"
@@ -155,7 +154,7 @@
 
 (deftest dump-readonly-dir-test
   (testing "command exits early when destination is not writable"
-    (premium-features-test/with-premium-features #{:serialization}
+    (mt/with-premium-features #{:serialization}
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (.mkdirs (io/file dump-dir))
         (.setWritable (io/file dump-dir) false)

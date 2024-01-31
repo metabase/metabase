@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
+import DatePicker from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
 import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 
 import {

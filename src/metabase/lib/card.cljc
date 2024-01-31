@@ -77,29 +77,34 @@
                  ;; ignore `:field-ref`, it's very likely a legacy field ref, and it's probably wrong either way. We
                  ;; can always calculate a new one.
                  (dissoc :field-ref))]
-     (merge
-      {:base-type :type/*, :lib/type :metadata/column}
-      (when-let [field-id (:id col)]
-        (try
-          (lib.metadata/field metadata-providerable field-id)
-          (catch #?(:clj Throwable :cljs :default) _
-            nil)))
-      col
-      {:lib/type                :metadata/column
-       :lib/source              :source/card
-       :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)}
-      (when card-or-id
-        {:lib/card-id (u/the-id card-or-id)})
-      (when (and *force-broken-card-refs*
-                 ;; never force broken refs for datasets, because datasets can have give columns with completely
-                 ;; different names the Field ID of a different column, somehow. See #22715
-                 (or
-                  ;; we can only do this check if `card-or-id` is passed in.
-                  (not card-or-id)
-                  (not (:dataset (lib.metadata/card metadata-providerable (u/the-id card-or-id))))))
-        {::force-broken-id-refs true}
-        #_(when-let [legacy-join-alias (:source-alias col)]
-            {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))}))))))
+     (cond-> (merge
+               {:base-type :type/*, :lib/type :metadata/column}
+               (when-let [field-id (:id col)]
+                 (try
+                   (lib.metadata/field metadata-providerable field-id)
+                   (catch #?(:clj Throwable :cljs :default) _
+                     nil)))
+               col
+               {:lib/type                :metadata/column
+                :lib/source              :source/card
+                :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
+       card-or-id
+       (assoc :lib/card-id (u/the-id card-or-id))
+
+       (and *force-broken-card-refs*
+            ;; never force broken refs for datasets, because datasets can have give columns with completely
+            ;; different names the Field ID of a different column, somehow. See #22715
+            (or
+              ;; we can only do this check if `card-or-id` is passed in.
+              (not card-or-id)
+              (not (:dataset (lib.metadata/card metadata-providerable (u/the-id card-or-id))))))
+       (assoc ::force-broken-id-refs true)
+
+       ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
+       ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
+       ;; treated as FKs unless the metadata is configured accordingly.
+       (not= (:semantic-type col) :type/FK)
+       (assoc :fk-target-field-id nil)))))
 
 (def ^:private CardColumnMetadata
   [:merge

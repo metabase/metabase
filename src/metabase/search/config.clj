@@ -17,6 +17,7 @@
   :type       :boolean
   :default    true
   :visibility :authenticated
+  :export?    true
   :audit      :getter)
 
 (def ^:dynamic *db-max-results*
@@ -146,11 +147,12 @@
    :bookmark            :boolean
    ;; returned for everything except Collection
    :updated_at          :timestamp
-   ;; returned for Card only, used for scoring
+   ;; returned for Card only, used for scoring and displays
    :dashboardcard_count :integer
    :last_edited_at      :timestamp
    :last_editor_id      :integer
    :moderated_status    :text
+   :display             :text
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -264,7 +266,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :collection_position :dataset_query :creator_id
+  (conj default-columns :collection_id :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
         bookmark-col dashboardcard-count-col))

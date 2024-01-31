@@ -1,7 +1,9 @@
 (ns metabase.formatter.datetime-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.formatter.datetime :as datetime]
+   [metabase.public-settings :as public-settings]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]))
 
@@ -136,14 +138,26 @@
           (is (= "7/16/2020"
                  (fmt {::mb.viz/date-style "M/D/YYYY"}))))))
     (testing "Custom Formatting options are respected as defaults."
+      ;; NOTE - format-temporal-str gets global settings from the `::mb.viz/global-column-settings`
+      ;; key of the viz-settings argument. These are looked up based on the type of the column.
       (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "MMMM D, YYYY"
                                                                             :date_abbreviate true}}]
-        (is (= "Jul 16, 2020"
-               (datetime/format-temporal-str "UTC" now nil nil))))
+        (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
+                                          (public-settings/custom-formatting))]
+          (is (= "Jul 16, 2020"
+                 (datetime/format-temporal-str "UTC" now
+                                               {:effective_type :type/Date}
+                                               {::mb.viz/global-column-settings global-settings})))))
       (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style     "M/DD/YYYY"
                                                                             :date_separator "-"}}]
-        (is (= "7-16-2020"
-               (datetime/format-temporal-str "UTC" now nil nil)))))))
+        (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
+                                          (public-settings/custom-formatting))]
+          (is (= "7-16-2020, 6:04 PM"
+                 (datetime/format-temporal-str
+                   "UTC"
+                   now
+                   {:effective_type :type/DateTime}
+                   {::mb.viz/global-column-settings global-settings}))))))))
 
 (deftest format-datetime-test
   (testing "Testing permutations of a datetime string with different type information and viz settings (#36559)"

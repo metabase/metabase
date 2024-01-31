@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
@@ -142,7 +142,6 @@ function MainNavbarView({
                 url={BROWSE_URL}
                 isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
                 onClick={onItemSelect}
-                data-metabase-event="NavBar;Data Browse"
               >
                 {t`Browse data`}
               </PaddedSidebarLink>
@@ -154,7 +153,6 @@ function MainNavbarView({
                     ADD_YOUR_OWN_DATA_URL,
                   )}
                   onClick={onItemSelect}
-                  data-metabase-event="NavBar;Add your own data"
                 >
                   {t`Add your own data`}
                 </AddYourOwnDataLink>

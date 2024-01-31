@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import Collections from "metabase/entities/collections";
 

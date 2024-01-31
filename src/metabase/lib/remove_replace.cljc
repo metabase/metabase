@@ -1,17 +1,19 @@
 (ns metabase.lib.remove-replace
   (:require
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.match]
-   [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -32,6 +34,7 @@
 
 (declare remove-local-references)
 (declare remove-stage-references)
+(declare remove-join)
 (declare normalize-fields-clauses)
 
 (defn- find-matching-order-by-index
@@ -118,12 +121,24 @@
                                        (_ :guard #(or (empty? target-opts)
                                                       (set/subset? (set target-opts) (set %))))
                                        target-ref-id] [location clause]))))))
-                   (stage-paths query stage-number))]
-    (reduce
-     (fn [query [location target-clause]]
-       (remove-replace-location query stage-number unmodified-query-for-stage location target-clause #(lib.util/remove-clause %1 %2 %3 stage-number)))
-     query
-     to-remove)))
+                   (stage-paths query stage-number))
+        dead-joins (volatile! (transient []))]
+    (as-> query q
+      (reduce
+        (fn [query [location target-clause]]
+          (remove-replace-location
+            query stage-number unmodified-query-for-stage location target-clause
+            #(try (lib.util/remove-clause %1 %2 %3 stage-number)
+                  (catch #?(:clj Exception :cljs js/Error) e
+                    (let [{:keys [error join]} (ex-data e)]
+                      (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
+                        ;; Return the stage unchanged, but keep track of the dead joins.
+                        (do (vswap! dead-joins conj! join)
+                            %1)
+                        (throw e)))))))
+        q
+        to-remove)
+      (reduce #(remove-join %1 stage-number %2) q (persistent! @dead-joins)))))
 
 (defn- remove-stage-references
   [query previous-stage-number unmodified-query-for-stage target-uuid]
@@ -182,8 +197,6 @@
             normalize-fields-clauses)
         query))))
 
-(declare remove-join)
-
 (mu/defn remove-clause :- :metabase.lib.schema/query
   "Removes the `target-clause` from the stage specified by `stage-number` of `query`.
   If `stage-number` is not specified, the last stage is used."
@@ -197,48 +210,156 @@
      (remove-join query stage-number target-clause)
      (remove-replace* query stage-number target-clause :remove nil))))
 
-(defn- expression-role
-  [an-expression]
-  (if (-> an-expression lib.options/options :lib/expression-name)
-    :custom-column
-    :custom-aggregation))
+(defn- fresh-ref
+  [reference]
+  (lib.options/update-options reference assoc :lib/uuid (str (random-uuid))))
+
+(defn- local-replace-expression-references [stage target-ref-id replacement-ref]
+  (let [replace-embedded-refs (fn replace-refs [stage]
+                                (mbql.match/replace stage
+                                  [:expression _ target-ref-id] (fresh-ref replacement-ref)))]
+    (replace-embedded-refs stage)))
+
+(defn- local-replace-expression
+  [stage target replacement]
+  (let [replacement-name (or (lib.util/expression-name replacement)
+                             (-> replacement lib.options/options :name))
+        top-level-replacement (-> replacement
+                                  (lib.util/top-level-expression-clause replacement-name)
+                                  fresh-ref)
+        replaced (update stage :expressions (fn [exprs] (mapv #(if (= % target) top-level-replacement %) exprs)))
+        target-name (lib.util/expression-name target)
+        replacement-type (-> replacement lib.options/options :effective-type)
+        replacement-ref [:expression {:effective-type replacement-type} replacement-name]]
+    (local-replace-expression-references replaced target-name replacement-ref)))
+
+(defn- local-replace
+  [stage target replacement]
+  (->> (if (lib.util/expression-name target)
+         (local-replace-expression stage target replacement)
+         (walk/postwalk #(if (= % target) replacement %) stage))
+       (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
+
+(defn- returned-columns-at-stage
+  [query stage-number]
+  (->> (lib.util/query-stage query stage-number)
+       (lib.metadata.calculation/returned-columns query stage-number)))
+
+(defn- replaced-columns
+  [query stage-number replaced]
+  (let [cols (returned-columns-at-stage query stage-number)
+        replaced-cols (returned-columns-at-stage replaced stage-number)]
+    (->> (map vector cols replaced-cols)
+         (filter #(not= (first %) (second %))))))
+
+(defn- next-stage-replacement
+  [query next-stage-number [col replaced-col]]
+  (let [target-ref-id (:lib/desired-column-alias col)
+        replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
+    (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
+         (mbql.match/match (lib.util/query-stage query next-stage-number)
+           [:field _ target-ref-id] &match))))
+
+(defn- typed-expression
+  [query stage-number expression]
+  (if (or (-> expression lib.options/options :effective-type)
+          (not (lib.expression/expression-clause? expression))
+          (not (lib.util/clause? expression)))
+    expression
+    (let [t (lib.metadata.calculation/type-of query stage-number expression)]
+      (lib.options/update-options expression assoc :effective-type t))))
 
 (def ^:private expression-validator (mc/validator :metabase.lib.schema.expression/expression))
 
-(defn- tweak?
-  "Returns if replacing `an-expression` with `new-expression` in `query` at stage `stage-number` is a tweak.
-  A tweak changes a top level expression or an aggregation while preserving its name and type."
-  [query stage-number an-expression new-expression]
+(defn- expression-replacement?
+  "Returns if `an-expression` and `new-expression` are both expressions."
+  [an-expression new-expression]
   (and (expression-validator an-expression)
-       (expression-validator new-expression)
-       (= (lib.metadata.calculation/display-name query stage-number new-expression)
-          (lib.metadata.calculation/display-name query stage-number an-expression))
-       (types/assignable? (lib.metadata.calculation/type-of query stage-number new-expression)
-                          (lib.metadata.calculation/type-of query stage-number an-expression))))
+       (expression-validator new-expression)))
 
-(mu/defn tweak-expression :- :metabase.lib.schema/query
-  "Return `query` with `an-exprssion` replaced by `new-expression` at stage `stage-number`.
-  If `an-expression` and `new-expressions` are of different type of have different names or roles,
-  an exception is thrown.
+(defn- with-default-name
+  [target replacement]
+  (let [target-name (lib.util/expression-name target)]
+    (cond-> replacement
+      (and target-name
+           (not (lib.util/expression-name replacement))
+           (not (-> replacement lib.options/options :name)))
+      (lib.util/top-level-expression-clause target-name))))
 
-  This function exists to make trival edits in the FE possible without losing parts of the query
-  depending on `an-expression`."
-  [query          :- :metabase.lib.schema/query
-   stage-number   :- :int
-   an-expression  :- :metabase.lib.schema.expression/expression
-   new-expression :- :metabase.lib.schema.expression/expression]
-  (let [role (expression-role an-expression)
-        path (if (= role :custom-column)
-               [:expressions]
-               [:aggregation])
-        expr-name (lib.metadata.calculation/display-name query stage-number an-expression)
-        new-expression (if (= role :custom-column)
-                         (lib.options/update-options new-expression dissoc :display-name)
-                         (lib.options/update-options new-expression #(-> %
-                                                                         (dissoc :lib/expression-name)
-                                                                         (assoc :name expr-name
-                                                                                :display-name expr-name))))]
-    (lib.util/update-query-stage query stage-number lib.util/replace-clause path an-expression new-expression)))
+(defn- tweak-expression
+  "Return `query` with `target` replaced by `replacement` at stage `stage-number`.
+
+  This function can make changes that produce an invalid query. It is expected that the
+  caller checks the result and removes invalid parts or uses an other way to make the
+  replacement happen."
+  [query stage-number target replacement]
+  (let [unmodified-query query
+        replacement (->> replacement
+                         (with-default-name target)
+                         (typed-expression query stage-number))]
+    (loop [query (lib.util/update-query-stage query stage-number local-replace target replacement)
+           stage-number stage-number]
+      (if-let [next-stage-number (lib.util/next-stage-number query stage-number)]
+        (let [next-replacements (->> (replaced-columns unmodified-query stage-number query)
+                                     (mapcat #(next-stage-replacement query next-stage-number %)))]
+          (recur (reduce (fn [query [target replacement]]
+                           (lib.util/update-query-stage query next-stage-number local-replace target replacement))
+                         query
+                         next-replacements)
+                 next-stage-number))
+        query))))
+
+(defn- prefix
+  [part whole]
+  (when (every? true? (map = part whole))
+    part))
+
+(defn- on-stage-path
+  "Given a Malli `error` in `query`, return the a path to the erroneous part of the query we can remove
+  to fix the problem or nil if there is no such path."
+  [query error]
+  (let [in (:in error)]
+    ;; We can only fix problems in stages.
+    (when (= (first in) :stages)
+      (let [stage-number (second in)
+            path-in-stage (nnext in)]
+        ;; The path should point at least to a top level clause in the stage,
+        ;; e.g., a specific expression or an order-by clause, and
+        ;; it should have a stage-path as its prefix.
+        (when-let [p (and (next path-in-stage)
+                          (some #(prefix % path-in-stage) (stage-paths query stage-number)))]
+          ;; We keep the prefix of `in` that's pointing to a specific element on the stage path.
+          ;; 2 accounts for [:stages stage-number] and 1 for the key of the element on the path.
+          (subvec in 0 (+ (count p) 2 1)))))))
+
+(mu/defn ^:private replace-expression-removing-erroneous-parts :- :metabase.lib.schema/query
+  [unmodified-query :- :metabase.lib.schema/query
+   stage-number     :- :int
+   target           :- :metabase.lib.schema.expression/expression
+   replacement      :- :metabase.lib.schema.expression/expression]
+  (mu/disable-enforcement
+    (loop [query (tweak-expression unmodified-query stage-number target replacement)]
+      (let [explanation (mc/explain :metabase.lib.schema/query query)
+            error-paths (->> (:errors explanation)
+                             (keep #(on-stage-path query %))
+                             distinct)]
+        (if (seq error-paths)
+          (recur (reduce (fn [q path]
+                           (try
+                             (remove-clause q (second path) (get-in q path))
+                             (catch #?(:clj Exception :cljs js/Error) e
+                               (let [{:keys [error join]} (ex-data e)]
+                                 (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
+                                   ;; remove the dangling join
+                                   (remove-join q (second path) join)
+                                   (throw e))))))
+                         query
+                         error-paths))
+          (if explanation
+            ;; there is an error we cannot fix, fall back to old way,
+            ;; i.e., remove all dependent parts
+            (remove-replace* unmodified-query stage-number target :replace replacement)
+            query))))))
 
 (declare replace-join)
 
@@ -257,8 +378,8 @@
      (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
      (replace-join query stage-number target-clause new-clause)
 
-     (tweak? query stage-number target-clause new-clause)
-     (tweak-expression query stage-number target-clause new-clause)
+     (expression-replacement? target-clause new-clause)
+     (replace-expression-removing-erroneous-parts query stage-number target-clause new-clause)
 
      :else
      (remove-replace* query stage-number target-clause :replace new-clause))))

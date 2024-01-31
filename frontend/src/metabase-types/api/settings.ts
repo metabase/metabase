@@ -258,6 +258,7 @@ export interface Settings {
   "show-homepage-pin-message": boolean;
   "show-homepage-xrays": boolean;
   "show-lighthouse-illustration": boolean;
+  "show-metabase-links": boolean;
   "show-metabot": boolean;
   "site-locale": string;
   "site-uuid": string;
@@ -280,6 +281,7 @@ export interface Settings {
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
   "last-acknowledged-version": string | null;
+  "show-static-embed-terms": boolean | null;
 }
 
 export type SettingKey = keyof Settings;

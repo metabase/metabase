@@ -157,7 +157,7 @@
   (when (time-for-another-update-check?)
     ;; if the lock is not already held by any thread, including this one...
     (when-not (.isLocked restore-cache-lock)
-      ;; attempt to acquire the lock. Returns immediately if lock is is already held.
+      ;; attempt to acquire the lock. Returns immediately if lock is already held.
       (when (.tryLock restore-cache-lock)
         (try
           (reset! last-update-check (System/currentTimeMillis))
