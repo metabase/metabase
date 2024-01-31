@@ -1,3 +1,8 @@
+/*
+ * TODO:   have ModelGroup return an array, and use that to construct a big array of all the cells. This can be used as input to cellRenderer and getRowHeight.
+ * */
+
+
 import { cloneElement, useContext, useEffect, useState } from "react";
 import _ from "underscore";
 import cx from "classnames";
