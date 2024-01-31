@@ -293,24 +293,29 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuestion = query =>
-  loadMetadataForQuestions([query]);
+export const loadMetadataForQuestion = question =>
+  loadMetadataForQuestions([question]);
 
-export const loadMetadataForQuestions = (queries, options) => dispatch => {
-  const dependencies = _.chain(queries)
-    .map(q => q.dependentMetadata())
+export const loadMetadataForQuestions = (questions, options) => dispatch => {
+  const dependencies = _.chain(questions)
+    .map(question => question.dependentMetadata())
     .flatten()
-    .uniq(false, dep => dep.type + dep.id)
+    .uniq(false, ({ type, id }) => `${type}${id}`)
     .map(({ type, id }) => {
       if (type === "table") {
         return Tables.actions.fetchMetadataAndForeignTables({ id }, options);
-      } else if (type === "field") {
-        return Fields.actions.fetch({ id }, options);
-      } else if (type === "schema") {
-        return Schemas.actions.fetchList({ dbId: id }, options);
-      } else {
-        console.warn(`loadMetadataForQuestions: type ${type} not implemented`);
       }
+
+      if (type === "field") {
+        return Fields.actions.fetch({ id }, options);
+      }
+
+      if (type === "schema") {
+        return Schemas.actions.fetchList({ dbId: id }, options);
+      }
+
+      console.warn(`loadMetadataForQuestions: type ${type} not implemented`);
+      return null;
     })
     .filter(Boolean)
     .value();
