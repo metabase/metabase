@@ -100,10 +100,10 @@ describe("PinnedItemCard", () => {
     expect(screen.getByText("A dashboard")).toBeInTheDocument();
   });
 
-  it("should show an action menu when user clicks on the menu icon in the card", () => {
+  it("should show an action menu when user clicks on the menu icon in the card", async () => {
     setup();
     userEvent.click(getIcon("ellipsis"));
-    expect(screen.getByText("Unpin")).toBeInTheDocument();
+    expect(await screen.findByText("Unpin")).toBeInTheDocument();
   });
 
   it("doesn't show model detail page link", () => {

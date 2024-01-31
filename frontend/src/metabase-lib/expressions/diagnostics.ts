@@ -137,14 +137,14 @@ function prattCompiler({
         throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
 
-      return Lib.legacyRef(metric);
+      return Lib.legacyRef(query, stageIndex, metric);
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
         throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
 
-      return Lib.legacyRef(segment);
+      return Lib.legacyRef(query, stageIndex, segment);
     } else {
       const reference = options.name ?? ""; // avoid circular reference
 
@@ -154,7 +154,7 @@ function prattCompiler({
         throw new ResolverError(t`Unknown Field: ${name}`, node);
       }
 
-      return Lib.legacyRef(dimension);
+      return Lib.legacyRef(query, stageIndex, dimension);
     }
   }
 

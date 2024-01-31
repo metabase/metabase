@@ -158,8 +158,8 @@ describeEE("scenarios > embedding > full app", () => {
         url: "/browse",
         qs: { side_nav: false, logo: false },
       });
-      cy.findByRole("heading", { name: /Our data/ }).should("be.visible");
-      cy.findByRole("treeitem", { name: /Our data/ }).should("not.exist");
+      cy.findByRole("heading", { name: /Browse data/ }).should("be.visible");
+      cy.findByRole("treeitem", { name: /Browse data/ }).should("not.exist");
       cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
       appBar().should("not.exist");
     });

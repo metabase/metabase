@@ -138,10 +138,10 @@ export const updateUrl = createThunkAction(
           (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
       }
 
-      const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
+      const { isNative } = Lib.queryDisplayInfo(question.query());
       // prevent clobbering of hash when there are fake parameters on the question
       // consider handling this in a more general way, somehow
-      if (isStructured && question.parameters().length > 0) {
+      if (!isNative && question.parameters().length > 0) {
         dirty = true;
       }
 

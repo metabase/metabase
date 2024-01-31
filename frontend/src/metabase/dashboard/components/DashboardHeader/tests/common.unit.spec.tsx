@@ -13,6 +13,7 @@ describe("DashboardHeader", () => {
     });
 
     userEvent.click(screen.getByLabelText("dashboard-menu-button"));
+    await screen.findByRole("dialog");
 
     const exportPdfButton = within(
       screen.getByTestId("dashboard-export-pdf-button"),
@@ -26,6 +27,7 @@ describe("DashboardHeader", () => {
     });
 
     userEvent.click(screen.getByLabelText("dashboard-menu-button"));
+    await screen.findByRole("dialog");
 
     const exportPdfButton = within(
       screen.getByTestId("dashboard-export-pdf-button"),
