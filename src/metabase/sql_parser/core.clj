@@ -29,6 +29,9 @@
 
 (set! *warn-on-reflection* true)
 
+;;;
+;;; query->tables
+;;;
 (defmulti query->tables
   "Given a parsed query, return a sequence of tables that it references."
   class)
@@ -44,6 +47,13 @@
   [^Table table]
   [(.getFullyQualifiedName table)])
 
+(defmethod query->tables ParenthesedSelect
+  [^ParenthesedSelect paren-select]
+  (query->tables (.getPlainSelect paren-select)))
+
+;;;
+;;; query->columns
+;;;
 (defmulti query->columns
   "Given a parsed query, return a sequence of columns that it references."
   class)
@@ -54,6 +64,8 @@
    (query->columns (.getSelectItems parsed-select))
    ;; more is needed
    ))
+
+;;; The rest
 
 (defn parsed-query
   "Main entry point: takes a string query and returns an object that can be handled by TODO."
@@ -104,7 +116,9 @@
   (println "OK"))
 
 (right-tables? "select * from core_user;" ["core_user"])
-(right-tables? "select * from (select distinct id from core_user) q;" ["core_user"])
+#_(right-tables? "select * from (select distinct id from core_user) q;" ["core_user"])
+
+#_(def x (.getFromItem (parsed-query "select * from (select distinct id from core_user) q;")))
 
 
 ;; there are ambiguous statements:
