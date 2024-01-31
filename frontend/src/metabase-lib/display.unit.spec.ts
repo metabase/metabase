@@ -198,7 +198,7 @@ describe("defaultDisplay", () => {
     });
   });
 
-  it("returns 'bar' display for queries with 1 aggregation  and 2 breakouts by category", () => {
+  it("returns 'bar' display for queries with 1 aggregation and 2 breakouts by category", () => {
     const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [
