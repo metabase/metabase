@@ -44,7 +44,7 @@ The group won't see this collection listed, and they'll lack access to any of th
 
 ## Collection vs data permissions
 
-Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or to creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
+Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
 
 There is one, important exception: when a group has their data permission set to [Block](./data.md#block-access) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
 
