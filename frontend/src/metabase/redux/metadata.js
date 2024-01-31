@@ -303,11 +303,7 @@ export const loadMetadataForQuestions = (queries, options) => dispatch => {
     .uniq(false, dep => dep.type + dep.id)
     .map(({ type, id, foreignTables }) => {
       if (type === "table") {
-        return (
-          foreignTables
-            ? Tables.actions.fetchMetadataAndForeignTables
-            : Tables.actions.fetchMetadata
-        )({ id }, options);
+        return Tables.actions.fetchMetadataAndForeignTables({ id }, options);
       } else if (type === "field") {
         return Fields.actions.fetch({ id }, options);
       } else if (type === "schema") {
