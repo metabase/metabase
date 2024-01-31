@@ -14,13 +14,29 @@ Metabase starts out with a default top-level collection which is called **Our an
 
 ## Collection permission levels
 
+There are three permission levels for collections:
+
+- [Curate access](#curate-access)
+- [View access](#view-access)
+- [No access](#no-access)
+
+| Action                  | Curate Access | View Access | No Access |
+| ----------------------- | ------------- | ----------- | --------- |
+| View items              | ✅            | ✅          | ❌        |
+| Edit item metadata      | ✅            | ❌          | ❌        |
+| Move items              | ✅            | ❌          | ❌        |
+| Archive items           | ✅            | ❌          | ❌        |
+| Pin items               | ✅            | ❌          | ❌        |
+| View events & timelines | ✅            | ✅          | ❌        |
+| Edit events & timelines | ✅            | ❌          | ❌        |
+
 ### Curate access
 
-The group can edit, move, archive, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection.
+The group can view, edit, move, archive, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../exploration-and-organization/events-and-timelines.md).
 
 ### View access
 
-The group can see all the questions, dashboards, and models in the collection.
+The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md).
 
 ### No access
 
