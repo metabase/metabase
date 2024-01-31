@@ -1,10 +1,18 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.models.permissions.block-permissions :as block-perms]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
    [metabase.api.common :as api]
-   [metabase.models :refer [Card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
+   [metabase.models
+    :refer [Card
+            Collection
+            Database
+            Permissions
+            PermissionsGroup
+            PermissionsGroupMembership
+            User]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -182,34 +190,33 @@
                                                                :dataset_query query}
                      Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
         (mt/with-premium-features #{:advanced-permissions}
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (perms/revoke-data-perms! group-id (mt/id))
-          (letfn [(run-ad-hoc-query []
-                    (mt/with-current-user user-id
-                      (qp/process-query query)))
-                  (run-saved-question []
-                    (binding [qp.perms/*card-id* card-id]
-                      (run-ad-hoc-query)))
-                  (check-block-perms []
-                    (mt/with-current-user user-id
-                      (#'qp.perms/check-block-permissions query)))]
-            (testing "sanity check: should not be able to run ad-hoc query"
-              (is (not (contains? @api/*current-user-permissions-set*
-                                  (perms/data-perms-path (mt/id)))))
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"You do not have permissions to run this query"
-                   (run-ad-hoc-query))))
-            (testing "sanity check: should be able to run query as saved Question before block perms are set."
-              (is (run-saved-question))
-              (is (= ::block-perms/no-block-permissions-for-db
-                     (check-block-perms))))
-            ;; 'grant' the block permissions.
-            (t2.with-temp/with-temp [Permissions _ {:group_id group-id :object (perms/database-block-perms-path (mt/id))}]
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :no-self-service)
+            (letfn [(run-ad-hoc-query []
+                      (mt/with-current-user user-id
+                        (qp/process-query query)))
+                    (run-saved-question []
+                      (binding [qp.perms/*card-id* card-id]
+                        (run-ad-hoc-query)))
+                    (check-block-perms []
+                      (mt/with-current-user user-id
+                        (#'qp.perms/check-block-permissions query)))]
+              (testing "sanity check: should not be able to run ad-hoc query"
+                (is (not (contains? @api/*current-user-permissions-set*
+                                    (perms/data-perms-path (mt/id)))))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to run this query"
+                     (run-ad-hoc-query))))
+              (testing "sanity check: should be able to run query as saved Question before block perms are set."
+                (is (run-saved-question))
+                (is (= true (check-block-perms))))
+              ;; 'grant' the block permissions.
+              (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
               (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
                 (mt/with-premium-features #{}
-                  (is (= ::block-perms/advanced-permissions-not-enabled
-                         (check-block-perms)))))
+                  (is (nil? (check-block-perms)))))
               (testing "disallow running the query"
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
@@ -222,20 +229,21 @@
               (testing "\nAllow running if current User has data permissions from another group."
                 (mt/with-temp [PermissionsGroup           {group-2-id :id} {}
                                PermissionsGroupMembership _ {:group_id group-2-id :user_id user-id}]
-                  (doseq [[message perms] {"with full DB perms"                   (perms/data-perms-path (mt/id))
-                                           "with perms for the Table in question" (perms/table-query-path (mt/id :venues))}]
-                    (t2.with-temp/with-temp [Permissions _ {:group_id group-2-id :object perms}]
-                      (testing (format "Should be able to run the query %s" message)
-                        (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
-                                                 "Saved Questions" run-saved-question}]
-                          (testing message
-                            (is (=? {:status :completed}
-                                    (thunk))))))))
+                  (doseq [[message perms-fn!] {"with full DB perms"
+                                               #(data-perms/set-database-permission! group-2-id (mt/id) :perms/data-access :unrestricted)
+                                               "with perms for the Table in question"
+                                               #(data-perms/set-table-permission! group-2-id (mt/id :venues) :perms/data-access :unrestricted)}]
+                    (perms-fn!)
+                    (testing (format "Should be able to run the query %s" message)
+
+                      (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
+                                               "Saved Questions" run-saved-question}]
+                        (testing message
+                          (is (=? {:status :completed}
+                                  (thunk)))))))
                   (testing "\nSandboxed permissions"
                     (mt/with-premium-features #{:advanced-permissions :sandboxes}
-                      (mt/with-temp [Permissions            _ {:group_id group-2-id
-                                                               :object   (perms/table-sandboxed-query-path (mt/id :venues))}
-                                     GroupTableAccessPolicy _ {:table_id (mt/id :venues) :group_id group-id}]
+                      (mt/with-temp [GroupTableAccessPolicy _ {:table_id (mt/id :venues) :group_id group-id}]
                         (testing "Should be able to run the query"
                           (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
                                                    "Saved Questions" run-saved-question}]

@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -43,12 +44,12 @@
              (latest-view (u/id user) (u/id table)))))
 
       (testing "If a user is bound, has_access is recorded based on the user's current permissions"
-        (binding [api/*current-user-id* (u/id user)
-                  api/*current-user-permissions-set* (delay #{(perms/table-query-path (mt/id :users))})]
-          (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-          (is (true? (:has_access (latest-view (u/id user) (u/id table)))))
+        (mt/with-full-data-perms-for-all-users!
+          (binding [api/*current-user-id* (u/id user)]
+            (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+            (is (true? (:has_access (latest-view (u/id user) (u/id table)))))
 
-          (binding [api/*current-user-permissions-set* (delay #{(perms/table-query-path (mt/id :checkins))})]
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/data-access :no-self-service)
             (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
             (is (false? (:has_access (latest-view (u/id user) (u/id table)))))))))))
 
