@@ -29,6 +29,9 @@ import { getUser } from "metabase/selectors/user";
 import { Switch } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
+import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
+import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
+import { getIsAutoDescriptionEnabled } from "metabase/home/selectors";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -36,6 +39,8 @@ import {
   DescriptionHeader,
   StyledEditableText,
 } from "./DashboardInfoSidebar.styled";
+
+// const isAutoDescriptionEnabled = useSelector(getIsAutoDescriptionEnabled);
 
 type DashboardAttributeType = string | number | null | boolean;
 
@@ -93,13 +98,15 @@ export function DashboardInfoSidebar({
   const autoApplyFilterToggleId = useUniqueId();
   const canWrite = dashboard.can_write;
 
+  const isAutoDescriptionEnabled = useSelector(getIsAutoDescriptionEnabled);
+
   return (
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
         <StyledEditableText
           initialValue={description || dashboard.description}
-          loading={loading}
+          loading={loading && isAutoDescriptionEnabled}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
           isOptional

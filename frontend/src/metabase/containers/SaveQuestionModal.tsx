@@ -7,6 +7,19 @@ import * as Yup from "yup";
 import { Group } from "metabase/ui";
 import { apiGetCardSummary } from "metabase/query_builder/actions";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
+import FormFooter from "metabase/core/components/FormFooter";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormInput from "metabase/core/components/FormInput";
+import FormTextArea from "metabase/core/components/FormTextArea";
+import Button from "metabase/core/components/Button";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormRadio from "metabase/core/components/FormRadio";
+
+import { useCollectionListQuery } from "metabase/common/hooks";
+
+import { getIsAutoDescriptionEnabled } from "metabase/home/selectors";
+
 import {
   canonicalCollectionId,
   isInstanceAnalyticsCollection,
@@ -224,6 +237,8 @@ export const SaveQuestionModal = ({
     originalQuestion != null &&
     originalQuestion.canWrite();
 
+  const isAutoDescriptionEnabled = useSelector(getIsAutoDescriptionEnabled);
+
   const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
 
   const title = multiStep ? multiStepTitle : singleStepTitle;
@@ -279,7 +294,7 @@ export const SaveQuestionModal = ({
                     >
                       <div className="saveQuestionModalFields">
                         <Group position="right">
-                          {loading && (
+                          {isAutoDescriptionEnabled && loading && (
                             <div>
                               <span className="suggestionLoading3">✨</span>
                               <span className="suggestionLoading2">✨</span>

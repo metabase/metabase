@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import MetabaseSettings from "metabase/lib/settings";
 import type { State } from "metabase-types/store";
 
 export const getIsXrayEnabled = (state: State) => {
@@ -27,4 +28,11 @@ export const getCustomHomePageDashboardId = createSelector(
 
 export const getHasDismissedCustomHomePageToast = (state: State) => {
   return getSetting(state, "dismissed-custom-dashboard-toast");
+};
+
+export const getIsAutoDescriptionEnabled = (state: State) => {
+  return (
+    getSetting(state, "ee-openai-api-key")?.length !== 0 &&
+    MetabaseSettings.isEnterprise()
+  );
 };
