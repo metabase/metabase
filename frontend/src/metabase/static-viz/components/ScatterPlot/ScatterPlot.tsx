@@ -9,7 +9,7 @@ import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/
 
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
-import { computeStaticComboChartSettings } from "../ComboChart/settings";
+import { computeStaticScatterPlotSettings } from "./settings";
 
 const WIDTH = 540;
 const HEIGHT = 360;
@@ -24,7 +24,7 @@ export function ScatterPlot({
 }: IsomorphicStaticChartProps) {
   const chart = init(null, null, { renderer: "svg", ssr: true, width, height });
 
-  const computedVisualizationSettings = computeStaticComboChartSettings(
+  const computedVisualizationSettings = computeStaticScatterPlotSettings(
     rawSeries,
     dashcardSettings,
     renderingContext,

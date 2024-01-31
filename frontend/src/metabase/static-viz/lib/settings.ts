@@ -41,3 +41,14 @@ export const getCommonStaticVizSettings = (
 
   return { ...settings, ...dashcardSettings };
 };
+
+export const fillWithDefaultValue = (
+  settings: Record<string, unknown>,
+  key: string,
+  defaultValue: unknown,
+  isValid = true,
+) => {
+  if (typeof settings[key] === "undefined" || !isValid) {
+    settings[key] = defaultValue;
+  }
+};

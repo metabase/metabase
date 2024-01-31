@@ -10,10 +10,9 @@ import {
   getDefaultShowTotal,
   getDefaultTotalColor,
 } from "metabase/visualizations/shared/settings/waterfall";
-import {
-  computeStaticComboChartSettings,
-  fillWithDefaultValue,
-} from "../ComboChart/settings";
+import { fillWithDefaultValue } from "metabase/static-viz/lib/settings";
+
+import { computeStaticComboChartSettings } from "../ComboChart/settings";
 
 export function computeStaticWaterfallChartSettings(
   rawSeries: RawSeries,

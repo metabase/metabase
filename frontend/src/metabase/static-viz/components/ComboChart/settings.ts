@@ -14,9 +14,11 @@ import {
   getSeriesDefaultShowSeriesValues,
   SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
-import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 import {
-  getDefaultBubbleSizeCol,
+  fillWithDefaultValue,
+  getCommonStaticVizSettings,
+} from "metabase/static-viz/lib/settings";
+import {
   getDefaultIsHistogram,
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
@@ -36,17 +38,6 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model";
 import { getDimensionModel } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
-
-export const fillWithDefaultValue = (
-  settings: Record<string, unknown>,
-  key: string,
-  defaultValue: unknown,
-  isValid = true,
-) => {
-  if (typeof settings[key] === "undefined" || !isValid) {
-    settings[key] = defaultValue;
-  }
-};
 
 const getSeriesFunction = (
   rawSeries: RawSeries,
@@ -231,13 +222,6 @@ export const computeStaticComboChartSettings = (
     settings,
     "graph.x_axis.scale",
     getDefaultXAxisScale(settings),
-  );
-
-  // For scatter plot
-  fillWithDefaultValue(
-    settings,
-    "scatter.bubble",
-    getDefaultBubbleSizeCol(mainDataset),
   );
 
   return settings;
