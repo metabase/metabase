@@ -32,6 +32,7 @@ import type { AppErrorDescriptor, State } from "metabase-types/store";
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
 import { NewModals } from "./new/components/NewModals";
+import { Palette } from "./palette/components/Palette";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -93,6 +94,8 @@ function App({
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
   useEffect(() => {
     initializeIframeResizer();
   }, []);
@@ -113,6 +116,9 @@ function App({
             <UndoListing />
             <StatusListing />
             <NewModals />
+            {paletteOpen && (
+              <Palette closePalette={() => setPaletteOpen(false)} />
+            )}
           </AppContentContainer>
         </AppContainer>
       </ScrollToTop>
