@@ -98,7 +98,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
     - run: java -version
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -147,7 +147,7 @@ jobs:
       uses: ./.github/actions/prepare-cypress
     - name: Run Snowplow micro
       uses: ./.github/actions/run-snowplow-micro
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -196,7 +196,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         ref: ${{ needs.release-artifact.outputs.commit }}
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar

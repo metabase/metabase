@@ -114,7 +114,7 @@ jobs:
           mongo: ${{ matrix.name == 'mongo'}}
 
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
@@ -235,7 +235,7 @@ jobs:
           maildev: true
 
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
