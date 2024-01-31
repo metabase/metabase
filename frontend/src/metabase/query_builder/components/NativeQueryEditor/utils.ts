@@ -58,9 +58,7 @@ export function calcInitialEditorHeight({
 }
 
 const formatSql = async (sql: string, options: FormatOptionsWithLanguage) => {
-  const sqlFormatter = await import(
-    /* webpackChunkName: "sql-formatter" */ "sql-formatter"
-  );
+  const sqlFormatter = await import("sql-formatter");
   return sqlFormatter.format(sql, options);
 };
 
