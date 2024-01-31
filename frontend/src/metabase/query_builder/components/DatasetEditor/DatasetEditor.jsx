@@ -221,9 +221,9 @@ function DatasetEditor(props) {
   const isEditingMetadata = datasetEditorTab === "metadata";
 
   const initialEditorHeight = useMemo(() => {
-    const isStructured = !Lib.queryDisplayInfo(dataset.query()).isNative;
+    const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
-    if (isStructured) {
+    if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
@@ -416,8 +416,8 @@ function DatasetEditor(props) {
   );
 
   const canSaveChanges = useMemo(() => {
-    const isStructured = !Lib.queryDisplayInfo(dataset.query()).isNative;
-    const isEmpty = isStructured
+    const { isNative } = Lib.queryDisplayInfo(dataset.query());
+    const isEmpty = !isNative
       ? Lib.databaseID(dataset.query()) == null
       : dataset.legacyQuery().isEmpty();
 
