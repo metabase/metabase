@@ -43,7 +43,6 @@ import type {
 } from "metabase-types/api";
 
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
-import { TableSimple } from "../components/TableSimple";
 import type { ColumnSettingDefinition, VisualizationProps } from "../types";
 
 interface TableProps extends VisualizationProps {
@@ -401,7 +400,7 @@ class Table extends Component<TableProps, TableState> {
     const { data } = this.state;
     const isPivoted = Table.isPivoted(series, settings);
     const areAllColumnsHidden = data?.cols.length === 0;
-    const TableComponent = isDashboard ? TableSimple : TableInteractive;
+    const TableComponent = TableInteractive;
 
     if (!data) {
       return null;
