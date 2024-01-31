@@ -1,26 +1,11 @@
 (ns metabase.metabot.client
   (:require
    [cheshire.core :as json]
-   [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
 
 (set! *warn-on-reflection* true)
-
-(defn- wrap-usage
-  "A middleware that captures usage data and logs it for analytics and billing purposes."
-  [openai-fn]
-  (fn wrap-usage* [params options]
-    (let [{:keys [usage] :as response} (openai-fn params options)
-          usage-summary (-> (dissoc response :usage :choices)
-                            (merge usage)
-                            (select-keys [:id :object :created :model :prompt_tokens :completion_tokens :total_tokens]))]
-      (snowplow/track-event! ::snowplow/llm-usage api/*current-user-id* usage-summary)
-      ;; TODO -- Remove before final PR/merge
-      ;(tap> usage-summary)
-      response)))
 
 (defn- wrap-openai-exceptions
   "Wrap our openai calls with a standard set of exceptions that will percolate up any issues to the UI as meaningful error messages."
@@ -85,9 +70,7 @@
   Takes messages to be used as instructions and a function that will find the first valid result from the messages."
   [{:keys [messages] :as prompt}]
   {:pre [messages]}
-  ((-> *create-chat-completion-endpoint*
-       wrap-usage
-       wrap-openai-exceptions)
+  ((wrap-openai-exceptions *create-chat-completion-endpoint*)
    (merge
     {:model (metabot-settings/openai-model)
      :n     (metabot-settings/num-metabot-choices)}
