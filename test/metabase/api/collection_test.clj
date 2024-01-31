@@ -744,10 +744,10 @@
           ;; user can see c3 and c4
           (let [response (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id c3)))]
             (is (= 1 (:total response)))
-            (let [{:keys [location ui-logical-location]} (-> response :data first)]
+            (let [{:keys [location effective_location]} (-> response :data first)]
              (is (= (path c1 c2 c3) location))
              (testing "the unreadable collections are removed from the `ui-logical-path`"
-               (is (= (path c3) ui-logical-location))))))))))
+               (is (= (path c3) effective_location))))))))))
 
 (deftest collection-items-archived-parameter-test
   (testing "GET /api/collection/:id/items"
