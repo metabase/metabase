@@ -230,16 +230,14 @@ const renderItem: RenderItemFunction = ({
     : null;
 };
 
-type ModelGroupProps = {
-  models: SearchResult[];
-  localeCode: string | undefined;
-  columnCount: number;
-};
-
-const ModelGroup: React.FC<ModelGroupProps> = ({
+const getCellsForGroup = ({
   models,
   localeCode,
   columnCount,
+}: {
+  models: SearchResult[];
+  localeCode: string | undefined;
+  columnCount: number;
 }) => {
   const sortedModels = models.sort((a, b) => {
     if (!a.name && b.name) {
