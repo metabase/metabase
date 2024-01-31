@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -94,29 +94,35 @@
    :database_id   (u/the-id (mt/db))
    :dataset_query (mt/query venues)})
 
-(def ^:private test-collection (make-result "collection test collection"
-                                            :bookmark false
-                                            :model "collection"
-                                            ;; TODO the default-collection data for this doesn't make sense:
-                                            :collection (assoc default-collection :id true :name true)
-                                            :updated_at false))
+(defn- test-collection
+  ([] (test-collection true))
+  ([can-write?]
+   (make-result "collection test collection"
+                :bookmark false
+                :model "collection"
+                ;; TODO the default-collection data for this doesn't make sense:
+                :collection (assoc default-collection :id true :name true)
+                :updated_at false
+                :can_write can-write?)))
 
 (def ^:private action-model-params {:name "ActionModel", :dataset true})
 
-(defn- default-search-results []
-  (sorted-results
-   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
-    test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
-                 :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
-    (merge
-     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
-     (table-search-results))
-    (merge
-     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
-     (table-search-results))]))
+(defn- default-search-results
+  ([] (default-search-results true))
+  ([collection-can-write?]
+   (sorted-results
+    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
+     (test-collection collection-can-write?)
+     (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
+                  :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
+     (merge
+      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
+      (table-search-results))
+     (merge
+      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
+      (table-search-results))])))
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
@@ -132,10 +138,15 @@
       (f search-item)
       search-item)))
 
-(defn- default-results-with-collection []
-  (on-search-types #{"dashboard" "pulse" "card" "dataset" "action"}
-                   #(assoc % :collection {:id true, :name (if (= (:model %) "action") nil true) :authority_level nil :type nil})
-                   (default-search-results)))
+(defn- default-results-with-collection
+  ([] (default-results-with-collection true))
+  ([collection-can-write?]
+   (on-search-types #{"dashboard" "pulse" "card" "dataset" "action"}
+                    #(assoc % :collection {:id true,
+                                           :name (if (= (:model %) "action") nil true)
+                                           :authority_level nil
+                                           :type nil})
+                    (default-search-results collection-can-write?))))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
   (let [data-map      (fn [instance-name]
@@ -267,7 +278,7 @@
   (testing "It prioritizes exact matches"
     (with-search-items-in-root-collection "test"
       (with-redefs [search.config/*db-max-results* 1]
-        (is (= [test-collection]
+        (is (= [(test-collection)]
                (search-request-data :crowberto :q "test collection"))))))
   (testing "It limits matches properly"
     (with-search-items-in-root-collection "test"
@@ -421,7 +432,7 @@
             (is (= (sorted-results
                     (reverse ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
                      (into
-                      (default-results-with-collection)
+                      (default-results-with-collection false)
                       (map #(merge default-search-row % (table-search-results))
                            [{:name "metric test2 metric", :description "Lookin' for a blueberry",
                              :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
@@ -441,7 +452,7 @@
             (is (ordered-subset? (sorted-results
                                   (reverse
                                    (into
-                                    (default-results-with-collection)
+                                    (default-results-with-collection false)
                                     (for [row  (default-search-results)
                                           :when (not= "collection" (:model row))]
                                       (update row :name #(str/replace % "test" "test2"))))))
@@ -457,7 +468,7 @@
           (is (ordered-subset? (sorted-results
                                 (reverse
                                  (into
-                                  (default-results-with-collection)
+                                  (default-results-with-collection true)
                                   (map (fn [row] (update row :name #(str/replace % "test" "test2")))
                                        (default-results-with-collection)))))
                                (search-request-data :rasta :q "test")))))))
@@ -472,7 +483,7 @@
             (is (= (sorted-results
                     (reverse
                      (into
-                      (default-results-with-collection)
+                      (default-results-with-collection false)
                       (map #(merge default-search-row % (table-search-results))
                            [{:name "metric test2 metric" :description "Lookin' for a blueberry"
                              :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
