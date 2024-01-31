@@ -41,15 +41,6 @@
   :database-local :allowed
   :audit          :getter)
 
-(defn query->max-rows
-  "Given a query, returns the max rows that should be returned *as defined by settings*. In other words,
-  return `(aggregated-query-row-limit)` or `(unaggregated-query-row-limit)` depending on whether the query is
-  aggregated or not."
-  [{{aggregations :aggregation} :query}]
-  (if-not aggregations
-    (unaggregated-query-row-limit)
-    (aggregated-query-row-limit)))
-
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
   []
@@ -66,16 +57,46 @@
 (defn- merge-default-constraints [constraints]
   (merge (default-query-constraints) constraints))
 
-(defn- add-default-userland-constraints*
+(defn add-constraints
   "Add default values of `:max-results` and `:max-results-bare-rows` to `:constraints` map `m`."
-  [{{:keys [add-default-userland-constraints?]} :middleware, :as query}]
-  (cond-> query
-    add-default-userland-constraints? (update :constraints (comp ensure-valid-constraints merge-default-constraints))))
+  [query]
+  (update query :constraints (comp ensure-valid-constraints merge-default-constraints)))
 
-(defn add-default-userland-constraints
-  "Middleware that optionally adds default `max-results` and `max-results-bare-rows` constraints to queries, meant for
-  use with [[metabase.query-processor/process-query-and-save-with-max-results-constraints!]], which ultimately powers
-  most QP API endpoints."
+(defn- should-add-userland-constraints? [query]
+  (get-in query [:middleware ::add-userland-constraints?]))
+
+(defn maybe-add-default-userland-constraints
+  "If the query is marked as requiring userland constraints, actually calculate the constraints and add them to the
+  query."
+  [query]
+  (cond-> query
+    (should-add-userland-constraints? query) add-constraints))
+
+(defn- mark-needs-default-userland-constraints*
+  [{{:keys [add-default-userland-constraints?]} :middleware, :as query}]
+  ;; this may seem silly - we're just adding `::add-userland-constraints?` if `add-default-userland-constraints?` is
+  ;; true, why not just use `add-default-userland-constraints?`. Answer: we need to only apply the default constraints
+  ;; when this middleware is in the stack.
+  (cond-> query
+    add-default-userland-constraints? (update :middleware assoc ::add-userland-constraints? true)))
+
+(defn mark-needs-default-userland-constraints
+  "Middleware that marks the query as requiring userland constraints. Note that we can't actually calculate the
+  constraints yet, because of this middleware's position in the middleware stack (we don't yet have access to db-local
+  settings). So this is a bit awkward, because *three* separate middlewares are involved in the calculation of default
+  userland constraints: here, we mark the query as needing userland constraints, then later the
+  `maybe-add-default-userland-constraints` middleware actually calculates the relevant constraints. Finally, the
+  constraints, placed into `max-results` and `max-results-bare-rows` are *actually* used
+  by [[metabase.query-processor/process-query-and-save-with-max-results-constraints!]], which ultimately powers most
+  QP API endpoints.
+
+  To sum up:
+
+  - `mark-needs-default-userland-constraints` should be part of the middleware stack for queries from the UI, when we
+  want to apply default userland constraints.
+
+  - `maybe-add-default-userland-constraints` can always be part of the middleware stack - it will be a no-op if
+  `mark-needs-default-userland-constraints` was not *also* part of the middleware stack."
   [qp]
   (fn [query rff context]
-    (qp (add-default-userland-constraints* query) rff context)))
+    (qp (mark-needs-default-userland-constraints* query) rff context)))
