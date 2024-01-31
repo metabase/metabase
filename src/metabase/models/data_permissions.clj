@@ -241,6 +241,26 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
+(mu/defn native-download-permission-for-user :- PermissionValue
+  "Returns the effective download permission value for a given user and database ID, for native queries on the database.
+  This should be the lowest permission level of any table in the database."
+  [user-id database-id]
+  (if (is-superuser? user-id)
+    (most-permissive-value :perms/download-results)
+    (let [perm-values (t2/select-fn-set :value
+                                        :model/DataPermissions
+                                        {:select [[:p.perm_value :value]]
+                                         :from [[:permissions_group_membership :pgm]]
+                                         :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                                                [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                                         :where [:and
+                                                 [:= :pgm.user_id user-id]
+                                                 [:= :p.perm_type (u/qualified-name :perms/download-results)]
+                                                 [:= :p.db_id database-id]]})]
+      (or (perm-values :no)
+          (perm-values :ten-thousand-rows)
+          (perm-values :one-million-rows)))))
+
 (mu/defn user-has-block-perms-for-database? :- :boolean
   "Returns a Boolean indicating whether the given user should have block permissions enforced for the given database.
   This is a standalone function because block perms are only set at the database-level, but :perms/data-access is
