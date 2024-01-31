@@ -12,7 +12,9 @@
    TODO: Consider use of bson's encoders/decoders/codecs instead this code.
    TODO: Or consider adding types from org.bson package -- eg. BsonInt32. If we'd decide to go this way, we could
          transform ejson completely to clojure structures. That however requires deciding how to represent
-         eg. ObjectIds (it could be eg. {$oid \"...\"} which would copy EJSON v2 way). [EJSON v2 doc](https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/)."
+         eg. ObjectIds (it could be eg. {$oid \"...\"} which would copy EJSON v2 way). [EJSON v2 doc](https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/).
+   TODO: Names of protocol functions and protocols are bit misleading as were in monger. Naming should
+         should be modified when we further refactor this namespace."
 
   (:require
    [flatland.ordered.map :as ordered-map]
