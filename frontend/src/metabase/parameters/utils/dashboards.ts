@@ -94,7 +94,7 @@ function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
   return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
-    const res = (parameter_mappings || [])
+    const extendedParameterMappings = (parameter_mappings || [])
       .map(parameter_mapping => {
         const card = _.findWhere(cards, { id: parameter_mapping.card_id });
         return card
@@ -106,7 +106,8 @@ function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
           : null;
       })
       .filter((mapping): mapping is ExtendedMapping => mapping != null);
-    return res;
+
+    return extendedParameterMappings;
   });
 }
 
