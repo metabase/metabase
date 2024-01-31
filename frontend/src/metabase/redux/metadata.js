@@ -297,9 +297,9 @@ export const loadMetadataForQuestion = question =>
   loadMetadataForQuestions([question]);
 
 export const loadMetadataForQuestions = (questions, options) => dispatch => {
-  const dependencies = _.chain(questions)
-    .map(question => question.dependentMetadata())
-    .flatten()
+  const dependencies = _.chain(
+    questions.flatMap(question => question.dependentMetadata()),
+  )
     .uniq(false, ({ type, id }) => `${type}${id}`)
     .map(({ type, id }) => {
       if (type === "table") {
