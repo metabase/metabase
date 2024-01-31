@@ -115,10 +115,10 @@ function App({
             </AppContent>
             <UndoListing />
             <StatusListing />
-            <NewModals />
             {paletteOpen && (
               <Palette closePalette={() => setPaletteOpen(false)} />
             )}
+            <NewModals />
           </AppContentContainer>
         </AppContainer>
       </ScrollToTop>

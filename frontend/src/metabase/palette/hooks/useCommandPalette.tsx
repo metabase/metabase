@@ -6,7 +6,8 @@ import type { IconName } from "metabase/ui";
 import { setOpenModal } from "metabase/redux/ui";
 import * as Urls from "metabase/lib/urls";
 
-type CommandPalletAction = {
+export type CommandPaletteAction = {
+  id: string;
   name: string;
   icon: IconName;
   run: (arg?: string) => void;
@@ -15,21 +16,24 @@ type CommandPalletAction = {
 export const useCommandPalette = ({ query }: { query: string }) => {
   const dispatch = useDispatch();
 
-  const defaultActions = useMemo<CommandPalletAction[]>(
+  const defaultActions = useMemo<CommandPaletteAction[]>(
     () => [
       {
-        name: t`Create New Collection`,
-        icon: "add",
+        id: "create_collection",
+        name: t`Create new collection`,
+        icon: "collection",
         run: () => dispatch(setOpenModal("collection")),
       },
       {
-        name: t`Create New Dashboard`,
-        icon: "add",
+        id: "create_dashboard",
+        name: t`Create new dashboard`,
+        icon: "dashboard",
         run: () => dispatch(setOpenModal("dashboard")),
       },
       {
-        name: t`Create New Question`,
-        icon: "add",
+        id: "create_question",
+        name: t`Create new question`,
+        icon: "question",
         run: () =>
           dispatch(
             push(
@@ -46,7 +50,9 @@ export const useCommandPalette = ({ query }: { query: string }) => {
 
   return {
     results: query
-      ? defaultActions.filter(action => action.name.includes(query))
+      ? defaultActions.filter(action =>
+          action.name.toLowerCase().includes(query.toLowerCase()),
+        )
       : defaultActions,
   };
 };
