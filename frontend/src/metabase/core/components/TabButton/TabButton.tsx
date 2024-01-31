@@ -210,7 +210,7 @@ export const RenameableTabButtonStyled = styled(_TabButton)<{
 
 export function RenameableTabButton<T>({
   label: labelProp,
-  menuItems = [],
+  menuItems: originalMenuItems = [],
   onRename,
   renameMenuLabel = t`Rename`,
   renameMenuIndex = 0,
@@ -246,6 +246,7 @@ export function RenameableTabButton<T>({
     setIsRenaming(false);
   };
 
+  let menuItems = [...originalMenuItems];
   if (canRename) {
     const renameItem = {
       label: renameMenuLabel,
