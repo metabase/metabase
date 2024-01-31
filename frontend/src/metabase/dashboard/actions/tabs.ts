@@ -126,6 +126,7 @@ export function createNewTab() {
 const duplicateTabAction = createAction<DuplicateTabPayload>(DUPLICATE_TAB);
 
 export function duplicateTab(sourceTabId: DashboardTabId | null) {
+  // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
   const newTabId = tempTabId;
   tempTabId -= 2;
 
