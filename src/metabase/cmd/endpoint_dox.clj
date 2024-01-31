@@ -197,7 +197,9 @@
   (->> (collect-endpoints)
        (map process-endpoint)
        (group-by :ns-name)
-       (into (sorted-map))))
+       (into (sorted-map-by (fn [a b] (compare
+                                       (u/lower-case-en a)
+                                       (u/lower-case-en b)))))))
 
 ;;;; Page generators
 

@@ -36,27 +36,6 @@ const TEST_CASES = [
   { case: "dashboard", subject: DASHBOARD_NAME, confirmSave: false },
 ];
 
-/**
- * Our app registers beforeunload event listener e.g. when editing a native SQL question.
- * Cypress does not automatically close the browser prompt and does not allow manually
- * interacting with it (unlike with window.confirm). The test will hang forever with
- * the prompt displayed and will eventually time out. We need to work around this by
- * monkey-patching window.addEventListener to ignore beforeunload event handlers.
- *
- * @see https://github.com/cypress-io/cypress/issues/2118
- */
-Cypress.on("window:load", window => {
-  const addEventListener = window.addEventListener;
-
-  window.addEventListener = function (event) {
-    if (event === "beforeunload") {
-      return;
-    }
-
-    return addEventListener.apply(this, arguments);
-  };
-});
-
 describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
@@ -702,11 +681,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         it("should display pivot table in an embed URL", () => {
           openStaticEmbeddingModal({
             activeTab: "parameters",
-            confirmSave: test.confirmSave
+            confirmSave: test.confirmSave,
           });
-
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Publish changes").click();
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
           visitIframe();

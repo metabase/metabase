@@ -1174,7 +1174,7 @@
     ;; are allowed to be specified for it.
     [:widget-type WidgetType]
     ;; optional map to be appended to filter clause
-    [:options {:optional true} [:map-of :keyword :any]]]])
+    [:options {:optional true} [:maybe [:map-of :keyword :any]]]]])
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."

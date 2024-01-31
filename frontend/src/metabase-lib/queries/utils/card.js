@@ -8,7 +8,7 @@ import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/
 import * as Q_DEPRECATED from "metabase-lib/queries/utils"; // legacy
 
 export function isStructured(card) {
-  return card.dataset_query.type === "query";
+  return card.dataset_query?.type === "query";
 }
 
 function cardVisualizationIsEquivalent(cardA, cardB) {

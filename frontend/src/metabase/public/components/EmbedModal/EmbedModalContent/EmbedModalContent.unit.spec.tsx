@@ -1,161 +1,64 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
-import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
+import type { EmbedResource } from "metabase/public/lib/types";
 
-import type { EmbedResource } from "../types";
 import type { EmbedModalContentProps } from "./EmbedModalContent";
 import { EmbedModalContent } from "./EmbedModalContent";
 
 describe("EmbedModalContent", () => {
-  it("should render", () => {
-    setup();
+  describe("Select Embed Type phase", () => {
+    it("should render", () => {
+      setup();
 
-    expect(screen.getByText("Public embed")).toBeInTheDocument();
-    expect(screen.getByText("Static embed")).toBeInTheDocument();
-  });
-
-  it("should render unsaved parameters", () => {
-    setup({
-      embedType: "application",
-      resourceParameters: [
-        {
-          id: "my_param",
-          name: "My param",
-          slug: "my_param",
-          type: "category",
-        },
-      ],
+      expect(screen.getByText("Static embed")).toBeInTheDocument();
+      expect(screen.getByText("Public embed")).toBeInTheDocument();
     });
 
-    userEvent.click(
-      screen.getByRole("tab", {
-        name: "Parameters",
-      }),
-    );
+    it("should switch to StaticEmbedSetupPane", () => {
+      const { goToNextStep } = setup();
 
-    expect(screen.getByText("My param")).toBeInTheDocument();
-    expect(screen.getByLabelText("My param")).toHaveTextContent("Disabled");
-  });
+      expect(goToNextStep).toHaveBeenCalledTimes(0);
 
-  it("should render saved parameters", () => {
-    setup({
-      embedType: "application",
-      resource: {
-        ...createMockDashboard(),
-        embedding_params: {
-          my_param: "locked",
-        },
-      },
-      resourceParameters: [
-        {
-          id: "my_param",
-          name: "My param",
-          slug: "my_param",
-          type: "category",
-        },
-      ],
+      userEvent.click(screen.getByText("Set this up"));
+
+      expect(goToNextStep).toHaveBeenCalledTimes(1);
     });
 
-    userEvent.click(
-      screen.getByRole("tab", {
-        name: "Parameters",
-      }),
-    );
-
-    const parametersSection = screen.getByLabelText(
-      "Enable or lock parameters",
-    );
-    expect(within(parametersSection).getByText("My param")).toBeInTheDocument();
-    expect(
-      within(parametersSection).getByLabelText("My param"),
-    ).toHaveTextContent("Locked");
-  });
-
-  it("should only render valid parameters", () => {
-    setup({
-      embedType: "application",
-      resource: {
-        ...createMockDashboard(),
-        embedding_params: {
-          old_param: "locked",
+    it("should render StaticEmbedSetupPane when embedType=application", () => {
+      setup({
+        props: {
+          embedType: "application",
         },
-      },
-      resourceParameters: [
-        {
-          id: "my_param",
-          name: "My param",
-          slug: "my_param",
-          type: "category",
-        },
-      ],
+      });
+
+      expect(screen.getByText("Setting up a static embed")).toBeInTheDocument();
     });
-
-    userEvent.click(
-      screen.getByRole("tab", {
-        name: "Parameters",
-      }),
-    );
-
-    expect(screen.getByText("My param")).toBeInTheDocument();
-    expect(screen.getByLabelText("My param")).toHaveTextContent("Disabled");
-  });
-
-  it("should update a card with only valid parameters", async () => {
-    const { onUpdateEmbeddingParams } = setup({
-      embedType: "application",
-      resource: {
-        ...createMockDashboard(),
-        embedding_params: {
-          old_param: "locked",
-        },
-      },
-      resourceParameters: [
-        {
-          id: "my_param",
-          name: "My param",
-          slug: "my_param",
-          type: "category",
-        },
-      ],
-    });
-
-    userEvent.click(
-      screen.getByRole("tab", {
-        name: "Parameters",
-      }),
-    );
-
-    expect(screen.getByText("My param")).toBeInTheDocument();
-    expect(screen.getByLabelText("My param")).toHaveTextContent("Disabled");
-
-    screen.getByLabelText("My param").click();
-
-    screen.getByText("Locked").click();
-
-    screen.getByRole("button", { name: "Publish changes" }).click();
-
-    await waitFor(() =>
-      expect(onUpdateEmbeddingParams).toHaveBeenCalledWith({
-        my_param: "locked",
-      }),
-    );
   });
 });
 
-function setup({
-  embedType = null,
-  resource = {} as EmbedResource,
-  resourceType = "dashboard",
-  resourceParameters = [],
-  goToNextStep = jest.fn(),
-  getPublicUrl = jest.fn(_resource => "some URL"),
-  onUpdateEmbeddingParams = jest.fn(),
-  onUpdateEnableEmbedding = jest.fn(),
-  onCreatePublicLink = jest.fn(),
-  onDeletePublicLink = jest.fn(),
-}: Partial<EmbedModalContentProps> = {}) {
+function setup(
+  {
+    props: {
+      embedType = null,
+      resource = {} as EmbedResource,
+      resourceType = "dashboard",
+      resourceParameters = [],
+      goToNextStep = jest.fn(),
+      getPublicUrl = jest.fn(_resource => "some URL"),
+      onUpdateEmbeddingParams = jest.fn(),
+      onUpdateEnableEmbedding = jest.fn(),
+      onCreatePublicLink = jest.fn(),
+      onDeletePublicLink = jest.fn(),
+    },
+  }: {
+    props: Partial<EmbedModalContentProps>;
+  } = {
+    props: {},
+  },
+) {
   const view = renderWithProviders(
     <EmbedModalContent
       embedType={embedType}

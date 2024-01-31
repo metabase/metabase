@@ -16,6 +16,8 @@ inputs:
     default: us-east-1
   bucket:
     required: true
+  trunk-api-token:
+    required: true
 
 runs:
   using: "composite"
@@ -41,3 +43,12 @@ runs:
       run: | # sh
         DATE=$(date '+%Y-%m-%d')
         aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
+
+    - name: Upload results to Trunk
+      if: ${{ always() }}
+      uses: trunk-io/analytics-uploader@main
+      with:
+        junit-paths: ${{ inputs.input-path }}
+        org-slug: metabase
+        token: ${{ inputs.trunk-api-token }}
+      continue-on-error: true

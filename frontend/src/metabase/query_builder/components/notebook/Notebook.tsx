@@ -93,8 +93,9 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 
 function getSourceQuestionId(question: Question) {
   const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
 
-  if (question.isStructured()) {
+  if (!isNative) {
     const sourceTableId = Lib.sourceTableOrCardId(query);
 
     if (isVirtualCardId(sourceTableId)) {

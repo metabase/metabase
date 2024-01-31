@@ -165,6 +165,7 @@
   upper
   lower]
  [lib.fe-util
+  dependent-metadata
   expression-clause
   expression-parts
   filter-args-display-name]

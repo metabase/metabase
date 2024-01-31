@@ -6,21 +6,21 @@ describe("scenarios > browse data", () => {
     cy.signInAsAdmin();
   });
 
-  it("can browse to a model (metabase#36368)", () => {
+  it("can browse to a model", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
-    cy.location("pathname").should("eq", "/browse");
-    cy.findByRole("heading", { name: "Browse data" });
+    cy.location("pathname").should("eq", "/browse/models");
+    cy.findByTestId("data-browser").findByText("Browse data");
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByRole("button", { name: "Filter" });
   });
-  it("can view summary of model's last edit (metabase#36368)", () => {
+  it("can view summary of model's last edit", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.findByRole("note", /Bobby Tables.*7h./).realHover();
     cy.findByRole("tooltip", { name: /Last edited by Bobby Tables/ });
   });
-  it("can browse to a database (metabase#36368)", () => {
+  it("can browse to a database", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.findByRole("tab", { name: "Databases" }).click();

@@ -150,7 +150,9 @@
 (defn- validate [error-context schema value error-type]
   (when *enforce*
     (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)
+      (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
+                                                  [{:keys [value message]}]
+                                                  (str message ", got: " (pr-str value)))})
             details   (merge
                         {:type      error-type
                          :error     error
@@ -301,7 +303,9 @@
   "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
   [namespace]
   (let [lib-and-middleware [#"^metabase\.lib\..*"
-                            #"^metabase\.query-processor\.middleware\..*"]
+                            #"^metabase\.query-processor\.middleware\..*"
+                            #"^metabase\.sync.*"
+                            #"^metabase\.upload.*"]
         matches?           (core/fn [namespace regexes]
                              (let [n (-> namespace ns-name str)]
                                (some #(re-matches % n) regexes)))

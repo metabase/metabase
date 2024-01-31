@@ -76,10 +76,10 @@ describe("ProfileLink", () => {
     fetchMock.get("path:/api/util/bug_report_details", "mockBugReportDetails");
   });
   describe("self-hosted", () => {
-    it("should show the proper set of items for normal users", () => {
+    it("should show the proper set of items for normal users", async () => {
       setup({ isAdmin: false });
 
-      openMenu();
+      await openMenu();
 
       REGULAR_ITEMS.forEach(title => {
         expect(screen.getByText(title)).toBeInTheDocument();
@@ -87,10 +87,10 @@ describe("ProfileLink", () => {
       expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
     });
 
-    it("should show the proper set of items for admin users", () => {
+    it("should show the proper set of items for admin users", async () => {
       setup({ isAdmin: true });
 
-      openMenu();
+      await openMenu();
 
       ADMIN_ITEMS.forEach(title => {
         expect(screen.getByText(title)).toBeInTheDocument();
@@ -99,10 +99,10 @@ describe("ProfileLink", () => {
   });
 
   describe("hosted", () => {
-    it("should show the proper set of items for normal users", () => {
+    it("should show the proper set of items for normal users", async () => {
       setupHosted({ isAdmin: false });
 
-      openMenu();
+      await openMenu();
 
       REGULAR_ITEMS.forEach(title => {
         expect(screen.getByText(title)).toBeInTheDocument();
@@ -110,10 +110,10 @@ describe("ProfileLink", () => {
       expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
     });
 
-    it("should show the proper set of items for admin users", () => {
+    it("should show the proper set of items for admin users", async () => {
       setupHosted({ isAdmin: true });
 
-      openMenu();
+      await openMenu();
 
       HOSTED_ITEMS.forEach(title => {
         expect(screen.getByText(title)).toBeInTheDocument();
@@ -123,11 +123,11 @@ describe("ProfileLink", () => {
 
   describe("help link", () => {
     describe("when the setting is set to hidden", () => {
-      it("should return not be visible", () => {
+      it("should return not be visible", async () => {
         setup({
           helpLinkSetting: "hidden",
         });
-        openMenu();
+        await openMenu();
 
         const link = screen.queryByRole("link", { name: /help/i });
 
@@ -136,12 +136,12 @@ describe("ProfileLink", () => {
     });
 
     describe("when the setting is `custom`", () => {
-      it("should return  the custom destination", () => {
+      it("should return  the custom destination", async () => {
         setup({
           helpLinkSetting: "custom",
           helpLinkCustomDestinationSetting: "https://custom.example.org/help",
         });
-        openMenu();
+        await openMenu();
 
         const link = screen.getByRole("link", { name: /help/i });
 
@@ -158,7 +158,7 @@ describe("ProfileLink", () => {
             isPaidPlan: true,
             helpLinkSetting: "metabase",
           });
-          openMenu();
+          await openMenu();
           const link = screen.getByRole("link", { name: /help/i });
 
           expect(link).toBeInTheDocument();
@@ -173,13 +173,13 @@ describe("ProfileLink", () => {
       });
 
       describe("when non admin", () => {
-        it("should return the default /help link", () => {
+        it("should return the default /help link", async () => {
           setup({
             isAdmin: false,
             isPaidPlan: true,
             helpLinkSetting: "metabase",
           });
-          openMenu();
+          await openMenu();
           const link = screen.getByRole("link", { name: /help/i });
 
           expect(link).toBeInTheDocument();
@@ -193,5 +193,7 @@ describe("ProfileLink", () => {
   });
 });
 
-const openMenu = () =>
+const openMenu = async () => {
   userEvent.click(screen.getByRole("img", { name: /gear/i }));
+  await screen.findByRole("dialog");
+};

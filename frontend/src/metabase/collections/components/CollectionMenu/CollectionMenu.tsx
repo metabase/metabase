@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isInstanceAnalyticsCustomCollection,
   isRootPersonalCollection,
@@ -52,7 +51,6 @@ export const CollectionMenu = ({
       title: t`Edit permissions`,
       icon: "lock",
       link: `${url}/permissions`,
-      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions`,
     });
   }
 
@@ -61,13 +59,11 @@ export const CollectionMenu = ({
       title: t`Move`,
       icon: "move",
       link: `${url}/move`,
-      event: `${ANALYTICS_CONTEXT};Edit Menu;Move Collection`,
     });
     items.push({
       title: t`Archive`,
       icon: "archive",
       link: `${url}/archive`,
-      event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
     });
   }
 

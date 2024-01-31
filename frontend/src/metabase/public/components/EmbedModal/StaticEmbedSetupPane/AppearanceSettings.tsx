@@ -1,23 +1,25 @@
 import { jt, t } from "ttag";
+import type { ChangeEvent, ReactNode } from "react";
 import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import {
+  getDocsUrl,
+  getSetting,
+  getUpgradeUrl,
+} from "metabase/selectors/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Select from "metabase/core/components/Select";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
-
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
 import type {
-  ActivePreviewPane,
   EmbeddingDisplayOptions,
-  EmbeddingParameters,
-  EmbedResource,
   EmbedResourceType,
-  EmbedModalStep,
-} from "../types";
-import EmbedCodePane from "./EmbedCodePane";
+} from "metabase/public/lib/types";
+import { getPlan } from "metabase/common/utils/plan";
+
+import { PreviewModeSelector } from "./PreviewModeSelector";
+import type { ActivePreviewPane } from "./types";
 import PreviewPane from "./PreviewPane";
 import {
   DisplayOptionSection,
@@ -35,15 +37,10 @@ const DEFAULT_THEME = THEME_OPTIONS[0].value;
 export interface AppearanceSettingsProps {
   activePane: ActivePreviewPane;
 
-  embedType: EmbedModalStep;
-  resource: EmbedResource;
   resourceType: EmbedResourceType;
   iframeUrl: string;
-  token: string;
-  siteUrl: string;
-  secretKey: string;
-  params: EmbeddingParameters;
   displayOptions: EmbeddingDisplayOptions;
+  serverEmbedCodeSlot: ReactNode;
 
   onChangePane: (pane: ActivePreviewPane) => void;
   onChangeDisplayOptions: (displayOptions: EmbeddingDisplayOptions) => void;
@@ -51,26 +48,31 @@ export interface AppearanceSettingsProps {
 
 export const AppearanceSettings = ({
   activePane,
-  embedType,
-  resource,
   resourceType,
   iframeUrl,
-  token,
-  siteUrl,
-  secretKey,
-  params,
   displayOptions,
+  serverEmbedCodeSlot,
 
   onChangePane,
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
   const docsUrl = useSelector(state =>
-    getDocsUrl(state, { page: "embedding/static-embedding" }),
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- Only appear to admins
+    getDocsUrl(state, {
+      page: "embedding/static-embedding",
+    }),
+  );
+  const upgradePageUrl = useSelector(state =>
+    getUpgradeUrl(state, { utm_media: "static-embed-settings-appearance" }),
+  );
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
   );
   const canWhitelabel = useSelector(getCanWhitelabel);
   const availableFonts = useSelector(state =>
     getSetting(state, "available-fonts"),
   );
+  const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
 
   const fontControlLabelId = useUniqueId("display-option");
 
@@ -84,12 +86,12 @@ export const AppearanceSettings = ({
             <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${(
               <ExternalLink
                 key="doc"
-                href={docsUrl}
+                href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
               >{t`documentation`}</ExternalLink>
             )} for more.`}</Text>
           </StaticEmbedSetupPaneSettingsContentSection>
           <StaticEmbedSetupPaneSettingsContentSection
-            title={t`Play with the options here`}
+            title={t`Playing with appearance options`}
             mt="2rem"
           >
             <Stack spacing="1rem">
@@ -158,7 +160,7 @@ export const AppearanceSettings = ({
                     buttonProps={{
                       "aria-labelledby": fontControlLabelId,
                     }}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                       onChangeDisplayOptions({
                         ...displayOptions,
                         font: e.target.value,
@@ -167,7 +169,10 @@ export const AppearanceSettings = ({
                   />
                 ) : (
                   <Text>{jt`You can change the font with ${(
-                    <ExternalLink href="https://www.metabase.com/pricing/">{t`a paid plan`}</ExternalLink>
+                    <ExternalLink
+                      key="fontPlan"
+                      href={upgradePageUrl}
+                    >{t`a paid plan`}</ExternalLink>
                   )}.`}</Text>
                 )}
               </DisplayOptionSection>
@@ -177,7 +182,7 @@ export const AppearanceSettings = ({
                 // and they're sharing a question metabase#23477
                 <DisplayOptionSection title={t`Download data`}>
                   <Switch
-                    label={t`Enable users to download data from this embed?`}
+                    label={t`Enable users to download data from this embed`}
                     labelPosition="left"
                     size="sm"
                     variant="stretch"
@@ -201,8 +206,8 @@ export const AppearanceSettings = ({
               >
                 <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
                   <ExternalLink
-                    key="doc"
-                    href="https://www.metabase.com/pricing/"
+                    key="bannerPlan"
+                    href={upgradePageUrl}
                   >{t`a paid plan`}</ExternalLink>
                 )} to remove the banner.`}</Text>
               </StaticEmbedSetupPaneSettingsContentSection>
@@ -221,18 +226,7 @@ export const AppearanceSettings = ({
               isTransparent={displayOptions.theme === "transparent"}
             />
           ) : activePane === "code" ? (
-            <EmbedCodePane
-              className="flex-full w-full"
-              embedType={embedType}
-              resource={resource}
-              resourceType={resourceType}
-              iframeUrl={iframeUrl}
-              token={token}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={params}
-              displayOptions={displayOptions}
-            />
+            serverEmbedCodeSlot
           ) : null}
         </>
       }

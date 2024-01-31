@@ -116,11 +116,12 @@ export const updateQuestion = (
   return async (dispatch: Dispatch, getState: GetState) => {
     const currentQuestion = getQuestion(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
+    const { isEditable } = Lib.queryDisplayInfo(newQuestion.query());
 
     const shouldTurnIntoAdHoc =
       shouldStartAdHocQuestion &&
       newQuestion.isSaved() &&
-      newQuestion.isQueryEditable() &&
+      isEditable &&
       queryBuilderMode !== "dataset";
 
     if (shouldTurnIntoAdHoc) {

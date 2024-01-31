@@ -73,6 +73,7 @@ export const PreferencesStep = (): JSX.Element => {
       <StepDescription>
         {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
         <ExternalLink
+          // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
           href={Settings.docsUrl(
             "installation-and-operation/information-collection",
           )}

@@ -98,7 +98,6 @@ function EntityItemMenu({
   onToggleBookmark,
   onTogglePreview,
   className,
-  analyticsContext,
 }) {
   const isPinned = isItemPinned(item);
   const isPreviewed = isPreviewShown(item);
@@ -114,19 +113,16 @@ function EntityItemMenu({
           title: isPinned ? t`Unpin` : t`Pin this`,
           icon: isPinned ? "unpin" : "pin",
           action: onPin,
-          event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
         isMetabotShown && {
           title: t`Ask Metabot`,
           link: Urls.modelMetabot(item.id),
           icon: "insight",
-          event: `${analyticsContext};Entity Item;Ask Metabot;${item.model}`,
         },
         isXrayShown && {
           title: t`X-ray this`,
           link: Urls.xrayModel(item.id),
           icon: "bolt",
-          event: `${analyticsContext};Entity Item;X-ray Item;${item.model}`,
         },
         onTogglePreview && {
           title: isPreviewed
@@ -138,36 +134,30 @@ function EntityItemMenu({
             ? t`Open this question and fill in its variables to see it.`
             : undefined,
           disabled: !isParameterized,
-          event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
         },
         onMove && {
           title: t`Move`,
           icon: "move",
           action: onMove,
-          event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
         },
         onCopy && {
           title: t`Duplicate`,
           icon: "clone",
           action: onCopy,
-          event: `${analyticsContext};Entity Item;Copy Item;${item.model}`,
         },
         onArchive && {
           title: t`Archive`,
           icon: "archive",
           action: onArchive,
-          event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
         onToggleBookmark && {
           title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
           icon: "bookmark",
           action: onToggleBookmark,
-          event: `${analyticsContext};Entity Item;Bookmark Item;${item.model}`,
         },
       ].filter(action => action),
     [
       item.id,
-      item.model,
       isPinned,
       isXrayShown,
       isMetabotShown,
@@ -180,7 +170,6 @@ function EntityItemMenu({
       onArchive,
       onTogglePreview,
       onToggleBookmark,
-      analyticsContext,
     ],
   );
   if (actions.length === 0) {
@@ -200,7 +189,6 @@ function EntityItemMenu({
 }
 
 const EntityItem = ({
-  analyticsContext,
   name,
   iconName,
   onPin,
@@ -254,7 +242,6 @@ const EntityItem = ({
           onCopy={onCopy}
           onArchive={onArchive}
           className="ml1"
-          analyticsContext={analyticsContext}
         />
       </EntityItemActions>
     </EntityItemWrapper>
