@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -24,6 +25,8 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { useDispatch } from "metabase/lib/redux";
+import { setOptions } from "metabase/redux/embed";
 import type Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -101,6 +104,11 @@ function EmbedFrame({
   useMount(() => {
     initializeIframeResizer(() => setInnerScroll(false));
   });
+
+  const dispatch = useDispatch();
+  useEffect(() => {
+    dispatch(setOptions(location));
+  }, [dispatch, location]);
 
   const {
     bordered = isWithinIframe(),
