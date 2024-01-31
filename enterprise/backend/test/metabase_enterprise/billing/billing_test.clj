@@ -11,3 +11,11 @@
       (is (= {:version "v1"
               :content nil}
              (mt/user-http-request :rasta :get 200 "/ee/billing"))))))
+
+(deftest fetch-billing-status-error-test
+  (testing "When receiving a non json result consume the error and return an empty content blob"
+    (binding [http/request (fn [& _]
+                             {:status 404
+                              :body   "error"})]
+      (is (= {:content nil}
+             (mt/user-http-request :crowberto :get 200 "/ee/billing"))))))

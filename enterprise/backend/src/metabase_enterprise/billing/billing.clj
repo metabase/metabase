@@ -9,7 +9,8 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import    [com.fasterxml.jackson.core JsonParseException]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,12 +20,14 @@
   (memoize/ttl
    ^{::memoize/args-fn (fn [[token email language]] [token email language])}
    (fn [token email language]
-     (some-> metabase-billing-info-url
-             (http/get {:basic-auth   [email token]
-                        :language     language
-                        :content-type :json})
-             :body
-             (json/parse-string keyword)))
+     (try (some-> metabase-billing-info-url
+                  (http/get {:basic-auth   [email token]
+                             :language     language
+                             :content-type :json})
+                  :body
+                  (json/parse-string keyword))
+          (catch JsonParseException _
+            {:content nil})))
    :ttl/threshold (u/hours->ms 5)))
 
 (api/defendpoint GET "/"
