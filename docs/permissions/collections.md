@@ -20,7 +20,7 @@ The group can edit, move, archive, and pin items saved in this collection, and c
 
 ### View access
 
-The group can see all the questions, dashboards, and models in the collection. If a dashboard in this collection includes questions saved to other collections, the group will need view or curate access to that collection in order to view the question.
+The group can see all the questions, dashboards, and models in the collection.
 
 ### No access
 
@@ -29,6 +29,14 @@ The group won't see this collection listed, and they'll lack access to any of th
 ## Collection vs data permissions
 
 Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or to creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
+
+## Dashboards with questions from multiple collections
+
+If a dashboard in a collection includes questions saved to other collections, the group will need view or curate access to all of those collections in order to view those questions. If not, Metabase will apologize and tell you that you lack permissions to see the cards saved to the other collections.
+
+![Dashboard with questions from multiple collections, where the person is not in a group with access to one of the collections](./images/dashboard-no-permissions.png)
+
+In general, it's easier to manage permissions when keeping all of a dashboard's questions in the same collection.
 
 ## Setting permissions for collections
 
