@@ -15,7 +15,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features
-    :as premium-features]
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -155,15 +156,15 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
+(defenterprise current-user-can-write-field?
+  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  metabase-enterprise.advanced-permissions.common
+  [_instance]
+  (mi/superuser?))
+
 (defmethod mi/can-write? :model/Field
   ([instance]
-   (if (premium-features/enable-advanced-permissions?)
-     (= :yes (data-perms/table-permission-for-user
-              api/*current-user-id*
-              :perms/manage-table-metadata
-              (field->db-id instance)
-              (:table_id instance)))
-     (mi/superuser?)))
+   (current-user-can-write-field? instance))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
 
