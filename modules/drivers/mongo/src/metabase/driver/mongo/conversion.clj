@@ -1,31 +1,23 @@
 (ns metabase.driver.mongo.conversion
-  "This namespace contains utilities for conversion between mongo specific types and clojure friendly types.
+  "This namespace contains utilities for conversion between mongo specific types and clojure.
 
-   TODO: proper docstring
+   It is copy of monger's conversion namespace, that was adjusted for the needs of Document. Extensions that were
+   previously implemented in our mongo driver were also moved into this namespace.
 
-   Currently it contains:
-   - mostly copy of monger's `conversion` namespace, adjusted for the purposes of more modern `org.bson.Document` and
-   - its extensions gathered from our mongo driver.
+   [[to-document]] and [[from-document]] are meant to be used for transformation of clojure data into mongo aggregation
+   pipelines and results back into clojure structures.
 
-   Namespace was added as part of mongo java driver upgrade (and monger removal). Code here should be subject
-   of further refator (eg. while addressing https://github.com/metabase/metabase/issues/38181). Priority was to address
-   escalation at the time of writing.
-   
-   Why the refactoring concerns?
-   - Mongo java driver (bson package) uses encoders and decoders for transformations between mongo and java (potentially clojure)
-     types.
-   - It may be that some of the conversion code is not neccessary anymore (or for our purposes) -- We are using this
-     to convert aggregation pipelines into .
-   - Name of the protocols (previously From/ToBDObject) is misleading -- eg. maps are converted to `Document`, but
-     other values are converted just to the form digestible by mongo, eg. keywords to strings, date/time values to
-     instant."
+   TODO: Logic is copied from monger's conversions. It seems that lot of implementations are redundant. I'm not sure
+         yet. We should consider further simplifying the namespace.
+   TODO: Consider use of bson's encoders/decoders/codecs instead this code.
+   TODO: Or consider adding types from org.bson package -- eg. BsonInt32. If we'd decide to go this way, we could
+         transform ejson completely to clojure structures. That however requires deciding how to represent
+         eg. ObjectIds (it could be eg. {$oid \"...\"} which would copy EJSON v2 way). [EJSON v2 doc](https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/)."
+
   (:require
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [metabase.query-processor.timezone :as qp.timezone]))
-
-;;;; TODO: avoid laziness here completely!
-;;;; TODO: 
 
 (set! *warn-on-reflection* true)
 
@@ -53,7 +45,6 @@
   (from-document [t _]
                  (t/instant t))
 
-  ;; TODO: maybe move this to function which would initialize arguments
   org.bson.Document
   (from-document [input {:keys [keywordize] :or {keywordize true} :as opts}]
     (reduce (if keywordize
@@ -65,59 +56,48 @@
             (.keySet input))))
 
 (defprotocol ConvertToDocument
-  (^org.bson.Document to-document [input] 
-    "Converts given piece of Clojure data to org.bson.Document usable by java driver."))
+  (to-document [input] "Converts given piece of Clojure data to org.bson.Document usable by java driver."))
 
 (extend-protocol ConvertToDocument
   nil
-  (to-document [input]
-    nil)
+  (to-document [_input] nil)
 
   String
-  (to-document [^String input]
-    input)
+  (to-document [input] input)
 
   Boolean
-  (to-document [^Boolean input]
-    input)
+  (to-document [input] input)
 
   java.util.Date
-  (to-document [^java.util.Date input]
-    input)
+  (to-document [input] input)
 
   clojure.lang.Ratio
-  (to-document [^clojure.lang.Ratio input]
-    (double input))
+  (to-document [input] (double input))
 
   clojure.lang.Keyword
-  (to-document [^clojure.lang.Keyword input] (.getName input))
+  (to-document [input] (.getName input))
 
   clojure.lang.Named
-  (to-document [^clojure.lang.Named input] (.getName input))
+  (to-document [input] (.getName input))
 
   clojure.lang.IPersistentMap
-  (to-document [^cloure.lang.IPersistentMap input]
+  (to-document [input]
     (let [o (org.bson.Document.)]
       (doseq [[k v] input]
         (.put o (to-document k) (to-document v)))
       o))
 
   java.util.List
-  (to-document [^java.util.List input] (map to-document input))
+  (to-document [input] (mapv to-document input))
 
   java.util.Set
-  (to-document [^java.util.Set input] (map to-document input))
-
-  com.mongodb.DBObject
-  (to-document [^com.mongodb.DBObject input] input)
+  (to-document [input] (mapv to-document input))
 
   com.mongodb.DBRef
-  (to-document [^com.mongodb.DBRef dbref]
-    dbref)
+  (to-document [dbref] dbref)
 
   Object
-  (to-document [input]
-    input))
+  (to-document [input] input))
 
 ;;;; Protocol extensions gathered from our mongo driver's code follow.
 
