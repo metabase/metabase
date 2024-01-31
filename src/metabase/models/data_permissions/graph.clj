@@ -62,12 +62,13 @@
   (if (map? new-schema-perms)
     (update-table-level-metadata-permissions! group-id db-id schema new-schema-perms)
     (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
-     (case new-schema-perms
-       :all
-       (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :yes)))
+      (when (seq tables)
+        (case new-schema-perms
+          :all
+          (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :yes)))
 
-       :none
-       (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :no)))))))
+          :none
+          (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :no))))))))
 
 (defn- update-db-level-metadata-permissions!
   [group-id db-id new-db-perms]
@@ -99,15 +100,16 @@
   (if (map? new-schema-perms)
     (update-table-level-download-permissions! group-id db-id schema new-schema-perms)
     (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
-      (case new-schema-perms
-        :full
-        (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :one-million-rows)))
+      (when (seq tables)
+        (case new-schema-perms
+          :full
+          (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :one-million-rows)))
 
-        :limited
-        (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :ten-thousand-rows)))
+          :limited
+          (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :ten-thousand-rows)))
 
-        :none
-        (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :no)))))))
+          :none
+          (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :no))))))))
 
 ; ;; TODO: Make sure we update download perm enforcement to infer native download permissions, since
 ; ;; we'll no longer be setting them explicitly in the database.
@@ -158,12 +160,13 @@
   (if (map? new-schema-perms)
     (update-table-level-data-access-permissions! group-id db-id schema new-schema-perms)
     (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
-      (case new-schema-perms
-        :all
-        (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :unrestricted)))
+      (when (seq tables)
+        (case new-schema-perms
+          :all
+          (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :unrestricted)))
 
-        :none
-        (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :no-self-service)))))))
+          :none
+          (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :no-self-service))))))))
 
 (defn- update-db-level-data-access-permissions!
   [group-id db-id new-db-perms]

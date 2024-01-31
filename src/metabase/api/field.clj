@@ -12,11 +12,11 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
-   [metabase.models.permissions :as perms]
-   [metabase.models.table :refer [Table]]
+   [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.types :as types]
@@ -39,20 +39,6 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
-(defn- has-segmented-query-permissions?
-  "Does the Current User have segmented query permissions for `table`?"
-  [table]
-  (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-    (perms/table-sandboxed-query-path table)))
-
-(defn- throw-if-no-read-or-segmented-perms
-  "Validates that the user either has full read permissions for `field` or segmented permissions on the table
-  associated with `field`. Throws an exception that will return a 403 if not."
-  [field]
-  (when-not (or (mi/can-read? field)
-                (has-segmented-query-permissions? (field/table field)))
-    (api/throw-403)))
-
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id include_editable_data_model]
@@ -73,7 +59,7 @@
     ;; Check for permissions and throw 403 if we don't have them...
     (if include_editable_data_model
       (api/write-check Table (:table_id field))
-      (throw-if-no-read-or-segmented-perms field))
+      (api/check-403 (mi/can-read? field)))
     ;; ...but if we do, return the Field <3
     field))
 
@@ -323,11 +309,11 @@
   [id]
   {id ms/PositiveInt}
   (let [field (api/write-check (t2/select-one Field :id id))]
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (field-values/create-or-update-full-field-values! field)))
+    (mw.session/as-admin
+     (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
@@ -424,8 +410,8 @@
    value     ms/NonBlankString}
   (let [field        (api/check-404 (t2/select-one Field :id id))
         search-field (api/check-404 (t2/select-one Field :id search-id))]
-    (throw-if-no-read-or-segmented-perms field)
-    (throw-if-no-read-or-segmented-perms search-field)
+    (api/check-403 (mi/can-read? field))
+    (api/check-403 (mi/can-read? search-field))
     (search-values field search-field value mw.offset-paging/*limit*)))
 
 (defn remapped-value
