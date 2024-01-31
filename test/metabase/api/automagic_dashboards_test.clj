@@ -49,19 +49,20 @@
   ([template args revoke-fn validation-fn]
    (mt/with-test-user :rasta
      (with-dashboard-cleanup
-       (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
-             resp         (mt/user-http-request :rasta :get 200 api-endpoint)
-             _            (dashcards-schema-check (:dashcards resp))
-             result       (validation-fn resp)]
-         (when (and result
-                    (testing "Endpoint should return 403 if user does not have permissions"
-                      (perms.test-util/with-no-data-perms-for-all-users!
-                        (perms.test-util/with-no-perms-for-all-users!
-                          (revoke-fn)
-                          (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
-                            (is (= "You don't have permissions to do that."
-                                   result)))))))
-           result))))))
+       (mt/with-full-data-perms-for-all-users!
+         (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
+               resp         (mt/user-http-request :rasta :get 200 api-endpoint)
+               _            (dashcards-schema-check (:dashcards resp))
+               result       (validation-fn resp)]
+           (when (and result
+                      (testing "Endpoint should return 403 if user does not have permissions"
+                        (perms.test-util/with-no-data-perms-for-all-users!
+                          (perms.test-util/with-no-perms-for-all-users!
+                            (revoke-fn)
+                            (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
+                              (is (= "You don't have permissions to do that."
+                                     result)))))))
+             result)))))))
 
 ;;; ------------------- X-ray  -------------------
 
