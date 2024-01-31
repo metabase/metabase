@@ -158,9 +158,9 @@ export default class LeafletMap extends Component {
     });
 
     const question = new Question(card, metadata);
-    const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
+    const { isNative } = Lib.queryDisplayInfo(question.query());
 
-    if (isStructured) {
+    if (!isNative) {
       const query = question.query();
       const stageIndex = -1;
       const filterBounds = {
