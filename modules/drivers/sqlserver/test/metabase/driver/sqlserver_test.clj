@@ -16,7 +16,6 @@
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -349,9 +348,6 @@
                                        "\n"
                                        "SELECT COUNT(1) FROM @TEMP\n")}
                           mt/native-query
-                          ;; add default query constraints to ensure the default limit of 2000 is overridden by the
-                          ;; `:rowcount-override` connection property we defined in the details above
-                          (assoc :constraints (qp.constraints/default-query-constraints))
-                          qp/process-query
+                          qp/process-userland-query
                           mt/rows
                           ffirst))))))))
