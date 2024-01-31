@@ -27,7 +27,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Set source Docker image to OSS
       run: |
         echo "DOCKER_SOURCE_IMAGE=metabase/metabase:${{ matrix.version.source }}" >> $GITHUB_ENV
