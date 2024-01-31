@@ -90,8 +90,10 @@ export function isDashboardParameterWithoutMapping(
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
-function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
-  return dashcards.flatMap(dashcard => {
+function getMappings(
+  dashcards: DashboardCard[],
+): [ExtendedMapping[], Map<string, Map<string, ExtendedMapping>>] {
+  const extendedParameterMappings = dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
     const extendedParameterMappings = (parameter_mappings || [])
@@ -109,6 +111,21 @@ function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
 
     return extendedParameterMappings;
   });
+
+  const mappingsByParameterId = new Map<string, Map<string, ExtendedMapping>>();
+
+  for (const mapping of extendedParameterMappings) {
+    if (!mappingsByParameterId.has(mapping.parameter_id)) {
+      mappingsByParameterId.set(mapping.parameter_id, new Map());
+    }
+
+    const targetKey = JSON.stringify(mapping.target);
+    if (!mappingsByParameterId.get(mapping.parameter_id)?.has(targetKey)) {
+      mappingsByParameterId.get(mapping.parameter_id)?.set(targetKey, mapping);
+    }
+  }
+
+  return [extendedParameterMappings, mappingsByParameterId];
 }
 
 export function getDashboardUiParameters(
@@ -116,10 +133,14 @@ export function getDashboardUiParameters(
   metadata: Metadata,
 ): UiParameter[] {
   const { parameters, dashcards } = dashboard;
-  const mappings = getMappings(dashcards as DashboardCard[]);
+  const [_, mapMappings] = getMappings(dashcards as DashboardCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
-      return buildFieldFilterUiParameter(parameter, mappings, metadata);
+      return buildFieldFilterUiParameter(
+        parameter,
+        [...(mapMappings.get(parameter.id)?.values() ?? [])],
+        metadata,
+      );
     }
 
     return {
@@ -132,16 +153,9 @@ export function getDashboardUiParameters(
 
 function buildFieldFilterUiParameter(
   parameter: Parameter,
-  mappings: ExtendedMapping[],
+  uniqueMappingsForParameters: ExtendedMapping[],
   metadata: Metadata,
 ): FieldFilterUiParameter {
-  const mappingsForParameter = mappings.filter(
-    mapping => mapping.parameter_id === parameter.id,
-  );
-  const uniqueMappingsForParameters = _.uniq(mappingsForParameter, mapping =>
-    JSON.stringify(mapping.target),
-  );
-
   const mappedFields = uniqueMappingsForParameters.map(mapping => {
     const { target, card } = mapping;
 
@@ -158,10 +172,9 @@ function buildFieldFilterUiParameter(
       throw e;
     }
   });
-
-  const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
-    return isVariableTarget(mapping.target);
-  });
+  const hasVariableTemplateTagTarget = uniqueMappingsForParameters.some(
+    mapping => isVariableTarget(mapping.target),
+  );
 
   const fields = mappedFields
     .filter(
@@ -223,7 +236,7 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(dashboard.dashcards as DashboardCard[]);
+  const [mappings] = getMappings(dashboard.dashcards as DashboardCard[]);
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );
