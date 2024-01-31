@@ -58,6 +58,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
+
   if (
     question.display() !== "pivot" ||
     isNative(card) ||
@@ -530,14 +531,17 @@ export const TaskApi = {
 export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
+
 export function setPublicDashboardEndpoints() {
   setDashboardEndpoints("/api/public");
 }
+
 export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
     setCardEndpoints("/api/embed/card/:token", { token });
   }
 }
+
 export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
     setDashboardEndpoints("/api/embed");
@@ -607,7 +611,9 @@ export const MetabotApi = {
   databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
   sendFeedback: POST("/api/metabot/feedback"),
   summarizeCard: POST("/api/ee/autodescribe/card/summarize"),
-  summarizeDashboard: GET("/api/ee/autodescribe/dashboard/summarize/:dashboardId"),
+  summarizeDashboard: GET(
+    "/api/ee/autodescribe/dashboard/summarize/:dashboardId",
+  ),
 };
 
 export const ApiKeysApi = {
