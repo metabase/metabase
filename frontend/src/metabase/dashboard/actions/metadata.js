@@ -1,6 +1,6 @@
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
+import { loadMetadataForQuestions } from "metabase/redux/metadata";
 import { getLinkTargets } from "metabase/lib/click-behavior";
 import Question from "metabase-lib/Question";
 import { isVirtualDashCard } from "../utils";
@@ -23,14 +23,7 @@ const loadMetadataForCards = cards => (dispatch, getState) => {
     .filter(card => card.dataset_query) // exclude queries without perms
     .map(card => new Question(card, metadata));
 
-  return dispatch(
-    loadMetadataForQueries(
-      questions.map(question =>
-        question.legacyQuery({ useStructuredQuery: true }),
-      ),
-      questions.map(question => question.dependentMetadata()),
-    ),
-  );
+  return dispatch(loadMetadataForQuestions(questions));
 };
 
 const loadMetadataForLinkedTargets =

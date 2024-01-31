@@ -293,35 +293,33 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuery = (query, extraDependencies) =>
-  loadMetadataForQueries([query], extraDependencies);
+export const loadMetadataForQuestion = query =>
+  loadMetadataForQuestions([query]);
 
-export const loadMetadataForQueries =
-  (queries, extraDependencies, options) => dispatch => {
-    const dependencies = _.chain(queries)
-      .map(q => q.dependentMetadata())
-      .push(...(extraDependencies ?? []))
-      .flatten()
-      .uniq(false, dep => dep.type + dep.id)
-      .map(({ type, id, foreignTables }) => {
-        if (type === "table") {
-          return (
-            foreignTables
-              ? Tables.actions.fetchMetadataAndForeignTables
-              : Tables.actions.fetchMetadata
-          )({ id }, options);
-        } else if (type === "field") {
-          return Fields.actions.fetch({ id }, options);
-        } else if (type === "schema") {
-          return Schemas.actions.fetchList({ dbId: id }, options);
-        } else {
-          console.warn(`loadMetadataForQueries: type ${type} not implemented`);
-        }
-      })
-      .filter(Boolean)
-      .value();
+export const loadMetadataForQuestions = (queries, options) => dispatch => {
+  const dependencies = _.chain(queries)
+    .map(q => q.dependentMetadata())
+    .flatten()
+    .uniq(false, dep => dep.type + dep.id)
+    .map(({ type, id, foreignTables }) => {
+      if (type === "table") {
+        return (
+          foreignTables
+            ? Tables.actions.fetchMetadataAndForeignTables
+            : Tables.actions.fetchMetadata
+        )({ id }, options);
+      } else if (type === "field") {
+        return Fields.actions.fetch({ id }, options);
+      } else if (type === "schema") {
+        return Schemas.actions.fetchList({ dbId: id }, options);
+      } else {
+        console.warn(`loadMetadataForQuestions: type ${type} not implemented`);
+      }
+    })
+    .filter(Boolean)
+    .value();
 
-    return Promise.all(dependencies.map(dispatch)).catch(e =>
-      console.error("Failed loading metadata for query", e),
-    );
-  };
+  return Promise.all(dependencies.map(dispatch)).catch(e =>
+    console.error("Failed loading metadata for query", e),
+  );
+};

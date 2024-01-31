@@ -1,6 +1,6 @@
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-import { fetchField, loadMetadataForQuery } from "./metadata";
+import { fetchField, loadMetadataForQuestion } from "./metadata";
 
 describe("deprecated metadata actions", () => {
   let dispatch;
@@ -79,7 +79,7 @@ describe("deprecated metadata actions", () => {
     });
   });
 
-  describe("loadMetadataForQuery", () => {
+  describe("loadMetadataForQuestion", () => {
     beforeEach(() => {
       Fields.actions.fetch = jest.fn(() =>
         Promise.resolve({
@@ -104,6 +104,7 @@ describe("deprecated metadata actions", () => {
     });
 
     it("should send requests for any tables/fields needed by the query", () => {
+      // TODO: update this to a question
       const query = {
         dependentMetadata: () => [
           {
@@ -127,7 +128,7 @@ describe("deprecated metadata actions", () => {
         ],
       };
 
-      loadMetadataForQuery(query)(dispatch);
+      loadMetadataForQuestion(query)(dispatch);
       expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
         { id: 1 },
         undefined,
@@ -138,25 +139,6 @@ describe("deprecated metadata actions", () => {
       );
       expect(Tables.actions.fetchMetadata.mock.calls.length).toBe(1);
 
-      expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 }, undefined);
-    });
-
-    it("should load extra dependencies if provided", () => {
-      const query = {
-        dependentMetadata: () => [
-          {
-            type: "table",
-            id: 1,
-          },
-        ],
-      };
-
-      loadMetadataForQuery(query, [{ type: "field", id: 3 }])(dispatch);
-
-      expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
-        { id: 1 },
-        undefined,
-      );
       expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 }, undefined);
     });
   });
