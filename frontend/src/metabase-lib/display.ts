@@ -32,9 +32,9 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
 
   if (aggregations.length === 1 && breakouts.length === 1) {
     const [{ columnInfo }] = getBreakoutColumnInfos(
-      breakouts,
       query,
       stageIndex,
+      breakouts,
     );
 
     if (isState(columnInfo)) {
@@ -60,9 +60,9 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
 
   if (aggregations.length >= 1 && breakouts.length === 1) {
     const [{ breakout, columnInfo }] = getBreakoutColumnInfos(
-      breakouts,
       query,
       stageIndex,
+      breakouts,
     );
 
     if (isDate(columnInfo)) {
@@ -88,7 +88,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 2) {
-    const infos = getBreakoutColumnInfos(breakouts, query, stageIndex);
+    const infos = getBreakoutColumnInfos(query, stageIndex, breakouts);
 
     const isAnyBreakoutDate = infos.some(({ columnInfo }) => {
       return isDate(columnInfo);
@@ -121,9 +121,9 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
 };
 
 const getBreakoutColumnInfos = (
-  breakouts: Lib.BreakoutClause[],
   query: Lib.Query,
   stageIndex: number,
+  breakouts: Lib.BreakoutClause[],
 ) => {
   return breakouts.map(breakout => {
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
