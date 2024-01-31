@@ -618,7 +618,8 @@
         (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
-        (binding [api/*current-user-permissions-set* (atom #{"/"})]
+        (binding [api/*current-user-permissions-set* (atom #{"/"})
+                  api/*is-superuser?* true]
           (api.card/param-values card param-key search-prefix))
         (catch Throwable e
           (throw (ex-info (.getMessage e)

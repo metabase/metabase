@@ -2,10 +2,25 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models :refer [PermissionsGroupMembership]]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defenterprise current-user-can-write-field?
+  "Enterprise version. Returns a boolean whether the current user can write the given field."
+  :feature :advanced-permissions
+  [instance]
+  (= :yes (data-perms/table-permission-for-user
+           api/*current-user-id*
+           :perms/manage-table-metadata
+           (or (get-in instance [:table :db_id])
+               (database/table-id->database-id (:table_id instance)))
+           (:table_id instance))))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
