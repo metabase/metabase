@@ -636,7 +636,7 @@
 
 (mu/defn generate-graph :- :map
   "Used to generation permission graph from parsed permission paths of v1 and v2 permission graphs for the api layer."
-  [db-ids group-id->paths :- [:map-of :int [:* perms.u/Path]]]
+  [db-ids group-id->paths]
   (->> group-id->paths
        (m/map-vals
         (fn [paths]
@@ -659,8 +659,16 @@
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  {:revision (perms-revision/latest-id)
-   :groups   (data-perms.graph/api-graph {})})
+  (let [db-ids             (delay (t2/select-pks-set 'Database))
+        group-id->v1-paths (permissions-by-group-ids
+                            [:and
+                             [:or
+                              [:= :object (h2x/literal "/")]
+                              [:like :object (h2x/literal "%/db/%")]]
+                             [:not-like :object (h2x/literal "/query/db/%")]
+                             [:not-like :object (h2x/literal "/data/db/%")]])]
+    {:revision (perms-revision/latest-id)
+     :groups   (generate-graph @db-ids group-id->v1-paths)}))
 
 (defn data-graph-for-db
   "Efficiently returns a data permissions graph, which has all the permissions info for `db-id`."
