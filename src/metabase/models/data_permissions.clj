@@ -96,7 +96,8 @@
 
 (defmethod coalesce :default
   [perm-type perm-values]
-  (let [ordered-values (-> Permissions perm-type :values)]
+  (let [perm-type (keyword perm-type)
+        ordered-values (-> Permissions perm-type :values)]
     (first (filter (set perm-values) ordered-values))))
 
 (defmethod coalesce :perms/data-access
