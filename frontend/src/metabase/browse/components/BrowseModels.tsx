@@ -1,8 +1,3 @@
-/*
- * TODO:   have ModelGroup return an array, and use that to construct a big array of all the cells. This can be used as input to cellRenderer and getRowHeight.
- * */
-
-
 import { cloneElement, useContext, useEffect, useState } from "react";
 import _ from "underscore";
 import cx from "classnames";
@@ -314,35 +309,32 @@ const ModelGroup = ({
   /** This id is used by aria-labelledby */
   const collectionHtmlId = `collection-${collection.id}`;
 
-  return (
-    <>
-      <CollectionHeader
-        collection={collection}
-        key={collectionHtmlId}
-        id={collectionHtmlId}
-      />
-      {
-        // Fill in the rest of the header row with blank items
-        Array(columnCount - 1).fill(<BlankCellInHeader />)
-      }
-      {sortedModels.map((model, index) => (
-        <>
-          <ModelCell
-            model={model}
-            collectionHtmlId={collectionHtmlId}
-            key={`model-${model.id}`}
-          />
-          {
-            // At the end of the group, add blank items to fill in the rest of the row
-            index === sortedModels.length - 1 &&
-              Array(columnCount - (sortedModels.length % columnCount)).fill(
-                <BlankCell />,
-              )
-          }
-        </>
-      ))}
-    </>
-  );
+  const cells = [];
+
+  cells.push(
+    <CollectionHeader
+      collection={collection}
+      key={collectionHtmlId}
+      id={collectionHtmlId}
+    />);
+    // Fill in the rest of the header row with blank items
+    cells.push(...Array(columnCount - 1).fill(<BlankCellInHeader />));
+    for (let m = 0; m < sortedModels.length; m++) {
+      const model = sortedModels[m];
+      cells.push(<ModelCell
+        model={model}
+        collectionHtmlId={collectionHtmlId}
+        key={`model-${model.id}`}
+      />);
+      // At the end of the group, add blank items to fill in the rest of the row
+      ...(index === sortedModels.length - 1
+        ? Array(columnCount - (sortedModels.length % columnCount)).fill(
+            <BlankCell />,
+          )
+        : []),
+
+    cells.push(...    ]),
+  ];
 };
 
 interface ModelCellProps {
