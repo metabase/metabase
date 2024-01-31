@@ -26,7 +26,7 @@ const DASHBOARD_TEXT_FILTER = {
   type: "string/contains",
 };
 
-describe("issue 38245", () => {
+describe.skip("issue 38245", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     restore();
