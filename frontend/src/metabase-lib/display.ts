@@ -78,7 +78,11 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
     const binning = Lib.binning(breakout);
     const isBinned = binning !== null;
 
-    if (isBinned || isCategory(columnInfo)) {
+    if (isBinned) {
+      return { display: "bar" };
+    }
+
+    if (isCategory(columnInfo)) {
       return { display: "bar" };
     }
   }
