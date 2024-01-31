@@ -7,6 +7,7 @@ import requests from "metabase/redux/requests";
 import { settings } from "metabase/redux/settings";
 import undo from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
+import { modal } from "metabase/redux/ui";
 import { reducer as auth } from "metabase/redux/auth";
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 
@@ -25,4 +26,5 @@ export default {
   entities,
   upload,
   auth,
+  modal,
 };
