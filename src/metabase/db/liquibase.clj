@@ -130,6 +130,7 @@
   ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
   (let [f* (fn [liquibase]
              ;; trigger liquibase to create databasechangelog tables if needed
+             ;; we need to do this until https://github.com/liquibase/liquibase/issues/5537 is fixed
              (.checkLiquibaseTables liquibase false (.getDatabaseChangeLog liquibase) nil nil)
              (f liquibase))]
     (binding [t2.conn/*current-connectable* conn-or-data-source]
