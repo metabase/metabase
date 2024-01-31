@@ -12,6 +12,7 @@ const WebpackNotifierPlugin = require("webpack-notifier");
 const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 
 const fs = require("fs");
+const path = require("path");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -30,6 +31,7 @@ const E2E_PATH = __dirname + "/e2e";
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 const useFilesystemCache = process.env.FS_CACHE === "true";
+const edition = process.env.MB_EDITION || "oss";
 const shouldUseEslint =
   process.env.WEBPACK_BUNDLE !== "production" &&
   process.env.USE_ESLINT === "true";
@@ -181,6 +183,11 @@ const config = (module.exports = {
   cache: useFilesystemCache
     ? {
         type: "filesystem",
+        cacheDirectory: path.resolve(
+          __dirname,
+          "node_modules/.cache/",
+          edition === "oss" ? "webpack-oss" : "webpack-ee",
+        ),
         buildDependencies: {
           // invalidates the cache on configuration change
           config: [__filename],
