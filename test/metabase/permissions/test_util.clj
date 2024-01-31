@@ -1,5 +1,6 @@
 (ns metabase.permissions.test-util
   (:require
+   [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -12,17 +13,21 @@
   [thunk]
   ;; Select sandboxes _before_ permissions.
   (let [original-perms     (t2/select :model/Permissions)
-        original-sandboxes (t2/select :model/GroupTableAccessPolicy)]
+        original-sandboxes (if config/ee-available?
+                             (t2/select :model/GroupTableAccessPolicy)
+                             [])]
     (try
       (thunk)
       (finally
         (binding [perms/*allow-root-entries* true
                   perms/*allow-admin-permissions-changes* true]
-          (t2/delete! :model/GroupTableAccessPolicy)
+          (when config/ee-available?
+            (t2/delete! :model/GroupTableAccessPolicy))
           (t2/delete! :model/Permissions)
           ;; Insert perms _before_ sandboxes because of a foreign key constraint on sandboxes.permission_id
           (t2/insert! :model/Permissions original-perms)
-          (t2/insert! :model/GroupTableAccessPolicy original-sandboxes))))))
+          (when config/ee-available?
+            (t2/insert! :model/GroupTableAccessPolicy original-sandboxes)))))))
 
 (defmacro with-restored-perms!
   "Runs `body`, and restores permissions and sandboxes to their original state afterwards."
@@ -33,7 +38,9 @@
   "Implementation of `with-restored-perms` and related helper functions. Optionally takes `group-ids` to restore only the
   permissions for a set of groups."
   [group-ids thunk]
-  (let [select-condition [(when group-ids [:in :group_id group-ids])]
+  (let [select-condition (if-not group-ids
+                           true
+                           [:in :group_id group-ids])
         original-perms (t2/select :model/DataPermissions {:where select-condition})]
     (try
       (thunk)
@@ -76,6 +83,19 @@
                                             (data-perms/least-permissive-value perm-type)))
     (thunk)))
 
+(defn do-with-no-perms-for-all-users!
+  "Implementation of `with-no-perms-for-all-users!`."
+  [thunk]
+  (with-restored-perms!
+    (perms/revoke-data-perms! (perms-group/all-users) (data/db))
+    (thunk)))
+
+(defmacro with-no-perms-for-all-users!
+  "Runs `body`, and sets every permission for the test dataset to its least-permissive value for the All Users
+  permission group for the duration of the test."
+  [& body]
+  `(do-with-no-perms-for-all-users! (fn [] ~@body)))
+
 (defmacro with-no-data-perms-for-all-users!
   "Runs `body`, and sets every data permission for all databases to its least permissive value for the All Users
   permission group for the duration of the test. Restores the original permissions afterwards."
@@ -102,12 +122,26 @@
   `(do-with-full-data-perms-for-all-users! (fn [] ~@body)))
 
 (defn do-with-perm-for-group!
-  "Implementation of `with-perm-for-group`. Sets the data permission for the the test dataset to the given value
+  "Implementation of `with-perm-for-group`. Sets the data permission for the test dataset to the given value
   for the given permission group for the duration of the test."
   [group-or-id perm-type value thunk]
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
    (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
    (thunk)))
+
+(defn do-with-perm-for-group-and-table!
+  "Implementation of `with-perm-for-group-and-table`. Sets the data permission for the test dataset/table to the given
+  value for the given permission group for the duration of the test."
+  [group-or-id table-or-id perm-type value thunk]
+  (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
+    (data-perms/set-table-permission! group-or-id table-or-id perm-type value)
+    (thunk)))
+
+(defmacro with-perm-for-group-and-table!
+  "Sets the data permission for the test dataset and specified table to the given value for the given permission group
+  and runs `body` in that context."
+  [group-or-id table-or-id perm-type value & body]
+  `(do-with-perm-for-group-and-table! ~group-or-id ~table-or-id ~perm-type ~value (fn [] ~@body)))
 
 (defmacro with-perm-for-group!
   "Runs `body`, and sets the data permission for the the test dataset to the given value for the given permission

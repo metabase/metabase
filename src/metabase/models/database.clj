@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require
    [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
@@ -416,3 +417,10 @@
 (defmethod audit-log/model-details Database
   [database _event-type]
   (select-keys database [:id :name :engine]))
+
+(def ^{:arglists '([table-id])} table-id->database-id
+  "Retrieve the `Database` ID for the given table-id."
+  (mdb.connection/memoize-for-application-db
+   (fn [table-id]
+     {:pre [(integer? table-id)]}
+     (t2/select-one-fn :db_id :model/Table, :id table-id))))
