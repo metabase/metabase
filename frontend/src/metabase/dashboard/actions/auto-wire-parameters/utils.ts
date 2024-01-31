@@ -56,7 +56,7 @@ export function getMatchingParameterOption(
   }
 
   const targetQuestion = new Question(targetDashcard.card, metadata);
-  const question = new Question(dashcardToCheck.card, metadata);
+  // const question = new Question(dashcardToCheck.card, metadata);
 
   const parameterMappingOptions = getParameterMappingOptions(
     metadata,
@@ -71,7 +71,7 @@ export function getMatchingParameterOption(
         targetDimension,
         param.target,
         targetQuestion,
-        question,
+        new Question(dashcardToCheck.card, metadata),
       );
     }) ?? null
   );
