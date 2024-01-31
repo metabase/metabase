@@ -865,15 +865,18 @@ class Question {
     // so we need to fetch the virtual card table representation of the Question
     // so that we can properly access the table's fields in various scenarios
     if (this.isDataset() && this.isSaved()) {
-      const id = getQuestionVirtualTableId(this.id());
-      dependencies.push({ type: "table", id });
+      dependencies.push({
+        type: "table",
+        id: getQuestionVirtualTableId(this.id()),
+      });
     }
 
     this.getResultMetadata().forEach(field => {
-      const id = field.fk_target_field_id;
-
-      if (isFK(field) && id) {
-        dependencies.push({ type: "field", id });
+      if (isFK(field) && field.fk_target_field_id) {
+        dependencies.push({
+          type: "field",
+          id: field.fk_target_field_id,
+        });
       }
     });
 
