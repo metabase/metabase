@@ -65,7 +65,7 @@
 
 (defn do-with-no-data-perms-for-all-users!
   "Implementation of `with-no-data-perms-for-all-users`. Sets every data permission for all databases to the
-  least-permissive value for the All Users permission group for the duration of the test."
+  least permissive value for the All Users permission group for the duration of the test."
   [thunk]
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
@@ -77,10 +77,29 @@
     (thunk)))
 
 (defmacro with-no-data-perms-for-all-users!
-  "Runs `body`, and sets every data permission for all databases to its least-permissive value for the All Users
-  permission group for the duration of the test."
+  "Runs `body`, and sets every data permission for all databases to its least permissive value for the All Users
+  permission group for the duration of the test. Restores the original permissions afterwards."
   [& body]
   `(do-with-no-data-perms-for-all-users! (fn [] ~@body)))
+
+(defn do-with-full-data-perms-for-all-users!
+  "Implementation of `with-full-data-perms-for-all-users`. Sets every data permission for all databases to the
+  most permissive value for the All Users permission group for the duration of the test."
+  [thunk]
+  (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
+    (doseq [[perm-type _] data-perms/Permissions
+            db-id         (t2/select-pks-set :model/Database)]
+       (data-perms/set-database-permission! (perms-group/all-users)
+                                            db-id
+                                            perm-type
+                                            (data-perms/most-permissive-value perm-type)))
+    (thunk)))
+
+(defmacro with-full-data-perms-for-all-users!
+  "Runs `body`, and sets every data permission for all databases to its most permissive value for the All Users
+  permission group for the duration of the test. Restores the original permissions afterwards."
+  [& body]
+  `(do-with-full-data-perms-for-all-users! (fn [] ~@body)))
 
 (defn do-with-perm-for-group!
   "Implementation of `with-perm-for-group`. Sets the data permission for the the test dataset to the given value

@@ -19,7 +19,7 @@
 (deftest transform-test
   (testing "GET /api/transform/:db-id/:schema/:transform-name"
     (testing "Run the transform and make sure it produces the correct result"
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (with-test-transform-specs
           (with-test-domain-entity-specs
             (mt/with-model-cleanup [Card Collection]
