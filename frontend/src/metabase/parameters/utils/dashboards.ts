@@ -177,7 +177,7 @@ function buildFieldFilterUiParameter(
 
   return {
     ...parameter,
-    fields,
+    fields: _.uniq(fields, field => field.id),
     hasVariableTemplateTagTarget,
   };
 }
