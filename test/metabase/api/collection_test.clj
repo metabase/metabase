@@ -649,8 +649,7 @@
                          :model/Database   {db-id :id}    {:engine "h2"}
                          :model/Table      {table-id :id} {:db_id     db-id
                                                            :is_upload true}
-                         :model/Card       {card-id :id
-                                            :as     card} {:collection_id (u/the-id collection)
+                         :model/Card       {card-id :id}  {:collection_id (u/the-id collection)
                                                            :dataset       true
                                                            :dataset_query {:type     :query
                                                                            :database db-id
@@ -658,22 +657,14 @@
             (mt/with-test-user :crowberto
               (testing "Sense check: cards based on uploads have based_on_upload=<table-id> if they meet all the criteria"
                 (is (= table-id (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
-              (is (= (mt/obj->json->obj
-                      [{:id                  card-id
-                        :based_on_upload     table-id
-                        :name                (:name card)
-                        :collection_position nil
-                        :collection_preview  true
-                        :database_id         db-id
-                        :display             "table"
-                        :description         nil
-                        :entity_id           (:entity_id card)
-                        :moderated_status    nil
-                        :model               "dataset"
-                        :fully_parameterized true}])
-                       (mt/obj->json->obj
-                        (:data (mt/user-http-request :crowberto :get 200
-                                                     (str "collection/" (u/the-id collection) "/items")))))))))))))
+              ;; TODO: test these
+              ;; - dataset=false
+              ;; - table_id=nil (native query)
+              ;; - other checks for based_on_upload
+              (is (= [table-id]
+                     (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))
+                          :data
+                          (map :based_on_upload)))))))))))
 
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"

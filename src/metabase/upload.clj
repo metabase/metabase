@@ -699,17 +699,17 @@
     (empty? all-joins)))
 
 (mu/defn model-hydrate-based-on-upload
-  "Hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
+  "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
   [models :- [:sequential [:map
                            [:dataset_query ms/Map]
-                           [:table_id      ms/PositiveInt]
+                           [:table_id      [:maybe ms/PositiveInt]]
                            [:query_type    [:or :string :keyword]]
                            [:is_upload {:optional true} :boolean]]]]
   (let [table-ids (->> models
                        ;; as an optimization, we might already know that the question is based on an upload
                        ;; with a provided is_upload key
                        (remove #(false? (:is_upload %)))
-                       (map :table_id models)
+                       (keep :table_id)
                        set)
         uploadable-table-ids (->> (uploadable-tables table-ids)
                                   (map :id)
