@@ -71,21 +71,24 @@ const formatterDialectByEngine: Record<string, SqlLanguage> = {
   redshift: "redshift",
   snowflake: "snowflake",
   sparksql: "spark",
-  sqlite: "sqlite",
-  sqlserver: "tsql",
 };
 
+// Optional clauses cannot be formatted by sql-formatter for these dialects
+const unsupportedFormatterDialects = ["sqlite", "sqlserver"];
+
 function getFormatterDialect(engine: string) {
-  if (getEngineNativeType(engine) === "json") {
+  if (
+    getEngineNativeType(engine) === "json" ||
+    unsupportedFormatterDialects.includes(engine)
+  ) {
     return null;
   }
 
-  // Fall back to ANSI SQL dialect
   return formatterDialectByEngine[engine] ?? "sql";
 }
 
 export function canFormatForEngine(engine: string) {
-  return getEngineNativeType(engine) === "sql";
+  return getFormatterDialect(engine) != null;
 }
 
 export function formatQuery(queryText: string, engine: string) {

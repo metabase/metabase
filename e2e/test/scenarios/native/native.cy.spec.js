@@ -457,49 +457,52 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       cy.findByTestId("visibility-toggler").should("not.exist");
     });
   });
-});
 
-describe("scenarios > question > native", { tags: "@mongo" }, () => {
-  const MONGO_DB_NAME = "QA Mongo4";
+  it(
+    "shows format query button only for sql queries",
+    { tags: "@mongo" },
+    () => {
+      const MONGO_DB_NAME = "QA Mongo4";
 
-  before(() => {
-    cy.intercept("POST", "/api/card").as("createQuestion");
-    cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/card").as("createQuestion");
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
-    restore("mongo-4");
-    cy.signInAsNormalUser();
-  });
+      restore("mongo-4");
+      cy.signInAsNormalUser();
 
-  it("shows format query button only for sql queries", () => {
-    openNativeEditor({ newMenuItemTitle: "Native query" });
-    popover().findByText(MONGO_DB_NAME).click();
-    cy.findByLabelText("Format query").should("not.exist");
+      openNativeEditor({ newMenuItemTitle: "Native query" });
+      popover().findByText(MONGO_DB_NAME).click();
+      cy.findByLabelText("Format query").should("not.exist");
 
-    cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
-    popover().findByText("Sample Database").click();
+      cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
 
-    cy.findByTestId("native-query-editor")
-      .as("nativeQueryEditor")
-      .type("select * from orders", {
-        parseSpecialCharSequences: false,
-      });
+      // Switch to SQL engine which is supported by the formatter
+      popover().findByText("Sample Database").click();
 
-    cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
+      cy.findByTestId("native-query-editor")
+        .as("nativeQueryEditor")
+        .type("select * from orders", {
+          parseSpecialCharSequences: false,
+        });
 
-    cy.findByLabelText("Format query").click();
+      // It should load the formatter chunk only when used
+      cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
 
-    cy.wait("@sqlFormatter");
+      cy.findByLabelText("Format query").click();
 
-    cy.findByTestId("native-query-editor")
-      .get(".ace_text-layer")
-      .get(".ace_line")
-      .as("lines");
+      cy.wait("@sqlFormatter");
 
-    cy.get("@lines").eq(0).should("have.text", "SELECT");
-    cy.get("@lines").eq(1).should("have.text", "  *");
-    cy.get("@lines").eq(2).should("have.text", "FROM");
-    cy.get("@lines").eq(3).should("have.text", "  orders");
-  });
+      cy.findByTestId("native-query-editor")
+        .get(".ace_text-layer")
+        .get(".ace_line")
+        .as("lines");
+
+      cy.get("@lines").eq(0).should("have.text", "SELECT");
+      cy.get("@lines").eq(1).should("have.text", "  *");
+      cy.get("@lines").eq(2).should("have.text", "FROM");
+      cy.get("@lines").eq(3).should("have.text", "  orders");
+    },
+  );
 });
 
 const runQuery = () => {
