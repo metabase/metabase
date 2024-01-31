@@ -228,19 +228,9 @@ export const updateQuestion = (
     }
 
     const currentDependencies = currentQuestion
-      ? [
-          ...currentQuestion.dependentMetadata(),
-          ...currentQuestion
-            .legacyQuery({ useStructuredQuery: true })
-            .dependentMetadata(),
-        ]
+      ? currentQuestion.dependentMetadata()
       : [];
-    const nextDependencies = [
-      ...newQuestion.dependentMetadata(),
-      ...newQuestion
-        .legacyQuery({ useStructuredQuery: true })
-        .dependentMetadata(),
-    ];
+    const nextDependencies = newQuestion.dependentMetadata();
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(newQuestion.card()));

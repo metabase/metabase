@@ -28,7 +28,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -797,24 +796,6 @@ describe("Question", () => {
     it("should default to an array", () => {
       const question = base_question.setResultsMetadata(null);
       expect(question.getResultMetadata()).toEqual([]);
-    });
-  });
-
-  describe("Question.prototype.dependentMetadata", () => {
-    it("should return model FK field targets", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
-    });
-
-    it("should return skip with with FK target field which are not FKs semantically", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([]);
     });
   });
 

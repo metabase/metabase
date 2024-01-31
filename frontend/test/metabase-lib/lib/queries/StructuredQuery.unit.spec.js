@@ -20,7 +20,6 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import Segment from "metabase-lib/metadata/Segment";
@@ -243,53 +242,6 @@ describe("StructuredQuery", () => {
       it("identifies the engine of a query", () => {
         // This is a magic constant and we should probably pull this up into an enum
         expect(query.engine()).toBe("H2");
-      });
-    });
-    describe("dependentMetadata", () => {
-      it("should include db schemas and source table with foreignTables = true", () => {
-        expect(query.dependentMetadata()).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-        ]);
-      });
-
-      it("should include db schemas and source table for nested queries with foreignTables = true", () => {
-        expect(query.nest().dependentMetadata()).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-        ]);
-      });
-
-      it("should include db schemas and joined tables with foreignTables = false", () => {
-        expect(
-          query
-            .join({
-              alias: "x",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field", ORDERS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-              ],
-            })
-            .dependentMetadata(),
-        ).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-          { type: "table", id: PRODUCTS_ID, foreignTables: false },
-        ]);
-      });
-
-      describe("when the query is missing a database", () => {
-        it("should not include db schemas in dependent  metadata", () => {
-          const dependentMetadata = query
-            .setDatabaseId(null)
-            .dependentMetadata();
-
-          expect(dependentMetadata.some(({ type }) => type === "schema")).toBe(
-            false,
-          );
-        });
       });
     });
   });

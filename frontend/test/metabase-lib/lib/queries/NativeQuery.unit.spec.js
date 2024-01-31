@@ -356,27 +356,6 @@ describe("NativeQuery", () => {
     });
   });
 
-  describe("dependentMetadata", () => {
-    it("should return a list of dependent fieldIds needed by the query's template tags", () => {
-      const q = makeQuery()
-        .setQueryText("SELECT * FROM PRODUCTS WHERE {{category}}")
-        .setTemplateTag("category", {
-          name: "category",
-          type: "dimension",
-          dimension: ["field", PRODUCTS.CATEGORY, null],
-        })
-        .setTemplateTag("foo", { name: "foo", type: "dimension" })
-        .setTemplateTag("bar", { name: "bar", type: "test" });
-
-      expect(q.dependentMetadata()).toEqual([
-        {
-          type: "field",
-          id: PRODUCTS.CATEGORY,
-        },
-      ]);
-    });
-  });
-
   describe("updateCardTemplateTagNames", () => {
     it("should update the query text with new tag names", () => {
       const query = makeQuery().setQueryText("{{#123-foo}} {{#1234-bar}}");

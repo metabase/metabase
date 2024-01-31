@@ -19,7 +19,6 @@ import Metadata from "metabase-lib/metadata/Metadata";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
-import { isFK } from "metabase-lib/types/utils/isa";
 import { sortObject } from "metabase-lib/utils";
 
 import type {
@@ -28,7 +27,6 @@ import type {
   DatabaseId,
   DatasetQuery,
   DatasetData,
-  DependentMetadataItem,
   TableId,
   Parameter as ParameterObject,
   ParameterValues,
@@ -861,31 +859,6 @@ class Question {
 
   dependentMetadata(): Lib.DependentItem[] {
     return Lib.dependentMetadata(this.query());
-  }
-
-  _dependentMetadata(): DependentMetadataItem[] {
-    const dependencies = [];
-
-    // we frequently treat dataset/model questions like they are already nested
-    // so we need to fetch the virtual card table representation of the Question
-    // so that we can properly access the table's fields in various scenarios
-    if (this.isDataset() && this.isSaved()) {
-      dependencies.push({
-        type: "table",
-        id: getQuestionVirtualTableId(this.id()),
-      });
-    }
-
-    this.getResultMetadata().forEach(field => {
-      if (isFK(field) && field.fk_target_field_id) {
-        dependencies.push({
-          type: "field",
-          id: field.fk_target_field_id,
-        });
-      }
-    });
-
-    return dependencies;
   }
 
   /**

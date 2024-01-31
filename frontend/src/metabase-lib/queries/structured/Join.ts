@@ -205,18 +205,6 @@ class Join extends MBQLObjectClause {
   /**
    * @deprecated use metabase-lib v2 to manage joins
    */
-  dependentMetadata() {
-    const joinedQuery = this.joinedQuery();
-    return joinedQuery
-      ? joinedQuery.dependentMetadata({
-          foreignTables: false,
-        })
-      : [];
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
   isValid() {
     // MLv2 should ensure there's a valid condition, etc.
     const parentTable = this.legacyQuery?.().table?.();
