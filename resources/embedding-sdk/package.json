@@ -5,7 +5,8 @@
   "description": "Metabase Embedding SDK",
   "repository": "https://github.com/metabase/metabase",
   "license": "private",
-  "main": "dist/main.bundle.js",
+  "main": "./dist/main.bundle.js",
+  "types": "./dist/main.types.d.ts",
   "peerDependencies": {
     "react": "~16.14.0",
     "react-dom": "~16.14.0"

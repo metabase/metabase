@@ -3,6 +3,8 @@ const webpack = require("webpack");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
+const path = require("path");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -20,7 +22,7 @@ const E2E_PATH = __dirname + "/e2e";
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
-const devMode = WEBPACK_BUNDLE !== "production";
+const isDevMode = WEBPACK_BUNDLE !== "production";
 
 // Babel:
 const BABEL_CONFIG = {
@@ -30,7 +32,7 @@ const BABEL_CONFIG = {
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
 const CSS_CONFIG = {
-  localIdentName: devMode
+  localIdentName: isDevMode
     ? "[name]__[local]___[hash:base64:5]"
     : "[hash:base64:5]",
   importLoaders: 1,
@@ -43,9 +45,7 @@ module.exports = env => {
   const shouldDisableMinimization = env.WEBPACK_WATCH === true;
 
   return {
-    // TODO: make this configurable
-    // mode: "production",
-    mode: "development",
+    mode: isDevMode ? "development" : "production",
     context: SDK_SRC_PATH,
 
     performance: {
@@ -70,7 +70,7 @@ module.exports = env => {
         },
         {
           test: /\.(eot|woff2?|ttf|svg|png)$/,
-          type: "asset/resource",
+          type: "asset/inline",
           resourceQuery: { not: [/component|source/] },
         },
         {
@@ -129,16 +129,17 @@ module.exports = env => {
         "metabase-lib": LIB_SRC_PATH,
         "metabase-enterprise": ENTERPRISE_SRC_PATH,
         "metabase-types": TYPES_SRC_PATH,
-        "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
-        cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-        __support__: TEST_SUPPORT_PATH,
-        e2e: E2E_PATH,
+        cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
+
         style: SRC_PATH + "/css/core/index",
+
         ace: __dirname + "/node_modules/ace-builds/src-noconflict",
+
         // NOTE @kdoh - 7/24/18
         // icepick 2.x is es6 by defalt, to maintain backwards compatability
         // with ie11 point to the minified version
         icepick: __dirname + "/node_modules/icepick/icepick.min",
+
         // conditionally load either the EE plugins file or a empty file in the CE code tree
         "ee-plugins":
           process.env.MB_EDITION === "ee"
@@ -157,19 +158,30 @@ module.exports = env => {
       "react/jsx-runtime": "react/jsx-runtime",
     },
 
-    // optimization: {
-    //   minimize: !shouldDisableMinimization,
-    //   minimizer: [
-    //     new TerserPlugin({
-    //       minify: TerserPlugin.swcMinify,
-    //     }),
-    //   ],
-    // },
+    optimization: !isDevMode
+      ? {
+          minimize: !shouldDisableMinimization,
+          minimizer: [
+            new TerserPlugin({
+              minify: TerserPlugin.swcMinify,
+            }),
+          ],
+        }
+      : undefined,
+
     plugins: [
       new NodePolyfillPlugin(), // for crypto, among others
       // https://github.com/remarkjs/remark/discussions/903
       new webpack.ProvidePlugin({
         process: "process/browser.js",
+      }),
+      new ForkTsCheckerWebpackPlugin({
+        async: isDevMode,
+        typescript: {
+          configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
+          // mode: "write-dts", // TODO: enable this to add types generation (but we also need a separate step to bundle types into a single module)
+          memoryLimit: 4096,
+        },
       }),
 
       shouldAnalyzeBundles &&
