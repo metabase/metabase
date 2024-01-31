@@ -72,12 +72,12 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Field FieldValues Table]]
+   [metabase.models.database :as database]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
    [metabase.models.params.field-values :as params.field-values]
-   [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.types :as types]
@@ -308,7 +308,7 @@
    ^{::memoize/args-fn (fn [[source-table-id other-table-ids enable-reverse-joins?]]
                          [(mdb.connection/unique-identifier) source-table-id other-table-ids enable-reverse-joins?])}
    (fn [source-table-id other-table-ids enable-reverse-joins?]
-     (let [db-id     (table/table-id->database-id source-table-id)
+     (let [db-id     (database/table-id->database-id source-table-id)
            all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
                              other-table-ids)]
        (when (seq all-joins)
