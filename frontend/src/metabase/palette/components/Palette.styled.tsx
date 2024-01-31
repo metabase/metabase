@@ -36,6 +36,11 @@ export const PaletteItemDisplay = styled.li`
   list-style: none;
   display: flex;
   padding: 0.5rem;
+  // fix later
+  & button span {
+    display: flex;
+    align-items: center;
+  }
 `;
 
 export const PaletteInput = styled(TextInput)``;
@@ -46,8 +51,4 @@ export const PaletteResultIcon = styled(Icon)`
 
 export const PaletteResultButton = styled(Button)`
   // fix later
-  & span {
-    display: flex;
-    align-items: center;
-  }
 `;

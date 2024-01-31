@@ -1,10 +1,9 @@
 import type { IconName } from "metabase/ui";
-import { Flex } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import {
   PaletteInput,
   PaletteItemDisplay,
   PaletteModal,
-  PaletteResultButton,
   PaletteResultIcon,
 } from "./Palette.styled";
 
@@ -32,14 +31,14 @@ export const Palette = ({ closePalette }: { closePalette: () => void }) => {
           {items.map(({ title, icon, run }) => (
             <PaletteItemDisplay key={title}>
               <Flex>
-                <PaletteResultButton
+                <Button
                   onClick={() => {
                     run();
                   }}
                 >
                   <PaletteResultIcon name={icon} />
                   {title}
-                </PaletteResultButton>
+                </Button>
               </Flex>
             </PaletteItemDisplay>
           ))}
