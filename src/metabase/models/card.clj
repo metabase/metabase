@@ -350,7 +350,7 @@
   - If only one key is present, we'll assoc the correct value for the other key."
   [{:keys [type dataset] :as card}]
   (cond
-   ;; if none of the 2 keys presents, do nothing
+   ;; if none of the 2 keys is present, do nothing
    (and (nil? type) (nil? dataset))
    card
 
@@ -358,11 +358,11 @@
    (and (some? type) (some? dataset))
    (assoc card :dataset (= type "model"))
 
-   ;; if only type presents, make sure dataset follows
+   ;; if only type is present, make sure dataset follows
    (some? type)
    (assoc card :dataset (= type "model"))
 
-   ;; if only dataset presents, make sure type follows
+   ;; if only dataset is present, make sure type follows
    (some? dataset)
    (let [inferred-type (if dataset
                          "model"
