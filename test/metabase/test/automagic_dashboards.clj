@@ -30,7 +30,7 @@
       (is (malli= [:map
                    [:name        ms/NonBlankString]
                    [:description ms/NonBlankString]]
-                  (mt/user-http-request :rasta :get 200 (format "automagic-dashboards/%s" (subs url 16))))))))
+                  (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/%s" (subs url 16))))))))
 
 (defn- test-card-is-valid [{query :dataset_query, :as card}]
   (testing "Card should be valid"

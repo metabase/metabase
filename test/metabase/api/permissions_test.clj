@@ -317,9 +317,10 @@
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
-      (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-             (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                   (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))
+      (mt/with-premium-features #{}
+        (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+               (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                     (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}]))))))))
 
 (deftest update-execution-perms-graph-global-execute-permission-test
   (mt/with-model-cleanup [Permissions]
