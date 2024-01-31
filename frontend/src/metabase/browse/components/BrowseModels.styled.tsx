@@ -8,6 +8,7 @@ import Card from "metabase/components/Card";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { Group } from "metabase/ui";
+import { Grid as VirtualizedGrid } from "react-virtualized";
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
@@ -48,7 +49,7 @@ export const MultilineEllipsified = styled(Ellipsified)`
   padding-bottom: 1px;
 `;
 
-export const GridContainer = styled.div`
+export const GridContainer = styled(VirtualizedGrid)`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   gap: 1rem;

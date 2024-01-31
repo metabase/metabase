@@ -39,3 +39,12 @@ export const groupModels = (
   groupsOfModels.sort(sortFunction);
   return groupsOfModels;
 };
+
+export const getPageWidth = (
+  contentViewport: HTMLElement,
+  gridGapSize: number,
+) => {
+  const browseContainer = contentViewport?.children?.[0].children?.[0];
+  const width = (browseContainer?.clientWidth ?? 500) - gridGapSize;
+  return width;
+};
