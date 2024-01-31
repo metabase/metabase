@@ -30,6 +30,8 @@ The group won't see this collection listed, and they'll lack access to any of th
 
 Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or to creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
 
+There is one, important exception: when a group has their data permission set to [Block](./data.md#block-access) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
+
 ## Dashboards with questions from multiple collections
 
 If a dashboard in a collection includes questions saved to other collections, the group will need view or curate access to all of those collections in order to view those questions. If not, Metabase will apologize and tell you that you lack permissions to see the cards saved to the other collections.
