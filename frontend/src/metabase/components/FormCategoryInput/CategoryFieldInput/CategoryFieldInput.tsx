@@ -1,4 +1,5 @@
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
 
 import type Field from "metabase-lib/metadata/Field";
 
@@ -8,17 +9,11 @@ import {
   FieldValuesWidgetContainer,
 } from "./CategoryFieldInput.styled";
 
-interface DefaultTokenFieldLayoutProps {
-  valuesList: string[];
-  optionsList: string[];
-  isFocused: boolean;
-}
-
 const DefaultTokenFieldLayout = ({
   valuesList,
   optionsList,
   isFocused,
-}: DefaultTokenFieldLayoutProps) => (
+}: LayoutRendererArgs) => (
   <TippyPopover
     visible={isFocused && !!optionsList}
     content={<OptionListContainer>{optionsList}</OptionListContainer>}
@@ -51,7 +46,7 @@ function CategoryFieldInput({
         disableSearch={false}
         disableList
         layoutRenderer={DefaultTokenFieldLayout}
-        valueRenderer={(val: string) => <span>{val}</span>}
+        valueRenderer={(val: string | number) => <span>{val}</span>}
         color="brand"
         maxWidth={null}
       />

@@ -72,18 +72,20 @@ describe("instance analytics custom reports collection", () => {
     isAdmin: true,
   };
 
-  it("should not show move button", () => {
+  it("should not show move button", async () => {
     setup(defaultOptions);
     userEvent.click(getIcon("ellipsis"));
+    await screen.findByRole("dialog");
 
     expect(getIcon("lock")).toBeInTheDocument();
     expect(queryIcon("move")).not.toBeInTheDocument();
     expect(screen.queryByText("Move")).not.toBeInTheDocument();
   });
 
-  it("should not show archive button", () => {
+  it("should not show archive button", async () => {
     setup(defaultOptions);
     userEvent.click(getIcon("ellipsis"));
+    await screen.findByRole("dialog");
 
     expect(getIcon("lock")).toBeInTheDocument();
     expect(queryIcon("archive")).not.toBeInTheDocument();
