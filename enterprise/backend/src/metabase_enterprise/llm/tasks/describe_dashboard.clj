@@ -60,7 +60,7 @@
                                      :keywords    "%%FILL_THESE_KEYWORDS_IN%%"
                                      :questions   "%%FILL_THESE_QUESTIONS_IN%%"})
         json-str             (json/generate-string summary-with-prompts)
-        client               (-> llm-client/create-chat-completion
+        client               (-> (llm-client/create-chat-completion)
                                  (llm-client/wrap-parse-json
                                    (fn [{:keys [description keywords questions]}]
                                      {:description (format "Keywords: %s\n\nDescription: %s\n\nQuestions:\n%s"
