@@ -1616,26 +1616,35 @@
             ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
-              (doseq [{:keys [upload-type uncoerced coerced]}
-                      [{:upload-type ::upload/int,     :uncoerced "2.1", :coerced 2}
-                       {:upload-type ::upload/int,     :uncoerced "2.5", :coerced 2}
-                       {:upload-type ::upload/int,     :uncoerced "2.9", :coerced 2}
+              (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
+                      [{:upload-type ::upload/int,     :uncoerced "2.1", :fail-msg "'2.1' is not an integer"}
+                       {:upload-type ::upload/int,     :uncoerced "2.0", :coerced 2}
                        {:upload-type ::upload/float,   :uncoerced "2",   :coerced 2.0}
-                       {:upload-type ::upload/boolean, :uncoerced "0",   :coerced false}]]
-                (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
-                                 uncoerced (name upload-type) coerced)
-                  (let [table (create-upload-table!
-                               {:col->upload-type (ordered-map/ordered-map
-                                                   upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
-                                                   :test_column upload-type)
-                                :rows             []})
-                        csv-rows ["test_column" uncoerced]
-                        file  (csv-file-with csv-rows (mt/random-name))]
-                    (testing "\nAppend should succeed"
-                      (is (= {:row-count 1}
-                             (append-csv! {:file     file
-                                           :table-id (:id table)}))))
-                    (testing "\nCheck the value was coerced correctly"
+                       {:upload-type ::upload/boolean, :uncoerced "0",   :coerced false}
+                       {:upload-type ::upload/boolean, :uncoerced "1.0", :fail-msg "'1.0' is not a recognizable boolean"}
+                       {:upload-type ::upload/boolean, :uncoerced "0.0", :fail-msg "'0.0' is not a recognizable boolean"}]]
+                (let [table (create-upload-table!
+                             {:col->upload-type (ordered-map/ordered-map
+                                                 upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
+                                                 :test_column upload-type)
+                              :rows             []})
+                      csv-rows ["test_column" uncoerced]
+                      file  (csv-file-with csv-rows (mt/random-name))
+                      append! (fn []
+                                (append-csv! {:file     file
+                                              :table-id (:id table)}))]
+                  (if (contains? args :coerced)
+                    (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
+                                     uncoerced (name upload-type) coerced)
+                      (testing "\nAppend should succeed"
+                        (is (= {:row-count 1}
+                               (append!))))
                       (is (= [[1 coerced]]
                              (rows-for-table table))))
-                    (io/delete-file file)))))))))))
+                    (testing (format "\nUploading %s into a column of type %s should fail to coerce"
+                                     uncoerced (name upload-type))
+                      (is (thrown-with-msg?
+                            clojure.lang.ExceptionInfo
+                            (re-pattern (str "^" fail-msg "$"))
+                            (append!)))))
+                  (io/delete-file file))))))))))
