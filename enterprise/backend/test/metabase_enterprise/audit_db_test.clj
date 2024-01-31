@@ -35,6 +35,7 @@
   (mt/test-drivers #{:postgres :h2 :mysql}
     (testing "Audit DB content is not installed when it is not found"
       (t2/delete! :model/Database :is_audit true)
+      ;; reset checksum
       (audit-db/last-analytics-checksum! 0)
       (with-redefs [audit-db/analytics-dir-resource nil]
         (is (nil? @#'audit-db/analytics-dir-resource))
