@@ -108,3 +108,17 @@ export function init(...args) {
     document.addEventListener("DOMContentLoaded", () => _init(...args));
   }
 }
+
+// **** Logging hook ****
+/* eslint-disable no-console */
+const MAX_LOGS = 20;
+console.stderr = console.log.bind(console);
+console.errorBuffer = [];
+
+console.error = function () {
+  if (console.errorBuffer.length > MAX_LOGS) {
+    console.errorBuffer.pop();
+  }
+  console.errorBuffer.unshift(Array.from(arguments));
+  console.stderr.apply(console, arguments);
+};
