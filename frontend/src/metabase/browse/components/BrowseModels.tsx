@@ -177,58 +177,6 @@ const BlankCellInHeader = (props: { style?: React.CSSProperties }) => (
   <div {...props} />
 );
 
-const makeCells = (models: SearchResult[], columnCount: number): Cell[] => {
-  const cells: Cell[] = [];
-  for (
-    let i = 0, columnIndex = 0;
-    i < models.length;
-    i++, columnIndex = (columnIndex + 1) % columnCount
-  ) {
-    const model = models[i];
-
-    const collectionIdChanged =
-      models[i - 1]?.collection?.id !== model.collection?.id;
-
-    const firstModelInItsCollection =
-      i === 0 || collectionIdChanged || model.collection?.id === undefined;
-
-    /** This id is used by aria-labelledby */
-    const collectionHtmlId = model?.collection?.id
-      ? `collection-${model.collection?.id}`
-      : `item-${cells.length}`;
-
-    // Before the first model in a given collection,
-    // add an item that represents the header of the collection
-    if (firstModelInItsCollection) {
-      const header = (
-        <CollectionHeader
-          collection={model.collection}
-          key={collectionHtmlId}
-          id={collectionHtmlId}
-        />
-      );
-      // // So that the collection header appears at the start of the row,
-      // // add zero or more blank items to fill in the rest of the previous row
-      // if (columnIndex > 0) {
-      //   cells.push(...Array(columnCount - columnIndex).fill(<BlankCell />));
-      // }
-      // cells.push(header);
-      // // Fill in the rest of the header row with blank items
-      // cells.push(...Array(columnCount - 1).fill(<BlankCellInHeader />));
-      // columnIndex = 0;
-    }
-
-    cells.push(
-      <ModelCell
-        collectionHtmlId={collectionHtmlId}
-        key={`model-${model.id}`}
-        model={model}
-      />,
-    );
-  }
-  return cells;
-};
-
 const getGridOptions = (
   gridGapSize: number,
   itemMinWidth: number,
@@ -316,25 +264,31 @@ const ModelGroup = ({
       collection={collection}
       key={collectionHtmlId}
       id={collectionHtmlId}
-    />);
-    // Fill in the rest of the header row with blank items
-    cells.push(...Array(columnCount - 1).fill(<BlankCellInHeader />));
-    for (let m = 0; m < sortedModels.length; m++) {
-      const model = sortedModels[m];
-      cells.push(<ModelCell
+    />,
+  );
+  // Fill in the rest of the header row with blank items
+  cells.push(...Array(columnCount - 1).fill(<BlankCellInHeader />));
+  for (let m = 0; m < sortedModels.length; m++) {
+    const model = sortedModels[m];
+    cells.push(
+      <ModelCell
         model={model}
         collectionHtmlId={collectionHtmlId}
         key={`model-${model.id}`}
-      />);
-      // At the end of the group, add blank items to fill in the rest of the row
-      ...(index === sortedModels.length - 1
-        ? Array(columnCount - (sortedModels.length % columnCount)).fill(
-            <BlankCell />,
-          )
-        : []),
-
-    cells.push(...    ]),
-  ];
+      />,
+    );
+    // At the end of the group, add blank items to fill in the rest of the row
+    const endOfLoop = m === sortedModels.length - 1;
+    if (endOfLoop) {
+      const countOfModelsInLastRowOfGroup = sortedModels.length % columnCount;
+      const blankCellsNeeded =
+        columnCount - countOfModelsInLastRowOfGroup;
+      for (let i = 0; i < blankCellsNeeded; i++) {
+        cells.push(<BlankCell />);
+      }
+    }
+  }
+  return cells;
 };
 
 interface ModelCellProps {
