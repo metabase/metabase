@@ -117,49 +117,23 @@ export const Palette = ({
           isOpen={open}
           page={page}
         >
-          <PaletteInput
-            onChange={handleInputChange}
-            ref={inputRef}
-            placeholder="Jump to..."
-          />
           <CommandPalette.Page id="root">
-            {items.map(({ id, name, icon, run }, index) => (
-<CommandPalette.List key={list.id} heading={list.heading}>
-              {list.items.map(({ id, ...rest }) => (
-                <CommandPalette.ListItem
-                  key={id}
-                  index={getItemIndex(filteredItems, id)}
-                  {...rest}
-                />
-              ))}
-            </CommandPalette.List>
-              <PaletteItemDisplay key={id}>
-                <Flex>
-                  <Button
-                    onClick={() => {
-                      run();
-                    }}
-                    className={
-                      // Either the first item or the explicitly highlighted item is the active one
-                      (activeItemId === null && index === 0) ||
-                      activeItemId === id
-                        ? "active"
-                        : ""
-                    }
-                    id={getButtonId(id)}
-                    ref={(node: HTMLButtonElement | null) =>
-                      node
-                        ? getFocusableElementsMap()?.set(getButtonId(id), node)
-                        : getFocusableElementsMap()?.delete(getButtonId(id))
-                    }
-                  >
-                    <PaletteResultIcon name={icon} />
-                    {name}
-                  </Button>
-                </Flex>
-              </PaletteItemDisplay>
-            ))}
-          </PaletteResultList>
+            {items.length ? (
+              items.map(list => (
+                <CommandPalette.List key={list.id} heading={list.heading}>
+                  {list.items.map(({ id, ...rest }) => (
+                    <CommandPalette.ListItem
+                      key={id}
+                      index={getItemIndex(items, id)}
+                      {...rest}
+                    />
+                  ))}
+                </CommandPalette.List>
+              ))
+            ) : (
+              <CommandPalette.FreeSearchAction />
+            )}
+          </CommandPalette.Page>
         </CommandPalette>
       </PaletteModalContainer>
     </PaletteModal>
