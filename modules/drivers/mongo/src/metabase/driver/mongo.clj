@@ -10,6 +10,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.execute :as mongo.execute]
+   [metabase.driver.mongo.json]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
@@ -25,6 +26,8 @@
    (com.mongodb.client MongoClient MongoDatabase)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.driver.mongo.json/keep-me)
 
 ;; JSON Encoding (etc.)
 
@@ -51,7 +54,7 @@
            ;; 1. check db.dbStats command completes successfully
            (= (float (:ok db-stats))
               1.0)
-           ;; 2. check the database is actually on the serve
+           ;; 2. check the database is actually on the server
            ;; (this is required because (1) is true even if the database doesn't exist)
            (contains? (set db-names) (:db db-stats))))))))
 
@@ -334,7 +337,8 @@
                       :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
       (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
-;; Following is using old mongo driver implementation.
+;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
+;; for ssl experiments.
 #_(comment
   (require '[clojure.java.io :as io]
            '[monger.credentials :as mcred])
