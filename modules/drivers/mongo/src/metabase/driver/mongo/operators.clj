@@ -7,7 +7,9 @@
          operators monger provides. We could use keywords instead. Conversion code currently handles
          transformation of those into strings during transformations to document. More importantly -- we are already
          using keywords in lot of places in [[metabase.driver.mongo.query-processor]]. Try seraching it for `:\\$``
-         regex."
+         regex.
+
+   TODO should be addressed during follow-up of monger removal."
   {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}})
 
 (def $gt "$gt")

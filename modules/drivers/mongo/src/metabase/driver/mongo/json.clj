@@ -4,7 +4,7 @@
 
    TODO: I believe this namespace should be completely removed. Trying to run tests without those mongo specific
          encoders yield no failures. Unfortunately I was unable to prove it is not needed yet, hence I'm leaving it
-         in just to be safe. Removal should be considered during further refactoring of our mongo driver."
+         in just to be safe. Removal should be considered during follow-up of monger removal."
   (:require
    [cheshire.generate])
   (:import

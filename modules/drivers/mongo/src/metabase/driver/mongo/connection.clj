@@ -1,7 +1,5 @@
 (ns metabase.driver.mongo.connection
-  "This namespace contains code responsible for connecting to mongo deployment.
-   TODO Proper docstring
-   "
+  "This namespace contains code responsible for connecting to mongo deployment."
   (:require
    [clojure.string :as str]
    [metabase.config :as config]
