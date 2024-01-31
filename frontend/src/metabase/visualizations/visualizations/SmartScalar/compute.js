@@ -537,10 +537,9 @@ function formatDateStr({ date, dateUnitSettings, options, formatValue }) {
   // ! STILL NEED TO CONSIDER THE IMPLICATIONS OF THIS ON ALL NATIVE QUERIES
   // !!!!!!!!
   if (queryType === "native") {
-    const adjustedDate = moment.parseZone(date).startOf(dateUnit).format();
-    return formatDateTimeRangeWithUnit([adjustedDate], dateUnit, {
-      ...options,
-      compact: true,
+    return formatValue(date, {
+      ...dateColumnSettings,
+      column: dateColumn,
     });
   }
 
