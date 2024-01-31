@@ -1,35 +1,49 @@
-import styled from "@emotion/styled";
-import { TextInput } from "metabase/ui";
-import Modal from "metabase/components/Modal";
+import type { IconName } from "metabase/ui";
+import { Flex } from "metabase/ui";
+import {
+  PaletteInput,
+  PaletteItemDisplay,
+  PaletteModal,
+  PaletteResultButton,
+  PaletteResultIcon,
+} from "./Palette.styled";
 
-const PaletteModal = styled(Modal)`
-  // Stolen from Github
-  position: fixed;
-  margin: 10vh auto;
-  top: 0;
-  z-index: 999;
-  max-height: 80vh;
-  max-width: 90vw;
-  width: 448px;
-  overflow: auto;
-  box-shadow: rgba(15, 15, 15, 0.05) 0px 0px 0px 1px,
-    rgba(15, 15, 15, 0.1) 0px 5px 10px, rgba(15, 15, 15, 0.2) 0px 15px 40px;
-  border-radius: 0.25rem;
-  min-height: 50vh;
-  // max-height: max(50vh, 570px);
-  padding: 1rem;
-
-  // Is this useful? I got it from the palette on notion
-  transform: translate3d(0px, 0px, 0px);
-`;
-
-const PaletteInput = styled(TextInput)``;
+export type PaletteItem = {
+  title: string;
+  icon: IconName;
+  run: () => void;
+};
 
 export const Palette = ({ closePalette }: { closePalette: () => void }) => {
+  const items: PaletteItem[] = [
+    {
+      title: "Create new dashboard",
+      icon: "dashboard",
+      run: () => {
+        alert("run");
+      },
+    },
+  ];
   return (
     <>
       <PaletteModal onClose={closePalette}>
         <PaletteInput />
+        <ul>
+          {items.map(({ title, icon, run }) => (
+            <PaletteItemDisplay key={title}>
+              <Flex>
+                <PaletteResultButton
+                  onClick={() => {
+                    run();
+                  }}
+                >
+                  <PaletteResultIcon name={icon} />
+                  {title}
+                </PaletteResultButton>
+              </Flex>
+            </PaletteItemDisplay>
+          ))}
+        </ul>
       </PaletteModal>
     </>
   );
