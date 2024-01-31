@@ -1,6 +1,5 @@
 (ns metabase.models.field
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -9,6 +8,7 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
@@ -140,36 +140,9 @@
       (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
                                                                   :fk_target_field_id nil}))))
 
-;;; Field permissions
-;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
-;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent
-;; Table's. To make API endpoints perform well, we have use two strategies:
-;; 1)  If a Field's Table is already hydrated, there is no need to manually fetch the information a second time
-;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
-;;     number of DB calls that are made. See discussion below for more details.
-
-(def ^:private ^{:arglists '([table-id])} cached-db-id
-  "Cached lookup for the database ID for a table with `table-id`. This is done so a single API call or other
-  computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
-  permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
-
-  Of course, no DB lookups are needed at all if the Field already has a hydrated Table. However, mistakes are
-  possible, and I did not extensively audit every single code pathway that uses sequences of Fields and permissions,
-  so this caching is added as a failsafe in case Table hydration wasn't done.
-
-  Please note this only caches one entry PER TABLE ID. Thus, even a million Tables (which is more than I hope we ever
-  see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
-  seconds."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[table-id]]
-                         [(mdb.connection/unique-identifier) table-id])}
-   (fn [table-id]
-     (:db_id (t2/select-one [:model/Table :db_id] :id table-id)))
-   :ttl/threshold 5000))
-
 (defn- field->db-id
   [{table-id :table_id, {db-id :db_id} :table}]
-  (or db-id (cached-db-id table-id)))
+  (or db-id (database/table-id->database-id table-id)))
 
 (defmethod mi/can-read? :model/Field
   ([instance]
@@ -354,7 +327,7 @@
   [field-id]
   {:pre [(integer? field-id)]}
   (let [table-id (field-id->table-id field-id)]
-    ((requiring-resolve 'metabase.models.table/table-id->database-id) table-id)))
+    (database/table-id->database-id table-id)))
 
 (defn table
   "Return the `Table` associated with this `Field`."

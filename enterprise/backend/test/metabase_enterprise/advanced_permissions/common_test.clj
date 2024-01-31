@@ -1,6 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.common-test
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.api.database :as api.database]
@@ -10,7 +9,6 @@
     :refer [Dashboard DashboardCard Database Field FieldValues Table]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :as database]
-   [metabase.models.field :as field]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -31,7 +29,6 @@
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
     (mt/with-additional-premium-features #{:advanced-permissions}
-      (memoize/memo-clear! @#'field/cached-db-id)
       (perms.test-util/with-restored-perms!
         (perms.test-util/with-restored-data-perms!
           (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))

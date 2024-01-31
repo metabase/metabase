@@ -1,6 +1,5 @@
 (ns metabase.models.table
   (:require
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
@@ -238,13 +237,6 @@
   "Return the `Database` associated with this `Table`."
   [table]
   (t2/select-one Database :id (:db_id table)))
-
-(def ^{:arglists '([table-id])} table-id->database-id
-  "Retrieve the `Database` ID for the given table-id."
-  (mdb.connection/memoize-for-application-db
-   (fn [table-id]
-     {:pre [(integer? table-id)]}
-     (t2/select-one-fn :db_id Table, :id table-id))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/dependencies "Table" [table]
