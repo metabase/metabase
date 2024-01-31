@@ -31,7 +31,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 1) {
-    const [{ columnInfo }] = getBreakoutColumnInfos(
+    const [{ columnInfo }] = getBreakoutsWithColumnInfo(
       query,
       stageIndex,
       breakouts,
@@ -59,7 +59,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length >= 1 && breakouts.length === 1) {
-    const [{ breakout, columnInfo }] = getBreakoutColumnInfos(
+    const [{ breakout, columnInfo }] = getBreakoutsWithColumnInfo(
       query,
       stageIndex,
       breakouts,
@@ -88,18 +88,24 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 2) {
-    const infos = getBreakoutColumnInfos(query, stageIndex, breakouts);
+    const breakoutsWithColumnInfo = getBreakoutsWithColumnInfo(
+      query,
+      stageIndex,
+      breakouts,
+    );
 
-    const isAnyBreakoutDate = infos.some(({ columnInfo }) => {
+    const isAnyBreakoutDate = breakoutsWithColumnInfo.some(({ columnInfo }) => {
       return isDate(columnInfo);
     });
     if (isAnyBreakoutDate) {
       return { display: "line" };
     }
 
-    const areBreakoutsCoordinates = infos.every(({ columnInfo }) => {
-      return isCoordinate(columnInfo);
-    });
+    const areBreakoutsCoordinates = breakoutsWithColumnInfo.every(
+      ({ columnInfo }) => {
+        return isCoordinate(columnInfo);
+      },
+    );
     if (areBreakoutsCoordinates) {
       return {
         display: "map",
@@ -109,9 +115,11 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    const areBreakoutsCategories = infos.every(({ columnInfo }) => {
-      return isCategory(columnInfo);
-    });
+    const areBreakoutsCategories = breakoutsWithColumnInfo.every(
+      ({ columnInfo }) => {
+        return isCategory(columnInfo);
+      },
+    );
     if (areBreakoutsCategories) {
       return { display: "bar" };
     }
@@ -120,7 +128,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   return { display: "table" };
 };
 
-const getBreakoutColumnInfos = (
+const getBreakoutsWithColumnInfo = (
   query: Lib.Query,
   stageIndex: number,
   breakouts: Lib.BreakoutClause[],
