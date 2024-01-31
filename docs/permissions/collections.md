@@ -20,15 +20,15 @@ There are three permission levels for collections:
 - [View access](#view-access)
 - [No access](#no-access)
 
-| Action                  | Curate Access | View Access | No Access |
-| ----------------------- | ------------- | ----------- | --------- |
-| View items              | ✅            | ✅          | ❌        |
-| Edit item metadata      | ✅            | ❌          | ❌        |
-| Move items              | ✅            | ❌          | ❌        |
-| Archive items           | ✅            | ❌          | ❌        |
-| Pin items               | ✅            | ❌          | ❌        |
-| View events & timelines | ✅            | ✅          | ❌        |
-| Edit events & timelines | ✅            | ❌          | ❌        |
+| Action                             | Curate Access | View Access | No Access |
+| ---------------------------------- | ------------- | ----------- | --------- |
+| View items                         | ✅            | ✅          | ❌        |
+| Edit items' title and descriptions | ✅            | ❌          | ❌        |
+| Move items                         | ✅            | ❌          | ❌        |
+| Archive items                      | ✅            | ❌          | ❌        |
+| Pin items                          | ✅            | ❌          | ❌        |
+| View events and timelines          | ✅            | ✅          | ❌        |
+| Edit events and timelines          | ✅            | ❌          | ❌        |
 
 ### Curate access
 
@@ -50,7 +50,7 @@ There is one, important exception: when a group has their data permission set to
 
 ## Dashboards with questions from multiple collections
 
-If a dashboard in a collection includes questions saved to other collections, the group will need view or curate access to all of those collections in order to view those questions. If not, Metabase will apologize and tell you that you lack permissions to see the cards saved to the other collections.
+If a dashboard includes questions saved to other collections, the group will need view or curate access to all of those collections in order to view those questions. If not, Metabase will apologize and tell you that you lack permissions to see the cards saved to the other collections.
 
 ![Dashboard with questions from multiple collections, where the person is not in a group with access to one of the collections](./images/dashboard-no-permissions.png)
 
