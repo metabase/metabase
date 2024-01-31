@@ -301,7 +301,7 @@ export const loadMetadataForQuestions = (queries, options) => dispatch => {
     .map(q => q.dependentMetadata())
     .flatten()
     .uniq(false, dep => dep.type + dep.id)
-    .map(({ type, id, foreignTables }) => {
+    .map(({ type, id }) => {
       if (type === "table") {
         return Tables.actions.fetchMetadataAndForeignTables({ id }, options);
       } else if (type === "field") {
