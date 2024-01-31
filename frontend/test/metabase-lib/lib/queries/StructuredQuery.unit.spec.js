@@ -266,6 +266,11 @@ describe("StructuredQuery", () => {
             .join({
               alias: "x",
               "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
             })
             .dependentMetadata(),
         ).toEqual([
