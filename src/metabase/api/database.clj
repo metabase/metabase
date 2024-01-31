@@ -33,6 +33,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.sample-data :as sample-data]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.schedules :as sync.schedules]
@@ -1042,10 +1043,10 @@
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (mw.session/as-admin
       (if *rescan-values-async*
         (future (field-values/update-field-values! db))
         (field-values/update-field-values! db))))
