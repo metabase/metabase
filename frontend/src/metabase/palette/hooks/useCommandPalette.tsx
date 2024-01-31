@@ -1,58 +1,96 @@
 import { t } from "ttag";
-import { useMemo } from "react";
+import {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  DetailedHTMLProps,
+  useMemo,
+} from "react";
 import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
-import type { IconName } from "metabase/ui";
 import { setOpenModal } from "metabase/redux/ui";
 import * as Urls from "metabase/lib/urls";
+import type { IconType } from "react-cmdk/src/components/Icon";
+import type { RenderLink } from "react-cmdk";
+import type { ButtonProps } from "react-cmdk/src/components/ListItem";
+import type { IconName } from "metabase/ui";
 
-export type CommandPaletteAction = {
+export type CustomJsonStructure = Array<{
+  items: Array<CustomJsonStructureItem>;
+  heading?: string;
   id: string;
-  name: string;
-  icon: IconName;
-  run: (arg?: string) => void;
-};
+}>;
 
-export const useCommandPalette = ({ query }: { query: string }) => {
+export interface CustomButtonProps
+  extends Omit<ButtonProps, "icon">,
+    ButtonHTMLAttributes<HTMLButtonElement> {
+  icon?: IconName;
+}
+
+export type CustomJsonStructureItem = Omit<
+  (CustomButtonProps & CustomLinkProps) & { id: string },
+  "index"
+>;
+
+interface ListItemBaseProps {
+  closeOnSelect?: boolean;
+  icon?: IconName;
+  iconType?: IconType;
+  showType?: boolean;
+  disabled?: boolean;
+  keywords?: string[];
+  index: number;
+}
+
+export interface CustomLinkProps
+  extends Omit<ListItemBaseProps, "icon">,
+    DetailedHTMLProps<
+      AnchorHTMLAttributes<HTMLAnchorElement>,
+      HTMLAnchorElement
+    > {
+  renderLink?: RenderLink;
+  icon?: IconName;
+}
+
+export const useCommandPalette = () => {
   const dispatch = useDispatch();
 
-  const defaultActions = useMemo<CommandPaletteAction[]>(
+  const defaultActions = useMemo<CustomJsonStructure>(
     () => [
       {
-        id: "create_collection",
-        name: t`Create new collection`,
-        icon: "collection",
-        run: () => dispatch(setOpenModal("collection")),
-      },
-      {
-        id: "create_dashboard",
-        name: t`Create new dashboard`,
-        icon: "dashboard",
-        run: () => dispatch(setOpenModal("dashboard")),
-      },
-      {
-        id: "create_question",
-        name: t`Create new question`,
-        icon: "question",
-        run: () =>
-          dispatch(
-            push(
-              Urls.newQuestion({
-                mode: "notebook",
-                creationType: "custom_question",
-              }),
-            ),
-          ),
+        id: "create-new",
+        heading: t`Create new`,
+        items: [
+          {
+            id: "create_collection",
+            heading: t`Create new collection`,
+            icon: "collection",
+            onClick: () => dispatch(setOpenModal("collection")),
+          },
+          {
+            id: "create_dashboard",
+            heading: t`Create new dashboard`,
+            icon: "dashboard",
+            onClick: () => dispatch(setOpenModal("dashboard")),
+          },
+          {
+            id: "create_question",
+            heading: t`Create new question`,
+            icon: "question",
+            onClick: () =>
+              dispatch(
+                push(
+                  Urls.newQuestion({
+                    mode: "notebook",
+                    creationType: "custom_question",
+                  }),
+                ),
+              ),
+          },
+        ],
       },
     ],
     [dispatch],
   );
 
-  return {
-    results: query
-      ? defaultActions.filter(action =>
-          action.name.toLowerCase().includes(query.toLowerCase()),
-        )
-      : defaultActions,
-  };
+  return defaultActions;
 };
