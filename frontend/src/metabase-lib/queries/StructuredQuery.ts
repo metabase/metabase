@@ -321,7 +321,7 @@ class StructuredQuery extends AtomicQuery {
   }
 
   isValid() {
-    if (!this.hasData()) {
+    if (!this.table()) {
       return false;
     }
 
@@ -386,13 +386,6 @@ class StructuredQuery extends AtomicQuery {
       console.warn("Error thrown while validating clause", clause, e);
       return false;
     }
-  }
-
-  /**
-   * @deprecated use MLv2
-   */
-  hasData() {
-    return !!this.table();
   }
 
   hasAnyClauses() {
