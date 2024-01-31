@@ -110,24 +110,26 @@
 
                 Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it gradually.
                 In the mean time we'll have both `type` and `dataset` columns."} card-types
-  #{"model" "question" #_:metric})
+  #{"model" "question"
+    ;; metric will be added as part of epic #37335
+    #_:metric})
 
 (def CardTypes
   "Malli schema for acceptable card types."
   (into [:enum] card-types))
 
 (mu/defn ^:private is-type? :- :boolean
-  "Check if card is a model?"
+  "Returns true if card is of type `target-type`"
   [target-type :- CardTypes
    {:keys [type] :as _card} :- [:map [:type CardTypes]]]
   (= target-type type))
 
-(defn is-question?
-  "Returns true if `card` is a question"
+(defn question?
+  "Returns true if `card` is a question."
   [card]
   (is-type? "question" card))
 
-(defn is-model?
+(defn model?
   "Returns true if `card` is a model."
   [card]
   (is-type? "model" card))
@@ -189,7 +191,7 @@
   ([_model _id instance]
    (cond-> (apply dissoc instance excluded-columns-for-card-revision)
      ;; datasets should preserve edits to metadata
-     (and (:type instance) (not (is-model? instance)))
+     (and (:type instance) (not (model? instance)))
      (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -352,7 +354,7 @@
    (and (nil? type) (nil? dataset))
    card
 
-   ;; if both type and dataset presents, we prioritize type
+   ;; if both type and dataset is present, we prioritize type
    (and (some? type) (some? dataset))
    (assoc card :dataset (= type "model"))
 
@@ -665,7 +667,7 @@ saved later when it is ready."
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                      :creator_id (:id creator)
-                                     :dataset    (or (and (:type card-data) (is-model? card-data))
+                                     :dataset    (or (and (:type card-data) (model? card-data))
                                                      (boolean (:dataset card-data)))
                                      :type       (or (:type card-data)
                                                      ;; most tests will create a model using :dataset true, so we'll
@@ -863,7 +865,7 @@ saved later when it is ready."
   (serdes/extract-query-collections Card opts))
 
 (defn- export-result-metadata [card metadata]
-  (when (and metadata (is-model? card))
+  (when (and metadata (model? card))
     (for [m metadata]
       (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
