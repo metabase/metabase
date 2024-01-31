@@ -199,9 +199,14 @@ const config = (module.exports = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/]/,
+          test: /[\\/]node_modules[\\/](?!sql-formatter[\\/])/,
           chunks: "all",
           name: "vendor",
+        },
+        sqlFormatter: {
+          test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
+          chunks: "all",
+          name: "sql-formatter",
         },
       },
     },
