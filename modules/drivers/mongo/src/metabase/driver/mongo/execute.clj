@@ -17,7 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (com.mongodb.client AggregateIterable ClientSession MongoClient MongoCursor MongoDatabase)
+   (com.mongodb.client AggregateIterable ClientSession MongoCursor MongoDatabase)
    (java.util.concurrent TimeUnit)
    (org.bson BsonBoolean BsonInt32)))
 
@@ -178,32 +178,19 @@
                []
                (reducible-rows context cursor first-row (post-process-row row-col-names))))))
 
-;; TODO: move to jdw!
-(defn- start-session!
-  ^ClientSession
-  [^MongoClient c]
-  (.. c startSession))
-
-;; TODO: move to jdw
-(defn- kill-session!
-  [^MongoDatabase db
-   ^ClientSession session]
-  (let [session-id (.. session getServerSession getIdentifier)
-        kill-cmd (mongo.conversion/to-document {:killSessions [session-id]})]
-    (.runCommand db kill-cmd)))
-
 (defn execute-reducible-query
   "Process and run a native MongoDB query."
   [{{query :query collection-name :collection :as native-query} :native} context respond]
   {:pre [(string? collection-name) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
-        client-database (mongo.util/database mongo.connection/*mongo-client*
-                                            (mongo.db/db-name (lib.metadata/database (qp.store/metadata-provider))))]
-    (with-open [session ^ClientSession (start-session! mongo.connection/*mongo-client*)]
+        database (lib.metadata/database (qp.store/metadata-provider))
+        db-name (mongo.db/db-name database)
+        client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
+    (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
       (a/go
         (when (a/<! (qp.context/canceled-chan context))
-          (kill-session! client-database session)))
+          (mongo.util/kill-session! client-database session)))
       (let [aggregate ^AggregateIterable (*aggregate* client-database
                                                       collection-name
                                                       session

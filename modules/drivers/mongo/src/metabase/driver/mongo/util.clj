@@ -5,7 +5,7 @@
    [metabase.driver.mongo.conversion :as mongo.conversion])
   (:import
    (com.mongodb MongoClientSettings)
-   (com.mongodb.client FindIterable MongoClient MongoClients MongoCollection MongoDatabase)))
+   (com.mongodb.client ClientSession FindIterable MongoClient MongoClients MongoCollection MongoDatabase)))
 
 (set! *warn-on-reflection* true)
 
@@ -78,3 +78,16 @@
   "Insert document into mongo collection."
   [^MongoCollection coll document-map]
   (.insertOne coll (mongo.conversion/to-document document-map)))
+
+(defn start-session!
+  "Start session on client `c`."
+  ^ClientSession [^MongoClient c]
+  (.. c startSession))
+
+(defn kill-session!
+  "Kill `session` in `db`."
+  [^MongoDatabase db
+   ^ClientSession session]
+  (let [session-id (.. session getServerSession getIdentifier)
+        kill-cmd (mongo.conversion/to-document {:killSessions [session-id]})]
+    (.runCommand db kill-cmd)))
