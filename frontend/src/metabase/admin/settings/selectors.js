@@ -688,6 +688,19 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
+  llm: {
+    name: t`AI Features`,
+    getHidden: settings => !MetabaseSettings.isEnterprise(),
+    order: 131,
+    settings: [
+      {
+        key: "ee-openai-api-key",
+        display_name: t`EE OpenAI API Key`,
+        description: "API key used for Enterprise AI features",
+        type: "string",
+      },
+    ],
+  },
 };
 
 const getSectionsWithPlugins = _.once(() =>
