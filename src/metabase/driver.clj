@@ -955,6 +955,17 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti create-auto-pk-with-append-csv?
+  "Returns true if the driver should create an auto-incrementing primary key column when appending CSV data to an existing
+  upload table. This is because we want to fill in auto-pk columns for drivers that supported uploads before auto-pk
+  columns were introduced by metabase#36249. It should return false if we can assume that the table was created with
+  an auto-pk column (after 48)."
+  {:added "0.49.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod create-auto-pk-with-append-csv? ::driver [_] false)
+
 (defmulti current-user-table-privileges
   "Returns the rows of data as arrays needed to populate the tabel_privileges table
    with the DB connection's current user privileges.

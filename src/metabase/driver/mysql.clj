@@ -651,6 +651,8 @@
     ::upload/datetime                 [:datetime]
     ::upload/offset-datetime          [:timestamp]))
 
+(defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
+
 (defmethod driver/table-name-length-limit :mysql
   [_driver]
   ;; https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html

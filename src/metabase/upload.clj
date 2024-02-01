@@ -621,11 +621,8 @@
           normed-name->field (m/index-by (comp normalize-column-name :name)
                                          (t2/select :model/Field :table_id (:id table) :active true))
           normed-header      (map normalize-column-name header)
-          ;; Create auto-pk columns for drivers that supported uploads before auto-pk columns
-          ;; were introduced by metabase#36249. Otherwise we can assume that the table was created
-          ;; with an auto-pk column, or it has been deliberately removed.
           create-auto-pk?    (and
-                              (contains? #{:mysql :postgres :h2} (:engine database))
+                              (driver/create-auto-pk-with-append-csv? driver)
                               (not (contains? normed-name->field auto-pk-column-name)))
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
           col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
@@ -676,7 +673,9 @@
 ;;; +--------------------------------------------------
 
 (mu/defn append-csv!
-  "Main entry point for appending to uploaded tables with a CSV file."
+  "Main entry point for appending to uploaded tables with a CSV file.
+  This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
+  before auto-pk columns were introduced by metabase#36249."
   [{:keys [^File file table-id]}
    :- [:map
        [:table-id ms/PositiveInt]

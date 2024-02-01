@@ -785,6 +785,10 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/create-auto-pk-with-append-csv? :postgres
+  [driver]
+  (= driver :postgres))
+
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
   ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS

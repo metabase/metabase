@@ -574,6 +574,8 @@
     :metabase.upload/datetime                 [:timestamp]
     :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/create-auto-pk-with-append-csv? :h2 [_driver] true)
+
 (defmethod driver/table-name-length-limit :h2
   [_driver]
   ;; http://www.h2database.com/html/advanced.html#limits_limitations
