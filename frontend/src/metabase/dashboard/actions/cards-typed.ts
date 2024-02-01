@@ -1,4 +1,4 @@
-import { createAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import Questions from "metabase/entities/questions";
 import { getDefaultSize } from "metabase/visualizations";
 
@@ -6,6 +6,7 @@ import type {
   ActionDashboardCard,
   BaseDashboardCard,
   CardId,
+  DashCardId,
   DashboardCard,
   DashboardId,
   DashboardTabId,
@@ -18,10 +19,17 @@ import {
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
 
-import { trackCardCreated } from "../analytics";
+import { trackCardCreated, trackQuestionReplaced } from "../analytics";
+import { getDashCardById, getDashboardId } from "../selectors";
+import { isVirtualDashCard } from "../utils";
 import { autoWireParametersToNewCard } from "./auto-wire-parameters/actions";
-import { ADD_CARD_TO_DASH } from "./core";
-import { fetchCardData } from "./data-fetching";
+import {
+  ADD_CARD_TO_DASH,
+  REMOVE_CARD_FROM_DASH,
+  UNDO_REMOVE_CARD_FROM_DASH,
+  setDashCardAttributes,
+} from "./core";
+import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
 
@@ -42,6 +50,9 @@ let tempId = -1;
 export function generateTemporaryDashcardId() {
   return tempId--;
 }
+
+export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
+export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
 export const addDashCardToDashboard =
   ({ dashId, tabId, dashcardOverrides }: AddDashCardOpts) =>
@@ -129,6 +140,70 @@ export const addLinkDashCardToDashboard =
     const dc = createVirtualDashCard({ display: "link" });
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides: dc }));
   };
+
+export const replaceCard =
+  ({
+    dashcardId,
+    nextCardId,
+  }: {
+    dashcardId: DashCardId;
+    nextCardId: CardId;
+  }) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const dashboardId = getDashboardId(getState());
+
+    let dashcard = getDashCardById(getState(), dashcardId);
+    if (isVirtualDashCard(dashcard)) {
+      return;
+    }
+
+    await dispatch(Questions.actions.fetch({ id: nextCardId }));
+    const card = Questions.selectors
+      .getObject(getState(), { entityId: nextCardId })
+      .card();
+
+    await dispatch(
+      setDashCardAttributes({
+        id: dashcardId,
+        attributes: {
+          card,
+          card_id: card.id,
+          series: [],
+          parameter_mappings: [],
+          visualization_settings: {},
+        },
+      }),
+    );
+
+    dashcard = getDashCardById(getState(), dashcardId);
+
+    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
+    await dispatch(loadMetadataForDashboard([dashcard]));
+    dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
+
+    dashboardId && trackQuestionReplaced(dashboardId);
+  };
+
+export const removeCardFromDashboard = createThunkAction<
+  [{ dashcardId: DashCardId; cardId: CardId }]
+>(REMOVE_CARD_FROM_DASH, ({ dashcardId, cardId }) => dispatch => {
+  // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
+  dispatch(cancelFetchCardData(cardId, dashcardId));
+  return { dashcardId };
+});
+
+export const undoRemoveCardFromDashboard = createThunkAction<
+  [{ dashcardId: DashCardId }]
+>(UNDO_REMOVE_CARD_FROM_DASH, ({ dashcardId }) => (dispatch, getState) => {
+  const dashcard = getDashCardById(getState(), dashcardId);
+  const card = dashcard.card;
+
+  if (!isVirtualDashCard(dashcard)) {
+    dispatch(fetchCardData(card, dashcard));
+  }
+
+  return { dashcardId };
+});
 
 function createDashCard<T extends BaseDashboardCard>(attrs: Partial<T>) {
   return {
