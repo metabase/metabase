@@ -118,7 +118,7 @@ export function autoWireParametersToNewCard({
     }
 
     const dashcardMappingOptions = getParameterMappingOptions(
-      metadata,
+      new Question(targetDashcard.card, metadata),
       null,
       targetDashcard.card,
       targetDashcard,

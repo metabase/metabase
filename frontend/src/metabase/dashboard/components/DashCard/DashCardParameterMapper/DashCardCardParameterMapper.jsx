@@ -89,10 +89,14 @@ export function DashCardCardParameterMapper({
 }) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
+  const question = useMemo(() => {
+    return new Question(card, metadata);
+  }, [card, metadata]);
+
   const mappingOptions = useMemo(
     () =>
-      getParameterMappingOptions(metadata, editingParameter, card, dashcard),
-    [card, dashcard, editingParameter, metadata],
+      getParameterMappingOptions(question, editingParameter, card, dashcard),
+    [card, dashcard, editingParameter, question],
   );
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
