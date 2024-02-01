@@ -64,14 +64,14 @@
                                                     :type     :query
                                                     :query    {:source-table (mt/id :orders)}}}
                                Dashboard {dash-id :id} {:name "Dashboard"}
-                               DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                                      :card_id      card-id}]
+                               DashboardCard {_ :id} {:dashboard_id dash-id
+                                                      :card_id      card-id}]
         (let [url           (format "ee/autodescribe/dashboard/summarize/%s" dash-id)
               fake-response {:description "Description"
                              :keywords    "awesome, amazing"
                              :questions   "- What is this?"}
               json-response (json/generate-string fake-response)
-              expected {:summary {:description "Keywords: awesome, amazing\n\nDescription: Description\n\nQuestions:\n- What is this?"}}]
+              expected      {:summary {:description "Keywords: awesome, amazing\n\nDescription: Description\n\nQuestions:\n- What is this?"}}]
           (testing "Card summarization works in the happy path"
             ;; TODO - Set feature flag correctly when it's ready on stats
             (mt/with-premium-features #{:llm-autodescription :serialization}
