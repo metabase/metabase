@@ -34,6 +34,14 @@ export const MetabaseProvider = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (font) {
+      store.dispatch(setOptions({ font }));
+    }
+  }, [store, font]);
+
+  useEffect(() => {
+    registerVisualizations();
+
     Promise.all([
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
@@ -42,18 +50,7 @@ export const MetabaseProvider = ({
     ]).then(() => {
       setLoading(false);
     });
-    // Disabling this for now since we change the store with this call, which keeps calling the effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (font) {
-      store.dispatch(setOptions({ font }));
-    }
-  }, [store, font]);
-
-  useEffect(() => {
-    registerVisualizations();
   }, []);
 
   return (
