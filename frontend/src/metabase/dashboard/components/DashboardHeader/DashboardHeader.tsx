@@ -413,7 +413,10 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
                   layout={option}
                   position="left"
                 >
-                  <Menu.Item onClick={() => this.onAddSection(option.id)}>
+                  <Menu.Item
+                    onClick={() => this.onAddSection(option.id)}
+                    fw="bold"
+                  >
                     {option.label}
                   </Menu.Item>
                 </SectionLayoutPreviewTooltip>
