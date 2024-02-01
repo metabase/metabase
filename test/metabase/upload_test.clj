@@ -416,7 +416,7 @@
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
   current user is granted data permissions to the database."
-  [& {:keys [table-prefix collection-id grant-permission? uploads-enabled user-id db-id sync-synchronously? csv-file-name]
+  [& {:keys [table-prefix collection-id grant-permission? uploads-enabled user-id db-id sync-synchronously? csv-file-prefix]
       :or {collection-id       nil ;; root collection
            grant-permission?   true
            uploads-enabled     true
@@ -424,7 +424,7 @@
            db-id               (mt/id)
            sync-synchronously? true
            ;; Make the file-name unique so the table names don't collide
-           csv-file-name       (str "example csv file " (random-uuid))}
+           csv-file-prefix       (str "example csv file " (random-uuid))}
       :as args}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
@@ -440,7 +440,7 @@
                                ["id, name"
                                 "1, Luke Skywalker"
                                 "2, Darth Vader"]
-                               csv-file-name)
+                               csv-file-prefix)
             group-id          (u/the-id (perms-group/all-users))
             grant?            (and db
                                    (not (mi/can-read? db))
@@ -449,7 +449,7 @@
           (perms/grant-permissions! group-id (perms/data-perms-path db-id)))
         (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
                    (upload/create-csv-upload! {:collection-id collection-id
-                                               :filename      csv-file-name
+                                               :filename      csv-file-prefix
                                                :file          file
                                                :db-id         db-id
                                                :schema-name   schema-name
@@ -462,11 +462,11 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (mt/with-current-user (mt/user->id :crowberto)
-          (let [csv-file-name (str (mt/random-name) ".csv")]
-            (let [model-1 (upload-example-csv! :csv-file-name csv-file-name)
+          (let [csv-file-prefix (str (mt/random-name) ".csv")]
+            (let [model-1 (upload-example-csv! :csv-file-prefix csv-file-prefix)
                   ;; sleep for a second to make sure the table name is different
                   _ (Thread/sleep 1000)
-                  model-2 (upload-example-csv! :csv-file-name csv-file-name)]
+                  model-2 (upload-example-csv! :csv-file-prefix csv-file-prefix)]
               (testing "tables are different between the two uploads"
                 (is (some? (:table_id model-1)))
                 (is (some? (:table_id model-2)))
