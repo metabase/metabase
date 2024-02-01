@@ -43,7 +43,7 @@ export function DashboardInfoSidebar({
     query: { model_type: "dashboard", model_id: dashboard.id },
   });
 
-  const { loading, description, SuggestDescriptionButton } =
+  const { loading, generatedDescription, SuggestDescriptionButton } =
     PLUGIN_LLM_AUTODESCRIPTION.useLLMDashboardDescription({
       dashboardId: dashboard.id,
     });
@@ -85,7 +85,7 @@ export function DashboardInfoSidebar({
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
         <StyledEditableText
-          initialValue={description || dashboard.description}
+          initialValue={generatedDescription || dashboard.description}
           loading={loading}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}

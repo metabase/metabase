@@ -157,7 +157,7 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
     LLMLoadingIndicator: () => null,
   }),
   useLLMDashboardDescription: () => ({
-    description: "",
+    generatedDescription: "",
     loading: false,
     SuggestDescriptionButton: () => null,
   }),

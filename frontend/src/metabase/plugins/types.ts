@@ -72,7 +72,7 @@ export type TUseLLMDashboardDescription = ({
 }: {
   dashboardId: DashboardId;
 }) => {
-  description: string;
+  generatedDescription: string;
   loading: boolean;
   SuggestDescriptionButton: () => JSX.Element | null;
 };

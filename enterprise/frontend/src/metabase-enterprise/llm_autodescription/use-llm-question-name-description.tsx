@@ -4,6 +4,7 @@ import * as Lib from "metabase-lib";
 import { useSelector } from "metabase/lib/redux";
 import { Group } from "metabase/ui";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { getSetting } from "metabase/selectors/settings";
 import {
   getIsResultDirty,
   getResultsMetadata,
@@ -13,8 +14,7 @@ import { getQuestionWithDefaultVisualizationSettings } from "metabase/query_buil
 import { POST } from "metabase/lib/api";
 import type { TUseLLMQuestionNameDescription } from "metabase/plugins/types";
 
-import "./use-llm-question-name-description.css";
-import { getSetting } from "metabase/selectors/settings";
+import "./loading.css";
 
 const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 
