@@ -27,12 +27,13 @@ export function openNativeEditor({
   databaseName,
   alias = "editor",
   fromCurrentPage,
+  newMenuItemTitle = "SQL query",
 } = {}) {
   if (!fromCurrentPage) {
     cy.visit("/");
   }
   cy.findByText("New").click();
-  cy.findByText("SQL query").click();
+  cy.findByText(newMenuItemTitle).click();
 
   databaseName && cy.findByText(databaseName).click();
 

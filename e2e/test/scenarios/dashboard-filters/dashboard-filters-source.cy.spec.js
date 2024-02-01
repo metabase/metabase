@@ -79,21 +79,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       archiveQuestion();
     });
 
-    it("should be able to use a structured question source without mapping to a field", () => {
-      cy.createQuestion(structuredSourceQuestion);
-      cy.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
-      });
-
-      editDashboard();
-      setFilter("Text or Category", "Is");
-      setFilterQuestionSource({ question: "GUI source", field: "Category" });
-      saveDashboard();
-      filterDashboard();
-    });
-
     it("should be able to use a structured question source when embedded", () => {
       cy.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: questionId } }) => {

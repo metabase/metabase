@@ -383,16 +383,6 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
-(defn- check-card-type-and-dataset
-  "Check if the value of card type and dataset is consistent, returns 400 if not."
-  [{:keys [dataset type]}]
-  ;; if dataset is true then type must be model
-  ;; if dataset is false, then type can't be model
-  (when (and (some? type) (some? dataset))
-    (api/check (if (true? dataset)
-                 (= "model" type)
-                 (not= "model" type))
-      [400 (deferred-tru ":dataset is inconsistent with :type")])))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
@@ -415,7 +405,7 @@
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (check-card-type-and-dataset body)
+  (card/assert-card-type-and-dataset body)
   (-> (card/create-card! body @api/*current-user*)
       hydrate-card-details
       (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -472,7 +462,7 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
-  (check-card-type-and-dataset card-updates)
+  (card/assert-card-type-and-dataset card-updates)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
         is-model-after-update? (cond

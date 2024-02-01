@@ -112,7 +112,7 @@
                 In the mean time we'll have both `type` and `dataset` columns."} card-types
   #{"model" "question"
     ;; metric will be added as part of epic #37335
-    #_:metric})
+    #_"metric"})
 
 (def CardTypes
   "Malli schema for acceptable card types."
@@ -341,12 +341,25 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
+(defn assert-card-type-and-dataset
+  "Check if the value of card type and dataset is consistent, throws a 400 if not.
+  - if dataset is true then type must be model
+  - if dataset is false, then type can't be model"
+  [{:keys [dataset type]}]
+  (when (and (some? type) (some? dataset))
+    (when-not (if (true? dataset)
+                (= "model" type)
+                (not= "model" type))
+      (throw (ex-info (tru ":dataset is inconsistent with :type")
+                      {:status-code 400})))))
+
 (defn- ensure-type-and-dataset-are-consistent
   "We're in the process of migrating from using `report_card.dataset` to `report_card.type`.
   In the future we'll drop `dataset` and only use `type`. But for now we need to make sure that both keys are aligned
   when dealing with cards.
-  - If both keys are present, we make sure `dataset` is true if `type` is `model` else false.
-    This will make a different when we have `metric` type since a boolean can't represent tri-state
+  - If both keys are present, throw an exception if type and dataset is inconsistent.
+    If not we make sure `dataset` is true if `type` is `model` else false.
+  This will make a different when we have `metric` type since a boolean can't represent tri-state
   - If only one key is present, we'll assoc the correct value for the other key."
   [{:keys [type dataset] :as card}]
   (cond
@@ -356,7 +369,7 @@
 
    ;; if both type and dataset is present, we prioritize type
    (and (some? type) (some? dataset))
-   (assoc card :dataset (= type "model"))
+   (assoc card :dataset (= "model" type))
 
    ;; if only type is present, make sure dataset follows
    (some? type)
@@ -386,7 +399,7 @@
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
                   :parameter_mappings []}
-        card     (ensure-type-and-dataset-are-consistent (merge defaults card))]
+        card     (merge defaults card)]
     (u/prog1 card
       ;; make sure this Card doesn't have circular source query references
       (check-for-circular-source-query-references card)
@@ -504,6 +517,7 @@
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
       (collection/check-collection-namespace Card (:collection_id changes))
+      (assert-card-type-and-dataset changes)
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
@@ -519,6 +533,7 @@
 (t2/define-before-insert :model/Card
   [card]
   (-> card
+      ensure-type-and-dataset-are-consistent
       (assoc :metabase_version config/mb-version-string)
       maybe-normalize-query
       populate-result-metadata
@@ -540,7 +555,8 @@
   ;;
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
-  (-> (into {:id (:id card)} (ensure-type-and-dataset-are-consistent (t2/changes card)))
+  (-> (into {:id (:id card)} (t2/changes card))
+      ensure-type-and-dataset-are-consistent
       maybe-normalize-query
       populate-result-metadata
       pre-update
@@ -660,25 +676,27 @@ saved later when it is ready."
   the transaction yet. If you pass true here it is important to call the event after the cards are successfully
   created."
   ([card creator] (create-card! card creator false))
-  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} creator delay-event?]
+  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings type] :as card-data} creator delay-event?]
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
+   (assert-card-type-and-dataset card-data)
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
-         card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                     :creator_id (:id creator)
-                                     :dataset    (or (and (:type card-data) (model? card-data))
-                                                     (boolean (:dataset card-data)))
-                                     :type       (or (:type card-data)
-                                                     ;; most tests will create a model using :dataset true, so we'll
-                                                     ;; respect that
-                                                     (when (:dataset card-data) "model")
-                                                     "question")
-                                     :parameters (or parameters [])
-                                     :parameter_mappings (or parameter_mappings []))
+         card-data            (-> (zipmap data-keys (map card-data data-keys))
+                                  (assoc
+                                   :creator_id (:id creator)
+                                   :dataset    (boolean dataset)
+                                   :type       (or type
+                                                   ;; most tests will create a model using :dataset true, so we'll
+                                                   ;; respect that
+                                                   (when dataset "model")
+                                                   "question")
+                                   :parameters (or parameters [])
+                                   :parameter_mappings (or parameter_mappings []))
+                                  ensure-type-and-dataset-are-consistent)
          result-metadata-chan (result-metadata-async {:query    dataset_query
                                                       :metadata result_metadata
-                                                      :dataset? dataset})
+                                                      :dataset? (model? card-data)})
          metadata-timeout     (a/timeout metadata-sync-wait-ms)
          [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
          timed-out?           (= port metadata-timeout)
