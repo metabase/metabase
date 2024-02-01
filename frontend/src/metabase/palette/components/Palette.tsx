@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
-import styled from "@emotion/styled";
 import CommandPalette, {
   getItemIndex,
   type JsonStructure as CommandPaletteActions,
@@ -8,9 +7,8 @@ import CommandPalette, {
 } from "react-cmdk";
 import type { CommandPalettePageId } from "../hooks/useCommandPalette";
 import { useCommandPalette } from "../hooks/useCommandPalette";
-import { CommandPaletteStyled } from "./Palette.styled";
 import "./Palette.css";
-import Button from "metabase/core/components/Button";
+import { CommandPaletteStyled } from "./Palette.styled";
 
 const PalettePage = ({
   id,
@@ -76,26 +74,4 @@ export const Palette = () => {
       />
     </CommandPaletteStyled>
   );
-};
-
-const HiddenButton = styled(Button)`
-  top: -1px;
-  left: -1px;
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-`;
-
-export const PaletteContextualAction = ({
-  name,
-  action,
-}: {
-  name: string;
-  action: () => void;
-}) => {
-  return <HiddenButton palette={{label: name}} onClick={action} />;
 };
