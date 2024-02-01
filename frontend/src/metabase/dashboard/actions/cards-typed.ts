@@ -3,10 +3,14 @@ import Questions from "metabase/entities/questions";
 import { getDefaultSize } from "metabase/visualizations";
 
 import type {
+  ActionDashboardCard,
+  BaseDashboardCard,
   CardId,
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  VirtualCardDisplay,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 import {
@@ -14,6 +18,7 @@ import {
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
 
+import { trackCardCreated } from "../analytics";
 import { autoWireParametersToNewCard } from "./auto-wire-parameters/actions";
 import { ADD_CARD_TO_DASH } from "./core";
 import { fetchCardData } from "./data-fetching";
@@ -26,7 +31,10 @@ type NewDashCardOpts = {
 };
 
 type AddDashCardOpts = NewDashCardOpts & {
-  dashcardOverrides: Partial<DashboardCard>;
+  dashcardOverrides:
+    | Partial<ActionDashboardCard>
+    | Partial<DashboardCard>
+    | Partial<VirtualDashboardCard>;
 };
 
 let tempId = -1;
@@ -50,28 +58,19 @@ export const addDashCardToDashboard =
       dashId,
       tabId,
     );
-    const position = getPositionForNewDashCard(
-      dashcards,
-      dashCardSize.width,
-      dashCardSize.height,
-    );
 
-    const dashcard = {
-      id: generateTemporaryDashcardId(),
-
+    const dashcard = createDashCard<BaseDashboardCard>({
       dashboard_id: dashId,
       dashboard_tab_id: tabId ?? null,
 
-      card_id: null,
-      card: null,
+      ...getPositionForNewDashCard(
+        dashcards,
+        dashCardSize.width,
+        dashCardSize.height,
+      ),
 
-      series: [],
-      parameter_mappings: [],
-      visualization_settings: {},
-
-      ...position,
       ...dashcardOverrides,
-    };
+    });
 
     dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
 
@@ -103,3 +102,44 @@ export const addCardToDashboard =
     await dispatch(loadMetadataForDashboard([dashcard]));
     dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
   };
+
+export const addMarkdownDashCardToDashboard =
+  ({ dashId, tabId }: NewDashCardOpts) =>
+  (dispatch: Dispatch) => {
+    trackCardCreated("text", dashId);
+    const dc = createVirtualDashCard({ display: "text" });
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides: dc }));
+  };
+
+function createDashCard<T extends BaseDashboardCard>(attrs: Partial<T>) {
+  return {
+    id: generateTemporaryDashcardId(),
+    card_id: null,
+    card: null,
+    series: [],
+    parameter_mappings: [],
+    visualization_settings: {},
+    ...attrs,
+  };
+}
+
+function createVirtualDashCard({
+  display,
+}: {
+  display: VirtualCardDisplay;
+}): VirtualDashboardCard {
+  const virtualCard = {
+    name: null,
+    dataset_query: {},
+    display,
+    visualization_settings: {},
+    archived: false,
+  };
+
+  return createDashCard<VirtualDashboardCard>({
+    card: virtualCard,
+    visualization_settings: {
+      virtual_card: virtualCard,
+    },
+  });
+}
