@@ -76,10 +76,19 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
       Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
     );
     const card = Questions.HACK_getObjectFromAction(action);
+
+    const parameterValues = outdatedQuestion.parameters().reduce(
+      (acc, next) => ({
+        ...acc,
+        [next.id]: next.value,
+      }),
+      {},
+    );
+
     const question = new Question(
       card,
       getMetadata(getState()),
-      outdatedQuestion._parameterValues,
+      parameterValues,
     );
 
     dispatch(loadMetadataForCard(card));
