@@ -45,8 +45,6 @@ describe("issue 38176", () => {
       cy.findByText(/reverted to an earlier version/i).should("be.visible");
     });
 
-    cy.findByTestId("TableInteractive-root").within(() => {
-      cy.findByText("COUNTRY").should("be.visible");
-    });
+    cy.findAllByRole("gridcell").should("contain", "NL");
   });
 });
