@@ -424,7 +424,7 @@
            db-id               (mt/id)
            sync-synchronously? true
            ;; Make the file-name unique so the table names don't collide
-           csv-file-name       (str "example csv file " (random-uuid) ".csv")}
+           csv-file-name       (str "example csv file " (random-uuid))}
       :as args}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
