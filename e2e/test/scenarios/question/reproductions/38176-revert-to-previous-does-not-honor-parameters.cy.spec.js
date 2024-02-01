@@ -7,7 +7,7 @@ describe("issue 38176", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
   });
 
-  it("restoring a question to a previous version should preserve the variables", () => {
+  it("restoring a question to a previous version should preserve the variables (metabase#38176)", () => {
     cy.createNativeQuestion(
       {
         name: "30165",
