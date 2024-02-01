@@ -47,7 +47,9 @@ export const useCommandPalette = ({
               name: s.display_name || "",
               description: s.description,
               path,
-              displayName: `${key} > ${s.display_name}`,
+              displayName: `${key[0].toUpperCase()}${key.slice(1)} / ${
+                s.display_name
+              }`,
             })),
         ];
       }, []),
@@ -160,6 +162,7 @@ export const useCommandPalette = ({
   const adminSettingsActions = [
     {
       id: "admin_settings",
+      heading: "Admin settings",
       items: [
         {
           id: "back",

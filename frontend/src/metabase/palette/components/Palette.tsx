@@ -11,6 +11,8 @@ import { useCommandPalette } from "../hooks/useCommandPalette";
 import "./Palette.css";
 import { CommandPaletteStyled } from "./Palette.styled";
 
+// TODO: Maybe scroll to the selected item in the palette when it's out of sight
+
 const PalettePage = ({
   id,
   actions,
