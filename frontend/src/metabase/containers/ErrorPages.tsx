@@ -21,6 +21,7 @@ import {
   Stack,
   Box,
   Modal,
+  Flex,
 } from "metabase/ui";
 import EmptyState from "metabase/components/EmptyState";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
@@ -274,6 +275,7 @@ export const ErrorDownloadOptionsModal = ({
     <Modal
       opened
       onClose={onClose}
+      styles={{ header: { fontSize: "16px" } }}
       title={t`Select the information you want to include in the diagnostic file`}
     >
       <FormProvider
@@ -311,11 +313,16 @@ export const ErrorDownloadOptionsModal = ({
               </>
             )}
             <FormCheckbox name="logs" label={t`Include backend logs`} />
+          </Stack>
+          <Flex gap="sm" justify="flex-end" mt="lg">
+            <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
+              variant="filled"
               leftIcon={<Icon name="download" />}
               label={t`Download diagnostic information`}
+              color="brand"
             />
-          </Stack>
+          </Flex>
         </Form>
       </FormProvider>
     </Modal>
