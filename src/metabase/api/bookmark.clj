@@ -49,7 +49,7 @@
     (api/check (not (t2/exists? bookmark-model item-key id
                                 :user_id api/*current-user-id*))
       [400 "Bookmark already exists"])
-    (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
+    (bookmark/present-bookmark (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*})))))
 
 (api/defendpoint DELETE "/:model/:id"
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."

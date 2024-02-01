@@ -120,6 +120,15 @@
           (assoc bookmark :dashboard (dashboard-id->dashboard (:item_id bookmark)))
           bookmark)))))
 
+(defn present-bookmarks [bookmarks]
+  (->> bookmarks
+       add-cards-to-bookmarks
+       add-collections-to-bookmarks
+       add-dashboards-to-bookmarks
+       (map normalize-bookmark-result)))
+
+(defn present-bookmark [bookmark]
+  (first (present-bookmarks [bookmark])))
 
 (mu/defn bookmarks-for-user
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
@@ -149,10 +158,7 @@
                                                     (:postgres :h2) :asc-nulls-last
                                                     :mysql          :asc)]
                      [:created_at :desc]]})
-       (add-cards-to-bookmarks)
-       (add-collections-to-bookmarks)
-       (add-dashboards-to-bookmarks)
-       (map normalize-bookmark-result)))
+       present-bookmarks))
 
 ;; type to model
 ;; id = underlying item id
