@@ -45,6 +45,7 @@ import {
   BackButtonContainer,
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
+import { canExploreResults } from "./ViewHeaderUtils";
 
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,
@@ -422,24 +423,7 @@ function ViewTitleHeaderRightSide(props) {
     requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
-
-  /**
-   * We can only "explore results" (i.e. create new questions based on this one)
-   * when question is a native query, which is saved, has no parameters
-   * and satisfies other conditionals below.
-   */
-  const canExploreResults = question => {
-    const canNest = Boolean(question.database()?.hasFeature("nested-queries"));
-
-    return (
-      isNative &&
-      question.isSaved() &&
-      question.parameters().length === 0 &&
-      canNest &&
-      isEditable // originally "canRunAdhocQuery"
-    );
-  };
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
 
   const hasExploreResultsLink =
     canExploreResults(question) &&
