@@ -118,18 +118,18 @@
   (h2x/->timestamp expr))
 
 (defn- create-table!-sql
-  [driver table-name col->type primary-key]
+  [driver table-name column-definitions primary-key]
   (first (sql/format {:create-table (keyword table-name)
                       :with-columns (cond-> (mapv (fn [[name type-spec]]
                                                     (vec (cons name type-spec)))
-                                                  col->type)
+                                                  column-definitions)
                                       primary-key (conj [(into [:primary-key] primary-key)]))}
                      :quoted true
                      :dialect (sql.qp/quote-style driver))))
 
 (defmethod driver/create-table! :sql-jdbc
-  [driver database-id table-name column->type primary-key]
-  (let [sql (create-table!-sql driver table-name column->type primary-key)]
+  [driver database-id table-name column-definitions primary-key]
+  (let [sql (create-table!-sql driver table-name column-definitions primary-key)]
     (qp.writeback/execute-write-sql! database-id sql)))
 
 (defmethod driver/drop-table! :sql-jdbc
@@ -163,11 +163,11 @@
         (jdbc/execute! conn sql)))))
 
 (defmethod driver/add-columns! :sql-jdbc
-  [driver db-id table-name col->type]
+  [driver db-id table-name column-definitions]
   (let [sql (first (sql/format {:alter-table (keyword table-name)
                                 :add-column (map (fn [[name type-spec]]
                                                    (vec (cons name type-spec)))
-                                                 col->type)}
+                                                 column-definitions)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))

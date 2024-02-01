@@ -273,9 +273,9 @@
      csv-file)))
 
 (defn- with-ai-id
-  [col->type]
+  [column-definitions]
   {:generated-columns {@#'upload/auto-pk-column-keyword auto-pk-type}
-   :extant-columns    col->type})
+   :extant-columns    column-definitions})
 
 (defn- detect-schema-with-csv-rows
   "Calls detect-schema on rows from a CSV file. `rows` is a vector of strings"
@@ -1173,12 +1173,12 @@
                             (str schema-name "." table-name)
                             table-name)
         insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
-        col->database-type (#'upload/upload-type->col-specs driver col->upload-type)
+        col-definitions (#'upload/column-definitions driver col->upload-type)
         _ (driver/create-table! driver/*driver*
                                 db-id
                                 schema+table-name
-                                col->database-type
-                                (when (contains? col->database-type upload/auto-pk-column-keyword)
+                                col-definitions
+                                (when (contains? col-definitions upload/auto-pk-column-keyword)
                                   [upload/auto-pk-column-keyword]))
         _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)]
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))

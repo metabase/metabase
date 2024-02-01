@@ -330,7 +330,8 @@
                                 max-sample-rows)))
                   rows)))
 
-(defn- upload-type->col-specs
+(defn- column-definitions
+  "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
   [driver col->upload-type]
   (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
@@ -397,14 +398,14 @@
     (let [[header & rows]         (without-auto-pk-columns (csv/read-csv reader))
           {:keys [extant-columns generated-columns]} (detect-schema header (sample-rows rows))
           cols->upload-type       (merge generated-columns extant-columns)
-          col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
+          col-definitions         (column-definitions driver cols->upload-type)
           csv-col-names           (keys extant-columns)
           col-upload-types        (vals extant-columns)
           parsed-rows             (vec (parse-rows col-upload-types rows))]
       (driver/create-table! driver
                             db-id
                             table-name
-                            col-to-create->col-spec
+                            col-definitions
                             [auto-pk-column-keyword])
       (try
         (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)

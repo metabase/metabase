@@ -903,7 +903,7 @@
 (defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error.
   `primary-key` is optional and is a vector of column names that will be used as the primary key."
-  {:added "0.47.0", :arglists '([driver database-id table-name column->type primary-key])}
+  {:added "0.47.0", :arglists '([driver database-id table-name column-definitions primary-key])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -930,8 +930,8 @@
   :hierarchy #'hierarchy)
 
 (defmulti add-columns!
-  "Add columns given by `col->type` to a table named `table-name`. If the table doesn't exist it will throw an error."
-  {:added "0.49.0", :arglists '([driver db-id table-name col->type])}
+  "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
