@@ -138,13 +138,18 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     `}
 `;
 
-export const DashboardWidthWrapper = styled.div`
-  width: 100%;
-`;
-
-export const CardsContainer = styled(FullWidthContainer)<{
+export const FixedWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`
+  margin: 0 auto;
+  ${({ isFixedWidth }) =>
+    isFixedWidth &&
+    css`
+      max-width: 1048px;
+    `}
+`;
+
+export const CardsContainer = styled(FullWidthContainer)`
   margin-top: 8px;
 
   &.${SAVING_DOM_IMAGE_CLASS} {
@@ -155,10 +160,4 @@ export const CardsContainer = styled(FullWidthContainer)<{
       border: 1px solid ${color("border")};
     }
   }
-
-  ${({ isFixedWidth }) =>
-    isFixedWidth &&
-    css`
-      max-width: 1048px;
-    `}
 `;

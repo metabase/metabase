@@ -35,6 +35,7 @@ import {
   setEmbedDashboardEndpoints,
 } from "metabase/services";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import EmbedFrame from "../components/EmbedFrame";
 
 import {
@@ -166,14 +167,16 @@ class PublicDashboard extends Component {
               <DashboardTabs location={this.props.location} />
               <Separator />
               <DashboardGridContainer>
-                <DashboardGridConnected
-                  {...this.props}
-                  isPublic
-                  className="spread"
-                  mode={PublicMode}
-                  metadata={this.props.metadata}
-                  navigateToNewCardFromDashboard={() => {}}
-                />
+                <FixedWidthContainer>
+                  <DashboardGridConnected
+                    {...this.props}
+                    isPublic
+                    className="spread"
+                    mode={PublicMode}
+                    metadata={this.props.metadata}
+                    navigateToNewCardFromDashboard={() => {}}
+                  />
+                </FixedWidthContainer>
               </DashboardGridContainer>
             </DashboardContainer>
           )}
