@@ -11,7 +11,13 @@ interface ExploreResultsLinkProps {
 export function ExploreResultsLink({ question }: ExploreResultsLinkProps) {
   const query = question.composeThisQuery();
   const button = (
-    <ViewButton disabled={!query} medium icon="insight" labelBreakpoint="sm">
+    <ViewButton
+      disabled={!query}
+      medium
+      icon="insight"
+      labelBreakpoint="sm"
+      data-palette
+    >
       {t`Explore results`}
     </ViewButton>
   );

@@ -24,6 +24,7 @@ export function FilterHeaderButton({
       color={color("filter")}
       onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
       data-testid="question-filter-header"
+      data-palette
     >
       {t`Filter`}
     </HeaderButton>

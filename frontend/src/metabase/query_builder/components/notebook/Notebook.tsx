@@ -83,7 +83,13 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
     <NotebookRoot className={className}>
       <NotebookSteps updateQuestion={handleUpdateQuestion} {...props} />
       {hasVisualizeButton && isRunnable && (
-        <Button medium primary style={{ minWidth: 220 }} onClick={visualize}>
+        <Button
+          medium
+          primary
+          style={{ minWidth: 220 }}
+          onClick={visualize}
+          data-palette
+        >
           {t`Visualize`}
         </Button>
       )}

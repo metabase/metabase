@@ -133,6 +133,7 @@ export default class ActionButton extends Component {
               })
         }
         onClick={this.onClick}
+        data-palette
       >
         {active ? (
           useLoadingSpinner ? (

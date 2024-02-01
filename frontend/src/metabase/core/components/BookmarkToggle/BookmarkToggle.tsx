@@ -37,16 +37,16 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     setIsAnimating(false);
   }, []);
 
+  const label = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
   return (
-    <Tooltip
-      tooltip={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
-      placement={tooltipPlacement}
-    >
+    <Tooltip tooltip={label} placement={tooltipPlacement}>
       <BookmarkButton
         {...props}
         ref={ref}
         isBookmarked={isBookmarked}
         onClick={handleClick}
+        data-palette-name={label}
+        data-palette-icon="bookmark"
       >
         <BookmarkIcon
           name="bookmark"

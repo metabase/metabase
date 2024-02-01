@@ -296,6 +296,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         key="cancel"
         className="Button Button--small mr1"
         onClick={this.onRequestCancel}
+        data-palette
       >
         {t`Cancel`}
       </Button>,
@@ -359,6 +360,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             aria-label={t`Add questions`}
+            data-palette-name={addQuestionButtonHint}
           />
         </Tooltip>,
       );
@@ -379,7 +381,10 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       // Add link card button
       buttons.push(
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
-          <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
+          <DashboardHeaderButton
+            data-palette-name={t`Add link card`}
+            onClick={() => this.onAddLinkCard()}
+          >
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
         </Tooltip>,
@@ -464,6 +469,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             aria-label={t`Edit dashboard`}
             icon="pencil"
             onClick={() => this.handleEdit(dashboard)}
+            data-palette
           />
         </Tooltip>,
       );

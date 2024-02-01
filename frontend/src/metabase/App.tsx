@@ -94,8 +94,6 @@ function App({
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
-  const [paletteOpen, setPaletteOpen] = useState(true);
-
   useEffect(() => {
     initializeIframeResizer();
   }, []);
@@ -115,9 +113,7 @@ function App({
             </AppContent>
             <UndoListing />
             <StatusListing />
-            {paletteOpen && (
-              <Palette open={paletteOpen} setOpen={setPaletteOpen} />
-            )}
+            <Palette />
             <NewModals />
           </AppContentContainer>
         </AppContainer>

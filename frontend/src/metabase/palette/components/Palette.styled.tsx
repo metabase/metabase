@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import CommandPalette from "react-cmdk";
 import { Button, Icon, TextInput } from "metabase/ui";
 import Modal from "metabase/components/Modal";
 
@@ -32,11 +33,19 @@ export const PaletteModal = styled(Modal)`
   }
 `;
 
+export const CommandPaletteStyled = styled(CommandPalette)`
+  &,
+  & * {
+    font-family: unset !important;
+    background: red;
+  }
+`;
+
 export const PaletteItemDisplay = styled.li`
   list-style: none;
   display: flex;
   width: 100%;
-margin-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
   // fix later
   & button span {
     display: flex;
@@ -67,5 +76,4 @@ export const PaletteModalContainer = styled.div`
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
-`
-
+`;
