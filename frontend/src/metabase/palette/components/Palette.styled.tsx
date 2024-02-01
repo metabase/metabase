@@ -33,16 +33,6 @@ export const PaletteModal = styled(Modal)`
   }
 `;
 
-export const PaletteStyled = styled(CommandPalette)`
-  &,
-  & * {
-    font-family: unset !important;
-    background: red;
-  }
-`;
-
-export const StyledPaletteItem = styled(CommandPalette.ListItem)``;
-
 export const PaletteItemDisplay = styled.li`
   list-style: none;
   display: flex;

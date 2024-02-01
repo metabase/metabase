@@ -17,6 +17,14 @@ import { reloadSettings } from "metabase/admin/settings/settings";
 
 export type CommandPalettePageId = "root" | "admin_settings";
 
+type AdminSetting = {
+  key: string;
+  display_name: string;
+  description: string | null;
+  type: "string";
+  path: string;
+};
+
 export const useCommandPalette = ({
   query,
   setPage,
@@ -27,7 +35,7 @@ export const useCommandPalette = ({
   setQuery: Dispatch<SetStateAction<string>>;
 }) => {
   const dispatch = useDispatch();
-  const adminSections = useSelector(getSections);
+  const adminSections = useSelector<AdminSetting>(getSections);
 
   useEffect(() => {
     dispatch(reloadSettings());
@@ -35,7 +43,7 @@ export const useCommandPalette = ({
 
   const adminSectionsSearchMap = useMemo(
     () =>
-      Object.keys(adminSections).reduce((memo, key) => {
+      Object.keys(adminSections).reduce<AdminSetting[]>((memo, key) => {
         const settings = adminSections[key].settings || [];
         const path = `/admin/settings/${key}`;
 
@@ -47,6 +55,7 @@ export const useCommandPalette = ({
               name: s.display_name || "",
               description: s.description,
               path,
+              key: s.key,
               displayName: `${key[0].toUpperCase()}${key.slice(1)} / ${
                 s.display_name
               }`,
@@ -177,7 +186,13 @@ export const useCommandPalette = ({
           id: s.displayName,
           children: s.displayName,
           icon: () => <Icon name="gear" />,
-          onClick: () => dispatch(push(s.path)),
+          onClick: () =>
+            dispatch(
+              push({
+                pathname: s.path,
+                hash: `#${s.key}`,
+              }),
+            ),
         })),
       ],
     },
