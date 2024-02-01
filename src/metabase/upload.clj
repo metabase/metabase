@@ -636,7 +636,8 @@
         (driver/add-columns! driver
                              (:id database)
                              (table-identifier table)
-                             {auto-pk-column-keyword (conj (driver/upload-type->database-type driver ::auto-incrementing-int-pk) :primary-key)}))
+                             {auto-pk-column-keyword (conj (driver/upload-type->database-type driver ::auto-incrementing-int-pk))}
+                             :primary-key [auto-pk-column-keyword]))
       (scan-and-sync-table! database table)
       (when create-auto-pk?
         (let [auto-pk-field (table-id->auto-pk-column (:id table))]

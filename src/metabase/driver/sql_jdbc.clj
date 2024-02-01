@@ -13,7 +13,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Connection)))
 
@@ -163,11 +164,15 @@
         (jdbc/execute! conn sql)))))
 
 (defmethod driver/add-columns! :sql-jdbc
-  [driver db-id table-name column-definitions]
-  (let [sql (first (sql/format {:alter-table (keyword table-name)
-                                :add-column (map (fn [[name type-spec]]
-                                                   (vec (cons name type-spec)))
-                                                 column-definitions)}
+  [driver db-id table-name column-definitions & {:keys [primary-key]}]
+  (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
+  (let [primary-key-column (first primary-key)
+        sql (first (sql/format {:alter-table (keyword table-name)
+                                :add-column (cond-> (map (fn [[name type-and-constraints]]
+                                                           (cond-> (vec (cons name type-and-constraints))
+                                                             (= primary-key-column name)
+                                                             (conj :primary-key)))
+                                                         column-definitions))}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))

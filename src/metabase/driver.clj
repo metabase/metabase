@@ -931,8 +931,10 @@
   :hierarchy #'hierarchy)
 
 (defmulti add-columns!
-  "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error."
-  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
+  "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
+  `args` is an optional map with an optional key `primary-key`. The `primary-key` value is a vector of column names
+  that make up the primary key. Currently only a single primary key is supported."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
