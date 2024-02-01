@@ -214,7 +214,7 @@ describe("nav > containers > MainNavbar", () => {
     });
 
     it("should be highlighted if child route selected", async () => {
-      await setup({ pathname: "/browse/1" });
+      await setup({ pathname: "/browse/databases/1" });
       const link = screen.getByRole("listitem", { name: /Browse data/i });
       expect(link).toHaveAttribute("aria-selected", "true");
     });
