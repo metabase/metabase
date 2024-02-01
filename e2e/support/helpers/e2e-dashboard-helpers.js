@@ -19,6 +19,10 @@ export function getDashboardCard(index = 0) {
   return getDashboardCards().eq(index);
 }
 
+export function ensureDashboardCardHasText(text, index = 0) {
+  cy.get(".Card").eq(index).findByText(text);
+}
+
 function getDashboardApiUrl(dashId) {
   return `/api/dashboard/${dashId}`;
 }
@@ -134,6 +138,10 @@ export function setFilter(type, subType) {
   });
 }
 
+export function toggleRequiredParameter() {
+  cy.findByLabelText("Always require a value").click();
+}
+
 export function createEmptyTextBox() {
   cy.findByLabelText("Edit dashboard").click();
   cy.findByLabelText("Add a heading or text box").click();
@@ -238,6 +246,10 @@ export const dashboardHeader = () => {
 export const dashboardGrid = () => {
   return cy.findByTestId("dashboard-grid");
 };
+
+export function dashboardSaveButton() {
+  return cy.findByRole("button", { name: "Save" });
+}
 
 /**
  * @param {Object=} option

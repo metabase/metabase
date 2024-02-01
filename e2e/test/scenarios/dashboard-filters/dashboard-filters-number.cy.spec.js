@@ -8,6 +8,12 @@ import {
   setFilter,
   visitDashboard,
   selectDashboardFilter,
+  toggleRequiredParameter,
+  setFilterWidgetValue,
+  resetFilterWidgetToDefault,
+  dashboardSaveButton,
+  ensureDashboardCardHasText,
+  sidebar,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
@@ -79,5 +85,39 @@ describe("scenarios > dashboard > filters > number", () => {
     cy.get(".Card").within(() => {
       cy.findByText("101.04");
     });
+  });
+
+  it("should support being required", () => {
+    setFilter("Number", "Equal to");
+    selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
+
+    // Can't save without a default value
+    toggleRequiredParameter();
+    dashboardSaveButton().should("be.disabled");
+    dashboardSaveButton().realHover();
+    cy.get("body").findByText(
+      'The "Equal to" parameter requires a default value but none was provided.',
+    );
+
+    sidebar().findByText("Default value").next().click();
+    addWidgetNumberFilter("2.07");
+    dashboardSaveButton().should("not.be.disabled");
+
+    saveDashboard();
+    ensureDashboardCardHasText("37.65");
+
+    // Updates the filter value
+    setFilterWidgetValue("5.27", "Enter a number");
+    ensureDashboardCardHasText("95.77");
+
+    // Resets the value back by clicking widget icon
+    resetFilterWidgetToDefault();
+    filterWidget().findByText("2.07");
+    ensureDashboardCardHasText("37.65");
+
+    // Removing value resets back to default
+    setFilterWidgetValue(null, "Enter a number");
+    filterWidget().findByText("2.07");
+    ensureDashboardCardHasText("37.65");
   });
 });
