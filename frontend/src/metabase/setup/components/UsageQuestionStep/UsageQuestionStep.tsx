@@ -42,7 +42,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
     dispatch(submitUsageReason(usageReason));
   };
 
-  const handleCHange = (value: UsageReason) => {
+  const handleChange = (value: UsageReason) => {
     setUsageReason(value);
   };
 
@@ -67,7 +67,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
         name="usage-reason"
         defaultValue="self-service-analytics"
         value={usageReason}
-        onChange={handleCHange}
+        onChange={handleChange}
         label={
           <Text
             color="text-light"
