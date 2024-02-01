@@ -14,6 +14,7 @@ import { POST } from "metabase/lib/api";
 import type { TUseLLMQuestionNameDescription } from "metabase/plugins/types";
 
 import "./use-llm-question-name-description.css";
+import { getSetting } from "metabase/selectors/settings";
 
 const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 
@@ -25,7 +26,10 @@ export const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
 
   const { loading, value: result } = useAsync(async () => {
     // only generate a name and description if the user is creating a new question
-    if (initialValues.saveType !== "create") {
+    if (
+      !getSetting(state, "ee-openai-api-key") ||
+      initialValues.saveType !== "create"
+    ) {
       return {
         generatedName: undefined,
         generatedDescription: undefined,
