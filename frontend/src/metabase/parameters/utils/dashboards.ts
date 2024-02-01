@@ -90,9 +90,7 @@ export function isDashboardParameterWithoutMapping(
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
-function getMappings(
-  dashcards: DashboardCard[],
-): [ExtendedMapping[], Map<string, Map<string, ExtendedMapping>>] {
+function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
   const extendedParameterMappings = dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
@@ -112,20 +110,25 @@ function getMappings(
     return extendedParameterMappings;
   });
 
-  const mappingsByParameterId = new Map<string, Map<string, ExtendedMapping>>();
+  return extendedParameterMappings;
+}
 
-  for (const mapping of extendedParameterMappings) {
+function getMappingsByParameterId(dashcards: DashboardCard[]) {
+  const mappings = getMappings(dashcards);
+  const mappingsByParameterId = new Map<string, Map<symbol, ExtendedMapping>>();
+
+  for (const mapping of mappings) {
     if (!mappingsByParameterId.has(mapping.parameter_id)) {
       mappingsByParameterId.set(mapping.parameter_id, new Map());
     }
 
-    const targetKey = JSON.stringify(mapping.target);
+    const targetKey = Symbol.for(mapping.target.toString());
     if (!mappingsByParameterId.get(mapping.parameter_id)?.has(targetKey)) {
       mappingsByParameterId.get(mapping.parameter_id)?.set(targetKey, mapping);
     }
   }
 
-  return [extendedParameterMappings, mappingsByParameterId];
+  return mappingsByParameterId;
 }
 
 export function getDashboardUiParameters(
@@ -133,12 +136,12 @@ export function getDashboardUiParameters(
   metadata: Metadata,
 ): UiParameter[] {
   const { parameters, dashcards } = dashboard;
-  const [_, mapMappings] = getMappings(dashcards as DashboardCard[]);
+  const mappings = getMappingsByParameterId(dashcards as DashboardCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(
         parameter,
-        [...(mapMappings.get(parameter.id)?.values() ?? [])],
+        [...(mappings.get(parameter.id)?.values() ?? [])],
         metadata,
       );
     }
@@ -236,7 +239,7 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const [mappings] = getMappings(dashboard.dashcards as DashboardCard[]);
+  const mappings = getMappings(dashboard.dashcards as DashboardCard[]);
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );
