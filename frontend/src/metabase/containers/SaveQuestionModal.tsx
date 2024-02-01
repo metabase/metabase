@@ -140,7 +140,7 @@ export const SaveQuestionModal = ({
     ],
   );
 
-  const { name, description, loading, LLMLoadingIndicator } =
+  const { generatedName, generatedDescription, loading, LLMLoadingIndicator } =
     PLUGIN_LLM_AUTODESCRIPTION.useLLMQuestionNameDescription({
       initialValues,
       question,
@@ -231,7 +231,7 @@ export const SaveQuestionModal = ({
           <FormProvider
             initialValues={{
               ...initialValues,
-              ...{ name, description },
+              ...{ name: generatedName, description: generatedDescription },
               ...resumedValues,
             }}
             onSubmit={handleSubmit}

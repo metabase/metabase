@@ -157,8 +157,8 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 // llm autodescription
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
   useLLMQuestionNameDescription: () => ({
-    name: "",
-    description: "",
+    generatedName: "",
+    generatedDescription: "",
     loading: false,
     LLMLoadingIndicator: () => null,
   }),
