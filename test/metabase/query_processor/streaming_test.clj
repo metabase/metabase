@@ -310,59 +310,58 @@
   "Test helper to enable writing API-level export tests across multiple export endpoints and formats."
   [message {:keys [query viz-settings assertions endpoints user]}]
   (testing message
-    (mt/with-full-data-perms-for-all-users!
-      (let [query-json        (json/generate-string query)
-            viz-settings-json (json/generate-string viz-settings)
-            public-uuid       (str (random-uuid))
-            card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
-            user              (or user :rasta)]
-        (mt/with-temporary-setting-values [enable-public-sharing true
-                                           enable-embedding      true]
-          (embed-test/with-new-secret-key
-            (t2.with-temp/with-temp [Card          card      (if viz-settings
-                                                               (assoc card-defaults :visualization_settings viz-settings)
-                                                               card-defaults)
-                                     Dashboard     dashboard {:name "Test Dashboard"}
-                                     DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
-              (doseq [export-format (keys assertions)
-                      endpoint      (or endpoints [:dataset :card :dashboard :public :embed])]
-                (testing endpoint
-                  (case endpoint
-                    :dataset
-                    (let [results (mt/user-http-request user :post 200
-                                                        (format "dataset/%s" (name export-format))
-                                                        {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                        :query query-json
-                                                        :visualization_settings viz-settings-json)]
-                      ((-> assertions export-format) results))
+    (let [query-json        (json/generate-string query)
+          viz-settings-json (json/generate-string viz-settings)
+          public-uuid       (str (random-uuid))
+          card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
+          user              (or user :rasta)]
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         enable-embedding      true]
+        (embed-test/with-new-secret-key
+          (t2.with-temp/with-temp [Card          card      (if viz-settings
+                                                             (assoc card-defaults :visualization_settings viz-settings)
+                                                             card-defaults)
+                                   Dashboard     dashboard {:name "Test Dashboard"}
+                                   DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
+            (doseq [export-format (keys assertions)
+                    endpoint      (or endpoints [:dataset :card :dashboard :public :embed])]
+              (testing endpoint
+                (case endpoint
+                  :dataset
+                  (let [results (mt/user-http-request user :post 200
+                                                      (format "dataset/%s" (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :query query-json
+                                                      :visualization_settings viz-settings-json)]
+                    ((-> assertions export-format) results))
 
-                    :card
-                    (let [results (mt/user-http-request user :post 200
-                                                        (format "card/%d/query/%s" (u/the-id card) (name export-format))
-                                                        {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                      ((-> assertions export-format) results))
+                  :card
+                  (let [results (mt/user-http-request user :post 200
+                                                      (format "card/%d/query/%s" (u/the-id card) (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results))
 
-                    :dashboard
-                    (let [results (mt/user-http-request user :post 200
-                                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s"
-                                                                (u/the-id dashboard)
-                                                                (u/the-id dashcard)
-                                                                (u/the-id card)
-                                                                (name export-format))
-                                                        {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                      ((-> assertions export-format) results))
+                  :dashboard
+                  (let [results (mt/user-http-request user :post 200
+                                                      (format "dashboard/%d/dashcard/%d/card/%d/query/%s"
+                                                              (u/the-id dashboard)
+                                                              (u/the-id dashcard)
+                                                              (u/the-id card)
+                                                              (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results))
 
-                    :public
-                    (let [results (mt/user-http-request user :get 200
-                                                        (format "public/card/%s/query/%s" public-uuid (name export-format))
-                                                        {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                      ((-> assertions export-format) results))
+                  :public
+                  (let [results (mt/user-http-request user :get 200
+                                                      (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results))
 
-                    :embed
-                    (let [results (mt/user-http-request user :get 200
-                                                        (embed-test/card-query-url card (str "/" (name export-format)))
-                                                        {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                      ((-> assertions export-format) results))))))))))))
+                  :embed
+                  (let [results (mt/user-http-request user :get 200
+                                                      (embed-test/card-query-url card (str "/" (name export-format)))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results)))))))))))
 
 (defn- parse-json-results
   "Convert JSON results into a convenient format for test assertions. Results are transformed into a nested list,
