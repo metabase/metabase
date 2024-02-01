@@ -12,11 +12,12 @@ import {
   updateLocale,
   updateTracking,
   submitSetup,
+  submitUsageReason,
 } from "./actions";
 import {
   COMPLETED_STEP,
-  DATABASE_STEP,
   PREFERENCES_STEP,
+  USAGE_STEP,
   WELCOME_STEP,
 } from "./constants";
 
@@ -49,7 +50,10 @@ export const reducer = createReducer(initialState, builder => {
   });
   builder.addCase(submitUser.pending, (state, { meta }) => {
     state.user = meta.arg;
-    state.step = DATABASE_STEP;
+    state.step = USAGE_STEP;
+  });
+  builder.addCase(submitUsageReason.pending, (state, { meta }) => {
+    state.usageReason = meta.arg;
   });
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
     state.databaseEngine = meta.arg;
