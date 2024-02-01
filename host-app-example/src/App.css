@@ -38,6 +38,15 @@
     border-radius: 0.5rem;
 }
 
+.QueryVisualization-placeholder {
+    display: grid;
+    place-items: center;
+    font-weight: bold;
+    height: 100%;
+    color: darkgray;
+    font-size: 1.5rem;
+}
+
 .ChooseQuestion-input {
     width: 100%;
     padding: 0.5rem;

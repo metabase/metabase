@@ -33,6 +33,15 @@ export const MetabaseProvider = ({
 
   const [loading, setLoading] = useState(true);
 
+  Promise.all([
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    store.dispatch(refreshCurrentUser()),
+    store.dispatch(reloadSettings()),
+  ]).then(() => {
+    setLoading(false);
+  });
+
   useEffect(() => {
     if (font) {
       store.dispatch(setOptions({ font }));
@@ -41,16 +50,6 @@ export const MetabaseProvider = ({
 
   useEffect(() => {
     registerVisualizations();
-
-    Promise.all([
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      store.dispatch(refreshCurrentUser()),
-      store.dispatch(reloadSettings()),
-    ]).then(() => {
-      setLoading(false);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
