@@ -5239,7 +5239,7 @@ databaseChangeLog:
               - column:
                   name: width
                   type: varchar(16)
-                  defaultValue: 'fixed'
+                  defaultValue: "fixed"
                   remarks: "The value of the dashboard's width setting can be fixed or full. New dashboards will be set to fixed"
 
   - changeSet:
@@ -5252,7 +5252,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: width
-                  value: 'full'
+                  value: "full"
       rollback: []
 
   - changeSet:
@@ -5264,8 +5264,22 @@ databaseChangeLog:
             tableName: report_dashboard
             columnName: width
             columnDatatype: varchar(16)
-            defaultNullvalue: 'full'
+            defaultNullvalue: "full"
             remarks: "If for some reason an existing dashboard has null width value it is set to full"
+
+  - changeSet:
+      id: v49.2024-01-29T19:59:12
+      author: adam-james
+      comment: Add default value to report_dashboard.width for mysql and mariadb
+      changes:
+        - addDefaultValue:
+            defaultValue: "fixed"
+            tableName: report_dashboard
+            columnName: width
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
