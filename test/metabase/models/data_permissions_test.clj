@@ -116,6 +116,34 @@
           (is (nil?     (data-access-perm-value table-id-2)))
           (is (nil?     (data-access-perm-value table-id-3))))))))
 
+#_(deftest set-simple-table-permission-in-groups!-test
+    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}  {}
+                   :model/PermissionsGroup {group-id-2 :id}  {}
+                   :model/PermissionsGroup {group-id-3 :id}  {}
+                   :model/Database         {database-id :id} {}
+                   :model/Table            {table-id-1 :id}  {:db_id database-id}
+                   :model/Table            {table-id-2 :id}  {:db_id database-id}]
+      (let [data-access-perm-value (fn [table-id group-id]
+                                       (t2/select-one-fn :perm_value :model/DataPermissions
+                                                         :db_id     database-id
+                                                         :group_id  group-id
+                                                         :table_id  table-id
+                                                         :perm_type :perms/data-access))]
+        (testing "A single table can be set to a value in multiple groups"
+          (data-perms/set-simple-table-permission-in-groups!
+           [group-id-1 group-id-2] table-id-1 :perms/data-access :unrestricted)
+          (is (= :unrestricted (data-access-perm-value table-id-1 group-id-1)))
+          (is (= :unrestricted (data-access-perm-value table-id-1 group-id-2)))
+          (is (= :no-self-service (data-access-perm-value table-id-1 group-id-3)))
+          (is (nil? (data-access-perm-value nil group-id-2))))
+
+        (testing "Setting another table to the same value does *not* coalesce the values automatically"
+          (data-perms/set-simple-table-permission-in-groups!
+           [group-id-1] table-id-2 :perms/data-access :unrestricted)
+          (is (= :unrestricted (data-access-perm-value table-id-1 group-id-1)))
+          (is (= :unrestricted (data-access-perm-value table-id-1 group-id-2)))
+          (is (nil? (data-access-perm-value nil group-id-2)))))))
+
 (deftest database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/PermissionsGroup           {group-id-2 :id}    {}
