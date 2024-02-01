@@ -81,8 +81,7 @@
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
-  (let [defaults  {:parameters []
-                   :width      "fixed"}
+  (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
       (params/assert-valid-parameters dashboard)
