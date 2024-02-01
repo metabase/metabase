@@ -30,9 +30,9 @@ const Bookmarks = createEntity({
   },
   actions: {
     reorder: bookmarks => {
-      const orderings = bookmarks.map(({ type, item_id }) => ({
-        type,
-        item_id,
+      const orderings = bookmarks.map(({ model, id }) => ({
+        type: model,
+        item_id: id,
       }));
       BookmarkApi.reorder(
         { orderings: { orderings } },
@@ -96,23 +96,23 @@ const Bookmarks = createEntity({
   },
 });
 
-function getEntityFor(type) {
+function getEntityFor(model) {
   const entities = {
     card: Questions,
     collection: Collections,
     dashboard: Dashboards,
   };
 
-  return entities[type];
+  return entities[model];
 }
 
 function getIcon(bookmark) {
-  const bookmarkEntity = getEntityFor(bookmark.type);
+  const bookmarkEntity = getEntityFor(bookmark.model);
   return bookmarkEntity.objectSelectors.getIcon(bookmark);
 }
 
 export function isModelBookmark(bookmark) {
-  return bookmark.type === "card" && bookmark.dataset;
+  return bookmark.model === "card" && bookmark.dataset;
 }
 
 export const getOrderedBookmarks = createSelector(

@@ -40,7 +40,7 @@ function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
 
   return bookmarks.some(
     bookmark =>
-      bookmark.type === normalizedItemModel && bookmark.item_id === item.id,
+      bookmark.model === normalizedItemModel && bookmark.id === item.id,
   );
 }
 

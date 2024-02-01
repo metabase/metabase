@@ -29,8 +29,8 @@ import { SidebarHeading } from "../../MainNavbar.styled";
 import { SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {
-  onDeleteBookmark: ({ item_id, type }: Bookmark) =>
-    Bookmarks.actions.delete({ id: item_id, type }),
+  onDeleteBookmark: ({ id, model }: Bookmark) =>
+    Bookmarks.actions.delete({ id, type: model }),
 };
 
 interface CollectionSidebarBookmarksProps {
@@ -64,7 +64,7 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
     return false;
   }
   return (
-    bookmark.type === selectedItem.type && bookmark.item_id === selectedItem.id
+    bookmark.model === selectedItem.type && bookmark.id === selectedItem.id
   );
 }
 
@@ -81,13 +81,13 @@ const BookmarkItem = ({
   const onRemove = () => onDeleteBookmark(bookmark);
 
   const isIrregularCollection =
-    bookmark.type === "collection" &&
+    bookmark.model === "collection" &&
     !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
 
   return (
-    <Sortable id={bookmark.id} key={bookmark.id}>
+    <Sortable id={bookmark.bookmark_id} key={bookmark.bookmark_id}>
       <SidebarBookmarkItem
-        key={`bookmark-${bookmark.id}`}
+        key={`bookmark-${bookmark.bookmark_id}`}
         url={url}
         icon={icon}
         isSelected={isSelected}
@@ -139,14 +139,18 @@ const BookmarkList = ({
     input => {
       document.body.classList.remove("grabbing");
       setIsSorting(false);
-      const newIndex = bookmarks.findIndex(b => b.id === input.over.id);
-      const oldIndex = bookmarks.findIndex(b => b.id === input.active.id);
+      const newIndex = bookmarks.findIndex(
+        b => b.bookmark_id === input.over.id,
+      );
+      const oldIndex = bookmarks.findIndex(
+        b => b.bookmark_id === input.active.id,
+      );
       reorderBookmarks({ newIndex, oldIndex });
     },
     [reorderBookmarks, bookmarks],
   );
 
-  const bookmarkIds = bookmarks.map(b => b.id);
+  const bookmarkIds = bookmarks.map(b => b.bookmark_id);
 
   return (
     <CollapseSection

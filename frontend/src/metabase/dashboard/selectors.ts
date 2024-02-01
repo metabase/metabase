@@ -240,8 +240,7 @@ export const getIsBookmarked = (
   { bookmarks, dashboardId }: IsBookmarkedSelectorProps,
 ) =>
   bookmarks.some(
-    bookmark =>
-      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
+    bookmark => bookmark.model === "dashboard" && bookmark.id === dashboardId,
   );
 
 export const getIsDirty = createSelector(

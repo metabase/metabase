@@ -9,5 +9,5 @@ type GetIsBookmarkedProps = {
 export const getIsBookmarked = (_state: State, props: GetIsBookmarkedProps) =>
   props.bookmarks.some(
     bookmark =>
-      bookmark.type === "collection" && bookmark.item_id === props.collectionId,
+      bookmark.model === "collection" && bookmark.id === props.collectionId,
   );
