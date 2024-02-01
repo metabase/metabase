@@ -231,6 +231,7 @@ export interface Settings {
   "is-metabot-enabled": boolean;
   "jwt-enabled"?: boolean;
   "jwt-configured"?: boolean;
+  "keybindings"?: string;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;

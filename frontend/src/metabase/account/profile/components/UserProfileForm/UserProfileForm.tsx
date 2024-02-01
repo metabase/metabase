@@ -19,6 +19,7 @@ const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
   first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   email: Yup.string().ensure().required(Errors.required).email(Errors.email),
+  keybindings: Yup.string().nullable().default(null),
 });
 
 export interface UserProfileFormProps {
@@ -84,6 +85,15 @@ const UserProfileForm = ({
             name="locale"
             title={t`Language`}
             options={localeOptions}
+          />
+          <FormSelect
+            name="keybindings"
+            title={t`SQL Editor Keybindings`}
+            options={[
+              { name: t`Default`, value: null },
+              { name: t`Vim`, value: "vim" },
+              { name: t`Emacs`, value: "emacs" },
+            ]}
           />
           <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
           <FormErrorMessage />

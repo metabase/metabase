@@ -809,3 +809,10 @@
                   (if-not (pos-int? value)
                     20
                     value))))
+
+(defsetting keybindings
+  (deferred-tru "Keybindings to use for the SQL editor for each user")
+  :user-local :only
+  :type       :keyword
+  :default    nil
+  :export?    false)

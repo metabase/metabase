@@ -333,6 +333,11 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
+(defn add-keybindings
+  "Adds keybindings to the current user."
+  [user]
+  (assoc user :keybindings (public-settings/keybindings)))
+
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
@@ -342,7 +347,8 @@
       add-first-login
       maybe-add-advanced-permissions
       maybe-add-sso-source
-      add-custom-homepage-info))
+      add-custom-homepage-info
+      add-keybindings))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
@@ -414,7 +420,7 @@
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
   [id :as {{:keys [email first_name last_name user_group_memberships
-                   is_superuser is_group_manager login_attributes locale] :as body} :body}]
+                   is_superuser is_group_manager login_attributes locale keybindings] :as body} :body}]
   {id                     ms/PositiveInt
    email                  [:maybe ms/Email]
    first_name             [:maybe ms/NonBlankString]
@@ -423,7 +429,8 @@
    is_superuser           [:maybe :boolean]
    is_group_manager       [:maybe :boolean]
    login_attributes       [:maybe user/LoginAttributes]
-   locale                 [:maybe ms/ValidLocale]}
+   locale                 [:maybe ms/ValidLocale]
+   keybindings            [:maybe :keyword]}
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -455,6 +462,8 @@
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! User id changes)
+          (when (= id api/*current-user-id*)
+            (public-settings/keybindings! keybindings))
           (events/publish-event! :event/user-update {:object (t2/select-one User :id id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))

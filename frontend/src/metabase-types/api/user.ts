@@ -12,6 +12,7 @@ export interface BaseUser {
   common_name: string;
   email: string;
   locale: string | null;
+  keybindings: string | null;
   google_auth: boolean;
   is_active: boolean;
   is_qbnewb: boolean;

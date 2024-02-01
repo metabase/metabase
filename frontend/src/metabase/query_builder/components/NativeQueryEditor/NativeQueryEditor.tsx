@@ -8,6 +8,9 @@ import slugg from "slugg";
 import * as ace from "ace-builds/src-noconflict/ace";
 import type { Ace } from "ace-builds";
 
+import "ace-builds/src-noconflict/keybinding-vim";
+import "ace-builds/src-noconflict/keybinding-emacs";
+
 import "ace/ace";
 import "ace/ext-language_tools";
 import "ace/ext-searchbox";
@@ -22,6 +25,8 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import * as Lib from "metabase-lib";
 
+import { getSetting } from "metabase/selectors/settings";
+
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 
@@ -29,8 +34,6 @@ import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Questions from "metabase/entities/questions";
-
-import { getSetting } from "metabase/selectors/settings";
 
 import { checkNotNull } from "metabase/lib/types";
 import { isEventOverElement } from "metabase/lib/dom";
@@ -146,6 +149,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   toggleSnippetSidebar: () => void;
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
+  keybindings: string | null;
 };
 
 interface StateProps {
@@ -398,7 +402,7 @@ export class NativeQueryEditor extends Component<
   };
 
   loadAceEditor() {
-    const { query } = this.props;
+    const { query, keybindings } = this.props;
 
     const editorElement = this.editor.current;
 
@@ -443,6 +447,15 @@ export class NativeQueryEditor extends Component<
       highlightGutterLine: false,
       showLineNumbers: true,
     });
+
+    switch (keybindings) {
+      case "vim":
+        editor.setKeyboardHandler("ace/keyboard/vim");
+        break;
+      case "emacs":
+        editor.setKeyboardHandler("ace/keyboard/emacs");
+        break;
+    }
 
     let lastAutoComplete: LastAutoComplete = {
       timestamp: 0,
@@ -907,6 +920,7 @@ export class NativeQueryEditor extends Component<
 
 const mapStateToProps = (state: State) => ({
   canUsePromptInput: getSetting(state, "is-metabot-enabled"),
+  keybindings: state.currentUser?.keybindings,
 });
 
 const mapDispatchToProps = (dispatch: Dispatch) => ({
