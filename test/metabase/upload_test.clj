@@ -98,7 +98,8 @@
 
 (defn sync-upload-test-table!
   "Creates a table in the app db and syncs it synchronously, setting is_upload=true. Returns the table instance.
-  The result is identical to if the table was synced with [[metabase.sync/sync-database!]], but faster."
+  The result is identical to if the table was synced with [[metabase.sync/sync-database!]], but faster because it skips
+  syncing every table in the test database."
   [& {:keys [database table-name schema-name]}]
   (let [table (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})]
     (t2/update! :model/Table (:id table) {:is_upload true})
