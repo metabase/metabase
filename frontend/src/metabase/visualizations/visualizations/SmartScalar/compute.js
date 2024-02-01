@@ -383,11 +383,24 @@ function computeComparisonPeriodsAgo({
     dateUnitSettings.dateUnit,
   ).toLowerCase();
 
-  const prevDate = moment
+  const computedPrevDate = moment
     .parseZone(nextDate)
     .subtract(dateUnitsAgo, dateUnitSettings.dateUnit)
     .format();
 
+  const rowPeriodsAgo = getRowOfPeriodsAgo({
+    prevDate: computedPrevDate,
+    dateUnit: dateUnitSettings.dateUnit,
+    dateUnitsAgo,
+    dimensionColIndex,
+    metricColIndex,
+    nextValueRowIndex,
+    rows,
+  });
+
+  const prevDate = !isEmpty(rowPeriodsAgo)
+    ? rowPeriodsAgo[dimensionColIndex]
+    : computedPrevDate;
   const comparisonDescStr =
     dateUnitsAgo === 1
       ? t`vs. previous ${dateUnitDisplay}`
@@ -398,15 +411,6 @@ function computeComparisonPeriodsAgo({
           formatValue,
         });
 
-  const rowPeriodsAgo = getRowOfPeriodsAgo({
-    prevDate,
-    dateUnit: dateUnitSettings.dateUnit,
-    dateUnitsAgo,
-    dimensionColIndex,
-    metricColIndex,
-    nextValueRowIndex,
-    rows,
-  });
   // if no row exists with date "X periods ago"
   if (isEmpty(rowPeriodsAgo)) {
     return {
@@ -435,14 +439,14 @@ function getRowOfPeriodsAgo({
   // skip the latest element since that is our current value
   const searchIndexStart = nextValueRowIndex - 1;
   if (searchIndexStart < 0) {
-    return -1;
+    return undefined;
   }
 
   // only look dateUnitsAgo elements (dates) into the past,
   // since looking any further would automatically result in a date before
   // X periods ago and any prior dates would be further beyond our desired
   // comparison date
-  const lastCandidateIndex = nextValueRowIndex - 1 - (dateUnitsAgo - 1);
+  const lastCandidateIndex = searchIndexStart - (dateUnitsAgo - 1);
   const searchIndexEnd = lastCandidateIndex >= 0 ? lastCandidateIndex : 0;
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
@@ -517,30 +521,10 @@ function formatDateStr({ date, dateUnitSettings, options, formatValue }) {
   const { dateColumn, dateColumnSettings, dateUnit, queryType } =
     dateUnitSettings;
 
-  if (isEmpty(dateUnit)) {
+  if (isEmpty(dateUnit) || queryType === "native") {
     return formatValue(date, {
       ...dateColumnSettings,
       column: dateColumn,
-    });
-  }
-
-  // since native queries are custom and do not go through the query builder
-  // the represented date for date ranges (year, month, day, ...)
-  // can be at the start of a range, middle of a range, end of range, or
-  // however the sql writer decides they want the aggregated date range to be
-  // represented as.
-  // - 2023-01-01 can represent the year 2023
-  // - 2023-12-31 can represent the year 2023
-  // - etc.
-  // this adjusts the date to be the start of that range,
-  // i.e. what formatDateTimeRangeWithUnit expects
-  // ! STILL NEED TO CONSIDER THE IMPLICATIONS OF THIS ON ALL NATIVE QUERIES
-  // !!!!!!!!
-  if (queryType === "native") {
-    const adjustedDate = moment.parseZone(date).startOf(dateUnit).format();
-    return formatDateTimeRangeWithUnit([adjustedDate], dateUnit, {
-      ...options,
-      compact: true,
     });
   }
 
