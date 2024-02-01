@@ -30,32 +30,29 @@
 ;; - [ ] used in alerts,
 ;; - [ ] question used by another question
 
-;; (defn new-query
-;;   "This query selects archiavable, orphaned cards, that have been created_at"
-;;   [{:keys [time-ago collection-id]}]
-;;   {:select [:card.id
-;;             :card.name
-;;             :card.created_at
-;;             [:vlog.timestamp :last_viewed]
-;;             [:vlog.model :model]]
-;;    :from      [[:report_card :card]]
-;;    :left-join [[:view_log :vlog] [:= :card.id :vlog.model_id]
-;;                [:report_dashboardcard :dc] [:= :card.id :dc.card_id]
-;;                [:collection :coll] [:= :card.collection_id :coll.id]
-;;                [:moderation_review :mr] [:= :card.id :mr.moderated_item_id]]
-;;    :where     [:and
-;;                (when collection-id [:= :card.collection_id collection-id])
-;;                [:not [:= :coll.type "instance-analytics"]]
-;;                [:= :vlog.model "card"]
-;;                [:not [:= :card.database_id perms/audit-db-id]]
-;;                [:or
-;;                 [:< :vlog.timestamp {:raw (format "NOW() - INTERVAL '%s'" time-ago)}]
-;;                 [:and
-;;                  [:= :vlog.timestamp nil]
-;;                  [:< :card.created_at {:raw (format "NOW() - INTERVAL '%s'" time-ago)}]]]
-;;                [:= :mr.moderated_item_type "card"]
-;;                [:not [:= :mr.status "verified"]]]
-;;    :group-by [:card.id :vlog.model_id :vlog.timestamp :model]})
+
+;; WITH latest_view_log AS (
+;;   SELECT
+;;     model_id,
+;;     MAX(timestamp) AS max_timestamp
+;;   FROM
+;;     view_log
+;;   WHERE
+;;     model = 'card'
+;;   GROUP BY
+;;     model_id
+;; )
+;; SELECT
+;;   rc.id AS model_id,
+;;   vl.model AS model,
+;;   vl.timestamp AS timestamp,
+;;   c.id AS collection_id
+;; FROM
+;;   report_card rc
+;;   JOIN view_log vl ON rc.id = vl.model_id
+;;   JOIN latest_view_log l_vl ON vl.model_id = l_vl.model_id
+;;     AND vl.timestamp = l_vl.max_timestamp
+;;   LEFT JOIN collection c ON c.id = rc.collection_id;
 
 (defn query
   "This query selects archiavable, orphaned cards, that have been created_at"
