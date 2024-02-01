@@ -5,9 +5,8 @@ import {
 } from "metabase-embedding-sdk";
 import { HelloName } from "./HelloName";
 import { Welcome } from "./Welcome";
-import { ChooseQuestionInput } from "./ChooseQuestionInput";
-import "./App.css"
-
+import { QuestionList } from "./QuestionList";
+import "./App.css";
 
 function App() {
   const [questionId, setQuestionId] = useState(105);
@@ -24,9 +23,10 @@ function App() {
         </div>
 
         <div class="App-body">
-          <ChooseQuestionInput
-            questionId={questionId}
-            setQuestionId={setQuestionId}
+          <QuestionList
+            className="QuestionList-container"
+            selectedQuestionId={questionId}
+            setSelectedQuestionId={setQuestionId}
           />
 
           <div class="QueryVisualization-container">

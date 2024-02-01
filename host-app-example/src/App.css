@@ -7,6 +7,8 @@
     font-size: 2rem;
     padding: 2rem;
     background-color: aliceblue;
+
+    overflow: hidden;
 }
 
 .App-body {
@@ -14,7 +16,11 @@
     background: white;
     height: 100%;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+
+    overflow: hidden;
+
+    gap: 2rem;
 }
 
 .App-container {
@@ -39,4 +45,29 @@
     margin-bottom: 1rem;
     border: 1px solid #ccc;
     border-radius: 0.5rem;
+}
+
+.QuestionList-container {
+    overflow: scroll;
+}
+
+.QuestionList-item {
+    cursor: pointer;
+    padding: 0.5rem 0.5rem;
+
+    width: 30vw;
+
+    border-radius: 0.25rem;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.QuestionList-item:hover {
+    background: aliceblue;
+}
+
+.QuestionList-item--selected {
+    background: #ccc;
 }
