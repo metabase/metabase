@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { useAsync } from "react-use";
+import { useState } from "react";
 import { color } from "metabase/lib/colors";
 import {
   UtilApi,
@@ -11,13 +12,28 @@ import {
 } from "metabase/services";
 
 import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
-import { Button, Center, Icon, Loader, Text, Stack, Box } from "metabase/ui";
+import {
+  Button,
+  Center,
+  Icon,
+  Loader,
+  Text,
+  Stack,
+  Box,
+  Modal,
+} from "metabase/ui";
 import EmptyState from "metabase/components/EmptyState";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 
 import NoResults from "assets/img/no_results.svg";
 import { b64url_to_utf8 } from "metabase/lib/encoding";
 import Link from "metabase/core/components/Link";
+import {
+  Form,
+  FormCheckbox,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({
@@ -134,18 +150,21 @@ function downloadObjectAsJson(exportObj: any, exportName: string) {
 
 export const ReportableError = () => {
   const location = window.location.href;
+
+  const matches = location.match(
+    /(question|dashboard|collection)[[\/\#]([\d\w]+)/,
+  );
+
+  const entity = matches?.[1] ?? "";
+  const id = matches?.[2] ?? "";
+
   const {
     value: errorInfo,
     loading,
     error,
   } = useAsync(async () => {
     // https://regexr.com/7ra8o
-    const matches = location.match(
-      /(question|dashboard|collection)[[\/\#]([\d\w]+)/,
-    );
 
-    const entity = matches?.[1] ?? "unknown";
-    const id = matches?.[2] ?? "unknown";
     const isAdHoc = entity === "question" && location.includes("#");
     const entityInfoRequest = getEntityDetails({ entity, id, isAdHoc });
     const bugReportDetailsRequest = UtilApi.bug_report_details();
@@ -165,7 +184,6 @@ export const ReportableError = () => {
     const [entityInfo, bugReportDetails, logs] = settledPromises.map(
       (promise: any) => promise.value,
     );
-
     const queryData =
       entity === "question" &&
       entityInfo?.dataset_query &&
@@ -185,13 +203,13 @@ export const ReportableError = () => {
     };
   });
 
-  const downloadErrorFile = () => {
+  const [opened, setOpened] = useState(false);
+
+  const downloadErrorFile = (data: any) => {
     downloadObjectAsJson(
-      errorInfo,
+      data,
       `metabase-diagnostic-info-${new Date().toISOString()}`,
     );
-    const errorsString = JSON.stringify(errorInfo, null, 2);
-    navigator.clipboard.writeText(errorsString);
   };
 
   if (loading) {
@@ -217,9 +235,89 @@ export const ReportableError = () => {
           </Link>
         </Text>
       </Box>
-      <Button leftIcon={<Icon name="download" />} onClick={downloadErrorFile}>
+      <Button
+        leftIcon={<Icon name="download" />}
+        onClick={() => setOpened(true)}
+      >
         Download diagnostic information for Jacob
       </Button>
+      {opened && (
+        <ErrorDownloadOptionsModal
+          errorInfo={errorInfo}
+          onDownload={downloadErrorFile}
+          entity={entity}
+          onClose={() => setOpened(false)}
+        />
+      )}
     </Stack>
+  );
+};
+
+export const ErrorDownloadOptionsModal = ({
+  errorInfo,
+  onDownload,
+  entity,
+  onClose,
+}: any) => {
+  const handleSubmit = values => {
+    const selectedInfo = Object.entries(values).reduce((acc, [key, value]) => {
+      if (value) {
+        acc[key] = errorInfo[key];
+      }
+      return acc;
+    }, {});
+    onDownload(selectedInfo);
+    onClose();
+  };
+
+  return (
+    <Modal
+      opened
+      onClose={onClose}
+      title={t`Select the information you want to include in the diagnostic file`}
+    >
+      <FormProvider
+        initialValues={{
+          frontendErrors: true,
+          backendErrors: true,
+          logs: true,
+          entityInfo: true,
+          queryData: true,
+        }}
+        onSubmit={handleSubmit}
+      >
+        <Form>
+          <Stack spacing="md">
+            <FormCheckbox
+              name="frontendErrors"
+              label={t`Include frontend error messages`}
+            />
+            <FormCheckbox
+              name="backendErrors"
+              label={t`Include backend error messages`}
+            />
+            {!!entity && (
+              <>
+                <FormCheckbox
+                  name="entityInfo"
+                  label={t`Include ${entity} data`}
+                />
+                {entity === "question" && (
+                  <FormCheckbox
+                    name="queryData"
+                    label={t`Include query data`}
+                  />
+                )}
+              </>
+            )}
+            <FormCheckbox name="logs" label={t`Include backend logs`} />
+            <FormSubmitButton
+              leftIcon={<Icon name="download" />}
+              label={t`Download diagnostic information`}
+            />
+          </Stack>
+        </Form>
+      </FormProvider>
+    </Modal>
   );
 };
