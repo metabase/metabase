@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { push } from "react-router-redux";
+import styled from "@emotion/styled";
 import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
 import { useRecentItemListQuery } from "metabase/common/hooks";
 import type { IconName } from "metabase/ui";
@@ -10,7 +11,7 @@ import {
   getItemName,
   getItemUrl,
 } from "metabase/nav/components/search/RecentsList/util";
-import { Flex, Paper } from "metabase/ui";
+import { Flex, Paper, Text } from "metabase/ui";
 import { isMac } from "metabase/lib/browser";
 
 type RecentsListProps = {
@@ -28,11 +29,15 @@ export interface WrappedRecentItem extends RecentItem {
   };
 }
 
-const ShortcutKey = ({ children }: { children: React.ReactNode }) => {
-  <Flex p=".25rem" bg="gray">
-    {children}
-  </Flex>;
-};
+const ShortcutKey = styled(Text)`
+  padding: 0.25rem;
+  background-color: #f9fbfc;
+  border-radius: 0.25rem;
+  border: 1px solid #f0f0f0;
+  font-weight: bold;
+  font-size: 8pt;
+  line-height: 12pt;
+`;
 
 export const RecentsList = ({ onClick, className }: RecentsListProps) => {
   const { data = [], isLoading: isRecentsListLoading } = useRecentItemListQuery(
@@ -74,8 +79,29 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
         results={wrappedResults}
         onClick={onContainerClick}
       />
-      <Flex p="1rem">
-        <ShortcutKey>{metaKey}K</ShortcutKey> Command palette
+      <Flex
+        px="1rem"
+        py=".5rem"
+        gap=".5rem"
+        align="center"
+        bg="#f9fbfc"
+        style={{
+          borderBottomLeftRadius: ".5rem",
+          borderBottomRightRadius: ".5rem",
+          borderTop: "1px solid #f0f0f0",
+        }}
+      >
+        <ShortcutKey>{metaKey} + K</ShortcutKey>{" "}
+        <Text
+          size="sm"
+          style={{
+            color: "#949AAB",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+          }}
+        >
+          for command palette
+        </Text>
       </Flex>
     </Paper>
   );
