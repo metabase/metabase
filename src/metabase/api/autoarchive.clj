@@ -102,11 +102,11 @@
 
 (api/defendpoint GET "/collection/:collection-id" [collection-id]
   {collection-id [:maybe ms/PositiveInt]}
-  (query {:collection-id collection-id}))
+  (t2/query (query {:collection-id collection-id})))
 
 (api/defendpoint GET "/collection/models" [collection-id]
   {collection-id [:maybe ms/PositiveInt]}
-  (query {:get-models true}))
+  (t2/query (query {:get-models true})))
 
 (api/define-routes)
 
