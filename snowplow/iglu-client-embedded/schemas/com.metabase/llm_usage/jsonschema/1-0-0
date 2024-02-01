@@ -28,7 +28,7 @@
     "created": {
       "description": "Creation time of the event",
       "type": [
-        "string",
+        "integer",
         "null"
       ],
       "minimum": 0,
