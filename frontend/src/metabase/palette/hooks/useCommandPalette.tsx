@@ -111,6 +111,16 @@ export const useCommandPalette = ({
             },
           },
           {
+            id: "admin_settings",
+            children: t`Admin settings`,
+            icon: () => <Icon name="gear" />,
+            closeOnSelect: false,
+            onClick: () => {
+              setQuery("");
+              setPage("admin_settings");
+            },
+          },
+          {
             id: "search_docs",
             children: query
               ? jt`${(
@@ -132,16 +142,6 @@ export const useCommandPalette = ({
               } else {
                 window.open(`${host}/docs/latest`);
               }
-            },
-          },
-          {
-            id: "admin_settings",
-            children: t`Admin settings`,
-            icon: () => <Icon name="gear" />,
-            closeOnSelect: false,
-            onClick: () => {
-              setQuery("");
-              setPage("admin_settings");
             },
           },
         ],
