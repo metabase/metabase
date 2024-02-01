@@ -25,8 +25,8 @@
 
 ;; TODO
 ;; - [X] audit,
-;; - [ ] official,
-;; - [ ] alerts,
+;; - [X] official,
+;; - [ ] used in alerts,
 ;; - [ ] question used by another question
 
 (defn query
@@ -40,7 +40,8 @@
    :from      [[:report_card :card]]
    :left-join [[:view_log :vlog] [:= :card.id :vlog.model_id]
                [:report_dashboardcard :dc] [:= :card.id :dc.card_id]
-               [:collection :coll] [:= :card.collection_id :coll.id]]
+               [:collection :coll] [:= :card.collection_id :coll.id]
+               [:moderation_review :mr] [:= :card.id :mr.moderated_item_id]]
    :where     [:and
                (when collection-id [:= :card.collection_id collection-id])
                [:not [:= :coll.type "instance-analytics"]]
@@ -50,7 +51,9 @@
                 [:< :vlog.timestamp {:raw (format "NOW() - INTERVAL '%s'" time-ago)}]
                 [:and
                  [:= :vlog.timestamp nil]
-                 [:< :card.created_at {:raw (format "NOW() - INTERVAL '%s'" time-ago)}]]]]})
+                 [:< :card.created_at {:raw (format "NOW() - INTERVAL '%s'" time-ago)}]]]
+               [:= :mr.moderated_item_type "card"]
+               [:not [:= :mr.status "verified"]]]})
 
 (defn- auto-archivable-questions [{:keys [collection-id time-ago]}]
   (->> (t2/query (query {:time-ago time-ago
