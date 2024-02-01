@@ -42,7 +42,7 @@
    [metabase.shared.util.i18n :refer [trs]]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util :as u]
-   [metabase.util.embed :refer [maybe-populate-first-published-at]]
+   [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -480,7 +480,7 @@
       populate-result-metadata
       pre-update
       populate-query-fields
-      maybe-populate-first-published-at
+      maybe-populate-initially-published-at
       (dissoc :id)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests

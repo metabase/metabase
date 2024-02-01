@@ -28,7 +28,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
-   [metabase.util.embed :refer [maybe-populate-first-published-at]]
+   [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -99,7 +99,7 @@
     (params/assert-valid-parameters dashboard)
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
     (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
-  (maybe-populate-first-published-at dashboard))
+  (maybe-populate-initially-published-at dashboard))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -223,7 +223,7 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-dashboard-revision
-  [:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id
+  [:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id :initially_published_at
    ;; not sure what position is for, from the column remark:
    ;; > The position this Dashboard should appear in the Dashboards list,
    ;;   lower-numbered positions appearing before higher numbered ones.

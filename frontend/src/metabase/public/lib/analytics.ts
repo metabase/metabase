@@ -43,15 +43,15 @@ export const trackStaticEmbedPublished = ({
 
 export const trackStaticEmbedUnpublished = ({
   artifact,
-  first_published_at,
+  initially_published_at,
 }: {
   artifact: EmbedResourceType;
-  first_published_at: string | null;
+  initially_published_at: string | null;
 }): void => {
   trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
     event: "static_embed_unpublished",
     artifact,
-    first_published_at,
+    initially_published_at,
   });
 };
 

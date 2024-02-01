@@ -5232,13 +5232,13 @@ databaseChangeLog:
       id: v49.2024-01-26T22:32:54
       author: oisincoveney
       comment: >-
-        Add report_card.first_published_at
+        Add report_card.initially_published_at
       changes:
         - addColumn:
             tableName: report_card
             columns:
               - column:
-                  name: first_published_at
+                  name: initially_published_at
                   type: ${timestamp_type}
                   constraints:
                     nullable: true
@@ -5248,13 +5248,13 @@ databaseChangeLog:
         id: v49.2024-01-26T23:27:28
         author: oisincoveney
         comment: >-
-          Add report_dashboard.first_published_at
+          Add report_dashboard.initially_published_at
         changes:
           - addColumn:
               tableName: report_dashboard
               columns:
                 - column:
-                    name: first_published_at
+                    name: initially_published_at
                     type: ${timestamp_type}
                     constraints:
                       nullable: true

@@ -154,7 +154,7 @@ export const StaticEmbedSetupPane = ({
     await onUpdateEnableEmbedding(false);
     trackStaticEmbedUnpublished({
       artifact: resourceType,
-      first_published_at: resource.first_published_at,
+      initially_published_at: resource.initially_published_at,
     });
   };
 

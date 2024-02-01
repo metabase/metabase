@@ -403,7 +403,7 @@ describe("embed modal display", () => {
           expectGoodSnowplowEvent({
             event: "static_embed_unpublished",
             artifact: resource,
-            first_published_at: "2021-01-01T00:00:00.000Z",
+            initially_published_at: "2021-01-01T00:00:00.000Z",
           });
         });
       });
@@ -459,6 +459,6 @@ function enableEmbeddingForResource({ resource, id, isDirty = false }) {
           test: "locked",
         }
       : {},
-    first_published_at: "2021-01-01T00:00:00.000Z",
+    initially_published_at: "2021-01-01T00:00:00.000Z",
   });
 }

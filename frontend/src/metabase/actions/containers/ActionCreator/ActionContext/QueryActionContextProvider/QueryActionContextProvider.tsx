@@ -76,7 +76,7 @@ function convertActionToQuestionCard(
     average_query_time: null,
     archived: false,
     enable_embedding: false,
-    first_published_at: null,
+    initially_published_at: null,
   };
 }
 

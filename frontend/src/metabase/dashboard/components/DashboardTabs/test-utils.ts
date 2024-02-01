@@ -66,7 +66,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       ],
       public_uuid: null,
       enable_embedding: false,
-      first_published_at: null,
+      initially_published_at: null,
     },
   },
   dashcards: {
