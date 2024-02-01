@@ -295,12 +295,12 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
 
 export const loadMetadataForDependentItems =
   (dependentItems, options) => dispatch => {
-    const dependencies = _.uniq(
+    const uniqueDependentItems = _.uniq(
       dependentItems,
       false,
       ({ type, id }) => type + id,
     );
-    const promises = dependencies.flatMap(({ type, id }) => {
+    const promises = uniqueDependentItems.flatMap(({ type, id }) => {
       if (type === "table") {
         return [Tables.actions.fetchMetadata({ id }, options)];
       }
@@ -324,6 +324,6 @@ export const loadMetadataForDependentItems =
     });
 
     return Promise.all(promises.map(dispatch)).catch(e =>
-      console.error("Failed loading metadata for question", e),
+      console.error("Failed loading metadata", e),
     );
   };
