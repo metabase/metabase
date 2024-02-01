@@ -1,5 +1,6 @@
 (ns metabase.api.autoarchive
   (:require
+   [metabase.util.log :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql :as sql]
    [metabase.api.common :as api]
@@ -40,8 +41,7 @@
    :from      [[:report_card :card]]
    :left-join [[:view_log :vlog] [:= :card.id :vlog.model_id]
                [:report_dashboardcard :dc] [:= :card.id :dc.card_id]
-               [:collection :coll] [:= :card.collection_id :coll.id]
-               [:moderation_review :mr] [:= :card.id :mr.moderated_item_id]]
+               [:collection :coll] [:= :card.collection_id :coll.id]]
    :where     [:and
                (when collection-id [:= :card.collection_id collection-id])
                [:not [:= :coll.type "instance-analytics"]]
@@ -51,11 +51,11 @@
                 [:< :vlog.timestamp {:raw (format "NOW() - INTERVAL '%s'" time-ago)}]
                 [:and
                  [:= :vlog.timestamp nil]
-                 [:< :card.created_at {:raw (format "NOW() - INTERVAL '%s'" time-ago)}]]]
-               [:= :mr.moderated_item_type "card"]
-               [:not [:= :mr.status "verified"]]]})
+                 [:< :card.created_at {:raw (format "NOW() - INTERVAL '%s'" time-ago)}]]]]})
 
-(defn- auto-archivable-questions [{:keys [collection-id time-ago]}]
+(defn- auto-archivable-questions [{:keys [collection-id time-ago] :as in}]
+  (log/fatal (pr-str in))
+  (def in in)
   (->> (t2/query (query {:time-ago time-ago
                          :collection-id collection-id}))
        (mapv ->auto-archivable)))
@@ -73,8 +73,8 @@
 (comment
 
   (t2/query
-   (query {:time-ago "1 Minutes" :collection-id nil}))
+   (query {:time-ago "1 MINUTE" :collection-id 4}))
 
-  (sql/format (query {:time-ago "5 minutes"}))
+  (sql/format (query in))
 
   )
