@@ -86,5 +86,10 @@
                         {:type qp.error-type/missing-required-permissions
                          :permissions-error? true})))
       (qp query
-          (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
+          (fn [metadata] (rff (some-> metadata
+                                      ;; Convert to API-style value names for the FE, for now
+                                      (assoc :download_perms (case download-perms-level
+                                                               :no :none
+                                                               :ten-thousand-rows :limited
+                                                               :one-million-rows :full)))))
           context))))
