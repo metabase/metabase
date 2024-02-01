@@ -5,10 +5,15 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
-import { GridItem } from "metabase/components/Grid";
+import { GridItem, Grid } from "metabase/components/Grid";
+
+export const DatabaseGrid = styled(Grid)`
+  width: 100%;
+`;
 
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;
+  box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.06) !important;
 
   &:hover {
     color: ${color("brand")};

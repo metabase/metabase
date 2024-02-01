@@ -12,6 +12,7 @@ import {
   selectTab,
   undoDeleteTab,
   moveTab as moveTabAction,
+  duplicateTab,
 } from "metabase/dashboard/actions";
 import type { SelectedTabId } from "metabase-types/store";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
@@ -60,6 +61,7 @@ export function useDashboardTabs({ location }: { location: Location }) {
     tabs,
     selectedTabId,
     createNewTab: () => dispatch(createNewTab()),
+    duplicateTab: (tabId: SelectedTabId) => dispatch(duplicateTab(tabId)),
     deleteTab,
     renameTab: (tabId: SelectedTabId, name: string) =>
       dispatch(renameTab({ tabId, name })),

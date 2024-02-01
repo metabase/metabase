@@ -111,6 +111,7 @@
     "server-text-width": "^1.0.2",
     "simple-statistics": "^3.0.0",
     "slugg": "^1.2.1",
+    "sql-formatter": "^15.1.2",
     "tether": "^1.2.0",
     "tippy.js": "^6.3.5",
     "ttag": "1.7.21",

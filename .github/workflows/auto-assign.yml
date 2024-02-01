@@ -16,7 +16,7 @@ jobs:
           app_id: ${{ secrets.METABASE_BOT_APP_ID }}
           private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Assign author and their team. Returns true if team exists.
         id: auto-assign
