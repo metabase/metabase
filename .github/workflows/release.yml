@@ -47,7 +47,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         sparse-checkout: release
     - name: Prepare build scripts
@@ -150,7 +150,7 @@ jobs:
         # ensure the build is not a snapshot build
         grep -q "SNAPSHOT" version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
     - name: Upload Uberjar as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         path: |
@@ -169,17 +169,17 @@ jobs:
         edition: [oss, ee]
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v3
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         sparse-checkout: release
     - name: prepare release scripts
       run: cd release && yarn && yarn build
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -246,7 +246,7 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -285,7 +285,7 @@ jobs:
         ports:
           - 5000:5000
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # IMPORTANT! to get all the tags
     - name: prepare release scripts
@@ -323,7 +323,7 @@ jobs:
           console.log("Latest version?", isLatest);
 
           return isLatest ? "latest" : "not-latest";
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve previously downloaded Uberjar
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -437,7 +437,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         sparse-checkout: release
     - name: prepare release scripts
@@ -514,12 +514,12 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           sparse-checkout: release
       - name: prepare release scripts
         run: cd release && yarn && yarn build
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: Retrieve uberjar artifact
         with:
           name: metabase-${{ matrix.edition }}-uberjar
@@ -565,12 +565,12 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v3
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         sparse-checkout: release
     - name: Prepare build scripts
@@ -617,7 +617,7 @@ jobs:
     needs: [draft-release-notes, publish-version-info] # this will ensure that the milestone stays open until the release notes are published
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         sparse-checkout: release
     - name: Prepare build scripts

@@ -2428,6 +2428,12 @@
   "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."
   (meta.graph-provider/->SimpleGraphMetadataProvider metadata))
 
+(defn updated-metadata-provider
+  "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]] after it has been adjusted by
+  the provided function, called like [[update]], that is `(f metadata args...)`."
+  [f & args]
+  (meta.graph-provider/->SimpleGraphMetadataProvider (apply f metadata args)))
+
 (mu/defn tables :- [:set :keyword]
   "Set of valid table names."
   []
