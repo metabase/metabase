@@ -323,6 +323,6 @@ export const loadMetadataForQuestions = (questions, options) => dispatch => {
     .filter(Boolean);
 
   return Promise.all(promises.map(dispatch)).catch(e =>
-    console.error("Failed loading metadata for query", e),
+    console.error("Failed loading metadata for question", e),
   );
 };
