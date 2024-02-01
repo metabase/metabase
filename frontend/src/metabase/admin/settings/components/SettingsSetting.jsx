@@ -43,7 +43,7 @@ const SettingSetting = props => {
       setTimeout(() => {
         thisRef.current.scrollIntoView({
           behavior: "smooth",
-          block: "center",
+          block: "start",
         });
         thisRef.current.focus();
 
