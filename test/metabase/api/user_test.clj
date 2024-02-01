@@ -406,16 +406,17 @@
                      Card _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
         (is (= (-> (merge
                     @user-defaults
-                    {:email                      "rasta@metabase.com"
-                     :first_name                 "Rasta"
-                     :last_name                  "Toucan"
-                     :common_name                "Rasta Toucan"
-                     :first_login                "2021-03-18T19:52:41.808482Z"
-                     :group_ids                  [(u/the-id (perms-group/all-users))]
-                     :personal_collection_id     true
-                     :custom_homepage            nil
-                     :is_installer               (= 1 (mt/user->id :rasta))
-                     :has_invited_second_user    (= 1 (mt/user->id :rasta))})
+                    {:email                   "rasta@metabase.com"
+                     :first_name              "Rasta"
+                     :last_name               "Toucan"
+                     :common_name             "Rasta Toucan"
+                     :first_login             "2021-03-18T19:52:41.808482Z"
+                     :group_ids               [(u/the-id (perms-group/all-users))]
+                     :personal_collection_id  true
+                     :custom_homepage         nil
+                     :is_installer            (= 1 (mt/user->id :rasta))
+                     :has_invited_second_user (= 1 (mt/user->id :rasta))
+                     :keybindings             nil})
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
@@ -434,7 +435,8 @@
                      :has_question_and_dashboard true
                      :custom_homepage            nil
                      :is_installer               (= 1 (mt/user->id :rasta))
-                     :has_invited_second_user    (= 1 (mt/user->id :rasta))})
+                     :has_invited_second_user    (= 1 (mt/user->id :rasta))
+                     :keybindings                nil})
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
