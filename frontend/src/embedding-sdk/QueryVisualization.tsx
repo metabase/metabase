@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 // For some reason, this import needs to be placed before the PublicMode import or we'll run into
 // errors complaining about variables not being initialized. This can be fixed when we're polishing the
@@ -16,8 +16,6 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import { GET, POST } from "metabase/lib/api";
-import { reloadSettings } from "metabase/admin/settings/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { Box, Group } from "metabase/ui";
 import Question from "metabase-lib/Question";
 
@@ -35,13 +33,6 @@ export const QueryVisualizationSdk = (
   props: QueryVisualizationProps,
 ): JSX.Element => {
   const metadata = useSelector(getMetadata);
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())]);
-    // Disabling this for now since we change the store with this call, which keeps calling the effect
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const { questionId } = props;
 
