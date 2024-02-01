@@ -13,8 +13,9 @@ import { GET, POST } from "metabase/lib/api";
 import { Box, Button, Group, Text } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/Question";
+
+import { useEmbeddingContext } from "./hooks";
 import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
-import { useEmbeddingContext } from "./context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -119,7 +120,7 @@ export const QueryVisualizationSdk = (
         });
 
         return (
-          <Group h="100%" pos="relative">
+          <Group h="100%" pos="relative" align="flex-start">
             <Box w="355px">
               <ChartTypeSidebar
                 question={question}

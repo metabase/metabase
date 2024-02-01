@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext } from "react";
 
 interface EmbeddingSdkContextData {
   apiUrl: string;
@@ -13,7 +13,3 @@ export const EmbeddingContext = createContext<EmbeddingSdkContextData>({
   isInitialized: false,
   isLoggedIn: false,
 });
-
-export const useEmbeddingContext = () => {
-  return useContext(EmbeddingContext);
-};

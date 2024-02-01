@@ -4,14 +4,19 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  font-size: 1.5rem;
   padding: 1rem;
   background-color: aliceblue;
+
+  flex-shrink: 0;
+
+  overflow: hidden;
 }
 
 .App-body {
   background: white;
-  height: 100%;
+  min-height: 100%;
+  padding: 1rem;
+
   display: flex;
   flex-direction: column;
 }
@@ -25,20 +30,64 @@
 
 .QueryVisualization-container {
   width: 100%;
-  min-height: 100%;
+  min-height: 200px;
 }
 
-.ChooseParams-container {
-  padding: 1rem;
+.ChooseParamsHeader-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+
+  gap: 1rem;
+  width: 100%;
+  background-color: aliceblue;
+}
+
+.Params-container {
   display: flex;
   flex-direction: row;
   gap: 1rem;
-  width: 100%;
+}
+
+.QueryVisualization-placeholder {
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+  height: 100%;
+  color: darkgray;
+  font-size: 1.5rem;
 }
 
 .ChooseQuestion-input {
   padding: 0.5rem;
-  font-size: 1.5rem;
+  font-size: 0.8rem;
   border: 1px solid #ccc;
   border-radius: 0.5rem;
+}
+
+.QuestionsList {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid black;
+  margin-bottom: 1rem;
+}
+
+.QuestionList-item {
+  cursor: pointer;
+  padding: 0.5rem 0.5rem;
+
+  width: 30vw;
+
+  border-radius: 0.25rem;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.QuestionList-item:hover {
+  background: aliceblue;
+}
+
+.QuestionList-item--selected {
+  background: #ccc;
 }
