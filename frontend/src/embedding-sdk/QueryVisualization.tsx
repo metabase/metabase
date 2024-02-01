@@ -3,6 +3,11 @@ import type { Card, CardId, Dataset } from "metabase-types/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+// For some reason, this import needs to be placed before the PublicMode import or we'll run into
+// errors complaining about variables not being initialized. This can be fixed when we're polishing the
+// PoC for the future.
+// eslint-disable-next-line import/order
+import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import {
@@ -15,7 +20,6 @@ import { reloadSettings } from "metabase/admin/settings/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { Box, Group } from "metabase/ui";
 import Question from "metabase-lib/Question";
-import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
 
 interface QueryVisualizationProps {
   questionId: CardId;
