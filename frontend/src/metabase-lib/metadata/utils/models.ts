@@ -14,7 +14,7 @@ import type Database from "metabase-lib/metadata/Database";
 import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
-import { isStructured } from "metabase-lib/queries/utils";
+import { isNative } from "metabase-lib/queries/utils/card";
 
 type FieldMetadata = {
   id?: FieldId | FieldReference;
@@ -114,7 +114,7 @@ export function checkCanBeModel(question: Question) {
 }
 
 export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
-  if (!originalCard || !isStructured(card.dataset_query)) {
+  if (!originalCard || isNative(card)) {
     return false;
   }
 

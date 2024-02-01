@@ -59,13 +59,13 @@ jobs:
         java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-package: jre
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
     - run: java -version
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
@@ -98,7 +98,7 @@ jobs:
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Download uploaded artifacts to insert into container
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
         path: bin/docker/
@@ -215,7 +215,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit }}
       - name: Download uploaded artifacts to insert into container
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
           path: bin/docker/

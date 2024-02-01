@@ -11,7 +11,7 @@ import {
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 
-import { isStructured } from "metabase-lib/queries/utils/card";
+import { isNative } from "metabase-lib/queries/utils/card";
 import { isNumeric } from "metabase-lib/types/utils/isa";
 import {
   computeTimeseriesDataInverval,
@@ -358,7 +358,7 @@ export function xValueForWaterfallTotal({ settings, series }) {
 const uniqueCards = series => _.uniq(series.map(({ card }) => card.id)).length;
 
 const getMetricColumnsCount = series => {
-  const metricColumnPredicate = isStructured(series[0]?.card)
+  const metricColumnPredicate = !isNative(series[0]?.card)
     ? column => column.source === "aggregation"
     : column => isNumeric(column);
 
