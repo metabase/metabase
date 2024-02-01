@@ -25,8 +25,6 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import * as Lib from "metabase-lib";
 
-import { getSetting } from "metabase/selectors/settings";
-
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 
@@ -34,6 +32,9 @@ import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Questions from "metabase/entities/questions";
+
+import { getSetting } from "metabase/selectors/settings";
+import { getUser } from "metabase/selectors/user";
 
 import { checkNotNull } from "metabase/lib/types";
 import { isEventOverElement } from "metabase/lib/dom";
@@ -920,7 +921,7 @@ export class NativeQueryEditor extends Component<
 
 const mapStateToProps = (state: State) => ({
   canUsePromptInput: getSetting(state, "is-metabot-enabled"),
-  keybindings: state.currentUser?.keybindings,
+  keybindings: getUser(state)?.keybindings,
 });
 
 const mapDispatchToProps = (dispatch: Dispatch) => ({
