@@ -10,7 +10,7 @@ describe("issue 38176", () => {
   it("restoring a question to a previous version should preserve the variables (metabase#38176)", () => {
     cy.createNativeQuestion(
       {
-        name: "30165",
+        name: "38176",
         native: {
           query:
             'SELECT "COUNTRY" from "ACCOUNTS" WHERE country = {{ country }} LIMIT 5',
