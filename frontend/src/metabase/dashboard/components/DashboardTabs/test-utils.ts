@@ -73,4 +73,8 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
     1: createMockDashCard({ dashCardId: 1, tabId: 1 }),
     2: createMockDashCard({ dashCardId: 2, tabId: 2 }),
   },
+  dashcardData: {
+    1: { 1: null },
+    2: { 1: null },
+  },
 };

@@ -82,9 +82,8 @@ export const isNavigationAllowed = ({
   const { hash, pathname } = destination;
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isStructured = !isNative;
 
-  const runModelPathnames = isStructured
+  const runModelPathnames = !isNative
     ? ["/model", "/model/notebook"]
     : ["/model"];
   const isRunningModel =
@@ -118,7 +117,7 @@ export const isNavigationAllowed = ({
    * https://github.com/metabase/metabase/issues/34686
    *
    */
-  if (!isNewQuestion && isStructured) {
+  if (!isNewQuestion && !isNative) {
     const isRunningQuestion =
       ["/question", "/question/notebook"].includes(pathname) && hash.length > 0;
     const allowedPathnames = validSlugs.flatMap(slug => [

@@ -27,12 +27,13 @@ export function openNativeEditor({
   databaseName,
   alias = "editor",
   fromCurrentPage,
+  newMenuItemTitle = "SQL query",
 } = {}) {
   if (!fromCurrentPage) {
     cy.visit("/");
   }
   cy.findByText("New").click();
-  cy.findByText("SQL query").click();
+  cy.findByText(newMenuItemTitle).click();
 
   databaseName && cy.findByText(databaseName).click();
 
@@ -173,7 +174,7 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
     let validQuestions = dashboardHasQuestions(dashcards);
 
     // if dashboard has tabs, only expect cards on the first tab
-    if (tabs?.length > 0) {
+    if (tabs?.length > 0 && validQuestions) {
       const firstTab = tabs[0];
       validQuestions = validQuestions.filter(
         card => card.dashboard_tab_id === firstTab.id,
