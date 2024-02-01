@@ -45,8 +45,7 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
         ref={ref}
         isBookmarked={isBookmarked}
         onClick={handleClick}
-        data-palette-name={label}
-        data-palette-icon="bookmark"
+        palette={{ label, icon: "bookmark" }}
       >
         <BookmarkIcon
           name="bookmark"

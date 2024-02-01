@@ -51,7 +51,7 @@ const EntityMenuItem = ({
         tooltip={tooltip}
         onClose={onClose}
         data-testid="entity-menu-link"
-        data-palette
+        palette
       >
         {content}
       </LinkMenuItem>

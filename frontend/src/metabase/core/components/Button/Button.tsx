@@ -1,12 +1,11 @@
-import cx from "classnames";
 import type { ButtonHTMLAttributes, ReactNode, Ref, ElementType } from "react";
 import { forwardRef, useImperativeHandle, useRef } from "react";
-import styled from "@emotion/styled";
+import cx from "classnames";
 import _ from "underscore";
+import styled from "@emotion/styled";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { useContextualPaletteAction } from "metabase/palette/hooks/useContextualPaletteAction";
-import { uuid } from "metabase/lib/utils";
 import {
   ButtonContent,
   ButtonRoot,
@@ -65,8 +64,9 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   onlyText?: boolean;
   light?: boolean;
 
-  /** Include in command palette? */
-  palette?: boolean;
+  /** To include the button in the command palette when it mounts,
+   * set this to true, or to explicitly set the palette options, use an object */
+  palette?: boolean | { icon?: string; label?: string };
 }
 
 const BaseButton = forwardRef(function BaseButton(
@@ -93,21 +93,10 @@ const BaseButton = forwardRef(function BaseButton(
   useImperativeHandle(ref, () => internalRef.current as HTMLButtonElement);
 
   useContextualPaletteAction(
-    palette
-      ? {
-          id: uuid(),
-          icon:
-            typeof icon === "string"
-              ? () => <Icon name={icon as IconName} />
-              : icon
-              ? () => <>{icon}</>
-              : () => <Icon name="click" />,
-          children: children || props["aria-label"],
-          onClick: () => {
-            internalRef?.current?.click();
-          },
-        }
-      : null,
+    palette,
+    children || props["aria-label"],
+    icon,
+    internalRef,
   );
 
   return (

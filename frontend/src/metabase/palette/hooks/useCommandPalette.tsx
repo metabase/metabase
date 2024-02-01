@@ -33,35 +33,7 @@ export const useCommandPalette = ({
     [dispatch],
   );
 
-  // const palettifyThese = [
-  //   ...document.querySelectorAll("[data-palette], [data-palette-name]"),
-  // ];
-
   const contextualActions = useSelector(getContextualPaletteActions);
-
-  // const getContextualActions = (): Array<JsonStructureItem> => {
-  //   // Don't include contextual actions when another modal is open
-  //   if (document.querySelector(".Modal-backdrop")) return [];
-  //   const actions = palettifyThese.map((el, index) => {
-  //     return {
-  //       id: "contextual_action_" + index,
-  //       children:
-  //         el.getAttribute("data-palette-name") ||
-  //         el.getAttribute("aria-label") ||
-  //         el.textContent?.trim() ||
-  //         "",
-  //       icon: () => (
-  //         <Icon
-  //           name={(el.getAttribute("data-palette-icon") as IconName) || "click"}
-  //         />
-  //       ),
-  //       onClick: () => {
-  //         (el as HTMLButtonElement).click();
-  //       },
-  //     };
-  //   });
-  //   return actions;
-  // };
 
   const defaultActions = useMemo<CommandPaletteActions>(() => {
     const actions: CommandPaletteActions = [

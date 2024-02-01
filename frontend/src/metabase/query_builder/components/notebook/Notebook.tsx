@@ -88,7 +88,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
           primary
           style={{ minWidth: 220 }}
           onClick={visualize}
-          data-palette
+          palette
         >
           {t`Visualize`}
         </Button>

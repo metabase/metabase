@@ -16,7 +16,7 @@ export function ExploreResultsLink({ question }: ExploreResultsLinkProps) {
       medium
       icon="insight"
       labelBreakpoint="sm"
-      data-palette
+      palette
     >
       {t`Explore results`}
     </ViewButton>
