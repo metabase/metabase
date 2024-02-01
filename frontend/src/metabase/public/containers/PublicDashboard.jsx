@@ -167,7 +167,9 @@ class PublicDashboard extends Component {
               <DashboardTabs location={this.props.location} />
               <Separator />
               <DashboardGridContainer>
-                <FixedWidthContainer>
+                <FixedWidthContainer
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
                   <DashboardGridConnected
                     {...this.props}
                     isPublic
