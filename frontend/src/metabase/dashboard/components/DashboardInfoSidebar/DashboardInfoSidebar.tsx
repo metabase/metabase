@@ -1,12 +1,10 @@
 import { useCallback } from "react";
-import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { Button, Group, Switch } from "metabase/ui";
-import { LlmTaskAutoDescribe } from "metabase/services";
+import { Switch } from "metabase/ui";
 
 import { Timeline } from "metabase/common/components/Timeline";
 
@@ -22,7 +20,6 @@ import {
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
-import { getIsAutoDescriptionEnabled } from "metabase/home/selectors";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -30,8 +27,6 @@ import {
   DescriptionHeader,
   StyledEditableText,
 } from "./DashboardInfoSidebar.styled";
-
-// const isAutoDescriptionEnabled = useSelector(getIsAutoDescriptionEnabled);
 
 type DashboardAttributeType = string | number | null | boolean;
 
@@ -48,14 +43,10 @@ export function DashboardInfoSidebar({
     query: { model_type: "dashboard", model_id: dashboard.id },
   });
 
-  const [{ loading, value: description }, fetchSuggestion] =
-    useAsyncFn(async () => {
-      const response = await LlmTaskAutoDescribe.summarizeDashboard({
-        dashboardId: dashboard.id,
-      });
-
-      return response?.summary?.description;
-    }, [dashboard]);
+  const { loading, description, SuggestDescriptionButton } =
+    PLUGIN_LLM_AUTODESCRIPTION.useLLMDashboardDescription({
+      dashboardId: dashboard.id,
+    });
 
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
@@ -89,15 +80,13 @@ export function DashboardInfoSidebar({
   const autoApplyFilterToggleId = useUniqueId();
   const canWrite = dashboard.can_write;
 
-  const isAutoDescriptionEnabled = useSelector(getIsAutoDescriptionEnabled);
-
   return (
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
         <StyledEditableText
           initialValue={description || dashboard.description}
-          loading={loading && isAutoDescriptionEnabled}
+          loading={loading}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
           isOptional
@@ -106,22 +95,7 @@ export function DashboardInfoSidebar({
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
         />
-        <Group mt="0.5rem" position="right">
-          {!loading ? (
-            <Button
-              variant="filled"
-              onClick={fetchSuggestion}
-            >{t`Suggest Description`}</Button>
-          ) : (
-            <div>
-              <span className="suggestionLoading2">✨</span>
-              <span className="suggestionLoading">✨</span>
-              Generating dashboard description
-              <span className="suggestionLoading"> ✨</span>
-              <span className="suggestionLoading2">✨</span>
-            </div>
-          )}
-        </Group>
+        <SuggestDescriptionButton />
       </ContentSection>
 
       <ContentSection>
