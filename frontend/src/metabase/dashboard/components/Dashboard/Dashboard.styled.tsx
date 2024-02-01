@@ -138,6 +138,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     `}
 `;
 
+export const FIXED_WIDTH = "1048px";
 export const FixedWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`
@@ -145,7 +146,7 @@ export const FixedWidthContainer = styled.div<{
   ${({ isFixedWidth }) =>
     isFixedWidth &&
     css`
-      max-width: 1048px;
+      max-width: ${FIXED_WIDTH};
     `}
 `;
 

@@ -168,6 +168,7 @@ class PublicDashboard extends Component {
               <Separator />
               <DashboardGridContainer>
                 <FixedWidthContainer
+                  data-testid="fixed-width-container"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   <DashboardGridConnected
