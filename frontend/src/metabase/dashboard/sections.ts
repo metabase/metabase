@@ -157,18 +157,18 @@ function layout3({ col, row }: LayoutOpts) {
 
 export const layoutOptions: LayoutOption[] = [
   {
+    id: 3,
+    label: t`KPI grid`,
+    getLayout: layout3,
+  },
+  {
     id: 1,
-    label: t`Large chart + KPIs to the right`,
+    label: t`Large chart w/ KPIs to the right`,
     getLayout: layout1,
   },
   {
     id: 2,
-    label: t`Large chart w/ KPIs above`,
+    label: t`KPIs w/ large chart below`,
     getLayout: layout2,
-  },
-  {
-    id: 3,
-    label: t`KPI grid`,
-    getLayout: layout3,
   },
 ];
