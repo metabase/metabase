@@ -5243,20 +5243,6 @@ databaseChangeLog:
                   remarks: "The value of the dashboard's width setting can be fixed or full. New dashboards will be set to fixed"
 
   - changeSet:
-      id: v49.2024-01-29T19:28:34
-      author: adam-james
-      comment: Add default value to report_dashboard.width for mysql/mariadb
-      changes:
-        - addDefaultValue:
-            defaultValue: 'fixed'
-            tableName: report_dashboard
-            columnName: width
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
-
-  - changeSet:
       id: v49.2024-01-29T19:30:00
       author: adam-james
       comment: Update existing report_dashboard width values to full
