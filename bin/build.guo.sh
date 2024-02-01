@@ -1,5 +1,4 @@
-#! /usr/bin/env bash
-
+#!/usr/bin/env bash
 set -euo pipefail
 
 # switch to project root directory if we're not already there
@@ -12,4 +11,5 @@ check_clojure_cli
 source "./bin/clear-outdated-cpcaches.sh"
 clear_outdated_cpcaches
 
-clojure -X:build:drivers:build/drivers $@
+clojure -X:drivers:build:build/all "$@"
+
