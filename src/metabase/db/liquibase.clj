@@ -204,20 +204,20 @@
   "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times. There's a
   chance the lock will end up clearing up so we can run migrations normally."
   [^Liquibase liquibase]
-  (if (migration-lock-exists? liquibase)
-    (do
-     (log/info "Database has migration lock. Waiting for lock to be cleared...")
-     (Thread/sleep 2000)
-     (u/auto-retry 4
-       (when (migration-lock-exists? liquibase)
-         (Thread/sleep 2000)
-         (throw
-          (LockException.
-           (str
-            (trs "Database has migration lock; cannot run migrations.")
-            " "
-            (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))))
-    (log/info "No migration lock found.")))
+  (let [retry-counter (volatile! 0)]
+    (u/auto-retry 5
+      (when (migration-lock-exists? liquibase)
+        (Thread/sleep 2000)
+        (vswap! retry-counter inc)
+        (throw
+         (LockException.
+          (str
+           (trs "Database has migration lock; cannot run migrations.")
+           " "
+           (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."))))))
+    (if (pos? @retry-counter)
+      (log/warnf "Migration lock was cleared after %d retries." @retry-counter)
+      (log/info "No migration lock found."))))
 
 (defn migrate-up-if-needed!
   "Run any unrun `liquibase` migrations, if needed."
@@ -225,7 +225,7 @@
   (log/info (trs "Checking if Database has unrun migrations..."))
   (if (seq (unrun-migrations data-source))
     (do
-     (log/info (trs "Database has unrun migrations. Checking if migraton lock is cleared..."))
+     (log/info (trs "Database has unrun migrations. Checking if migraton lock is taken..."))
      (wait-for-migration-lock-to-be-cleared liquibase)
      ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
      ;; sure something still needs to be done...
