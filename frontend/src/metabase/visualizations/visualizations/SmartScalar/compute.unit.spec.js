@@ -6,6 +6,7 @@ import {
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import {
   createMockColumn,
+  createMockNativeDatasetQuery,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
@@ -198,9 +199,18 @@ describe("SmartScalar > compute", () => {
   });
 
   describe("computeTrend", () => {
-    const series = ({ rows, cols }) => [
-      createMockSingleSeries({}, { data: { rows, cols } }),
-    ];
+    const series = ({ rows, cols, queryType }) => {
+      if (queryType === "native") {
+        return [
+          createMockSingleSeries(
+            { dataset_query: createMockNativeDatasetQuery() },
+            { data: { rows, cols } },
+          ),
+        ];
+      }
+
+      return [createMockSingleSeries({}, { data: { rows, cols } })];
+    };
 
     describe("change types", () => {
       const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
@@ -2107,6 +2117,68 @@ describe("SmartScalar > compute", () => {
         expect(formatOptions.compact).toBe(true);
         expect(display.value).toBe("210.0k");
         expect(comparisonDisplay.comparisonValue).toBe("105.0k");
+      });
+    });
+
+    describe("bug fixes", () => {
+      describe("should display full dates for native queries (issue #38122)", () => {
+        const QUERY_TYPE = "native";
+        const COMPARISON_TYPE = COMPARISON_TYPES.PERIODS_AGO;
+        const getComparisonProperties =
+          createGetComparisonProperties(COMPARISON_TYPE);
+
+        const COUNT_FIELD = "Count";
+        const createSettings = value =>
+          createMockVisualizationSettings({
+            "scalar.field": COUNT_FIELD,
+            "scalar.comparisons": [{ id: "1", type: COMPARISON_TYPE, value }],
+          });
+
+        const cols = [
+          createMockDateTimeColumn({ name: "date-field" }),
+          createMockNumberColumn({ name: COUNT_FIELD }),
+        ];
+
+        const testCases = [
+          {
+            description:
+              "should correctly display the full date regardless of the dateUnit",
+            rows: [
+              ["2023-12-31T02:12", 100],
+              ["2023-12-31T04:15", 200],
+            ],
+            dateUnit: "hour",
+            periodsAgo: 2,
+            expected: {
+              ...getMetricProperties({
+                dateStr: "December 31, 2023, 4:15 AM",
+                metricValue: 200,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "December 31, 2023, 2:12 AM",
+                  metricValue: 200,
+                }),
+              },
+            },
+          },
+        ];
+
+        it.each(testCases)(
+          "$description",
+          ({ rows, expected, periodsAgo, dateUnit }) => {
+            const insights = [{ unit: dateUnit, col: COUNT_FIELD }];
+            const trend = computeTrend(
+              series({ rows, cols, queryType: QUERY_TYPE }),
+              insights,
+              createSettings(periodsAgo),
+            );
+
+            expect(getTrend(trend)).toEqual(expected);
+          },
+        );
       });
     });
   });
