@@ -31,6 +31,7 @@ const DEFAULT_OPTIONS = {
 
 export class Api extends EventEmitter {
   basename = "";
+  apiKey = "";
 
   GET;
   POST;
@@ -91,8 +92,8 @@ export class Api extends EventEmitter {
           delete headers["Content-Type"];
         }
 
-        if (options.apiKey) {
-          headers["x-api-key"] = options.apiKey;
+        if (this.apiKey) {
+          headers["x-api-key"] = this.apiKey;
         }
 
         if (isWithinIframe()) {

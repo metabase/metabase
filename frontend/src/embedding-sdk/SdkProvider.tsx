@@ -1,14 +1,16 @@
 import type * as React from "react";
 import { Provider } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 import { getStore } from "metabase/store";
 import reducers from "metabase/reducers-main";
 import registerVisualizations from "metabase/visualizations/register";
 import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
 import { setOptions } from "metabase/redux/embed";
+import api from "metabase/lib/api";
+import { reloadSettings } from "metabase/admin/settings/settings";
+import { refreshCurrentUser } from "metabase/redux/user";
 import { SdkEmotionCacheProvider } from "./SdkEmotionCacheProvider";
-
 import { EmbeddingContext } from "./context";
 import { SDK_CONTEXT_CLASS_NAME } from "./config";
 import "./styles.css";
@@ -25,6 +27,22 @@ export const MetabaseProvider = ({
   font: string;
 }): JSX.Element => {
   const store = getStore(reducers);
+
+  api.basename = apiUrl;
+  api.apiKey = apiKey;
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      store.dispatch(refreshCurrentUser()),
+      store.dispatch(reloadSettings()),
+    ]).then(() => {
+      setLoading(false);
+    });
+    // Disabling this for now since we change the store with this call, which keeps calling the effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     store.dispatch(setOptions({ font }));
@@ -45,7 +63,11 @@ export const MetabaseProvider = ({
         <SdkEmotionCacheProvider>
           <ThemeProvider>
             <GlobalStyles />
-            <div id={SDK_CONTEXT_CLASS_NAME}>{children}</div>
+            {loading ? (
+              <div>Loading...</div>
+            ) : (
+              <div id={SDK_CONTEXT_CLASS_NAME}>{children}</div>
+            )}
           </ThemeProvider>
         </SdkEmotionCacheProvider>
       </Provider>

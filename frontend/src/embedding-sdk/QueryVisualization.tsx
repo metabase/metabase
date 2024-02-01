@@ -1,7 +1,7 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -11,15 +11,17 @@ import {
   onOpenChartSettings,
   setUIControls,
 } from "metabase/query_builder/actions";
+import { GET, POST } from "metabase/lib/api";
+import { reloadSettings } from "metabase/admin/settings/settings";
+import { refreshCurrentUser } from "metabase/redux/user";
 import Question from "metabase-lib/Question";
-import { useApi } from "./hooks/use-api";
-import { EmbeddingContext } from "./context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
 }
 
 type State = {
+  loading: boolean;
   card: Card | null;
   result: Dataset | null;
 };
@@ -27,40 +29,51 @@ type State = {
 export const QueryVisualizationSdk = (
   props: QueryVisualizationProps,
 ): JSX.Element => {
-  const { apiUrl, apiKey } = useContext(EmbeddingContext);
-  const { GET, POST } = useApi({
-    apiUrl,
-    apiKey,
-  });
-
   const metadata = useSelector(getMetadata);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())]);
+    // Disabling this for now since we change the store with this call, which keeps calling the effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { questionId } = props;
 
   const [state, setState] = useState<State>({
+    loading: false,
     card: null,
     result: null,
   });
 
   useEffect(() => {
-    GET("/api/card/:cardId")({ cardId: questionId }, { apiKey }).then(card => {
+    setState(prevState => ({
+      ...prevState,
+      loading: true,
+    }));
+    GET("/api/card/:cardId")({ cardId: questionId }).then(card => {
       setState(prevState => ({
         ...prevState,
         card,
       }));
 
-      POST("/api/card/:cardId/query")(
-        {
-          cardId: questionId,
-        },
-        { apiKey },
-      ).then(result => {
-        setState(prevState => ({
-          ...prevState,
-          result,
-        }));
-      });
+      POST("/api/card/:cardId/query")({
+        cardId: questionId,
+      })
+        .then(result => {
+          setState(prevState => ({
+            ...prevState,
+            result,
+          }));
+        })
+        .then(() => {
+          setState(prevState => ({
+            ...prevState,
+            loading: false,
+          }));
+        });
     });
-  }, [GET, POST, apiKey, questionId]);
+  }, [questionId]);
 
   const { card, result } = state;
 
@@ -68,6 +81,7 @@ export const QueryVisualizationSdk = (
     setState({
       card: newQuestion.card(),
       result: state.result,
+      loading: false,
     });
   };
 
@@ -111,8 +125,8 @@ export const QueryVisualizationSdk = (
             <QueryVisualization
               className="full-width"
               question={question}
-              rawSeries={[{ card: card, data: result && result.data }]}
-              isRunning={!result}
+              rawSeries={[{ card, data: result && result.data }]}
+              isRunning={state.loading}
               isObjectDetail={false}
               isResultDirty={false}
               isNativeEditorOpen={false}
