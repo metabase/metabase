@@ -43,4 +43,5 @@
     (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
    (compojure/context
     "/autodescribe" []
-    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))))
+     ;; TODO change flag back to llm-autoscription
+    (ee.api.common/+require-premium-feature :serialization  (deferred-tru "LLM Auto-description") llm.api/routes))))

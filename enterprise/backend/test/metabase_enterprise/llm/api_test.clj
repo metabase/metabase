@@ -56,8 +56,7 @@
 (deftest summarize-card-test
   (testing "POST /api/ee/autodescribe/card/summarize"
     (testing "Test ability to summarize a card"
-      ;;NOTE - Once :enable-llm-autodescription FF is in we'll want to use that
-      (mt/with-premium-features #{:serialization}
+      (mt/with-premium-features #{:llm-autodescription}
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-model-cleanup [:model/Card]
             (let [fake-response {:title       "Title"

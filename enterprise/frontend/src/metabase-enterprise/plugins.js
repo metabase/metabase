@@ -31,3 +31,4 @@ import "./model_persistence";
 import "./feature_level_permissions";
 import "./application_permissions";
 import "./group_managers";
+import "./llm_autodescription";

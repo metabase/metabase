@@ -1,11 +1,9 @@
 import { useCallback, useMemo } from "react";
-import { useAsync } from "react-use";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { Group } from "metabase/ui";
-import { apiGetCardSummary } from "metabase/query_builder/actions";
+import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
 import ModalContent from "metabase/components/ModalContent";
 import { Form, FormProvider } from "metabase/forms";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
@@ -19,8 +17,6 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "metabase/core/components/FormRadio";
 
 import { useCollectionListQuery } from "metabase/common/hooks";
-
-import { getIsAutoDescriptionEnabled } from "metabase/home/selectors";
 
 import {
   canonicalCollectionId,
@@ -66,7 +62,7 @@ interface SaveQuestionModalProps {
   initialCollectionId?: CollectionId;
 }
 
-interface FormValues {
+export interface FormValues {
   saveType: string;
   collection_id: CollectionId | null | undefined;
   name: string;
@@ -89,10 +85,6 @@ export const SaveQuestionModal = ({
   multiStep,
   initialCollectionId,
 }: SaveQuestionModalProps) => {
-  // ! HACK *******************************************
-  const state = useSelector(state => state);
-  // ! HACK *******************************************
-
   const { data: collections } = useCollectionListQuery();
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
@@ -135,34 +127,11 @@ export const SaveQuestionModal = ({
     ],
   );
 
-  const suggestCardInfo = useCallback(async () => {
-    const collectionId = canonicalCollectionId(initialValues.collection_id);
-    const displayName = initialValues.name.trim();
-    const description = initialValues.description
-      ? initialValues.description.trim()
-      : null;
-
-    const newQuestion = question
-      .setDisplayName(displayName)
-      .setDescription(description)
-      .setCollectionId(collectionId);
-
-    return await apiGetCardSummary(newQuestion, state);
-  }, [initialValues, question, state]);
-  // TODO: Would be nice if we could control the saveType state
-  // * in this component and only call useAsync function if you
-  // * are in the `create` save type
-  const { loading, value } = useAsync(suggestCardInfo, []);
-  const { name, description } = useMemo(() => {
-    if (value?.summary) {
-      return {
-        name: value?.summary?.title,
-        description: value?.summary?.description,
-      };
-    }
-
-    return {};
-  }, [value]);
+  const { name, description, loading, LLMLoadingIndicator } =
+    PLUGIN_LLM_AUTODESCRIPTION.useLLMQuestionNameDescription({
+      initialValues,
+      question,
+    });
 
   const handleOverwrite = useCallback(
     async (originalQuestion: Question) => {
@@ -228,8 +197,6 @@ export const SaveQuestionModal = ({
     originalQuestion != null &&
     originalQuestion.canWrite();
 
-  const isAutoDescriptionEnabled = useSelector(getIsAutoDescriptionEnabled);
-
   const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
 
   const title = multiStep ? multiStepTitle : singleStepTitle;
@@ -284,19 +251,7 @@ export const SaveQuestionModal = ({
                       }}
                     >
                       <div className="saveQuestionModalFields">
-                        <Group position="right">
-                          {isAutoDescriptionEnabled && loading && (
-                            <div>
-                              <span className="suggestionLoading3">✨</span>
-                              <span className="suggestionLoading2">✨</span>
-                              <span className="suggestionLoading">✨</span>
-                              Generating question title and description
-                              <span className="suggestionLoading"> ✨</span>
-                              <span className="suggestionLoading2">✨</span>
-                              <span className="suggestionLoading3">✨</span>
-                            </div>
-                          )}
-                        </Group>
+                        <LLMLoadingIndicator />
                         <FormInput
                           loading={loading}
                           name="name"
