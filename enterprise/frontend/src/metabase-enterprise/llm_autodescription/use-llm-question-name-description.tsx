@@ -3,9 +3,7 @@ import { useCallback, useMemo } from "react";
 import { useAsync } from "react-use";
 import * as Lib from "metabase-lib";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
 import { Group } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   getIsResultDirty,
@@ -14,16 +12,11 @@ import {
 } from "metabase/query_builder/selectors";
 import { getQuestionWithDefaultVisualizationSettings } from "metabase/query_builder/actions/core/utils";
 import type { State } from "metabase-types/store";
-import { GET, POST } from "metabase/lib/api";
+import { POST } from "metabase/lib/api";
 import type { TUseLLMQuestionNameDescription } from "metabase/plugins/types";
 import type Question from "metabase-lib/Question";
 
-const API = {
-  summarizeCard: POST("/api/ee/autodescribe/card/summarize"),
-  summarizeDashboard: GET(
-    "/api/ee/autodescribe/dashboard/summarize/:dashboardId",
-  ),
-};
+const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 
 const apiGetCardSummary = async (question: Question, state: State) => {
   // Needed for persisting visualization columns for pulses/alerts, see #6749
@@ -39,7 +32,7 @@ const apiGetCardSummary = async (question: Question, state: State) => {
     .setQuery(cleanQuery)
     .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
-  const response = await API.summarizeCard(newQuestion.card());
+  const response = await postSummarizeCard(newQuestion.card());
 
   return response;
 };
@@ -60,7 +53,7 @@ function LoadingIndicator() {
   );
 }
 
-const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
+export const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
   initialValues,
   question,
 }) => {
@@ -102,9 +95,3 @@ const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
     LLMLoadingIndicator: loading ? LoadingIndicator : () => null,
   };
 };
-
-// TODO remove `true` once token is up
-if (true || hasPremiumFeature("llm_autodescription")) {
-  PLUGIN_LLM_AUTODESCRIPTION.useLLMQuestionNameDescription =
-    useLLMQuestionNameDescription;
-}
