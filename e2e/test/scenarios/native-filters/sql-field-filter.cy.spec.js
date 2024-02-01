@@ -53,6 +53,11 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.getRunQueryButton().should("be.disabled");
       SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
+      SQLFilter.getSaveQueryButton().realHover();
+      cy.get("body").findByText(
+        'The "Filter" variable requires a default value but none was provided.',
+      );
+
       setDefaultFieldValue(4);
 
       SQLFilter.getRunQueryButton().should("not.be.disabled");
