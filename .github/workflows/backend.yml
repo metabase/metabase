@@ -65,7 +65,8 @@ jobs:
 
   be-linter-cloverage:
     needs: files-changed
-    if: github.ref_name == 'master' && needs.files-changed.outputs.backend_all == 'true'
+    if: (github.ref_name == 'master' || github.ref_name 'perms-refactor-feature-branch')
+      && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
