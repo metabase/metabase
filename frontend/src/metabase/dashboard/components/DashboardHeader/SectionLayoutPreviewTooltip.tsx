@@ -40,7 +40,7 @@ export function PreviewGrid({ dashcards }: { dashcards: BaseDashboardCard[] }) {
     1,
   );
 
-  const cellHeight = 6;
+  const cellHeight = 3;
 
   const previewGridHeight = useMemo(() => {
     const maxY = _.max(dashcards.map(dc => dc.row + dc.size_y));
