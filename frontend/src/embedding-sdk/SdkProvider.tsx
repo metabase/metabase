@@ -1,25 +1,22 @@
 import type * as React from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { Provider } from "react-redux";
-import { useEffect, useState } from "react";
 import styled from "@emotion/styled";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 import { getStore } from "metabase/store";
 import reducers from "metabase/reducers-main";
-import registerVisualizations from "metabase/visualizations/register";
 import { alpha, color } from "metabase/lib/colors";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
-import api from "metabase/lib/api";
 import { setOptions } from "metabase/redux/embed";
-import { reloadSettings } from "metabase/admin/settings/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
 
+import { InitDataLoader } from "./InitDataLoader";
 import { SdkEmotionCacheProvider } from "./SdkEmotionCacheProvider";
 import { EmbeddingContext } from "./context";
 import { SDK_CONTEXT_CLASS_NAME } from "./config";
 import "./styles.css";
 
-export const MetabaseProvider = ({
+const MetabaseProviderInternal = ({
   children,
   apiUrl,
   apiKey,
@@ -32,27 +29,8 @@ export const MetabaseProvider = ({
 }): JSX.Element => {
   const store = getStore(reducers);
 
-  api.basename = apiUrl;
-  api.apiKey = apiKey;
-
   const [isInitialized, setInitialized] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    Promise.all([
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      store.dispatch(refreshCurrentUser()),
-      store.dispatch(reloadSettings()),
-    ]).then(() => {
-      registerVisualizations();
-
-      setInitialized(true);
-      setIsLoggedIn(true);
-    });
-    // Disabling this for now since we change the store with this call, which keeps calling the effect
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (font) {
@@ -61,18 +39,13 @@ export const MetabaseProvider = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [font]);
 
-  useEffect(() => {
-    if (!apiKey) {
-      setIsLoggedIn(false);
-    } else {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      store.dispatch(refreshCurrentUser()).then(() => {
-        setIsLoggedIn(true);
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey]);
+  const onInitialize = useCallback(() => {
+    setInitialized(true);
+  }, []);
+
+  const onLogin = useCallback((isLoggedIn: boolean) => {
+    setIsLoggedIn(isLoggedIn);
+  }, []);
 
   return (
     <EmbeddingContext.Provider
@@ -84,6 +57,12 @@ export const MetabaseProvider = ({
       }}
     >
       <Provider store={store}>
+        <InitDataLoader
+          apiUrl={apiUrl}
+          apiKey={apiKey}
+          onInitialize={onInitialize}
+          onLogin={onLogin}
+        />
         <SdkEmotionCacheProvider>
           <ThemeProvider>
             <ContentWrapper id={SDK_CONTEXT_CLASS_NAME} font={font}>
@@ -95,6 +74,8 @@ export const MetabaseProvider = ({
     </EmbeddingContext.Provider>
   );
 };
+
+export const MetabaseProvider = memo(MetabaseProviderInternal);
 
 const ContentWrapper = styled.div<{ font: string }>`
   --default-font-family: "${({ font }) => font}";

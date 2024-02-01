@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-  monospace;
+    monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -11,9 +11,4 @@ ol {
   padding: 0;
   margin: 0;
   list-style-type: none;
-}
-
-/* Prevent react error overlay */
-body > iframe {
-  display: none;
 }

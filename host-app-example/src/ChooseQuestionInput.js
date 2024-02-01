@@ -40,7 +40,7 @@ export const ChooseQuestionInput = ({ apiKey, setApiKey, font, setFont }) => {
           fontSize: "0.5rem",
         }}
       >
-        I should be styless
+        I should not have border
       </div>
     </div>
   );

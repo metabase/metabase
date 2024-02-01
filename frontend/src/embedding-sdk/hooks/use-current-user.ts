@@ -1,4 +1,4 @@
 import { useSelector } from "react-redux";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { getUser } from "metabase/selectors/user";
 
-export const useCurrentUser = () => useSelector(getCurrentUser);
+export const useCurrentUser = () => useSelector(getUser);
