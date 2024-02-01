@@ -228,6 +228,7 @@ export const useCommandPalette = ({
             />
           ),
           onClick: () => {
+            dispatch(closeModal());
             dispatch(push(wrappedResult.getUrl()));
           },
         };
