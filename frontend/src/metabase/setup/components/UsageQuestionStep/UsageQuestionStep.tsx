@@ -5,7 +5,7 @@ import { Divider, Radio, Stack, Text } from "metabase/ui";
 import Button from "metabase/core/components/Button";
 import type { UsageReason } from "metabase-types/api";
 import { selectStep, submitUsageReason } from "../../actions";
-import { DATABASE_STEP, USAGE_STEP } from "../../constants";
+import { USAGE_STEP } from "../../constants";
 import {
   getIsSetupCompleted,
   getIsStepActive,
@@ -15,7 +15,7 @@ import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
 
-const COMPLETED_STEPS_TITLES: Record<UsageReason, string> = {
+const COMPLETED_STEP_TITLE: Record<UsageReason, string> = {
   "self-service-analytics": t`I’ll do self-service analytics for my own company`,
   embedding: t`I’ll embed analytics into my application`,
   both: t`I’ll do a bit of both self-service and embedding`,
@@ -40,7 +40,6 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
 
   const handleSubmit = () => {
     dispatch(submitUsageReason(usageReason));
-    dispatch(selectStep(DATABASE_STEP));
   };
 
   const handleCHange = (value: UsageReason) => {
@@ -49,7 +48,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
 
   if (!isStepActive) {
     const title = isStepCompleted
-      ? COMPLETED_STEPS_TITLES[usageReason]
+      ? COMPLETED_STEP_TITLE[usageReason]
       : t`What will you use Metabase for?`;
     return (
       <InactiveStep

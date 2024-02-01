@@ -16,6 +16,7 @@ import {
 } from "./actions";
 import {
   COMPLETED_STEP,
+  DATABASE_STEP,
   PREFERENCES_STEP,
   USAGE_STEP,
   WELCOME_STEP,
@@ -54,6 +55,7 @@ export const reducer = createReducer(initialState, builder => {
   });
   builder.addCase(submitUsageReason.pending, (state, { meta }) => {
     state.usageReason = meta.arg;
+    state.step = DATABASE_STEP;
   });
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
     state.databaseEngine = meta.arg;
