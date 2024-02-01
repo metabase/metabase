@@ -1,7 +1,7 @@
 Cypress.Commands.add(
   "createNativeQuestionAndDashboard",
   ({ questionDetails, dashboardDetails } = {}) => {
-    const tabs = dashboardDetails.tabs ?? [];
+    const tabs = dashboardDetails?.tabs ?? [];
     const defaultTabId = tabs[0]?.id ?? null;
 
     cy.createNativeQuestion(questionDetails).then(
