@@ -24,6 +24,7 @@ export type InputAttributes = Omit<
 export interface InputProps extends InputAttributes {
   inputRef?: Ref<HTMLInputElement>;
   size?: InputSize;
+  loading?: boolean;
   error?: boolean;
   fullWidth?: boolean;
   leftIcon?: IconName;

@@ -1,6 +1,5 @@
-import { useCallback, useMemo } from "react";
-
 import { useAsync } from "react-use";
+
 import * as Lib from "metabase-lib";
 import { useSelector } from "metabase/lib/redux";
 import { Group } from "metabase/ui";
@@ -11,47 +10,12 @@ import {
   getTransformedSeries,
 } from "metabase/query_builder/selectors";
 import { getQuestionWithDefaultVisualizationSettings } from "metabase/query_builder/actions/core/utils";
-import type { State } from "metabase-types/store";
 import { POST } from "metabase/lib/api";
 import type { TUseLLMQuestionNameDescription } from "metabase/plugins/types";
-import type Question from "metabase-lib/Question";
+
+import "./use-llm-question-name-description.css";
 
 const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
-
-const apiGetCardSummary = async (question: Question, state: State) => {
-  // Needed for persisting visualization columns for pulses/alerts, see #6749
-  const series = getTransformedSeries(state);
-  const questionWithVizSettings = series
-    ? getQuestionWithDefaultVisualizationSettings(question, series)
-    : question;
-
-  const resultsMetadata = getResultsMetadata(state);
-  const isResultDirty = getIsResultDirty(state);
-  const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
-  const newQuestion = questionWithVizSettings
-    .setQuery(cleanQuery)
-    .setResultsMetadata(isResultDirty ? null : resultsMetadata);
-
-  const response = await postSummarizeCard(newQuestion.card());
-
-  return response;
-};
-
-function LoadingIndicator() {
-  return (
-    <Group position="right">
-      <div>
-        <span className="suggestionLoading3">✨</span>
-        <span className="suggestionLoading2">✨</span>
-        <span className="suggestionLoading">✨</span>
-        Generating question title and description
-        <span className="suggestionLoading"> ✨</span>
-        <span className="suggestionLoading2">✨</span>
-        <span className="suggestionLoading3">✨</span>
-      </div>
-    </Group>
-  );
-}
 
 export const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
   initialValues,
@@ -59,39 +23,66 @@ export const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
 }) => {
   const state = useSelector(state => state);
 
-  const suggestCardInfo = useCallback(async () => {
-    const collectionId = canonicalCollectionId(initialValues.collection_id);
-    const displayName = initialValues.name.trim();
-    const description = initialValues.description
-      ? initialValues.description.trim()
-      : null;
-
-    const newQuestion = question
-      .setDisplayName(displayName)
-      .setDescription(description)
-      .setCollectionId(collectionId);
-
-    return await apiGetCardSummary(newQuestion, state);
-  }, [initialValues, question, state]);
-  // TODO: Would be nice if we could control the saveType state
-  // * in this component and only call useAsync function if you
-  // * are in the `create` save type
-  const { loading, value } = useAsync(suggestCardInfo, []);
-  const { name, description } = useMemo(() => {
-    if (value?.summary) {
+  const { loading, value: result } = useAsync(async () => {
+    // only generate a name and description if the user is creating a new question
+    if (initialValues.saveType !== "create") {
       return {
-        name: value?.summary?.title,
-        description: value?.summary?.description,
+        generatedName: undefined,
+        generatedDescription: undefined,
       };
     }
 
-    return {};
-  }, [value]);
+    const collectionId = canonicalCollectionId(initialValues.collection_id);
+    const questionWithCollectionId = question.setCollectionId(collectionId);
+
+    let questionWithVizSettings = questionWithCollectionId;
+    const series = getTransformedSeries(state);
+    if (series) {
+      questionWithVizSettings = getQuestionWithDefaultVisualizationSettings(
+        questionWithCollectionId,
+        series,
+      );
+    }
+
+    const resultsMetadata = getResultsMetadata(state);
+    const isResultDirty = getIsResultDirty(state);
+    const cleanQuery = Lib.dropStageIfEmpty(
+      questionWithVizSettings.query(),
+      -1,
+    );
+    questionWithVizSettings
+      .setQuery(cleanQuery)
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+
+    const response = await postSummarizeCard(questionWithVizSettings.card());
+
+    return {
+      generatedName: response?.summary?.title,
+      generatedDescription: response?.summary?.description,
+    };
+  });
 
   return {
-    name,
-    description,
+    generatedName: result?.generatedName ?? "",
+    generatedDescription: result?.generatedDescription ?? "",
     loading,
-    LLMLoadingIndicator: loading ? LoadingIndicator : () => null,
+    LLMLoadingIndicator: () => {
+      if (!loading) {
+        return null;
+      }
+      return (
+        <Group position="right">
+          <div>
+            <span className="suggestionLoading3">✨</span>
+            <span className="suggestionLoading2">✨</span>
+            <span className="suggestionLoading">✨</span>
+            Generating question title and description
+            <span className="suggestionLoading"> ✨</span>
+            <span className="suggestionLoading2">✨</span>
+            <span className="suggestionLoading3">✨</span>
+          </div>
+        </Group>
+      );
+    },
   };
 };

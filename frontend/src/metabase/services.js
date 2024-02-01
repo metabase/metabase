@@ -612,13 +612,6 @@ export const MetabotApi = {
   sendFeedback: POST("/api/metabot/feedback"),
 };
 
-export const LlmTaskAutoDescribe = {
-  summarizeCard: POST("/api/ee/autodescribe/card/summarize"),
-  summarizeDashboard: GET(
-    "/api/ee/autodescribe/dashboard/summarize/:dashboardId",
-  ),
-};
-
 export const ApiKeysApi = {
   list: GET("/api/api-key"),
   create: POST("/api/api-key"),

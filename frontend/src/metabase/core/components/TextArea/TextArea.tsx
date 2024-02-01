@@ -4,6 +4,7 @@ import { TextAreaRoot } from "./TextArea.styled";
 
 export interface TextAreaProps
   extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+  loading?: boolean;
   error?: boolean;
   fullWidth?: boolean;
 }

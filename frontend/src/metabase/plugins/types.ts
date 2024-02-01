@@ -61,8 +61,8 @@ export type TUseLLMQuestionNameDescription = ({
   initialValues: FormValues;
   question: Question;
 }) => {
-  name: string;
-  description: string;
+  generatedName: string;
+  generatedDescription: string;
   loading: boolean;
   LLMLoadingIndicator: () => JSX.Element | null;
 };

@@ -5,6 +5,7 @@ import { focusOutlineStyle } from "metabase/core/style/input";
 
 export interface TextAreaRootProps {
   readOnly?: boolean;
+  loading?: boolean;
   hasError?: boolean;
   fullWidth?: boolean;
 }

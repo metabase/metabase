@@ -12,6 +12,7 @@ import type { InputSize } from "../../style/types";
 
 export interface InputProps {
   fieldSize?: InputSize;
+  loading?: boolean;
   hasError?: boolean;
   fullWidth?: boolean;
   hasSubtitle?: boolean;
