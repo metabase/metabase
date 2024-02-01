@@ -71,19 +71,15 @@
       ;; Data access permissions
       (if (= (:db_id table) perms/audit-db-id)
         ;; Tables in audit DB should start out with no-self-service in all groups
-        (doseq [group non-admin-groups]
-         (data-perms/set-table-permission! group table :perms/data-access :no-self-service))
+        (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service)
         (do
-          (data-perms/set-table-permission! all-users-group table :perms/data-access :unrestricted)
-          (doseq [group non-magic-groups]
-            (data-perms/set-table-permission! group table :perms/data-access :no-self-service))))
+          (data-perms/set-new-table-permissions! [all-users-group] table :perms/data-access :unrestricted)
+          (data-perms/set-new-table-permissions! non-magic-groups table :perms/data-access :no-self-service)))
       ;; Download permissions
-      (data-perms/set-table-permission! all-users-group table :perms/download-results :one-million-rows)
-      (doseq [group non-magic-groups]
-        (data-perms/set-table-permission! group table :perms/download-results :no))
+      (data-perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
+      (data-perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
       ;; Table metadata management
-      (doseq [group non-admin-groups]
-        (data-perms/set-table-permission! group table :perms/manage-table-metadata :no)))))
+      (data-perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
 
 (t2/define-after-insert :model/Table
   [table]
