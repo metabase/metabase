@@ -299,28 +299,26 @@ export const loadMetadataForQuestion = question =>
 export const loadMetadataForQuestions = (questions, options) => dispatch => {
   const metadata = questions.flatMap(question => question.dependentMetadata());
   const dependencies = _.uniq(metadata, false, ({ type, id }) => type + id);
-  const promises = dependencies
-    .map(({ type, id }) => {
-      if (type === "table") {
-        return Tables.actions.fetchMetadata({ id }, options);
-      }
+  const promises = dependencies.flatMap(({ type, id }) => {
+    if (type === "table") {
+      return [Tables.actions.fetchMetadata({ id }, options)];
+    }
 
-      if (type === "field") {
-        return Fields.actions.fetch({ id }, options);
-      }
+    if (type === "field") {
+      return [Fields.actions.fetch({ id }, options)];
+    }
 
-      if (type === "schema") {
-        return Schemas.actions.fetchList({ dbId: id }, options);
-      }
+    if (type === "schema") {
+      return [Schemas.actions.fetchList({ dbId: id }, options)];
+    }
 
-      if (type === "database") {
-        return Databases.actions.fetch({ id }, options);
-      }
+    if (type === "database") {
+      return [Databases.actions.fetch({ id }, options)];
+    }
 
-      console.warn(`loadMetadataForQuestions: type ${type} not implemented`);
-      return null;
-    })
-    .filter(Boolean);
+    console.warn(`loadMetadataForQuestions: type ${type} not implemented`);
+    return [];
+  });
 
   return Promise.all(promises.map(dispatch)).catch(e =>
     console.error("Failed loading metadata for question", e),
