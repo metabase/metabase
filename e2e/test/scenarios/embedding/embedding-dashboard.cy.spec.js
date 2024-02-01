@@ -11,6 +11,9 @@ import {
   downloadAndAssert,
   assertSheetRowsCount,
   modal,
+  getIframeBody,
+  describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -21,7 +24,7 @@ import {
   mapParameters,
 } from "./shared/embedding-dashboard";
 
-const { ORDERS, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > dashboard parameters", () => {
   beforeEach(() => {
@@ -420,6 +423,94 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     // The Source default ('Facebook') should not apply because the param is locked but the value is unset
     // If either the Name or Source default applied the result would be 0.
     cy.get(".ScalarValue").invoke("text").should("eq", "2");
+  });
+});
+
+describeEE("scenarios > embedding > dashboard appearance", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+    };
+
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+
+    cy.intercept(
+      "GET",
+      "api/embed/dashboard/*",
+      cy.spy().as("embedPreviewSpy"),
+    ).as("embedPreview");
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+      // EE users don't have to accept terms
+      acceptTerms: false,
+    });
+
+    cy.wait("@embedPreview");
+
+    modal().within(() => {
+      cy.findByRole("tab", { name: "Appearance" }).click();
+      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard theme");
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("not.have.class", "Theme--transparent");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Transparent").click({ force: true });
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.class", "Theme--transparent");
+      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard title");
+      getIframeBody().findByText(dashboardDetails.name).should("exist");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Dashboard title").click({ force: true });
+      getIframeBody().findByText(dashboardDetails.name).should("not.exist");
+      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard border");
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.css", "border-top-width", "1px");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Border").click({ force: true });
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.css", "border-top-width", "0px");
+      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+
+      cy.log("Assert font");
+      getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+      cy.findByLabelText("Font").click();
+    });
+
+    // Since the select popover is rendered outside of the modal, we need to exit the modal context first.
+    popover().findByText("Oswald").click();
+    modal().within(() => {
+      getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+    });
   });
 });
 
