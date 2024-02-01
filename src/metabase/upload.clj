@@ -13,6 +13,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
@@ -671,3 +673,28 @@
         database (table/database table)]
     (check-can-append database table)
     (append-csv!* database table file)))
+
+;;; +--------------------------------
+;;; |  hydrate based_on_upload for FE
+;;; +--------------------------------
+
+(mi/define-simple-hydration-method based-on-upload
+  :based_on_upload
+  "Add based_on_upload=<table-id> to a card if:
+    - the card is a model
+    - the query is a GUI query, and does not have any joins
+    - the base table of the card is based on an upload
+    - the user has permissions to upload to the table
+    - uploads are enabled
+  Otherwise based_on_upload is nil."
+  [card]
+  (when (and (:dataset card)
+             (= (:query_type card) :query)
+             (let [query (lib.convert/->pMBQL (:dataset_query card))
+                   all-joins (mapcat (fn [stage]
+                                       (lib/joins query stage))
+                                     (range (lib/stage-count query)))]
+               (empty? all-joins))
+             (let [table (t2/select-one :model/Table :id (:table_id card))]
+               (can-upload-to-table? (table/database table) table)))
+    (:table_id card)))

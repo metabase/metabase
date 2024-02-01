@@ -5,10 +5,18 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel quick-filter-availability-test
+  (doseq [[test-case context {:keys [click column-type]}] (canned/canned-clicks)]
+    (if (and (= click :cell)
+             (not (#{:pk :fk} column-type)))
+      (is (canned/returned test-case context :drill-thru/quick-filter))
+      (is (not (canned/returned test-case context :drill-thru/quick-filter))))))
 
 (deftest ^:parallel returns-quick-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -110,6 +118,19 @@
                     :value     :null
                     :operators [{:name "="}
                                 {:name "≠"}]}})))
+
+(deftest ^:parallel returns-quick-filter-test-9
+  (testing "quick-filter should return = and ≠ only for other field types (eg. generic strings)"
+    (lib.drill-thru.tu/test-returns-drill
+      {:drill-type  :drill-thru/quick-filter
+       :click-type  :cell
+       :query-type  :unaggregated
+       :query-table "PRODUCTS"
+       :column-name "TITLE"
+       :expected    {:type      :drill-thru/quick-filter
+                     :value     (get-in lib.drill-thru.tu/test-queries ["PRODUCTS" :unaggregated :row "TITLE"])
+                     :operators [{:name "="}
+                                 {:name "≠"}]}})))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test
   (testing "quick-filter on an aggregation should introduce an new stage (#34346)"

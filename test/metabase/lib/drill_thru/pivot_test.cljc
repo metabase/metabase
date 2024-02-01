@@ -1,8 +1,9 @@
 (ns metabase.lib.drill-thru.pivot-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -15,6 +16,13 @@
 ;; 2. Category + Location: a. date, b. date + category
 ;; 3. Category + Time: a. address, b. category, c. category + category
 ;; 4. All types: a. no breakouts.
+
+(deftest ^:parallel pivot-availability-test
+  (testing "pivot drill is available only for cell clicks"
+    ;; Other conditions are too complex to capture here; other tests check them.
+    (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
+            :when (not= click :cell)]
+      (is (not (canned/returned test-case context :drill-thru/pivot))))))
 
 (def ^:private orders-date-only-test-case
   {:drill-type   :drill-thru/pivot

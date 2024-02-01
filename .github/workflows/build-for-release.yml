@@ -27,7 +27,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         sparse-checkout: release
     - name: Prepare build scripts
@@ -75,7 +75,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
         sparse-checkout: release
@@ -107,7 +107,7 @@ jobs:
       node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
       build_process: ${{ fromJson(steps.dependencies.outputs.result).build_process }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         sparse-checkout: release
     - name: Prepare build scripts
@@ -151,16 +151,16 @@ jobs:
 
         echo "VERSION=$version" >> $GITHUB_ENV
     - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: ${{ needs.get-build-requirements.outputs.java_version }}
     - name: Setup Node.js ${{ needs.get-build-requirements.outputs.node_version }}
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
     - name: Check out the code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Prepare front-end environment
@@ -185,7 +185,7 @@ jobs:
       run: sha256sum ./metabase.jar > SHA256.sum
       shell: bash
     - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
         path: |
