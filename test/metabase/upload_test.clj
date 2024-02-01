@@ -1178,8 +1178,9 @@
                                 db-id
                                 schema+table-name
                                 col-definitions
-                                (when (contains? col-definitions upload/auto-pk-column-keyword)
-                                  [upload/auto-pk-column-keyword]))
+                                (if (contains? col-definitions upload/auto-pk-column-keyword)
+                                  {:primary-key [upload/auto-pk-column-keyword]}
+                                  {}))
         _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)]
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
 

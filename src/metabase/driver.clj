@@ -902,8 +902,9 @@
 
 (defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error.
-  `primary-key` is optional and is a vector of column names that will be used as the primary key."
-  {:added "0.47.0", :arglists '([driver database-id table-name column-definitions primary-key])}
+  `args` is an optional map with an optional entry `primary-key`. The `primary-key` value is a vector of column names
+  that make up the primary key."
+  {:added "0.47.0", :arglists '([driver database-id table-name column-definitions & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

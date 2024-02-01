@@ -406,7 +406,7 @@
                             db-id
                             table-name
                             col-definitions
-                            [auto-pk-column-keyword])
+                            :primary-key [auto-pk-column-keyword])
       (try
         (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
         {:num-rows          (count rows)

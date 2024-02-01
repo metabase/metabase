@@ -118,7 +118,7 @@
   (h2x/->timestamp expr))
 
 (defn- create-table!-sql
-  [driver table-name column-definitions primary-key]
+  [driver table-name column-definitions & {:keys [primary-key]}]
   (first (sql/format {:create-table (keyword table-name)
                       :with-columns (cond-> (mapv (fn [[name type-spec]]
                                                     (vec (cons name type-spec)))
@@ -128,8 +128,8 @@
                      :dialect (sql.qp/quote-style driver))))
 
 (defmethod driver/create-table! :sql-jdbc
-  [driver database-id table-name column-definitions primary-key]
-  (let [sql (create-table!-sql driver table-name column-definitions primary-key)]
+  [driver database-id table-name column-definitions & {:keys [primary-key]}]
+  (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
     (qp.writeback/execute-write-sql! database-id sql)))
 
 (defmethod driver/drop-table! :sql-jdbc
