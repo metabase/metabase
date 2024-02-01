@@ -90,7 +90,7 @@
    :where [:and
            (when-not get-models [:= :collection_id collection-id])
            (when get-models [:= :dataset true])
-           [:> :vl.timestamp (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :minute)]
+           [:< :vl.timestamp (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :minute)]
            [:= :rc.archived false]]})
 
 (defn- auto-archivable-questions [{:keys [collection-id time-ago] :as in}]
