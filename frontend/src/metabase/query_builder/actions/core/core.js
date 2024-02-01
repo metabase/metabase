@@ -195,25 +195,6 @@ export const setDatasetQuery =
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
   };
 
-export const apiGetCardSummary = async (question, state) => {
-  // Needed for persisting visualization columns for pulses/alerts, see #6749
-  const series = getTransformedSeries(state);
-  const questionWithVizSettings = series
-    ? getQuestionWithDefaultVisualizationSettings(question, series)
-    : question;
-
-  const resultsMetadata = getResultsMetadata(state);
-  const isResultDirty = getIsResultDirty(state);
-  const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
-  const newQuestion = questionWithVizSettings
-    .setQuery(cleanQuery)
-    .setResultsMetadata(isResultDirty ? null : resultsMetadata);
-
-  const response = await LlmTaskAutoDescribe.summarizeCard(newQuestion.card());
-
-  return response;
-};
-
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = question => {
   return async (dispatch, getState) => {

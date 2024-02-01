@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
 
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
+import type { FormValues } from "metabase/containers/SaveQuestionModal";
+import type Question from "metabase-lib/Question";
 import type { Member, User } from "metabase-types/api";
 
 export interface AuthProvider {
@@ -51,4 +53,21 @@ export type PluginGroupManagersType = {
   deleteGroup: any;
   confirmDeleteMembershipAction: any;
   confirmUpdateMembershipAction: any;
+};
+
+export type TUseLLMQuestionNameDescription = ({
+  initialValues,
+  question,
+}: {
+  initialValues: FormValues;
+  question: Question;
+}) => {
+  name: string;
+  description: string;
+  loading: boolean;
+  LLMLoadingIndicator: () => JSX.Element | null;
+};
+
+export type PluginLLMAutoDescription = {
+  useLLMQuestionNameDescription: TUseLLMQuestionNameDescription;
 };

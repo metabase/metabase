@@ -35,7 +35,12 @@ import type {
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
-import type { GetAuthProviders, PluginGroupManagersType } from "./types";
+import type Database from "metabase-lib/metadata/Database";
+import type {
+  GetAuthProviders,
+  PluginGroupManagersType,
+  PluginLLMAutoDescription,
+} from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -147,6 +152,16 @@ export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
+};
+
+// llm
+export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
+  useLLMQuestionNameDescription: () => ({
+    name: "",
+    description: "",
+    loading: false,
+    LLMLoadingIndicator: () => null,
+  }),
 };
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
