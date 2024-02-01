@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
 
-import { PUT, POST } from "metabase/lib/api";
+import { GET, POST, PUT } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -30,14 +30,40 @@ const Questions = createEntity({
   /**
    * Temporarily mock endpoints for Metrics v2
    *
-   * We pretend metrics are questions.
+   * Any question with `type: "metric"` will be passed to API as `type: "question"`.
+   * Same goes for any questions with a name starting with "Metric" (case-insensitive).
    */
   api: {
+    get: async payload => {
+      const get = GET("/api/card/:id");
+      const result = await get(payload);
+
+      if (result.name.toLowerCase().startsWith("Metric")) {
+        return { ...result, type: "metric", dataset: false };
+      }
+
+      return result;
+    },
+
+    list: async payload => {
+      const get = GET("/api/card");
+      const results = await get(payload);
+
+      return results.map(result => {
+        if (result.name.toLowerCase().startsWith("Metric")) {
+          return { ...result, type: "metric", dataset: false };
+        }
+
+        return result;
+      });
+    },
+
     create: async payload => {
       const create = POST("/api/card");
 
       if (payload.type === "metric") {
-        const result = await create({ ...payload, type: "question" });
+        const tweakedPayload = { ...payload, type: "question", dataset: false };
+        const result = await create(tweakedPayload);
         return { ...result, type: "metric" };
       }
 
@@ -48,7 +74,8 @@ const Questions = createEntity({
       const update = PUT("/api/card/:id");
 
       if (payload.type === "metric") {
-        const result = await update({ ...payload, type: "question" });
+        const tweakedPayload = { ...payload, type: "question", dataset: false };
+        const result = await update(tweakedPayload);
         return { ...result, type: "metric" };
       }
 
