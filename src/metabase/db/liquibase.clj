@@ -128,7 +128,7 @@
   [conn-or-data-source :- [:or (ms/InstanceOfClass java.sql.Connection) (ms/InstanceOfClass javax.sql.DataSource)]
    f                   :- fn?]
   ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
-  (let [f* (fn [liquibase]
+  (let [f* (fn [^Liquibase liquibase]
              ;; trigger liquibase to create databasechangelog tables if needed
              ;; we need to do this until https://github.com/liquibase/liquibase/issues/5537 is fixed
              (.checkLiquibaseTables liquibase false (.getDatabaseChangeLog liquibase) nil nil)
@@ -235,7 +235,7 @@
          (let [^Contexts contexts nil
                start-time         (System/currentTimeMillis)]
            (log/info (trs "Running {0} migrations ..." unrun-migrations-count))
-           (doseq [change to-run-migrations]
+           (doseq [^ChangeSet change to-run-migrations]
              (log/tracef "To run migration %s" (.getId change)))
            (.update liquibase contexts)
            (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time)))))
