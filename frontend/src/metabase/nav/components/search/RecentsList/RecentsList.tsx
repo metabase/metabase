@@ -10,7 +10,8 @@ import {
   getItemName,
   getItemUrl,
 } from "metabase/nav/components/search/RecentsList/util";
-import { Paper } from "metabase/ui";
+import { Flex, Paper } from "metabase/ui";
+import { isMac } from "metabase/lib/browser";
 
 type RecentsListProps = {
   onClick?: (elem: UnrestrictedLinkEntity) => void;
@@ -26,6 +27,12 @@ export interface WrappedRecentItem extends RecentItem {
     height?: number;
   };
 }
+
+const ShortcutKey = ({ children }: { children: React.ReactNode }) => {
+  <Flex p=".25rem" bg="gray">
+    {children}
+  </Flex>;
+};
 
 export const RecentsList = ({ onClick, className }: RecentsListProps) => {
   const { data = [], isLoading: isRecentsListLoading } = useRecentItemListQuery(
@@ -58,6 +65,7 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
       onChangeLocation(item);
     }
   };
+  const metaKey = isMac() ? "⌘" : "Ctrl";
 
   return (
     <Paper withBorder className={className}>
@@ -66,6 +74,9 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
         results={wrappedResults}
         onClick={onContainerClick}
       />
+      <Flex p="1rem">
+        <ShortcutKey>{metaKey}K</ShortcutKey> Command palette
+      </Flex>
     </Paper>
   );
 };
