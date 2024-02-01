@@ -6,6 +6,8 @@ import {
   popover,
   openNewPublicLinkDropdown,
   createPublicDashboardLink,
+  dashboardParametersContainer,
+  goToTab,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -31,16 +33,35 @@ const questionDetails = {
   display: "scalar",
 };
 
-const filter = {
+const textFilter = {
+  id: "1",
+  type: "string/=",
   name: "Text",
   slug: "text",
-  id: "4f37fd0d",
-  type: "string/=",
   sectionId: "string",
 };
 
+const numberFilter = {
+  id: "2",
+  type: "number/=",
+  name: "Number",
+  slug: "number",
+  sectionId: "number",
+};
+
+const tab1 = {
+  id: 1,
+  name: "Tab 1",
+};
+
+const tab2 = {
+  id: 2,
+  name: "Tab 2",
+};
+
 const dashboardDetails = {
-  parameters: [filter],
+  parameters: [textFilter, numberFilter],
+  tabs: [tab1, tab2],
 };
 
 const PUBLIC_DASHBOARD_REGEX =
@@ -67,13 +88,15 @@ describe("scenarios > public > dashboard", () => {
     cy.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
-    }).then(({ body: { id, card_id, dashboard_id } }) => {
+    }).then(({ body: { id, card_id, dashboard_id, dashboard_tab_id } }) => {
       cy.wrap(dashboard_id).as("dashboardId");
       // Connect filter to the card
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        tabs: dashboardDetails.tabs,
         dashcards: [
           {
             id,
+            dashboard_tab_id,
             card_id,
             row: 0,
             col: 0,
@@ -81,7 +104,7 @@ describe("scenarios > public > dashboard", () => {
             size_y: 6,
             parameter_mappings: [
               {
-                parameter_id: filter.id,
+                parameter_id: textFilter.id,
                 card_id,
                 target: ["dimension", ["template-tag", "c"]],
               },
@@ -180,5 +203,23 @@ describe("scenarios > public > dashboard", () => {
     cy.button("Apply").should("be.visible").click();
     cy.button("Apply").should("not.exist");
     cy.get(".ScalarValue").should("have.text", COUNT_DOOHICKEY);
+  });
+
+  it("should only display filters mapped to cards on the selected tab", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id);
+    });
+
+    dashboardParametersContainer().within(() => {
+      cy.findByText(textFilter.name).should("be.visible");
+      cy.findByText(numberFilter.name).should("not.exist");
+    });
+
+    goToTab(tab2.name);
+
+    dashboardParametersContainer().within(() => {
+      cy.findByText(textFilter.name).should("not.exist");
+      cy.findByText(numberFilter.name).should("not.exist");
+    });
   });
 });
