@@ -52,24 +52,27 @@
     :dataset_query          query
     :visualization_settings {:global {:title nil}}}))
 
+
 (deftest summarize-card-test
   (testing "POST /api/ee/autodescribe/card/summarize"
     (testing "Test ability to summarize a card"
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-model-cleanup [:model/Card]
-          (let [fake-response {:title       "Title"
-                               :description "Description"}]
-            (with-redefs [llm-client/*create-chat-completion-endpoint*
-                          (fn [_ _]
-                            {:choices [{:message
-                                        {:content
-                                         (json/generate-string
-                                           fake-response)}}]})]
+      ;;NOTE - Once :enable-llm-autodescription FF is in we'll want to use that
+      (mt/with-premium-features #{:serialization}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-model-cleanup [:model/Card]
+            (let [fake-response {:title       "Title"
+                                 :description "Description"}]
+              (with-redefs [llm-client/*create-chat-completion-endpoint*
+                            (fn [_ _]
+                              {:choices [{:message
+                                          {:content
+                                           (json/generate-string
+                                             fake-response)}}]})]
 
-              (let [card (assoc (card-with-name-and-query (mt/random-name)
-                                                          (mbql-count-query (mt/id) (mt/id :venues)))
-                           :parameters [{:id "abc123", :name "test", :type "date"}]
-                           :parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                 :target       [:dimension [:template-tags "category"]]}])]
-                (is (= {:summary fake-response}
-                       (mt/user-http-request :rasta :post 200 "ee/autodescribe/card/summarize" card)))))))))))
+                (let [card (assoc (card-with-name-and-query (mt/random-name)
+                                                            (mbql-count-query (mt/id) (mt/id :venues)))
+                             :parameters [{:id "abc123", :name "test", :type "date"}]
+                             :parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                                   :target       [:dimension [:template-tags "category"]]}])]
+                  (is (= {:summary fake-response}
+                         (mt/user-http-request :rasta :post 200 "ee/autodescribe/card/summarize" card))))))))))))
