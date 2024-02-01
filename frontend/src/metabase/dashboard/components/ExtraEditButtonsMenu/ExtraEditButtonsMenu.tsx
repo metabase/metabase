@@ -24,7 +24,7 @@ export function ExtraEditButtonsMenu({
   dashboard,
 }: ExtraEditButtonsMenuProps) {
   return (
-    <Popover key={key} shadow="sm" position="bottom-end">
+    <Popover key={key} shadow="sm" position="bottom-end" offset={5}>
       <Popover.Target>
         <Box>
           <DashboardButtonTooltip label={EXTRA_BUTTONS_DESCRIPTION}>
