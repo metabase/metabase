@@ -27,7 +27,7 @@ describe("issue 38176", () => {
       { visitQuestion: true },
     );
 
-    cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
+    cy.findByPlaceholderText("Country").type("NL");
     cy.get("button[aria-label='Get Answer']").first().click();
 
     questionInfoButton().click();
