@@ -360,7 +360,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             aria-label={t`Add questions`}
-            data-palette-name={addQuestionButtonHint}
+            palette={{label: addQuestionButtonHint}}
           />
         </Tooltip>,
       );

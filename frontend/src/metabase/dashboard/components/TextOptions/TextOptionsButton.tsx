@@ -7,6 +7,10 @@ import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHe
 
 import { IconContainer } from "./TextOptionsButton.styled";
 import { PaletteContextualAction } from "metabase/palette/components/Palette";
+import { registerPaletteAction } from "metabase/redux/app";
+import { useDispatch } from "metabase/lib/redux";
+import { createPaletteAction } from "metabase/palette/utils";
+import { useEffect } from "react";
 
 interface TextOptionsButtonProps {
   onAddMarkdown: () => void;
@@ -31,6 +35,19 @@ export function TextOptionsButton({
       event: "Dashboard; Add Markdown Box",
     },
   ];
+
+  const dispatch = useDispatch();
+  useEffect(() => {
+    setTimeout(() => {
+      TEXT_OPTIONS.forEach(({ paletteLabel, action }) => {
+        dispatch(
+          registerPaletteAction(
+            createPaletteAction({ children: paletteLabel, onClick: action }),
+          ),
+        );
+      });
+    }, 0);
+  }, [dispatch]);
 
   return (
     <>

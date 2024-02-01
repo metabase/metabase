@@ -10,6 +10,7 @@ import type { CommandPalettePageId } from "../hooks/useCommandPalette";
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { CommandPaletteStyled } from "./Palette.styled";
 import "./Palette.css";
+import Button from "metabase/core/components/Button";
 
 const PalettePage = ({
   id,
@@ -77,7 +78,7 @@ export const Palette = () => {
   );
 };
 
-const HiddenButton = styled.button`
+const HiddenButton = styled(Button)`
   top: -1px;
   left: -1px;
   position: absolute;
@@ -96,33 +97,5 @@ export const PaletteContextualAction = ({
   name: string;
   action: () => void;
 }) => {
-  return <HiddenButton data-palette-name={name} onClick={action} />;
+  return <HiddenButton palette={{label: name}} onClick={action} />;
 };
-
-/// ```javascript
-/// // actions.js
-/// export const registerCommand = (command) => ({
-///   type: 'REGISTER_COMMAND',
-///   payload: command,
-/// });
-///
-/// export const unregisterCommand = (commandId) => ({
-///   type: 'UNREGISTER_COMMAND',
-///   payload: commandId,
-/// });
-/// ```
-///
-/// ```javascript
-/// // reducer.js
-/// const commandsReducer = (state = [], action) => {
-///   switch (action.type) {
-///     case 'REGISTER_COMMAND':
-///       return [...state, action.payload];
-///     case 'UNREGISTER_COMMAND':
-///       return state.filter(command => command.id !== action.payload);
-///     default:
-///       return state;
-///   }
-/// };
-///
-/// export default commandsReducer;
