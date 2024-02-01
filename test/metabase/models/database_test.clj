@@ -42,22 +42,28 @@
       (let [all-users-group-id (u/the-id (perms-group/all-users))]
         (is (= {all-users-group-id
                 {db-id
-                 {:perms/native-query-editing :yes
-                  :perms/manage-database      :no}}}
+                 {:perms/download-results      :one-million-rows
+                  :perms/data-access           :unrestricted
+                  :perms/native-query-editing  :yes
+                  :perms/manage-table-metadata :no
+                  :perms/manage-database       :no}}}
                (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
 
       ;; Other groups should have no DB-level perms
       (is (= {group-id
               {db-id
-               {:perms/native-query-editing :no
-                :perms/manage-database      :no}}}
+               {:perms/download-results      :no
+                :perms/data-access           :no-self-service
+                :perms/native-query-editing  :no
+                :perms/manage-table-metadata :no
+                :perms/manage-database       :no}}}
              (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
 
 (deftest cleanup-permissions-after-delete-db-test
   (mt/with-temp [:model/Database {db-id :id} {}]
     (is (true? (t2/exists? :model/DataPermissions :db_id db-id)))
     (t2/delete! :model/Database db-id)
-    (testing "Table-level permissions are deleted when we delete the table"
+    (testing "All permissions are deleted when we delete the database"
       (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
 (deftest tasks-test
