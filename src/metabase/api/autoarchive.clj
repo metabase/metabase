@@ -1,10 +1,10 @@
 (ns metabase.api.autoarchive
   (:require
-   [metabase.util.log :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
-   [honey.sql :as sql]
    [metabase.api.common :as api]
-   [metabase.models.permissions :as perms]
+   [metabase.db :as mdb]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -31,6 +31,23 @@
 ;; - [ ] question used by another question
 
 
+;; (defn query
+;;   "This query selects archiavable, orphaned cards, that have been created_at"
+;;   [{:keys [time-ago collection-id]}]
+;;   {:select    [:rc.id
+;;                :rc.name
+;;                :rc.created_at
+;;                [:vl.timestamp :last_viewed]
+;;                [:vl.model :model]]
+;;    :from      [[:report_card :rc]]
+;;    :left-join [[:view_log :vl] [:= :rc.id :vl.model_id]
+;;                [:report_dashboardcard :dc] [:= :rc.id :dc.card_id]
+;;                [:collection :coll] [:= :rc.collection_id :coll.id]]
+;;    :where     [:and
+;;                (when collection-id [:= :coll.id collection-id])
+;;                [:= :dc.dashboard_id nil]
+;;                [:= :vl.model "card"]]})
+
 ;; WITH latest_view_log AS (
 ;;   SELECT
 ;;     model_id,
@@ -56,20 +73,25 @@
 
 (defn query
   "This query selects archiavable, orphaned cards, that have been created_at"
-  [{:keys [time-ago collection-id]}]
-  {:select    [:rc.id
-               :rc.name
-               :rc.created_at
-               [:vl.timestamp :last_viewed]
-               [:vl.model :model]]
-   :from      [[:report_card :rc]]
-   :left-join [[:view_log :vl] [:= :rc.id :vl.model_id]
-               [:report_dashboardcard :dc] [:= :rc.id :dc.card_id]
-               [:collection :coll] [:= :rc.collection_id :coll.id]]
-   :where     [:and
-               (when collection-id [:= :coll.id collection-id])
-               [:= :dc.dashboard_id nil]
-               [:= :vl.model "card"]]})
+  [{:keys [get-models collection-id]}]
+  {:with [[:latest_view_log {:select [:model_id
+                                      [:%max.timestamp :max_timestamp]]
+                             :from [:view_log]
+                             :where [:= :model "card"]
+                             :group-by [:model_id]}]]
+   :select [[:rc.id :id]
+            [:rc.dataset :dataset]
+            [:rc.name :name]
+            [:vl.timestamp :last_used_at]]
+   :from [[:report_card :rc]]
+   :join [[:view_log :vl] [:= :rc.id :vl.model_id]
+          [:latest_view_log :l_vl] [:and [:= :vl.model_id :l_vl.model_id] [:= :vl.timestamp :l_vl.max_timestamp]]]
+   :left-join [[:collection :c] [:= :c.id :rc.collection_id]]
+   :where [:and
+           (when-not get-models [:= :collection_id collection-id])
+           (when get-models [:= :dataset true])
+           [:> :vl.timestamp (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -100 :minute)]
+           [:= :rc.archived false]]})
 
 (defn- auto-archivable-questions [{:keys [collection-id time-ago] :as in}]
   (log/fatal (pr-str in))
@@ -78,21 +100,15 @@
                          :collection-id collection-id}))
        (mapv ->auto-archivable)))
 
-(api/defendpoint GET "/:collection-id" [collection-id :as {query-params :query-params}]
-  {collection-id [:maybe ms/PositiveInt]
-   query-params [:map [:time_ago {:optional true} :string]]}
-  (let [time-ago (or (:time_ago query-params) time-ago)]
-    {:archivable (auto-archivable-questions
-                  {:collection-id collection-id
-                   :time-ago time-ago})}))
+(api/defendpoint GET "/collection/:collection-id" [collection-id]
+  {collection-id [:maybe ms/PositiveInt]}
+  (query {:collection-id collection-id}))
+
+(api/defendpoint GET "/collection/models" [collection-id]
+  {collection-id [:maybe ms/PositiveInt]}
+  (query {:get-models true}))
 
 (api/define-routes)
 
-(comment
+(comment (t2/query (query {:collection-id nil})))
 
-  (t2/query
-   (query {:time-ago "1 MINUTE" :collection-id 4}))
-
-  (sql/format (query in))
-
-  )
