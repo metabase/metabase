@@ -36,7 +36,7 @@ const setup = options => {
     <DashCardCardParameterMapper
       card={createMockCard()}
       dashcard={createMockDashboardCard()}
-      editingParameter={{}}
+      editingParameter={createMockParameter()}
       mappingOptions={[]}
       metadata={metadata}
       setParameterMapping={jest.fn()}
@@ -122,10 +122,10 @@ describe("DashCardParameterMapper", () => {
         card: textCard,
         size_y: 3,
         visualization_settings: {
+          text: "{{foo}} {{bar}}",
           virtual_card: textCard,
         },
       }),
-      mappingOptions: ["foo", "bar"],
     });
     expect(screen.getByText(/Variable to map to/i)).toBeInTheDocument();
   });
