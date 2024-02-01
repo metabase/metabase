@@ -2,6 +2,9 @@
   position: relative;
   z-index: 999;
 }
+.command-palette-list-item {
+  font-weight: bold;
+}
 .command-palette * {
   padding: 0;
   margin: 0;
@@ -42,7 +45,7 @@
   font-weight: bold;
 }
 .command-palette h4 {
-  font-size: 9pt !important;
+  font-size: 8pt !important;
   text-transform: uppercase;
 }
 .command-palette a {
@@ -414,14 +417,21 @@
 }
 .command-palette .bg-gray-900 {
   --tw-bg-opacity: 1;
-  background-color: rgb(17 24 39 / var(--tw-bg-opacity));
+  /*background-color: rgb(17 24 39 / var(--tw-bg-opacity));*/
+  /* hacky way to override react-cmdk's overlay style */
+  background-color: var(--color-bg-black);
+  opacity: 0.6 !important;
 }
 .command-palette .bg-white {
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity));
 }
 .command-palette .bg-gray-200\/50 {
-  background-color: rgba(229, 231, 235, 0.5);
+  /*background-color: rgba(229, 231, 235, 0.5);*/
+  /* Hacky way to override the react-cmdk style for a selected item*/
+  background-color: #eef6fd !important;
+  font-weight: bold;
+  color: #509ee3;
 }
 .command-palette .bg-transparent {
   background-color: initial;
@@ -580,7 +590,10 @@
 }
 .command-palette .hover\:bg-gray-100:hover {
   --tw-bg-opacity: 1;
-  background-color: rgb(243 244 246 / var(--tw-bg-opacity));
+  /*background-color: rgb(243 244 246 / var(--tw-bg-opacity));*/
+  /* Hacky way to override the react-cmdk style for a selected item*/
+  background-color: #eef6fd !important;
+  color: #509ee3;
 }
 .command-palette .hover\:text-gray-500:hover {
   --tw-text-opacity: 1;
@@ -621,11 +634,11 @@
   }
   .command-palette .dark\:bg-gray-900 {
     --tw-bg-opacity: 1;
-    background-color: rgb(17 24 39 / var(--tw-bg-opacity));
+    xbackground-color: rgb(17 24 39 / var(--tw-bg-opacity));
   }
   .command-palette .dark\:bg-gray-800 {
     --tw-bg-opacity: 1;
-    background-color: rgb(31 41 55 / var(--tw-bg-opacity));
+    xbackground-color: rgb(31 41 55 / var(--tw-bg-opacity));
   }
   .command-palette .dark\:text-white {
     --tw-text-opacity: 1;
@@ -637,7 +650,7 @@
   }
   .command-palette .dark\:hover\:bg-gray-800:hover {
     --tw-bg-opacity: 1;
-    background-color: rgb(31 41 55 / var(--tw-bg-opacity));
+    xbackground-color: rgb(31 41 55 / var(--tw-bg-opacity));
   }
   .command-palette .dark\:hover\:text-gray-300:hover {
     --tw-text-opacity: 1;

@@ -77,14 +77,14 @@ export const useCommandPalette = ({
             id: "search_docs",
             children: query
               ? jt`${(
-                  <span className="truncate max-w-md dark:text-white">
+                  <span>
                     Search documentation for&nbsp;
                     <strong>&ldquo;{query}&rdquo;</strong>
                   </span>
                 )}`
               : t`Metabase documentation`,
             keywords: [query], // always match the query
-            icon: () => <Icon name="document" />,
+            icon: () => <Icon name="reference" />,
             closeOnSelect: false,
             onClick: () => {
               const host = "https://www.metabase.com";
