@@ -678,17 +678,16 @@
 ;;; |  hydrate based_on_upload for FE
 ;;; +--------------------------------
 
-(defn uploadable-tables
-  "Returns the subset of tables where the user can upload to the table."
+(defn uploadable-table-ids
+  "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (if (empty? table-ids)
     #{}
-    (let [tables (m/index-by :id (t2/select :model/Table :id [:in table-ids]))
-          ;; TODO: consider dropping the check on databases, it might not be necessary.
-          db-ids (set (map :db_id (vals tables)))
-          dbs    (m/index-by :id (t2/select :model/Database :id [:in db-ids]))
-          get-db (fn [table] (get dbs (:db_id table)))]
-      (set (filter #(can-upload-to-table? (get-db %) %) (vals tables))))))
+    (let [tables (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)]
+      (set (keep (fn [t]
+                   (when (can-upload-to-table? (:db t) t)
+                     (:id t)))
+                 tables)))))
 
 (defn- no-joins?
   [query]
@@ -711,7 +710,7 @@
                        (remove #(false? (:is_upload %)))
                        (keep :table_id)
                        set)
-        uploadable-table-ids (->> (uploadable-tables table-ids)
+        uploadable-table-ids (->> (uploadable-table-ids table-ids)
                                   (map :id)
                                   set)
         based-on-upload-model? (fn [model]
