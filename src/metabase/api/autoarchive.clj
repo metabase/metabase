@@ -80,7 +80,7 @@
                              :where [:= :model "card"]
                              :group-by [:model_id]}]]
    :select [[:rc.id :id]
-            [:rc.dataset :dataset]
+            [:vl.model :model]
             [:rc.name :name]
             [:vl.timestamp :last_used_at]]
    :from [[:report_card :rc]]
