@@ -438,7 +438,8 @@
                                           :perm_value value
                                           :db_id      db-id})
       (when (= [:perms/data-access :block] [perm-type value])
-        (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)))))
+        (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)
+        (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified
