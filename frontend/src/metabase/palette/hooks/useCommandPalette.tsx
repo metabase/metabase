@@ -1,81 +1,48 @@
 import { t } from "ttag";
-import {
-  AnchorHTMLAttributes,
-  ButtonHTMLAttributes,
-  DetailedHTMLProps,
-  useMemo,
-} from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useMemo } from "react";
 import { push } from "react-router-redux";
+import {
+  filterItems,
+  type JsonStructure as CommandPaletteActions,
+} from "react-cmdk";
 import { useDispatch } from "metabase/lib/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import * as Urls from "metabase/lib/urls";
-import type { IconType } from "react-cmdk/src/components/Icon";
-import type { RenderLink } from "react-cmdk";
-import type { ButtonProps } from "react-cmdk/src/components/ListItem";
-import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
-export type CustomJsonStructure = Array<{
-  items: Array<CustomJsonStructureItem>;
-  heading?: string;
-  id: string;
-}>;
+export type CommandPalettePageId = "root" | "admin_settings";
 
-export interface CustomButtonProps
-  extends Omit<ButtonProps, "icon">,
-    ButtonHTMLAttributes<HTMLButtonElement> {
-  icon?: IconName;
-}
-
-export type CustomJsonStructureItem = Omit<
-  (CustomButtonProps & CustomLinkProps) & { id: string },
-  "index"
->;
-
-interface ListItemBaseProps {
-  closeOnSelect?: boolean;
-  icon?: IconName;
-  iconType?: IconType;
-  showType?: boolean;
-  disabled?: boolean;
-  keywords?: string[];
-  index: number;
-}
-
-export interface CustomLinkProps
-  extends Omit<ListItemBaseProps, "icon">,
-    DetailedHTMLProps<
-      AnchorHTMLAttributes<HTMLAnchorElement>,
-      HTMLAnchorElement
-    > {
-  renderLink?: RenderLink;
-  icon?: IconName;
-}
-
-export const useCommandPalette = () => {
+export const useCommandPalette = ({
+  query,
+  setPage,
+}: {
+  query: string;
+  setPage: Dispatch<SetStateAction<CommandPalettePageId>>;
+}) => {
   const dispatch = useDispatch();
 
-  const defaultActions = useMemo<CustomJsonStructure>(
+  const defaultActions = useMemo<CommandPaletteActions>(
     () => [
       {
-        id: "create-new",
-        heading: t`Create new`,
+        id: "new",
         items: [
           {
-            id: "create_collection",
-            heading: t`Create new collection`,
-            icon: "collection",
+            id: "new_collection",
+            children: t`New collection`,
+            icon: () => <Icon name="collection" />,
             onClick: () => dispatch(setOpenModal("collection")),
           },
           {
-            id: "create_dashboard",
-            heading: t`Create new dashboard`,
-            icon: "dashboard",
+            id: "new_dashboard",
+            children: t`New dashboard`,
+            icon: () => <Icon name="dashboard" />,
             onClick: () => dispatch(setOpenModal("dashboard")),
           },
           {
-            id: "create_question",
-            heading: t`Create new question`,
-            icon: "question",
+            id: "new_question",
+            children: t`New question`,
+            icon: () => <Icon name="question" />,
             onClick: () =>
               dispatch(
                 push(
@@ -86,11 +53,110 @@ export const useCommandPalette = () => {
                 ),
               ),
           },
+          {
+            id: "admin_settings",
+            children: t`Admin settings`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => setPage("admin_settings"),
+          },
+        ],
+      },
+    ],
+    [dispatch, setPage],
+  );
+
+  const adminSettingsActions = useMemo<CommandPaletteActions>(
+    () => [
+      {
+        id: "admin_settings",
+        items: [
+          {
+            id: "setup",
+            children: t`Setup`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/setup")),
+          },
+          {
+            id: "general",
+            children: t`General`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/general")),
+          },
+          {
+            id: "updates",
+            children: t`Updates`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/updates")),
+          },
+          {
+            id: "email",
+            children: t`Email`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/email")),
+          },
+          {
+            id: "slack",
+            children: t`Slack`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/slack")),
+          },
+          {
+            id: "authentication",
+            children: t`Authentication`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/authentication")),
+          },
+          {
+            id: "maps",
+            children: t`Maps`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/maps")),
+          },
+          {
+            id: "localization",
+            children: t`Localization`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/localization")),
+          },
+          {
+            id: "uploads",
+            children: t`Uploads`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/uploads")),
+          },
+          {
+            id: "public_sharing",
+            children: t`Public Sharing`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/public_sharing")),
+          },
+          {
+            id: "embedding",
+            children: t`Embedding`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/embedding")),
+          },
+          {
+            id: "license_and_billing",
+            children: t`License and Billing`,
+            icon: () => <Icon name="gear" />,
+            onClick: () =>
+              dispatch(push("/admin/settings/license_and_billing")),
+          },
+          {
+            id: "caching",
+            children: t`Caching`,
+            icon: () => <Icon name="gear" />,
+            onClick: () => dispatch(push("/admin/settings/caching")),
+          },
         ],
       },
     ],
     [dispatch],
   );
 
-  return defaultActions;
+  return {
+    defaultActions: filterItems(defaultActions, query),
+    adminSettingsActions: filterItems(adminSettingsActions, query),
+  };
 };
