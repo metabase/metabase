@@ -3,75 +3,103 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase-enterprise.llm.client :as llm-client]
+   [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.test :as mt]
-   [metabase.util :as u]))
-
-(def card-defaults
-  "The default card params."
-  {:archived            false
-   :collection_id       nil
-   :collection_position nil
-   :collection_preview  true
-   :dataset_query       {}
-   :dataset             false
-   :description         nil
-   :display             "scalar"
-   :enable_embedding    false
-   :entity_id           nil
-   :embedding_params    nil
-   :made_public_by_id   nil
-   :parameters          []
-   :parameter_mappings  []
-   :moderation_reviews  ()
-   :public_uuid         nil
-   :query_type          nil
-   :cache_ttl           nil
-   :average_query_time  nil
-   :last_query_start    nil
-   :result_metadata     nil})
-
-(defn mbql-count-query
-  ([]
-   (mbql-count-query (mt/id) (mt/id :venues)))
-
-  ([db-or-id table-or-id]
-   {:database (u/the-id db-or-id)
-    :type     :query
-    :query    {:source-table (u/the-id table-or-id), :aggregation [[:count]]}}))
-
-(defn card-with-name-and-query
-  ([]
-   (card-with-name-and-query (mt/random-name)))
-
-  ([card-name]
-   (card-with-name-and-query card-name (mbql-count-query)))
-
-  ([card-name query]
-   {:name                   card-name
-    :display                "scalar"
-    :dataset_query          query
-    :visualization_settings {:global {:title nil}}}))
-
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest summarize-card-test
   (testing "POST /api/ee/autodescribe/card/summarize"
-    (testing "Test ability to summarize a card"
-      (mt/with-premium-features #{:llm-autodescription}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-model-cleanup [:model/Card]
-            (let [fake-response {:title       "Title"
-                                 :description "Description"}]
+    (mt/dataset test-data
+      (t2.with-temp/with-temp [Card card {:name "Orders"
+                                          :dataset_query
+                                          {:database (mt/id)
+                                           :type     :query
+                                           :query    {:source-table (mt/id :orders)}}}]
+        (let [fake-response {:title "Title" :description "Description"}
+              json-response (json/generate-string fake-response)
+              expected {:summary fake-response}]
+          (testing "Card summarization works in the happy path"
+            ;; TODO - Set feature flag correctly when it's ready on stats
+            (mt/with-premium-features #{:llm-autodescription :serialization}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
                             (fn [_ _]
-                              {:choices [{:message
-                                          {:content
-                                           (json/generate-string
-                                             fake-response)}}]})]
+                              {:choices [{:message {:content json-response}}]})]
+                (is (= expected
+                       (mt/user-http-request :rasta :post 200 "ee/autodescribe/card/summarize" card))))))
+          (testing "We can handle json in markdown"
+            ;; TODO - Set feature flag correctly when it's ready on stats
+            (mt/with-premium-features #{:llm-autodescription :serialization}
+              (with-redefs [llm-client/*create-chat-completion-endpoint*
+                            (fn [_ _]
+                              {:choices [{:message {:content
+                                                    (format
+                                                      "```json%s```"
+                                                      json-response)}}]})]
+                (is (= expected
+                       (mt/user-http-request :rasta :post 200 "ee/autodescribe/card/summarize" card))))))
+          (testing "We can't handle bad responses"
+            ;; TODO - Set feature flag correctly when it's ready on stats
+            (mt/with-premium-features #{:llm-autodescription :serialization}
+              (with-redefs [llm-client/*create-chat-completion-endpoint*
+                            (fn [_ _]
+                              {:choices [{:message {:content
+                                                    (format
+                                                      "This is not a good json message -- %s"
+                                                      json-response)}}]})]
+                (is (= 500
+                       (get-in
+                         (mt/user-http-request :rasta :post 500 "ee/autodescribe/card/summarize" card)
+                         [:data :status-code]))))))
+          (testing "When the `:llm-autodescription` feature is disabled, you get a 402 with message"
+            (mt/with-premium-features #{}
+              (is (= "LLM Auto-description is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                     (mt/user-http-request :rasta :post 402 "ee/autodescribe/card/summarize" card))))))))))
 
-                (let [card (assoc (card-with-name-and-query (mt/random-name)
-                                                            (mbql-count-query (mt/id) (mt/id :venues)))
-                             :parameters [{:id "abc123", :name "test", :type "date"}]
-                             :parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                   :target       [:dimension [:template-tags "category"]]}])]
-                  (is (= {:summary fake-response}
-                         (mt/user-http-request :rasta :post 200 "ee/autodescribe/card/summarize" card))))))))))))
+(deftest summarize-dashboard-test
+  (testing "POST /api/ee/autodescribe/dashboard/summarize/:id"
+    (mt/dataset test-data
+      (t2.with-temp/with-temp [Card {card-id :id} {:name "Orders"
+                                                   :dataset_query
+                                                   {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (mt/id :orders)}}}
+                               Dashboard {dash-id :id} {:name "Dashboard"}
+                               DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                                      :card_id      card-id}]
+        (let [url           (format "ee/autodescribe/dashboard/summarize/%s" dash-id)
+              fake-response {:description "Description"
+                             :keywords    "awesome, amazing"
+                             :questions   "- What is this?"}
+              json-response (json/generate-string fake-response)
+              expected {:summary {:description "Keywords: awesome, amazing\n\nDescription: Description\n\nQuestions:\n- What is this?"}}]
+          (testing "Card summarization works in the happy path"
+            ;; TODO - Set feature flag correctly when it's ready on stats
+            (mt/with-premium-features #{:llm-autodescription :serialization}
+              (with-redefs [llm-client/*create-chat-completion-endpoint*
+                            (fn [_ _]
+                              {:choices [{:message {:content json-response}}]})]
+                (is (= expected
+                       (mt/user-http-request :rasta :get 200 url))))))
+          (testing "We can handle json in markdown"
+            ;; TODO - Set feature flag correctly when it's ready on stats
+            (mt/with-premium-features #{:llm-autodescription :serialization}
+              (with-redefs [llm-client/*create-chat-completion-endpoint*
+                            (fn [_ _]
+                              {:choices [{:message {:content (format "```json%s```" json-response)}}]})]
+                (is (= expected
+                       (mt/user-http-request :rasta :get 200 url))))))
+          (testing "We can't handle bad responses"
+            ;; TODO - Set feature flag correctly when it's ready on stats
+            (mt/with-premium-features #{:llm-autodescription :serialization}
+              (with-redefs [llm-client/*create-chat-completion-endpoint*
+                            (fn [_ _]
+                              {:choices [{:message {:content
+                                                    (format "This is not a good json message -- %s" json-response)}}]})]
+                (is (= 500
+                       (get-in
+                         (mt/user-http-request :rasta :get 500 url)
+                         [:data :status-code]))))))
+          (testing "When the `:llm-autodescription` feature is disabled, you get a 402 with message"
+            (mt/with-premium-features #{}
+              (is (= "LLM Auto-description is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                     (mt/user-http-request :rasta :get 402 url))))))))))
