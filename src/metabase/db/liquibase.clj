@@ -236,7 +236,7 @@
                start-time         (System/currentTimeMillis)]
            (log/info (trs "Running {0} migrations ..." unrun-migrations-count))
            (doseq [change to-run-migrations]
-             (log/infof "Unrun migration %s" (.getId change)))
+             (log/tracef "To run migration %s" (.getId change)))
            (.update liquibase contexts)
            (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time)))))
          (log/info
