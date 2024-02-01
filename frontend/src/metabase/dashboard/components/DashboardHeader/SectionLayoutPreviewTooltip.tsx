@@ -32,15 +32,20 @@ export function SectionLayoutPreviewTooltip({
 }
 
 export function PreviewGrid({ dashcards }: { dashcards: BaseDashboardCard[] }) {
-  const previewGridWidth = 200;
-  const spacing = 4;
+  const previewGridWidth = 160;
+  const spacing = 6;
 
-  const cellSize = (previewGridWidth - spacing * (GRID_WIDTH - 1)) / GRID_WIDTH;
+  const cellWidth = Math.max(
+    Math.round((previewGridWidth - spacing * (GRID_WIDTH - 1)) / GRID_WIDTH),
+    1,
+  );
+
+  const cellHeight = 6;
 
   const previewGridHeight = useMemo(() => {
     const maxY = _.max(dashcards.map(dc => dc.row + dc.size_y));
-    return maxY * (cellSize + spacing);
-  }, [dashcards, cellSize, spacing]);
+    return maxY * (cellHeight + spacing);
+  }, [dashcards, cellHeight, spacing]);
 
   return (
     <Box pos="relative" p="sm" w={previewGridWidth} h={previewGridHeight}>
@@ -48,7 +53,8 @@ export function PreviewGrid({ dashcards }: { dashcards: BaseDashboardCard[] }) {
         <PreviewCard
           key={dc.id}
           dashcard={dc}
-          cellSize={cellSize}
+          cellWidth={cellWidth}
+          cellHeight={cellHeight}
           spacing={spacing}
         />
       ))}
@@ -58,20 +64,22 @@ export function PreviewGrid({ dashcards }: { dashcards: BaseDashboardCard[] }) {
 
 function PreviewCard({
   dashcard,
-  cellSize,
+  cellWidth,
+  cellHeight,
   spacing,
 }: {
   dashcard: BaseDashboardCard;
-  cellSize: number;
+  cellWidth: number;
+  cellHeight: number;
   spacing: number;
 }) {
   const { col, row, size_x, size_y } = dashcard;
 
-  const width = calcSize(size_x, cellSize, spacing);
-  const height = calcSize(size_y, cellSize, spacing);
+  const width = calcSize(size_x, cellWidth, spacing);
+  const height = calcSize(size_y, cellHeight, spacing);
 
-  const top = row * (cellSize + spacing);
-  const left = col * (cellSize + spacing);
+  const top = row * (cellHeight + spacing);
+  const left = col * (cellWidth + spacing);
 
   return (
     <Box
