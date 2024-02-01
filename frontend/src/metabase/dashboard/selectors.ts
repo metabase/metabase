@@ -25,6 +25,7 @@ import type {
   EditParameterSidebarState,
   State,
 } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -333,7 +334,10 @@ export const getMissingRequiredParameters = createSelector(
 export const getParameterMappingOptions = createSelector(
   [getMetadata, getEditingParameter, getCard, getDashCard],
   (metadata, parameter, card, dashcard) => {
-    return _getParameterMappingOptions(metadata, parameter, card, dashcard);
+    // TODO: improve later
+    const question = new Question(card, metadata);
+
+    return _getParameterMappingOptions(question, parameter, card, dashcard);
   },
 );
 

@@ -56,24 +56,22 @@ export function getMatchingParameterOption(
   }
 
   const targetQuestion = new Question(targetDashcard.card, metadata);
-  const question = new Question(dashcardToCheck.card, metadata);
-
-  const parameterMappingOptions = getParameterMappingOptions(
-    metadata,
-    null,
-    dashcardToCheck.card,
-    dashcardToCheck,
-  );
+  const questionToCheck = new Question(dashcardToCheck.card, metadata);
 
   return (
-    parameterMappingOptions.find((param: { target: ParameterTarget }) => {
-      return compareMappingOptionTargets(
+    getParameterMappingOptions(
+      questionToCheck,
+      null,
+      dashcardToCheck.card,
+      dashcardToCheck,
+    ).find((param: { target: ParameterTarget }) =>
+      compareMappingOptionTargets(
         targetDimension,
         param.target,
         targetQuestion,
-        question,
-      );
-    }) ?? null
+        questionToCheck,
+      ),
+    ) ?? null
   );
 }
 
