@@ -364,8 +364,8 @@ describe("urls", () => {
       { path: "dashboard/1", expected: false },
       { path: "/dashboard/1", expected: false },
       { path: "/dashboard/12-orders", expected: false },
-      { path: "/browse/1", expected: false },
-      { path: "/browse/12-shop", expected: false },
+      { path: "/browse/databases/1", expected: false },
+      { path: "/browse/databases/12-shop", expected: false },
       { path: "/question/1-orders", expected: false },
     ];
 
@@ -458,7 +458,7 @@ describe("urls", () => {
 
       it(`should handle ${caseName} correctly for database browse URLs`, () => {
         expect(browseDatabase(entity)).toBe(
-          expectedUrl("/browse/1", expectedString),
+          expectedUrl("/browse/databases/1", expectedString),
         );
       });
 
