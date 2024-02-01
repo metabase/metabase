@@ -42,8 +42,12 @@ export const DashboardControls = ComposedComponent =>
         this.loadDashboardParams();
       }
 
-      componentDidUpdate() {
-        this.updateDashboardParams();
+      componentDidUpdate(prevProps) {
+        if (prevProps.location !== this.props.location) {
+          this.syncUrlHashToState();
+        } else {
+          this.syncStateToUrlHash();
+        }
         this._showNav(!this.state.isFullscreen);
       }
 
@@ -72,7 +76,16 @@ export const DashboardControls = ComposedComponent =>
         this.setHideParameters(options.hide_parameters);
       };
 
-      updateDashboardParams = () => {
+      syncUrlHashToState() {
+        const { location } = this.props;
+
+        const { refresh, fullscreen, theme } = parseHashOptions(location.hash);
+        this.setRefreshPeriod(refresh);
+        this.setFullscreen(fullscreen);
+        this.setTheme(theme);
+      }
+
+      syncStateToUrlHash = () => {
         const { location, replace } = this.props;
 
         const options = parseHashOptions(location.hash);
@@ -85,10 +98,7 @@ export const DashboardControls = ComposedComponent =>
         };
         setValue("refresh", this.state.refreshPeriod);
         setValue("fullscreen", this.state.isFullscreen);
-        const normalizedTheme = options.theme ?? null;
-        if (normalizedTheme !== this.state.theme) {
-          this.setTheme(normalizedTheme);
-        }
+        setValue("theme", this.state.theme);
 
         delete options.night; // DEPRECATED: options.night
 
