@@ -83,28 +83,6 @@ export const undoRemoveCardFromDashboard = createThunkAction(
     },
 );
 
-export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
-  trackCardCreated("link", dashId);
-
-  const virtualLinkCard = {
-    ...createCard(),
-    display: "link",
-    archived: false,
-  };
-
-  const dashcardOverrides = {
-    card: virtualLinkCard,
-    visualization_settings: {
-      virtual_card: virtualLinkCard,
-    },
-  };
-  return addDashCardToDashboard({
-    dashId: dashId,
-    dashcardOverrides: dashcardOverrides,
-    tabId,
-  });
-};
-
 export const addActionToDashboard =
   async ({ dashId, tabId, action, displayType }) =>
   dispatch => {

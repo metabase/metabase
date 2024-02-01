@@ -122,6 +122,14 @@ export const addMarkdownDashCardToDashboard =
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides: dc }));
   };
 
+export const addLinkDashCardToDashboard =
+  ({ dashId, tabId }: NewDashCardOpts) =>
+  (dispatch: Dispatch) => {
+    trackCardCreated("link", dashId);
+    const dc = createVirtualDashCard({ display: "link" });
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides: dc }));
+  };
+
 function createDashCard<T extends BaseDashboardCard>(attrs: Partial<T>) {
   return {
     id: generateTemporaryDashcardId(),
