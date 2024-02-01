@@ -5,6 +5,8 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
@@ -15,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -65,6 +68,11 @@
   :type       :boolean
   :setter     :none
   :getter     (constantly true))
+
+(defsetting test-setting-custom-init
+  "Test setting - this only shows up in dev (0)"
+  :type       :string
+  :init       (comp str random-uuid))
 
 (def ^:private ^:dynamic *enabled?* false)
 
@@ -142,13 +150,54 @@
     (is (= true
            (test-setting-calculated-getter)))
     (is (= true
-           (setting/user-facing-value :test-setting-calculated-getter)))))
+           (setting/user-facing-value :test-setting-calculated-getter))))
+
+  (testing "`user-facing-value` will initialize pending values"
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (is (some? (setting/user-facing-value :test-setting-custom-init))))))
 
 (deftest do-not-define-setter-function-for-setter-none-test
   (testing "Settings with `:setter` `:none` should not have a setter function defined"
     (testing "Sanity check: getter should be defined"
       (is (some? (resolve `test-setting-calculated-getter))))
     (is (not (resolve `test-setting-calculated-getter!)))))
+
+;; TODO: I suspect we're seeing stale values in CI due to parallel tests or state persisting between runs
+;;  We should at least make this an error when running locally without parallelism.
+(defn- clear-setting-if-leak! []
+  (when-let [existing-value (some? (#'setting/read-setting :test-setting-custom-init))]
+    (log/warn "Test environment corrupted, perhaps due to parallel tests or state kept between runs" existing-value)
+    (setting/set! :test-setting-custom-init nil :bypass-read-only? true)))
+
+(deftest setting-initialization-test
+  (testing "The value will be initialized and saved"
+    (clear-setting-if-leak!)
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (let [val (setting/get :test-setting-custom-init)]
+        (is (some? val))
+        (is (= val (test-setting-custom-init)))
+        (is (= val (#'setting/read-setting :test-setting-custom-init)))))))
+
+(deftest validate-without-initialization-test
+  (testing "Validation does not initialize the setting"
+    (clear-setting-if-leak!)
+    (setting/validate-settings-formatting!)
+    (is (= nil (#'setting/read-setting :test-setting-custom-init)))))
+
+(deftest init-requires-db-test
+  (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (clear-setting-if-leak!)
+      (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
+        (is (= false (mdb/db-is-set-up?)))
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Cannot initialize setting before the db is set up"
+              (test-setting-custom-init)))
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Cannot initialize setting before the db is set up"
+              (setting/get :test-setting-custom-init)))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
@@ -234,7 +283,7 @@
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (tu/do-with-temporary-setting-value setting db-value
     (fn []
-      (tu/do-with-temp-env-var-value
+      (tu/do-with-temp-env-var-value!
        (setting/setting-env-map-name (keyword setting))
        env-var-value
        (fn []
@@ -717,7 +766,7 @@
                                                (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
-                                         (tu/do-with-temp-env-var-value
+                                         (tu/do-with-temp-env-var-value!
                                           (setting/setting-env-map-name setting-name)
                                           site-wide-value
                                           thunk))]]
@@ -939,6 +988,23 @@
 
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
+
+(defsetting ^:private test-no-default-setting
+  "Setting with a falsey default"
+  :visibility :internal
+  :type       :boolean)
+
+(defsetting ^:private test-falsey-default-setting
+  "Setting with a falsey default"
+  :visibility :internal
+  :type       :boolean
+  :default    false)
+
+(deftest ^:parallel falsey-default-setting-test
+  (testing "We should use default values even if they are falsey"
+    (is (= false (test-falsey-default-setting))))
+  (testing "We should return no value for an uninitialized setting with no default or initializer"
+    (is (= nil (test-no-default-setting)))))
 
 (defsetting ^:private test-integer-setting
   "test Setting"
@@ -1231,11 +1297,11 @@
      :type ~(keyword (name format))))
 
 (defmacro get-parse-exception [format raw-value]
-  `(mt/with-temp-env-var-value [~(symbol (str "mb-" (validation-setting-symbol format))) ~raw-value]
-    (try
-    (setting/validate-settings-formatting!)
-    nil
-    (catch java.lang.Exception e# e#))))
+  `(mt/with-temp-env-var-value! [~(symbol (str "mb-" (validation-setting-symbol format))) ~raw-value]
+     (try
+       (setting/validate-settings-formatting!)
+       nil
+       (catch java.lang.Exception e# e#))))
 
 (defn- assert-parser-exception! [format-type ex cause-message]
   (is (= (format "Invalid %s configuration for setting: %s"

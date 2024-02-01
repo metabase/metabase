@@ -101,7 +101,7 @@ export const DropdownSidebarFilter = ({
     >
       <DropdownFieldSet
         noPadding
-        legend={fieldHasValue ? label() : null}
+        legend={fieldHasValue ? label() : undefined}
         fieldHasValueOrFocus={fieldHasValue}
       >
         <GroupOverflowHidden position="apart" noWrap w="100%">

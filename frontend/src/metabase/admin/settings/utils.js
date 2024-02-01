@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 
 // in order to prevent collection of identifying information only fields
 // that are explicitly marked as collectable or booleans should show the true value
@@ -18,3 +19,10 @@ export const settingToFormField = setting => ({
 });
 
 export const settingToFormFieldId = setting => `setting-${setting.key}`;
+
+export const getEnvVarDocsUrl = envName => {
+  return MetabaseSettings.docsUrl(
+    "configuring-metabase/environment-variables",
+    envName?.toLowerCase(),
+  );
+};

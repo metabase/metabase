@@ -100,7 +100,9 @@
     (com.fasterxml.jackson.core JsonParseException)
     (com.fasterxml.jackson.core.io JsonEOFException)
     (java.io StringWriter)
-    (java.time.temporal Temporal)))
+    (java.time.temporal Temporal)
+    (java.util.concurrent TimeUnit)
+    (java.util.concurrent.locks ReentrantLock)))
 
 ;;; this namespace is required for side effects since it has the JSON encoder definitions for `java.time` classes and
 ;;; other things we need for `:json` settings
@@ -252,9 +254,11 @@
    :type        Type             ; all values are stored in DB as Strings,
    :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
    :setter      clojure.lang.IFn
+   :init        (s/maybe clojure.lang.IFn) ; an init function can be used to seed initial values
    :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
+   :export?     s/Bool           ; should this setting be serialized?
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
    :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
 
@@ -280,11 +284,7 @@
    ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
    ;; the default getter or a custom one.
    ;; (default: `:no-value`)
-   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))
-
-   ;; TODO: make this required and deprecate setting/exported-setting
-   (s/optional-key :export?)     s/Bool ; should this setting be serialized?
-   })
+   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -470,28 +470,66 @@
 
 (def ^:private ^:dynamic *disable-cache* false)
 
+(def ^:private ^:dynamic *disable-init* false)
+
+(declare get)
+(declare set!)
+
+(defn read-setting
+  "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
+  looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
+  if any.
+
+  Note: This will bypass initialization, i.e. it could return nil for a nonce"
+  [setting-definition-or-name]
+  (binding [*disable-init* true]
+    (get setting-definition-or-name)))
+
+(defn- db-value [setting-definition-or-name]
+  (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name)))
+
+(defn- db-is-set-up? []
+  ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
+  (let [f (requiring-resolve 'metabase.db/db-is-set-up?)]
+    (if f (f) false)))
+
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
   ^String [setting-definition-or-name]
-  (let [setting       (resolve-setting setting-definition-or-name)
-        db-is-set-up? (or (requiring-resolve 'metabase.db/db-is-set-up?)
-                          ;; this should never be hit. it is just overly cautious against a NPE here. But no way this
-                          ;; cannot resolve
-                          (constantly false))
-        db-value      #(t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))]
+  (let [setting  (resolve-setting setting-definition-or-name)]
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
-      (let [v (if *disable-cache*
-                (db-value)
-                (do
-                  (setting.cache/restore-cache-if-needed!)
-                  (let [cache (setting.cache/cache)]
-                    (if (nil? cache)
-                      ;; If another thread is populating the cache for the first time, we will have a nil value for
-                      ;; the cache and must hit the db while the cache populates
-                      (db-value)
-                      (core/get cache (setting-name setting-definition-or-name))))))]
-        (not-empty v)))))
+      (not-empty
+        (if *disable-cache*
+          (db-value setting)
+          (do
+            ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
+            (setting.cache/restore-cache-if-needed!)
+            (let [cache (setting.cache/cache)]
+              (if (nil? cache)
+                ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
+                (db-value setting)
+                (core/get cache (setting-name setting-definition-or-name))))))))))
+
+(defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
+
+(defn- init! [setting-definition-or-name]
+  (let [{:keys [init] :as setting} (resolve-setting setting-definition-or-name)]
+    (when init
+      (when (not (db-is-set-up?))
+        (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
+      ;; We do not need to interact with the restore-cache-lock as it is OK to race with it.
+      (if-not (.tryLock init-lock 30 TimeUnit/SECONDS)
+        (throw (ex-info "Unable to get initialization lock" {:setting setting-definition-or-name}))
+        (try
+          (u/or-with some?
+            ;; perhaps another process initialized this setting while we were waiting for the lock
+            (read-setting setting)
+            (when init
+              (when-let [init-value (init)]
+                (metabase.models.setting/set! setting init-value :bypass-read-only? true))))
+          (finally
+            (.unlock init-lock)))))))
 
 (defn- realize
   "Parsing a setting may result in a lazy value. Use this to ensure we finish parsing."
@@ -530,9 +568,12 @@
                      database-local-value
                      env-var-value
                      db-or-cache-value
-                     default-value]]
+                     (cond
+                       (some? (:default setting)) default-value
+                       (:init setting)            (when-not *disable-init*
+                                                    init!))]]
      (loop [[f & more] source-fns]
-       (let [v (f setting)]
+       (let [v (when f (f setting))]
          (cond
            (some? v)  v
            (seq more) (recur more))))))
@@ -577,6 +618,9 @@
       (throw (Exception.
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
+(defn ^{:doc "The string representation of a type 4 random uuid"} random-uuid-str []
+  (str (random-uuid)))
+
 ;; Strings are parsed as follows:
 ;;
 ;; * `true`  if *lowercased* string value is `true`
@@ -620,7 +664,10 @@
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
-  if any."
+  if any.
+
+  Note: If the setting has an initializer, and this is the first time accessing, a value will be generated and saved
+  unless *disable-init* has been bound to a truthy value."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
         disable-cache?                                   (or *disable-cache* (not cache?))]
@@ -629,7 +676,6 @@
       default
       (binding [*disable-cache* disable-cache?]
         (getter)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      set!                                                      |
@@ -725,7 +771,7 @@
               (set-new-setting! setting-name new-value))
             ;; update cached value
             (setting.cache/update-cache! setting-name new-value)
-            ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
+            ;; Record the fact that a Setting has been updated so eventually other instances (if applicable) find out
             ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
             ;; cause other instances to do needless reloading of the cache from the DB)
             (when-not *disable-cache*
@@ -832,16 +878,19 @@
 
 (defn- set-with-audit-logging!
   "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."
-  [{:keys [setter getter audit] :as setting} new-value]
-  (if (should-audit? setting)
-    (let [audit-value-fn #(condp = audit
-                            :no-value  nil
-                            :raw-value (get-raw-value setting)
-                            :getter    (getter))
-          previous-value (audit-value-fn)]
-      (u/prog1 (setter new-value)
-        (audit-setting-change! setting previous-value (audit-value-fn))))
-    (setter new-value)))
+  [{:keys [getter audit setter] setting-type :type :as setting} new-value bypass-read-only?]
+  (let [setter (if (and bypass-read-only? (= :none setter))
+                 (partial set-value-of-type! setting-type setting)
+                 setter)]
+    (if (should-audit? setting)
+      (let [audit-value-fn #(condp = audit
+                              :no-value nil
+                              :raw-value (get-raw-value setting)
+                              :getter (getter))
+            previous-value (audit-value-fn)]
+        (u/prog1 (setter new-value)
+                 (audit-setting-change! setting previous-value (audit-value-fn))))
+      (setter new-value))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
@@ -851,8 +900,10 @@
 
   Style note: prefer using the setting directly instead:
 
-    (mandrill-api-key \"xyz123\")"
-  [setting-definition-or-name new-value]
+    (mandrill-api-key \"xyz123\")
+
+  This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
+  [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
   (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
         name                                                 (setting-name setting)]
     (when (and feature (not (has-feature? feature)))
@@ -861,10 +912,11 @@
       (throw (ex-info (tru "Setting {0} is not enabled" name) setting)))
     (when-not (current-user-can-access-setting? setting)
       (throw (ex-info (tru "You do not have access to the setting {0}" name) setting)))
-    (when (= setter :none)
-      (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
+    (when-not bypass-read-only?
+      (when (= setter :none)
+        (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name)))))
     (binding [*disable-cache* (not cache?)]
-      (set-with-audit-logging! setting new-value))))
+      (set-with-audit-logging! setting new-value bypass-read-only?))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -888,8 +940,10 @@
                  :on-change      nil
                  :getter         (partial (default-getter-for-type setting-type) setting-name)
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
+                 :init           nil
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
+                 :export?        false
                  :sensitive?     false
                  :cache?         true
                  :feature        nil
@@ -920,6 +974,10 @@
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
       (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
         (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                             setting-name)
+                        {:setting setting})))
+      (when (and (some? (:default setting)) (:init setting))
+        (throw (ex-info (tru "Setting {0} uses both :default and :init options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
       (when (and (:enabled? setting) (:feature setting))
@@ -1035,6 +1093,12 @@
   The default value of the setting. This must be of the same type as the Setting type, e.g. the default for an
   `:integer` setting must be some sort of integer. (default: `nil`)
 
+  ###### `:init`
+
+  A optional 0-arity function which returns the same type as the Setting type, e.g. for an `:integer` setting must be
+  some sort of integer. This function will be used to generate an initial value for the setting the first time it is
+  accessed. This value will be saved, in case the function is expensive or non-deterministic.
+
   ###### `:type`
 
   `:string` (default) or one of the other types that implement [[get-value-of-type]] and [[set-value-of-type]].
@@ -1055,6 +1119,10 @@
 
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
+
+  ###### `:export?`
+
+  Whether this Setting is included when producing a serializing settings export.
 
   ###### `:getter`
 
@@ -1371,12 +1439,13 @@
    Returns an map containing the exception if an issue is encountered, or nil if the value passes validation."
   [setting]
   (try
-    (get-value-of-type (:type setting) setting)
+    (binding [*disable-init* true]
+      (get-value-of-type (:type setting) setting))
     nil
     (catch clojure.lang.ExceptionInfo e
       (let [parse-error (or (ex-cause e) e)
             parse-error (redact-sensitive-tokens parse-error setting)
-            env-var? (set-via-env-var? setting)]
+            env-var?    (set-via-env-var? setting)]
         (assoc (select-keys setting [:name :type])
           :parse-error parse-error
           :env-var? env-var?)))))

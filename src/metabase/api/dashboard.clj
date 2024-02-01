@@ -179,11 +179,14 @@
 (defn- card->query-hashes
   "Return a tuple of possible hashes that would be associated with executions of CARD. The first is the hash of the
   query dictionary as-is; the second is one with the `default-query-constraints`, which is how it will most likely be
-  run."
+  run.
+
+  Returns nil if `:dataset_query` isn't set, eg. for a markdown card."
   [{:keys [dataset_query]}]
-  (u/ignore-exceptions
-    [(qp.util/query-hash dataset_query)
-     (qp.util/query-hash (assoc dataset_query :constraints (qp.constraints/default-query-constraints)))]))
+  (when dataset_query
+    (u/ignore-exceptions
+      [(qp.util/query-hash dataset_query)
+       (qp.util/query-hash (assoc dataset_query :constraints (qp.constraints/default-query-constraints)))])))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."

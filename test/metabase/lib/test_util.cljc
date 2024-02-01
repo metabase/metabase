@@ -55,19 +55,28 @@
            options)
     (meta/id table field)]))
 
+(def ^:private cards
+  {:cards [{:name          "My Card"
+            :id            1
+            :dataset-query {:database (meta/id)
+                            :type     :query
+                            :query    {:source-table (meta/id :checkins)
+                                       :aggregation  [[:count]]
+                                       :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
+            :database-id   (meta/id)}]})
+
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
   (lib/composed-metadata-provider
    meta/metadata-provider
+   (providers.mock/mock-metadata-provider cards)))
+
+(def metadata-provider-with-model
+  "[[meta/metadata-provider]], but with a Card with ID 1."
+  (lib/composed-metadata-provider
+   meta/metadata-provider
    (providers.mock/mock-metadata-provider
-    {:cards [{:name          "My Card"
-              :id            1
-              :dataset-query {:database (meta/id)
-                              :type     :query
-                              :query    {:source-table (meta/id :checkins)
-                                         :aggregation  [[:count]]
-                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
-              :database-id   (meta/id)}]})))
+    (assoc-in cards [:cards 0 :dataset] true))))
 
 (def query-with-source-card
   "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
@@ -94,22 +103,23 @@
                                            :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
               ;; this is copied directly from a QP response. NOT CONVERTED TO KEBAB-CASE YET, BECAUSE THIS IS HOW IT
               ;; LOOKS IN LEGACY QUERIES!
-              :result-metadata [{:description       nil
-                                 :semantic_type     :type/FK
-                                 :table_id          (meta/id :checkins)
-                                 :coercion_strategy nil
-                                 :name              "USER_ID"
-                                 :settings          nil
-                                 :source            :breakout
-                                 :field_ref         [:field (meta/id :checkins :user-id) nil]
-                                 :effective_type    :type/Integer
-                                 :nfc_path          nil
-                                 :parent_id         nil
-                                 :id                (meta/id :checkins :user-id)
-                                 :visibility_type   :normal
-                                 :display_name      "User ID"
-                                 :fingerprint       {:global {:distinct-count 15, :nil% 0.0}}
-                                 :base_type         :type/Integer}
+              :result-metadata [{:description        nil
+                                 :semantic_type      :type/FK
+                                 :table_id           (meta/id :checkins)
+                                 :coercion_strategy  nil
+                                 :name               "USER_ID"
+                                 :settings           nil
+                                 :source             :breakout
+                                 :field_ref          [:field (meta/id :checkins :user-id) nil]
+                                 :effective_type     :type/Integer
+                                 :nfc_path           nil
+                                 :parent_id          nil
+                                 :id                 (meta/id :checkins :user-id)
+                                 :fk_target_field_id (meta/id :users :id)
+                                 :visibility_type    :normal
+                                 :display_name       "User ID"
+                                 :fingerprint        {:global {:distinct-count 15, :nil% 0.0}}
+                                 :base_type          :type/Integer}
                                 {:base_type      :type/Integer
                                  :semantic_type  :type/Quantity
                                  :name           "count"
@@ -190,38 +200,42 @@
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
 
+(defn make-mock-cards
+  "Create mock cards against a set of tables in meta/metadata-provider. See [[mock-cards]]"
+  [metadata-provider table-key-and-ids]
+  (into {}
+        (comp (mapcat (fn [[table table-id]]
+                        [{:table table, :table-id table-id :metadata? true,  :native? false, :card-name table}
+                         {:table table, :table-id table-id :metadata? true,  :native? true,  :card-name (keyword (name table) "native")}
+                         {:table table, :table-id table-id :metadata? false, :native? false, :card-name (keyword (name table) "no-metadata")}]))
+              (map-indexed (fn [idx {:keys [table table-id metadata? native? card-name]}]
+                             [card-name
+                              (merge
+                                {:lib/type      :metadata/card
+                                 :id            (inc idx)
+                                 :database-id   (:id (lib.metadata/database metadata-provider))
+                                 :name          (str "Mock " (name table) " card")
+                                 :dataset-query (if native?
+                                                  {:database (:id (lib.metadata/database metadata-provider))
+                                                   :type     :native
+                                                   :native   {:query (str "SELECT * FROM " (name table))}}
+                                                  {:database (:id (lib.metadata/database metadata-provider))
+                                                   :type     :query
+                                                   :query    {:source-table table-id}})}
+                                (when metadata?
+                                  {:result-metadata
+                                   (->> (lib.metadata/fields metadata-provider table-id)
+                                        (sort-by :id)
+                                        (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
+        table-key-and-ids))
+
 (def mock-cards
   "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
 
   * `:venues`, a Card WITH `:result-metadata`
   * `:venues/no-metadata`, a Card WITHOUT `:result-metadata`
   * `:venues/native`, a Card with `:result-metadata` and a NATIVE query."
-  (into {}
-        (comp (mapcat (fn [table]
-                        [{:table table, :metadata? true,  :native? false, :card-name table}
-                         {:table table, :metadata? true,  :native? true,  :card-name (keyword (name table) "native")}
-                         {:table table, :metadata? false, :native? false, :card-name (keyword (name table) "no-metadata")}]))
-              (map-indexed (fn [idx {:keys [table metadata? native? card-name]}]
-                             [card-name
-                              (merge
-                               {:lib/type      :metadata/card
-                                :id            (inc idx)
-                                :database-id   (meta/id)
-                                :name          (str "Mock " (name table) " card")
-                                :dataset-query (if native?
-                                                 {:database (meta/id)
-                                                  :type     :native
-                                                  :native   {:query (str "SELECT * FROM " (name table))}}
-                                                 {:database (meta/id)
-                                                  :type     :query
-                                                  :query    {:source-table (meta/id table)}})}
-                               (when metadata?
-                                 {:result-metadata
-                                  (->> (meta/fields table)
-                                       (map (partial meta/field-metadata table))
-                                       (sort-by :id)
-                                       (mapv #(if native? (dissoc % :table-id :id) %)))}))])))
-        (meta/tables)))
+  (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables))))
 
 (defn metadata-provider-with-mock-card [card]
   (lib/composed-metadata-provider

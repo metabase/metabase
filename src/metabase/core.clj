@@ -80,7 +80,7 @@
   (print-setup-url))
 
 (defn- destroy!
-  "General application shutdown function which should be called once at application shuddown."
+  "General application shutdown function which should be called once at application shutdown."
   []
   (log/info (trs "Metabase Shutting Down ..."))
   ;; TODO - it would really be much nicer if we implemented a basic notification system so these things could listen

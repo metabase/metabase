@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { color } from "metabase/lib/colors";
 import ViewButton from "./ViewButton";
 import { HeaderButton } from "./ViewHeader.styled";
@@ -65,10 +66,14 @@ QuestionSummarizeWidget.shouldRender = ({
   queryBuilderMode,
   isObjectDetail,
   isActionListVisible,
-}) =>
-  queryBuilderMode === "view" &&
-  question &&
-  question.isStructured() &&
-  question.isQueryEditable() &&
-  !isObjectDetail &&
-  isActionListVisible;
+}) => {
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  return (
+    queryBuilderMode === "view" &&
+    question &&
+    !isNative &&
+    isEditable &&
+    !isObjectDetail &&
+    isActionListVisible
+  );
+};

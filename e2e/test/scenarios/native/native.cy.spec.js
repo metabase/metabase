@@ -85,9 +85,7 @@ describe("scenarios > question > native", () => {
       parseSpecialCharSequences: false,
     });
     cy.findByTestId("sidebar-right")
-      .findByText("Required?")
-      .parent()
-      .find("input")
+      .findByText("Always require a value")
       .click();
     cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
     runQuery();
@@ -457,6 +455,52 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       cy.findByTestId("visibility-toggler").should("not.exist");
     });
   });
+
+  it(
+    "shows format query button only for sql queries",
+    { tags: "@mongo" },
+    () => {
+      const MONGO_DB_NAME = "QA Mongo4";
+
+      cy.intercept("POST", "/api/card").as("createQuestion");
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      restore("mongo-4");
+      cy.signInAsNormalUser();
+
+      openNativeEditor({ newMenuItemTitle: "Native query" });
+      popover().findByText(MONGO_DB_NAME).click();
+      cy.findByLabelText("Format query").should("not.exist");
+
+      cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
+
+      // Switch to SQL engine which is supported by the formatter
+      popover().findByText("Sample Database").click();
+
+      cy.findByTestId("native-query-editor")
+        .as("nativeQueryEditor")
+        .type("select * from orders", {
+          parseSpecialCharSequences: false,
+        });
+
+      // It should load the formatter chunk only when used
+      cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
+
+      cy.findByLabelText("Format query").click();
+
+      cy.wait("@sqlFormatter");
+
+      cy.findByTestId("native-query-editor")
+        .get(".ace_text-layer")
+        .get(".ace_line")
+        .as("lines");
+
+      cy.get("@lines").eq(0).should("have.text", "SELECT");
+      cy.get("@lines").eq(1).should("have.text", "  *");
+      cy.get("@lines").eq(2).should("have.text", "FROM");
+      cy.get("@lines").eq(3).should("have.text", "  orders");
+    },
+  );
 });
 
 const runQuery = () => {

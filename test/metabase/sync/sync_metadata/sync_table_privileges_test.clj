@@ -12,12 +12,15 @@
 (set! *warn-on-reflection* true)
 
 (deftest sync-table-privileges!-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :table-privileges)
-                                     (mt/normal-drivers-with-feature :schemas))
+  (mt/test-drivers (disj (set/intersection (mt/normal-drivers-with-feature :table-privileges)
+                                           (mt/normal-drivers-with-feature :schemas))
+                         ;; redshift supports it but we don't want to enable syncing table privileges for it for now
+                         :redshift)
     (testing "`TablePrivileges` should store the correct data for current_user and role privileges for databases with schemas"
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (jdbc/execute! conn-spec (str "CREATE SCHEMA foo; "
+          (jdbc/execute! conn-spec (str "DROP SCHEMA IF EXISTS foo; "
+                                        "CREATE SCHEMA foo; "
                                         "CREATE TABLE foo.baz (id INTEGER);"))
           (sync-tables/sync-tables-and-database! (mt/db))
           (sync-table-privileges/sync-table-privileges! (mt/db))

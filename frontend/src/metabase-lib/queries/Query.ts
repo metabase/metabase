@@ -7,6 +7,7 @@ import type Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
 import type Variable from "metabase-lib/variables/Variable";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
@@ -50,13 +51,6 @@ class Query {
   }
 
   /**
-   * Does this query have the sufficient metadata for editing it?
-   */
-  isEditable(): boolean {
-    return true;
-  }
-
-  /**
    * Returns the dataset_query object underlying this Query
    */
   datasetQuery(): DatasetQuery {
@@ -95,7 +89,7 @@ class Query {
   /**
    * Variables exposed by this query
    */
-  variables(_filter?: (variable: Variable) => boolean): Variable[] {
+  variables(_filter?: (variable: Variable) => boolean): TemplateTagVariable[] {
     return [];
   }
 

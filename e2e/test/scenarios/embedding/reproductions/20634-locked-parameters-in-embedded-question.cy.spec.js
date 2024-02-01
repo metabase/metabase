@@ -52,7 +52,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
       cy.findByPlaceholderText("Text").type("foo{enter}");
 
       // publish the embedded question so that we can directly navigate to its url
-      cy.findByText("Publish changes").click();
+      cy.findByText("Publish").click();
       cy.wait("@publishChanges");
     });
 

@@ -2,6 +2,7 @@
 import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
+import type { DatasetColumn } from "metabase-types/api";
 import {
   isBoolean,
   isTime,
@@ -888,8 +889,8 @@ type UpdateLatLonFilterBounds = {
 export function updateLatLonFilter(
   query: Query,
   stageIndex: number,
-  latitudeColumn: ColumnMetadata,
-  longitudeColumn: ColumnMetadata,
+  latitudeColumn: DatasetColumn,
+  longitudeColumn: DatasetColumn,
   bounds: UpdateLatLonFilterBounds,
 ): Query {
   return ML.update_lat_lon_filter(
@@ -907,7 +908,7 @@ export function updateLatLonFilter(
 export function updateNumericFilter(
   query: Query,
   stageIndex: number,
-  numericColumn: ColumnMetadata,
+  numericColumn: DatasetColumn,
   start: number,
   end: number,
 ): Query {
@@ -921,9 +922,9 @@ export function updateNumericFilter(
 export function updateTemporalFilter(
   query: Query,
   stageIndex: number,
-  temporalColumn: ColumnMetadata,
-  start: string,
-  end: string,
+  temporalColumn: DatasetColumn,
+  start: string | Date,
+  end: string | Date,
 ): Query {
   return ML.update_temporal_filter(
     query,

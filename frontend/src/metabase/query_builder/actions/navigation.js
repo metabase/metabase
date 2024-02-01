@@ -7,6 +7,7 @@ import { equals } from "metabase/lib/utils";
 
 import { isEqualCard } from "metabase/lib/card";
 
+import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
   getCard,
@@ -137,9 +138,10 @@ export const updateUrl = createThunkAction(
           (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
       }
 
+      const { isNative } = Lib.queryDisplayInfo(question.query());
       // prevent clobbering of hash when there are fake parameters on the question
       // consider handling this in a more general way, somehow
-      if (question.isStructured() && question.parameters().length > 0) {
+      if (!isNative && question.parameters().length > 0) {
         dirty = true;
       }
 

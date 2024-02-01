@@ -69,6 +69,7 @@
  [lib.aggregation
   aggregate
   aggregation-clause
+  aggregation-column
   aggregation-ref
   aggregation-operator-columns
   aggregations
@@ -96,6 +97,7 @@
   with-binning]
  [lib.breakout
   breakout
+  breakout-column
   breakoutable-columns
   breakouts
   breakouts-metadata]
@@ -163,6 +165,7 @@
   upper
   lower]
  [lib.fe-util
+  dependent-metadata
   expression-clause
   expression-parts
   filter-args-display-name]
@@ -277,7 +280,8 @@
  [lib.stage
   append-stage
   drop-stage
-  drop-stage-if-empty]
+  drop-stage-if-empty
+  has-clauses?]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval

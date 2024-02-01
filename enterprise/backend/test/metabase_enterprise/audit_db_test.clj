@@ -24,7 +24,7 @@
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
   `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
-     (mt/with-temp-env-var-value [mb-load-analytics-content (not audit-collection-exists?#)]
+     (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
        (mbc/ensure-audit-db-installed!)
        (try
          ~@body
@@ -72,7 +72,7 @@
         (t2/update! Database :is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
-  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+  (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
      (let [plugins-dir (plugins/plugins-dir)]
        (fs/create-dirs plugins-dir)
@@ -85,7 +85,7 @@
        (fs/delete-tree (plugins/plugins-dir))))))
 
 (deftest all-instance-analytics-content-is-copied-from-mb-plugins-dir-test
-  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+  (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
       (#'audit-db/ia-content->plugins (plugins/plugins-dir))
       (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))

@@ -125,6 +125,7 @@ describe("issue 21528", () => {
       .should("be.visible");
     cy.findByRole("navigation").findByText("Exit admin").click();
 
+    openNavigationSidebar();
     navigationSidebar().findByText("Our analytics").click();
     cy.findByRole("main").findByText(DASHBOARD_DETAILS.name).click();
 

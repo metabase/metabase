@@ -336,7 +336,8 @@
                :target [:dimension [:template-tag "date"]],
                :name "Check-In Date",
                :slug "date",
-               :default nil}]
+               :default nil
+               :required false}]
              (card/template-tag-parameters card)))))
   (testing "Card with a non-Field-filter parameter"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-field-filter-query)}]
@@ -345,7 +346,8 @@
                :target [:variable [:template-tag "id"]],
                :name "Order ID",
                :slug "id",
-               :default "1"}]
+               :default "1"
+               :required true}]
              (card/template-tag-parameters card)))))
   (testing "Should ignore native query snippets and source card IDs"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-parameter-template-tag-query)}]
@@ -354,7 +356,8 @@
                :target [:variable [:template-tag "id"]],
                :name "Order ID",
                :slug "id",
-               :default "1"}]
+               :default "1"
+               :required true}]
              (card/template-tag-parameters card))))))
 
 (deftest validate-template-tag-field-ids-test

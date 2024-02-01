@@ -13,7 +13,7 @@ runs:
       run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
       shell: bash
     - name: Get Cypress cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: ~/.cache/Cypress

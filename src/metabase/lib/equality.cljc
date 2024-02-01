@@ -286,27 +286,35 @@
     a-ref-or-column :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
     columns         :- [:sequential ::lib.schema.metadata/column]
     opts            :- FindMatchingColumnOptions]
-   (let [[_ref-kind _opts ref-id :as a-ref] (if (lib.util/clause? a-ref-or-column)
-                                              a-ref-or-column
-                                              (lib.ref/ref a-ref-or-column))]
+   (let [[ref-kind ref-opts ref-id :as a-ref] (if (lib.util/clause? a-ref-or-column)
+                                                a-ref-or-column
+                                                (lib.ref/ref a-ref-or-column))]
      (or (find-matching-column a-ref columns opts)
+         ;; Aggregations are matched by `:source-uuid` but if we're comparing old columns to new refs or vice versa
+         ;; the random UUIDs won't match up. This falls back to the `:lib/source-name` option on aggregation refs, if
+         ;; present.
+         (when (and (= ref-kind :aggregation)
+                    (:lib/source-name ref-opts))
+           (m/find-first #(and (= (:lib/source %) :source/aggregations)
+                               (= (:name %) (:lib/source-name ref-opts)))
+                         columns))
          ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
          ;; Why? Suppose there are two CREATED_AT columns in play - if one has an :id and it failed to match above, then
          ;; it certainly shouldn't match by name just because of the coincidence of column names!
-       (when (and query (number? ref-id))
-         (when-let [no-id-columns (not-empty (remove :id columns))]
-           (when-let [resolved (if (lib.util/clause? a-ref-or-column)
-                                 (resolve-field-id query stage-number ref-id)
-                                 a-ref-or-column)]
-             (find-matching-column (-> (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
-                                                          (:name resolved)))
-                                       ;; make sure the :field ref has a `:base-type`, it's against the rules for a
-                                       ;; nominal :field ref not to have a base-type -- this can fail schema
-                                       ;; validation if it's missing in the Field ID ref we generate the nominal ref
-                                       ;; from.
-                                       (lib.options/update-options (partial merge {:base-type :type/*})))
-                                   no-id-columns
-                                   opts))))))))
+         (when (and query (number? ref-id))
+           (when-let [no-id-columns (not-empty (remove :id columns))]
+             (when-let [resolved (if (lib.util/clause? a-ref-or-column)
+                                   (resolve-field-id query stage-number ref-id)
+                                   a-ref-or-column)]
+               (find-matching-column (-> (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
+                                                            (:name resolved)))
+                                         ;; make sure the :field ref has a `:base-type`, it's against the rules for a
+                                         ;; nominal :field ref not to have a base-type -- this can fail schema
+                                         ;; validation if it's missing in the Field ID ref we generate the nominal ref
+                                         ;; from.
+                                         (lib.options/update-options (partial merge {:base-type :type/*})))
+                                     no-id-columns
+                                     opts))))))))
 
 (defn- ref-id-or-name [[_ref-kind _opts id-or-name]]
   id-or-name)

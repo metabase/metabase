@@ -69,6 +69,19 @@ export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
 }
 
+/**
+ * Given a dashcard HTML element, will return the element for the action icon
+ * with the given label text (e.g. "Click behavior", "Replace", "Duplicate", etc)
+ *
+ * @param {Cypress.Chainable<JQuery<HTMLElement>>} dashcardElement
+ * @param {string} labelText
+ *
+ * @returns {Cypress.Chainable<JQuery<HTMLElement>>}
+ */
+export function findDashCardAction(dashcardElement, labelText) {
+  return dashcardElement.realHover().findByLabelText(labelText);
+}
+
 export function removeDashboardCard(index = 0) {
   getDashboardCard(index)
     .realHover({ scrollBehavior: "bottom" })
@@ -169,6 +182,13 @@ export function deleteTab(tabName) {
   cy.findByRole("tab", { name: tabName }).findByRole("button").click();
   popover().within(() => {
     cy.findByText("Delete").click();
+  });
+}
+
+export function duplicateTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Duplicate").click();
   });
 }
 

@@ -40,7 +40,7 @@ interface MappingEditorProps {
   keyPlaceholder?: string;
   valuePlaceholder?: string;
   renderKeyInput?: (input: DefaultRenderInputProps) => JSX.Element;
-  renderValueInput?: (input: DefaultRenderInputProps) => JSX.Element;
+  renderValueInput?: (input: DefaultRenderInputProps) => React.ReactNode;
   divider?: JSX.Element;
   canAdd?: boolean;
   canDelete?: boolean;

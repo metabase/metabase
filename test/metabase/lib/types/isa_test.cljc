@@ -219,3 +219,25 @@
       (let [primary-key? (lib.types.isa/primary-key-pred "card__1")]
         (is (= ["column0" "column1" "column2"]
                (map :name (filter primary-key? columns))))))))
+
+(deftest ^:parallel valid-filter-for?-test
+  (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/valid-filter-for?
+                                                        {:base-type      base-lhs
+                                                         :effective-type eff-lhs}
+                                                        {:base-type      base-rhs
+                                                         :effective-type eff-rhs}))
+    true  :type/String :type/Text    :type/String :type/Text
+    true  :type/String :type/Text    :type/String :type/TextLike
+    true  :type/String :type/Text    :type/String :type/Category
+
+    true  :type/Float   :type/Number    :type/Float :type/Number
+    true  :type/Float   :type/Price     :type/Float :type/Number
+    true  :type/Integer :type/Quantity  :type/Float :type/Number
+    true  :type/Float   :type/Number    :type/Float :type/Price
+
+    true  :type/DateTime :type/Temporal :type/Time  :type/Temporal
+
+    false :type/String   :type/Text      :type/Integer  :type/Number
+    false :type/Integer  :type/Number    :type/String   :type/Text
+    false :type/DateTime :type/Temporal  :type/String   :type/Text
+    false :type/String   :type/Text      :type/DateTime :type/Temporal))

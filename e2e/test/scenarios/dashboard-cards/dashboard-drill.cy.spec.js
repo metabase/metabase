@@ -179,10 +179,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     modal().findByText("Orders").click();
 
-    sidebar().findByText("Orders → User ID").click();
+    sidebar().findByText("User ID").click();
     popover().findByText("MY_NUMBER").click();
 
-    sidebar().findByText("Products → Category").click();
+    sidebar().findByText("Product → Category").click();
     popover().findByText("My Param").click();
 
     sidebar()

@@ -77,9 +77,6 @@ function NewVersionAvailable({ currentVersion }) {
           {t`You're running ${currentVersion}`}
         </span>
         <ExternalLink
-          data-metabase-event={
-            "Updates Settings; Update link clicked; " + latestVersion
-          }
           className="Button Button--white Button--medium borderless"
           href={
             "https://www.metabase.com/docs/" +

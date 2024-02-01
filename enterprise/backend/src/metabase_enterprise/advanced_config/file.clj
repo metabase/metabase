@@ -150,7 +150,7 @@
   "Environment variables and system properties used in this namespace. This is a dynamic version
   of [[environ.core/env]]; it is dynamic for test mocking purposes.
 
-  Yes, [[metabase.test/with-temp-env-var-value]] exists, but it is not allowed inside parallel tests. This is an
+  Yes, [[metabase.test/with-temp-env-var-value!]] exists, but it is not allowed inside parallel tests. This is an
   experiment that I may adapt into a new pattern in the future to allow further test parallelization."
   env/env)
 

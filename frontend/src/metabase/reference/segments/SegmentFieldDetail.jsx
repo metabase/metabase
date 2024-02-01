@@ -15,9 +15,10 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as actions from "metabase/reference/reference";
-import { getQuestionUrl } from "../utils";
 
+import { getQuestionUrl } from "../utils";
 import {
   getFieldBySegment,
   getTable,
@@ -29,7 +30,7 @@ import {
   getIsFormulaExpanded,
 } from "../selectors";
 
-const interestingQuestions = (table, field) => {
+const interestingQuestions = (table, field, metadata) => {
   return [
     {
       text: t`Number of ${table && table.display_name} grouped by ${
@@ -41,6 +42,7 @@ const interestingQuestions = (table, field) => {
         tableId: table.id,
         fieldId: field.id,
         getCount: true,
+        metadata,
       }),
     },
     {
@@ -50,6 +52,7 @@ const interestingQuestions = (table, field) => {
         dbId: table && table.db_id,
         tableId: table.id,
         fieldId: field.id,
+        metadata,
       }),
     },
   ];
@@ -68,6 +71,7 @@ const mapStateToProps = (state, props) => {
     foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
+    metadata: getMetadata(state),
   };
 };
 
@@ -92,6 +96,7 @@ const propTypes = {
   updateField: PropTypes.func.isRequired,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
+  metadata: PropTypes.object.isRequired,
   onSubmit: PropTypes.func.isRequired,
 };
 
@@ -100,6 +105,7 @@ const SegmentFieldDetail = props => {
     style,
     entity,
     table,
+    metadata,
     loadingError,
     loading,
     user,
@@ -222,10 +228,7 @@ const SegmentFieldDetail = props => {
                 {!isEditing && (
                   <li className="relative">
                     <UsefulQuestions
-                      questions={interestingQuestions(
-                        props.table,
-                        props.entity,
-                      )}
+                      questions={interestingQuestions(table, entity, metadata)}
                     />
                   </li>
                 )}

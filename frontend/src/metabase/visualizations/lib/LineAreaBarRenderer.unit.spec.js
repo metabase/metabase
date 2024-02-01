@@ -2,6 +2,7 @@ import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it 
 
 import registerVisualizations from "metabase/visualizations/register";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { createMockCard } from "metabase-types/api/mocks";
 import lineAreaBarRenderer, {
   getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
 } from "metabase/visualizations/lib/LineAreaBarRenderer";
@@ -90,7 +91,10 @@ describe("LineAreaBarRenderer", () => {
       requested_timezone: "US/Pacific",
       results_timezone: "US/Eastern",
     };
-    const card = { display: "line", visualization_settings: {} };
+    const card = createMockCard({
+      display: "line",
+      visualization_settings: {},
+    });
     const onRender = jest.fn();
 
     renderLineAreaBar(element, [{ data, card }], { onRender });
@@ -109,7 +113,7 @@ describe("LineAreaBarRenderer", () => {
         requested_timezone: tz,
         results_timezone: tz,
       },
-      card: { display: "line", visualization_settings: {} },
+      card: createMockCard({ display: "line", visualization_settings: {} }),
     });
     const onRender = jest.fn();
 
@@ -150,7 +154,9 @@ describe("LineAreaBarRenderer", () => {
 
     const cols = [dateColumn, NumberColumn()];
     const chartType = "line";
-    const series = [{ data: { cols, rows }, card: { display: chartType } }];
+    const series = [
+      { data: { cols, rows }, card: createMockCard({ display: chartType }) },
+    ];
     const settings = getComputedSettingsForSeries(series);
     const onHoverChange = jest.fn();
 
@@ -191,10 +197,10 @@ describe("LineAreaBarRenderer", () => {
         date_separator: "-",
       },
     };
-    const card = {
+    const card = createMockCard({
       display: chartType,
       visualization_settings: { column_settings },
-    };
+    });
     const series = [{ data: { cols, rows }, card }];
     const settings = getComputedSettingsForSeries(series);
     const onHoverChange = jest.fn();
@@ -353,13 +359,13 @@ describe("LineAreaBarRenderer", () => {
                 [3, 1],
               ],
             },
-            card: {
+            card: createMockCard({
               display: "bar",
               visualization_settings: {
                 "graph.x_axis.axis_enabled": true,
                 "graph.x_axis.scale": "histogram",
               },
-            },
+            }),
           },
         ],
         {},
@@ -454,7 +460,7 @@ describe("LineAreaBarRenderer", () => {
           cols: [DateTimeColumn({ unit }), NumberColumn()],
           rows: rows,
         },
-        card: {
+        card: createMockCard({
           display: "line",
           visualization_settings: {
             "graph.x_axis.scale": "timeseries",
@@ -462,7 +468,7 @@ describe("LineAreaBarRenderer", () => {
             "graph.colors": ["#000000"],
             ...settings,
           },
-        },
+        }),
       })),
       {
         onHoverChange,
@@ -479,7 +485,7 @@ describe("LineAreaBarRenderer", () => {
           cols: [StringColumn(), NumberColumn()],
           rows: [scalar],
         },
-        card: {
+        card: createMockCard({
           display: "bar",
           visualization_settings: {
             "bar.scalar_series": true,
@@ -488,7 +494,7 @@ describe("LineAreaBarRenderer", () => {
             "graph.x_axis.axis_enabled": true,
             "graph.x_axis.scale": "ordinal",
           },
-        },
+        }),
       })),
       { onHoverChange },
     );

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { isMac } from "metabase/lib/browser";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
 
 export interface AppBarToggleProps {
@@ -11,15 +11,24 @@ export interface AppBarToggleProps {
   onToggleClick?: () => void;
 }
 
-const AppBarToggle = ({
+export function AppBarToggle({
   isSmallAppBar,
   isNavBarEnabled,
   isLogoVisible,
   isNavBarOpen,
   onToggleClick,
-}: AppBarToggleProps): JSX.Element => {
+}: AppBarToggleProps): JSX.Element | null {
+  if (!isNavBarEnabled) {
+    return null;
+  }
+
   return (
-    <Tooltip tooltip={getSidebarTooltip(isNavBarOpen)}>
+    <Tooltip
+      label={getSidebarTooltipLabel(isNavBarOpen)}
+      disabled={isSmallAppBar}
+      withArrow
+      offset={-12}
+    >
       <SidebarButton
         isSmallAppBar={isSmallAppBar}
         isNavBarEnabled={isNavBarEnabled}
@@ -28,21 +37,14 @@ const AppBarToggle = ({
         data-testid="sidebar-toggle"
         aria-label={t`Toggle sidebar`}
       >
-        <SidebarIcon
-          isLogoVisible={isLogoVisible}
-          size={24}
-          name={isNavBarOpen ? "sidebar_open" : "sidebar_closed"}
-        />
+        <SidebarIcon isLogoVisible={isLogoVisible} size={20} name="burger" />
       </SidebarButton>
     </Tooltip>
   );
-};
+}
 
-const getSidebarTooltip = (isNavBarOpen?: boolean) => {
+const getSidebarTooltipLabel = (isNavBarOpen?: boolean) => {
   const message = isNavBarOpen ? t`Close sidebar` : t`Open sidebar`;
   const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
   return `${message} ${shortcut}`;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AppBarToggle;

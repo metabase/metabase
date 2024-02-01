@@ -75,7 +75,6 @@ const EditableReferenceHeader = ({
                 primary
                 className="flex flex-align-right mr2"
                 style={{ fontSize: 14 }}
-                data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
               >
                 <Link to={headerLink}>{t`See this ${type}`}</Link>
               </Button>

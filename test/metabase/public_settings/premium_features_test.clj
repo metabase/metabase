@@ -181,12 +181,12 @@
       (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid input: \[\"should be a keyword\"\]"
+                            #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
 
    (testing "Return schemas are validated for OSS implementations"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid output: \[\"should be a keyword\"\]"
+                            #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta.*"
                             (greeting-with-invalid-oss-return-schema :rasta)))))
 
   (when config/ee-available?
@@ -195,16 +195,15 @@
              (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid input: \[\"should be a keyword\"\]"
+                            #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
-
     (testing "Only EE schema is validated if EE implementation is called"
       (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
              (greeting-with-invalid-oss-return-schema :rasta)))
 
       (mt/with-premium-features #{:custom-feature}
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid output: \[\"should be a keyword\"\]"
+                              #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta, the schema was valid.*"
                               (greeting-with-invalid-ee-return-schema :rasta)))))
 
     (testing "EE schema is not validated if OSS fallback is called"

@@ -7,11 +7,13 @@
    [crypto.random :as crypto-random]
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.config :as config]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -294,3 +296,14 @@
               (is (= #{"All Users"
                        ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
                      (group-memberships (u/the-id (t2/select-one-pk User :email "newuser@metabase.com"))))))))))))
+
+(deftest create-new-jwt-user-no-user-provisioning-test
+  (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
+    (with-jwt-default-setup
+      (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
+                    public-settings/site-name (constantly "test")]
+        (is
+         (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
+          (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))

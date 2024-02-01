@@ -42,8 +42,9 @@
                  :user-local :never,
                  :default nil,
                  :name :analytics-uuid,
-                 :type :metabase.public-settings/uuid-nonce,
-                 :setter :none,
+                 :type :string
+                 :setter :none
+                 :init setting/random-uuid-str
                  :enabled? nil,
                  :deprecated nil,
                  :sensitive? false,
