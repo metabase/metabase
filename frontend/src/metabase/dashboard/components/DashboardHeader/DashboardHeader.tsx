@@ -360,7 +360,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             aria-label={t`Add questions`}
-            palette={{label: addQuestionButtonHint}}
+            palette={{ label: addQuestionButtonHint }}
           />
         </Tooltip>,
       );
@@ -379,11 +379,12 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       );
 
       // Add link card button
+      const addLinkLabel = t`Add link card`;
       buttons.push(
-        <Tooltip key="add-link-card" tooltip={t`Add link card`}>
+        <Tooltip key="add-link-card" tooltip={addLinkLabel}>
           <DashboardHeaderButton
-            data-palette-name={t`Add link card`}
             onClick={() => this.onAddLinkCard()}
+            palette={{ label: addLinkLabel, icon: "link" }}
           >
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
