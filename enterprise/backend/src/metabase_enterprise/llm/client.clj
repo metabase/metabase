@@ -48,8 +48,8 @@
                          {:message     message
                           :status-code 400}))
                  401 (ex-info
-                       "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
-                       {:message     "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
+                       "Credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
+                       {:message     "Credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
                         ;; Don't actually produce a 401 because you'll get redirect do the home page.
                         :status-code 400})
                  429 (if (= error-type "insufficient_quota")
@@ -58,13 +58,13 @@
                          {:message     "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
                           :status-code status})
                        (ex-info
-                         "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
-                         {:message     "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
+                         "Server is under heavy load and cannot process your request at this time.\nPlease try again."
+                         {:message     "The server is under heavy load and cannot process your request at this time.\nPlease try again."
                           :status-code status}))
                  ;; Just re-throw it until we get a better handle on
                  (ex-info
-                   "Error calling remote bot server.\nPlease try again."
-                   {:message     "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
+                   "Error calling remote server.\nPlease try again."
+                   {:message     "The server is under heavy load and cannot process your request at this time.\nPlease try again."
                     :status-code 500})))
              ;; If there's no ex-data, we'll assume it's some other issue and generate a 400
              (ex-info
