@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { useAsync } from "react-use";
 import { useState } from "react";
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import {
   UtilApi,
   CardApi,
@@ -35,6 +36,8 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({
@@ -159,6 +162,9 @@ export const ReportableError = () => {
   const entity = matches?.[1] ?? "";
   const id = matches?.[2] ?? "";
 
+  const currentUser = useSelector(getCurrentUser);
+  const isAdmin = useSelector(getUserIsAdmin);
+
   const {
     value: errorInfo,
     loading,
@@ -168,8 +174,10 @@ export const ReportableError = () => {
 
     const isAdHoc = entity === "question" && location.includes("#");
     const entityInfoRequest = getEntityDetails({ entity, id, isAdHoc });
-    const bugReportDetailsRequest = UtilApi.bug_report_details();
-    const logsRequest: any = UtilApi.logs();
+    const bugReportDetailsRequest = isAdmin
+      ? UtilApi.bug_report_details()
+      : Promise.resolve(null);
+    const logsRequest: any = isAdmin ? UtilApi.logs() : Promise.resolve(null);
 
     /* eslint-disable no-console */
     // @ts-expect-error I'm sorry
@@ -193,13 +201,20 @@ export const ReportableError = () => {
     const filteredLogs = logs?.slice?.(0, 100);
     const backendErrors = logs?.filter?.((log: any) => log.level === "ERROR");
 
+    const userLogs = logs?.filter(
+      (log: any) =>
+        log?.msg?.includes?.(`{:metabase-user-id ${currentUser.id}}`) ||
+        log?.msg?.includes?.(`:userID ${currentUser.id} `),
+    );
+
     return {
       url: location,
-      [entity]: entityInfo,
+      entityInfo,
       ...(queryData ? { queryData } : undefined),
       logs: filteredLogs,
       frontendErrors,
       backendErrors,
+      userLogs,
       bugReportDetails,
     };
   });
@@ -222,6 +237,7 @@ export const ReportableError = () => {
   }
 
   if (error) {
+    console.error(error);
     return null;
   }
 
@@ -282,6 +298,7 @@ export const ErrorDownloadOptionsModal = ({
         initialValues={{
           frontendErrors: true,
           backendErrors: true,
+          userLogs: true,
           logs: true,
           entityInfo: true,
           queryData: true,
@@ -294,10 +311,19 @@ export const ErrorDownloadOptionsModal = ({
               name="frontendErrors"
               label={t`Include frontend error messages`}
             />
-            <FormCheckbox
-              name="backendErrors"
-              label={t`Include backend error messages`}
-            />
+            {!!errorInfo?.logs && (
+              <>
+                <FormCheckbox
+                  name="backendErrors"
+                  label={t`Include backend error messages`}
+                />
+                <FormCheckbox name="logs" label={t`Include backend logs`} />
+                <FormCheckbox
+                  name="userLogs"
+                  label={t`Include backend logs from the current user only`}
+                />
+              </>
+            )}
             {!!entity && (
               <>
                 <FormCheckbox
@@ -311,15 +337,14 @@ export const ErrorDownloadOptionsModal = ({
                   />
                 )}
               </>
-            )}
-            <FormCheckbox name="logs" label={t`Include backend logs`} />
+            )}{" "}
           </Stack>
           <Flex gap="sm" justify="flex-end" mt="lg">
             <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               variant="filled"
               leftIcon={<Icon name="download" />}
-              label={t`Download diagnostic information`}
+              label={t`Download`}
               color="brand"
             />
           </Flex>
