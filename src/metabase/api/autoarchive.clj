@@ -4,7 +4,7 @@
    [honey.sql :as sql]
    [metabase.api.common :as api]
    [metabase.models.permissions :as perms]
-   ;; [metabase.util.malli.schema :as ms]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private time-ago #_"6 MONTHS" "5 MINUTES")
@@ -61,18 +61,19 @@
        (mapv ->auto-archivable)))
 
 (api/defendpoint GET "/:collection-id" [collection-id :as {query-params :query-params}]
-  {collection-id [:maybe :any]
+  {collection-id [:maybe ms/PositiveInt]
    query-params [:map [:time_ago {:optional true} :string]]}
   (let [time-ago (or (:time_ago query-params) time-ago)]
     {:archivable (auto-archivable-questions
-                  {:collection-id (if collection-id collection-id parse-long)
+                  {:collection-id collection-id
                    :time-ago time-ago})}))
 
 (api/define-routes)
 
 (comment
 
-  (t2/query (query {:time-ago time-ago :collection-id nil}))
+  (t2/query
+   (query {:time-ago "1 Minutes" :collection-id nil}))
 
   (sql/format (query {:time-ago "5 minutes"}))
 
