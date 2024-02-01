@@ -329,7 +329,7 @@ export const getMissingRequiredParameters = createSelector(
   [getRequiredParameters],
   requiredParameters =>
     requiredParameters.filter(
-      param => !param.default || param?.default.length === 0,
+      p => !p.default || (Array.isArray(p.default) && p.default.length === 0),
     ),
 );
 
