@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { t } from "ttag";
 
 import type { Location } from "history";
@@ -13,11 +14,13 @@ import { useDashboardTabs } from "./use-dashboard-tabs";
 interface DashboardTabsProps {
   location: Location;
   isEditing?: boolean;
+  onChangeTab?: (tabId: SelectedTabId) => void;
 }
 
 export function DashboardTabs({
   location,
   isEditing = false,
+  onChangeTab,
 }: DashboardTabsProps) {
   const {
     tabs,
@@ -29,6 +32,11 @@ export function DashboardTabs({
     selectedTabId,
     moveTab,
   } = useDashboardTabs({ location });
+
+  useEffect(() => {
+    onChangeTab?.(selectedTabId);
+  }, [selectedTabId, onChangeTab]);
+
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;

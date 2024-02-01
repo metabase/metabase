@@ -64,8 +64,11 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-// NOTE: this should use DashboardData HoC
 class PublicDashboard extends Component {
+  state = {
+    selectedTabId: null,
+  };
+
   _initialize = async () => {
     const {
       initialize,
@@ -127,6 +130,35 @@ class PublicDashboard extends Component {
     }
   }
 
+  handleTabChange = selectedTabId => {
+    this.setState({ selectedTabId });
+  };
+
+  getCurrentTabDashcards = () => {
+    const { dashboard } = this.props;
+    const { selectedTabId } = this.state;
+    if (!Array.isArray(dashboard?.dashcards)) {
+      return [];
+    }
+    if (!selectedTabId) {
+      return dashboard.dashcards;
+    }
+    return dashboard.dashcards.filter(
+      dc => dc.dashboard_tab_id === selectedTabId,
+    );
+  };
+
+  getHiddenParameterSlugs = () => {
+    const { parameters } = this.props;
+    const currentTabParameterIds = this.getCurrentTabDashcards().flatMap(
+      dc => dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
+    );
+    const hiddenParameters = parameters.filter(
+      parameter => !currentTabParameterIds.includes(parameter.id),
+    );
+    return hiddenParameters.map(p => p.slug);
+  };
+
   render() {
     const {
       dashboard,
@@ -149,6 +181,7 @@ class PublicDashboard extends Component {
         parameters={parameters}
         parameterValues={parameterValues}
         draftParameterValues={draftParameterValues}
+        hiddenParameterSlugs={this.getHiddenParameterSlugs()}
         setParameterValue={this.props.setParameterValue}
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
@@ -163,7 +196,10 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardTabs location={this.props.location} />
+              <DashboardTabs
+                location={this.props.location}
+                onChangeTab={this.handleTabChange}
+              />
               <Separator />
               <DashboardGridContainer>
                 <DashboardGridConnected
