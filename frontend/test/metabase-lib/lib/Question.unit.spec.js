@@ -806,12 +806,7 @@ describe("Question", () => {
         columns: [{ semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 }],
       });
 
-      expect(question.dependentMetadata()).toEqual([
-        { type: "database", id: 1 },
-        { type: "schema", id: 1 },
-        { type: "table", id: 2 },
-        { type: "field", id: 5 },
-      ]);
+      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
     });
 
     it("should skip FK field targets which are not FKs semantically", () => {
@@ -819,11 +814,7 @@ describe("Question", () => {
         columns: [{ fk_target_field_id: 5 }],
       });
 
-      expect(question.dependentMetadata()).toEqual([
-        { type: "database", id: 1 },
-        { type: "schema", id: 1 },
-        { type: "table", id: 2 },
-      ]);
+      expect(question.dependentMetadata()).toEqual([]);
     });
   });
 
