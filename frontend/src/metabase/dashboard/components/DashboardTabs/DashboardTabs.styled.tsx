@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { TabButton as BaseTabButton } from "metabase/core/components/TabButton";
 import BaseButton from "metabase/core/components/Button";
 
 export const Container = styled.div`
@@ -9,10 +8,6 @@ export const Container = styled.div`
   gap: 1.5rem;
   width: 100%;
 `;
-
-export const PlaceholderTab = ({ label }: { label: string }) => (
-  <BaseTabButton label={label} value={null} disabled />
-);
 
 export const CreateTabButton = styled(BaseButton)`
   border: none;

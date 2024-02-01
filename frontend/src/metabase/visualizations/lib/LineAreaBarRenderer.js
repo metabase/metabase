@@ -8,7 +8,7 @@ import { lighten } from "metabase/lib/colors";
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import * as Lib from "metabase-lib";
-import { isStructured } from "metabase-lib/queries/utils/card";
+import { isNative } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 
 import {
@@ -74,7 +74,7 @@ const enableBrush = (series, onChangeCardAndRun) =>
   !!(
     onChangeCardAndRun &&
     !isMultiCardSeries(series) &&
-    isStructured(series[0].card) &&
+    !isNative(series[0].card) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );

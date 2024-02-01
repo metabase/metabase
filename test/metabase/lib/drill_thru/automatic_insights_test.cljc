@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.util :as u]
@@ -40,6 +41,28 @@
     :expected    {:type :drill-thru/automatic-insights
                   :column-ref [:aggregation {} u/uuid-regex]
                   :dimensions [{} {}]}}))
+
+(def ^:private metadata-no-xrays
+  (meta/updated-metadata-provider assoc-in [:settings :enable-xrays] false))
+
+(deftest ^:parallel automatic-insights-availability-test
+  (testing "automatic-insights is"
+    (testing "available for cell clicks subject to at least one breakout"
+      (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
+              :when (= click :cell)]
+        (is (= (boolean (not-empty (:dimensions context)))
+               (boolean (canned/returned test-case context :drill-thru/automatic-insights))))))
+    (testing "not available for any header clicks"
+      (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
+              :when (= click :header)]
+        (is (nil? (canned/returned test-case context :drill-thru/automatic-insights)))))
+    (testing "available for pivot and legend clicks"
+      (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
+              :when (#{:pivot :legend} click)]
+        (is (canned/returned test-case context :drill-thru/automatic-insights))))
+    (testing "not available at all with xrays disabled"
+      (doseq [[test-case context _details] (canned/canned-clicks metadata-no-xrays)]
+        (is (nil? (canned/returned test-case context :drill-thru/automatic-insights)))))))
 
 (defn- auto-insights [query exp-filters]
   (let [[created-at sum] (lib/returned-columns query)

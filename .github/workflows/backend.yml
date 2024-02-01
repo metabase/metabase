@@ -24,7 +24,7 @@ jobs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
         id: changes
@@ -41,7 +41,7 @@ jobs:
     outputs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -51,7 +51,7 @@ jobs:
       - name: Build static-viz frontend
         run: yarn build-static-viz
       - name: Upload Static Viz Bundle Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
@@ -94,7 +94,7 @@ jobs:
     env:
       DOWNLOAD_URL: https://github.com/clj-kondo/clj-kondo/releases/download
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
@@ -141,7 +141,7 @@ jobs:
     name: be-tests-java-11-ee-pre-check
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -182,7 +182,7 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17, 21]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -196,7 +196,7 @@ jobs:
         run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
         if: needs.static-viz-files-changed.outputs.static_viz == 'true'
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
@@ -266,7 +266,7 @@ jobs:
       matrix:
         java-version: [11, 17, 21]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
         with:

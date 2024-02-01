@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -12,6 +13,7 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import { softReloadCard } from "metabase/query_builder/actions";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { uploadFile } from "metabase/redux/uploads";
 
 import { color } from "metabase/lib/colors";
 
@@ -27,6 +29,7 @@ import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/metadata/utils/models";
+import { canUploadToQuestion } from "../selectors";
 import {
   QuestionActionsDivider,
   StrengthIndicator,
@@ -71,6 +74,9 @@ const QuestionActions = ({
   const isMetabotEnabled = useSelector(state =>
     getSetting(state, "is-metabot-enabled"),
   );
+
+  const canUpload = useSelector(canUploadToQuestion(question));
+
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
   const dispatch = useDispatch();
@@ -85,6 +91,7 @@ const QuestionActions = ({
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
+  const canAppend = canUpload && canWrite && !!question._card.based_on_upload;
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -217,6 +224,29 @@ const QuestionActions = ({
     });
   }
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && question._card.based_on_upload) {
+      uploadFile({
+        file,
+        tableId: question._card.based_on_upload,
+      })(dispatch);
+
+      // reset the file input so that subsequent uploads of the same file trigger the change handler
+      if (fileInputRef.current?.value) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <>
       <QuestionActionsDivider />
@@ -239,6 +269,30 @@ const QuestionActions = ({
           />
         </ViewHeaderIconButtonContainer>
       </Tooltip>
+      {canAppend && (
+        <>
+          <input
+            type="file"
+            accept="text/csv"
+            id="append-file-input"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            style={{ display: "none" }}
+          />
+          <Tooltip tooltip={t`Upload data to this model`}>
+            <ViewHeaderIconButtonContainer>
+              <Button
+                onlyIcon
+                icon="upload"
+                iconSize={HEADER_ICON_SIZE}
+                onClick={handleUploadClick}
+                color={infoButtonColor}
+                data-testid="qb-header-append-button"
+              />
+            </ViewHeaderIconButtonContainer>
+          </Tooltip>
+        </>
+      )}
       {extraButtons.length > 0 && (
         <EntityMenu
           triggerAriaLabel={t`Move, archive, and more...`}
