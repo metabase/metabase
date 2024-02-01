@@ -38,7 +38,7 @@ const Questions = createEntity({
       const get = GET("/api/card/:id");
       const result = await get(payload);
 
-      if (result.name.toLowerCase().startsWith("Metric")) {
+      if (result.name.toLowerCase().startsWith("metric")) {
         return { ...result, type: "metric", dataset: false };
       }
 
@@ -50,7 +50,7 @@ const Questions = createEntity({
       const results = await get(payload);
 
       return results.map(result => {
-        if (result.name.toLowerCase().startsWith("Metric")) {
+        if (result.name.toLowerCase().startsWith("metric")) {
           return { ...result, type: "metric", dataset: false };
         }
 
