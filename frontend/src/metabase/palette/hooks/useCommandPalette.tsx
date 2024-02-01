@@ -5,12 +5,12 @@ import { push } from "react-router-redux";
 import {
   filterItems,
   type JsonStructure as CommandPaletteActions,
-  JsonStructureItem,
 } from "react-cmdk";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setOpenModal, closeModal } from "metabase/redux/ui";
 import * as Urls from "metabase/lib/urls";
-import { Icon, IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+import { getContextualPaletteActions } from "metabase/selectors/app";
 
 export type CommandPalettePageId = "root" | "admin_settings";
 
@@ -33,33 +33,35 @@ export const useCommandPalette = ({
     [dispatch],
   );
 
-  const palettifyThese = [
-    ...document.querySelectorAll("[data-palette], [data-palette-name]"),
-  ];
+  // const palettifyThese = [
+  //   ...document.querySelectorAll("[data-palette], [data-palette-name]"),
+  // ];
 
-  const getContextualActions = (): Array<JsonStructureItem> => {
-    // Don't include contextual actions when another modal is open
-    if (document.querySelector(".Modal-backdrop")) return [];
-    const actions = palettifyThese.map((el, index) => {
-      return {
-        id: "contextual_action_" + index,
-        children:
-          el.getAttribute("data-palette-name") ||
-          el.getAttribute("aria-label") ||
-          el.textContent?.trim() ||
-          "",
-        icon: () => (
-          <Icon
-            name={(el.getAttribute("data-palette-icon") as IconName) || "click"}
-          />
-        ),
-        onClick: () => {
-          (el as HTMLButtonElement).click();
-        },
-      };
-    });
-    return actions;
-  };
+  const contextualActions = useSelector(getContextualPaletteActions);
+
+  // const getContextualActions = (): Array<JsonStructureItem> => {
+  //   // Don't include contextual actions when another modal is open
+  //   if (document.querySelector(".Modal-backdrop")) return [];
+  //   const actions = palettifyThese.map((el, index) => {
+  //     return {
+  //       id: "contextual_action_" + index,
+  //       children:
+  //         el.getAttribute("data-palette-name") ||
+  //         el.getAttribute("aria-label") ||
+  //         el.textContent?.trim() ||
+  //         "",
+  //       icon: () => (
+  //         <Icon
+  //           name={(el.getAttribute("data-palette-icon") as IconName) || "click"}
+  //         />
+  //       ),
+  //       onClick: () => {
+  //         (el as HTMLButtonElement).click();
+  //       },
+  //     };
+  //   });
+  //   return actions;
+  // };
 
   const defaultActions = useMemo<CommandPaletteActions>(() => {
     const actions: CommandPaletteActions = [
@@ -136,7 +138,6 @@ export const useCommandPalette = ({
         ],
       },
     ];
-    const contextualActions = getContextualActions();
     if (contextualActions.length) {
       actions.unshift({
         id: "contextual_actions",
@@ -145,7 +146,7 @@ export const useCommandPalette = ({
       });
     }
     return actions;
-  }, [query, dispatch, setPage, openNewModal, setQuery, palettifyThese]);
+  }, [query, dispatch, setPage, openNewModal, setQuery, contextualActions]);
 
   const adminSettingsActions = useMemo<CommandPaletteActions>(
     () => [

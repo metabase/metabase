@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
+import styled from "@emotion/styled";
 import CommandPalette, {
   getItemIndex,
   type JsonStructure as CommandPaletteActions,
@@ -9,7 +10,6 @@ import type { CommandPalettePageId } from "../hooks/useCommandPalette";
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { CommandPaletteStyled } from "./Palette.styled";
 import "./Palette.css";
-import styled from "@emotion/styled";
 
 const PalettePage = ({
   id,
@@ -98,3 +98,31 @@ export const PaletteContextualAction = ({
 }) => {
   return <HiddenButton data-palette-name={name} onClick={action} />;
 };
+
+/// ```javascript
+/// // actions.js
+/// export const registerCommand = (command) => ({
+///   type: 'REGISTER_COMMAND',
+///   payload: command,
+/// });
+///
+/// export const unregisterCommand = (commandId) => ({
+///   type: 'UNREGISTER_COMMAND',
+///   payload: commandId,
+/// });
+/// ```
+///
+/// ```javascript
+/// // reducer.js
+/// const commandsReducer = (state = [], action) => {
+///   switch (action.type) {
+///     case 'REGISTER_COMMAND':
+///       return [...state, action.payload];
+///     case 'UNREGISTER_COMMAND':
+///       return state.filter(command => command.id !== action.payload);
+///     default:
+///       return state;
+///   }
+/// };
+///
+/// export default commandsReducer;

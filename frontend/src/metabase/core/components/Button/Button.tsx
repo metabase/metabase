@@ -1,10 +1,12 @@
 import cx from "classnames";
 import type { ButtonHTMLAttributes, ReactNode, Ref, ElementType } from "react";
-import { forwardRef } from "react";
+import { forwardRef, useImperativeHandle, useRef } from "react";
 import styled from "@emotion/styled";
 import _ from "underscore";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import { useContextualPaletteAction } from "metabase/palette/hooks/useContextualPaletteAction";
+import { uuid } from "metabase/lib/utils";
 import {
   ButtonContent,
   ButtonRoot,
@@ -62,6 +64,9 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
   onlyText?: boolean;
   light?: boolean;
+
+  /** Include in command palette? */
+  palette?: boolean;
 }
 
 const BaseButton = forwardRef(function BaseButton(
@@ -75,6 +80,7 @@ const BaseButton = forwardRef(function BaseButton(
     iconVertical = false,
     labelBreakpoint,
     children,
+    palette,
     ...props
   }: ButtonProps,
   ref: Ref<HTMLButtonElement>,
@@ -83,9 +89,30 @@ const BaseButton = forwardRef(function BaseButton(
     variant => "Button--" + variant,
   );
 
+  const internalRef = useRef<HTMLButtonElement>(null);
+  useImperativeHandle(ref, () => internalRef.current as HTMLButtonElement);
+
+  useContextualPaletteAction(
+    palette
+      ? {
+          id: uuid(),
+          icon:
+            typeof icon === "string"
+              ? () => <Icon name={icon as IconName} />
+              : icon
+              ? () => <>{icon}</>
+              : () => <Icon name="click" />,
+          children: children || props["aria-label"],
+          onClick: () => {
+            internalRef?.current?.click();
+          },
+        }
+      : null,
+  );
+
   return (
     <ButtonRoot
-      ref={ref}
+      ref={internalRef}
       as={as}
       {..._.omit(props, ...BUTTON_VARIANTS)}
       className={cx("Button", className, variantClasses, {

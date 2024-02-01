@@ -1,3 +1,4 @@
+import type { JsonStructure } from "react-cmdk";
 import type { CollectionId } from "metabase-types/api/collection";
 
 export interface AppErrorDescriptor {
@@ -17,4 +18,5 @@ export interface AppBreadCrumbs {
 export interface AppState {
   errorPage: AppErrorDescriptor | null;
   isNavbarOpen: boolean;
+  contextualPaletteActions: JsonStructure;
 }

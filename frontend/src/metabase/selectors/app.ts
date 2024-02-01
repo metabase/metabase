@@ -1,6 +1,7 @@
 import type { Location } from "history";
 import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
+import type { JsonStructureItem } from "react-cmdk";
 import { getUser } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
@@ -202,3 +203,9 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     return isNavbarOpen;
   },
 );
+
+export const getContextualPaletteActions: Selector<State, JsonStructureItem[]> =
+  createSelector(
+    [(state: State) => state.app.contextualPaletteActions],
+    (contextualPaletteActions: JsonStructureItem[]) => contextualPaletteActions,
+  );

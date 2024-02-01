@@ -1,4 +1,5 @@
 import { push, LOCATION_CHANGE } from "react-router-redux";
+import type { JsonStructureItem } from "react-cmdk";
 import {
   combineReducers,
   createAction,
@@ -95,8 +96,33 @@ const isNavbarOpen = handleActions(
   true,
 );
 
+export const REGISTER_PALETTE_ACTION = "metabase/app/REGISTER_PALETTE_ACTION";
+export const UNREGISTER_PALETTE_ACTION =
+  "metabase/app/UNREGISTER_PALETTE_ACTION";
+export const registerPaletteAction = createAction(REGISTER_PALETTE_ACTION);
+export const unregisterPaletteAction = createAction(UNREGISTER_PALETTE_ACTION);
+
+const contextualPaletteActions = handleActions(
+  {
+    [REGISTER_PALETTE_ACTION]: (
+      state: JsonStructureItem[],
+      { payload }: { payload: JsonStructureItem },
+    ) => {
+      return [...state, payload];
+    },
+    [UNREGISTER_PALETTE_ACTION]: (
+      state: JsonStructureItem[],
+      { payload }: { payload: JsonStructureItem },
+    ) => {
+      return state.filter(item => item.id !== payload.id);
+    },
+  },
+  [],
+);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   errorPage,
   isNavbarOpen,
+  contextualPaletteActions,
 });
