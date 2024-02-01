@@ -1,6 +1,6 @@
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-import { fetchField, loadMetadataForQuestion } from "./metadata";
+import { fetchField, loadMetadataForDependentItems } from "./metadata";
 
 describe("deprecated metadata actions", () => {
   let dispatch;
@@ -79,7 +79,7 @@ describe("deprecated metadata actions", () => {
     });
   });
 
-  describe("loadMetadataForQuestion", () => {
+  describe("loadMetadataForDependentItems", () => {
     beforeEach(() => {
       Fields.actions.fetch = jest.fn(() =>
         Promise.resolve({
@@ -104,16 +104,14 @@ describe("deprecated metadata actions", () => {
     });
 
     it("should send requests for any tables/fields needed by the query", () => {
-      const question = {
-        dependentMetadata: () => [
-          { type: "table", id: 1 },
-          { type: "table", id: 1 },
-          { type: "table", id: 2 },
-          { type: "field", id: 3 },
-        ],
-      };
+      const dependentItems = [
+        { type: "table", id: 1 },
+        { type: "table", id: 1 },
+        { type: "table", id: 2 },
+        { type: "field", id: 3 },
+      ];
 
-      loadMetadataForQuestion(question)(dispatch);
+      loadMetadataForDependentItems(dependentItems)(dispatch);
       expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
         { id: 1 },
         undefined,

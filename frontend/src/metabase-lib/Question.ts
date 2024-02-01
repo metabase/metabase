@@ -859,7 +859,7 @@ class Question {
   }
 
   dependentMetadata(): Lib.DependentItem[] {
-    const dependencies = Lib.dependentMetadata(this.query());
+    const dependencies = [];
 
     // we frequently treat dataset/model questions like they are already nested
     // so we need to fetch the virtual card table representation of the Question

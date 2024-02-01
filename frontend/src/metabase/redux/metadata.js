@@ -293,34 +293,37 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuestion = question =>
-  loadMetadataForQuestions([question]);
+export const loadMetadataForDependentItems =
+  (dependentItems, options) => dispatch => {
+    const dependencies = _.uniq(
+      dependentItems,
+      false,
+      ({ type, id }) => type + id,
+    );
+    const promises = dependencies.flatMap(({ type, id }) => {
+      if (type === "table") {
+        return [Tables.actions.fetchMetadata({ id }, options)];
+      }
 
-export const loadMetadataForQuestions = (questions, options) => dispatch => {
-  const metadata = questions.flatMap(question => question.dependentMetadata());
-  const dependencies = _.uniq(metadata, false, ({ type, id }) => type + id);
-  const promises = dependencies.flatMap(({ type, id }) => {
-    if (type === "table") {
-      return [Tables.actions.fetchMetadata({ id }, options)];
-    }
+      if (type === "field") {
+        return [Fields.actions.fetch({ id }, options)];
+      }
 
-    if (type === "field") {
-      return [Fields.actions.fetch({ id }, options)];
-    }
+      if (type === "schema") {
+        return [Schemas.actions.fetchList({ dbId: id }, options)];
+      }
 
-    if (type === "schema") {
-      return [Schemas.actions.fetchList({ dbId: id }, options)];
-    }
+      if (type === "database") {
+        return [Databases.actions.fetch({ id }, options)];
+      }
 
-    if (type === "database") {
-      return [Databases.actions.fetch({ id }, options)];
-    }
+      console.warn(
+        `loadMetadataForDependentItems: type ${type} not implemented`,
+      );
+      return [];
+    });
 
-    console.warn(`loadMetadataForQuestions: type ${type} not implemented`);
-    return [];
-  });
-
-  return Promise.all(promises.map(dispatch)).catch(e =>
-    console.error("Failed loading metadata for question", e),
-  );
-};
+    return Promise.all(promises.map(dispatch)).catch(e =>
+      console.error("Failed loading metadata for question", e),
+    );
+  };
