@@ -19,7 +19,7 @@ export const MetabaseProvider = ({
   children,
   apiUrl,
   apiKey,
-  font = "Lato",
+  font,
 }: {
   children: React.ReactNode;
   apiUrl: string;
@@ -35,6 +35,8 @@ export const MetabaseProvider = ({
 
   useEffect(() => {
     Promise.all([
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       store.dispatch(refreshCurrentUser()),
       store.dispatch(reloadSettings()),
     ]).then(() => {

@@ -3,20 +3,14 @@ import {
   MetabaseProvider,
   QueryVisualizationSdk,
 } from "metabase-embedding-sdk";
-
-import "./App.css";
-import { Test } from "./Test";
-
+import { HelloName } from "./HelloName";
+import { Welcome } from "./Welcome";
+import { ChooseQuestionInput } from "./ChooseQuestionInput";
+import { QueryVisualizationContainer } from "./QueryVisualizationContainer.styled";
+import { AppBody, AppContainer, AppHeader } from "./App.styled";
 
 function App() {
   const [questionId, setQuestionId] = useState(105);
-  const [userInput, setTempQuestionId] = useState(questionId);
-
-  const onChangeQuestionId = e => {
-    if (e.key === "Enter") {
-      setQuestionId(userInput);
-    }
-  };
 
   return (
     <MetabaseProvider
@@ -24,20 +18,23 @@ function App() {
       apiKey={"mb_sfmfeTfUONsMuMPbdpP2HOhSzS3cMFrSeDS9NNpsHn8="}
       font={"Oswald"}
     >
-      <div className="App">
-        <header className="App-header">
-          <p>Denis and Oisin are so cool!</p>
-          <Test/>
-        </header>
+      <AppContainer>
+        <AppHeader>
+          <Welcome />
+          <HelloName />
+        </AppHeader>
 
-        <input
-          value={userInput}
-          onChange={e => setTempQuestionId(e.target.value)}
-          onKeyDown={onChangeQuestionId}
+        <AppBody>
+        <ChooseQuestionInput
+          questionId={questionId}
+          setQuestionId={setQuestionId}
         />
 
-        <QueryVisualizationSdk questionId={questionId} />
-      </div>
+        <QueryVisualizationContainer>
+          <QueryVisualizationSdk questionId={questionId} />
+        </QueryVisualizationContainer>
+        </AppBody>
+      </AppContainer>
     </MetabaseProvider>
   );
 }

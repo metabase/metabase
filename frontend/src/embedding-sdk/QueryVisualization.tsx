@@ -101,7 +101,7 @@ export const QueryVisualizationSdk = (
         return (
           <div
             style={{
-              height: "600px",
+              height: "100%",
               position: "relative",
               display: "flex",
               flexDirection: "row",
