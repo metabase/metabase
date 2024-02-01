@@ -77,6 +77,9 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     );
     const card = Questions.HACK_getObjectFromAction(action);
 
+    // We need to manually massage the paramters into the parameterValues shape,
+    // to be able to pass them to new Question.
+    // We could use _parameterValues here but prefer not to use internal fields.
     const parameterValues = outdatedQuestion.parameters().reduce(
       (acc, next) => ({
         ...acc,
