@@ -49,13 +49,11 @@ describeEE("issue 26988", () => {
       .click();
     popover().findByText("Oswald").click();
 
-    cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Oswald, sans-serif`);
 
     cy.get("@font-control").click();
     popover().findByText("Slabo 27px").click();
 
-    cy.wait("@dashboard");
     getIframeBody().should(
       "have.css",
       "font-family",
