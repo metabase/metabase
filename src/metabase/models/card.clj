@@ -112,7 +112,7 @@
                 In the mean time we'll have both `type` and `dataset` columns."} card-types
   #{"model" "question"
     ;; metric will be added as part of epic #37335
-    #_:metric})
+    #_"metric"})
 
 (def CardTypes
   "Malli schema for acceptable card types."
@@ -676,7 +676,7 @@ saved later when it is ready."
   the transaction yet. If you pass true here it is important to call the event after the cards are successfully
   created."
   ([card creator] (create-card! card creator false))
-  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} creator delay-event?]
+  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings type] :as card-data} creator delay-event?]
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
    (assert-card-type-and-dataset card-data)
@@ -685,17 +685,18 @@ saved later when it is ready."
          card-data            (-> (zipmap data-keys (map card-data data-keys))
                                   (assoc
                                    :creator_id (:id creator)
-                                   :dataset    (boolean (:dataset card-data))
-                                   :type       (or (:type card-data)
+                                   :dataset    (boolean dataset)
+                                   :type       (or type
                                                    ;; most tests will create a model using :dataset true, so we'll
                                                    ;; respect that
-                                                   (when (:dataset card-data) "model")
+                                                   (when dataset "model")
                                                    "question")
                                    :parameters (or parameters [])
-                                   :parameter_mappings (or parameter_mappings [])))
+                                   :parameter_mappings (or parameter_mappings []))
+                                  ensure-type-and-dataset-are-consistent)
          result-metadata-chan (result-metadata-async {:query    dataset_query
                                                       :metadata result_metadata
-                                                      :dataset? dataset})
+                                                      :dataset? (model? card-data)})
          metadata-timeout     (a/timeout metadata-sync-wait-ms)
          [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
          timed-out?           (= port metadata-timeout)
