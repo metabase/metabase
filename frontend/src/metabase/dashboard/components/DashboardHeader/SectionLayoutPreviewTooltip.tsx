@@ -81,6 +81,7 @@ function PreviewCard({
       top={`${top}px`}
       left={`${left}px`}
       bg="bg-light"
+      style={{ borderRadius: "2px" }}
     />
   );
 }
