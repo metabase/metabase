@@ -151,7 +151,7 @@ jobs:
 
         echo "VERSION=$version" >> $GITHUB_ENV
     - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: ${{ needs.get-build-requirements.outputs.java_version }}

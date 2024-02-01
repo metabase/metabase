@@ -92,7 +92,7 @@ jobs:
         java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-package: jre
         java-version: ${{ matrix.java-version }}
@@ -139,7 +139,7 @@ jobs:
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare JDK 11
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: 11
         distribution: "temurin"
