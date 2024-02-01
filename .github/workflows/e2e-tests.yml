@@ -114,7 +114,7 @@ jobs:
           mongo: ${{ matrix.name == 'mongo'}}
 
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
@@ -193,7 +193,7 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: cypress-recording-${{ matrix.name }}-${{ matrix.edition }}
@@ -235,7 +235,7 @@ jobs:
           maildev: true
 
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 

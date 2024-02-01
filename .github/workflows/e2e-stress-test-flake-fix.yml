@@ -98,7 +98,7 @@ jobs:
           --browser 'replay-chromium'
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: cypress-failed-tests-recording

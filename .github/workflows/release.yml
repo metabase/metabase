@@ -150,7 +150,7 @@ jobs:
         # ensure the build is not a snapshot build
         grep -q "SNAPSHOT" version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
     - name: Upload Uberjar as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         path: |
@@ -179,7 +179,7 @@ jobs:
         sparse-checkout: release
     - name: prepare release scripts
       run: cd release && yarn && yarn build
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -246,7 +246,7 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -323,7 +323,7 @@ jobs:
           console.log("Latest version?", isLatest);
 
           return isLatest ? "latest" : "not-latest";
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve previously downloaded Uberjar
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -519,7 +519,7 @@ jobs:
           sparse-checkout: release
       - name: prepare release scripts
         run: cd release && yarn && yarn build
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: Retrieve uberjar artifact
         with:
           name: metabase-${{ matrix.edition }}-uberjar

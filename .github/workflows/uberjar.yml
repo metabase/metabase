@@ -65,7 +65,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
     - run: java -version
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
@@ -98,7 +98,7 @@ jobs:
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Download uploaded artifacts to insert into container
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
         path: bin/docker/
@@ -215,7 +215,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit }}
       - name: Download uploaded artifacts to insert into container
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
           path: bin/docker/
