@@ -30,6 +30,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   last_query_start: string | null;
   average_query_time: number | null;
   cache_ttl: number | null;
+  based_on_upload?: number | null; // table id of upload table, if any
 
   archived: boolean;
 
