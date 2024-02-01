@@ -304,15 +304,35 @@
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
+(import 'java.time.LocalDateTime)
+(import 'java.time.temporal.ChronoUnit)
+
+(def ^:private last-timestamp (atom nil))
+
+(defn monotonic-now
+  "Return an adjusted version of the current time, so that it is guaranteed to be monotonic at a 1 second granularity."
+  []
+  ^LocalDateTime
+  (swap! last-timestamp
+         (fn [^LocalDateTime prev-timestamp]
+           (let [now (LocalDateTime/now)]
+             (if (nil? prev-timestamp)
+               now
+               (let [next-second (.truncatedTo (.plus prev-timestamp 1 ChronoUnit/SECONDS) ChronoUnit/SECONDS)]
+                 (if (.isAfter now next-second)
+                   now
+                   next-second)))))))
+
 (defn- unique-table-name
-  "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplised `table-name` if necessary)."
+  "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."
   [driver table-name]
   (let [time-format                 "_yyyyMMddHHmmss"
-        acceptable-length           (min (count table-name)
-                                         (- (driver/table-name-length-limit driver) (count time-format)))
-        truncated-name-without-time (subs (u/slugify table-name) 0 acceptable-length)]
+        slugified-name               (or (u/slugify table-name) "")
+        max-length                  (- (driver/table-name-length-limit driver) (count time-format))
+        acceptable-length           (min (count slugified-name) max-length)
+        truncated-name-without-time (subs slugified-name 0 acceptable-length)]
     (str truncated-name-without-time
-         (t/format time-format (t/local-date-time)))))
+         (t/format time-format (monotonic-now)))))
 
 (def ^:private max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
 
