@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeExternalLinks from "rehype-external-links";
@@ -42,12 +42,12 @@ export function Text({
   isMobile,
 }) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
+  const [textValue, setTextValue] = useState(settings.text);
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
     useToggle(justAdded);
   const isPreviewing = !isFocused;
 
-  const handleTextChange = text => onUpdateVisualizationSettings({ text });
   const preventDragging = e => e.stopPropagation();
 
   const isSingleRow = gridSize?.height === 1;
@@ -100,11 +100,17 @@ export function Text({
             data-testid="editing-dashboard-text-input"
             name="text"
             placeholder={placeholder}
-            value={settings.text}
+            value={textValue}
             autoFocus={justAdded || isFocused}
-            onChange={e => handleTextChange(e.target.value)}
+            onChange={e => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
-            onBlur={toggleFocusOff}
+            onBlur={() => {
+              toggleFocusOff();
+
+              if (settings.text !== textValue) {
+                onUpdateVisualizationSettings({ text: textValue });
+              }
+            }}
             isMobile={isMobile}
             isSingleRow={isSingleRow}
           />
