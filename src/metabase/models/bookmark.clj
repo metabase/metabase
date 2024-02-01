@@ -30,31 +30,13 @@
 (derive :model/CollectionBookmark :metabase/model)
 (derive :model/BookmarkOrdering :metabase/model)
 
-(defn- unqualify-key
-  [k]
-  (-> (str/split (name k) #"\.") peek keyword))
-
-(def BookmarkResult
-  "Shape of a bookmark returned for user. Id is a string because it is a concatenation of the model and the model's
-  id. This is required for the frontend entity loading system and does not refer to any particular bookmark id,
-  although the compound key can be inferred from it."
-  [:map {:closed false}
-   [:id                               ms/PositiveInt]
-   [:model                            [:enum "card" "collection" "dashboard"]]
-   [:item_id                          ms/PositiveInt]
-   [:name                             ms/NonBlankString]
-   [:authority_level {:optional true} [:maybe :string]]
-   [:dataset         {:optional true} [:maybe :boolean]]
-   [:description     {:optional true} [:maybe :string]]
-   [:display         {:optional true} [:maybe :string]]])
-
 (mu/defn ^:private normalize-bookmark-result
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
   points to one of them. Normalizes it so it has just the desired fields."
   [result]
-
-  (let [item (into {} (or (:card result) (:dashboard result) (:collection result)))
-        id-str            (str (:type result) "-" (:id item))]
+  (let [bookmark-type (:type result)
+        item          (into {} (get result (keyword bookmark-type)))
+        id-str        (format "%s-%s" bookmark-type (:id item))]
     (assoc item
            :model (:type result)
            :bookmark_id id-str)))
@@ -134,37 +116,31 @@
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]
-  (->> (mdb.query/query
-        {:select    [[:bookmark.created_at        :created_at]
-                     [:bookmark.type              :type]
-                     [:bookmark.item_id           :item_id]]
-         :from      [[(bookmarks-union-query user-id) :bookmark]]
-         :left-join [[:report_card :card]                    [:= :bookmark.card_id :card.id]
-                     [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
-                     ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
-                     [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
-                                                                                  (h2x/identifier :field :dashboard :collection_id)]]
-                     [:bookmark_ordering :bookmark_ordering] [:and
-                                                              [:= :bookmark_ordering.user_id user-id]
-                                                              [:= :bookmark_ordering.type :bookmark.type]
-                                                              [:= :bookmark_ordering.item_id :bookmark.item_id]]]
-         :where     (into [:and]
-                          (for [table [:card :dashboard :collection]
-                                :let  [field (keyword (str (name table) "." "archived"))]]
-                            [:or [:= field false] [:= field nil]]))
-         :order-by  [[:bookmark_ordering.ordering (case (mdb.connection/db-type)
-                                                    ;; NULLS LAST is not supported by MySQL, but this is default
-                                                    ;; behavior for MySQL anyway
-                                                    (:postgres :h2) :asc-nulls-last
-                                                    :mysql          :asc)]
-                     [:created_at :desc]]})
-       present-bookmarks))
-
-;; type to model
-;; id = underlying item id
-;; bookmark_id = ... bookmark id
-;; bookmark order
-;; display
+  (present-bookmarks
+   (mdb.query/query
+    {:select    [[:bookmark.created_at        :created_at]
+                 [:bookmark.type              :type]
+                 [:bookmark.item_id           :item_id]]
+     :from      [[(bookmarks-union-query user-id) :bookmark]]
+     :left-join [[:report_card :card]                    [:= :bookmark.card_id :card.id]
+                 [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
+                 ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
+                 [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
+                                                                              (h2x/identifier :field :dashboard :collection_id)]]
+                 [:bookmark_ordering :bookmark_ordering] [:and
+                                                          [:= :bookmark_ordering.user_id user-id]
+                                                          [:= :bookmark_ordering.type :bookmark.type]
+                                                          [:= :bookmark_ordering.item_id :bookmark.item_id]]]
+     :where     (into [:and]
+                      (for [table [:card :dashboard :collection]
+                            :let  [field (keyword (str (name table) "." "archived"))]]
+                        [:or [:= field false] [:= field nil]]))
+     :order-by  [[:bookmark_ordering.ordering (case (mdb.connection/db-type)
+                                                ;; NULLS LAST is not supported by MySQL, but this is default
+                                                ;; behavior for MySQL anyway
+                                                (:postgres :h2) :asc-nulls-last
+                                                :mysql          :asc)]
+                 [:created_at :desc]]})))
 
 (defn save-ordering!
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
