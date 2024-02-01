@@ -83,29 +83,6 @@ export const undoRemoveCardFromDashboard = createThunkAction(
     },
 );
 
-export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
-  trackCardCreated("heading", dashId);
-
-  const virtualTextCard = {
-    ...createCard(),
-    display: "heading",
-    archived: false,
-  };
-
-  const dashcardOverrides = {
-    card: virtualTextCard,
-    visualization_settings: {
-      virtual_card: virtualTextCard,
-      "dashcard.background": false,
-    },
-  };
-  return addDashCardToDashboard({
-    dashId: dashId,
-    dashcardOverrides: dashcardOverrides,
-    tabId,
-  });
-};
-
 export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
   trackCardCreated("link", dashId);
 

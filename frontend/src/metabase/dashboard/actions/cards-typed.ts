@@ -103,6 +103,17 @@ export const addCardToDashboard =
     dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
   };
 
+export const addHeadingDashCardToDashboard =
+  ({ dashId, tabId }: NewDashCardOpts) =>
+  (dispatch: Dispatch) => {
+    trackCardCreated("heading", dashId);
+    const dc = createVirtualDashCard({
+      display: "heading",
+      visualization_settings: { "dashcard.background": false },
+    });
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides: dc }));
+  };
+
 export const addMarkdownDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
@@ -125,8 +136,13 @@ function createDashCard<T extends BaseDashboardCard>(attrs: Partial<T>) {
 
 function createVirtualDashCard({
   display,
+  visualization_settings,
 }: {
   display: VirtualCardDisplay;
+  visualization_settings?: Omit<
+    VirtualDashboardCard["visualization_settings"],
+    "virtual_card"
+  >;
 }): VirtualDashboardCard {
   const virtualCard = {
     name: null,
@@ -139,6 +155,7 @@ function createVirtualDashCard({
   return createDashCard<VirtualDashboardCard>({
     card: virtualCard,
     visualization_settings: {
+      ...visualization_settings,
       virtual_card: virtualCard,
     },
   });
