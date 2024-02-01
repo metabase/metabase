@@ -200,7 +200,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
         <Box mb="auto">
           <Icon name="model" size={20} color={color("brand")} />
         </Box>
-        <Title lh="1rem" mb=".25rem" size="1rem">
+        <Title order={4} lh="1rem" mb=".5rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
           </MultilineEllipsified>
