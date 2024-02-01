@@ -62,8 +62,8 @@
 
 (api/defendpoint GET "/:collection-id" [collection-id :as {query-params :query-params}]
   {collection-id [:maybe :any]
-   query-params [:map [:time-ago {:optional true} :string]]}
-  (let [time-ago (or (:time-ago query-params) time-ago)]
+   query-params [:map [:time_ago {:optional true} :string]]}
+  (let [time-ago (or (:time_ago query-params) time-ago)]
     {:archivable (auto-archivable-questions
                   {:collection-id (if collection-id collection-id parse-long)
                    :time-ago time-ago})}))
