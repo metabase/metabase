@@ -9,7 +9,7 @@ import { Flex, Icon, Text } from "metabase/ui";
 import type { CommandPalettePageId } from "../hooks/useCommandPalette";
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import "./Palette.css";
-import { CommandPaletteStyled } from "./Palette.styled";
+import { PaletteStyled, StyledPaletteItem } from "./Palette.styled";
 
 // TODO: Maybe scroll to the selected item in the palette when it's out of sight
 
@@ -27,7 +27,7 @@ const PalettePage = ({
       ? actions.map(list => (
           <CommandPalette.List key={list.id} heading={list.heading}>
             {list.items.map(({ id, ...rest }) => (
-              <CommandPalette.ListItem
+              <StyledPaletteItem
                 showType={false}
                 key={id}
                 index={getItemIndex(actions, id)}
@@ -96,7 +96,7 @@ export const Palette = () => {
   // TODO: Make the search prefix bold
   // TODO: Do this in a non-hacky way
   return (
-    <CommandPaletteStyled
+    <PaletteStyled
       onChangeSearch={setQuery}
       onChangeOpen={setOpen}
       search={query}
@@ -111,6 +111,6 @@ export const Palette = () => {
         actions={adminSettingsActions}
         searchPrefix={[t`Admin settings`]}
       />
-    </CommandPaletteStyled>
+    </PaletteStyled>
   );
 };
