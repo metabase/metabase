@@ -205,7 +205,7 @@ export interface Settings {
   "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
   "dismissed-custom-dashboard-toast"?: boolean;
-  "ee-openai-api-key": string | null;
+  "ee-openai-api-key"?: string;
   "email-configured?": boolean;
   "embedding-app-origin": string;
   "embedding-secret-key"?: string;
