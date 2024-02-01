@@ -182,7 +182,7 @@
             "week"            false
             "month"           false
             "quarter"         false
-            "year"            true
+            "year"            false
             "minute-of-hour"  true
             "hour-of-day"     true
             "day-of-week"     true
