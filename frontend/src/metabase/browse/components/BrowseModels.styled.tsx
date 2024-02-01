@@ -20,15 +20,16 @@ export const ModelCard = styled(Card)`
   align-items: flex-start;
 
   border: 1px solid ${color("border")};
-  box-shadow: 0 1px 0.25rem 0 rgba(0, 0, 0, 0.06);
+
+  box-shadow: none;
   &:hover {
-    box-shadow: 0 1px 0.25rem 0 rgba(0, 0, 0, 0.14);
-    h4 {
+    h1 {
       color: ${color("brand")};
     }
   }
   transition: box-shadow 0.15s;
-  h4 {
+
+  h1 {
     transition: color 0.15s;
   }
 `;
@@ -50,8 +51,9 @@ export const MultilineEllipsified = styled(Ellipsified)`
 
 export const GridContainer = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1.5rem 1rem;
+  margin-top: 1rem;
   width: 100%;
 
   ${breakpointMinSmall} {
@@ -65,7 +67,7 @@ export const GridContainer = styled.div`
 export const CollectionHeaderContainer = styled.div`
   grid-column: 1 / -1;
   align-items: center;
-  padding-top: 0.5rem;
+  padding-top: 1rem;
   margin-right: 1rem;
   &:not(:first-of-type) {
     border-top: 1px solid #f0f0f0;
