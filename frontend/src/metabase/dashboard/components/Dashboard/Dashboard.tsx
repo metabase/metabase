@@ -527,6 +527,7 @@ function DashboardInner(props: DashboardProps) {
               <DashboardWidthWrapper>
                 <CardsContainer
                   isFixedWidth={dashboard?.width === "fixed"}
+                  data-testid="dashboard-cards-container"
                   id="Dashboard-Cards-Container"
                 >
                   {renderContent()}
