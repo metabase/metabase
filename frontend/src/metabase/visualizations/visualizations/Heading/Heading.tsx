@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { t } from "ttag";
 
@@ -44,8 +44,7 @@ export function Heading({
     useToggle(justAdded);
   const isPreviewing = !isFocused;
 
-  const handleTextChange = (text: string) =>
-    onUpdateVisualizationSettings({ text });
+  const [textValue, setTextValue] = useState(settings.text);
   const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
     e.stopPropagation();
 
@@ -84,11 +83,17 @@ export function Heading({
             name="heading"
             data-testid="editing-dashboard-heading-input"
             placeholder={placeholder}
-            value={settings.text}
+            value={textValue}
             autoFocus={justAdded || isFocused}
-            onChange={e => handleTextChange(e.target.value)}
+            onChange={e => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
-            onBlur={toggleFocusOff}
+            onBlur={() => {
+              toggleFocusOff();
+
+              if (settings.text !== textValue) {
+                onUpdateVisualizationSettings({ text: textValue });
+              }
+            }}
           />
         )}
       </InputContainer>
