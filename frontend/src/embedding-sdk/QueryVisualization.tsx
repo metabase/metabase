@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-// For some reason, this import needs to be placed before the PublicMode import or we'll run into
-// errors complaining about variables not being initialized. This can be fixed when we're polishing the
-// PoC for the future.
-// eslint-disable-next-line import/order
-import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import {
   onCloseChartType,
@@ -16,10 +10,11 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import { GET, POST } from "metabase/lib/api";
-import { reloadSettings } from "metabase/admin/settings/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
-import { Box, Group } from "metabase/ui";
+import { Box, Button, Group, Text } from "metabase/ui";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/Question";
+import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
+import { useEmbeddingContext } from "./context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -33,15 +28,9 @@ type State = {
 
 export const QueryVisualizationSdk = (
   props: QueryVisualizationProps,
-): JSX.Element => {
+): JSX.Element | null => {
+  const { isInitialized, isLoggedIn } = useEmbeddingContext();
   const metadata = useSelector(getMetadata);
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())]);
-    // Disabling this for now since we change the store with this call, which keeps calling the effect
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const { questionId } = props;
 
@@ -51,41 +40,47 @@ export const QueryVisualizationSdk = (
     result: null,
   });
 
-  useEffect(() => {
+  const loadCardData = async ({ questionId }: { questionId: number }) => {
     setState(prevState => ({
       ...prevState,
       loading: true,
     }));
-    GET("/api/card/:cardId")({ cardId: questionId })
-      .then(card => {
+
+    Promise.all([
+      GET("/api/card/:cardId")({ cardId: questionId }),
+      POST("/api/card/:cardId/query")({
+        cardId: questionId,
+      }),
+    ])
+      .then(([card, result]) => {
         setState(prevState => ({
           ...prevState,
           card,
+          result,
+          loading: false,
         }));
-
-        POST("/api/card/:cardId/query")({
-          cardId: questionId,
-        })
-          .then(result => {
-            setState(prevState => ({
-              ...prevState,
-              result,
-            }));
-          })
-          .then(() => {
-            setState(prevState => ({
-              ...prevState,
-              loading: false,
-            }));
-          });
       })
-      .catch(error => {
+      .catch(([_cardError, resultError]) => {
         setState(prevState => ({
           ...prevState,
-          result: error.data,
+          result: resultError?.data,
         }));
       });
-  }, [questionId]);
+  };
+
+  useEffect(() => {
+    if (!isInitialized || !isLoggedIn) {
+      setState({
+        loading: false,
+        card: null,
+        result: null,
+      });
+
+      return;
+    }
+
+    loadCardData({ questionId });
+  }, [isInitialized, isLoggedIn, questionId]);
 
   const { card, result } = state;
 
@@ -96,6 +91,19 @@ export const QueryVisualizationSdk = (
       loading: false,
     });
   };
+
+  if (!isInitialized) {
+    return null;
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <div>
+        <Text>You should be logged in to see this content.</Text>
+        <Button>Log in</Button>
+      </div>
+    );
+  }
 
   return (
     <LoadingAndErrorWrapper

@@ -1,42 +1,44 @@
 .App-header {
-    width: 100%;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 2rem;
-    padding: 2rem;
-    background-color: aliceblue;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.5rem;
+  padding: 1rem;
+  background-color: aliceblue;
 }
 
 .App-body {
-    padding: 2rem;
-    background: white;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+  background: white;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .App-container {
-    display: flex;
-    flex-direction: column;
-    width: 100vw;
-    height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
 }
 
 .QueryVisualization-container {
-    width: 100%;
-    height: 100%;
-    margin-top: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 0.5rem;
+  width: 100%;
+  min-height: 100%;
+}
+
+.ChooseParams-container {
+  padding: 1rem;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  width: 100%;
 }
 
 .ChooseQuestion-input {
-    width: 100%;
-    padding: 0.5rem;
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 0.5rem;
+  padding: 0.5rem;
+  font-size: 1.5rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
 }

@@ -131,7 +131,7 @@ module.exports = env => {
         "metabase-types": TYPES_SRC_PATH,
         cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
 
-        style: SRC_PATH + "/css/core/index",
+        style: SRC_PATH + "/css/core/index-sdk",
 
         ace: __dirname + "/node_modules/ace-builds/src-noconflict",
 
