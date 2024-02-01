@@ -431,7 +431,7 @@
   /* Hacky way to override the react-cmdk style for a selected item*/
   background-color: #eef6fd !important;
   font-weight: bold;
-  color: #509ee3;
+  color: #509ee3 !important;
 }
 .command-palette .bg-transparent {
   background-color: initial;

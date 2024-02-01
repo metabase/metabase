@@ -3,6 +3,7 @@ import _ from "underscore";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useMemo, useEffect } from "react";
 import { push } from "react-router-redux";
+import type { JsonStructureItem } from "react-cmdk";
 import {
   filterItems,
   type JsonStructure as CommandPaletteActions,
@@ -10,10 +11,16 @@ import {
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setOpenModal, closeModal } from "metabase/redux/ui";
 import * as Urls from "metabase/lib/urls";
-import { Icon } from "metabase/ui";
+import { Icon, Loader } from "metabase/ui";
 import { getContextualPaletteActions } from "metabase/selectors/app";
 import { getSections } from "metabase/admin/settings/selectors";
 import { reloadSettings } from "metabase/admin/settings/settings";
+import { useSearchListQuery } from "metabase/common/hooks";
+import type { SearchResult } from "metabase-types/api";
+import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import Search from "metabase/entities/search";
+import { ItemIcon } from "metabase/search/components/SearchResult";
+import type { WrappedResult } from "metabase/search/types";
 
 export type CommandPalettePageId = "root" | "admin_settings";
 
@@ -27,10 +34,12 @@ type AdminSetting = {
 
 export const useCommandPalette = ({
   query,
+  debouncedSearchText,
   setPage,
   setQuery,
 }: {
   query: string;
+  debouncedSearchText: string;
   setPage: Dispatch<SetStateAction<CommandPalettePageId>>;
   setQuery: Dispatch<SetStateAction<string>>;
 }) => {
@@ -83,11 +92,34 @@ export const useCommandPalette = ({
 
   const contextualActions = useSelector(getContextualPaletteActions);
 
-  const defaultActions = useMemo<CommandPaletteActions>(() => {
-    const actions: CommandPaletteActions = [
+  const {
+    data: searchResults,
+    error: searchError,
+    isLoading: isSearchLoading,
+  } = useSearchListQuery<SearchResult>({
+    enabled: !!debouncedSearchText,
+    query: { q: debouncedSearchText, limit: DEFAULT_SEARCH_LIMIT },
+    reload: true,
+  });
+
+  const rootPageActions = useMemo<CommandPaletteActions>(() => {
+    let actions: CommandPaletteActions = [];
+    if (contextualActions.length) {
+      actions = [
+        {
+          id: "contextual_actions",
+          heading: t`On this page`,
+          items: contextualActions,
+        },
+      ];
+      actions = filterItems(actions, query);
+    }
+
+    actions = [
+      ...actions,
       {
         id: "new",
-        heading: "",
+        heading: actions.length ? t`Other actions` : t`Actions`,
         items: [
           {
             id: "new_collection",
@@ -158,15 +190,69 @@ export const useCommandPalette = ({
         ],
       },
     ];
-    if (contextualActions.length) {
-      actions.unshift({
-        id: "contextual_actions",
-        heading: "On this page",
-        items: contextualActions,
+    const filteredRootPageActions = filterItems(actions, query);
+
+    let searchItems: JsonStructureItem[] = [];
+    if (isSearchLoading) {
+      searchItems.push({
+        id: "search-is-loading",
+        children: <Loader size="sm" />,
+        disabled: true,
+      });
+    } else if (searchError) {
+      searchItems.push({
+        id: "search-error",
+        children: t`Could not load search results`,
+        disabled: true,
+      });
+    } else if (debouncedSearchText && searchResults?.length === 0) {
+      searchItems.push({
+        id: "no-search-results",
+        children: t`No results`,
+        disabled: true,
+      });
+    } else if (debouncedSearchText && searchResults?.length) {
+      searchItems = searchResults.map(result => {
+        const wrappedResult: WrappedResult = Search.wrapEntity(
+          result,
+          dispatch,
+        );
+        return {
+          id: `search-result-${result.id}`,
+          children: result.name,
+          icon: () => (
+            <ItemIcon
+              active={true}
+              item={wrappedResult}
+              type={wrappedResult.model}
+            />
+          ),
+          onClick: () => {
+            dispatch(push(wrappedResult.getUrl()));
+          },
+        };
       });
     }
-    return actions;
-  }, [query, dispatch, setPage, openNewModal, setQuery, contextualActions]);
+    if (searchItems.length) {
+      filteredRootPageActions.push({
+        id: "search_results",
+        heading: t`Search results`,
+        items: searchItems,
+      });
+    }
+    return filteredRootPageActions;
+  }, [
+    query,
+    dispatch,
+    setPage,
+    openNewModal,
+    setQuery,
+    contextualActions,
+    searchResults,
+    searchError,
+    isSearchLoading,
+    debouncedSearchText,
+  ]);
 
   const adminSettingsActions = [
     {
@@ -199,7 +285,7 @@ export const useCommandPalette = ({
   ];
 
   return {
-    defaultActions: filterItems(defaultActions, query),
-    adminSettingsActions: adminSettingsActions,
+    rootPageActions,
+    adminSettingsActions,
   };
 };

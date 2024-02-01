@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 import CommandPalette, {
   getItemIndex,
@@ -6,6 +7,7 @@ import CommandPalette, {
   useHandleOpenCommandPalette,
 } from "react-cmdk";
 import { Flex, Icon, Text } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type { CommandPalettePageId } from "../hooks/useCommandPalette";
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import "./Palette.css";
@@ -74,8 +76,21 @@ export const Palette = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState<CommandPalettePageId>("root");
-  const { defaultActions, adminSettingsActions } = useCommandPalette({
+
+  // The search text is the string used to get search results
+  const [debouncedSearchText, setDebouncedSearchText] = useState(query);
+
+  useDebounce(
+    () => {
+      setDebouncedSearchText(query.trim());
+    },
+    SEARCH_DEBOUNCE_DURATION,
+    [query],
+  );
+
+  const { rootPageActions, adminSettingsActions } = useCommandPalette({
     query,
+    debouncedSearchText,
     setPage,
     setQuery,
   });
@@ -104,7 +119,7 @@ export const Palette = () => {
       page={page}
       footer={<PaletteFooter />}
     >
-      <PalettePage id="root" actions={defaultActions} />
+      <PalettePage id="root" actions={rootPageActions} />
       <PalettePage
         id="admin_settings"
         actions={adminSettingsActions}
