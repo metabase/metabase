@@ -24,7 +24,7 @@ export const MetabaseProvider = ({
   children: React.ReactNode;
   apiUrl: string;
   apiKey: string;
-  font: string;
+  font?: string;
 }): JSX.Element => {
   const store = getStore(reducers);
 
@@ -47,7 +47,9 @@ export const MetabaseProvider = ({
   }, []);
 
   useEffect(() => {
-    store.dispatch(setOptions({ font }));
+    if (font) {
+      store.dispatch(setOptions({ font }));
+    }
   }, [store, font]);
 
   useEffect(() => {

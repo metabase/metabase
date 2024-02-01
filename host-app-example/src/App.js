@@ -6,8 +6,8 @@ import {
 import { HelloName } from "./HelloName";
 import { Welcome } from "./Welcome";
 import { ChooseQuestionInput } from "./ChooseQuestionInput";
-import { QueryVisualizationContainer } from "./QueryVisualizationContainer.styled";
-import { AppBody, AppContainer, AppHeader } from "./App.styled";
+import "./App.css"
+
 
 function App() {
   const [questionId, setQuestionId] = useState(105);
@@ -16,25 +16,24 @@ function App() {
     <MetabaseProvider
       apiUrl={"http://localhost:3000"}
       apiKey={"mb_sfmfeTfUONsMuMPbdpP2HOhSzS3cMFrSeDS9NNpsHn8="}
-      font={"Oswald"}
     >
-      <AppContainer>
-        <AppHeader>
+      <div class="App-container">
+        <div class="App-header">
           <Welcome />
           <HelloName />
-        </AppHeader>
+        </div>
 
-        <AppBody>
-        <ChooseQuestionInput
-          questionId={questionId}
-          setQuestionId={setQuestionId}
-        />
+        <div class="App-body">
+          <ChooseQuestionInput
+            questionId={questionId}
+            setQuestionId={setQuestionId}
+          />
 
-        <QueryVisualizationContainer>
-          <QueryVisualizationSdk questionId={questionId} />
-        </QueryVisualizationContainer>
-        </AppBody>
-      </AppContainer>
+          <div class="QueryVisualization-container">
+            <QueryVisualizationSdk questionId={questionId} />
+          </div>
+        </div>
+      </div>
     </MetabaseProvider>
   );
 }

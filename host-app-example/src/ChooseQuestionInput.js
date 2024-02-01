@@ -1,5 +1,4 @@
 import { useState } from "react";
-import {ChooseQuestionStyledInput} from "./ChooseQuestionInput.styled"
 
 export const ChooseQuestionInput = ({ questionId, setQuestionId }) => {
   const [userInput, setTempQuestionId] = useState(questionId);
@@ -13,11 +12,11 @@ export const ChooseQuestionInput = ({ questionId, setQuestionId }) => {
   return (
     <div>
       Enter a question id:
-      <ChooseQuestionStyledInput
-      value={userInput}
-      onChange={e => setTempQuestionId(e.target.value)}
-      onKeyDown={onChangeQuestionId}
-    />
+      <input class="ChooseQuestion-input"
+        value={userInput}
+        onChange={e => setTempQuestionId(e.target.value)}
+        onKeyDown={onChangeQuestionId}
+      />
     </div>
   );
 };

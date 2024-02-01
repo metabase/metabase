@@ -3,7 +3,6 @@ import type { Card, CardId, Dataset } from "metabase-types/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import {
@@ -14,7 +13,9 @@ import {
 import { GET, POST } from "metabase/lib/api";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { Box, Group } from "metabase/ui";
 import Question from "metabase-lib/Question";
+import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -51,28 +52,35 @@ export const QueryVisualizationSdk = (
       ...prevState,
       loading: true,
     }));
-    GET("/api/card/:cardId")({ cardId: questionId }).then(card => {
-      setState(prevState => ({
-        ...prevState,
-        card,
-      }));
+    GET("/api/card/:cardId")({ cardId: questionId })
+      .then(card => {
+        setState(prevState => ({
+          ...prevState,
+          card,
+        }));
 
-      POST("/api/card/:cardId/query")({
-        cardId: questionId,
-      })
-        .then(result => {
-          setState(prevState => ({
-            ...prevState,
-            result,
-          }));
+        POST("/api/card/:cardId/query")({
+          cardId: questionId,
         })
-        .then(() => {
-          setState(prevState => ({
-            ...prevState,
-            loading: false,
-          }));
-        });
-    });
+          .then(result => {
+            setState(prevState => ({
+              ...prevState,
+              result,
+            }));
+          })
+          .then(() => {
+            setState(prevState => ({
+              ...prevState,
+              loading: false,
+            }));
+          });
+      })
+      .catch(error => {
+        setState(prevState => ({
+          ...prevState,
+          result: error.data,
+        }));
+      });
   }, [questionId]);
 
   const { card, result } = state;
@@ -99,19 +107,8 @@ export const QueryVisualizationSdk = (
         });
 
         return (
-          <div
-            style={{
-              height: "100%",
-              position: "relative",
-              display: "flex",
-              flexDirection: "row",
-            }}
-          >
-            <aside
-              style={{
-                width: "355px",
-              }}
-            >
+          <Group h="100%" pos="relative">
+            <Box w="355px">
               <ChartTypeSidebar
                 question={question}
                 result={result}
@@ -121,8 +118,8 @@ export const QueryVisualizationSdk = (
                 setUIControls={setUIControls}
                 updateQuestion={changeVisualization}
               />
-            </aside>
-            <QueryVisualization
+            </Box>
+            <QueryVisualizationSdkWrapper
               className="full-width"
               question={question}
               rawSeries={[{ card, data: result && result.data }]}
@@ -134,7 +131,7 @@ export const QueryVisualizationSdk = (
               noHeader
               mode={PublicMode}
             />
-          </div>
+          </Group>
         );
       }}
     </LoadingAndErrorWrapper>
