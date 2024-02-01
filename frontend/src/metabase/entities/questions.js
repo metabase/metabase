@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
 
+import { PUT, POST } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -25,6 +26,35 @@ const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
+
+  /**
+   * Temporarily mock endpoints for Metrics v2
+   *
+   * We pretend metrics are questions.
+   */
+  api: {
+    create: async payload => {
+      const create = POST("/api/card");
+
+      if (payload.type === "metric") {
+        const result = await create({ ...payload, type: "question" });
+        return { ...result, type: "metric" };
+      }
+
+      return await create(payload);
+    },
+
+    update: async payload => {
+      const update = PUT("/api/card/:id");
+
+      if (payload.type === "metric") {
+        const result = await update({ ...payload, type: "question" });
+        return { ...result, type: "metric" };
+      }
+
+      return await update(payload);
+    },
+  },
 
   objectActions: {
     setArchived: ({ id, dataset, model }, archived, opts) =>
