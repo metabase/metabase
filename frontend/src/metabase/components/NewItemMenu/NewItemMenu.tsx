@@ -109,6 +109,7 @@ const NewItemMenu = ({
         action: () => setModal("new-collection"),
       },
     );
+
     if (hasNativeWrite) {
       const collectionQuery = collectionId
         ? `?collectionId=${collectionId}`
@@ -127,6 +128,15 @@ const NewItemMenu = ({
         title: t`Action`,
         icon: "bolt",
         action: () => setModal("new-action"),
+      });
+    }
+
+    if (hasDataAccess) {
+      items.push({
+        title: t`Metric`,
+        icon: "metric",
+        link: "/metric/query",
+        onClose: onCloseNavbar,
       });
     }
 
