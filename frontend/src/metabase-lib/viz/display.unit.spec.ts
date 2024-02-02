@@ -6,8 +6,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { createQuery, createQueryWithClauses } from "../test-helpers";
 import { defaultDisplay } from "./display";
-import { createQuery, createQueryWithClauses } from "./test-helpers";
 
 const ACCOUNTS_ID = 4;
 const ACCOUNTS_COUNTRY_ID = 56;
