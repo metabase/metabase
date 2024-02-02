@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.card-test :as api.card-test]
    [metabase.api.collection :as api.collection]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard ModerationReview
@@ -642,29 +643,13 @@
 (deftest collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
     (testing "check that based_on_upload is returned for cards correctly"
-      (mt/with-driver :h2 ; just test on H2 because failure should be independent of drivers
-        ;; needs to match :based_on_upload hydration on cards
-        (mt/with-temporary-setting-values [uploads-enabled true]
-          (mt/with-temp [:model/Collection collection     {}
-                         :model/Database   {db-id :id}    {:engine "h2"}
-                         :model/Table      {table-id :id} {:db_id     db-id
-                                                           :is_upload true}
-                         :model/Card       {card-id :id}  {:collection_id (u/the-id collection)
-                                                           :dataset       true
-                                                           :dataset_query {:type     :query
-                                                                           :database db-id
-                                                                           :query    {:source-table table-id}}}]
-            (mt/with-test-user :crowberto
-              (testing "Sense check: cards based on uploads have based_on_upload=<table-id> if they meet all the criteria"
-                (is (= table-id (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
-              ;; TODO: test these
-              ;; - dataset=false
-              ;; - table_id=nil (native query)
-              ;; - other checks for based_on_upload
-              (is (= [table-id]
-                     (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))
-                          :data
-                          (map :based_on_upload)))))))))))
+      (api.card-test/run-based-on-upload-test
+       (fn [card]
+         (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (:collection_id card) "/items"))
+              :data
+              (filter (fn [item]
+                        (= (:id item) (:id card))))
+              first))))))
 
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"

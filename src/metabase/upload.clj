@@ -15,6 +15,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
@@ -702,21 +703,22 @@
                            [:dataset_query ms/Map]
                            [:table_id      [:maybe ms/PositiveInt]]
                            [:query_type    [:or :string :keyword]]
-                           [:is_upload {:optional true} :boolean]]]]
+                           ;; is_upload can be provided for an optional optimization
+                           [:is_upload {:optional true} [:maybe :boolean]]]]]
   (let [table-ids (->> models
                        ;; as an optimization, we might already know that the table is not an upload
                        ;; if is_upload=false. We don't need to make any more queies if so
                        (remove #(false? (:is_upload %)))
                        (keep :table_id)
                        set)
-        uploadable-table-ids (->> (uploadable-table-ids table-ids)
-                                  set)
-        based-on-upload-model? (fn [model]
-                                 (and (= (name (:query_type model)) "query")
-                                      (no-joins? (:dataset_query model))
-                                      (contains? uploadable-table-ids (:table_id model))))]
-    (map #(assoc % :based_on_upload (when (based-on-upload-model? %)
-                                      (:table_id %)))
+        uploadable-table-ids (set (uploadable-table-ids table-ids))
+        based-on-upload (fn [model]
+                          (let [query (lib.convert/->pMBQL (:dataset_query model))]
+                            (when (and (= (name (:query_type model)) "query")
+                                       (contains? uploadable-table-ids (:table_id model))
+                                       (no-joins? query))
+                              (lib.util/source-table-id query))))]
+    (map #(m/assoc-some % :based_on_upload (based-on-upload %))
          models)))
 
 (mi/define-batched-hydration-method based-on-upload
