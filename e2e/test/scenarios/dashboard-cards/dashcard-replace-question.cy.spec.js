@@ -4,6 +4,7 @@ import {
   popover,
   restore,
   visitDashboard,
+  findDashCardAction,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { USER_GROUPS } from "e2e/support/cypress_data";
@@ -242,10 +243,6 @@ function findHeadingDashcard() {
 
 function findTargetDashcard() {
   return cy.findAllByTestId("dashcard").eq(2);
-}
-
-function findDashCardAction(dashcardElement, labelText) {
-  return dashcardElement.realHover().findByLabelText(labelText);
 }
 
 function replaceQuestion(
