@@ -149,7 +149,7 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version])
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version :initially_published_at])
 
 (defmethod revision/serialize-instance :model/Card
   ([instance]
