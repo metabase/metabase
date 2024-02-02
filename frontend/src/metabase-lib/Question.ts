@@ -731,12 +731,21 @@ class Question {
   }
 
   syncColumnsAndSettings(previousQuestion?: Question, queryResults?: Dataset) {
-    if (this.isNative() && queryResults && !queryResults.error) {
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+
+    if (isNative && queryResults && !queryResults.error) {
       return this._syncNativeQuerySettings(queryResults);
     }
 
-    if (this.isStructured() && previousQuestion?.isStructured()) {
-      return this._syncStructuredQueryColumnsAndSettings(previousQuestion);
+    if (previousQuestion) {
+      const previousQuery = previousQuestion.query();
+      const { isNative: isPreviousQuestionNative } =
+        Lib.queryDisplayInfo(previousQuery);
+
+      if (!isNative && !isPreviousQuestionNative) {
+        return this._syncStructuredQueryColumnsAndSettings(previousQuestion);
+      }
     }
 
     return this;
