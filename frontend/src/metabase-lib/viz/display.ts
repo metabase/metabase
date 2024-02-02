@@ -3,8 +3,6 @@ import type {
   CardDisplayType,
   VisualizationSettings,
 } from "metabase-types/api";
-import { TYPE } from "metabase-lib/types/constants";
-import { isa } from "metabase-lib/types/utils/isa";
 
 type DefaultDisplay = {
   display: CardDisplayType;
@@ -31,13 +29,9 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 1) {
-    const [{ columnInfo }] = getBreakoutsWithColumnInfo(
-      query,
-      stageIndex,
-      breakouts,
-    );
+    const [{ column }] = getBreakoutsWithColumns(query, stageIndex, breakouts);
 
-    if (isState(columnInfo)) {
+    if (Lib.isState(column)) {
       return {
         display: "map",
         settings: {
@@ -47,7 +41,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    if (isCountry(columnInfo)) {
+    if (Lib.isCountry(column)) {
       return {
         display: "map",
         settings: {
@@ -59,13 +53,13 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length >= 1 && breakouts.length === 1) {
-    const [{ breakout, columnInfo }] = getBreakoutsWithColumnInfo(
+    const [{ breakout, column }] = getBreakoutsWithColumns(
       query,
       stageIndex,
       breakouts,
     );
 
-    if (isDate(columnInfo)) {
+    if (Lib.isDate(column)) {
       const info = Lib.displayInfo(query, stageIndex, breakout);
 
       if (info.isTemporalExtraction) {
@@ -82,30 +76,28 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "bar" };
     }
 
-    if (isCategory(columnInfo)) {
+    if (Lib.isCategory(column)) {
       return { display: "bar" };
     }
   }
 
   if (aggregations.length === 1 && breakouts.length === 2) {
-    const breakoutsWithColumnInfo = getBreakoutsWithColumnInfo(
+    const breakoutsWithColumns = getBreakoutsWithColumns(
       query,
       stageIndex,
       breakouts,
     );
 
-    const isAnyBreakoutDate = breakoutsWithColumnInfo.some(({ columnInfo }) => {
-      return isDate(columnInfo);
+    const isAnyBreakoutDate = breakoutsWithColumns.some(({ column }) => {
+      return Lib.isDate(column);
     });
     if (isAnyBreakoutDate) {
       return { display: "line" };
     }
 
-    const areBreakoutsCoordinates = breakoutsWithColumnInfo.every(
-      ({ columnInfo }) => {
-        return isCoordinate(columnInfo);
-      },
-    );
+    const areBreakoutsCoordinates = breakoutsWithColumns.every(({ column }) => {
+      return Lib.isCoordinate(column);
+    });
     if (areBreakoutsCoordinates) {
       return {
         display: "map",
@@ -115,11 +107,9 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    const areBreakoutsCategories = breakoutsWithColumnInfo.every(
-      ({ columnInfo }) => {
-        return isCategory(columnInfo);
-      },
-    );
+    const areBreakoutsCategories = breakoutsWithColumns.every(({ column }) => {
+      return Lib.isCategory(column);
+    });
     if (areBreakoutsCategories) {
       return { display: "bar" };
     }
@@ -128,41 +118,13 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   return { display: "table" };
 };
 
-const getBreakoutsWithColumnInfo = (
+const getBreakoutsWithColumns = (
   query: Lib.Query,
   stageIndex: number,
   breakouts: Lib.BreakoutClause[],
 ) => {
   return breakouts.map(breakout => {
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    return { breakout, columnInfo };
+    return { breakout, column };
   });
-};
-
-const isCategory = (info: Lib.ColumnDisplayInfo): boolean => {
-  return (
-    isa(info.effectiveType, TYPE.Boolean) ||
-    isa(info.semanticType, TYPE.Category) ||
-    isa(info.semanticType, TYPE.Address)
-  );
-};
-
-const isCoordinate = (info: Lib.ColumnDisplayInfo): boolean => {
-  return isa(info.semanticType, TYPE.Coordinate);
-};
-
-const isCountry = (info: Lib.ColumnDisplayInfo): boolean => {
-  return isa(info.semanticType, TYPE.Country);
-};
-
-const isDate = (info: Lib.ColumnDisplayInfo): boolean => {
-  return (
-    isa(info.effectiveType, TYPE.Temporal) ||
-    isa(info.semanticType, TYPE.Temporal)
-  );
-};
-
-const isState = (info: Lib.ColumnDisplayInfo): boolean => {
-  return isa(info.semanticType, TYPE.State);
 };
