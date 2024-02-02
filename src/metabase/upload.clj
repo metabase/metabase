@@ -653,7 +653,6 @@
   (when-let [error (can-append-error db table)]
     (throw error)))
 
-;; This will be used in merge 2 of milestone 1 to populate a property on the table for the FE.
 (defn can-upload-to-table?
   "Returns true if the user can upload to the given database and table, and false otherwise."
   [db table]
@@ -705,8 +704,8 @@
                            [:query_type    [:or :string :keyword]]
                            [:is_upload {:optional true} :boolean]]]]
   (let [table-ids (->> models
-                       ;; as an optimization, we might already know that the question is based on an upload
-                       ;; with a provided is_upload key
+                       ;; as an optimization, we might already know that the table is not an upload
+                       ;; if is_upload=false. We don't need to make any more queies if so
                        (remove #(false? (:is_upload %)))
                        (keep :table_id)
                        set)
