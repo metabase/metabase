@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -782,3 +783,12 @@
       (is (= opposite (first new-order-by)))
       (is (= (assoc-in query [:stages 0 :order-by 0 0] opposite)
              new-query)))))
+
+(deftest ^:parallel remove-all-order-bys-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/order-by (meta/field-metadata :venues :id)))]
+    (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :id)]]]}]}
+            query))
+    (let [query' (lib.order-by/remove-all-order-bys query)]
+      (is (=? {:stages [{:order-by (symbol "nil #_\"key is not present.\"")}]}
+              query')))))
