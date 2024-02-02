@@ -85,7 +85,7 @@
                                                  [col index]))
                                              (or (breakouts query stage-number) [])))]
          (mapv #(let [pos (matching %)]
-                  (cond-> %
+                  (cond-> (assoc % :lib/hide-bin-bucket? true)
                     pos (assoc :breakout-position pos)))
                cols))))))
 
