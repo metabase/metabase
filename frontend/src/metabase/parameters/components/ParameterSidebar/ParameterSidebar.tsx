@@ -125,12 +125,8 @@ export const ParameterSidebar = ({
     [otherParameters],
   );
 
-  const handleChangeRequired = useCallback(
-    (value: boolean) => {
-      onChangeRequired(parameterId, value);
-    },
-    [parameterId, onChangeRequired],
-  );
+  const handleChangeRequired = (value: boolean) =>
+    onChangeRequired(parameterId, value);
 
   return (
     <Sidebar onClose={onClose} onRemove={handleRemove}>
