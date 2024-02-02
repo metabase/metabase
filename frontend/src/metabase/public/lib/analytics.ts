@@ -1,6 +1,6 @@
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { trackSchemaEvent } from "metabase/lib/analytics";
-import type { EmbedResourceType } from "metabase/public/components/EmbedModal";
+import type { EmbedResourceType } from "./types";
 
 const SCHEMA_NAME = "embed_flow";
 const SCHEMA_VERSION = "1-0-0";
