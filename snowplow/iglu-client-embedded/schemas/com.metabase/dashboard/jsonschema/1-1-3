@@ -27,7 +27,8 @@
         "card_set_to_hide_when_no_results",
         "dashboard_pdf_exported",
         "card_moved_to_tab",
-        "dashboard_card_duplicated"
+        "dashboard_card_duplicated",
+        "dashboard_card_replaced"
       ],
       "maxLength": 1024
     },
