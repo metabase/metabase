@@ -334,24 +334,35 @@
       (log/error e (trs "Error fetching field values"))
       nil)))
 
-(defn- report-and-fix-duplicates! [rows]
+(defn- report-and-fix-duplicates!
+  "This is a workaround for the issue of stale FieldValues rows, see https://github.com/metabase/metabase/issues/668.
+  In order to mitigate the the impact of duplicates, we make sure to always use the most recently updated row and delete
+  its outdated siblings. In order to follow up on whether we have fixed the root cause, and can now add a uniqueness
+  constraint in the database, we publish SnowPlot events whenever duplicates were encountered."
+  [rows]
   (if (<= (count rows) 1)
     (first rows)
-    ;; todo - rather use a descending comparator
-    (let [[latest & duplicates] (reverse (sort-by :updated-at rows))]
+    (let [[latest & duplicates] (sort-by :updated-at u/reverse-compare rows)]
       ;; send telemetry to snowplow
       (t2/delete! FieldValues :id [:in (map :id duplicates)])
       latest)))
 
-(defn- get-field-values-for-field
+(defn- get-latest-field-values
+  "This returns the FieldValues with the given :type and :hash_key for the given Field.
+  In the case of duplicates we return the most recently updated row, and delete the others.
+  We are working towards preventing duplicates from ever existing, see https://github.com/metabase/metabase/issues/668"
   [field-id type hash]
   ;; todo - we could rather put this validation in a toucan select hook
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
   (report-and-fix-duplicates!
     (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
 
-(defn- get-full-field-values-for-field [field-id]
-  (get-field-values-for-field field-id :full nil))
+(defn- get-latest-full-field-values
+  "This returns the :full FieldValues for the given Field.
+  In the case of duplicates we return the most recently updated row, and delete the others.
+  We are working towards preventing duplicates from ever existing, see https://github.com/metabase/metabase/issues/668"
+  [field-id]
+  (get-latest-field-values field-id :full nil))
 
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
@@ -360,7 +371,7 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values              (get-full-field-values-for-field (u/the-id field))
+  (let [field-values              (get-latest-full-field-values (u/the-id field))
         {unwrapped-values :values
          :keys [has_more_values]} (distinct-values field)
         ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
@@ -430,19 +441,19 @@
   [{field-id :id field-values :values :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (let [existing (or (not-empty field-values) (get-full-field-values-for-field field-id))]
+    (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
       (if (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field human-readable-values)
           ::fv-deleted
           nil
 
           ::fv-created
-          (get-full-field-values-for-field field-id)
+          (get-latest-full-field-values field-id)
 
           (do
             (when existing
               (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
-            (get-full-field-values-for-field field-id)))
+            (get-latest-full-field-values field-id)))
         (do
           (t2/update! FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
@@ -511,7 +522,7 @@
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
-    (get-full-field-values-for-field (:id field))))
+    (get-latest-full-field-values (:id field))))
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
