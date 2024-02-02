@@ -5,6 +5,11 @@ import {
   restore,
   visitDashboard,
   findDashCardAction,
+  resetSnowplow,
+  enableTracking,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { USER_GROUPS } from "e2e/support/cypress_data";
@@ -104,10 +109,12 @@ function getDashboardCards(mappedQuestionId) {
   ];
 }
 
-describe("scenarios > dashboard cards > replace question", () => {
+describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
   beforeEach(() => {
+    resetSnowplow();
     restore();
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
+    enableTracking();
 
     cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
 
@@ -128,6 +135,10 @@ describe("scenarios > dashboard cards > replace question", () => {
     );
   });
 
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
   it("should replace a dashboard card question (metabase#36984)", () => {
     visitDashboardAndEdit();
 
@@ -138,6 +149,7 @@ describe("scenarios > dashboard cards > replace question", () => {
       nextQuestionName: "Next question",
       collectionName: "First collection",
     });
+    expectGoodSnowplowEvent({ event: "dashboard_card_replaced" });
     findTargetDashcard().within(() => {
       assertDashCardTitle("Next question");
       cy.findByText("Ean").should("exist");

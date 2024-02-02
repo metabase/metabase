@@ -4,10 +4,20 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel fk-details-availability-test
+  (testing "FK details is available for cell clicks on non-NULL FKs"
+    (canned/canned-test
+      :drill-thru/fk-details
+      (fn [_test-case context {:keys [click column-type]}]
+        (and (= click :cell)
+             (= column-type :fk)
+             (not= (:value context) :null))))))
 
 (deftest ^:parallel returns-fk-details-test-1
   (lib.drill-thru.tu/test-returns-drill
