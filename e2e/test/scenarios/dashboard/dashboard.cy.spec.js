@@ -549,7 +549,7 @@ describe("scenarios > dashboard", () => {
       // new dashboards should default to 'fixed' width
       cy.findByTestId("fixed-width-container").should(
         "have.css",
-        "width",
+        "max-width",
         "1048px",
       );
 
@@ -560,7 +560,7 @@ describe("scenarios > dashboard", () => {
 
       cy.findByTestId("fixed-width-container").should(
         "not.have.css",
-        "width",
+        "max-width",
         "1048px",
       );
 
@@ -570,7 +570,7 @@ describe("scenarios > dashboard", () => {
 
       cy.findByTestId("fixed-width-container").should(
         "not.have.css",
-        "width",
+        "max-width",
         "1048px",
       );
     });
