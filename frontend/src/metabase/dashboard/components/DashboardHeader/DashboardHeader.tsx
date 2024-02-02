@@ -37,6 +37,7 @@ import {
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  addPlaceholderCardToDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
@@ -165,6 +166,7 @@ interface DispatchProps {
     },
   ) => void;
   addSectionToDashboard: (opts: NewDashCardOpts & { layoutId: number }) => void;
+  addPlaceholderCardToDashboard: (opts: NewDashCardOpts) => void;
   dismissAllUndo: () => void;
 }
 
@@ -193,6 +195,7 @@ const mapDispatchToProps = {
   toggleSidebar,
   addActionToDashboard,
   addSectionToDashboard,
+  addPlaceholderCardToDashboard,
   dismissAllUndo,
 };
 
@@ -248,6 +251,13 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       dashId: this.props.dashboard.id,
       tabId: this.props.selectedTabId,
       layoutId,
+    });
+  }
+
+  onAddPlaceholderCard() {
+    this.props.addPlaceholderCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
     });
   }
 
@@ -394,6 +404,14 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
           <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
             <Icon name="link" size={18} />
+          </DashboardHeaderButton>
+        </Tooltip>,
+      );
+
+      buttons.push(
+        <Tooltip key="add-placeholder" tooltip={t`Add empty card`}>
+          <DashboardHeaderButton onClick={() => this.onAddPlaceholderCard()}>
+            <Icon name="document" size={18} />
           </DashboardHeaderButton>
         </Tooltip>,
       );

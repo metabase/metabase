@@ -15,6 +15,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 
 import { trackCardCreated, trackQuestionReplaced } from "../analytics";
+import { createPlaceholderDashCard } from "../dashcard-utils";
 import { layoutOptions } from "../sections";
 import { getDashCardById, getDashboardId } from "../selectors";
 import { isVirtualDashCard } from "../utils";
@@ -279,6 +280,18 @@ export const addActionToDashboard =
         dashId: dashId,
         dashcardOverrides: dashcardOverrides,
         tabId,
+      }),
+    );
+  };
+
+export const addPlaceholderCardToDashboard =
+  ({ dashId, tabId }) =>
+  dispatch => {
+    dispatch(
+      addDashCardToDashboard({
+        dashId,
+        tabId,
+        dashcardOverrides: createPlaceholderDashCard(),
       }),
     );
   };
