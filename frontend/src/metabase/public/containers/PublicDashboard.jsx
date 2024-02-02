@@ -156,7 +156,7 @@ class PublicDashboard extends Component {
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
-    return hiddenParameters.map(p => p.slug);
+    return hiddenParameters.map(p => p.slug).join(",");
   };
 
   render() {

@@ -53,7 +53,7 @@ interface OwnProps {
   parameters?: Parameter[];
   parameterValues?: ParameterValues;
   draftParameterValues?: ParameterValues;
-  hiddenParameterSlugs?: string[];
+  hiddenParameterSlugs?: string;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: ReactNode;
 }
@@ -95,7 +95,7 @@ function EmbedFrame({
   parameters,
   parameterValues,
   draftParameterValues,
-  hiddenParameterSlugs = [],
+  hiddenParameterSlugs,
   setParameterValue,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
@@ -112,7 +112,7 @@ function EmbedFrame({
     hide_download_button,
   } = parseHashOptions(location.hash) as HashOptions;
 
-  const hideParameters = [hide_parameters, ...hiddenParameterSlugs]
+  const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
     .join(",");
 
