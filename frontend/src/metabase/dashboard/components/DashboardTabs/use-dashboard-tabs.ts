@@ -12,22 +12,36 @@ import {
   selectTab,
   undoDeleteTab,
   moveTab as moveTabAction,
+  duplicateTab as duplicateTabAction,
 } from "metabase/dashboard/actions";
 import type { SelectedTabId } from "metabase-types/store";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { addUndo } from "metabase/redux/undo";
 
+import { trackTabDuplicated } from "metabase/dashboard/analytics";
+import type { DashboardId } from "metabase-types/api";
 import { parseSlug, useSyncURLSlug } from "./use-sync-url-slug";
 
 let tabDeletionId = 1;
 
-export function useDashboardTabs({ location }: { location: Location }) {
+export function useDashboardTabs({
+  location,
+  dashboardId,
+}: {
+  location: Location;
+  dashboardId: DashboardId;
+}) {
   const dispatch = useDispatch();
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
 
   useSyncURLSlug({ location });
   useMount(() => dispatch(initTabs({ slug: parseSlug({ location }) })));
+
+  const duplicateTab = (tabId: SelectedTabId) => {
+    dispatch(duplicateTabAction(tabId));
+    trackTabDuplicated(dashboardId);
+  };
 
   const deleteTab = (tabId: SelectedTabId) => {
     const tabName = tabs.find(({ id }) => id === tabId)?.name;
@@ -60,6 +74,7 @@ export function useDashboardTabs({ location }: { location: Location }) {
     tabs,
     selectedTabId,
     createNewTab: () => dispatch(createNewTab()),
+    duplicateTab,
     deleteTab,
     renameTab: (tabId: SelectedTabId, name: string) =>
       dispatch(renameTab({ tabId, name })),
