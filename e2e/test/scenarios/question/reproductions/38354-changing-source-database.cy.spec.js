@@ -5,7 +5,9 @@ import {
   restore,
   visualize,
 } from "e2e/support/helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const QUESTION_DETAILS = {
   query: {
@@ -16,6 +18,7 @@ const QUESTION_DETAILS = {
 
 describe("issue 38354", { tags: "@external" }, () => {
   beforeEach(() => {
+    restore();
     restore("postgres-12");
     cy.signInAsAdmin();
     cy.createQuestion(QUESTION_DETAILS, { visitQuestion: true });
