@@ -123,7 +123,7 @@
      :visualization_settings (-> visualization-settings
                                  (assoc :graph.series_labels (map :name metrics)
                                         :graph.metrics (mapv first aggregation)
-                                        :graph.dimensions viz-dims)
+                                        :graph.dimensions (seq viz-dims))
                                  (merge (colorize card))
                                  (cond->
                                    series_labels (assoc :graph.series_labels series_labels)
