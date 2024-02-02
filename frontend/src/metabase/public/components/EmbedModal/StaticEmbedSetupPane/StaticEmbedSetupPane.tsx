@@ -196,6 +196,19 @@ export const StaticEmbedSetupPane = ({
             onClick={() => setActiveTab(TABS.Appearance)}
           >{t`Appearance`}</Tabs.Tab>
         </Tabs.List>
+        {/**
+         * Please do not add more than one `Tabs.Panel` here.
+         *
+         * The reason there is only one `Tabs.Panel` is because I don't want
+         * the iframe (rendered inside `PreviewPane`) to be re-mounted when
+         * changing tabs. Otherwise, the preview will be reloaded
+         * every time we change tabs which makes it hard for users to see
+         * the preview while editing settings.
+         *
+         * This is because React will unmount everything
+         * when you change to a different tab since they're all rendered inside
+         * different `Tabs.Panel` if you were to use it as Mantine suggests.
+         */}
         <Tabs.Panel value={activeTab}>
           {activeTab === TABS.Overview ? (
             <OverviewSettings
