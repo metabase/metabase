@@ -6,6 +6,7 @@
    [goog]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.lib.cache :as lib.cache]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -24,6 +25,7 @@
 ;;;
 ;;; where keys are a map of String ID => metadata
 
+;; TODO: This is always wrapped with `keyword` in its usage so that may as well be memoized too.
 (def ^:private ^{:arglists '([k])} memoized-kebab-key
   "Even tho [[u/->kebab-case-en]] has LRU memoization, plain memoization is significantly faster, and since the keys
   we're parsing here are bounded it's fine to memoize this stuff forever."
@@ -506,8 +508,8 @@
     (object-get "settings")
     (object-get (name setting-key))))
 
-(defn metadata-provider
-  "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
+(defn- metadata-provider*
+  "Inner implementation for [[metadata-provider]], which wraps this with a cache."
   [database-id unparsed-metadata]
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
@@ -534,6 +536,13 @@
              (deref form)
              form))
          metadata)))))
+
+(defn metadata-provider
+  "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
+  [database-id unparsed-metadata]
+  (lib.cache/side-channel-cache (str database-id) unparsed-metadata
+                                (partial metadata-provider* database-id)
+                                true #_force?))
 
 (def parse-column
   "Parses a JS column provided by the FE into a :metadata/column value for use in MLv2."

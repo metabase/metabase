@@ -208,6 +208,7 @@
    :points_of_interest      nil
    :cache_ttl               nil
    :position                nil
+   :width                   "fixed"
    :public_uuid             nil
    :auto_apply_filters      true
    :show_in_getting_started false
@@ -796,6 +797,27 @@
             (is (=? {:message "You do not have curate permissions for this Collection."}
                     (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
                                           {:collection_id (u/the-id new-collection)})))))))))
+
+(deftest update-dashboard-width-setting-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "We can change the dashboard's width between 'fixed' and 'full' settings."
+      (t2.with-temp/with-temp [Dashboard dashboard {}]
+        (with-dashboards-in-writeable-collection [dashboard]
+          (testing "the default dashboard width value is 'fixed'."
+            (is (= "fixed"
+                   (t2/select-one-fn :width Dashboard :id (u/the-id dashboard)))))
+
+          (testing "changing the width setting to 'full' works."
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:width "full"})
+            (is (= "full"
+                   (t2/select-one-fn :width Dashboard :id (u/the-id dashboard)))))
+
+          (testing "values that are not 'fixed' or 'full' error."
+            (is (= "should be either fixed or full, received: 1200"
+                   (-> (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})
+                       :specific-errors
+                       :width
+                       first)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD CARD IN DASHCARD                                         |

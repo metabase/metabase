@@ -146,7 +146,8 @@
     {:name       "hydrate-card-details"
      :attributes {:card/id card-id}}
     (-> card
-        (t2/hydrate :creator
+        (t2/hydrate :based_on_upload
+                    :creator
                     :dashboard_count
                     :can_write
                     :average_query_time
