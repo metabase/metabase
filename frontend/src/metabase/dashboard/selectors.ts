@@ -320,16 +320,13 @@ export const getParameters = createSelector(
   },
 );
 
-export const getRequiredParameters = createSelector(
-  [getParameters],
-  parameters => parameters.filter(param => param.required),
-);
-
 export const getMissingRequiredParameters = createSelector(
-  [getRequiredParameters],
-  requiredParameters =>
-    requiredParameters.filter(
-      p => !p.default || (Array.isArray(p.default) && p.default.length === 0),
+  [getParameters],
+  parameters =>
+    parameters.filter(
+      p =>
+        p.required &&
+        (!p.default || (Array.isArray(p.default) && p.default.length === 0)),
     ),
 );
 
