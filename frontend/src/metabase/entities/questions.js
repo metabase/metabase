@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
 
+import { isTest } from "metabase/env";
 import { GET, POST, PUT } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
@@ -27,61 +28,73 @@ const Questions = createEntity({
   nameOne: "question",
   path: "/api/card",
 
-  /**
-   * Temporarily mock endpoints for Metrics v2
-   *
-   * Any question with `type: "metric"` will be passed to API as `type: "question"`.
-   * Same goes for any questions with a name starting with "Metric" (case-insensitive).
-   */
-  api: {
-    get: async payload => {
-      const get = GET("/api/card/:id");
-      const result = await get(payload);
+  ...(isTest
+    ? {}
+    : {
+        /**
+         * Temporarily mock endpoints for Metrics v2
+         *
+         * Any question with `type: "metric"` will be passed to API as `type: "question"`.
+         * Same goes for any questions with a name starting with "Metric" (case-insensitive).
+         */
+        api: {
+          get: async payload => {
+            const get = GET("/api/card/:id");
+            const result = await get(payload);
 
-      if (result.name.toLowerCase().startsWith("metric")) {
-        return { ...result, type: "metric", dataset: false };
-      }
+            if (result.name.toLowerCase().startsWith("metric")) {
+              return { ...result, type: "metric", dataset: false };
+            }
 
-      return result;
-    },
+            return result;
+          },
 
-    list: async payload => {
-      const get = GET("/api/card");
-      const results = await get(payload);
+          list: async payload => {
+            const get = GET("/api/card");
+            const results = await get(payload);
 
-      return results.map(result => {
-        if (result.name.toLowerCase().startsWith("metric")) {
-          return { ...result, type: "metric", dataset: false };
-        }
+            return results.map(result => {
+              if (result.name.toLowerCase().startsWith("metric")) {
+                return { ...result, type: "metric", dataset: false };
+              }
 
-        return result;
-      });
-    },
+              return result;
+            });
+          },
 
-    create: async payload => {
-      const create = POST("/api/card");
+          create: async payload => {
+            const create = POST("/api/card");
 
-      if (payload.type === "metric") {
-        const tweakedPayload = { ...payload, type: "question", dataset: false };
-        const result = await create(tweakedPayload);
-        return { ...result, type: "metric" };
-      }
+            if (payload.type === "metric") {
+              const tweakedPayload = {
+                ...payload,
+                type: "question",
+                dataset: false,
+              };
+              const result = await create(tweakedPayload);
+              return { ...result, type: "metric" };
+            }
 
-      return await create(payload);
-    },
+            return await create(payload);
+          },
 
-    update: async payload => {
-      const update = PUT("/api/card/:id");
+          update: async payload => {
+            const update = PUT("/api/card/:id");
 
-      if (payload.type === "metric") {
-        const tweakedPayload = { ...payload, type: "question", dataset: false };
-        const result = await update(tweakedPayload);
-        return { ...result, type: "metric" };
-      }
+            if (payload.type === "metric") {
+              const tweakedPayload = {
+                ...payload,
+                type: "question",
+                dataset: false,
+              };
+              const result = await update(tweakedPayload);
+              return { ...result, type: "metric" };
+            }
 
-      return await update(payload);
-    },
-  },
+            return await update(payload);
+          },
+        },
+      }),
 
   objectActions: {
     setArchived: ({ id, dataset, model }, archived, opts) =>
