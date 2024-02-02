@@ -51,6 +51,7 @@ const defaultConfig = {
             r.metadata.test?.result === "passed" &&
             r.metadata.test.tests.some(r => r.result === "failed");
           const randomlyUploadAll =
+            r.metadata.source.branch === "master" &&
             convertStringToInt(r.metadata.test.run.id) % 10 === 1;
 
           console.log("upload replay ::", {
@@ -58,6 +59,10 @@ const defaultConfig = {
             hasFailed,
             isFlaky,
             randomlyUploadAll,
+            branch: r.metadata.source.branch,
+            result: r.metadata.test?.result,
+            status: r.status,
+            runId: r.metadata.test.run.id,
           });
           return hasCrashed || hasFailed || isFlaky || randomlyUploadAll;
         },
