@@ -13,7 +13,7 @@ jobs:
     outputs:
       visualizations: ${{ steps.changes.outputs.visualizations }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
         id: changes
