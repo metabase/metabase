@@ -346,7 +346,7 @@
 (defn- get-field-values-for-field
   [field-id type hash]
   ;; todo - we could rather put this validation in a toucan select hook
-  (assert (= (nil? hash) (= type :full)) ":hash must be nil iff :type is :full")
+  (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
   (report-and-fix-duplicates!
     (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
 
