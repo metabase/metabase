@@ -434,9 +434,27 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
   });
 
   it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
+    const textFilter = {
+      id: "3",
+      name: "Text filter",
+      slug: "filter-text",
+      type: "string/contains",
+    };
+
     const dashboardDetails = {
       name: "dashboard name",
       enable_embedding: true,
+      embedding_params: {
+        /**
+         * Make sure the parameter is shown in embed preview, because it previously
+         * caused the iframe to rerender even when only the hash part of the embed
+         * preview URL is changed.
+         *
+         * @see useSyncedQueryString in frontend/src/metabase/hooks/use-synced-query-string.ts
+         */
+        [textFilter.slug]: "enabled",
+      },
+      parameters: [textFilter],
     };
 
     const questionDetails = {
@@ -454,9 +472,9 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
 
     cy.intercept(
       "GET",
-      "api/embed/dashboard/*",
-      cy.spy().as("embedPreviewSpy"),
-    ).as("embedPreview");
+      "api/preview_embed/dashboard/*",
+      cy.spy().as("previewEmbedSpy"),
+    ).as("previewEmbed");
 
     openStaticEmbeddingModal({
       activeTab: "parameters",
@@ -465,11 +483,11 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       acceptTerms: false,
     });
 
-    cy.wait("@embedPreview");
+    cy.wait("@previewEmbed");
 
     modal().within(() => {
       cy.findByRole("tab", { name: "Appearance" }).click();
-      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert dashboard theme");
       getIframeBody()
@@ -480,14 +498,14 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       getIframeBody()
         .findByTestId("embed-frame")
         .should("have.class", "Theme--transparent");
-      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert dashboard title");
       getIframeBody().findByText(dashboardDetails.name).should("exist");
       // We're getting an input element which is 0x0 in size
       cy.findByLabelText("Dashboard title").click({ force: true });
       getIframeBody().findByText(dashboardDetails.name).should("not.exist");
-      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert dashboard border");
       getIframeBody()
@@ -498,7 +516,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       getIframeBody()
         .findByTestId("embed-frame")
         .should("have.css", "border-top-width", "0px");
-      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert font");
       getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
@@ -509,7 +527,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     popover().findByText("Oswald").click();
     modal().within(() => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
-      cy.get("@embedPreviewSpy").should("have.callCount", 1);
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
     });
   });
 });
