@@ -65,10 +65,6 @@ const mapDispatchToProps = {
 };
 
 class PublicDashboard extends Component {
-  state = {
-    selectedTabId: null,
-  };
-
   _initialize = async () => {
     const {
       initialize,
@@ -130,13 +126,8 @@ class PublicDashboard extends Component {
     }
   }
 
-  handleTabChange = selectedTabId => {
-    this.setState({ selectedTabId });
-  };
-
   getCurrentTabDashcards = () => {
-    const { dashboard } = this.props;
-    const { selectedTabId } = this.state;
+    const { dashboard, selectedTabId } = this.props;
     if (!Array.isArray(dashboard?.dashcards)) {
       return [];
     }
@@ -196,10 +187,7 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardTabs
-                location={this.props.location}
-                onChangeTab={this.handleTabChange}
-              />
+              <DashboardTabs location={this.props.location} />
               <Separator />
               <DashboardGridContainer>
                 <DashboardGridConnected
