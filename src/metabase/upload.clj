@@ -689,9 +689,9 @@
                  tables)))))
 
 (defn- no-joins?
+  "Returns true if `query` has no joins in it, otherwise false."
   [query]
-  (let [query (lib.convert/->pMBQL query)
-        all-joins (mapcat (fn [stage]
+  (let [all-joins (mapcat (fn [stage]
                             (lib/joins query stage))
                           (range (lib/stage-count query)))]
     (empty? all-joins)))
