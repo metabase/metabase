@@ -30,7 +30,6 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
 import { DashboardTabs } from "../components/DashboardTabs";
 import {
   ItemContent,
@@ -166,12 +165,7 @@ class AutomaticDashboardAppInner extends Component {
                 />
               </div>
             )}
-            <FixedWidthContainer
-              data-testid="fixed-width-container"
-              isFixedWidth={dashboard?.width === "fixed"}
-            >
-              <Dashboard isXray {...this.props} />
-            </FixedWidthContainer>
+            <Dashboard isXray {...this.props} />
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">

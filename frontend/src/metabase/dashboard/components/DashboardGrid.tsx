@@ -59,6 +59,7 @@ import { generateMobileLayout } from "./grid/utils";
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { QuestionPickerModal } from "./QuestionPickerModal";
 import { DashCard } from "./DashCard/DashCard";
+import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";
 
 type GridBreakpoint = "desktop" | "mobile";
 
@@ -614,13 +615,18 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   render() {
-    const { width } = this.props;
+    const { dashboard, width } = this.props;
     return (
-      <div className="flex layout-centered" data-testid="dashboard-grid">
-        {width > 0 ? this.renderGrid() : <div />}
-        {this.renderAddSeriesModal()}
-        {this.renderReplaceCardModal()}
-      </div>
+      <FixedWidthContainer
+        data-testid="fixed-width-container"
+        isFixedWidth={dashboard?.width === "fixed"}
+      >
+        <div className="flex layout-centered" data-testid="dashboard-grid">
+          {width > 0 ? this.renderGrid() : <div />}
+          {this.renderAddSeriesModal()}
+          {this.renderReplaceCardModal()}
+        </div>
+      </FixedWidthContainer>
     );
   }
 }
