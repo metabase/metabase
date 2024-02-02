@@ -57,11 +57,10 @@ describe("setup", () => {
       skipLanguageStep();
       await submitUserInfoStep();
 
-      clickNextStep();
       await screen.findByText("Self-service analytics for my own company");
     };
 
-    describe("when selecting 'self service'", () => {
+    describe("when selecting 'Self service'", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
         fillUsageReason("self-service-analytics");
@@ -79,7 +78,7 @@ describe("setup", () => {
       });
     });
 
-    describe("when selecting 'embedding'", () => {
+    describe("when selecting 'Embedding'", () => {
       it("should hide the 'Add your data' step", async () => {
         await setupForUsageQuestion();
         fillUsageReason("embedding");
@@ -93,6 +92,42 @@ describe("setup", () => {
         );
 
         expectSectionToHaveLabel("Usage data preferences", "4");
+      });
+    });
+
+    describe("when selecting 'A bit of both'", () => {
+      it("should keep the 'Add your data' step", async () => {
+        await setupForUsageQuestion();
+        fillUsageReason("both");
+        clickNextStep();
+
+        expect(screen.getByText("Add your data")).toBeInTheDocument();
+
+        expect(getSection("Add your data")).toHaveAttribute(
+          "aria-current",
+          "step",
+        );
+
+        expectSectionToHaveLabel("Add your data", "4");
+        expectSectionToHaveLabel("Usage data preferences", "5");
+      });
+    });
+
+    describe("when selecting 'Not sure yet'", () => {
+      it("should keep the 'Add your data' step", async () => {
+        await setupForUsageQuestion();
+        fillUsageReason("not-sure");
+        clickNextStep();
+
+        expect(screen.getByText("Add your data")).toBeInTheDocument();
+
+        expect(getSection("Add your data")).toHaveAttribute(
+          "aria-current",
+          "step",
+        );
+
+        expectSectionToHaveLabel("Add your data", "4");
+        expectSectionToHaveLabel("Usage data preferences", "5");
       });
     });
   });
@@ -136,6 +171,7 @@ const submitUserInfoStep = async ({
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled(),
   );
+  clickNextStep();
 };
 
 const fillUsageReason = (usageReason: UsageReason) => {
@@ -143,7 +179,7 @@ const fillUsageReason = (usageReason: UsageReason) => {
     "self-service-analytics": "Self-service analytics for my own company",
     embedding: "Embedding analytics into my application",
     both: "A bit of both",
-    "not-sure": "Bot sure yet",
+    "not-sure": "Not sure yet",
   }[usageReason];
 
   fireEvent.click(screen.getByLabelText(label));
