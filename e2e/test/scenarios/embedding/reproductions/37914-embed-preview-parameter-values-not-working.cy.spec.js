@@ -53,7 +53,9 @@ const dashboardDetails = {
 
 describe("issue 37914", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/embed/dashboard/**").as("getEmbed");
+    cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
+      "previewDashboard",
+    );
 
     restore();
     cy.signInAsAdmin();
@@ -116,7 +118,7 @@ describe("issue 37914", () => {
       cy.findByText("Preview").click();
 
       // Makes it less likely to flake.
-      cy.wait("@getEmbed");
+      cy.wait("@previewDashboard");
 
       getIframeBody().within(() => {
         cy.log(
