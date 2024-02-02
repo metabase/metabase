@@ -711,7 +711,6 @@
                        (keep :table_id)
                        set)
         uploadable-table-ids (->> (uploadable-table-ids table-ids)
-                                  (map :id)
                                   set)
         based-on-upload-model? (fn [model]
                                  (and (= (name (:query_type model)) "query")

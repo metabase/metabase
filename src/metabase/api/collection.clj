@@ -323,7 +323,7 @@
   (for [row rows]
     (dissoc row
             :description :display :authority_level :moderated_status :icon :personal_owner_id
-            :collection_preview :dataset_query)))
+            :collection_preview :dataset_query :table_id :query_type :is_upload)))
 
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
@@ -352,7 +352,7 @@
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
-            :collection_preview :dataset_query)))
+            :collection_preview :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
@@ -360,7 +360,7 @@
     (dissoc row
             :description :collection_position :display :authority_level
             :moderated_status :icon :personal_owner_id :collection_preview
-            :dataset_query)))
+            :dataset_query :table_id :query_type :is_upload)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
@@ -410,9 +410,9 @@
     (->> rows
          (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))
          upload/model-hydrate-based-on-upload
-         (map (fn [dq row] (-> row
-                               (assoc :dataset_query dq)
-                               (dissoc :table_id :query_type :is_upload))) dataset_queries)
+         (map (fn [dataset_query row]
+                (assoc row :dataset_query dataset_query))
+              dataset_queries)
          (post-process-collection-children :card))))
 
 (defmethod collection-children-query :card
@@ -461,7 +461,7 @@
 
 (defn- post-process-card-row [row]
   (-> row
-      (dissoc :authority_level :icon :personal_owner_id :dataset_query)
+      (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :collection_preview api/bit->boolean)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
@@ -496,7 +496,7 @@
   [_ rows]
   (map #(dissoc %
                 :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
-                :dataset_query)
+                :dataset_query :table_id :query_type :is_upload)
        rows))
 
 (defenterprise snippets-collection-filter-clause
@@ -546,7 +546,7 @@
       (-> row
           (assoc :can_write (mi/can-write? Collection (:id row)))
           (dissoc :collection_position :display :moderated_status :icon
-                  :collection_preview :dataset_query)
+                  :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
