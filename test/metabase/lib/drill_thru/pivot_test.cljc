@@ -19,10 +19,15 @@
 
 (deftest ^:parallel pivot-availability-test
   (testing "pivot drill is available only for cell clicks"
-    ;; Other conditions are too complex to capture here; other tests check them.
-    (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
-            :when (not= click :cell)]
-      (is (not (canned/returned test-case context :drill-thru/pivot))))))
+    (canned/canned-test
+      :drill-thru/pivot
+      (fn [_test-case _context {:keys [click]}]
+        (if (= click :cell)
+          ;; The pivot conditions are too complex to capture here; other tests check them.
+          ;; Just skip the canned cases for cell clicks.
+          ::canned/skip
+          ;; Non-cell clicks are false though.
+          false)))))
 
 (def ^:private orders-date-only-test-case
   {:drill-type   :drill-thru/pivot

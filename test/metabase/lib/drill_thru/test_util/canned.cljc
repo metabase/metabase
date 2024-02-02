@@ -4,7 +4,9 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]))
+   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
+   [metabase.util :as u]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (defn- base-context [column value]
   {:column     column
@@ -305,19 +307,36 @@
             (click tc :header "BODY"       :basic :string)
             (click tc :header "RATING"     :basic :number)
             (click tc :header "PRODUCT_ID" :basic :fk)
-            (click tc :header "CREATED_AT" :basic :datetime)])]
+            (click tc :header "CREATED_AT" :basic :datetime)])
+
+         ;; Simple query against Products, but it lies!
+         ;; Claims VENDOR is :type/SerializedJSON (derives from :type/Structured).
+         (let [tc (-> metadata-provider
+                      (merged-mock/merged-mock-metadata-provider
+                        {:fields [{:id            (meta/id :products :vendor)
+                                   :semantic-type :type/SerializedJSON}]})
+                      (test-case :test.query/products))]
+           [(click tc :cell   "VENDOR" :basic :string)
+            (click tc :header "VENDOR" :basic :string)])]
         (apply concat))))
 
 (defn canned-test
   "Given a drill type (eg. `:drill-thru/fk-filter`) and a `pred` function, calls
   `(pred test-case context click-details)`. If the predicate is truthy, expects that drill to be returned, and not to be
-  returned if falsy."
+  returned if falsy.
+
+  The special value `::skip` can be returned to ignore a test case altogether."
   {:style/ident 1}
-  [drill pred]
-  (doseq [[tc context click-details] (canned-clicks)
-          :let [exp? (pred tc context click-details)]]
-    (testing (str "Should " (when-not exp? "not ") "return " drill " when:"
-                  "\nTest case = \n" (u/pprint-to-str tc)
-                  "\nContext = \n"   (u/pprint-to-str context)
-                  "\nClick = \n"     (u/pprint-to-str click))
-      (is (= exp? (returned tc context drill))))))
+  ([drill pred]
+   (canned-test drill pred (canned-clicks)))
+  ([drill pred clicks]
+   (doseq [[tc context click-details] clicks
+           :let [exp? (pred tc context click-details)]
+           :when (not= exp? ::skip)]
+     (testing (str "Should " (when-not exp? "not ") "return " drill " when:"
+                   "\nTest case = \n" (u/pprint-to-str tc)
+                   "\nContext = \n"   (u/pprint-to-str context)
+                   "\nClick = \n"     (u/pprint-to-str click))
+       (is (=? (when exp?
+                 {:type drill})
+               (returned tc context drill)))))))

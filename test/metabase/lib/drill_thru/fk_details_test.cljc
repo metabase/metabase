@@ -12,12 +12,12 @@
 
 (deftest ^:parallel fk-details-availability-test
   (testing "FK details is available for cell clicks on non-NULL FKs"
-    (doseq [[test-case context {:keys [click column-type]}] (canned/canned-clicks)]
-      (if (and (= click :cell)
-               (= column-type :fk)
-               (not= (:value context) :null))
-        (is (canned/returned test-case context :drill-thru/fk-details))
-        (is (not (canned/returned test-case context :drill-thru/fk-details)))))))
+    (canned/canned-test
+      :drill-thru/fk-details
+      (fn [_test-case context {:keys [click column-type]}]
+        (and (= click :cell)
+             (= column-type :fk)
+             (not= (:value context) :null))))))
 
 (deftest ^:parallel returns-fk-details-test-1
   (lib.drill-thru.tu/test-returns-drill
