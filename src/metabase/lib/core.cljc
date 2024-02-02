@@ -34,6 +34,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.util :as lib.util]
    [metabase.shared.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
@@ -63,7 +64,8 @@
          lib.segment/keep-me
          lib.stage/keep-me
          lib.table/keep-me
-         lib.temporal-bucket/keep-me)
+         lib.temporal-bucket/keep-me
+         lib.util/keep-me)
 
 (shared.ns/import-fns
  [lib.aggregation
@@ -288,4 +290,6 @@
   describe-relative-datetime
   available-temporal-buckets
   temporal-bucket
-  with-temporal-bucket])
+  with-temporal-bucket]
+ [lib.util
+  source-table-id])

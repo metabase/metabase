@@ -15,7 +15,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
@@ -717,7 +716,7 @@
                             (when (and (= (name (:query_type model)) "query")
                                        (contains? uploadable-table-ids (:table_id model))
                                        (no-joins? query))
-                              (lib.util/source-table-id query))))]
+                              (lib/source-table-id query))))]
     (map #(m/assoc-some % :based_on_upload (based-on-upload %))
          models)))
 
