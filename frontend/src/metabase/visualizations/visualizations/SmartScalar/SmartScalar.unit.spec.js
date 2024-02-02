@@ -5,13 +5,17 @@ import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import registerVisualizations from "metabase/visualizations/register";
+import {
+  createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
 
 registerVisualizations();
 
 const setup = (series, width) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
-const series = ({ rows, insights, field }) => {
+const series = ({ rows, insights, field, queryType }) => {
   const cols = [
     DateTimeColumn({ name: "Month" }),
     NumberColumn({ name: "Count" }),
@@ -21,7 +25,13 @@ const series = ({ rows, insights, field }) => {
     {
       card: {
         display: "smartscalar",
-        visualization_settings: { "scalar.field": field },
+        visualization_settings: {
+          "scalar.field": field,
+        },
+        dataset_query:
+          queryType === "native"
+            ? createMockNativeDatasetQuery()
+            : createMockStructuredDatasetQuery(),
       },
       data: { cols, rows, insights },
     },
@@ -225,5 +235,27 @@ describe("SmartScalar", () => {
     setup(series({ rows, insights }), width);
 
     expect(screen.getByText("810.8k")).toBeInTheDocument();
+  });
+
+  it("should display full dates for native queries (issue #38122)", () => {
+    const queryType = "native";
+    const rows = [
+      ["2019-10-01T04:00:00", 100],
+      ["2019-11-01T04:00:00", 810750.54],
+    ];
+    const insights = [
+      {
+        "last-value": 810750.54,
+        "last-change": 80,
+        "previous-value": 100,
+        unit: "month",
+        col: "Count",
+      },
+    ];
+
+    setup(series({ rows, insights, queryType }));
+
+    expect(screen.queryByText("Nov 2019")).not.toBeInTheDocument();
+    expect(screen.getByText("November 1, 2019, 4:00 AM")).toBeInTheDocument();
   });
 });
