@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.fake :as http-fake]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.email.messages :as messages]
@@ -30,7 +31,8 @@
         response-body))))
 
 (defn- mock-conversations-response-body [request]
-  (mock-paged-response-body request (slurp "./test_resources/slack_channels_response.json")))
+  (mock-paged-response-body request
+                            (slurp (io/resource "slack_channels_response.json"))))
 
 (defn- mock-conversations []
   (:channels (mock-conversations-response-body nil)))
@@ -129,7 +131,8 @@
                  (slack/valid-token? "abc")))))))))
 
 (defn- mock-users-response-body [request]
-  (mock-paged-response-body request (slurp "./test_resources/slack_users_response.json")))
+  (mock-paged-response-body request
+                            (slurp (io/resource "slack_users_response.json"))))
 
 (defn- mock-users []
   (:members (mock-users-response-body nil)))
@@ -176,16 +179,19 @@
           filename    "wow.gif"
           channel-id  "C13372B6X"]
       (http-fake/with-fake-routes {#"^https://slack.com/api/files\.upload.*"
-                                   (fn [_] (mock-200-response (slurp "./test_resources/slack_upload_file_response.json")))}
+                                   (fn [_] (mock-200-response
+                                            (slurp (io/resource "slack_upload_file_response.json"))))}
         (tu/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
           (is (= "https://files.slack.com/files-pri/T078VLEET-F017C3TSBK6/wow.gif"
                  (slack/upload-file! image-bytes filename channel-id)))))
       ;; Slack app token requires joining the `metabase_files` channel before uploading a file
       (http-fake/with-fake-routes {#"^https://slack.com/api/files\.upload.*"
-                                   (fn [_] (mock-200-response (slurp "./test_resources/slack_upload_file_response.json")))
+                                   (fn [_] (mock-200-response
+                                            (slurp (io/resource "slack_upload_file_response.json"))))
                                    #"^https://slack.com/api/conversations\.join.*"
-                                   (fn [_] (mock-200-response (slurp "./test_resources/slack_conversations_join_response.json")))}
+                                   (fn [_] (mock-200-response
+                                            (slurp (io/resource "slack_conversations_join_response.json"))))}
         (tu/with-temporary-setting-values [slack-token nil
                                            slack-app-token "test-token"]
           (is (= "https://files.slack.com/files-pri/T078VLEET-F017C3TSBK6/wow.gif"
@@ -251,8 +257,10 @@
 
 (deftest post-chat-message!-test
   (testing "post-chat-message!"
-    (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*" (fn [_]
-                                                                                 (mock-200-response (slurp "./test_resources/slack_post_chat_message_response.json")))}
+    (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
+                                 (fn [_]
+                                   (mock-200-response
+                                    (slurp (io/resource "slack_post_chat_message_response.json"))))}
       (let [expected {:ok      true
                       :message {:type    "message"
                                 :subtype "bot_message"

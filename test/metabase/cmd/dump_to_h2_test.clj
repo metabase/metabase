@@ -1,4 +1,4 @@
-(ns metabase.cmd.dump-to-h2-test
+(ns ^:not-jar metabase.cmd.dump-to-h2-test
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]

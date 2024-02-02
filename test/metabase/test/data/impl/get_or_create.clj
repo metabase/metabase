@@ -1,5 +1,6 @@
 (ns metabase.test.data.impl.get-or-create
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [metabase.api.common :as api]
@@ -105,7 +106,8 @@
   (u/minutes->ms 15))
 
 (defonce ^:private reference-sync-durations
-  (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
+  (let [resource (io/resource "sync-durations.edn")]
+    (delay (edn/read-string (slurp resource)))))
 
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
   (assert (= (humanization/humanization-strategy) :simple)

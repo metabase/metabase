@@ -47,7 +47,7 @@
 
 (deftest ^:parallel generate-trust-store-test
   (testing "a proper CA file is read"
-    (let [cert-string (slurp "./test_resources/ssl/ca.pem")
+    (let [cert-string (slurp (io/resource "ssl/ca.pem"))
           keystore (driver.u/generate-trust-store cert-string)]
       (is (true? (.containsAlias keystore test-ca-dn)))))
 
@@ -56,8 +56,8 @@
                  (driver.u/generate-trust-store "fooobar"))))
 
   (testing "multiple certs are read"
-    (let [cert-string (str (slurp "./test_resources/ssl/ca.pem")
-                           (slurp "./test_resources/ssl/server.pem"))
+    (let [cert-string (str (slurp (io/resource "ssl/ca.pem"))
+                           (slurp (io/resource "ssl/server.pem")))
           keystore (driver.u/generate-trust-store cert-string)]
       (is (.containsAlias keystore test-server-dn))
       (is (.containsAlias keystore test-ca-dn))))
@@ -68,7 +68,7 @@
     ;; so the best we can do is make sure it doesn't throw anything on
     ;; execution
     (is (instance? javax.net.ssl.SSLSocketFactory
-                   (driver.u/ssl-socket-factory :trust-cert (slurp "./test_resources/ssl/ca.pem"))))))
+                   (driver.u/ssl-socket-factory :trust-cert (slurp (io/resource "ssl/ca.pem")))))))
 
 (deftest ^:parallel ssl-socket-factory-test
   (testing "can create socket factory from identity and trust info"

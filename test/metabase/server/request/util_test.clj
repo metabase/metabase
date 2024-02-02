@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase.server.request.util-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
@@ -25,7 +26,7 @@
              (request.u/https? {:headers headers}))))))
 
 (def ^:private mock-request
-  (delay (edn/read-string (slurp "test/metabase/server/request/sample-request.edn"))))
+  (delay (edn/read-string (slurp (io/resource "metabase/server/request/sample-request.edn")))))
 
 (deftest ^:parallel device-info-test
   (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"

@@ -1,5 +1,6 @@
 (ns metabase.test.data.sql-jdbc.load-data
   (:require
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
@@ -192,7 +193,8 @@
                             e))))))))
 
 (defonce ^:private reference-load-durations
-  (delay (edn/read-string (slurp "test_resources/load-durations.edn"))))
+  (let [resource (io/resource "load-durations.edn")]
+    (delay (edn/read-string (slurp resource)))))
 
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."

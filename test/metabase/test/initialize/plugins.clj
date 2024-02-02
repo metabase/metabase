@@ -15,22 +15,16 @@
 ;; difference is this code also initializes plugins in `test_modules`. Besides that this code isn't needed
 (defn- driver-plugin-manifest [driver]
   (let [nm    (name driver)
-        paths (mapv
-               #(format "%s/drivers/%s/resources/metabase-plugin.yaml" % nm)
-               ;; look for driver definition in both the regular modules directory, as well as in a top-level
-               ;; test_modules directory, specifically designed for test driver definitions
-               ["modules" "test_modules"])]
-    (first (filter some?
-                   (for [path paths
-                         :let [manifest (io/file path)]
-                         :when (.exists manifest)]
-                     (do
-                       (log/info (u/format-color
-                                  'green
-                                  "Loading plugin manifest (from %s) for driver as if it were a real plugin: %s"
-                                  path
-                                  nm))
-                       (yaml/parse-string (slurp manifest))))))))
+        resource (io/resource (format "drivers/%s/resources/metabase-plugin.yaml" nm))]
+
+    (when resource
+      (do
+        (log/info (u/format-color
+                   'green
+                   "Loading plugin manifest (from %s) for driver as if it were a real plugin: %s"
+                   resource
+                   nm))
+        (yaml/parse-string (slurp resource))))))
 
 (defn- driver-parents
   "Return the set of parents for `driver`. Based on the value of `:metabase.driver/parents` in its `deps.edn`

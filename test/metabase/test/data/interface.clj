@@ -31,7 +31,8 @@
    [methodical.core :as methodical]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [clojure.java.io :as io]))
 
 (set! *warn-on-reflection* true)
 
@@ -528,7 +529,8 @@
 ;;; |                                            EDN Dataset Definitions                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
+(def ^:private edn-definitions-dir
+  "metabase/test/data/dataset_definitions/")
 
 (p.types/deftype+ ^:private EDNDatasetDefinition [dataset-name def]
   pretty/PrettyPrintable
@@ -544,9 +546,10 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- ms/NonBlankString]
   (let [get-def (delay
-                  (let [file-contents (edn/read-string
+                  (let [resource      (io/resource (str edn-definitions-dir dataset-name ".edn"))
+                        file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
-                                       (slurp (str edn-definitions-dir dataset-name ".edn")))]
+                                       (slurp resource))]
                     (apply dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 

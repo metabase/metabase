@@ -7,7 +7,7 @@
    (com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig)
    (com.unboundid.ldap.sdk.schema Schema)
    (com.unboundid.ldif LDIFReader)
-   (java.io File FileNotFoundException)))
+   (java.io FileNotFoundException)))
 
 (set! *warn-on-reflection* true)
 
@@ -24,10 +24,11 @@
 
 (defn- start-ldap-server!
   ^InMemoryDirectoryServer [{:keys [ldif-resource schema]}]
-  (let [^File file (or (io/file (str "test_resources/" ldif-resource))
-                       (throw
-                        (FileNotFoundException. (str ldif-resource " does not exist!"))))]
-    (with-open [ldif (LDIFReader. file)]
+  (let [resource (or (io/resource ldif-resource)
+                     (throw
+                      (FileNotFoundException. (str ldif-resource " does not exist!"))))]
+    (with-open [rdr  (io/reader resource)
+                ldif (LDIFReader. rdr)]
       (doto (InMemoryDirectoryServer. (get-server-config schema))
         (.importFromLDIF true ldif)
         (.startListening)))))
@@ -51,7 +52,7 @@
   []
   (Schema/mergeSchemas
    (u/varargs Schema [(Schema/getDefaultStandardSchema)
-                      (Schema/getSchema (u/varargs File [(io/file "test_resources/posixGroup.schema.ldif")]))])))
+                      (Schema/getSchema (io/input-stream (io/resource "posixGroup.schema.ldif")))])))
 
 (defn do-with-ldap-server
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `f`."
