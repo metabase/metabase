@@ -47,15 +47,19 @@ const defaultConfig = {
         filter: r => {
           const hasCrashed = r.status === "crashed";
           const hasFailed = r.metadata.test?.result === "failed";
+          const isFlaky =
+            r.metadata.test?.result === "passed" &&
+            r.metadata.test.tests.some(r => r.result === "failed");
           const randomlyUploadAll =
             convertStringToInt(r.metadata.test.run.id) % 10 === 1;
 
           console.log("upload replay ::", {
             hasCrashed,
             hasFailed,
+            isFlaky,
             randomlyUploadAll,
           });
-          return hasCrashed || hasFailed || randomlyUploadAll;
+          return hasCrashed || hasFailed || isFlaky || randomlyUploadAll;
         },
       });
     }
