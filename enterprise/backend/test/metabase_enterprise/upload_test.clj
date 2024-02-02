@@ -32,15 +32,28 @@
                    ["venues"
                     [{:field-name "name" :base-type :type/Text}]
                     [["something"]]])
-        (mt/with-temp [:model/Database {db-id :id}    {:engine "h2"}
-                       :model/Table    {table-id :id} {:db_id     db-id
-                                                       :is_upload true}
-                       :model/Card     {card-id :id}  {:dataset       true
-                                                       :dataset_query {:type     :query
-                                                                       :database db-id
-                                                                       :query    {:source-table table-id}}}]
-          (testing "Sanity check: if the user is not sandboxed, based_on_upload is non-nil"
-            (is (= table-id (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
-          (testing "If the user is sandboxed, based_on_upload is nil"
-           (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
-             (is (nil? (:based_on_upload (mt/user-http-request :rasta :get 200 (str "card/" card-id))))))))))))
+        (mt/with-temp [:model/Collection collection     {}
+                       :model/Database   {db-id :id}    {:engine "h2"}
+                       :model/Table      {table-id :id} {:db_id     db-id
+                                                         :is_upload true}
+                       :model/Card       {card-id :id
+                                          :as card}     {:collection_id (:id collection)
+                                                         :dataset       true
+                                                         :dataset_query {:type     :query
+                                                                         :database db-id
+                                                                         :query    {:source-table table-id}}}]
+          (let [get-card (fn [] (mt/user-http-request :rasta :get 200 (str "card/" card-id)))
+                get-collection-item (fn [] (->> (mt/user-http-request :rasta :get 200 (str "collection/" (:collection_id card) "/items"))
+                                                :data
+                                                (filter (fn [item]
+                                                          (= (:id item) (:id card))))
+                                                first))]
+            (testing "Sanity check: if the user is not sandboxed, based_on_upload is non-nil"
+              (is (= table-id
+                     (:based_on_upload (get-card))
+                     (:based_on_upload (get-collection-item)))))
+            (testing "If the user is sandboxed, based_on_upload is nil"
+              (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
+                (is (= nil
+                       (:based_on_upload (get-card))
+                       (:based_on_upload (get-collection-item))))))))))))
