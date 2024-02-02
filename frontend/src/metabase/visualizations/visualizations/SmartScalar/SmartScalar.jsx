@@ -78,6 +78,9 @@ export function SmartScalar({
   visualizationIsClickable,
   series: [
     {
+      card: {
+        dataset_query: { type: queryType },
+      },
       data: { rows, cols },
     },
   ],
@@ -111,14 +114,15 @@ export function SmartScalar({
   const dateColumn = cols[dimensionIndex];
   const dateColumnSettings = settings.column(dateColumn) ?? {};
 
-  const lastPeriod = unit
-    ? formatDateTimeRangeWithUnit([lastDate], unit, {
-        compact: true,
-      })
-    : formatValue(lastDate, {
-        ...dateColumnSettings,
-        column: dateColumn,
-      });
+  const lastPeriod =
+    !unit || queryType === "native"
+      ? formatValue(lastDate, {
+          ...dateColumnSettings,
+          column: dateColumn,
+        })
+      : formatDateTimeRangeWithUnit([lastDate], unit, {
+          compact: true,
+        });
 
   const lastValue = insight["last-value"];
   const formatOptions = settings.column(column);
