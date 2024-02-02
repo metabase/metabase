@@ -13,7 +13,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
@@ -715,7 +714,7 @@
         uploadable-table-ids (set (uploadable-table-ids table-ids))
         based-on-upload (fn [model]
                           (when (:dataset_query model) ; dataset_query is sometimes null in tests
-                            (let [query (lib.convert/->pMBQL (:dataset_query model))]
+                            (let [query (lib/->pMBQL (:dataset_query model))]
                               (when (and (= (name (:query_type model)) "query")
                                          (contains? uploadable-table-ids (:table_id model))
                                          (no-joins? query))

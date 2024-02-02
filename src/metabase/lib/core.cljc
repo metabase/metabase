@@ -10,6 +10,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
@@ -43,6 +44,7 @@
          lib.card/keep-me
          lib.column-group/keep-me
          lib.common/keep-me
+         lib.convert/keep-me
          lib.database/keep-me
          lib.drill-thru/keep-me
          lib.drill-thru.pivot/keep-me
@@ -108,6 +110,8 @@
   group-columns]
  [lib.common
   external-op]
+ [lib.convert
+  ->pMBQL]
  [lib.database
   database-id]
  [lib.drill-thru
