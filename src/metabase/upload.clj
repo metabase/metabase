@@ -304,24 +304,20 @@
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
-(import 'java.time.LocalDateTime)
-(import 'java.time.temporal.ChronoUnit)
+(def ^:private last-timestamp (atom (t/local-date-time)))
 
-(def ^:private last-timestamp (atom nil))
+(set! *warn-on-reflection* true)
 
-(defn monotonic-now
-  "Return an adjusted version of the current time, so that it is guaranteed to be monotonic at a 1 second granularity."
+(defn strictly-monotonic-now
+  "Return an adjusted version of the current time, that it is guaranteed to never repeat the last second."
   []
-  ^LocalDateTime
   (swap! last-timestamp
-         (fn [^LocalDateTime prev-timestamp]
-           (let [now (LocalDateTime/now)]
-             (if (nil? prev-timestamp)
-               now
-               (let [next-second (.truncatedTo (.plus prev-timestamp 1 ChronoUnit/SECONDS) ChronoUnit/SECONDS)]
-                 (if (.isAfter now next-second)
-                   now
-                   next-second)))))))
+         (fn [prev-timestamp]
+           (t/max
+             (t/local-date-time)
+             (-> prev-timestamp
+                 (t/plus (t/seconds 1))
+                 (t/truncate-to :seconds))))))
 
 (defn- unique-table-name
   "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."
@@ -332,7 +328,7 @@
         acceptable-length           (min (count slugified-name) max-length)
         truncated-name-without-time (subs slugified-name 0 acceptable-length)]
     (str truncated-name-without-time
-         (t/format time-format (monotonic-now)))))
+         (t/format time-format (strictly-monotonic-now)))))
 
 (def ^:private max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
 
