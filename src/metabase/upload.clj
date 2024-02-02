@@ -699,9 +699,11 @@
 (mu/defn model-hydrate-based-on-upload
   "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
   [models :- [:sequential [:map
-                           [:dataset_query ms/Map]
+                           ;; query_type and dataset_query can be null in tests, so we make them nullable here.
+                           ;; they should never be null in production
+                           [:dataset_query [:maybe ms/Map]]
+                           [:query_type    [:maybe [:or :string :keyword]]]
                            [:table_id      [:maybe ms/PositiveInt]]
-                           [:query_type    [:or :string :keyword]]
                            ;; is_upload can be provided for an optional optimization
                            [:is_upload {:optional true} [:maybe :boolean]]]]]
   (let [table-ids (->> models
@@ -712,11 +714,12 @@
                        set)
         uploadable-table-ids (set (uploadable-table-ids table-ids))
         based-on-upload (fn [model]
-                          (let [query (lib.convert/->pMBQL (:dataset_query model))]
-                            (when (and (= (name (:query_type model)) "query")
-                                       (contains? uploadable-table-ids (:table_id model))
-                                       (no-joins? query))
-                              (lib/source-table-id query))))]
+                          (when (:dataset_query model) ; dataset_query is sometimes null in tests
+                            (let [query (lib.convert/->pMBQL (:dataset_query model))]
+                              (when (and (= (name (:query_type model)) "query")
+                                         (contains? uploadable-table-ids (:table_id model))
+                                         (no-joins? query))
+                                (lib/source-table-id query)))))]
     (map #(m/assoc-some % :based_on_upload (based-on-upload %))
          models)))
 

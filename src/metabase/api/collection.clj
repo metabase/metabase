@@ -408,6 +408,7 @@
   [_ rows]
   (let [dataset_queries (map :dataset_query rows)]
     (->> rows
+         ;; normalize dataset queries just for based_on_upload hydration
          (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))
          upload/model-hydrate-based-on-upload
          (map (fn [dataset_query row]
