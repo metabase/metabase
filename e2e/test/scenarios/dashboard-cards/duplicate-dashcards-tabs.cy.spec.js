@@ -74,10 +74,8 @@ describe("scenarios > dashboard cards > duplicate", () => {
 
   it("should allow the user to duplicate a dashcard", () => {
     // 1. Confirm duplication works
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-      cy.findByLabelText("Edit dashboard").click();
-    });
+    visitDashboard("@dashboardId");
+    cy.findByLabelText("Edit dashboard").click();
 
     findDashCardAction(getDashboardCard(0), "Duplicate").click();
     saveDashboard();
@@ -96,10 +94,8 @@ describe("scenarios > dashboard cards > duplicate", () => {
 
   it("should allow the user to duplicate a tab", () => {
     // 1. Confirm duplication works
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-      cy.findByLabelText("Edit dashboard").click();
-    });
+    visitDashboard("@dashboardId");
+    cy.findByLabelText("Edit dashboard").click();
 
     duplicateTab("Tab 1");
     saveDashboard();

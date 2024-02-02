@@ -50,9 +50,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
   context("UI", () => {
     it("should be disabled by default but able to be set to editable and/or locked (metabase#20357)", () => {
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+      visitDashboard("@dashboardId");
 
       openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
 
@@ -133,9 +131,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       );
       cy.signInAsAdmin();
 
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+      visitDashboard("@dashboardId");
 
       openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
 
@@ -396,9 +392,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       mapParameters({ id, card_id, dashboard_id });
     });
 
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-    });
+    visitDashboard("@dashboardId");
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {

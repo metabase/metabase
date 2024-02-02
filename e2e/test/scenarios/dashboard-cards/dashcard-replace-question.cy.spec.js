@@ -231,10 +231,8 @@ describe("scenarios > dashboard cards > replace question", () => {
 });
 
 function visitDashboardAndEdit() {
-  cy.get("@dashboardId").then(dashboardId => {
-    visitDashboard(dashboardId);
-    cy.findByLabelText("Edit dashboard").click();
-  });
+  visitDashboard("@dashboardId");
+  cy.findByLabelText("Edit dashboard").click();
 }
 
 function findHeadingDashcard() {
