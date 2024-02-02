@@ -71,7 +71,7 @@ const sourceFilter = {
 
 const userFilter = { name: "User", slug: "user_id", id: "4", type: "id" };
 
-const notUsedFilter = {
+const unusedFilter = {
   name: "Not Used Filter",
   slug: "not_used",
   id: "5",
@@ -83,7 +83,7 @@ const parameters = [
   nameFilter,
   sourceFilter,
   userFilter,
-  notUsedFilter,
+  unusedFilter,
 ];
 
 const defaultTabId = 1;

@@ -41,7 +41,7 @@ const textFilter = {
   sectionId: "string",
 };
 
-const numberFilter = {
+const unusedFilter = {
   id: "2",
   type: "number/=",
   name: "Number",
@@ -60,7 +60,7 @@ const tab2 = {
 };
 
 const dashboardDetails = {
-  parameters: [textFilter, numberFilter],
+  parameters: [textFilter, unusedFilter],
   tabs: [tab1, tab2],
 };
 
@@ -212,14 +212,14 @@ describe("scenarios > public > dashboard", () => {
 
     dashboardParametersContainer().within(() => {
       cy.findByText(textFilter.name).should("be.visible");
-      cy.findByText(numberFilter.name).should("not.exist");
+      cy.findByText(unusedFilter.name).should("not.exist");
     });
 
     goToTab(tab2.name);
 
     dashboardParametersContainer().within(() => {
       cy.findByText(textFilter.name).should("not.exist");
-      cy.findByText(numberFilter.name).should("not.exist");
+      cy.findByText(unusedFilter.name).should("not.exist");
     });
   });
 });
