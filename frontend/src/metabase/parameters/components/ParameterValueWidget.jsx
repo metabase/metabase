@@ -32,6 +32,7 @@ import {
 } from "metabase-lib/parameters/utils/parameter-type";
 import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 
+import { isParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
 
@@ -142,9 +143,13 @@ class ParameterValueWidget extends Component {
 
   getRequiredActionIcon() {
     const { required, default: defaultValue } = this.props.parameter;
-    const { value, setParameterValueToDefault } = this.props;
+    const { value, setParameterValueToDefault = () => {} } = this.props;
 
-    if (required && defaultValue && value !== defaultValue) {
+    if (
+      required &&
+      defaultValue &&
+      !isParameterValuesIdentical(value, defaultValue)
+    ) {
       return (
         <WidgetStatusIcon
           name="refresh"
