@@ -535,7 +535,12 @@
    (visible-columns query -1 x))
 
   ([query stage-number x]
-   (visible-columns query stage-number x nil))
+   (if (and (map? x)
+            (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
+     (lib.cache/side-channel-cache
+       (keyword (str stage-number "__visible-columns-no-opts")) query
+       (fn [_] (visible-columns query stage-number x nil)))
+     (visible-columns query stage-number x nil)))
 
   ([query          :- ::lib.schema/query
     stage-number   :- :int
