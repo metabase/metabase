@@ -123,12 +123,12 @@ describe("scenarios > dashboard > filters > date", () => {
     filterWidget().click();
     popover().findByText("December").click();
     filterWidget().findByText("December 2023");
-    ensureDashboardCardHasText("Rows 1-8 of 418");
+    ensureDashboardCardHasText("76.83");
 
     // Resets the value back by clicking widget icon
     resetFilterWidgetToDefault();
     filterWidget().findByText("November 2023");
-    ensureDashboardCardHasText("Rows 1-8 of 394");
+    ensureDashboardCardHasText("27.74");
   });
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
