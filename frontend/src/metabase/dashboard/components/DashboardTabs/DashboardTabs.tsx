@@ -29,7 +29,6 @@ export function DashboardTabs({
     selectedTabId,
     moveTab,
   } = useDashboardTabs({ location });
-
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
