@@ -115,7 +115,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
     }
   }
 
-  return { display: "table2" };
+  return { display: "table" };
 };
 
 const getBreakoutsWithColumns = (
