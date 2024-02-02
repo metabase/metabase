@@ -660,8 +660,16 @@
       (throw (Exception.
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
-(defn ^{:doc "The string representation of a type 4 random uuid"} random-uuid-str []
+(defn- random-uuid-str []
   (str (random-uuid)))
+
+;; This base allows the bundling of a number of attributes together. In some sense it is defining a subtype / mixin.
+(def uuid-nonce-base
+  "A random uuid value that should never change again"
+  {:type   :string
+   :setter :none
+   :audit  :never
+   :init   random-uuid-str})
 
 ;; Strings are parsed as follows:
 ;;
@@ -1104,6 +1112,14 @@
        (not= (:setter setting-definition) :none)
        (not (ns-in-test? (:namespace setting-definition)))))
 
+(defn merge-base
+  "Use values in the optional `:base` map as default values for `setting-options`"
+  [{:keys [base] :as setting-options}]
+  (if-not base
+    setting-options
+    (do (assert (not (contains? base :export)) ":export? must not be set in :base")
+        (merge base (dissoc setting-options :base)))))
+
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
   Conveniently can be used as a getter/setter as well
@@ -1202,7 +1218,13 @@
   should be used for most non-sensitive settings, and will log the value returned by its getter, which may be
   the default getter or a custom one. `:raw-value` will audit the raw string value of the setting in the database.
   (default: `:no-value` for most settings; `:never` for user- and database-local settings, settings with no setter,
-  and `:sensitive` settings.)"
+  and `:sensitive` settings.)
+
+  ###### `base`
+  A map which can provide values for any of the above options, except for :export?.
+  Any top level options will override what's in this base map.
+  The use case for this map is sharing strongly coupled options between similar settings, see [[uuid-nonce-base]].
+  "
   {:style/indent 1}
   [setting-symbol description & {:as options}]
   {:pre [(symbol? setting-symbol)
@@ -1223,7 +1245,7 @@
         setting-setter-fn-symbol (-> (symbol (str (name setting-symbol) \!))
                                      (with-meta (meta setting-symbol)))
         setting-definition-symbol (gensym "setting-")]
-    `(let [setting-options#          (merge ~options ~setting-metadata)
+    `(let [setting-options#          (merge (merge-base ~options) ~setting-metadata)
            ~setting-definition-symbol (register-setting! setting-options#)]
        ~(when maybe-i18n-exception
           `(when (#'requires-i18n? ~setting-definition-symbol)
