@@ -223,13 +223,13 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-dashboard-revision
-  [:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id :initially_published_at
+  [:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id
    ;; not sure what position is for, from the column remark:
    ;; > The position this Dashboard should appear in the Dashboards list,
    ;;   lower-numbered positions appearing before higher numbered ones.
    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
    :public_uuid :made_public_by_id
-   :position])
+   :position :initially_published_at])
 
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])

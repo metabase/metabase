@@ -362,7 +362,6 @@
                                 :archived               false
                                 :collection_position    nil
                                 :enable_embedding       false
-                                :initially_published_at nil
                                 :embedding_params       nil
                                 :parameters             []
                                 :width                  "fixed"}
@@ -426,7 +425,6 @@
                 :archived               false
                 :collection_position    nil
                 :enable_embedding       false
-                :initially_published_at nil
                 :embedding_params       nil
                 :parameters             []
                 :width                  "fixed"}
