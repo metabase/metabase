@@ -25,6 +25,7 @@ Cypress.Commands.add(
             }).then(response => ({
               ...response,
               dashboardId,
+              dashboardTabs: response.body.tabs,
               body: response.body.dashcards[0],
               questionId,
             }));
