@@ -111,9 +111,7 @@
           values                (map first wrapped-values)
           ;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
           human-readable-values (field-values/fixup-human-readable-values
-                                  (t2/select-one FieldValues
-                                                 :field_id (:id field)
-                                                 :type :full)
+                                  (t2/select-one FieldValues :field_id (:id field) :type :full)
                                   values)]
       (first (t2/insert-returning-instances! FieldValues
                                              :field_id (:id field)
@@ -131,9 +129,7 @@
 
   ([fv-type field constraints]
    (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
-         fv       (or (t2/select-one FieldValues :field_id (:id field)
-                                     :type fv-type
-                                     :hash_key hash-key)
+         fv       (or (t2/select-one FieldValues :field_id (:id field) :type fv-type :hash_key hash-key)
                       (create-advanced-field-values! fv-type field hash-key constraints))]
      (cond
        (nil? fv) nil

@@ -493,7 +493,7 @@
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
-    (t2/select-one FieldValues :field_id (:id field))))
+    (t2/select-one FieldValues :field_id (:id field) :type :full)))
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
