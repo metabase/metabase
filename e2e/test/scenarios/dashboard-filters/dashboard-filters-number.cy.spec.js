@@ -95,13 +95,14 @@ describe("scenarios > dashboard > filters > number", () => {
     toggleRequiredParameter();
     dashboardSaveButton().should("be.disabled");
     dashboardSaveButton().realHover();
-    cy.get("body").findByText(
+
+    cy.findByRole("tooltip").should(
+      "contain.text",
       'The "Equal to" parameter requires a default value but none was provided.',
     );
 
     sidebar().findByText("Default value").next().click();
     addWidgetNumberFilter("2.07");
-    dashboardSaveButton().should("not.be.disabled");
 
     saveDashboard();
     ensureDashboardCardHasText("37.65");

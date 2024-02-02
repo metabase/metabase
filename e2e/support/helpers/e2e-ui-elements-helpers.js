@@ -101,7 +101,7 @@ export function toggleFilterWidgetValues(values = [], index = 0) {
 
   popover().within(() => {
     values.forEach(value => cy.findByText(value).click());
-    cy.findByText("Update filter").click();
+    cy.button("Update filter").click();
   });
 }
 

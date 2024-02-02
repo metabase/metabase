@@ -146,7 +146,8 @@ describe("scenarios > dashboard > filters > text/category", () => {
     toggleRequiredParameter();
     dashboardSaveButton().should("be.disabled");
     dashboardSaveButton().realHover();
-    cy.get("body").findByText(
+    cy.findByRole("tooltip").should(
+      "contain.text",
       'The "Text" parameter requires a default value but none was provided.',
     );
 

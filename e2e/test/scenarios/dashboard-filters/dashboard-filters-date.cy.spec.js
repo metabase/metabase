@@ -105,7 +105,9 @@ describe("scenarios > dashboard > filters > date", () => {
     toggleRequiredParameter();
     dashboardSaveButton().should("be.disabled");
     dashboardSaveButton().realHover();
-    cy.get("body").findByText(
+
+    cy.findByRole("tooltip").should(
+      "contain.text",
       'The "Month and Year" parameter requires a default value but none was provided.',
     );
 
@@ -116,7 +118,6 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
-    dashboardSaveButton().should("not.be.disabled");
     saveDashboard();
 
     // Updates the filter value

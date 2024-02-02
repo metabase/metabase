@@ -20,7 +20,7 @@ export function getDashboardCard(index = 0) {
 }
 
 export function ensureDashboardCardHasText(text, index = 0) {
-  cy.get(".Card").eq(index).findByText(text);
+  cy.get(".Card").eq(index).should("contain", text);
 }
 
 function getDashboardApiUrl(dashId) {
@@ -248,7 +248,7 @@ export const dashboardGrid = () => {
 };
 
 export function dashboardSaveButton() {
-  return cy.findByRole("button", { name: "Save" });
+  return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
 }
 
 /**
