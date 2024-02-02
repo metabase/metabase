@@ -58,7 +58,8 @@
               :collection_position nil
               :enable_embedding    false
               :embedding_params    nil
-              :parameters          []}
+              :parameters          []
+              :width               "fixed"}
              (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
                      :cards
                      (fn [[{:keys [id card_id series], :as card}]]
@@ -363,33 +364,34 @@
                                 :enable_embedding       false
                                 :initially_published_at nil
                                 :embedding_params       nil
-                                :parameters             []}
+                                :parameters             []
+                                :width                  "fixed"}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
-        (is (= {:name                   "Test Dashboard"
-                :description            nil
-                :cache_ttl              nil
-                :auto_apply_filters     true
-                :collection_id          nil
-                :cards                  [{:size_x                 4
-                                          :size_y                 4
-                                          :row                    0
-                                          :col                    0
-                                          :id                     true
-                                          :card_id                true
-                                          :series                 true
-                                          :dashboard_tab_id       nil
-                                          :action_id              nil
-                                          :parameter_mappings     []
-                                          :visualization_settings {}
-                                          :dashboard_id           dashboard-id}]
-                :tabs                   []
-                :archived               false
-                :collection_position    nil
-                :enable_embedding       false
-                :initially_published_at nil
-                :embedding_params       nil
-                :parameters             []}
+        (is (= {:name                "Test Dashboard"
+                :description         nil
+                :cache_ttl           nil
+                :auto_apply_filters  true
+                :collection_id       nil
+                :cards               [{:size_x                 4
+                                       :size_y                 4
+                                       :row                    0
+                                       :col                    0
+                                       :id                     true
+                                       :card_id                true
+                                       :series                 true
+                                       :dashboard_tab_id       nil
+                                       :action_id              nil
+                                       :parameter_mappings     []
+                                       :visualization_settings {}
+                                       :dashboard_id           dashboard-id}]
+                :tabs                []
+                :archived            false
+                :collection_position nil
+                :enable_embedding    false
+                :embedding_params    nil
+                :parameters          []
+                :width               "fixed"}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
@@ -426,7 +428,8 @@
                 :enable_embedding       false
                 :initially_published_at nil
                 :embedding_params       nil
-                :parameters             []}
+                :parameters             []
+                :width                  "fixed"}
                (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"
