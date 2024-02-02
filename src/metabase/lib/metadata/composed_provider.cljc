@@ -54,7 +54,7 @@
   (#?(:clj equals :cljs -equiv) [_this another]
     (and (instance? ComposedMetadataProvider another)
          (= metadata-providers
-            (#?(:clj .metadata-providers :cljs .-metadata-providers ) ^ComposedMetadataProvider another))))
+            (.-metadata-providers ^ComposedMetadataProvider another))))
 
   clojure.core.protocols/Datafiable
   (datafy [_this]

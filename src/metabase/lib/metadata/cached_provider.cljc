@@ -115,7 +115,7 @@
   (#?(:clj equals :cljs -equiv) [_this another]
     (and (instance? CachedProxyMetadataProvider another)
          (= metadata-provider
-            (#?(:clj .metadata-provider :cljs .-metadata-provider) ^CachedProxyMetadataProvider another))))
+            (.-metadata-provider ^CachedProxyMetadataProvider another))))
 
   #?@(:clj
       [pretty/PrettyPrintable
