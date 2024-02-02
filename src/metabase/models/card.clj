@@ -353,7 +353,7 @@
       (throw (ex-info (tru ":dataset is inconsistent with :type")
                       {:status-code 400})))))
 
-(defn- ensure-type-and-dataset-are-consistent
+(defn ensure-type-and-dataset-are-consistent
   "We're in the process of migrating from using `report_card.dataset` to `report_card.type`.
   In the future we'll drop `dataset` and only use `type`. But for now we need to make sure that both keys are aligned
   when dealing with cards.
@@ -532,6 +532,7 @@
 
 (t2/define-before-insert :model/Card
   [card]
+  (assert-card-type-and-dataset card)
   (-> card
       ensure-type-and-dataset-are-consistent
       (assoc :metabase_version config/mb-version-string)
@@ -679,7 +680,6 @@ saved later when it is ready."
   ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings] :as card-data} creator delay-event?]
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
-   (assert-card-type-and-dataset card-data)
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
          card-data            (-> (zipmap data-keys (map card-data data-keys))

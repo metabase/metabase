@@ -466,10 +466,9 @@
   (card/assert-card-type-and-dataset card-updates)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        is-model-after-update? (cond
-                                (some? type)    (= "model" type)
-                                (some? dataset) dataset
-                                :else           (card/model? card-before-update))]
+        is-model-after-update? (if (and (nil? type) (nil? dataset))
+                                 (card/model? card-before-update)
+                                 (card/model? (card/ensure-type-and-dataset-are-consistent card-updates)))]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
