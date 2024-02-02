@@ -5,7 +5,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 
-import type { TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
@@ -60,17 +60,29 @@ export const DataStep = ({
     }
   };
 
-  const handleChangeTable = (nextTableId: TableId) => {
-    const nextQuery = Lib.withDifferentTable(topLevelQuery, nextTableId);
+  const handleChangeTable = (
+    nextTableId: TableId,
+    nextDatabaseId: DatabaseId,
+  ) => {
+    const query =
+      Lib.databaseID(topLevelQuery) === nextDatabaseId
+        ? topLevelQuery
+        : Lib.fromLegacyQuery(
+            nextDatabaseId,
+            metadata,
+            Lib.toLegacyQuery(topLevelQuery),
+          );
+
+    const nextQuery = Lib.withDifferentTable(query, nextTableId);
     updateQuery(nextQuery);
   };
 
-  const handleTableSelect = (tableId: TableId) => {
+  const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
     const isNew = !databaseId;
     if (isNew) {
       handleCreateQuery(tableId);
     } else {
-      handleChangeTable(tableId);
+      handleChangeTable(tableId, databaseId);
     }
   };
 
