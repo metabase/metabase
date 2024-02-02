@@ -708,7 +708,7 @@
                            [:is_upload {:optional true} [:maybe :boolean]]]]]
   (let [table-ids (->> models
                        ;; as an optimization, we might already know that the table is not an upload
-                       ;; if is_upload=false. We don't need to make any more queies if so
+                       ;; if is_upload=false. We can skip making more queries if so
                        (remove #(false? (:is_upload %)))
                        (keep :table_id)
                        set)
