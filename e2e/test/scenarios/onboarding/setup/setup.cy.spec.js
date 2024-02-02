@@ -91,6 +91,12 @@ describe("scenarios > setup", () => {
           cy.findByText("Next").click();
 
           // ========
+          // Usage question
+          // ========
+
+          cy.button("Next").click();
+
+          // ========
           // Database
           // ========
 
@@ -111,7 +117,8 @@ describe("scenarios > setup", () => {
           cy.findByText("Need help connecting?").should("not.be.visible");
 
           // now back to database setting
-          cy.findByText("Next").click();
+          cy.button("Next").click();
+          cy.button("Next").click();
 
           // check database setup card is visible
           cy.findByText("MySQL").click();
@@ -187,6 +194,8 @@ describe("scenarios > setup", () => {
       cy.button("Next").click();
 
       cy.findByText("Hi. Nice to meet you!");
+
+      cy.button("Next").click();
 
       // Database
       cy.findByText("Add your data");
@@ -264,6 +273,8 @@ describe("scenarios > setup", () => {
 
       cy.findByText("Next").click();
     });
+
+    cy.button("Next").click();
 
     cy.findByTestId("database-form").within(() => {
       cy.findByPlaceholderText("Search for a database…").type("lite").blur();

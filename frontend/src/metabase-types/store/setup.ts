@@ -1,4 +1,4 @@
-import type { DatabaseData } from "metabase-types/api";
+import type { DatabaseData, UsageReason } from "metabase-types/api";
 
 export interface Locale {
   name: string;
@@ -28,6 +28,7 @@ export interface SetupState {
   step: number;
   locale?: Locale;
   user?: UserInfo;
+  usageReason?: UsageReason;
   databaseEngine?: string;
   database?: DatabaseData;
   invite?: InviteInfo;

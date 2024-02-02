@@ -8,12 +8,14 @@ import { PreferencesStep } from "../PreferencesStep";
 import { UserStep } from "../UserStep";
 import { SetupHelp } from "../SetupHelp";
 import { DatabaseHelp } from "../DatabaseHelp";
+import { UsageQuestionStep } from "../UsageQuestionStep";
 import { PageBody, PageHeader } from "./SettingsPage.styled";
 
 export const SettingsPage = (): JSX.Element => {
   const numberedSteps = [
     { component: LanguageStep, key: "language-step" },
     { component: UserStep, key: "user-step" },
+    { component: UsageQuestionStep, key: "usage-question-step" },
     {
       component: DatabaseStep,
       key: "database-step",

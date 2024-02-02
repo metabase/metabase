@@ -23,7 +23,7 @@ import {
   getUser,
 } from "../../selectors";
 import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InvactiveStep";
+import { InactiveStep } from "../InactiveStep";
 import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import type { NumberedStepProps } from "../types";

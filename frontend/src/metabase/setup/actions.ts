@@ -2,7 +2,7 @@ import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
-import type { DatabaseData } from "metabase-types/api";
+import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
   trackAddDataLaterClicked,
@@ -85,6 +85,13 @@ export const submitUser = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_INFO",
   (_: UserInfo) => {
     trackUserStepCompleted();
+  },
+);
+
+export const submitUsageReason = createAsyncThunk(
+  "metabase/setup/SUBMIT_USAGE_REASON",
+  (_: UsageReason) => {
+    // TODO: add tracking
   },
 );
 

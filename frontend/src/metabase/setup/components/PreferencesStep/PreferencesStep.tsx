@@ -14,7 +14,7 @@ import {
   getIsTrackingAllowed,
 } from "../../selectors";
 import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InvactiveStep";
+import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
 import {
   StepDescription,
