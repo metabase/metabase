@@ -43,4 +43,4 @@
             (is (= table-id (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
           (testing "If the user is sandboxed, based_on_upload is nil"
            (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
-             (is (=? {:based_on_upload nil} (mt/user-http-request :rasta :get 200 (str "card/" card-id)))))))))))
+             (is (nil? (:based_on_upload (mt/user-http-request :rasta :get 200 (str "card/" card-id))))))))))))

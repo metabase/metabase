@@ -78,7 +78,6 @@
    :entity_id           nil
    :embedding_params    nil
    :made_public_by_id   nil
-   :based_on_upload     nil
    :parameters          []
    :parameter_mappings  []
    :moderation_reviews  ()
@@ -91,7 +90,7 @@
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
-  (dissoc card-defaults :average_query_time :last_query_start :based_on_upload))
+  (dissoc card-defaults :average_query_time :last_query_start))
 
 (defn mbql-count-query
   ([]
@@ -3253,7 +3252,7 @@
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
 
 (defn run-based-on-upload-test
-  "Runs tests for based-on-upload `request` is a function that takes a card and returns a map like {:based_on_upload <table-id or nil>}]
+  "Runs tests for based-on-upload `request` is a function that takes a card and returns a map which may have {:based_on_upload <table-id>}]
   This function exists to deduplicate test logic for all API endpoints that must return `based_on_upload`,
   including GET /api/collection/:id/items and GET /api/card/:id"
   [request]
