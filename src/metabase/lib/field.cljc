@@ -223,7 +223,9 @@
                        simple-display-name ::simple-display-name
                        hide-bin-bucket?    :lib/hide-bin-bucket?
                        :as                 field-metadata} style]
-  (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
+  (let [humanized-name     (if (string? field-name)
+                             (u.humanization/name->human-readable-name :simple field-name)
+                             (str field-name))
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet
@@ -231,9 +233,7 @@
                                               (= field-display-name humanized-name)))
                                  (nest-display-name query field-metadata))
                                field-display-name
-                               (if (string? field-name)
-                                 humanized-name
-                                 (str field-name)))
+                               humanized-name)
         join-display-name  (when (and (= style :long)
                                       ;; don't prepend a join display name if `:display-name` already contains one!
                                       ;; Legacy result metadata might include it for joined Fields, don't want to add
