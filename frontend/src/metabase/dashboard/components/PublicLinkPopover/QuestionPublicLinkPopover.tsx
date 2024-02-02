@@ -54,7 +54,7 @@ export const QuestionPublicLinkPopover = ({
   const onCopyLink = () => {
     trackPublicLinkCopied({
       artifact: "question",
-      format: extension,
+      format: extension ?? "html",
     });
   };
 

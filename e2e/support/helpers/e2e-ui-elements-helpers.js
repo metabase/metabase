@@ -7,6 +7,11 @@ export function popover() {
   return cy.get(POPOVER_ELEMENT);
 }
 
+export function mantinePopover() {
+  const MANTINE_POPOVER = "[data-popover=mantine-popover]";
+  return cy.get(MANTINE_POPOVER).should("be.visible");
+}
+
 export function main() {
   return cy.get("main");
 }

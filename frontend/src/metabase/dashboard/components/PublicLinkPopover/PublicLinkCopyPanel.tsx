@@ -58,6 +58,7 @@ export const PublicLinkCopyPanel = ({
               }
             >
               <RemoveLinkAnchor
+                component="button"
                 fz="sm"
                 c="error"
                 fw={700}

@@ -8,6 +8,7 @@ import {
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   getEmbedModalSharingPane,
+  mantinePopover,
   openEmbedModalFromMenu,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
@@ -285,11 +286,45 @@ describe("embed modal display", () => {
 
           openPublicLinkPopoverFromMenu();
           cy.findByTestId("copy-button").realClick();
-          expectGoodSnowplowEvent({
-            event: "public_link_copied",
-            artifact: resource,
-            format: null,
-          });
+          if (resource === "dashboard") {
+            expectGoodSnowplowEvent({
+              event: "public_link_copied",
+              artifact: "dashboard",
+              format: null,
+            });
+          }
+
+          if (resource === "question") {
+            expectGoodSnowplowEvent({
+              event: "public_link_copied",
+              artifact: "question",
+              format: "html",
+            });
+
+            mantinePopover().findByText("csv").click();
+            cy.findByTestId("copy-button").realClick();
+            expectGoodSnowplowEvent({
+              event: "public_link_copied",
+              artifact: "question",
+              format: "csv",
+            });
+
+            mantinePopover().findByText("xlsx").click();
+            cy.findByTestId("copy-button").realClick();
+            expectGoodSnowplowEvent({
+              event: "public_link_copied",
+              artifact: "question",
+              format: "xlsx",
+            });
+
+            mantinePopover().findByText("json").click();
+            cy.findByTestId("copy-button").realClick();
+            expectGoodSnowplowEvent({
+              event: "public_link_copied",
+              artifact: "question",
+              format: "json",
+            });
+          }
         });
 
         it("should send `public_link_removed` when removing the public link", () => {
@@ -316,10 +351,27 @@ describe("embed modal display", () => {
           openEmbedModalFromMenu();
           cy.findByTestId("sharing-pane-public-embed-button").within(() => {
             cy.findByText("Get an embed link").click();
+            cy.findByTestId("copy-button").realClick();
           });
-          cy.findByTestId("copy-button").realClick();
           expectGoodSnowplowEvent({
             event: "public_embed_code_copied",
+            artifact: resource,
+            source: "public-embed",
+          });
+        });
+
+        it("should send `public_link_removed` event when removing the public embed", () => {
+          cy.get("@resourceId").then(id => {
+            visitResource(resource, id);
+          });
+
+          openEmbedModalFromMenu();
+          cy.findByTestId("sharing-pane-public-embed-button").within(() => {
+            cy.findByText("Get an embed link").click();
+            cy.button("Remove public URL").click();
+          });
+          expectGoodSnowplowEvent({
+            event: "public_link_removed",
             artifact: resource,
             source: "public-embed",
           });
@@ -332,7 +384,7 @@ describe("embed modal display", () => {
             visitResource(resource, id);
           });
           openStaticEmbeddingModal();
-          cy.findByTestId("embed-backend-code-sample").within(() => {
+          cy.findByTestId("embed-frontend").within(() => {
             cy.findByTestId("copy-button").realClick();
           });
           expectGoodSnowplowEvent({
