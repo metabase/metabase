@@ -1,6 +1,7 @@
 import LogoIcon from "metabase/components/LogoIcon";
 import { isNotFalsy } from "metabase/lib/types";
 import { useSelector } from "metabase/lib/redux";
+import { getUsageReason } from "metabase/setup/selectors";
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { DatabaseStep } from "../DatabaseStep";
 import { CompletedStep } from "../CompletedStep";
@@ -13,7 +14,7 @@ import { UsageQuestionStep } from "../UsageQuestionStep";
 import { PageBody, PageHeader } from "./SettingsPage.styled";
 
 export const SettingsPage = (): JSX.Element => {
-  const usageReason = useSelector(s => s.setup.usageReason);
+  const usageReason = useSelector(getUsageReason);
 
   const numberedSteps = [
     { component: LanguageStep, key: "language-step" },
