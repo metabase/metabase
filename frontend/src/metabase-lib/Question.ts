@@ -387,7 +387,11 @@ class Question {
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
-    return this.legacyQuery({ useStructuredQuery: true }).canRun();
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+
+    return isNative
+      ? this.legacyQuery({ useStructuredQuery: true }).canRun()
+      : Lib.canRun(this.query());
   }
 
   canWrite(): boolean {
@@ -414,9 +418,9 @@ class Question {
 
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
-    const isStructured = !Lib.queryDisplayInfo(this.query()).isNative;
+    const { isNative } = Lib.queryDisplayInfo(this.query());
 
-    return isStructured && !Lib.hasClauses(query, -1) && hasSinglePk;
+    return !isNative && !Lib.hasClauses(query, -1) && hasSinglePk;
   }
 
   canAutoRun(): boolean {
@@ -470,9 +474,9 @@ class Question {
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
   usesMetric(metricId): boolean {
-    const isStructured = !Lib.queryDisplayInfo(this.query()).isNative;
+    const { isNative } = Lib.queryDisplayInfo(this.query());
     return (
-      isStructured &&
+      !isNative &&
       _.any(
         QUERY.getAggregations(
           this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
@@ -485,9 +489,9 @@ class Question {
   }
 
   usesSegment(segmentId): boolean {
-    const isStructured = !Lib.queryDisplayInfo(this.query()).isNative;
+    const { isNative } = Lib.queryDisplayInfo(this.query());
     return (
-      isStructured &&
+      !isNative &&
       QUERY.getFilters(
         this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
           useStructuredQuery: true,
