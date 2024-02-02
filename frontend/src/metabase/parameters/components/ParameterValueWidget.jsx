@@ -31,8 +31,7 @@ import {
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
 import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
-
-import { isParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
+import { areParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
 
@@ -148,7 +147,7 @@ class ParameterValueWidget extends Component {
     if (
       required &&
       defaultValue &&
-      !isParameterValuesIdentical(value, defaultValue)
+      !areParameterValuesIdentical(value, defaultValue)
     ) {
       return (
         <WidgetStatusIcon
