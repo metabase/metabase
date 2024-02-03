@@ -14,6 +14,11 @@ import type { Dataset } from "./dataset";
 // x-ray dashboard have string ids
 export type DashboardId = number | string;
 
+export type DashboardCard =
+  | ActionDashboardCard
+  | QuestionDashboardCard
+  | VirtualDashboardCard;
+
 export interface Dashboard {
   id: DashboardId;
   collection?: Collection | null;
@@ -21,9 +26,7 @@ export interface Dashboard {
   name: string;
   description: string | null;
   model?: string;
-  dashcards: Array<
-    ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard
-  >;
+  dashcards: DashboardCard[];
   tabs?: DashboardTab[];
   parameters?: Parameter[] | null;
   collection_authority_level?: CollectionAuthorityLevel;

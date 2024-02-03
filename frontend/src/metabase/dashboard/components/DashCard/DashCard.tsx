@@ -28,10 +28,9 @@ import type {
   ParameterValueOrArray,
   VisualizationSettings,
   DashCardDataMap,
-  ActionDashboardCard,
-  VirtualDashboardCard,
   VirtualCard,
 } from "metabase-types/api";
+import type { StoreDashcard } from "metabase-types/store";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -54,13 +53,7 @@ function preventDragging(event: React.SyntheticEvent) {
 
 export interface DashCardProps {
   dashboard: Dashboard;
-  dashcard: (
-    | ActionDashboardCard
-    | QuestionDashboardCard
-    | VirtualDashboardCard
-  ) & {
-    justAdded?: boolean;
-  };
+  dashcard: StoreDashcard;
   gridItemWidth: number;
   totalNumGridCols: number;
   dashcardData: DashCardDataMap;

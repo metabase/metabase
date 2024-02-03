@@ -3,11 +3,7 @@ import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import type {
-  ActionDashboardCard,
-  QuestionDashboardCard,
-  VirtualDashboardCard,
-} from "metabase-types/api";
+import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
 
 import {
   Root,
@@ -18,7 +14,7 @@ import {
 } from "./ClickBehaviorSidebarOverlay.styled";
 
 interface Props {
-  dashcard: ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard;
+  dashcard: DashboardCard;
   dashcardWidth: number;
   showClickBehaviorSidebar: (
     dashCardId: QuestionDashboardCard["id"] | null,

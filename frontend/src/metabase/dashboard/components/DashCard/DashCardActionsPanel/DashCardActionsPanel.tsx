@@ -7,11 +7,9 @@ import { Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 
 import type {
-  ActionDashboardCard,
   Dashboard,
-  QuestionDashboardCard,
+  DashboardCard,
   Series,
-  VirtualDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -33,7 +31,7 @@ import {
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard;
+  dashcard?: DashboardCard;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;

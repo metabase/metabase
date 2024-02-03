@@ -15,12 +15,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
-import type {
-  ActionDashboardCard,
-  Dashboard,
-  QuestionDashboardCard,
-  VirtualDashboardCard,
-} from "metabase-types/api";
+import type { Dashboard, DashboardCard } from "metabase-types/api";
 import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 
 export function useDuplicateDashCard({
@@ -28,7 +23,7 @@ export function useDuplicateDashCard({
   dashcard,
 }: {
   dashboard: Dashboard;
-  dashcard?: ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard;
+  dashcard?: DashboardCard;
 }) {
   const dispatch = useDispatch();
   const dashboards = useSelector(getDashboards);

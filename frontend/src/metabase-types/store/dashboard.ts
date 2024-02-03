@@ -1,15 +1,13 @@
 import type {
   Dashboard,
   DashboardId,
-  QuestionDashboardCard,
   DashCardId,
   DashCardDataMap,
   ParameterId,
   ParameterValueOrArray,
   DashboardTab,
   DashboardTabId,
-  ActionDashboardCard,
-  VirtualDashboardCard,
+  DashboardCard,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -61,11 +59,7 @@ export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
   isDirty?: boolean;
 };
 
-export type StoreDashcard = (
-  | ActionDashboardCard
-  | QuestionDashboardCard
-  | VirtualDashboardCard
-) & {
+export type StoreDashcard = DashboardCard & {
   isAdded?: boolean;
   isDirty?: boolean;
   isRemoved?: boolean;
