@@ -406,7 +406,6 @@
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  #_(card/assert-card-type-and-dataset body)
   (-> (card/create-card! body @api/*current-user*)
       hydrate-card-details
       (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -463,7 +462,6 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
-  #_(card/assert-card-type-and-dataset card-updates)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
         is-model-after-update? (if (and (nil? type) (nil? dataset))
