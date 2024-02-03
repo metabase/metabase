@@ -1,4 +1,5 @@
 import type {
+  ClickBehavior,
   Collection,
   CollectionAuthorityLevel,
   Parameter,
@@ -6,7 +7,7 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 
-import type { ActionDashboardCard } from "./actions";
+import type { ActionDisplayType, WritebackAction } from "./actions";
 import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
@@ -80,6 +81,24 @@ export type VirtualCard = Partial<
   visualization_settings: Record<string, never>;
 };
 
+export type ActionDashboardCard = Omit<
+  BaseDashboardCard,
+  "parameter_mappings"
+> & {
+  action?: WritebackAction;
+  card_id: CardId | null; // model card id for the associated action
+  card: Card;
+
+  parameter_mappings?: ActionParametersMapping[] | null;
+  visualization_settings: {
+    [key: string]: unknown;
+    "button.label"?: string;
+    click_behavior?: ClickBehavior;
+    actionDisplayType?: ActionDisplayType;
+    virtual_card: VirtualCard;
+  };
+};
+
 export type QuestionDashboardCard = BaseDashboardCard & {
   card_id: CardId | null; // will be null for virtual card
   card: Card;
@@ -114,6 +133,11 @@ export type DashboardParameterMapping = {
   parameter_id: ParameterId;
   target: ParameterTarget;
 };
+
+export type ActionParametersMapping = Pick<
+  DashboardParameterMapping,
+  "parameter_id" | "target"
+>;
 
 export type VirtualDashCardParameterMapping = {
   parameter_id: ParameterId;
