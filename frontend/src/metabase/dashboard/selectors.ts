@@ -1,5 +1,6 @@
 import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
+import { createCachedSelector } from "re-reselect";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -129,15 +130,6 @@ export const getLoadingDashCards = (state: State) =>
 export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
-};
-
-export const getSingleDashCardData = (state: State, dashcardId: DashCardId) => {
-  const dashcard = getDashCardById(state, dashcardId);
-  const cardDataMap = getCardData(state);
-  if (!dashcard?.card_id || !cardDataMap) {
-    return;
-  }
-  return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
 };
 
 export const getDashboardComplete = createSelector(
@@ -311,13 +303,46 @@ export const getParameterTarget = createSelector(
   },
 );
 
+export const getQuestions = (state: State) => {
+  const dashboard = getDashboard(state);
+
+  if (!dashboard) {
+    return [];
+  }
+
+  const dashcardIds = dashboard.dashcards;
+
+  const questionsById = dashcardIds.reduce<Record<DashCardId, Question>>(
+    (acc, dashcardId) => {
+      const dashcard = getDashCardById(state, dashcardId);
+
+      const question = getQuestionByDashcardMemo(state, dashcard);
+
+      if (dashcard.card_id) {
+        acc[dashcard.card_id] = question;
+      }
+
+      return acc;
+    },
+    {},
+  );
+
+  return questionsById;
+};
+
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata],
-  (dashboard, metadata) => {
+  [getDashboardComplete, getMetadata, getQuestions],
+  (dashboard, metadata, questions) => {
     if (!dashboard || !metadata) {
       return [];
     }
-    return getDashboardUiParameters(dashboard, metadata);
+
+    return getDashboardUiParameters(
+      dashboard.dashcards,
+      dashboard.parameters,
+      metadata,
+      questions,
+    );
   },
 );
 
@@ -331,11 +356,26 @@ export const getMissingRequiredParameters = createSelector(
     ),
 );
 
+const getQuestionByDashcardMemo = createCachedSelector(
+  [(_state: State, dashcard: DashboardCard) => dashcard, getMetadata],
+  (dashcard, metadata) => {
+    return new Question(dashcard.card, metadata);
+  },
+)((_state, dashcard) => {
+  return dashcard.id;
+});
+
 export const getParameterMappingOptions = createSelector(
-  [getMetadata, getEditingParameter, getCard, getDashCard],
-  (metadata, parameter, card, dashcard) => {
-    // TODO: improve later
-    const question = new Question(card, metadata);
+  [getMetadata, getEditingParameter, getCard, getDashCard, getQuestions],
+  (metadata, parameter, card, dashcard, questions) => {
+    let question;
+
+    if (dashcard.card_id) {
+      question = questions[dashcard.card_id];
+    } else {
+      // TODO: probably we can remove it
+      new Question(card, metadata);
+    }
 
     return _getParameterMappingOptions(question, parameter, card, dashcard);
   },

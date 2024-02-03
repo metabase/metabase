@@ -675,7 +675,13 @@ describe("metabase/parameters/utils/dashboards", () => {
     };
 
     it("should return a list of UiParameter objects from the given dashboard", () => {
-      expect(getDashboardUiParameters(dashboard, metadata)).toEqual([
+      expect(
+        getDashboardUiParameters(
+          dashboard.dashcards,
+          dashboard.parameters,
+          metadata,
+        ),
+      ).toEqual([
         {
           id: "a",
           slug: "slug-a",

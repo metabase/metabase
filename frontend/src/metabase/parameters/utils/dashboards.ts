@@ -9,6 +9,7 @@ import type {
   DashboardCard,
   Parameter,
   ParameterMappingOptions,
+  CardId,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -22,6 +23,7 @@ import {
 } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Field from "metabase-lib/metadata/Field";
+import type Question from "metabase-lib/Question";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
@@ -112,14 +114,20 @@ function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
 }
 
 export function getDashboardUiParameters(
-  dashboard: Dashboard,
+  dashcards: Dashboard["dashcards"],
+  parameters: Dashboard["parameters"],
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): UiParameter[] {
-  const { parameters, dashcards } = dashboard;
   const mappings = getMappings(dashcards as DashboardCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
-      return buildFieldFilterUiParameter(parameter, mappings, metadata);
+      return buildFieldFilterUiParameter(
+        parameter,
+        mappings,
+        metadata,
+        questions,
+      );
     }
 
     return {
@@ -134,6 +142,7 @@ function buildFieldFilterUiParameter(
   parameter: Parameter,
   mappings: ExtendedMapping[],
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): FieldFilterUiParameter {
   const mappingsForParameter = mappings.filter(
     mapping => mapping.parameter_id === parameter.id,
@@ -146,7 +155,7 @@ function buildFieldFilterUiParameter(
     const { target, card } = mapping;
 
     try {
-      const field = getTargetFieldFromCard(target, card, metadata);
+      const field = getTargetFieldFromCard(target, card, metadata, questions);
 
       return {
         field,
