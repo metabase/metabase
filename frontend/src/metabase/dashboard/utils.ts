@@ -23,6 +23,7 @@ import type {
   DashCardDataMap,
   VirtualCard,
   VirtualDashboardCard,
+  VirtualCardDisplay,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import {
@@ -320,3 +321,48 @@ export const getActionIsEnabledInDatabase = (
  */
 export const calculateDashCardRowAfterUndo = (originalRow: number) =>
   originalRow - 0.1;
+
+let tempId = -1;
+
+export function generateTemporaryDashcardId() {
+  return tempId--;
+}
+
+export function createDashCard<T extends BaseDashboardCard>(attrs: Partial<T>) {
+  return {
+    id: generateTemporaryDashcardId(),
+    card_id: null,
+    card: null,
+    series: [],
+    parameter_mappings: [],
+    visualization_settings: {},
+    ...attrs,
+  };
+}
+
+export function createVirtualDashCard({
+  display,
+  visualization_settings,
+}: {
+  display: VirtualCardDisplay;
+  visualization_settings?: Omit<
+    VirtualDashboardCard["visualization_settings"],
+    "virtual_card"
+  >;
+}): VirtualDashboardCard {
+  const virtualCard = {
+    name: null,
+    dataset_query: {},
+    display,
+    visualization_settings: {},
+    archived: false,
+  };
+
+  return createDashCard<VirtualDashboardCard>({
+    card: virtualCard,
+    visualization_settings: {
+      ...visualization_settings,
+      virtual_card: virtualCard,
+    },
+  });
+}

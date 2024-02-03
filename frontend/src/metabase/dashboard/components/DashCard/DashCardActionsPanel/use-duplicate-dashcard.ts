@@ -11,10 +11,12 @@ import {
 import {
   FETCH_CARD_DATA,
   addDashCardToDashboard,
-  generateTemporaryDashcardId,
 } from "metabase/dashboard/actions";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  generateTemporaryDashcardId,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 

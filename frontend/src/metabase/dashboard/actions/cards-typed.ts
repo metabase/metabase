@@ -9,8 +9,6 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardTabId,
-  VirtualCardDisplay,
-  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 import {
@@ -20,7 +18,12 @@ import {
 
 import { trackCardCreated, trackQuestionReplaced } from "../analytics";
 import { getDashCardById, getDashboardId } from "../selectors";
-import { isVirtualDashCard } from "../utils";
+import {
+  createDashCard,
+  createVirtualDashCard,
+  generateTemporaryDashcardId,
+  isVirtualDashCard,
+} from "../utils";
 import { autoWireParametersToNewCard } from "./auto-wire-parameters/actions";
 import {
   ADD_CARD_TO_DASH,
@@ -40,12 +43,6 @@ type NewDashCardOpts = {
 type AddDashCardOpts = NewDashCardOpts & {
   dashcardOverrides: Partial<DashboardCard>;
 };
-
-let tempId = -1;
-
-export function generateTemporaryDashcardId() {
-  return tempId--;
-}
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
@@ -200,42 +197,3 @@ export const undoRemoveCardFromDashboard = createThunkAction<
 
   return { dashcardId };
 });
-
-function createDashCard<T extends BaseDashboardCard>(attrs: Partial<T>) {
-  return {
-    id: generateTemporaryDashcardId(),
-    card_id: null,
-    card: null,
-    series: [],
-    parameter_mappings: [],
-    visualization_settings: {},
-    ...attrs,
-  };
-}
-
-function createVirtualDashCard({
-  display,
-  visualization_settings,
-}: {
-  display: VirtualCardDisplay;
-  visualization_settings?: Omit<
-    VirtualDashboardCard["visualization_settings"],
-    "virtual_card"
-  >;
-}): VirtualDashboardCard {
-  const virtualCard = {
-    name: null,
-    dataset_query: {},
-    display,
-    visualization_settings: {},
-    archived: false,
-  };
-
-  return createDashCard<VirtualDashboardCard>({
-    card: virtualCard,
-    visualization_settings: {
-      ...visualization_settings,
-      virtual_card: virtualCard,
-    },
-  });
-}
