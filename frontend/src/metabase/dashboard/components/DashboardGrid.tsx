@@ -14,7 +14,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import {
-  isDashCardWithQuery,
+  isQuestionDashCard,
   getVisibleCardIds,
 } from "metabase/dashboard/utils";
 
@@ -371,7 +371,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
     const { addSeriesModalDashCard } = this.state;
     const isOpen =
-      !!addSeriesModalDashCard && isDashCardWithQuery(addSeriesModalDashCard);
+      !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
       <Modal
         className="Modal AddSeriesModal"
@@ -397,7 +397,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     const hasValidDashCard =
       !!replaceCardModalDashCard &&
-      isDashCardWithQuery(replaceCardModalDashCard);
+      isQuestionDashCard(replaceCardModalDashCard);
 
     const handleSelect = (nextCardId: CardId) => {
       if (!hasValidDashCard) {

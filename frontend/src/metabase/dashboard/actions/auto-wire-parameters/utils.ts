@@ -12,7 +12,7 @@ import type { DashboardState } from "metabase-types/store";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import {
-  isDashCardWithQuery,
+  isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
@@ -38,7 +38,7 @@ export function getAllDashboardCardsWithUnmappedParameters({
   );
   return dashCards.filter(
     dashcard =>
-      isDashCardWithQuery(dashcard) &&
+      isQuestionDashCard(dashcard) &&
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
         mapping => mapping.parameter_id === parameterId,
