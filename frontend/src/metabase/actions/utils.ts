@@ -19,6 +19,7 @@ import type {
   WritebackActionBase,
   WritebackImplicitQueryAction,
   WritebackParameter,
+  VirtualCard,
 } from "metabase-types/api";
 
 import { TYPE } from "metabase-lib/types/constants";
@@ -158,10 +159,11 @@ export function isActionDashCard(
   dashCard: BaseDashboardCard,
 ): dashCard is ActionDashboardCard {
   const virtualCard = dashCard?.visualization_settings?.virtual_card;
-  return isActionCard(virtualCard as Card);
+  return isActionCard(virtualCard);
 }
 
-export const isActionCard = (card: Card) => card?.display === "action";
+export const isActionCard = (card?: Card | VirtualCard) =>
+  card?.display === "action";
 
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;

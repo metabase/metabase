@@ -1,9 +1,9 @@
 import type {
-  Card,
   Dashboard,
   DashboardCard,
   VirtualCard,
   ActionDashboardCard,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import { createMockCard } from "./card";
 
@@ -49,6 +49,18 @@ export const createMockDashboardCard = (
   ...opts,
 });
 
+export const createMockVirtualCard = (
+  opts?: Partial<VirtualCard>,
+): VirtualCard => ({
+  id: 1,
+  dataset_query: {},
+  display: "text",
+  name: null,
+  visualization_settings: {},
+  archived: false,
+  ...opts,
+});
+
 export const createMockActionDashboardCard = (
   opts?: Partial<ActionDashboardCard>,
 ): ActionDashboardCard => ({
@@ -59,85 +71,78 @@ export const createMockActionDashboardCard = (
     "button.label": "Please click me",
     "button.variant": "primary",
     actionDisplayType: "button",
-    virtual_card: createMockCard({ display: "action" }),
+    virtual_card: createMockVirtualCard({ display: "action" }),
   },
   ...opts,
 });
+
+type VirtualDashboardCardOpts = Partial<
+  Omit<VirtualDashboardCard, "visualization_settings">
+> & {
+  visualization_settings?: Partial<
+    VirtualDashboardCard["visualization_settings"]
+  >;
+};
+
+export const createMockVirtualDashCard = (
+  opts?: VirtualDashboardCardOpts,
+): VirtualDashboardCard => {
+  const card = createMockVirtualCard(
+    opts?.card || opts?.visualization_settings?.virtual_card,
+  );
+  return {
+    id: 1,
+    dashboard_id: 1,
+    col: 0,
+    row: 0,
+    size_x: 1,
+    size_y: 1,
+    entity_id: "abc_123",
+    created_at: "2020-01-01T12:30:30.000000",
+    updated_at: "2020-01-01T12:30:30.000000",
+    card_id: null,
+    card,
+    ...opts,
+    visualization_settings: {
+      ...opts?.visualization_settings,
+      virtual_card: card,
+    },
+  };
+};
 
 export const createMockTextDashboardCard = (
-  opts?: Partial<DashboardCard> & { text?: string },
-): DashboardCard => ({
-  ...createMockDashboardCardWithVirtualCard({
+  opts?: VirtualDashboardCardOpts & { text?: string },
+): VirtualDashboardCard =>
+  createMockVirtualDashCard({
+    ...opts,
+    card: createMockVirtualCard({ display: "text" }),
     visualization_settings: {
       text: opts?.text ?? "Body Text",
-      virtual_card: {
-        archived: false,
-        dataset_query: {},
-        display: "text",
-        name: "",
-        visualization_settings: {},
-      } as VirtualCard,
     },
-  }),
-  ...opts,
-});
+  });
 
 export const createMockHeadingDashboardCard = (
-  opts?: Partial<DashboardCard> & { text?: string },
-): DashboardCard => ({
-  ...createMockDashboardCardWithVirtualCard({
+  opts?: VirtualDashboardCardOpts & { text?: string },
+): VirtualDashboardCard =>
+  createMockVirtualDashCard({
+    ...opts,
+    card: createMockVirtualCard({ display: "heading" }),
     visualization_settings: {
       text: opts?.text ?? "Heading Text",
-      virtual_card: {
-        archived: false,
-        dataset_query: {},
-        display: "heading",
-        name: "",
-        visualization_settings: {},
-      } as VirtualCard,
     },
-  }),
-  ...opts,
-});
+  });
 
-export const createMockLinkDashboardCard = (
-  opts?: Partial<DashboardCard> & { url?: string },
-): DashboardCard => ({
-  ...createMockDashboardCardWithVirtualCard({
-    id: 1,
+export const createMockLinkDashboardCard = ({
+  visualization_settings,
+  ...opts
+}: VirtualDashboardCardOpts & { url?: string } = {}): VirtualDashboardCard =>
+  createMockVirtualDashCard({
+    ...opts,
+    card: createMockVirtualCard({ display: "link" }),
     visualization_settings: {
       link: {
-        url: opts?.url ?? "Link url",
+        ...visualization_settings?.link,
+        url: opts?.url ?? visualization_settings?.link?.url ?? "Link Text",
       },
-      virtual_card: {
-        archived: false,
-        dataset_query: {},
-        display: "link",
-        name: "",
-        visualization_settings: {},
-      } as VirtualCard,
     },
-  }),
-  ...opts,
-});
-
-export const createMockDashboardCardWithVirtualCard = (
-  opts?: Partial<DashboardCard>,
-): DashboardCard => ({
-  ...createMockDashboardCard(),
-  card: {
-    query_average_duration: null,
-    display: opts?.visualization_settings?.virtual_card?.display ?? "text",
-  } as Card,
-  card_id: null,
-  visualization_settings: {
-    virtual_card: {
-      archived: false,
-      dataset_query: {},
-      display: "text",
-      name: "",
-      visualization_settings: {},
-    } as VirtualCard,
-  },
-  ...opts,
-});
+  });

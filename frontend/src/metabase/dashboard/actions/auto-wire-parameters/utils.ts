@@ -11,7 +11,10 @@ import type {
 import type { DashboardState } from "metabase-types/store";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  isDashCardWithQuery,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -27,20 +30,20 @@ export function getAllDashboardCardsWithUnmappedParameters({
   dashboardId: DashboardId;
   parameterId: ParameterId;
   excludeDashcardIds?: DashCardId[];
-}) {
-  const cards = getExistingDashCards(
+}): DashboardCard[] {
+  const dashCards = getExistingDashCards(
     dashboardState.dashboards,
     dashboardState.dashcards,
     dashboardId,
   );
-  return cards.filter(dashcard => {
-    return (
+  return dashCards.filter(
+    dashcard =>
+      isDashCardWithQuery(dashcard) &&
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
         mapping => mapping.parameter_id === parameterId,
-      )
-    );
-  });
+      ),
+  ) as DashboardCard[];
 }
 
 export function getMatchingParameterOption(

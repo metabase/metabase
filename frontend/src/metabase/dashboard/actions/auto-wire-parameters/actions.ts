@@ -19,6 +19,7 @@ import {
   getAutoWiredMappingsForDashcards,
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
+import { isDashCardWithQuery } from "metabase/dashboard/utils";
 
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { getDashCardById } from "metabase/dashboard/selectors";
@@ -113,7 +114,7 @@ export function autoWireParametersToNewCard({
       dashcard_id,
     );
 
-    if (!targetDashcard) {
+    if (!targetDashcard || !isDashCardWithQuery(targetDashcard)) {
       return;
     }
 

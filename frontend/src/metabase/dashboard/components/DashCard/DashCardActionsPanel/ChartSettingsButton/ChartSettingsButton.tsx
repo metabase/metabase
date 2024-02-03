@@ -5,9 +5,11 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 
 import type {
+  ActionDashboardCard,
   Dashboard,
   DashboardCard,
   Series,
+  VirtualDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -16,7 +18,7 @@ import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButt
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: DashboardCard;
+  dashcard?: ActionDashboardCard | DashboardCard | VirtualDashboardCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 

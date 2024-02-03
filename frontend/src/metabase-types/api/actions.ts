@@ -1,7 +1,11 @@
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { ClickBehavior } from "./click-behavior";
-import type { BaseDashboardCard, DashboardParameterMapping } from "./dashboard";
+import type {
+  BaseDashboardCard,
+  DashboardParameterMapping,
+  VirtualCard,
+} from "./dashboard";
 import type { Card, CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { UserId, UserInfo } from "./user";
@@ -171,8 +175,8 @@ export type ActionParametersMapping = Pick<
 export interface ActionDashboardCard
   extends Omit<BaseDashboardCard, "parameter_mappings"> {
   action?: WritebackAction;
-  card_id?: CardId | null; // model card id for the associated action
-  card?: Card;
+  card_id: CardId | null; // model card id for the associated action
+  card: Card;
 
   parameter_mappings?: ActionParametersMapping[] | null;
   visualization_settings: {
@@ -180,6 +184,7 @@ export interface ActionDashboardCard
     "button.label"?: string;
     click_behavior?: ClickBehavior;
     actionDisplayType?: ActionDisplayType;
+    virtual_card: VirtualCard;
   };
 }
 

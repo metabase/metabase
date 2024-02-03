@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 import type {
+  ActionParametersMapping,
   DashboardCard,
   DashboardParameterMapping,
   DashCardId,
@@ -18,7 +19,11 @@ type ShowAutoWireParametersToastType = {
   dashcardAttributes: {
     id: DashCardId;
     attributes: {
-      parameter_mappings: DashboardParameterMapping[] | null | undefined;
+      parameter_mappings:
+        | ActionParametersMapping[]
+        | DashboardParameterMapping[]
+        | null
+        | undefined;
     };
   }[];
 };

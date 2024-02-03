@@ -8,6 +8,8 @@ import type {
   ParameterValueOrArray,
   DashboardTab,
   DashboardTabId,
+  ActionDashboardCard,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -59,7 +61,11 @@ export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
   isDirty?: boolean;
 };
 
-export type StoreDashcard = DashboardCard & {
+export type StoreDashcard = (
+  | ActionDashboardCard
+  | DashboardCard
+  | VirtualDashboardCard
+) & {
   isAdded?: boolean;
   isDirty?: boolean;
   isRemoved?: boolean;

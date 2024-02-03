@@ -28,6 +28,9 @@ import type {
   ParameterValueOrArray,
   VisualizationSettings,
   DashCardDataMap,
+  ActionDashboardCard,
+  VirtualDashboardCard,
+  VirtualCard,
 } from "metabase-types/api";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
@@ -51,7 +54,9 @@ function preventDragging(event: React.SyntheticEvent) {
 
 export interface DashCardProps {
   dashboard: Dashboard;
-  dashcard: DashboardCard & { justAdded?: boolean };
+  dashcard: (ActionDashboardCard | DashboardCard | VirtualDashboardCard) & {
+    justAdded?: boolean;
+  };
   gridItemWidth: number;
   totalNumGridCols: number;
   dashcardData: DashCardDataMap;
@@ -130,11 +135,11 @@ function DashCardInner({
     }
   });
 
-  const mainCard: Card = useMemo(
+  const mainCard: Card | VirtualCard = useMemo(
     () => ({
       ...dashcard.card,
       visualization_settings: mergeSettings(
-        dashcard.card.visualization_settings,
+        dashcard?.card?.visualization_settings,
         dashcard.visualization_settings,
       ),
     }),
@@ -142,21 +147,30 @@ function DashCardInner({
   );
 
   const cards = useMemo(() => {
-    if (Array.isArray(dashcard.series)) {
+    if ("series" in dashcard && Array.isArray(dashcard.series)) {
       return [mainCard, ...dashcard.series];
     }
     return [mainCard];
   }, [mainCard, dashcard]);
 
   const series = useMemo(() => {
-    return cards.map(card => ({
-      ...getIn(dashcardData, [dashcard.id, card.id]),
-      card: card,
-      isSlow: slowCards[card.id],
-      isUsuallyFast:
+    return cards.map(card => {
+      const isSlow = card.id ? slowCards[card.id] : false;
+      const isUsuallyFast =
         card.query_average_duration &&
-        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT,
-    }));
+        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT;
+
+      if (!card.id) {
+        return { card, isSlow, isUsuallyFast };
+      }
+
+      return {
+        ...getIn(dashcardData, [dashcard.id, card.id]),
+        card,
+        isSlow,
+        isUsuallyFast,
+      };
+    });
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
   const isLoading = useMemo(

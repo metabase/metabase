@@ -25,6 +25,8 @@ import type {
   ParameterValueOrArray,
   VirtualCardDisplay,
   VisualizationSettings,
+  ActionDashboardCard,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -47,7 +49,7 @@ import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
-  dashcard: DashboardCard;
+  dashcard: ActionDashboardCard | DashboardCard | VirtualDashboardCard;
   series: Series;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   parameterValuesBySlug: Record<string, ParameterValueOrArray>;

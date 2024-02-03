@@ -21,6 +21,8 @@ import type {
   EmbedDataset,
   BaseDashboardCard,
   DashCardDataMap,
+  VirtualCard,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import {
@@ -68,7 +70,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
   };
 }
 
-export function expandInlineCard(card?: Card) {
+export function expandInlineCard(card?: Card | VirtualCard) {
   return {
     name: "",
     visualization_settings: {},
@@ -83,15 +85,25 @@ export function isDashCardWithQuery(
   return "card_id" in dashcard && "card" in dashcard;
 }
 
-export function isVirtualDashCard(dashcard: BaseDashboardCard) {
+export function isActionDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is ActionDashboardCard {
+  return "action" in dashcard;
+}
+
+export function isVirtualDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
-export function getVirtualCardType(dashcard: DashboardCard) {
+export function getVirtualCardType(dashcard: BaseDashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
 
-export function isLinkDashCard(dashcard: DashboardCard) {
+export function isLinkDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
   return getVirtualCardType(dashcard) === "link";
 }
 
@@ -183,7 +195,7 @@ export function getDatasetQueryParams(
 }
 
 export function isDashcardLoading(
-  dashcard: DashboardCard,
+  dashcard: BaseDashboardCard,
   dashcardsData: DashCardDataMap,
 ) {
   if (isVirtualDashCard(dashcard)) {

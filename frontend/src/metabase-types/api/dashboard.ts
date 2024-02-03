@@ -21,7 +21,7 @@ export interface Dashboard {
   name: string;
   description: string | null;
   model?: string;
-  dashcards: (DashboardCard | ActionDashboardCard)[];
+  dashcards: Array<ActionDashboardCard | DashboardCard | VirtualDashboardCard>;
   tabs?: DashboardTab[];
   parameters?: Parameter[] | null;
   collection_authority_level?: CollectionAuthorityLevel;
@@ -58,7 +58,6 @@ export type BaseDashboardCard = {
   visualization_settings?: {
     [key: string]: unknown;
     virtual_card?: VirtualCard;
-    link?: LinkCardSettings;
   };
   justAdded?: boolean;
   created_at: string;
@@ -67,8 +66,13 @@ export type BaseDashboardCard = {
 
 export type VirtualCardDisplay = "text" | "action" | "link" | "heading";
 
-export type VirtualCard = Partial<Card> & {
+export type VirtualCard = Partial<
+  Omit<Card, "name" | "dataset_query" | "visualization_settings">
+> & {
+  name: null;
+  dataset_query: Record<string, never>;
   display: VirtualCardDisplay;
+  visualization_settings: Record<string, never>;
 };
 
 export type DashboardCard = BaseDashboardCard & {
@@ -76,6 +80,16 @@ export type DashboardCard = BaseDashboardCard & {
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
+};
+
+export type VirtualDashboardCard = BaseDashboardCard & {
+  card_id: null;
+  card: VirtualCard;
+  parameter_mappings?: VirtualDashCardParameterMapping[] | null;
+  visualization_settings: BaseDashboardCard["visualization_settings"] & {
+    virtual_card: VirtualCard;
+    link?: LinkCardSettings;
+  };
 };
 
 export type DashboardTabId = number;
@@ -92,6 +106,11 @@ export type DashboardTab = {
 
 export type DashboardParameterMapping = {
   card_id: CardId;
+  parameter_id: ParameterId;
+  target: ParameterTarget;
+};
+
+export type VirtualDashCardParameterMapping = {
   parameter_id: ParameterId;
   target: ParameterTarget;
 };

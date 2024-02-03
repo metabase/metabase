@@ -1,11 +1,16 @@
-import type { Card, DashboardCard } from "metabase-types/api";
+import type {
+  ActionDashboardCard,
+  Card,
+  DashboardCard,
+  VirtualDashboardCard,
+} from "metabase-types/api";
 
 export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
 
 export type NavigateToNewCardFromDashboardOpts = {
   nextCard: Card;
   previousCard: Card;
-  dashcard: DashboardCard;
+  dashcard: ActionDashboardCard | DashboardCard | VirtualDashboardCard;
   objectId?: unknown;
 };
 
