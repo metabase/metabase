@@ -37,7 +37,7 @@ import { CardApi } from "metabase/services";
 import mainReducers from "metabase/reducers-main";
 
 import { getDashCardById } from "../selectors";
-import { replaceCard } from "./cards";
+import { replaceCard } from "./cards-typed";
 
 const DATE_PARAMETER = createMockParameter({
   id: "1",

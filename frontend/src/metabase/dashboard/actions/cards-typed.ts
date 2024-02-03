@@ -3,7 +3,6 @@ import Questions from "metabase/entities/questions";
 import { getDefaultSize } from "metabase/visualizations";
 
 import type {
-  ActionDashboardCard,
   BaseDashboardCard,
   CardId,
   DashCardId,
@@ -39,10 +38,7 @@ type NewDashCardOpts = {
 };
 
 type AddDashCardOpts = NewDashCardOpts & {
-  dashcardOverrides:
-    | Partial<ActionDashboardCard>
-    | Partial<DashboardCard>
-    | Partial<VirtualDashboardCard>;
+  dashcardOverrides: Partial<DashboardCard>;
 };
 
 let tempId = -1;
