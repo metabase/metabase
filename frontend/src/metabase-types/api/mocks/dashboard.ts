@@ -1,6 +1,6 @@
 import type {
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   VirtualCard,
   ActionDashboardCard,
   VirtualDashboardCard,
@@ -31,8 +31,8 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
 });
 
 export const createMockDashboardCard = (
-  opts?: Partial<DashboardCard>,
-): DashboardCard => ({
+  opts?: Partial<QuestionDashboardCard>,
+): QuestionDashboardCard => ({
   id: 1,
   dashboard_id: 1,
   col: 0,

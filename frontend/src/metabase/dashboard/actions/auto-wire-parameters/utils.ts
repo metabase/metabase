@@ -1,7 +1,7 @@
 import _ from "underscore";
 import type {
   CardId,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardId,
   DashboardParameterMapping,
   DashCardId,
@@ -30,7 +30,7 @@ export function getAllDashboardCardsWithUnmappedParameters({
   dashboardId: DashboardId;
   parameterId: ParameterId;
   excludeDashcardIds?: DashCardId[];
-}): DashboardCard[] {
+}): QuestionDashboardCard[] {
   const dashCards = getExistingDashCards(
     dashboardState.dashboards,
     dashboardState.dashcards,
@@ -43,13 +43,13 @@ export function getAllDashboardCardsWithUnmappedParameters({
       !dashcard.parameter_mappings?.some(
         mapping => mapping.parameter_id === parameterId,
       ),
-  ) as DashboardCard[];
+  ) as QuestionDashboardCard[];
 }
 
 export function getMatchingParameterOption(
-  targetDashcard: DashboardCard,
+  targetDashcard: QuestionDashboardCard,
   targetDimension: ParameterTarget,
-  sourceDashcard: DashboardCard,
+  sourceDashcard: QuestionDashboardCard,
   metadata: Metadata,
 ): {
   target: ParameterTarget;
@@ -86,8 +86,8 @@ export type DashCardAttribute = {
 };
 
 export function getAutoWiredMappingsForDashcards(
-  sourceDashcard: DashboardCard,
-  targetDashcards: DashboardCard[],
+  sourceDashcard: QuestionDashboardCard,
+  targetDashcards: QuestionDashboardCard[],
   parameter_id: ParameterId,
   target: ParameterTarget,
   metadata: Metadata,
@@ -126,7 +126,7 @@ export function getAutoWiredMappingsForDashcards(
 }
 
 export function getParameterMappings(
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   parameter_id: ParameterId,
   card_id: CardId,
   target: ParameterTarget | null,

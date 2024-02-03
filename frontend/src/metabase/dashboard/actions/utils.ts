@@ -3,7 +3,7 @@ import _ from "underscore";
 import type {
   DashCardId,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
@@ -47,8 +47,8 @@ export function hasDashboardChanged(
 // sometimes the cards objects change order but all the cards themselves are the same
 // this should not trigger a save
 export function haveDashboardCardsChanged(
-  newCards: DashboardCard[],
-  oldCards: DashboardCard[],
+  newCards: QuestionDashboardCard[],
+  oldCards: QuestionDashboardCard[],
 ) {
   return (
     !newCards.every(newCard =>

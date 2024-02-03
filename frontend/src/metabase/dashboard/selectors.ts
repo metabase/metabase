@@ -16,7 +16,7 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type {
   Bookmark,
   Card,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardId,
   DashCardId,
 } from "metabase-types/api";
@@ -280,8 +280,10 @@ export const getEditingParameter = createSelector(
 );
 
 const getCard = (state: State, { card }: { card: Card }) => card;
-const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
-  dashcard;
+const getDashCard = (
+  state: State,
+  { dashcard }: { dashcard: QuestionDashboardCard },
+) => dashcard;
 
 export const getParameterTarget = createSelector(
   [getEditingParameter, getCard, getDashCard],

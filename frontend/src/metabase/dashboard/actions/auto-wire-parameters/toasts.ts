@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import type {
   ActionParametersMapping,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardParameterMapping,
   DashCardId,
 } from "metabase-types/api";
@@ -53,7 +53,7 @@ export const showAddedCardAutoWireParametersToast =
     targetDashcard,
     dashcard_id,
   }: {
-    targetDashcard: DashboardCard;
+    targetDashcard: QuestionDashboardCard;
     dashcard_id: DashCardId;
   }) =>
   (dispatch: Dispatch) => {

@@ -1,7 +1,7 @@
 import type {
   ActionDashboardCard,
   Card,
-  DashboardCard,
+  QuestionDashboardCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
 
@@ -10,7 +10,7 @@ export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
 export type NavigateToNewCardFromDashboardOpts = {
   nextCard: Card;
   previousCard: Card;
-  dashcard: ActionDashboardCard | DashboardCard | VirtualDashboardCard;
+  dashcard: ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard;
   objectId?: unknown;
 };
 

@@ -11,7 +11,7 @@ import type {
   Card,
   CardId,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   Database,
   Dataset,
   NativeDatasetQuery,
@@ -81,7 +81,7 @@ export function expandInlineCard(card?: Card | VirtualCard) {
 
 export function isDashCardWithQuery(
   dashcard: BaseDashboardCard,
-): dashcard is DashboardCard {
+): dashcard is QuestionDashboardCard {
   return "card_id" in dashcard && "card" in dashcard;
 }
 
@@ -107,7 +107,7 @@ export function isLinkDashCard(
   return getVirtualCardType(dashcard) === "link";
 }
 
-export function isNativeDashCard(dashcard: DashboardCard) {
+export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
   return dashcard.card.dataset_query?.type === "native";
 }
@@ -115,7 +115,7 @@ export function isNativeDashCard(dashcard: DashboardCard) {
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   isMobile: boolean,
 ) {
   if (isVirtualDashCard(dashcard)) {

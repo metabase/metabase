@@ -9,7 +9,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import type {
   ActionDashboardCard,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   Series,
   VirtualDashboardCard,
   VisualizationSettings,
@@ -33,7 +33,7 @@ import {
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: ActionDashboardCard | DashboardCard | VirtualDashboardCard;
+  dashcard?: ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;

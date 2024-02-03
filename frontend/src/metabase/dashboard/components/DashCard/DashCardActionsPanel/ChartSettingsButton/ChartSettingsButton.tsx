@@ -7,7 +7,7 @@ import { ChartSettingsWithState } from "metabase/visualizations/components/Chart
 import type {
   ActionDashboardCard,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   Series,
   VirtualDashboardCard,
   VisualizationSettings,
@@ -18,7 +18,7 @@ import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButt
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: ActionDashboardCard | DashboardCard | VirtualDashboardCard;
+  dashcard?: ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 

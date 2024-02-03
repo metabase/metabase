@@ -21,7 +21,9 @@ export interface Dashboard {
   name: string;
   description: string | null;
   model?: string;
-  dashcards: Array<ActionDashboardCard | DashboardCard | VirtualDashboardCard>;
+  dashcards: Array<
+    ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard
+  >;
   tabs?: DashboardTab[];
   parameters?: Parameter[] | null;
   collection_authority_level?: CollectionAuthorityLevel;
@@ -75,7 +77,7 @@ export type VirtualCard = Partial<
   visualization_settings: Record<string, never>;
 };
 
-export type DashboardCard = BaseDashboardCard & {
+export type QuestionDashboardCard = BaseDashboardCard & {
   card_id: CardId | null; // will be null for virtual card
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;

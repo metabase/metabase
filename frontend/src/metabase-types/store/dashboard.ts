@@ -1,7 +1,7 @@
 import type {
   Dashboard,
   DashboardId,
-  DashboardCard,
+  QuestionDashboardCard,
   DashCardId,
   DashCardDataMap,
   ParameterId,
@@ -63,7 +63,7 @@ export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
 
 export type StoreDashcard = (
   | ActionDashboardCard
-  | DashboardCard
+  | QuestionDashboardCard
   | VirtualDashboardCard
 ) & {
   isAdded?: boolean;

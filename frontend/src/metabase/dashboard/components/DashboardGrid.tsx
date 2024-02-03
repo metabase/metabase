@@ -40,7 +40,7 @@ import type {
   DashCardDataMap,
   DashCardId,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardTabId,
   ParameterId,
   ParameterValueOrArray,
@@ -90,14 +90,14 @@ interface DashboardGridProps {
   isXray: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
-  clickBehaviorSidebarDashcard: DashboardCard | null;
+  clickBehaviorSidebarDashcard: QuestionDashboardCard | null;
   width: number;
   mode: Mode;
   metadata: Metadata;
 
   fetchCardData: (
     card: Card,
-    dashcard: DashboardCard,
+    dashcard: QuestionDashboardCard,
     options: {
       clearCache?: boolean;
       ignoreCache?: boolean;
@@ -292,7 +292,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   getLayoutForDashCard = (dashcard: BaseDashboardCard) => {
     const visualization = getVisualizationRaw([
-      { card: (dashcard as DashboardCard).card } as SingleSeries,
+      { card: (dashcard as QuestionDashboardCard).card } as SingleSeries,
     ]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization?.minSize || DEFAULT_CARD_SIZE;
@@ -442,7 +442,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     this.setState({ isDragging: false });
   };
 
-  onDashCardRemove(dc: DashboardCard) {
+  onDashCardRemove(dc: QuestionDashboardCard) {
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
       cardId: dc.card_id,
@@ -490,7 +490,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   renderDashCard(
-    dc: DashboardCard,
+    dc: QuestionDashboardCard,
     {
       isMobile,
       gridItemWidth,
@@ -556,7 +556,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     gridItemWidth,
     totalNumGridCols,
   }: {
-    item: DashboardCard;
+    item: QuestionDashboardCard;
     breakpoint: GridBreakpoint;
     gridItemWidth: number;
     totalNumGridCols: number;

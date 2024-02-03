@@ -5,7 +5,7 @@ import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
 import type {
   ActionDashboardCard,
-  DashboardCard,
+  QuestionDashboardCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
 
@@ -18,9 +18,11 @@ import {
 } from "./ClickBehaviorSidebarOverlay.styled";
 
 interface Props {
-  dashcard: ActionDashboardCard | DashboardCard | VirtualDashboardCard;
+  dashcard: ActionDashboardCard | QuestionDashboardCard | VirtualDashboardCard;
   dashcardWidth: number;
-  showClickBehaviorSidebar: (dashCardId: DashboardCard["id"] | null) => void;
+  showClickBehaviorSidebar: (
+    dashCardId: QuestionDashboardCard["id"] | null,
+  ) => void;
   isShowingThisClickBehaviorSidebar: boolean;
 }
 

@@ -1,5 +1,5 @@
 import type {
-  DashboardCard,
+  QuestionDashboardCard,
   DashCardId,
   ParameterId,
   ParameterTarget,
@@ -30,7 +30,7 @@ import Question from "metabase-lib/Question";
 
 export function autoWireDashcardsWithMatchingParameters(
   parameter_id: ParameterId,
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   target: ParameterTarget,
 ) {
   return function (dispatch: Dispatch, getState: GetState) {
