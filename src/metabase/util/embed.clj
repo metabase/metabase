@@ -116,9 +116,6 @@
     (and (true? enable_embedding) (nil? initially_published_at))
     (assoc card :initially_published_at (now))
 
-    (false? enable_embedding)
-    (assoc card :initially_published_at nil)
-
     :else
     card))
 
