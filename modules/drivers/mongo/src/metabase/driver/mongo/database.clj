@@ -46,8 +46,8 @@
           (:conn-uri database)            database            ; connection URI has all the parameters
           (:conn-uri (:details database)) (:details database)
           :else
-          (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
-                                  (:details database)))))]
+          (throw (ex-info (tru "Unable to to get database details.")
+                          {:database database})))]
     (validate-db-details! db-details)
     (update-ssl-db-details db-details)))
 
