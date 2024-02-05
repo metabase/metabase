@@ -116,7 +116,7 @@
                                  (.get object part-name)))
                              row
                              col-parts)]
-              (mongo.conversion/from-document val true)))
+              (mongo.conversion/from-document val {:keywordize true})))
           row-col-names)))
 
 (defn- post-process-row [row-col-names]

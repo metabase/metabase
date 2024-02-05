@@ -48,7 +48,7 @@
                  (t/instant t))
 
   org.bson.Document
-  (from-document [input {:keys [keywordize] :or {keywordize true} :as opts}]
+  (from-document [input {:keys [keywordize] :or {keywordize false} :as opts}]
     (persistent! (reduce (if keywordize
                            (fn [m ^String k]
                              (assoc! m (keyword k) (from-document (.get input k) opts)))

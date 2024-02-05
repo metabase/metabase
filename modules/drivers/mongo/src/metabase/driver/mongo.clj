@@ -50,7 +50,7 @@
   (mongo.connection/with-mongo-client [^MongoClient c db-details]
     (let [db-names (mongo.util/list-database-names c)
           db (mongo.util/database c (mongo.db/db-name db-details))
-          db-stats (mongo.util/run-command db {:dbStats 1})]
+          db-stats (mongo.util/run-command db {:dbStats 1} :keywordize true)]
       (and
        ;; 1. check db.dbStats command completes successfully
        (= (float (:ok db-stats))
@@ -182,7 +182,7 @@
 (defmethod driver/dbms-version :mongo
   [_driver database]
   (mongo.connection/with-mongo-database [db database]
-    (let [build-info (mongo.util/run-command db {:buildInfo 1} :keywordize false)
+    (let [build-info (mongo.util/run-command db {:buildInfo 1})
           version-array (get build-info "versionArray")
           sanitized-version-array (into [] (take-while nat-int?) version-array)]
       (when (not= (take 3 version-array) (take 3 sanitized-version-array))
@@ -202,7 +202,7 @@
   [_ database table]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     (let [collection (mongo.util/collection db (:name table))]
-      (->> (mongo.util/list-indexes collection :keywordize false)
+      (->> (mongo.util/list-indexes collection)
            (map (fn [index]
                 ;; for text indexes, column names are specified in the weights
                   (if (contains? index "textIndexVersion")
@@ -220,10 +220,11 @@
 
 (defn- sample-documents [^MongoDatabase db table sort-direction]
   (let [coll (mongo.util/collection db (:name table))]
-    (mongo.util/do-find coll {:limit metadata-queries/nested-field-sample-limit
-                             :skip 0
-                             :sort-criteria {:_id sort-direction}
-                             :batch-size 256})))
+    (mongo.util/do-find coll {:keywordize true
+                              :limit metadata-queries/nested-field-sample-limit
+                              :skip 0
+                              :sort-criteria {:_id sort-direction}
+                              :batch-size 256})))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that

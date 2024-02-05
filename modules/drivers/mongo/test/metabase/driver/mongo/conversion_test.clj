@@ -16,13 +16,13 @@
             "x" {"y" "z"}}]
     (testing "Transform map"
       (is (= m
-             (-> m mongo.conversion/to-document (mongo.conversion/from-document nil))))
+             (-> m mongo.conversion/to-document (mongo.conversion/from-document {:keywordize true}))))
       (is (= ms
-             (-> ms mongo.conversion/to-document (mongo.conversion/from-document {:keywordize false})))))
+             (-> ms mongo.conversion/to-document (mongo.conversion/from-document nil)))))
     (testing "Transform sequence"
       (let [mseqk [m (walk/keywordize-keys ms)]
             mseqs [(walk/stringify-keys m) ms]]
         (is (= mseqk
-               (-> mseqk mongo.conversion/to-document (mongo.conversion/from-document nil))))
+               (-> mseqk mongo.conversion/to-document (mongo.conversion/from-document {:keywordize true}))))
         (is (= mseqs
-               (-> mseqs mongo.conversion/to-document (mongo.conversion/from-document {:keywordize false}))))))))
+               (-> mseqs mongo.conversion/to-document (mongo.conversion/from-document nil))))))))
