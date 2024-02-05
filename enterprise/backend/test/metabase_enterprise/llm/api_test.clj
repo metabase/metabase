@@ -19,16 +19,14 @@
               json-response (json/generate-string fake-response)
               expected {:summary fake-response}]
           (testing "Card summarization works in the happy path"
-            ;; TODO - Set feature flag correctly when it's ready on stats
-            (mt/with-premium-features #{:llm-autodescription :serialization}
+            (mt/with-premium-features #{:llm-autodescription}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
                             (fn [_ _]
                               {:choices [{:message {:content json-response}}]})]
                 (is (= expected
                        (mt/user-http-request :rasta :post 200 "ee/autodescribe/card/summarize" card))))))
           (testing "We can handle json in markdown"
-            ;; TODO - Set feature flag correctly when it's ready on stats
-            (mt/with-premium-features #{:llm-autodescription :serialization}
+            (mt/with-premium-features #{:llm-autodescription}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
                             (fn [_ _]
                               {:choices [{:message {:content
@@ -38,8 +36,7 @@
                 (is (= expected
                        (mt/user-http-request :rasta :post 200 "ee/autodescribe/card/summarize" card))))))
           (testing "We can't handle bad responses"
-            ;; TODO - Set feature flag correctly when it's ready on stats
-            (mt/with-premium-features #{:llm-autodescription :serialization}
+            (mt/with-premium-features #{:llm-autodescription}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
                             (fn [_ _]
                               {:choices [{:message {:content
@@ -73,24 +70,21 @@
               json-response (json/generate-string fake-response)
               expected      {:summary {:description "Keywords: awesome, amazing\n\nDescription: Description\n\nQuestions:\n- What is this?"}}]
           (testing "Card summarization works in the happy path"
-            ;; TODO - Set feature flag correctly when it's ready on stats
-            (mt/with-premium-features #{:llm-autodescription :serialization}
+            (mt/with-premium-features #{:llm-autodescription}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
                             (fn [_ _]
                               {:choices [{:message {:content json-response}}]})]
                 (is (= expected
                        (mt/user-http-request :rasta :get 200 url))))))
           (testing "We can handle json in markdown"
-            ;; TODO - Set feature flag correctly when it's ready on stats
-            (mt/with-premium-features #{:llm-autodescription :serialization}
+            (mt/with-premium-features #{:llm-autodescription}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
                             (fn [_ _]
                               {:choices [{:message {:content (format "```json%s```" json-response)}}]})]
                 (is (= expected
                        (mt/user-http-request :rasta :get 200 url))))))
           (testing "We can't handle bad responses"
-            ;; TODO - Set feature flag correctly when it's ready on stats
-            (mt/with-premium-features #{:llm-autodescription :serialization}
+            (mt/with-premium-features #{:llm-autodescription}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
                             (fn [_ _]
                               {:choices [{:message {:content
