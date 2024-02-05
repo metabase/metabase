@@ -1,4 +1,4 @@
-export const showEmbedHomepage = () => {
+export const setShowEmbedHomepageFlag = () => {
   try {
     localStorage.setItem("showEmbedHomepage", "true");
   } catch (e) {
@@ -6,7 +6,7 @@ export const showEmbedHomepage = () => {
   }
 };
 
-export const hideEmbedHomepage = () => {
+export const removeShowEmbedHomepageFlag = () => {
   try {
     localStorage.removeItem("showEmbedHomepage");
   } catch (e) {

@@ -4,7 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
-import { showEmbedHomepage } from "metabase/home/components/EmbedMinimalHomepage/util";
+import { setShowEmbedHomepageFlag } from "metabase/home/components/EmbedMinimalHomepage/util";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
@@ -201,7 +201,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
       });
 
       if (usageReason === "embedding" || usageReason === "both") {
-        showEmbedHomepage();
+        setShowEmbedHomepageFlag();
       }
 
       MetabaseSettings.set("setup-token", null);

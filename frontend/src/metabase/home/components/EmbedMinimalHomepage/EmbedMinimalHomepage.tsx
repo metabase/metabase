@@ -4,7 +4,7 @@ import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
-import { hideEmbedHomepage } from "./util";
+import { removeShowEmbedHomepageFlag } from "./util";
 import { NumberedList } from "./EmbedMinimalHomepage.styled";
 
 type EmbedMinimalHomepageProps = {
@@ -20,7 +20,7 @@ export const EmbedMinimalHomepage = ({
   );
 
   const dismiss = () => {
-    hideEmbedHomepage();
+    removeShowEmbedHomepageFlag();
     onDismiss();
   };
 
