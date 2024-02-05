@@ -130,15 +130,6 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   return dashboards[dashboardId];
 };
 
-export const getSingleDashCardData = (state: State, dashcardId: DashCardId) => {
-  const dashcard = getDashCardById(state, dashcardId);
-  const cardDataMap = getCardData(state);
-  if (!dashcard?.card_id || !cardDataMap) {
-    return;
-  }
-  return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
-};
-
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) => {
