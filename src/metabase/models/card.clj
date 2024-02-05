@@ -677,17 +677,16 @@ saved later when it is ready."
   ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings type] :as card-data} creator delay-event?]
    (assert-card-type-and-dataset card-data)
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
+                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type :dataset]
          ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
          ;; `api/maybe-reconcile-collection-position!`
          card-data            (-> (zipmap data-keys (map card-data data-keys))
                                   (assoc
-                                   :dataset    (or (when (= "model" type)
-                                                     true)
-                                                   (boolean dataset))
                                    :creator_id (:id creator)
                                    :parameters (or parameters [])
                                    :parameter_mappings (or parameter_mappings []))
+                                  (cond-> (and (nil? type) (nil? dataset))
+                                    (assoc :type "question"))
                                   ensure-type-and-dataset-are-consistent)
          result-metadata-chan (result-metadata-async {:query    dataset_query
                                                       :metadata result_metadata
