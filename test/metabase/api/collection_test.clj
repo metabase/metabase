@@ -645,7 +645,7 @@
     (testing "check that based_on_upload is returned for cards correctly"
       (api.card-test/run-based-on-upload-test
        (fn [card]
-         (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (:collection_id card) "/items"))
+         (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (:collection_id card) "/items?models=card&models=dataset"))
               :data
               (filter (fn [item]
                         (= (:id item) (:id card))))
