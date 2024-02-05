@@ -504,7 +504,7 @@ describe("scenarios > visualizations > bar chart", () => {
             cy.createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
               col: 0,
               row: 9,
-              size_x: 15,
+              size_x: 20,
             }),
           ]).then(() => {
             visitDashboard(dashboard.id);
