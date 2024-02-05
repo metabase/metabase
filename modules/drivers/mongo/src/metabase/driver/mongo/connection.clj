@@ -45,13 +45,13 @@
      (when (seq additional-options) (str "&" additional-options)))))
 
 (defn- maybe-add-ssl-context-to-builder!
-  "Add SSL context to `builder` using `_db-details`. Mutates `builder`."
+  "Add SSL context to `builder` using `_db-details`. Mutates and returns `builder`."
   [^MongoClientSettings$Builder builder
    {:keys [ssl-cert ssl-use-client-auth client-ssl-cert client-ssl-key] :as _db-details}]
   (let [server-cert? (not (str/blank? ssl-cert))
         client-cert? (and ssl-use-client-auth
                           (not-any? str/blank? [client-ssl-cert client-ssl-key]))]
-    (when (or client-cert? server-cert?)
+    (if (or client-cert? server-cert?)
       (let [ssl-params (cond-> {}
                          server-cert? (assoc :trust-cert ssl-cert)
                          client-cert? (assoc :private-key client-ssl-key
@@ -60,7 +60,8 @@
         (.applyToSslSettings builder
                              (reify com.mongodb.Block
                                (apply [_this builder]
-                                 (.context ^SslSettings$Builder builder ssl-context))))))))
+                                 (.context ^SslSettings$Builder builder ssl-context)))))
+      builder)))
 
 (defn db-details->mongo-client-settings
   "Generate `MongoClientSettings` from `db-details`. `ConnectionString` is generated and applied to
