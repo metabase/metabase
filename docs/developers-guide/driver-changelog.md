@@ -6,7 +6,7 @@ title: Driver interface changelog
 
 ## Metabase 0.49.0
 
-- The multimethod `metabase.driver/create-table!` can take an additional optional map with an optional key `primary-key`
+- The multimethod `metabase.driver/create-table!` can take an additional optional map with an optional key `primary-key`.
   `metabase.driver/upload-type->database-type` must also be changed, so that if
   `:metabase.upload/auto-incrementing-int-pk` is provided as the `upload-type` argument, the function should return a
   type without the primary-key constraint included. See PR [#22166](https://github.com/metabase/metabase/pull/37505/)
