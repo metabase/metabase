@@ -135,7 +135,7 @@ const NewItemMenu = ({
       items.push({
         title: t`Metric`,
         icon: "metric",
-        link: "/metric/query",
+        link: "/metric/notebook",
         onClose: onCloseNavbar,
       });
     }

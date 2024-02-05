@@ -222,7 +222,7 @@ export const getRoutes = store => {
 
           <Route path="/metric">
             <IndexRoute component={QueryBuilder} />
-            <Route path="query" component={QueryBuilder} />
+            <Route path="notebook" component={QueryBuilder} />
           </Route>
 
           <Route path="browse">
