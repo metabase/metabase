@@ -1,6 +1,7 @@
 import { t } from "ttag";
-
 import type { Location } from "history";
+
+import type { DashboardId } from "metabase-types/api";
 import { TabRow } from "metabase/core/components/TabRow";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
@@ -11,11 +12,13 @@ import { Container, CreateTabButton } from "./DashboardTabs.styled";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
 interface DashboardTabsProps {
+  dashboardId: DashboardId;
   location: Location;
   isEditing?: boolean;
 }
 
 export function DashboardTabs({
+  dashboardId,
   location,
   isEditing = false,
 }: DashboardTabsProps) {
@@ -28,7 +31,7 @@ export function DashboardTabs({
     selectTab,
     selectedTabId,
     moveTab,
-  } = useDashboardTabs({ location });
+  } = useDashboardTabs({ location, dashboardId });
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
