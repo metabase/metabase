@@ -16,6 +16,7 @@ import {
   getTargetFieldFromCard,
 } from "metabase-lib/parameters/utils/targets";
 import type Field from "metabase-lib/metadata/Field";
+import Question from "metabase-lib/Question";
 
 describe("parameters/utils/targets", () => {
   const metadata = createMockMetadata({
@@ -149,9 +150,14 @@ describe("parameters/utils/targets", () => {
         id: 1,
       } as Card;
 
-      expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
-        expect.objectContaining({ id: expectedField.id }),
-      );
+      expect(
+        getTargetFieldFromCard(
+          target,
+          card,
+          metadata,
+          new Question(card, metadata),
+        ),
+      ).toEqual(expect.objectContaining({ id: expectedField.id }));
     });
 
     it("should return the field that maps to the mapping target", () => {
@@ -168,9 +174,14 @@ describe("parameters/utils/targets", () => {
         },
       } as Card;
 
-      expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
-        expect.objectContaining({ id: expectedField.id }),
-      );
+      expect(
+        getTargetFieldFromCard(
+          target,
+          card,
+          metadata,
+          new Question(card, metadata),
+        ),
+      ).toEqual(expect.objectContaining({ id: expectedField.id }));
     });
   });
 });
