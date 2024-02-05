@@ -10,9 +10,13 @@ redirect_from:
 
 ## What is a dashboard?
 
-**Dashboards** group questions and present them on a single page. You can think of dashboards as shareable reports that feature a set of related questions. You can set up [subscriptions to dashboards](./subscriptions.md) via email or Slack to receive the exported results of the dashboard's questions.
+**Dashboards** group a set of questions into tabs on a single page. You can think of dashboards as shareable reports that feature a set of related questions. You can set up [subscriptions to dashboards](./subscriptions.md) via email or Slack to receive the exported results of the dashboard's questions.
 
-A dashboard comprises a set of cards arranged on a grid. These cards can be questions - such as [tables, charts, or maps](../questions/sharing/visualizing-results.md) - or they can be [text boxes](https://www.metabase.com/learn/dashboards/markdown).
+A dashboard comprises a set of cards arranged on a grid. These cards can be:
+
+- Questions, such as [tables, charts, or maps](../questions/sharing/visualizing-results.md)
+- [Text and header cards](#adding-headings-or-descriptions-with-text-cards)
+- [Link cards](#link-cards)
 
 You can add [filter widgets to dashboards](./filters.md) that filter data identically across multiple questions, and [customize what happens when people click on a chart or a table](./interactive.md).
 
@@ -20,29 +24,9 @@ You can make as many dashboards as you want. Go nuts.
 
 ## How to create a dashboard
 
-In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+In the top right of the screen, click the **+ New** > **Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
-## Dashboard tabs
-
-You can add multiple tabs to a dashboard to keep your cards organized.
-
-![Dashboard tabs](./images/dashboard-tabs.png)
-
-Currently, you can't drag cards from tab to tab. If you want to move a card from one tab to the other, you'll need to remove the card from one tab, and then add the card to the other tab.
-
-## Duplicating a dashboard
-
-If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard.
-
-To duplicate a dashboard, click on the **...** menu in the upper right of the dashboard, and select **Duplicate**.
-
-By default, Metabase will create a new dashboard, with copies of the questions in the original dashboard (including the dashboard's tabs), and save everything to the collection you specify.
-
-If you don't wish to copy the dashboard's underlying questions, check the box that says **Only duplicate the dashboard**. Metabase will copy the dashboard and refer to the original questions.
-
-In both cases, duplication only includes the dashboard, its card layout, filters, and (optionally) the questions. What's not copied: dashboard subscriptions, or any sharing or embedding data settings. For example, if you copy a dashboard that has been made public, that copied dashboard will not be public by default.
-
-## Adding saved questions to a dashboard
+## Adding questions to a dashboard
 
 There are two ways to add questions to a dashboard: from the dashboard, or from the question you want to add.
 
@@ -110,11 +94,35 @@ Link cards are specialized cards that let you search and link to other items in 
 
 To add a link card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon. Click on the input field in the link card to search your Metabase for an item to link to, or paste an external link.
 
-## Arranging cards
+## Dashboard tabs
 
-Each question on a dashboard is in its own card that you can move around or resize as you see fit. Just click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface.
+You can add multiple tabs to a dashboard to keep your cards organized.
 
-Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
+![Dashboard tabs](./images/dashboard-tabs.png)
+
+### Duplicate a tab
+
+When in dashboard edit mode, you can duplicate a tab and all the its cards by clicking on the down arrow next to the tab that you want to copy.
+
+### Moving cards between tabs
+
+See [Arranging cards](#arranging-dashboard-cards).
+
+## Duplicating a dashboard
+
+If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard.
+
+To duplicate a dashboard, click on the **...** menu in the upper right of the dashboard, and select **Duplicate**.
+
+By default, Metabase will create a new dashboard, with copies of the questions in the original dashboard (including the dashboard's tabs), and save everything to the collection you specify.
+
+If you don't wish to copy the dashboard's underlying questions, check the box that says **Only duplicate the dashboard**. Metabase will copy the dashboard and refer to the original questions.
+
+In both cases, duplication only includes the dashboard, its card layout, filters, and (optionally) the questions. What's not copied: dashboard subscriptions, or any sharing or embedding data settings. For example, if you copy a dashboard that has been made public, that copied dashboard will not be public by default.
+
+## Arranging dashboard cards
+
+To edit dashboard cards and move them around, click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface. Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
 ![Editing dashboard](images/duplicate-card.png)
 
@@ -128,7 +136,7 @@ Metabase will automatically update a question's display to make sure your data l
 
 ## Changing a card's visualization settings
 
-You can change a card's visualization settings (to add a goal line, for example,). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
+You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
 
 Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **palette** icon to edit a card's visualization's settings.
 
@@ -145,7 +153,7 @@ When in dashboard edit mode, click on the **Visualization settings** for the car
 
 Toggle the option **Hide this card if there are no results**. When you turn on this option, the query will still run in the background, but the dashboard won't display the card. If the query returns results, the dashboard will display the card, moving the other cards around to make room for it according to how you've arranged the cards in dashboard edit mode.
 
-## Resetting a card's visualization settings
+### Resetting a card's visualization settings
 
 If you want to revert a dashboard card to its original visualization settings (i.e., the settings on the question when it was _first_ saved to your dashboard):
 
