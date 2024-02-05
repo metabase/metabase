@@ -85,7 +85,7 @@
 (defn start-session!
   "Start session on client `c`."
   ^ClientSession [^MongoClient c]
-  (.. c startSession))
+  (. c startSession))
 
 (defn kill-session!
   "Kill `session` in `db`."
