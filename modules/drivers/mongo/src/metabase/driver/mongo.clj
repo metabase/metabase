@@ -194,8 +194,8 @@
 (defmethod driver/describe-database :mongo
   [_ database]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
-    ;; TODO: factor next line!
-    {:tables (set (for [collection (disj (into #{} (mongo.util/list-collection-names db)) "system.indexes")]
+    {:tables (set (for [collection (mongo.util/list-collection-names db)
+                        :when (not= collection "system.indexes")]
                     {:schema nil, :name collection}))}))
 
 (defmethod driver/describe-table-indexes :mongo
