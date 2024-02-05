@@ -54,7 +54,7 @@ jobs:
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: test-visual:loki-report
+        run: yarn test-visual:loki-report
 
       - name: Upload Artifact
         if: failure()
