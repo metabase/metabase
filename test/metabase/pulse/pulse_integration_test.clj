@@ -755,3 +755,36 @@
                   (metabase.pulse/send-pulse! pulse)))
               (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (is (false? (str/includes? html-body "An error occurred while displaying this card.")))))))))))
+
+(deftest geographic-coordinates-formatting-test
+  (testing "Longitude and latitude columns should format correctly on export (#38419)"
+    (mt/dataset airports
+      (let [card {:dataset_query {:database (mt/id)
+                                  :type     :query
+                                  :query    {:source-table (mt/id :airport)
+                                             :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
+                                                            [:field (mt/id :airport :longitude) {:base-type :type/Float}]
+                                                            [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
+                                             :order-by     [[:asc (mt/id :airport :id)]]
+                                             :limit        5}}}]
+        (mt/with-temp [Card {card-id :id} card
+                       Dashboard {dash-id :id} {:name "just dash"}
+                       DashboardCard {dash-card-id :id} {:dashboard_id dash-id
+                                                         :card_id      card-id}
+                       Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                       :dashboard_id dash-id}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           card-id
+                                    :dashboard_card_id dash-card-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (testing "The html output renders the table cells as geographic coordinates"
+            (is (= [[["1" "9.84924316° E" "57.09275891° N"]
+                     ["2" "39.22489900° E" "6.22202000° S"]
+                     ["3" "2.19777989° W" "57.20190048° N"]
+                     ["4" "89.67790222° W" "39.84410095° N"]
+                     ["5" "54.65110016° E" "24.43300056° N"]]]
+                   (run-pulse-and-return-data-tables pulse)))))))))

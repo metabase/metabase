@@ -64,6 +64,27 @@
             ["5" "Quentin Sören" "October 3, 2014, 5:30 PM"]]
            (parse-and-sort-csv result)))))
 
+(deftest geographic-coordinates-test
+  (testing "Ensure CSV longtitude and latitude values are correctly exported"
+    (mt/dataset airports
+      (let [result (mt/user-http-request
+                     :rasta :post 200 "dataset/csv" :query
+                     (json/generate-string
+                       {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :airport)
+                                   :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
+                                                  [:field (mt/id :airport :longitude) {:base-type :type/Float}]
+                                                  [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
+                                   :order-by     [[:asc (mt/id :airport :id)]]
+                                   :limit        5}}))]
+        (is (= [["1" "9.84924316° E" "57.09275891° N"]
+                ["2" "39.22489900° E" "6.22202000° S"]
+                ["3" "2.19777989° W" "57.20190048° N"]
+                ["4" "89.67790222° W" "39.84410095° N"]
+                ["5" "54.65110016° E" "24.43300056° N"]]
+               (parse-and-sort-csv result)))))))
+
 (defn- csv-export
   "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
   [rows]
