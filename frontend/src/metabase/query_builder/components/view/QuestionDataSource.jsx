@@ -18,7 +18,7 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/urls";
 
-import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "./ViewHeader/components/HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
