@@ -18,16 +18,20 @@ import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
 
-import { ConvertQueryButton } from "./components/ConvertQueryButton";
-import { HeadBreadcrumbs } from "./components/HeaderBreadcrumbs";
-import { FilterHeaderButton } from "./components/FilterHeaderButton";
-import { FilterHeaderToggle, FilterHeader } from "./components/QuestionFilters";
-import { ExploreResultsLink } from "./components/ExploreResultsLink";
-import { QuestionActions } from "./components/QuestionActions";
-import { QuestionNotebookButton } from "./components/QuestionNotebookButton";
-import { QuestionDataSource } from "./components/QuestionDataSource";
-import { QuestionDescription } from "./components/QuestionDescription";
-import { QuestionSummarizeWidget } from "./components/QuestionSummarizeWidget";
+import {
+  ConvertQueryButton,
+  HeadBreadcrumbs,
+  FilterHeaderButton,
+  FilterHeaderToggle,
+  FilterHeader,
+  ExploreResultsLink,
+  QuestionActions,
+  QuestionNotebookButton,
+  QuestionDataSource,
+  QuestionDescription,
+  QuestionSummarizeWidget,
+} from "./components";
+
 import {
   AdHocViewHeading,
   SaveButton,
