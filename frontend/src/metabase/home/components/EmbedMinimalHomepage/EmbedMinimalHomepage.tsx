@@ -1,5 +1,5 @@
 import { jt, t } from "ttag";
-import { Box, Button, Card, Flex, Icon, Stack, Text, Title } from "metabase/ui";
+import { Button, Card, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
@@ -35,9 +35,15 @@ export const EmbedMinimalHomepage = ({
           <Flex justify="space-between">
             <Title size="h4">{t`As you expressed interest in Embedding, follow these steps to start`}</Title>
 
-            <Box onClick={dismiss}>
+            <Button
+              variant="white"
+              size="small"
+              color="text-dark"
+              p={0}
+              onClick={dismiss}
+            >
               <Icon name="close" />
-            </Box>
+            </Button>
           </Flex>
 
           <NumberedList>
