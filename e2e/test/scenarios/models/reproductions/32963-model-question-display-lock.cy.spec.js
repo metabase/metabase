@@ -18,7 +18,7 @@ describe("issue 32963", () => {
     cy.createQuestion(
       {
         name: "Orders Model",
-        dataset: true,
+        type: "model",
         query: { "source-table": ORDERS_ID },
       },
       { visitQuestion: true },
