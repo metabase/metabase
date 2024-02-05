@@ -25,7 +25,10 @@ export const EmbedMinimalHomepage = ({
 
   return (
     <Stack>
-      <Text fw="bold">{t`Get started with Embedding Metabase in your app`}</Text>
+      <Text
+        fw="bold"
+        color="text-dark"
+      >{t`Get started with Embedding Metabase in your app`}</Text>
       <Card px={40} py={32} maw={570}>
         <Stack spacing="lg">
           <Flex justify="space-between">
