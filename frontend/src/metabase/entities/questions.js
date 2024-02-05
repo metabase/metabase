@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
 
-import { isTest } from "metabase/env";
+import { isCypressActive, isProduction, isTest } from "metabase/env";
 import { GET, POST, PUT } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
@@ -28,7 +28,7 @@ const Questions = createEntity({
   nameOne: "question",
   path: "/api/card",
 
-  ...(isTest
+  ...(isTest || isCypressActive || isProduction
     ? {}
     : {
         /**
