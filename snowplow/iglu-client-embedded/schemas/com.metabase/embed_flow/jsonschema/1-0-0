@@ -24,15 +24,24 @@
     },
     "artifact": {
       "type": "string",
-      "enum": ["dashboard", "question"],
+      "enum": [
+        "dashboard",
+        "question"
+      ],
       "description": "The type of artifact involved in the event (either a dashboard or a question)."
     },
     "new_embed": {
-      "type": ["boolean", "null"],
+      "type": [
+        "boolean",
+        "null"
+      ],
       "description": "Indicates if the embed is new."
     },
     "params": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "description": "Parameters related to the artifact.",
       "properties": {
         "locked": {
@@ -56,7 +65,10 @@
       }
     },
     "first_published_at": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time",
       "description": "The timestamp when the artifact was first published."
     },
@@ -69,12 +81,22 @@
       "maxLength": 1024
     },
     "location": {
-      "type": ["string", "null"],
-      "enum": ["code_overview", "code_params", "code_appearance", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "code_overview",
+        "code_params",
+        "code_appearance"
+      ],
       "description": "The location in the code where the event is triggered."
     },
     "appearance": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "description": "The appearance settings of the artifact.",
       "properties": {
         "title": {
@@ -86,13 +108,23 @@
           "description": "Indicates if the border is visible."
         },
         "theme": {
-          "type": ["string", "null"],
-          "enum": ["light", "dark", "transparent", null],
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "light",
+            "dark",
+            "transparent"
+          ],
           "description": "The theme of the artifact's appearance."
         },
         "font": {
           "type": "string",
-          "enum": ["instance", "custom"],
+          "enum": [
+            "instance",
+            "custom"
+          ],
           "description": "The font type used in the artifact."
         },
         "hide_download_button": {
@@ -102,16 +134,33 @@
       }
     },
     "format": {
-      "type": ["string", "null"],
-      "enum": ["html", "csv", "xlsx", "json", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "html",
+        "csv",
+        "xlsx",
+        "json"
+      ],
       "description": "The format of the public link."
     },
     "source": {
-      "type": ["string", "null"],
-      "enum": ["public-embed", "public-share", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "public-embed",
+        "public-share"
+      ],
       "description": "Location where the public link is copied from"
     }
   },
-  "required": ["event", "artifact"],
+  "required": [
+    "event",
+    "artifact"
+  ],
   "additionalProperties": false
 }
