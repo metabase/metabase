@@ -20,13 +20,13 @@ import { getDashboard } from "metabase/query_builder/selectors";
 import QuestionActions from "../../QuestionActions";
 import QuestionDataSource from "../QuestionDataSource";
 import QuestionDescription from "../QuestionDescription";
-import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import ConvertQueryButton from "../ConvertQueryButton";
 import { FilterHeaderToggle, FilterHeader } from "../QuestionFilters";
 import { QuestionSummarizeWidget } from "../QuestionSummaries";
 import { HeadBreadcrumbs } from "./components/HeaderBreadcrumbs";
 import { FilterHeaderButton } from "./components/FilterHeaderButton";
 import { ExploreResultsLink } from "./components/ExploreResultsLink";
+import { QuestionNotebookButton } from "./components/QuestionNotebookButton";
 import {
   AdHocViewHeading,
   SaveButton,
