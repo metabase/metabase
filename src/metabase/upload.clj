@@ -705,20 +705,21 @@
                            [:table_id      [:maybe ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization
                            [:is_upload {:optional true} [:maybe :boolean]]]]]
-  (let [table-ids (->> models
-                       ;; as an optimization, we might already know that the table is not an upload
-                       ;; if is_upload=false. We can skip making more queries if so
-                       (remove #(false? (:is_upload %)))
-                       (keep :table_id)
-                       set)
+  (let [table-ids            (->> models
+                                  ;; as an optimization when listing collection items (GET /api/collection/items),
+                                  ;; we might already know that the table is not an upload if is_upload=false. We
+                                  ;; can skip making more queries if so
+                                  (remove #(false? (:is_upload %)))
+                                  (keep :table_id)
+                                  set)
         uploadable-table-ids (set (uploadable-table-ids table-ids))
-        based-on-upload (fn [model]
-                          (when-let [dataset_query (:dataset_query model)] ; dataset_query is sometimes null in tests
-                            (let [query (lib/->pMBQL dataset_query)]
-                              (when (and (= (name (:query_type model)) "query")
-                                         (contains? uploadable-table-ids (:table_id model))
-                                         (no-joins? query))
-                                (lib/source-table-id query)))))]
+        based-on-upload      (fn [model]
+                               (when-let [dataset_query (:dataset_query model)] ; dataset_query is sometimes null in tests
+                                 (let [query (lib/->pMBQL dataset_query)]
+                                   (when (and (= (name (:query_type model)) "query")
+                                              (contains? uploadable-table-ids (:table_id model))
+                                              (no-joins? query))
+                                     (lib/source-table-id query)))))]
     (map #(m/assoc-some % :based_on_upload (based-on-upload %))
          models)))
 
