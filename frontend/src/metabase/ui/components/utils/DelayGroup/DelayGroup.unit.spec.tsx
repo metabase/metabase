@@ -3,19 +3,15 @@ import { render, screen, waitFor } from "__support__/ui";
 import { DelayGroup, useDelayGroup } from "./DelayGroup";
 
 interface SetupOpts {
-  timeout?: number;
+  timeout: number;
 }
 
 function setup(opts: SetupOpts) {
-  const onChange = jest.fn();
-
   render(
-    <DelayGroup timeout={opts.timeout ?? 100}>
+    <DelayGroup timeout={opts.timeout}>
       <Child />
     </DelayGroup>,
   );
-
-  return { onChange };
 }
 
 function Child() {
