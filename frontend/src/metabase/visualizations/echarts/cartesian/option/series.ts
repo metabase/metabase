@@ -156,13 +156,13 @@ function getShowSymbol(
   dataset: ChartDataset,
   chartWidth: number,
 ) {
-  // "line.marker_enabled" correponds to the "Show dots on lines" series setting
+  // "line.marker_enabled" corresponds to the "Show dots on lines" series setting
   // and can be true, false, or undefined
   // true = on
   // false = off
   // undefined = auto
-  const isNotAuto = seriesSettings["line.marker_enabled"] != null;
-  if (isNotAuto) {
+  const isAuto = seriesSettings["line.marker_enabled"] == null;
+  if (!isAuto) {
     return seriesSettings["line.marker_enabled"];
   }
   if (chartWidth <= 0) {
@@ -193,6 +193,13 @@ const buildEChartsLineAreaSeries = (
   const stackName =
     settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
 
+  const isSymbolVisible = getShowSymbol(
+    seriesModel,
+    seriesSettings,
+    dataset,
+    chartWidth,
+  );
+
   return {
     emphasis: {
       focus: hasMultipleSeries ? "series" : "self",
@@ -205,14 +212,14 @@ const buildEChartsLineAreaSeries = (
         show: settings["graph.show_values"] && !hasMultipleSeries,
       },
       itemStyle: {
-        opacity: 0.3,
+        opacity: isSymbolVisible ? 1 : 0,
       },
     },
     zlevel: CHART_STYLE.series.zIndex,
     id: seriesModel.dataKey,
     type: "line",
     yAxisIndex,
-    showSymbol: getShowSymbol(seriesModel, seriesSettings, dataset, chartWidth),
+    showSymbol: true,
     symbolSize: CHART_STYLE.symbolSize,
     smooth: seriesSettings["line.interpolate"] === "cardinal",
     connectNulls: seriesSettings["line.missing"] === "interpolate",
@@ -236,6 +243,7 @@ const buildEChartsLineAreaSeries = (
     },
     itemStyle: {
       color: seriesModel.color,
+      opacity: isSymbolVisible ? 1 : 0, // Make the symbol invisible to keep it for event trigger for tooltip
     },
   };
 };
