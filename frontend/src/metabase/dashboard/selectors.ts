@@ -381,7 +381,7 @@ export const getParameterMappingOptions = createCachedSelector(
       question = q;
     } else {
       // TODO: probably we can remove it as dashcards are text or heading or action?
-      new Question(card, metadata);
+      question = new Question(card, metadata);
     }
 
     return _getParameterMappingOptions(question, parameter, card, dashcard);

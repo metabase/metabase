@@ -33,13 +33,13 @@ const state = createMockState({
 const metadata = getMetadata(state); // metabase-lib Metadata instance
 
 const setup = options => {
-  const card = createMockCard();
-  const dashcard = createMockDashboardCard();
+  const card = options.card ?? createMockCard();
+
   renderWithProviders(
     <DashCardCardParameterMapper
       card={card}
+      dashcard={createMockDashboardCard({ card })}
       question={new Question(card, metadata)}
-      dashcard={dashcard}
       editingParameter={createMockParameter()}
       mappingOptions={[]}
       metadata={metadata}
@@ -130,7 +130,9 @@ describe("DashCardParameterMapper", () => {
           virtual_card: textCard,
         },
       }),
+      mappingOptions: ["foo", "bar"],
     });
+
     expect(screen.getByText(/Variable to map to/i)).toBeInTheDocument();
   });
 
