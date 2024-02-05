@@ -5,6 +5,7 @@ import type {
   BillingInfo as IBillingInfo,
 } from "metabase-types/api";
 import { Text, Anchor } from "metabase/ui";
+import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
 import {
   BillingErrorMessage,
   BillingInfoCard,
@@ -15,24 +16,29 @@ import {
   BillingExternalLink,
   BillingExternalLinkIcon,
 } from "./BillingInfo.styled";
-import { isSupportedLineItem, formatBillingValue } from "./utils";
+import {
+  isSupportedLineItem,
+  formatBillingValue,
+  isUnsupportedInternalLink,
+  internalLinkMap,
+} from "./utils";
 
 interface BillingInfoProps {
   isStoreManagedBilling: boolean;
-  billingInfo?: IBillingInfo;
+  billingInfo?: IBillingInfo | null;
   error: string | undefined;
 }
 
 const BillingInfoValue = ({ lineItem }: { lineItem: BillingInfoLineItem }) => {
   const formattedValue = formatBillingValue(lineItem);
 
-  if (!lineItem.display || lineItem.display === "value") {
+  if (lineItem.display === "value") {
     return <BillingInfoTextValue>{formattedValue}</BillingInfoTextValue>;
   }
 
   if (lineItem.display === "internal-link") {
     return (
-      <BillingInternalLink to={lineItem.link}>
+      <BillingInternalLink to={internalLinkMap[lineItem.link]}>
         <BillingInfoTextValue>{formattedValue}</BillingInfoTextValue>
       </BillingInternalLink>
     );
@@ -65,6 +71,13 @@ function BillingInfoRow({
     return null;
   }
 
+  // avoid rendering internal links where we do not have the ability
+  // to link the user to the appropriate page due to instance being
+  // an older version of MB
+  if (isUnsupportedInternalLink(lineItem)) {
+    return null;
+  }
+
   return (
     <ErrorBoundary errorComponent={() => null}>
       <BillingInfoRowContainer extraPadding={extraPadding}>
@@ -77,29 +90,54 @@ function BillingInfoRow({
 
 export function BillingInfo({
   isStoreManagedBilling,
-  billingInfo = [],
+  billingInfo,
   error,
 }: BillingInfoProps) {
   if (error) {
-    return <BillingErrorMessage>{error}</BillingErrorMessage>;
+    return (
+      <>
+        <SectionHeader>{t`Billing`}</SectionHeader>
+        <BillingErrorMessage>{error}</BillingErrorMessage>
+        <BillingErrorMessage>
+          {t`To manage your billing preferences, please email `}
+          <Anchor href="mailto:billing@metabase.com">
+            billing@metabase.com
+          </Anchor>
+        </BillingErrorMessage>
+      </>
+    );
   }
 
   if (!isStoreManagedBilling) {
-    <Text color="text-medium">
-      {t`To manage your billing preferences, please email `}
-      <Anchor href="mailto:billing@metabase.com">billing@metabase.com</Anchor>
-    </Text>;
+    return (
+      <>
+        <SectionHeader>{t`Billing`}</SectionHeader>
+        <Text color="text-medium">
+          {t`To manage your billing preferences, please email `}
+          <Anchor href="mailto:billing@metabase.com">
+            billing@metabase.com
+          </Anchor>
+        </Text>
+      </>
+    );
+  }
+
+  if (!billingInfo || !billingInfo.content || !billingInfo.content.length) {
+    return null;
   }
 
   return (
-    <BillingInfoCard flat>
-      {billingInfo.map((lineItem, index) => (
-        <BillingInfoRow
-          key={lineItem.name}
-          lineItem={lineItem}
-          extraPadding={billingInfo.length === index + 1}
-        />
-      ))}
-    </BillingInfoCard>
+    <>
+      <SectionHeader>{t`Billing`}</SectionHeader>
+      <BillingInfoCard flat>
+        {billingInfo.content.map((lineItem, index, arr) => (
+          <BillingInfoRow
+            key={lineItem.name}
+            lineItem={lineItem}
+            extraPadding={arr.length === index + 1}
+          />
+        ))}
+      </BillingInfoCard>
+    </>
   );
 }
