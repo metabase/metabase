@@ -5,6 +5,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
 import { hideEmbedHomepage } from "./util";
+import { NumberedList } from "./EmbedMinimalHomepage.styled";
 
 type EmbedMinimalHomepageProps = {
   onDismiss: () => void;
@@ -39,14 +40,13 @@ export const EmbedMinimalHomepage = ({
             </Box>
           </Flex>
 
-          <ol>
-            <li>1. {t`Enable and configure embedding in settings`}</li>
+          <NumberedList>
+            <li>{t`Enable and configure embedding in settings`}</li>
             <li>
-              2.{" "}
               {t`Select or create a dashboard or question to do a static embed`}
             </li>
-            <li>3. {t`Follow the quickstart to do an interactive embed`}</li>
-          </ol>
+            <li>{t`Follow the quickstart to do an interactive embed`}</li>
+          </NumberedList>
 
           <Stack spacing="sm">
             <Link to="/admin/settings/embedding-in-other-applications">
