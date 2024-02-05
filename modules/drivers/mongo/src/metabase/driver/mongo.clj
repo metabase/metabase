@@ -223,7 +223,7 @@
     (mongo.util/do-find coll {:keywordize true
                               :limit metadata-queries/nested-field-sample-limit
                               :skip 0
-                              :sort-criteria {:_id sort-direction}
+                              :sort-criteria [[:_id sort-direction]]
                               :batch-size 256})))
 
 (defn- table-sample-column-info

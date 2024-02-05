@@ -2,6 +2,7 @@
   "Mongo specific utility functions -- mongo methods that we are using at various places wrapped into clojure
    functions."
   (:require
+   [flatland.ordered.map :as ordered-map]
    [metabase.driver.mongo.conversion :as mongo.conversion])
   (:import
    (com.mongodb MongoClientSettings)
@@ -59,14 +60,15 @@
 
 ;; https://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-sync/com/mongodb/client/MongoCollection.html#find()
 (defn do-find
-  "Perform find on collection."
+  "Perform find on collection. `sort-criteria` should be sequence of key value pairs (eg. vector of vectors), or
+   `ordered-map`. Keys are the column name. Keys could be keywords."
   [^MongoCollection coll
    & {:keys [limit skip batch-size sort-criteria] :as opts}]
   (->> (cond-> ^FindIterable (.find coll)
          limit (.limit limit)
          skip (.skip skip)
          batch-size (.batchSize (int batch-size))
-         sort-criteria (.sort (mongo.conversion/to-document sort-criteria)))
+         sort-criteria (.sort (mongo.conversion/to-document (ordered-map/ordered-map sort-criteria))))
        (mapv #(mongo.conversion/from-document % (select-keys opts [:keywordize])))))
 
 (defn create-index
