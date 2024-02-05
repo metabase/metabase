@@ -46,7 +46,7 @@
      (when (seq additional-options) (str "&" additional-options)))))
 
 (defn- maybe-add-ssl-context-to-builder!
-  "Add ssl context to `builder` using `_db-details. Modifies `builder` object which is arg (!) of this fn."
+  "Add SSL context to `builder` using `_db-details`. Mutates `builder`."
   [^MongoClientSettings$Builder builder
    {:keys [ssl-cert ssl-use-client-auth client-ssl-cert client-ssl-key] :as _db-details}]
   (let [server-cert? (not (str/blank? ssl-cert))
