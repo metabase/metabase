@@ -1,4 +1,4 @@
-import { fireEvent, waitFor, within } from "@testing-library/react";
+import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { UsageReason } from "metabase-types/api";
@@ -10,7 +10,7 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { Setup } from "./components/Setup";
 
-const setup = async ({ step = 0 } = {}) => {
+async function setup({ step = 0 } = {}) {
   const state = createMockState({
     setup: createMockSetupState({
       step,
@@ -28,42 +28,34 @@ const setup = async ({ step = 0 } = {}) => {
   await screen.findByText("Let's get started");
 
   return;
-};
+}
 
 describe("setup", () => {
-  describe("default step order", () => {
-    // eslint-disable-next-line jest/expect-expect
-    it.each([
-      ["What's your preferred language?", "1"],
-      ["What should we call you?", "2"],
-      ["What will you use Metabase for?", "3"],
-      ["Add your data", "4"],
-      ["Usage data preferences", "5"],
-    ])(
-      "should have a step for '%s' with label '%s'",
-      async (step: string, label: string) => {
-        await setup();
-        skipWelcomeScreen();
-
-        expectSectionToHaveLabel(step, label);
-      },
-    );
+  it("default step order should be correct", async () => {
+    await setup();
+    skipWelcomeScreen();
+    /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel"] }] */
+    expectSectionToHaveLabel("What's your preferred language?", "1");
+    expectSectionToHaveLabel("What should we call you?", "2");
+    expectSectionToHaveLabel("What will you use Metabase for?", "3");
+    expectSectionToHaveLabel("Add your data", "4");
+    expectSectionToHaveLabel("Usage data preferences", "5");
   });
 
   describe("Usage question", () => {
-    const setupForUsageQuestion = async () => {
+    async function setupForUsageQuestion() {
       await setup();
       skipWelcomeScreen();
       skipLanguageStep();
       await submitUserInfoStep();
 
       await screen.findByText("Self-service analytics for my own company");
-    };
+    }
 
     describe("when selecting 'Self service'", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
-        fillUsageReason("self-service-analytics");
+        selectUsageReason("self-service-analytics");
         clickNextStep();
 
         expect(screen.getByText("Add your data")).toBeInTheDocument();
@@ -81,7 +73,7 @@ describe("setup", () => {
     describe("when selecting 'Embedding'", () => {
       it("should hide the 'Add your data' step", async () => {
         await setupForUsageQuestion();
-        fillUsageReason("embedding");
+        selectUsageReason("embedding");
         clickNextStep();
 
         expect(screen.queryByText("Add your data")).not.toBeInTheDocument();
@@ -98,7 +90,7 @@ describe("setup", () => {
     describe("when selecting 'A bit of both'", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
-        fillUsageReason("both");
+        selectUsageReason("both");
         clickNextStep();
 
         expect(screen.getByText("Add your data")).toBeInTheDocument();
@@ -116,7 +108,7 @@ describe("setup", () => {
     describe("when selecting 'Not sure yet'", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
-        fillUsageReason("not-sure");
+        selectUsageReason("not-sure");
         clickNextStep();
 
         expect(screen.getByText("Add your data")).toBeInTheDocument();
@@ -150,31 +142,19 @@ const submitUserInfoStep = async ({
   companyName = "Acme",
   password = "Monkeyabc123",
 } = {}) => {
-  fireEvent.change(screen.getByLabelText("First name"), {
-    target: { value: firstName },
-  });
-  fireEvent.change(screen.getByLabelText("Last name"), {
-    target: { value: lastName },
-  });
-  fireEvent.change(screen.getByLabelText("Email"), {
-    target: { value: email },
-  });
-  fireEvent.change(screen.getByLabelText("Company or team name"), {
-    target: { value: companyName },
-  });
-  fireEvent.change(screen.getByLabelText("Create a password"), {
-    target: { value: password },
-  });
-  fireEvent.change(screen.getByLabelText("Confirm your password"), {
-    target: { value: password },
-  });
+  userEvent.type(screen.getByLabelText("First name"), firstName);
+  userEvent.type(screen.getByLabelText("Last name"), lastName);
+  userEvent.type(screen.getByLabelText("Email"), email);
+  userEvent.type(screen.getByLabelText("Company or team name"), companyName);
+  userEvent.type(screen.getByLabelText("Create a password"), password);
+  userEvent.type(screen.getByLabelText("Confirm your password"), password);
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled(),
   );
   clickNextStep();
 };
 
-const fillUsageReason = (usageReason: UsageReason) => {
+const selectUsageReason = (usageReason: UsageReason) => {
   const label = {
     "self-service-analytics": "Self-service analytics for my own company",
     embedding: "Embedding analytics into my application",
@@ -182,7 +162,7 @@ const fillUsageReason = (usageReason: UsageReason) => {
     "not-sure": "Not sure yet",
   }[usageReason];
 
-  fireEvent.click(screen.getByLabelText(label));
+  userEvent.click(screen.getByLabelText(label));
 };
 
 const expectSectionToHaveLabel = (sectionName: string, label: string) => {

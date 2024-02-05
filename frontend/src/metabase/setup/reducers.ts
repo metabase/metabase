@@ -56,6 +56,7 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(submitUsageReason.pending, (state, { meta }) => {
     const usageReason = meta.arg;
     state.usageReason = usageReason;
+    // this logic will be refactored before we introduce more steps, to be less fragile
     state.step = usageReason === "embedding" ? PREFERENCES_STEP : DATABASE_STEP;
   });
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
