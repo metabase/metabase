@@ -7,13 +7,22 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
+  selectDashboardFilter,
+  toggleRequiredParameter,
+  dashboardSaveButton,
+  ensureDashboardCardHasText,
+  toggleFilterWidgetValues,
+  resetFilterWidgetToDefault,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
+import {
+  applyFilterByType,
+  selectDefaultValueFromPopover,
+} from "../native-filters/helpers/e2e-field-filter-helpers";
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
 describe("scenarios > dashboard > filters > text/category", () => {
@@ -127,5 +136,33 @@ describe("scenarios > dashboard > filters > text/category", () => {
     cy.location("search").should("eq", "?text=&id=4");
     filterWidget().contains("Text");
     filterWidget().contains("Arnold Adams");
+  });
+
+  it("should support being required", () => {
+    setFilter("Text or Category", "Is");
+    selectDashboardFilter(cy.findByTestId("dashcard"), "Source");
+
+    // Can't save without a default value
+    toggleRequiredParameter();
+    dashboardSaveButton().should("be.disabled");
+    dashboardSaveButton().realHover();
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      'The "Text" parameter requires a default value but none was provided.',
+    );
+
+    // Updates the filter value
+    selectDefaultValueFromPopover("Twitter");
+    saveDashboard();
+    ensureDashboardCardHasText("37.65");
+
+    // Resets the value back by clicking widget icon
+    toggleFilterWidgetValues(["Google", "Organic"]);
+    resetFilterWidgetToDefault();
+    filterWidget().findByText("Twitter");
+
+    // Removing value resets back to default
+    toggleFilterWidgetValues(["Twitter"]);
+    filterWidget().findByText("Twitter");
   });
 });

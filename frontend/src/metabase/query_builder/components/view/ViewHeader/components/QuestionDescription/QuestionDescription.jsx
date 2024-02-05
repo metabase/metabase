@@ -2,11 +2,11 @@
 import { t, ngettext, msgid } from "ttag";
 
 import * as Lib from "metabase-lib";
-import QuestionDataSource from "./QuestionDataSource";
+import { QuestionDataSource } from "../QuestionDataSource";
 
 import { AggregationAndBreakoutDescription } from "./QuestionDescription.styled";
 
-const QuestionDescription = ({
+export const QuestionDescription = ({
   question,
   originalQuestion,
   isObjectDetail,
@@ -71,5 +71,3 @@ const QuestionDescription = ({
     return <span>{t`New question`}</span>;
   }
 };
-
-export default QuestionDescription;

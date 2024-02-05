@@ -72,13 +72,13 @@
    :collection_preview  true
    :dataset_query       {}
    :dataset             false
+   :type                "question"
    :description         nil
    :display             "scalar"
    :enable_embedding    false
    :entity_id           nil
    :embedding_params    nil
    :made_public_by_id   nil
-   :based_on_upload     nil
    :parameters          []
    :parameter_mappings  []
    :moderation_reviews  ()
@@ -91,7 +91,7 @@
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
-  (dissoc card-defaults :average_query_time :last_query_start :based_on_upload))
+  (dissoc card-defaults :average_query_time :last_query_start))
 
 (defn mbql-count-query
   ([]
@@ -978,6 +978,59 @@
                          [:trace          [:sequential :any]]]
                         (create-card! :rasta 403)))))))))
 
+(deftest create-card-with-type-and-dataset-test
+  (mt/with-model-cleanup [:model/Card]
+    (testing "type and dataset must match"
+      (is (= ":dataset is inconsistent with :type"
+             (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                      :dataset true
+                                                                      :type :question))))
+      (is (= ":dataset is inconsistent with :type"
+             (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                      :dataset false
+                                                                      :type "model")))))
+    (testing "can create a model using dataset"
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                       :dataset true)))))
+
+    (testing "can create a model using type"
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                       :type :model)))))
+
+    (testing "default is a question"
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
+
+(deftest update-card-with-type-and-dataset-test
+  (testing "can toggle model using only type"
+    (mt/with-temp [:model/Card card {:dataset_query {}}]
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))
+
+  (testing "can toggle model using both type and dataset"
+    (mt/with-temp [:model/Card card {:dataset_query {}}]
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model" :dataset true})))
+
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question" :dataset false})))
+
+      (testing "but error if type and dataset doesn't match"
+        (is (= ":dataset is inconsistent with :type"
+               (mt/user-http-request :crowberto :put 400 (str "card/" (:id card)) {:type "question" :dataset true})))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1250,6 +1303,16 @@
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
 
+(deftest ^:parallel turn-card-to-model-change-display-test
+  (mt/with-temp [:model/Card card {:display :line}]
+    (is (=? {:display "table"}
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                  {:dataset true}))))
+
+  (mt/with-temp [:model/Card card {:display :line}]
+    (is (=? {:display "table"}
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                  {:type "model"})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Updating the positions of stuff                                         |
@@ -2647,7 +2710,7 @@
                                                :dataset_query (mbql-count-query)}]
       (is (=? {:display "table" :dataset true}
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                    (assoc card :dataset true)))))))
+                                    (assoc card :dataset true :type "model")))))))
 
 (deftest dataset-card-2
   (testing "Cards preserve their edited metadata"
@@ -3252,55 +3315,63 @@
                   {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
 
-(deftest based-on-upload-test
-  (mt/with-driver :h2 ;; just test on H2 because failure should be independent of drivers
+(defn run-based-on-upload-test
+  "Runs tests for based-on-upload `request` is a function that takes a card and returns a map which may have {:based_on_upload <table-id>}]
+  This function exists to deduplicate test logic for all API endpoints that must return `based_on_upload`,
+  including GET /api/collection/:id/items and GET /api/card/:id"
+  [request]
+  (mt/with-driver :h2 ; just test on H2 because failure should be independent of drivers
     (mt/with-temporary-setting-values [uploads-enabled true]
-      (mt/with-temp [:model/Database {db-id :id
-                                      :as   db}     {:engine "h2"}
-                     :model/Table    {table-id :id} {:db_id     db-id
-                                                     :is_upload true}
-                     :model/Card     {card-id :id}  {:dataset       true
-                                                     :dataset_query {:type     :query
-                                                                     :database db-id
-                                                                     :query    {:source-table table-id}}}]
-        (mt/with-test-user :crowberto
-          (testing "Cards based on uploads have based_on_upload=<table-id> if they meet all the criteria"
-            (is (= table-id (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
-          (testing "If one of the criteria for appends is not met, based_on_upload should be nil."
-            (testing "\nIf the card is based on another card, which is based on the table, based_on_upload should be nil"
-              (mt/with-temp [:model/Card {card-id' :id} {:dataset       false
-                                                         :dataset_query {:type     :query
-                                                                         :database db-id
-                                                                         :query    {:source-table (str "card__" card-id)}}}]
-                (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id'))))))
-            (testing "\nIf the card has a join in the query (even to itself), based_on_upload should be nil"
-              (mt/with-temp [:model/Card {card-id' :id} {:dataset       false
-                                                         :dataset_query {:type     :query
-                                                                         :database db-id
-                                                                         :query    {:source-table table-id
-                                                                                    :joins [{:fields       :all
-                                                                                             :source-table table-id
-                                                                                             :condition    [:= 1 2] ;; field-ids don't matter
-                                                                                             :alias        "SomeAlias"}]}}}]
-                (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id'))))))
-            (testing "\nIf the table is not based on uploads, based_on_upload should be nil"
-              (t2/update! :model/Table table-id {:is_upload false})
-              (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))
-              (t2/update! :model/Table table-id {:is_upload true}))
-            (testing "\nIf uploads are disabled, based_on_upload should be nil"
-              (mt/with-temp-copy-of-db
-                (perms/revoke-data-perms! (perms-group/all-users) db)
-                (is (=? {:based_on_upload nil} (mt/user-http-request :rasta :get 200 (str "card/" card-id))))))
-            (testing "\nIf uploads are disabled, based_on_upload should be nil"
-              (mt/with-temporary-setting-values [uploads-enabled false]
-                (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
-            (testing "\nIf the card is not a model, based_on_upload should be nil"
-              (mt/with-temp [:model/Card {card-id' :id} {:dataset       false
-                                                         :dataset_query {:type     :query
-                                                                         :database db-id
-                                                                         :query    {:source-table table-id}}}]
-                (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id'))))))
-            (testing "\nIf the card is a native query, based_on_upload should be nil"
-              (mt/with-temp [:model/Card {card-id' :id} {:dataset       true
-                                                         :dataset_query (mt/native-query {:native "select 1"})}]
-                (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id'))))))))))))
+      (mt/with-temp [:model/Database   {db-id :id :as db}     {:engine "h2"}
+                     :model/Table      {table-id :id}         {:db_id db-id, :is_upload true}
+                     :model/Collection {collection-id :id}    {}]
+        (let [card-defaults {:collection_id collection-id
+                             :dataset       true
+                             :dataset_query {:type     :query
+                                             :database db-id
+                                             :query    {:source-table table-id}}}]
+          (mt/with-temp [:model/Card {card-id :id :as card} card-defaults]
+            (testing "\nCards based on uploads have based_on_upload=<table-id> if they meet all the criteria"
+              (is (= table-id (:based_on_upload (request card)))))
+            (testing "If one of the criteria for appends is not met, based_on_upload should be nil."
+              (testing "\nIf the card is based on another card, which is based on the table, based_on_upload should be nil"
+                (mt/with-temp [:model/Card card' (assoc card-defaults
+                                                        :dataset_query
+                                                        {:type     :query
+                                                         :database db-id
+                                                         :query    {:source-table (str "card__" card-id)}})]
+                  (is (nil? (:based_on_upload (request card'))))))
+              (testing "\nIf the card has a join in the query (even to itself), based_on_upload should be nil"
+                (mt/with-temp [:model/Card card' (assoc card-defaults
+                                                        :dataset_query
+                                                        {:type     :query
+                                                         :database db-id
+                                                         :query    {:source-table table-id
+                                                                    :joins [{:fields       :all
+                                                                             :source-table table-id
+                                                                             :condition    [:= 1 2] ; field-ids don't matter
+                                                                             :alias        "SomeAlias"}]}})]
+                  (is (nil? (:based_on_upload (request card'))))))
+              (testing "\nIf the table is not based on uploads, based_on_upload should be nil"
+                (t2/update! :model/Table table-id {:is_upload false})
+                (is (nil? (:based_on_upload (request card))))
+                (t2/update! :model/Table table-id {:is_upload true}))
+              (testing "\nIf uploads are disabled, based_on_upload should be nil"
+                (mt/with-temp-copy-of-db
+                  (perms/revoke-data-perms! (perms-group/all-users) db)
+                  (is (nil? (:based_on_upload (mt/user-http-request :rasta :get 200 (str "card/" card-id)))))))
+              (testing "\nIf uploads are disabled, based_on_upload should be nil"
+                (mt/with-temporary-setting-values [uploads-enabled false]
+                  (is (nil? (:based_on_upload (request card))))))
+              (testing "\nIf the card is not a model, based_on_upload should be nil"
+                (mt/with-temp [:model/Card card' (assoc card-defaults :dataset false)]
+                  (is (nil? (:based_on_upload (request card'))))))
+              (testing "\nIf the card is a native query, based_on_upload should be nil"
+                (mt/with-temp [:model/Card card' (assoc card-defaults
+                                                        :dataset_query (mt/native-query {:native "select 1"}))]
+                  (is (nil? (:based_on_upload (request card')))))))))))))
+
+(deftest based-on-upload-test
+  (run-based-on-upload-test
+   (fn [card]
+     (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))

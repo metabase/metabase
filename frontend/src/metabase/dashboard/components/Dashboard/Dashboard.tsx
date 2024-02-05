@@ -151,6 +151,8 @@ interface DashboardProps {
   setParameterIndex: (id: ParameterId, index: number) => void;
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
+  setParameterValueToDefault: (id: ParameterId) => void;
+  setParameterRequired: (id: ParameterId, value: boolean) => void;
   setEditingParameter: (id: ParameterId) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
@@ -216,6 +218,7 @@ function DashboardInner(props: DashboardProps) {
     setErrorPage,
     setParameterIndex,
     setParameterValue,
+    setParameterValueToDefault,
     setSharing,
     toggleSidebar,
   } = props;
@@ -463,6 +466,8 @@ function DashboardInner(props: DashboardProps) {
       setParameterValue={setParameterValue}
       setParameterIndex={setParameterIndex}
       setEditingParameter={setEditingParameter}
+      setParameterValueToDefault={setParameterValueToDefault}
+      enableParameterRequiredBehavior
     />
   );
 

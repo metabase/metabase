@@ -4,7 +4,7 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import type { QueryBuilderMode } from "metabase-types/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
-import { HeaderButton } from "./ViewHeader.styled";
+import { HeaderButton } from "../ViewHeader.styled";
 
 interface FilterHeaderButtonProps {
   className?: string;

@@ -24,6 +24,7 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
+  CardType,
   CollectionId,
   DatabaseId,
   DatasetQuery,
@@ -259,14 +260,28 @@ class Question {
 
   /**
    * returns whether this question is a model
-   * @returns boolean
+   * @deprecated Use Question.prototype.type instead
    */
-  isDataset() {
+  isDataset(): boolean {
     return this._card && this._card.dataset;
   }
 
-  setDataset(dataset) {
+  type(): CardType | undefined {
+    return this._card && this._card.type;
+  }
+
+  /**
+   * @deprecated Use Question.prototype.setType instead
+   */
+  private _setDataset(dataset: boolean) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setType(type: CardType) {
+    const dataset = type === "model";
+    // _setDataset is still called for backwards compatibility
+    // as we're migrating "dataset" -> "type" incrementally
+    return this.setCard(assoc(this.card(), "type", type))._setDataset(dataset);
   }
 
   isPersisted() {
@@ -434,10 +449,6 @@ class Question {
 
   updateSettings(settings: VisualizationSettings) {
     return this.setSettings({ ...this.settings(), ...settings });
-  }
-
-  type(): string {
-    return this.datasetQuery().type;
   }
 
   creationType(): string {
@@ -1104,24 +1115,6 @@ class Question {
 
   getModerationReviews() {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
-  }
-
-  /**
-   * We can only "explore results" (i.e. create new questions based on this one)
-   * when question is a native query, which is saved, has no parameters
-   * and satisfies other conditionals below.
-   */
-  canExploreResults() {
-    const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
-    const { isNative, isEditable } = Lib.queryDisplayInfo(this.query());
-
-    return (
-      isNative &&
-      this.isSaved() &&
-      this.parameters().length === 0 &&
-      canNest &&
-      isEditable // originally "canRunAdhocQuery"
-    );
   }
 
   /**

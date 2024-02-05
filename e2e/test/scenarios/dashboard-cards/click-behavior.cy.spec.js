@@ -1564,12 +1564,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
-      }).then(({ body: card }) => {
+      }).then(({ body: dashCard }) => {
         addOrUpdateDashboardCard({
-          dashboard_id: card.dashboard_id,
-          card_id: card.card_id,
+          dashboard_id: dashCard.dashboard_id,
+          card_id: dashCard.card_id,
           card: {
-            id: card.id,
+            id: dashCard.id,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: dashCard.card_id }),
+            ],
             visualization_settings: {
               click_behavior: {
                 type: "link",
@@ -1581,7 +1584,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
         visitEmbeddedPage({
-          resource: { dashboard: card.dashboard_id },
+          resource: { dashboard: dashCard.dashboard_id },
           params: {},
         });
         cy.wait("@dashboard");
@@ -1590,7 +1593,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
         cy.button("Add filter").click();
       });
       onNextAnchorClick(anchor => {
@@ -1662,12 +1665,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
-      }).then(({ body: card }) => {
+      }).then(({ body: dashCard }) => {
         addOrUpdateDashboardCard({
-          dashboard_id: card.dashboard_id,
-          card_id: card.card_id,
+          dashboard_id: dashCard.dashboard_id,
+          card_id: dashCard.card_id,
           card: {
-            id: card.id,
+            id: dashCard.id,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: dashCard.card_id }),
+              createTimeFilterMapping({ card_id: dashCard.card_id }),
+            ],
             visualization_settings: {
               click_behavior: {
                 type: "crossfilter",
@@ -1689,7 +1696,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
         visitEmbeddedPage({
-          resource: { dashboard: card.dashboard_id },
+          resource: { dashboard: dashCard.dashboard_id },
           params: {},
         });
         cy.wait("@dashboard");
