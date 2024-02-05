@@ -7,7 +7,6 @@
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
@@ -84,13 +83,13 @@
   (let [db-details (mongo.db/details-normalized database)]
     (ssh/with-ssh-tunnel [details-with-tunnel db-details]
       (let [client (mongo.util/mongo-client (db-details->mongo-client-settings details-with-tunnel))]
-        (log/debug (u/format-color 'cyan (trs "Opened new MongoClient.")))
+        (log/debug (u/format-color 'cyan "Opened new MongoClient."))
         (try
           (binding [*mongo-client* client]
             (thunk client))
           (finally
             (mongo.util/close client)
-            (log/debug (u/format-color 'cyan (trs "Closed MongoClient.")))))))))
+            (log/debug (u/format-color 'cyan "Closed MongoClient."))))))))
 
 (defmacro with-mongo-client
   "Create instance of `MongoClient` for `database` and bind it to [[*mongo-client*]]. `database` can be anything
