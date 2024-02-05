@@ -34,6 +34,7 @@ import {
   minTimeseriesUnit,
 } from "metabase/visualizations/lib/timeseries";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -476,7 +477,7 @@ export function getXAxisModel(
       noRange: isHistogram,
     });
 
-  const xValues = dataset.map(datum => datum[dimensionModel.dataKey]);
+  const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
 
   const timeSeriesInterval = getTimeSeriesXAxisInterval(
     xValues,
