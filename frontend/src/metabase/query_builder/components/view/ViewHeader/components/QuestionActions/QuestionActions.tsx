@@ -29,12 +29,12 @@ import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/metadata/utils/models";
-import { canUploadToQuestion } from "../selectors";
+import { canUploadToQuestion } from "../../../../../selectors";
+import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
 import {
   QuestionActionsDivider,
   StrengthIndicator,
 } from "./QuestionActions.styled";
-import { ViewHeaderIconButtonContainer } from "./view/ViewHeader/ViewHeader.styled";
 
 const HEADER_ICON_SIZE = 16;
 
@@ -60,7 +60,7 @@ interface Props {
   onModelPersistenceChange: () => void;
 }
 
-const QuestionActions = ({
+export const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
   handleBookmark,
@@ -304,6 +304,3 @@ const QuestionActions = ({
     </>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QuestionActions;
