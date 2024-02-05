@@ -1,6 +1,7 @@
 import _ from "underscore";
 import cx from "classnames";
 import { c, t } from "ttag";
+import { CollectionHeaderArchiveNotification } from "metabase/collections/components/CollectionHeader/CollectionHeaderArchiveNotification";
 
 import type {
   Card,
@@ -57,6 +58,8 @@ export const BrowseModels = ({
   if (modelsFiltered.length) {
     return (
       <GridContainer role="grid">
+        <CollectionHeaderArchiveNotification />
+
         {groupsOfModels.map(groupOfModels => (
           <ModelGroup
             models={groupOfModels}

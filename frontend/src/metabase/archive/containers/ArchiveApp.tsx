@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import { CollectionHeaderArchiveNotification } from "metabase/collections/components/CollectionHeader/CollectionHeaderArchiveNotification";
 
 import type { CollectionItem } from "metabase-types/api";
 
@@ -73,6 +74,8 @@ export function ArchiveApp() {
         <PageHeading>{t`Archive`}</PageHeading>
       </ArchiveHeader>
       <ArchiveBody data-testid="archived-list">
+        <CollectionHeaderArchiveNotification />
+
         <Card
           style={{
             height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",

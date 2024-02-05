@@ -8,6 +8,7 @@ import { CollectionCaption } from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
 import CollectionTimeline from "./CollectionTimeline";
 import { CollectionUpload } from "./CollectionUpload";
+import { CollectionHeaderArchiveNotification } from "./CollectionHeaderArchiveNotification";
 
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionPermissions } from "./CollectionPermissions";
@@ -42,40 +43,46 @@ const CollectionHeader = ({
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
 
   return (
-    <HeaderRoot>
-      <CollectionCaption
-        collection={collection}
-        onUpdateCollection={onUpdateCollection}
-      />
-      <HeaderActions data-testid="collection-menu">
-        {showUploadButton && (
-          <CollectionUpload
-            collection={collection}
-            uploadsEnabled={uploadsEnabled}
-            isAdmin={isAdmin}
-            onUpload={onUpload}
-          />
-        )}
-        {!isInstanceAnalytics && <CollectionTimeline collection={collection} />}
-        {isInstanceAnalytics && (
-          <CollectionPermissions collection={collection} />
-        )}
-        <CollectionBookmark
+    <>
+      <HeaderRoot>
+        <CollectionCaption
           collection={collection}
-          isBookmarked={isBookmarked}
-          onCreateBookmark={onCreateBookmark}
-          onDeleteBookmark={onDeleteBookmark}
+          onUpdateCollection={onUpdateCollection}
         />
-        {!isInstanceAnalytics && (
-          <CollectionMenu
+        <HeaderActions data-testid="collection-menu">
+          {showUploadButton && (
+            <CollectionUpload
+              collection={collection}
+              uploadsEnabled={uploadsEnabled}
+              isAdmin={isAdmin}
+              onUpload={onUpload}
+            />
+          )}
+          {!isInstanceAnalytics && (
+            <CollectionTimeline collection={collection} />
+          )}
+          {isInstanceAnalytics && (
+            <CollectionPermissions collection={collection} />
+          )}
+          <CollectionBookmark
             collection={collection}
-            isAdmin={isAdmin}
-            isPersonalCollectionChild={isPersonalCollectionChild}
-            onUpdateCollection={onUpdateCollection}
+            isBookmarked={isBookmarked}
+            onCreateBookmark={onCreateBookmark}
+            onDeleteBookmark={onDeleteBookmark}
           />
-        )}
-      </HeaderActions>
-    </HeaderRoot>
+          {!isInstanceAnalytics && (
+            <CollectionMenu
+              collection={collection}
+              isAdmin={isAdmin}
+              isPersonalCollectionChild={isPersonalCollectionChild}
+              onUpdateCollection={onUpdateCollection}
+            />
+          )}
+        </HeaderActions>
+      </HeaderRoot>
+
+      <CollectionHeaderArchiveNotification collectionId={collection.id} />
+    </>
   );
 };
 
