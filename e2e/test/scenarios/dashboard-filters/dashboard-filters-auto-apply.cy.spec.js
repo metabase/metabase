@@ -675,7 +675,12 @@ const openSlowDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  visitDashboard("@dashboardId", { params });
+  cy.get("@dashboardId").then(dashboardId => {
+    return cy.visit({
+      url: `/dashboard/${dashboardId}`,
+      qs: params,
+    });
+  });
 
   getDashboardCard().should("be.visible");
 };
