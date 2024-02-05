@@ -139,7 +139,7 @@ describe("StructuredQuery nesting", () => {
 
       const metadata = ordersTable.metadata;
       const question = ordersTable.question();
-      const dataset = question.setId(1).setDataset(true);
+      const dataset = question.setId(1).setType("model");
       const nestedDatasetQuery = dataset
         .composeDataset()
         .legacyQuery({ useStructuredQuery: true });
