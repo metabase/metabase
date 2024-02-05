@@ -759,14 +759,21 @@
 (deftest geographic-coordinates-formatting-test
   (testing "Longitude and latitude columns should format correctly on export (#38419)"
     (mt/dataset airports
-      (let [card {:dataset_query {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table (mt/id :airport)
-                                             :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
-                                                            [:field (mt/id :airport :longitude) {:base-type :type/Float}]
-                                                            [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
-                                             :order-by     [[:asc (mt/id :airport :id)]]
-                                             :limit        5}}}]
+      (let [card {:dataset_query   {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :airport)
+                                               :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
+                                                              [:field (mt/id :airport :longitude) {:base-type :type/Float}]
+                                                              [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
+                                               :order-by     [[:asc (mt/id :airport :id)]]
+                                               :limit        5}}
+                  :dataset         true
+                  :result_metadata [{:name               "ID"
+                                     :id                 (mt/id :airport :id)}
+                                    {:semantic_type      :type/Longitude
+                                     :field_ref          [:field (mt/id :airport :longitude) {:base-type :type/Float}]}
+                                    {:semantic_type      :type/Latitude
+                                     :field_ref          [:field (mt/id :airport :latitude) {:base-type :type/Float}]}]}]
         (mt/with-temp [Card {card-id :id} card
                        Dashboard {dash-id :id} {:name "just dash"}
                        DashboardCard {dash-card-id :id} {:dashboard_id dash-id
