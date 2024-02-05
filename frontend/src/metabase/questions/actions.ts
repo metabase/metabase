@@ -20,7 +20,7 @@ export const loadMetadataForCard =
       : [question];
     const dependencies = [
       ...question.dependentMetadata(),
-      questions.flatMap(question => Lib.dependentMetadata(question.query())),
+      ...questions.flatMap(question => Lib.dependentMetadata(question.query())),
     ];
     return dispatch(loadMetadataForDependentItems(dependencies, options));
   };
