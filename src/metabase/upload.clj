@@ -732,7 +732,7 @@
         based-on-upload      (fn [model]
                                (when-let [dataset_query (:dataset_query model)] ; dataset_query is sometimes null in tests
                                  (let [query (lib/->pMBQL dataset_query)]
-                                   (when (and (= (name (:query_type model)) "query")
+                                   (when (and (some-> model :query_type name (= "query"))
                                               (contains? uploadable-table-ids (:table_id model))
                                               (no-joins? query))
                                      (lib/source-table-id query)))))]
