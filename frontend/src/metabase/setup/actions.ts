@@ -20,6 +20,7 @@ import {
   getIsTrackingAllowed,
   getLocale,
   getSetupToken,
+  getUsageReason,
   getUser,
 } from "./selectors";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
@@ -184,6 +185,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     const database = getDatabase(getState());
     const invite = getInvite(getState());
     const isTrackingAllowed = getIsTrackingAllowed(getState());
+    const usageReason = getUsageReason(getState());
 
     try {
       await SetupApi.create({
@@ -198,7 +200,9 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
         },
       });
 
-      showEmbedHomepage();
+      if (usageReason === "embedding" || usageReason === "both") {
+        showEmbedHomepage();
+      }
 
       MetabaseSettings.set("setup-token", null);
     } catch (error) {
