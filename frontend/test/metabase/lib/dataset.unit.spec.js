@@ -171,7 +171,7 @@ describe("metabase/util/dataset", () => {
         ...prevQuestion.setting("table.columns"),
         createMockTableColumnOrderSetting({
           name: "VENDOR",
-          fieldRef: ["field", PRODUCTS.VENDOR, null],
+          fieldRef: ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
           enabled: true,
         }),
       ]);

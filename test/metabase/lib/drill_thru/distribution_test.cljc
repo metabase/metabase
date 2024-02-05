@@ -8,19 +8,21 @@
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.types.isa :as lib.types.isa]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel distribution-availability-test
   (testing "distribution is available only for header clicks on non-aggregate, non-breakout columns which are not PKs, JSON, comments or descriptions"
-    (doseq [[test-case context {:keys [click column-kind column-type]}] (canned/canned-clicks)]
-      (if (and (= click :header)
-               (not (#{:aggregation :breakout} column-kind))
-               (not= column-type :pk)
-               (not (#{:type/Comment :type/Description} (:semantic-type (:column context)))))
-        (is (canned/returned test-case context :drill-thru/distribution))
-        (is (not (canned/returned test-case context :drill-thru/distribution)))))))
+    (canned/canned-test
+      :drill-thru/distribution
+      (fn [_test-case context {:keys [click column-kind column-type]}]
+        (and (= click :header)
+             (not (#{:aggregation :breakout} column-kind))
+             (not= column-type :pk)
+             (not (#{:type/Comment :type/Description} (:semantic-type (:column context))))
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel aggregate-column-test
   (testing "Don't suggest distribution drill thrus for aggregate columns like `count(*)`"

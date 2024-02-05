@@ -56,3 +56,17 @@ export const trackQuestionReplaced = (dashboardId: DashboardId) => {
     dashboard_id: dashboardId,
   });
 };
+
+export const trackDashcardDuplicated = (dashboardId: DashboardId) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_card_duplicated",
+    dashboard_id: dashboardId,
+  });
+};
+
+export const trackTabDuplicated = (dashboardId: DashboardId) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_tab_duplicated",
+    dashboard_id: dashboardId,
+  });
+};

@@ -45,6 +45,7 @@ import {
   BackButtonContainer,
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
+import { canExploreResults } from "./ViewHeaderUtils";
 
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,
@@ -423,8 +424,9 @@ function ViewTitleHeaderRightSide(props) {
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
+
   const hasExploreResultsLink =
-    question.canExploreResults() &&
+    canExploreResults(question) &&
     MetabaseSettings.get("enable-nested-queries");
 
   // Models can't be saved. But changing anything about the model will prompt the user

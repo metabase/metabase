@@ -176,3 +176,12 @@
      (mbql.u.match/replace query
        [direction (_ :guard #(= (:lib/uuid %) lib-uuid)) _]
        (assoc &match 0 (opposite-direction direction))))))
+
+(mu/defn remove-all-order-bys :- ::lib.schema/query
+  "Remove all order bys from this stage of the query."
+  ([query]
+   (remove-all-order-bys query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.util/update-query-stage query stage-number dissoc :order-by)))

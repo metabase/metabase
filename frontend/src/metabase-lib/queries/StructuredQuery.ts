@@ -1236,14 +1236,6 @@ class StructuredQuery extends AtomicQuery {
     }));
   });
 
-  columnDimensionWithName(columnName) {
-    const index = this.columnNames().findIndex(n => n === columnName);
-
-    if (index >= 0) {
-      return this.columnDimensions()[index];
-    }
-  }
-
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
   }
