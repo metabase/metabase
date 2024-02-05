@@ -21,7 +21,7 @@ export function FieldInfo({
   field,
   timezone,
   showAllFieldValues,
-  showFingerprintInfo = true,
+  showFingerprintInfo,
 }: FieldInfoProps) {
   return (
     <InfoContainer className={className}>
