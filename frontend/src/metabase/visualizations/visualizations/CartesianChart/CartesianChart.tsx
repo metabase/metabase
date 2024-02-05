@@ -227,22 +227,27 @@ export function CartesianChart(props: VisualizationProps) {
   // In order to keep brushing always enabled we have to re-enable it on every model change
   useEffect(
     function enableBrushing() {
-      if (!canBrush(rawSeries, settings, onChangeCardAndRun)) {
-        return;
-      }
+      const shouldEnableBrushing =
+        canBrush(rawSeries, settings, onChangeCardAndRun) && !hovered;
 
       setTimeout(() => {
-        chartRef.current?.dispatchAction({
-          type: "takeGlobalCursor",
-          key: "brush",
-          brushOption: {
-            brushType: "lineX",
-            brushMode: "single",
-          },
-        });
+        if (shouldEnableBrushing) {
+          chartRef.current?.dispatchAction({
+            type: "takeGlobalCursor",
+            key: "brush",
+            brushOption: {
+              brushType: "lineX",
+              brushMode: "single",
+            },
+          });
+        } else {
+          chartRef.current?.dispatchAction({
+            type: "takeGlobalCursor",
+          });
+        }
       }, 0);
     },
-    [onChangeCardAndRun, option, rawSeries, settings],
+    [onChangeCardAndRun, option, rawSeries, settings, hovered],
   );
 
   const handleSelectSeries = useCallback(
