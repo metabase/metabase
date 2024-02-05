@@ -146,7 +146,8 @@
     {:name       "hydrate-card-details"
      :attributes {:card/id card-id}}
     (-> card
-        (t2/hydrate :creator
+        (t2/hydrate :based_on_upload
+                    :creator
                     :dashboard_count
                     :can_write
                     :average_query_time
@@ -405,7 +406,6 @@
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (card/assert-card-type-and-dataset body)
   (-> (card/create-card! body @api/*current-user*)
       hydrate-card-details
       (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -462,13 +462,11 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
-  (card/assert-card-type-and-dataset card-updates)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        is-model-after-update? (cond
-                                (some? type)    (= "model" type)
-                                (some? dataset) dataset
-                                :else           (card/model? card-before-update))]
+        is-model-after-update? (if (and (nil? type) (nil? dataset))
+                                 (card/model? card-before-update)
+                                 (card/model? (card/ensure-type-and-dataset-are-consistent card-updates)))]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
