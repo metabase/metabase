@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.json]
    [metabase.driver.mongo.parameters :as mongo.params]
@@ -47,16 +48,16 @@
 (defmethod driver/can-connect? :mongo
   [_ db-details]
   (mongo.connection/with-mongo-client [^MongoClient c db-details]
-    (let [db-names (mongo.util/list-database-names c)]
-      (mongo.connection/with-mongo-database [^MongoDatabase db db-details]
-        (let [db-stats (mongo.util/run-command db {:dbStats 1})]
-          (and
-           ;; 1. check db.dbStats command completes successfully
-           (= (float (:ok db-stats))
-              1.0)
-           ;; 2. check the database is actually on the server
-           ;; (this is required because (1) is true even if the database doesn't exist)
-           (contains? (set db-names) (:db db-stats))))))))
+    (let [db-names (mongo.util/list-database-names c)
+          db (mongo.util/database c (mongo.db/db-name db-details))
+          db-stats (mongo.util/run-command db {:dbStats 1})]
+      (and
+       ;; 1. check db.dbStats command completes successfully
+       (= (float (:ok db-stats))
+          1.0)
+       ;; 2. check the database is actually on the server
+       ;; (this is required because (1) is true even if the database doesn't exist)
+       (boolean (some #(= % (:db db-stats)) db-names))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
