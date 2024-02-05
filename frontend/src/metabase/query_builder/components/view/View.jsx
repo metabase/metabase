@@ -44,7 +44,7 @@ import {
   QueryBuilderViewRoot,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
-} from "./View.styled";
+} from "./ViewHeader/View.styled";
 
 class View extends Component {
   getLeftSidebar = () => {

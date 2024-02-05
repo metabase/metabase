@@ -8,9 +8,9 @@ import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
 import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
-import RunButtonWithTooltip from "../RunButtonWithTooltip";
-import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
-import QuestionDataSource from "./QuestionDataSource";
+import RunButtonWithTooltip from "../../RunButtonWithTooltip";
+import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
+import QuestionDataSource from "../QuestionDataSource";
 
 export const ViewHeaderContainer = styled(ViewSection)<{
   isNavBarOpen?: boolean;

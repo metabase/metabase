@@ -4,7 +4,7 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { color } from "metabase/lib/colors";
 import ViewButton from "./ViewButton";
-import { HeaderButton } from "./ViewHeader.styled";
+import { HeaderButton } from "./ViewHeader/ViewHeader.styled";
 
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,

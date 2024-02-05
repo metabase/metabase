@@ -34,7 +34,7 @@ import {
   QuestionActionsDivider,
   StrengthIndicator,
 } from "./QuestionActions.styled";
-import { ViewHeaderIconButtonContainer } from "./view/ViewHeader.styled";
+import { ViewHeaderIconButtonContainer } from "./view/ViewHeader/ViewHeader.styled";
 
 const HEADER_ICON_SIZE = 16;
 

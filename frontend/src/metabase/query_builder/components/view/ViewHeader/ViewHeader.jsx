@@ -17,16 +17,16 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
-import QuestionActions from "../QuestionActions";
-import { ExploreResultsLink } from "./ExploreResultsLink";
-import { FilterHeaderButton } from "./FilterHeaderButton";
-import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
-import QuestionDataSource from "./QuestionDataSource";
-import QuestionDescription from "./QuestionDescription";
-import { QuestionNotebookButton } from "./QuestionNotebookButton";
-import ConvertQueryButton from "./ConvertQueryButton";
-import { FilterHeaderToggle, FilterHeader } from "./QuestionFilters";
-import { QuestionSummarizeWidget } from "./QuestionSummaries";
+import QuestionActions from "../../QuestionActions";
+import { ExploreResultsLink } from "../ExploreResultsLink";
+import { FilterHeaderButton } from "../FilterHeaderButton";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+import QuestionDataSource from "../QuestionDataSource";
+import QuestionDescription from "../QuestionDescription";
+import { QuestionNotebookButton } from "../QuestionNotebookButton";
+import ConvertQueryButton from "../ConvertQueryButton";
+import { FilterHeaderToggle, FilterHeader } from "../QuestionFilters";
+import { QuestionSummarizeWidget } from "../QuestionSummaries";
 import {
   AdHocViewHeading,
   SaveButton,
