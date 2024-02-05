@@ -597,7 +597,7 @@
     (.getTrustManagers trust-manager-factory)))
 
 (defn ssl-context
-  "Generates a `SocketFactory` with the custom certificates added."
+  "Generates a `SSLContext` with the custom certificates added."
   ^javax.net.ssl.SSLContext [& {:keys [private-key own-cert trust-cert]}]
   (let [ssl-context (SSLContext/getInstance "TLS")]
     (.init ssl-context
