@@ -10,7 +10,7 @@ import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
 import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
-import QuestionDataSource from "../QuestionDataSource";
+import { QuestionDataSource } from "./components/QuestionDataSource";
 
 export const ViewHeaderContainer = styled(ViewSection)<{
   isNavBarOpen?: boolean;

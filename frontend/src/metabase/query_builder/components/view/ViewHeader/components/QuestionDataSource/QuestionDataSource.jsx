@@ -18,7 +18,7 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/urls";
 
-import { HeadBreadcrumbs } from "./ViewHeader/components/HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
@@ -34,7 +34,12 @@ function isMaybeBasedOnDataset(question) {
   return isVirtualCardId(sourceTableId);
 }
 
-function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
+export function QuestionDataSource({
+  question,
+  originalQuestion,
+  subHead,
+  ...props
+}) {
   if (!question) {
     return null;
   }
@@ -277,5 +282,3 @@ function getTableURL(table) {
   }
   return ML_Urls.getUrl(table.newQuestion());
 }
-
-export default QuestionDataSource;
