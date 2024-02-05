@@ -116,12 +116,13 @@ Each question on a dashboard is in its own card that you can move around or resi
 
 Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
-![Editing dashboard](images/replace-card.png)
+![Editing dashboard](images/duplicate-card.png)
 
-- **To move a card**: click and drag the card. Other cards will move out of the way.
-- **To resize a card**: click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
-- **To remove a card**: hover over the card, and click the X icon in the top right corner.
-- **To replace a card**: hover over the card, and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card.
+- **Duplicate a card**: Hover over the card and click the Duplicate icon.
+- **Move a card**: click and drag the card. Other cards will move out of the way.
+- **Resize a card**: click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
+- **Remove a card**: hover over the card and click the X icon in the top right corner.
+- **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card.
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
 
