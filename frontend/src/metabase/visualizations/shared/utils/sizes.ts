@@ -47,7 +47,7 @@ const VISUALIZATION_SIZES: {
   },
   funnel: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   gauge: {
     min: { width: 4, height: 3 },
