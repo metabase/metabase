@@ -191,7 +191,8 @@
   ([_model _id instance]
    (cond-> (apply dissoc instance excluded-columns-for-card-revision)
      ;; datasets should preserve edits to metadata
-     (and (:type instance) (not (model? instance)))
+     ;; the type check only needed in tests because most test object does not include `type` key
+     (and (some? (:type instance)) (not (model? instance)))
      (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
