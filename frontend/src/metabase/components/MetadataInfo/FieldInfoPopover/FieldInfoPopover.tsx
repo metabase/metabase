@@ -11,6 +11,7 @@ type Props = {
   field: Field | DatasetColumn;
   timezone?: string;
   delay: [number, number];
+  showFingerprintInfo?: boolean;
 } & Pick<HoverCardProps, "children" | "position" | "disabled">;
 
 function FieldInfoPopover({
@@ -19,6 +20,7 @@ function FieldInfoPopover({
   position = "bottom-start",
   disabled,
   delay = POPOVER_DELAY,
+  showFingerprintInfo,
   children,
   ...rest
 }: Props) {
@@ -36,7 +38,11 @@ function FieldInfoPopover({
     >
       <HoverCard.Target>{children}</HoverCard.Target>
       <HoverCard.Dropdown>
-        <WidthBoundFieldInfo field={field} timezone={timezone} />
+        <WidthBoundFieldInfo
+          field={field}
+          timezone={timezone}
+          showFingerprintInfo={showFingerprintInfo}
+        />
       </HoverCard.Dropdown>
     </HoverCard>
   );

@@ -787,6 +787,7 @@ class TableInteractive extends Component {
             field={column}
             timezone={data.results_timezone}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
+            showFingerprintInfo
           >
             {renderTableHeaderWrapper(
               <Ellipsified tooltip={columnTitle}>
