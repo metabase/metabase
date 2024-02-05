@@ -10,8 +10,8 @@ import { getUpgradeUrl } from "metabase/selectors/settings";
 
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 
-import type { TokenStatus } from "metabase/admin/settings/hooks/use-license";
-import { useLicense } from "metabase/admin/settings/hooks/use-license";
+import type { TokenStatus } from "metabase-enterprise/settings/hooks/use-license";
+import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import { useBillingInfo } from "metabase-enterprise/settings/hooks/use-billing-info";
 import {
   ExplorePaidPlansContainer,
@@ -90,11 +90,14 @@ const LicenseAndBillingSettings = ({
     isUpdating,
   } = useLicense(showLicenseAcceptedToast);
 
+  const isInvalidToken =
+    !!licenseError || (tokenStatus != null && !tokenStatus.isValid);
+
   const {
     loading: billingLoading,
     error: billingError,
     billingInfo,
-  } = useBillingInfo();
+  } = useBillingInfo(!licenseLoading && !isInvalidToken);
 
   const isLoading = licenseLoading || billingLoading;
 
@@ -108,8 +111,6 @@ const LicenseAndBillingSettings = ({
     );
   }
 
-  const isInvalidToken =
-    !!licenseError || (tokenStatus != null && !tokenStatus.isValid);
   const description = getDescription(tokenStatus, !!token);
 
   const isStoreManagedBilling =
@@ -122,8 +123,6 @@ const LicenseAndBillingSettings = ({
 
   return (
     <SettingsLicenseContainer data-testid="license-and-billing-content">
-      <SectionHeader>{t`Billing`}</SectionHeader>
-
       <BillingInfo
         isStoreManagedBilling={isStoreManagedBilling}
         billingInfo={billingInfo}

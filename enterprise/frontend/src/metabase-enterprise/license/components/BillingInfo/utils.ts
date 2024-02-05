@@ -9,27 +9,42 @@ const supportedFormatTypesSet = new Set<string>(supportedFormatTypes);
 const supportedDisplayTypesSet = new Set<string>(supportedDisplayTypes);
 
 export const isSupportedLineItem = (lineItem: BillingInfoLineItem) => {
-  const isFormatSupported = supportedFormatTypesSet.has(lineItem.format);
-  const isDisplaySupported =
-    !lineItem.display || supportedDisplayTypesSet.has(lineItem.display);
-  return isFormatSupported && isDisplaySupported;
+  return (
+    supportedFormatTypesSet.has(lineItem.format) &&
+    supportedDisplayTypesSet.has(lineItem.display)
+  );
 };
 
-export const formatBillingValue = (lineItem: BillingInfoLineItem) => {
+export const formatBillingValue = (lineItem: BillingInfoLineItem): string => {
   switch (lineItem.format) {
     case "string":
       return lineItem.value;
     case "integer":
+    case "float":
       return formatNumber(lineItem.value);
-    case "datetime":
-      // TODO: design doc shows "Friday, June 23, 2023" while this would display "June 23, 2023"
-      return formatDateTimeWithUnit(lineItem.value, "day");
+    case "datetime": {
+      const dow = formatDateTimeWithUnit(lineItem.value, "day-of-week");
+      const day = formatDateTimeWithUnit(lineItem.value, "day");
+      return `${dow}, ${day}`;
+    }
     case "currency":
       return formatNumber(lineItem.value, {
         currency: lineItem.currency,
         number_style: "currency",
       });
-    default:
-      return null;
+    default: {
+      const _exhaustiveCheck: never = lineItem;
+      return "";
+    }
   }
+};
+
+export const internalLinkMap: Record<string, string> = {
+  "user-list": "/admin/people",
+};
+
+export const isUnsupportedInternalLink = (lineItem: BillingInfoLineItem) => {
+  return lineItem.display === "internal-link"
+    ? !internalLinkMap[lineItem.link]
+    : false;
 };

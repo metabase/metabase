@@ -7,6 +7,7 @@ export interface StoreTokenStatus {
 export const supportedFormatTypes = [
   "string",
   "integer",
+  "float",
   "datetime",
   "currency",
 ] as const;
@@ -20,24 +21,20 @@ export const supportedDisplayTypes = [
 type BillingInfoDisplayType =
   | { display: "internal-link"; link: string }
   | { display: "external-link"; link: string }
-  | { display: "value"; link: string }
+  | { display: "value" }
   | ({ display: string } & Record<string, any>);
-
-type BillingInfoDisplayable<Type> =
-  | (Type & BillingInfoDisplayType)
-  | (Type & Record<keyof BillingInfoDisplayType, undefined>);
 
 type BillingInfoFormatType =
   | { name: string; value: string; format: "string" }
   | { name: string; value: number; format: "integer" }
+  | { name: string; value: number; format: "float" }
   | { name: string; value: string; format: "datetime" }
   | { name: string; value: number; format: "currency"; currency: string };
 
-export type BillingInfoLineItem = BillingInfoDisplayable<BillingInfoFormatType>;
+export type BillingInfoLineItem = BillingInfoFormatType &
+  BillingInfoDisplayType;
 
-export type BillingInfo = BillingInfoLineItem[];
-
-export type BillingInfoResponse = {
+export type BillingInfo = {
   version: number;
-  content: BillingInfo;
+  content: BillingInfoLineItem[] | null;
 };
