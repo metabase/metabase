@@ -1,5 +1,6 @@
 (ns metabase.driver.mongo.connection-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.database :as mongo.db]
@@ -29,10 +30,6 @@
     (is (false? (#'mongo.db/fqdn? "localhost")))
     (is (false? (#'mongo.db/fqdn? "localhost.localdomain")))))
 
-;; TODO: remove this!
-(defn- details-normalized [details]
-  (#'mongo.db/details-normalized details))
-
 (deftest ^:parallel srv-conn-str-test
   (let [db-details {:user "test-user"
                     :pass "test-pass"
@@ -41,13 +38,14 @@
                     :authdb "authdb"
                     :use-srv true}]
     (testing "mongo+srv connection string used when :use-srv is thruthy"
-      (is (re-find #"\Qmongodb+srv://test-user:test-pass@test-host.place.com/datadb?authSource=authdb\E"
-                   (mongo.connection/db-details->connection-string db-details))))
+      (is (str/includes? (mongo.connection/db-details->connection-string db-details)
+                         "mongodb+srv://test-user:test-pass@test-host.place.com/datadb?authSource=authdb")))
     (testing "Only fqdn may be used with mongo+srv"
       (is (thrown-with-msg? Throwable
-                            #"\QUsing DNS SRV requires a FQDN for host\E"
-                            (-> db-details (assoc :host "localhost")
-                                details-normalized
+                            #"Using DNS SRV requires a FQDN for host"
+                            (-> db-details
+                                (assoc :host "localhost")
+                                mongo.db/details-normalized
                                 mongo.connection/db-details->connection-string))))))
 
 (deftest ^:parallel srv-connection-properties-test
@@ -101,7 +99,7 @@
      (let [settings (-> mock-details
                         (assoc :additional-options "readPreference=secondary&replicaSet=test")
                         mongo.connection/db-details->mongo-client-settings)]
-       (is (= "test" 
+       (is (= "test"
               (-> settings .getClusterSettings .getRequiredReplicaSetName)))
        (is (= (com.mongodb.ReadPreference/secondary)
               (.getReadPreference settings)))))
