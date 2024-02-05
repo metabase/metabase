@@ -583,25 +583,25 @@
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-        (let [table-name (mt/random-name)]
-          (with-upload-table!
-            [table (do (@#'upload/load-from-csv!
-                        driver/*driver*
-                        (mt/id)
-                        table-name
-                        (csv-file-with ["datetime"
-                                        "2022-01-01"
-                                        "2022-01-01 00:00"
-                                        "2022-01-01T00:00:00"
-                                        "2022-01-01T00:00"]))
-                       (sync-upload-test-table! :database (mt/db) :table-name table-name))]
-            (testing "Fields exists after sync"
-              (testing "Check the datetime column the correct base_type"
-                (is (=? {:name      #"(?i)datetime"
-                         :base_type :type/DateTime}
+        (with-upload-table!
+          [table (let [table-name (mt/random-name)]
+                   (@#'upload/load-from-csv!
+                    driver/*driver*
+                    (mt/id)
+                    table-name
+                    (csv-file-with ["datetime"
+                                    "2022-01-01"
+                                    "2022-01-01 00:00"
+                                    "2022-01-01T00:00:00"
+                                    "2022-01-01T00:00"]))
+                   (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+          (testing "Fields exists after sync"
+            (testing "Check the datetime column the correct base_type"
+              (is (=? {:name      #"(?i)datetime"
+                       :base_type :type/DateTime}
                       ;; db position is 1; 0 is for the auto-inserted ID
-                        (t2/select-one Field :database_position 1 :table_id (:id table)))))
-              (is (some? table)))))))))
+                      (t2/select-one Field :database_position 1 :table_id (:id table)))))
+            (is (some? table))))))))
 
 (deftest load-from-csv-offset-datetime-test
   (testing "Upload a CSV file with a datetime column"
