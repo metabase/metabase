@@ -19,8 +19,10 @@ type DelayGroupProps = {
 
 const DEFAULT_TIMEOUT = 500;
 
-export function DelayGroup(props: DelayGroupProps) {
-  const { children, timeout = DEFAULT_TIMEOUT } = props;
+export function DelayGroup({
+  children,
+  timeout = DEFAULT_TIMEOUT,
+}: DelayGroupProps) {
   const [shouldDelay, setShouldDelay] = React.useState(true);
 
   const t = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
