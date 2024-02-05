@@ -15,7 +15,7 @@ jobs:
          contains(github.event.issue.labels.*.name, 'flaky-test-fix') )
     steps:
       - name: Setting title
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         id: vars
         with:
           script: |

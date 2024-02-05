@@ -27,7 +27,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Set source Docker image to OSS
       run: |
         echo "DOCKER_SOURCE_IMAGE=metabase/metabase:${{ matrix.version.source }}" >> $GITHUB_ENV
@@ -86,7 +86,7 @@ jobs:
           --config-file e2e/test/scenarios/cross-version/target/shared/cross-version-target.config.js \
           --spec e2e/test/scenarios/cross-version/target/**/*.cy.spec.js
     - name: Upload Cypress Artifacts upon failure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: cypress-artifacts-${{ matrix.version.source}}-to-${{ matrix.version.target }}

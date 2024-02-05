@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
@@ -308,15 +309,31 @@
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
+(def ^:private last-timestamp (atom (t/local-date-time)))
+
+(set! *warn-on-reflection* true)
+
+(defn strictly-monotonic-now
+  "Return an adjusted version of the current time, that it is guaranteed to never repeat the last second."
+  []
+  (swap! last-timestamp
+         (fn [prev-timestamp]
+           (t/max
+             (t/local-date-time)
+             (-> prev-timestamp
+                 (t/plus (t/seconds 1))
+                 (t/truncate-to :seconds))))))
+
 (defn- unique-table-name
-  "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplised `table-name` if necessary)."
+  "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."
   [driver table-name]
   (let [time-format                 "_yyyyMMddHHmmss"
-        acceptable-length           (min (count table-name)
-                                         (- (driver/table-name-length-limit driver) (count time-format)))
-        truncated-name-without-time (subs (u/slugify table-name) 0 acceptable-length)]
+        slugified-name               (or (u/slugify table-name) "")
+        max-length                  (- (driver/table-name-length-limit driver) (count time-format))
+        acceptable-length           (min (count slugified-name) max-length)
+        truncated-name-without-time (subs slugified-name 0 acceptable-length)]
     (str truncated-name-without-time
-         (t/format time-format (t/local-date-time)))))
+         (t/format time-format (strictly-monotonic-now)))))
 
 (def ^:private max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
 
@@ -663,7 +680,6 @@
   (when-let [error (can-append-error db table)]
     (throw error)))
 
-;; This will be used in merge 2 of milestone 1 to populate a property on the table for the FE.
 (defn can-upload-to-table?
   "Returns true if the user can upload to the given database and table, and false otherwise."
   [db table]
@@ -685,3 +701,67 @@
         database (table/database table)]
     (check-can-append database table)
     (append-csv!* database table file)))
+
+;;; +--------------------------------
+;;; |  hydrate based_on_upload for FE
+;;; +--------------------------------
+
+(defn uploadable-table-ids
+  "Returns the subset of table ids where the user can upload to the table."
+  [table-ids]
+  (if (empty? table-ids)
+    #{}
+    (let [tables (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)]
+      (set (keep (fn [t]
+                   (when (can-upload-to-table? (:db t) t)
+                     (:id t)))
+                 tables)))))
+
+(defn- no-joins?
+  "Returns true if `query` has no joins in it, otherwise false."
+  [query]
+  (let [all-joins (mapcat (fn [stage]
+                            (lib/joins query stage))
+                          (range (lib/stage-count query)))]
+    (empty? all-joins)))
+
+(mu/defn model-hydrate-based-on-upload
+  "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
+  [models :- [:sequential [:map
+                           ;; query_type and dataset_query can be null in tests, so we make them nullable here.
+                           ;; they should never be null in production
+                           [:dataset_query [:maybe ms/Map]]
+                           [:query_type    [:maybe [:or :string :keyword]]]
+                           [:table_id      [:maybe ms/PositiveInt]]
+                           ;; is_upload can be provided for an optional optimization
+                           [:is_upload {:optional true} [:maybe :boolean]]]]]
+  (let [table-ids            (->> models
+                                  ;; as an optimization when listing collection items (GET /api/collection/items),
+                                  ;; we might already know that the table is not an upload if is_upload=false. We
+                                  ;; can skip making more queries if so
+                                  (remove #(false? (:is_upload %)))
+                                  (keep :table_id)
+                                  set)
+        uploadable-table-ids (set (uploadable-table-ids table-ids))
+        based-on-upload      (fn [model]
+                               (when-let [dataset_query (:dataset_query model)] ; dataset_query is sometimes null in tests
+                                 (let [query (lib/->pMBQL dataset_query)]
+                                   (when (and (= (name (:query_type model)) "query")
+                                              (contains? uploadable-table-ids (:table_id model))
+                                              (no-joins? query))
+                                     (lib/source-table-id query)))))]
+    (map #(m/assoc-some % :based_on_upload (based-on-upload %))
+         models)))
+
+(mi/define-batched-hydration-method based-on-upload
+  :based_on_upload
+  "Add based_on_upload=<table-id> to a card if:
+    - the card is a model
+    - the query is a GUI query, and does not have any joins
+    - the base table of the card is based on an upload
+    - the user has permissions to upload to the table
+    - uploads are enabled
+  Otherwise based_on_upload is nil."
+  [cards]
+  (let [models-by-id (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))]
+    (map #(or (models-by-id (:id %)) %) cards)))
