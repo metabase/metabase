@@ -1,7 +1,5 @@
-import { hideAll } from "tippy.js";
-
-import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import type { HoverCardProps } from "metabase/ui";
+import { HoverCard, useDelayGroup } from "metabase/ui";
 import type { DatasetColumn } from "metabase-types/api";
 import type Field from "metabase-lib/metadata/Field";
 
@@ -9,44 +7,38 @@ import { WidthBoundFieldInfo } from "./FieldInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 
-type Props = { field: Field | DatasetColumn; timezone?: string } & Pick<
-  ITippyPopoverProps,
-  "children" | "placement" | "disabled" | "delay"
->;
-
-const className = "dimension-info-popover";
+type Props = {
+  field: Field | DatasetColumn;
+  timezone?: string;
+  delay: [number, number];
+} & Pick<HoverCardProps, "children" | "position" | "disabled">;
 
 function FieldInfoPopover({
   field,
   timezone,
-  children,
-  placement,
+  position = "bottom-start",
   disabled,
   delay = POPOVER_DELAY,
+  children,
+  ...rest
 }: Props) {
-  return (
-    <TippyPopover
-      className={className}
-      delay={delay}
-      placement={placement || "left-start"}
-      disabled={disabled}
-      content={<WidthBoundFieldInfo field={field} timezone={timezone} />}
-      onTrigger={instance => {
-        const fieldInfoPopovers = document.querySelectorAll(
-          `.${className}[data-state~='visible']`,
-        );
+  const grp = useDelayGroup();
 
-        // if a dimension info popovers are already visible, hide them and show this popover immediately
-        if (fieldInfoPopovers.length > 0) {
-          hideAll({
-            exclude: instance,
-          });
-          instance.show();
-        }
-      }}
+  return (
+    <HoverCard
+      {...rest}
+      position={position}
+      disabled={disabled}
+      openDelay={grp.shouldDelay ? delay[0] : 0}
+      closeDelay={grp.shouldDelay ? delay[1] : 0}
+      onOpen={grp.onOpen}
+      onClose={grp.onClose}
     >
-      {children}
-    </TippyPopover>
+      <HoverCard.Target>{children}</HoverCard.Target>
+      <HoverCard.Dropdown>
+        <WidthBoundFieldInfo field={field} timezone={timezone} />
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 }
 
