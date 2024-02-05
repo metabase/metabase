@@ -302,7 +302,7 @@ export const startNewNotebookModel = async () => {
 };
 
 export const triggerNativeQueryChange = async () => {
-  await waitForNativeQueryEditoReady();
+  await waitForNativeQueryEditorReady();
 
   const inputArea = within(
     screen.getByTestId("mock-native-query-editor"),
@@ -381,7 +381,7 @@ export const waitForSaveToBeEnabled = async () => {
   });
 };
 
-export const waitForNativeQueryEditoReady = async () => {
+export const waitForNativeQueryEditorReady = async () => {
   await waitFor(() => {
     expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
   });
