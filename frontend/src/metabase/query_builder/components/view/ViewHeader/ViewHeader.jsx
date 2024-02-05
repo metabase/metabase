@@ -18,7 +18,6 @@ import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
 import QuestionActions from "../../QuestionActions";
-import QuestionDescription from "../QuestionDescription";
 import { FilterHeaderToggle, FilterHeader } from "../QuestionFilters";
 import { QuestionSummarizeWidget } from "../QuestionSummaries";
 import { ConvertQueryButton } from "./components/ConvertQueryButton";
@@ -27,6 +26,7 @@ import { FilterHeaderButton } from "./components/FilterHeaderButton";
 import { ExploreResultsLink } from "./components/ExploreResultsLink";
 import { QuestionNotebookButton } from "./components/QuestionNotebookButton";
 import { QuestionDataSource } from "./components/QuestionDataSource";
+import { QuestionDescription } from "./components/QuestionDescription";
 import {
   AdHocViewHeading,
   SaveButton,
