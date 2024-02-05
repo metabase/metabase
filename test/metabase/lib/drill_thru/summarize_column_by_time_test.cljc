@@ -15,16 +15,16 @@
 (deftest ^:parallel summarize-column-by-time-availability-test
   (testing (str "summarize-column-by-time is available for header click with no aggregations or breakouts, "
                 "for a summable column and at least one date-flavoured breakout available")
-    (doseq [[test-case context {:keys [click column-type]}] (canned/canned-clicks)]
-      (if (and (= click :header)
-               (= column-type :number)
-               (zero? (:aggregations test-case))
-               (zero? (:breakouts test-case))
-               (some #(or (isa? (:effective-type %) :type/Date)
-                          (isa? (:effective-type %) :type/DateTime))
-                     (lib/breakoutable-columns (:query test-case))))
-        (is (canned/returned test-case context :drill-thru/summarize-column-by-time))
-        (is (not (canned/returned test-case context :drill-thru/summarize-column-by-time)))))))
+    (canned/canned-test
+      :drill-thru/summarize-column-by-time
+      (fn [test-case _context {:keys [click column-type]}]
+        (and (= click :header)
+             (= column-type :number)
+             (zero? (:aggregations test-case))
+             (zero? (:breakouts test-case))
+             (some #(or (isa? (:effective-type %) :type/Date)
+                        (isa? (:effective-type %) :type/DateTime))
+                   (lib/breakoutable-columns (:query test-case))))))))
 
 (deftest ^:parallel aggregate-column-test
   (testing "Don't suggest summarize-column-by-time drill thrus for aggregate columns like `count(*)`"

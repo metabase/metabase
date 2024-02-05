@@ -22,9 +22,14 @@
                 (lib/available-drill-thrus query -1 context)))
 
 (deftest ^:parallel pk-unavailable-for-non-cell-test
-  (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)
-          :when (not= click :cell)]
-    (is (not (canned/returned test-case context :drill-thru/pk)))))
+  (canned/canned-test
+    :drill-thru/pk
+    (fn [_test-case _context {:keys [click]}]
+      ;; Tricky logic, so other tests check the cell clicks.
+      ;; Non-cell clicks are not available.
+      (if (= click :cell)
+        ::canned/skip
+        false))))
 
 (deftest ^:parallel do-not-return-pk-for-nil-test
   (testing "do not return pk drills for nil PK values (#36126)"

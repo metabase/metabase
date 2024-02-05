@@ -106,6 +106,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
+             (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/foreign-key? column)))
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.

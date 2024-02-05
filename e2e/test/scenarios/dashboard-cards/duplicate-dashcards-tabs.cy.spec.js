@@ -1,11 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   dashboardCards,
+  describeWithSnowplow,
   duplicateTab,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   filterWidget,
   findDashCardAction,
   getDashboardCard,
   popover,
+  resetSnowplow,
   restore,
   saveDashboard,
   visitDashboard,
@@ -52,10 +57,18 @@ function createMappedDashcard(mappedQuestionId) {
   });
 }
 
-describe("scenarios > dashboard cards > duplicate", () => {
+const EVENTS = {
+  duplicateDashcard: { event: "dashboard_card_duplicated" },
+  duplicateTab: { event: "dashboard_tab_duplicated" },
+  saveDashboard: { event: "dashboard_saved" },
+};
+
+describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsNormalUser();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
 
     cy.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
       ({ body: { id: mappedQuestionId } }) => {
@@ -72,6 +85,10 @@ describe("scenarios > dashboard cards > duplicate", () => {
     );
   });
 
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
   it("should allow the user to duplicate a dashcard", () => {
     // 1. Confirm duplication works
     cy.get("@dashboardId").then(dashboardId => {
@@ -80,7 +97,9 @@ describe("scenarios > dashboard cards > duplicate", () => {
     });
 
     findDashCardAction(getDashboardCard(0), "Duplicate").click();
+    expectGoodSnowplowEvent(EVENTS.duplicateDashcard);
     saveDashboard();
+    expectGoodSnowplowEvent(EVENTS.saveDashboard);
 
     cy.findAllByText("Products").should("have.length", 2);
 
@@ -102,7 +121,9 @@ describe("scenarios > dashboard cards > duplicate", () => {
     });
 
     duplicateTab("Tab 1");
+    expectGoodSnowplowEvent(EVENTS.duplicateTab);
     saveDashboard();
+    expectGoodSnowplowEvent(EVENTS.saveDashboard);
 
     dashboardCards().within(() => {
       cy.findByText("Products");
