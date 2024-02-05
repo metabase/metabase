@@ -15,6 +15,8 @@ import type { Dataset } from "./dataset";
 export type DashboardId = number | string;
 
 export interface Dashboard {
+  created_at: string;
+  updated_at: string;
   id: DashboardId;
   collection?: Collection | null;
   collection_id: number | null;

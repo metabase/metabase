@@ -1,6 +1,6 @@
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { trackSchemaEvent } from "metabase/lib/analytics";
-import type { EmbedResourceType } from "./types";
+import type { EmbedResource, EmbedResourceType } from "./types";
 
 const SCHEMA_NAME = "embed_flow";
 const SCHEMA_VERSION = "1-0-0";
@@ -26,32 +26,49 @@ export const trackStaticEmbedDiscarded = ({
 
 export const trackStaticEmbedPublished = ({
   artifact,
-  new_embed,
+  resource,
   params,
 }: {
   artifact: EmbedResourceType;
-  new_embed: boolean;
+  resource: EmbedResource;
   params: Record<string, number>;
 }): void => {
+  const now = Date.now();
   trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
     event: "static_embed_published",
     artifact,
-    new_embed,
+    new_embed: !resource.initially_published_at,
+    time_since_creation: toSecond(
+      now - new Date(resource.created_at).getTime(),
+    ),
+    time_since_initial_publication: resource.initially_published_at
+      ? toSecond(now - new Date(resource.initially_published_at).getTime())
+      : null,
     params,
   });
 };
 
+function toSecond(milliseconds: number) {
+  return Math.round(milliseconds / 1000);
+}
+
 export const trackStaticEmbedUnpublished = ({
   artifact,
-  initially_published_at,
+  resource,
 }: {
   artifact: EmbedResourceType;
-  initially_published_at: string | null;
+  resource: EmbedResource;
 }): void => {
+  const now = Date.now();
   trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
     event: "static_embed_unpublished",
     artifact,
-    initially_published_at,
+    time_since_creation: toSecond(
+      now - new Date(resource.created_at).getTime(),
+    ),
+    time_since_initial_publication: resource.initially_published_at
+      ? toSecond(now - new Date(resource.initially_published_at).getTime())
+      : null,
   });
 };
 

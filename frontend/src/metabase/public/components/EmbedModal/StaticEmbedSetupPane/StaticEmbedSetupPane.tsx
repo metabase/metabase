@@ -145,7 +145,7 @@ export const StaticEmbedSetupPane = ({
     await onUpdateEmbeddingParams(embeddingParams);
     trackStaticEmbedPublished({
       artifact: resourceType,
-      new_embed: !resource.enable_embedding,
+      resource,
       params: countEmbeddingParameterOptions(embeddingParams),
     });
   };
@@ -154,7 +154,7 @@ export const StaticEmbedSetupPane = ({
     await onUpdateEnableEmbedding(false);
     trackStaticEmbedUnpublished({
       artifact: resourceType,
-      initially_published_at: resource.initially_published_at,
+      resource,
     });
   };
 

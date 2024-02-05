@@ -268,8 +268,9 @@ describe("embed modal display", () => {
       cy.signInAsAdmin();
       enableTracking();
 
-      createResource(resource).then(({ body: { id } }) => {
-        cy.wrap(id).as("resourceId");
+      createResource(resource).then(({ body }) => {
+        cy.wrap(body).as("resource");
+        cy.wrap(body.id).as("resourceId");
       });
     });
 
@@ -392,12 +393,12 @@ describe("embed modal display", () => {
             artifact: resource,
             language: "Node.js",
             location: "code_overview",
-            // appearance: {
-            //   "border": true,
-            //   "title": true,
-            //   "font": "instance",
-            //   "theme": "light"
-            // }
+            appearance: {
+              border: true,
+              title: true,
+              font: "instance",
+              theme: "light",
+            },
           });
         });
 
@@ -420,24 +421,70 @@ describe("embed modal display", () => {
         });
 
         it("should send `static_embed_published` when publishing changes in the static embed modal", () => {
+          cy.then(function () {
+            this.timeAfterResourceCreation = Date.now();
+          });
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
           openStaticEmbeddingModal();
 
-          cy.findByTestId("embed-modal-content-status-bar").within(() => {
-            cy.findByText("Publish changes").click();
+          cy.findByTestId("embed-modal-content-status-bar")
+            .button("Publish")
+            .click();
+
+          cy.then(function () {
+            this.timeAfterInitialPublication = Date.now();
+            expectGoodSnowplowEvent({
+              event: "static_embed_published",
+              artifact: resource,
+              new_embed: true,
+              time_since_creation: closeTo(
+                toSecond(
+                  this.timeAfterInitialPublication -
+                    this.timeAfterResourceCreation,
+                ),
+                1,
+              ),
+              time_since_initial_publication: null,
+              params: {
+                disabled: 0,
+                locked: 0,
+                editable: 0,
+              },
+            });
           });
 
-          expectGoodSnowplowEvent({
-            event: "static_embed_published",
-            artifact: resource,
-            new_embed: true,
-            // params: {
-            //   disabled: 0,
-            //   locked: 0,
-            //   editable: 0,
-            // },
+          cy.log("Assert `time_since_initial_publication`");
+          cy.findByTestId("embed-modal-content-status-bar")
+            .button("Unpublish")
+            .click();
+          cy.findByTestId("embed-modal-content-status-bar")
+            .button("Publish")
+            .click();
+
+          cy.then(function () {
+            const timeAfterPublication = Date.now();
+            expectGoodSnowplowEvent({
+              event: "static_embed_published",
+              artifact: resource,
+              new_embed: false,
+              time_since_creation: closeTo(
+                toSecond(timeAfterPublication - this.timeAfterResourceCreation),
+                1,
+              ),
+              time_since_initial_publication: closeTo(
+                toSecond(
+                  timeAfterPublication - this.timeAfterInitialPublication,
+                ),
+                1,
+              ),
+              params: {
+                disabled: 0,
+                locked: 0,
+                editable: 0,
+              },
+            });
           });
         });
 
@@ -463,6 +510,9 @@ describe("embed modal display", () => {
   });
 });
 
+function toSecond(milliseconds) {
+  return Math.round(milliseconds / 1000);
+}
 function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
   cy.findByTestId("dashboard-embed-button").should("be.disabled");
   cy.findByTestId("dashboard-embed-button").realHover();
@@ -513,4 +563,11 @@ function enableEmbeddingForResource({ resource, id, isDirty = false }) {
       : {},
     initially_published_at: "2021-01-01T00:00:00.000Z",
   });
+}
+
+function closeTo(value, offset) {
+  return comparedValue => {
+    console.log("closeTo", value, comparedValue);
+    return Math.abs(comparedValue - value) <= offset;
+  };
 }
