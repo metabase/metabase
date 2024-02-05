@@ -1,4 +1,4 @@
-import type { Card, DashCardId, ParameterTarget } from "metabase-types/api";
+import type { Card, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import * as Lib from "metabase-lib";
 import Dimension from "metabase-lib/Dimension";
@@ -62,13 +62,13 @@ export function getTargetFieldFromCard(
   target: ParameterTarget,
   card: Card,
   metadata: Metadata,
-  questions: Record<DashCardId, Question>,
+  question: Question,
 ) {
-  let question = questions[card.id];
-
   if (!question) {
+    // Fallback
     question = new Question(card, metadata);
   }
+
   const field = getParameterTargetField(target, question);
   return field ?? null;
 }

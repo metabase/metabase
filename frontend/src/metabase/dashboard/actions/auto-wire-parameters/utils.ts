@@ -44,32 +44,36 @@ export function getAllDashboardCardsWithUnmappedParameters({
 }
 
 export function getMatchingParameterOption(
-  dashcardToCheck: DashboardCard,
-  targetDimension: ParameterTarget,
   targetDashcard: DashboardCard,
+  targetDimension: ParameterTarget,
+  sourceDashcard: DashboardCard,
   metadata: Metadata,
+  questions: Record<DashCardId, Question>,
 ): {
   target: ParameterTarget;
 } | null {
-  if (!dashcardToCheck) {
+  if (!targetDashcard) {
     return null;
   }
 
-  const targetQuestion = new Question(targetDashcard.card, metadata);
-  const questionToCheck = new Question(dashcardToCheck.card, metadata);
+  // TODO: verify if fallback can be dropped
+  const sourceQuestion =
+    questions[sourceDashcard.id] ?? new Question(sourceDashcard.card, metadata);
+  const targetQuestion =
+    questions[targetDashcard.id] ?? new Question(targetDashcard.card, metadata);
 
   return (
     getParameterMappingOptions(
-      questionToCheck,
+      targetQuestion,
       null,
-      dashcardToCheck.card,
-      dashcardToCheck,
+      targetDashcard.card,
+      targetDashcard,
     ).find((param: { target: ParameterTarget }) =>
       compareMappingOptionTargets(
         targetDimension,
         param.target,
+        sourceQuestion,
         targetQuestion,
-        questionToCheck,
       ),
     ) ?? null
   );
@@ -88,6 +92,7 @@ export function getAutoWiredMappingsForDashcards(
   parameter_id: ParameterId,
   target: ParameterTarget,
   metadata: Metadata,
+  questions: Record<DashCardId, Question>,
 ): DashCardAttribute[] {
   if (targetDashcards.length === 0) {
     return [];
@@ -103,6 +108,7 @@ export function getAutoWiredMappingsForDashcards(
       target,
       sourceDashcard,
       metadata,
+      questions,
     );
 
     if (selectedMappingOption && targetDashcard.card_id) {

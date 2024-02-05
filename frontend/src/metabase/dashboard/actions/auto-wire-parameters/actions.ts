@@ -21,7 +21,7 @@ import {
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { getDashCardById } from "metabase/dashboard/selectors";
+import { getDashCardById, getQuestions } from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
@@ -35,6 +35,7 @@ export function autoWireDashcardsWithMatchingParameters(
   return function (dispatch: Dispatch, getState: GetState) {
     const metadata = getMetadata(getState());
     const dashboard_state = getState().dashboard;
+    const questions = getQuestions(getState());
 
     if (!dashboard_state.dashboardId) {
       return;
@@ -53,6 +54,7 @@ export function autoWireDashcardsWithMatchingParameters(
       parameter_id,
       target,
       metadata,
+      questions,
     );
 
     if (dashcardAttributes.length === 0) {

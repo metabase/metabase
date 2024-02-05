@@ -318,9 +318,7 @@ export const getQuestions = (state: State) => {
 
       const question = getQuestionByDashcardMemo(state, { dashcard });
 
-      if (dashcard.card_id) {
-        acc[dashcard.card_id] = question;
-      }
+      acc[dashcard.id] = question;
 
       return acc;
     },
