@@ -95,7 +95,6 @@ export function getParameterMappingOptions(
     return [];
   }
 
-  // const question = new Question(card, metadata);
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const options = [];
   if (!isNative || question.isDataset()) {

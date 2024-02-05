@@ -316,7 +316,7 @@ export const getQuestions = (state: State) => {
     (acc, dashcardId) => {
       const dashcard = getDashCardById(state, dashcardId);
 
-      const question = getQuestionByDashcardMemo(state, dashcard);
+      const question = getQuestionByDashcardMemo(state, { dashcard });
 
       if (dashcard.card_id) {
         acc[dashcard.card_id] = question;
@@ -356,30 +356,41 @@ export const getMissingRequiredParameters = createSelector(
     ),
 );
 
-const getQuestionByDashcardMemo = createCachedSelector(
-  [(_state: State, dashcard: DashboardCard) => dashcard, getMetadata],
+export const getQuestionByDashcardMemo = createCachedSelector(
+  [
+    (_state: State, props: { dashcard: DashboardCard }) => props.dashcard,
+    getMetadata,
+  ],
   (dashcard, metadata) => {
     return new Question(dashcard.card, metadata);
   },
-)((_state, dashcard) => {
-  return dashcard.id;
+)((_state, props) => {
+  return props.dashcard.id;
 });
 
-export const getParameterMappingOptions = createSelector(
-  [getMetadata, getEditingParameter, getCard, getDashCard, getQuestions],
-  (metadata, parameter, card, dashcard, questions) => {
+export const getParameterMappingOptions = createCachedSelector(
+  [
+    getMetadata,
+    getEditingParameter,
+    getCard,
+    getDashCard,
+    getQuestionByDashcardMemo,
+  ],
+  (metadata, parameter, card, dashcard, q) => {
     let question;
 
     if (dashcard.card_id) {
-      question = questions[dashcard.card_id];
+      question = q;
     } else {
-      // TODO: probably we can remove it
+      // TODO: probably we can remove it as dashcards are text or heading or action?
       new Question(card, metadata);
     }
 
     return _getParameterMappingOptions(question, parameter, card, dashcard);
   },
-);
+)((state, props) => {
+  return props.dashcard.id;
+});
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
