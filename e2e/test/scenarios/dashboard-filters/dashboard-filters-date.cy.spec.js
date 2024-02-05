@@ -7,6 +7,12 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
+  toggleRequiredParameter,
+  dashboardSaveButton,
+  selectDashboardFilter,
+  ensureDashboardCardHasText,
+  resetFilterWidgetToDefault,
+  sidebar,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
@@ -90,6 +96,40 @@ describe("scenarios > dashboard > filters > date", () => {
     popover().contains("June").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("33.9");
+  });
+
+  it("should support being required", () => {
+    setFilter("Time", "Month and Year");
+
+    // Can't save without a default value
+    toggleRequiredParameter();
+    dashboardSaveButton().should("be.disabled");
+    dashboardSaveButton().realHover();
+
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      'The "Month and Year" parameter requires a default value but none was provided.',
+    );
+
+    sidebar().findByText("Default value").next().click();
+    DateFilter.setMonthAndYear({
+      month: "November",
+      year: "2023",
+    });
+
+    selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
+    saveDashboard();
+
+    // Updates the filter value
+    filterWidget().click();
+    popover().findByText("December").click();
+    filterWidget().findByText("December 2023");
+    ensureDashboardCardHasText("76.83");
+
+    // Resets the value back by clicking widget icon
+    resetFilterWidgetToDefault();
+    filterWidget().findByText("November 2023");
+    ensureDashboardCardHasText("27.74");
   });
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {

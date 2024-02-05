@@ -320,6 +320,16 @@ export const getParameters = createSelector(
   },
 );
 
+export const getMissingRequiredParameters = createSelector(
+  [getParameters],
+  parameters =>
+    parameters.filter(
+      p =>
+        p.required &&
+        (!p.default || (Array.isArray(p.default) && p.default.length === 0)),
+    ),
+);
+
 export const getParameterMappingOptions = createSelector(
   [getMetadata, getEditingParameter, getCard, getDashCard],
   (metadata, parameter, card, dashcard) => {
