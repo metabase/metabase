@@ -3,12 +3,13 @@ import Questions from "metabase/entities/questions";
 import { getDefaultSize } from "metabase/visualizations";
 
 import type {
-  BaseDashboardCard,
+  Card,
   CardId,
   DashCardId,
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  VirtualCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 import {
@@ -20,7 +21,7 @@ import { trackCardCreated, trackQuestionReplaced } from "../analytics";
 import { getDashCardById, getDashboardId } from "../selectors";
 import {
   createDashCard,
-  createVirtualDashCard,
+  createVirtualCard,
   generateTemporaryDashcardId,
   isVirtualDashCard,
 } from "../utils";
@@ -40,12 +41,21 @@ type NewDashCardOpts = {
   tabId: DashboardTabId | null;
 };
 
+type NewDashboardCard = Omit<
+  DashboardCard,
+  "entity_id" | "created_at" | "updated_at"
+>;
+
 type AddDashCardOpts = NewDashCardOpts & {
-  dashcardOverrides: Partial<DashboardCard>;
+  dashcardOverrides: Partial<NewDashboardCard> & {
+    card: Card | VirtualCard;
+  };
 };
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
+
+const _addDashCard = createAction<NewDashboardCard>(ADD_CARD_TO_DASH);
 
 export const addDashCardToDashboard =
   ({ dashId, tabId, dashcardOverrides }: AddDashCardOpts) =>
@@ -63,7 +73,7 @@ export const addDashCardToDashboard =
       tabId,
     );
 
-    const dashcard = createDashCard<BaseDashboardCard>({
+    const dashcard = createDashCard({
       dashboard_id: dashId,
       dashboard_tab_id: tabId ?? null,
 
@@ -76,7 +86,7 @@ export const addDashCardToDashboard =
       ...dashcardOverrides,
     });
 
-    dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
+    dispatch(_addDashCard(dashcard));
 
     return dashcard;
   };
@@ -111,27 +121,39 @@ export const addHeadingDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
     trackCardCreated("heading", dashId);
-    const dc = createVirtualDashCard({
-      display: "heading",
-      visualization_settings: { "dashcard.background": false },
-    });
-    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides: dc }));
+    const card = createVirtualCard("heading");
+    const dashcardOverrides = {
+      card,
+      visualization_settings: {
+        "dashcard.background": false,
+        virtual_card: card,
+      },
+    };
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
 
 export const addMarkdownDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
     trackCardCreated("text", dashId);
-    const dc = createVirtualDashCard({ display: "text" });
-    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides: dc }));
+    const card = createVirtualCard("text");
+    const dashcardOverrides = {
+      card,
+      visualization_settings: { virtual_card: card },
+    };
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
 
 export const addLinkDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
     trackCardCreated("link", dashId);
-    const dc = createVirtualDashCard({ display: "link" });
-    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides: dc }));
+    const card = createVirtualCard("link");
+    const dashcardOverrides = {
+      card,
+      visualization_settings: { virtual_card: card },
+    };
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
 
 export const replaceCard =

@@ -11,6 +11,7 @@ import type {
   Card,
   CardId,
   Dashboard,
+  DashboardCard,
   QuestionDashboardCard,
   Database,
   Dataset,
@@ -328,41 +329,35 @@ export function generateTemporaryDashcardId() {
   return tempId--;
 }
 
-export function createDashCard<T extends BaseDashboardCard>(attrs: Partial<T>) {
+type NewDashboardCard = Omit<
+  DashboardCard,
+  "entity_id" | "created_at" | "updated_at"
+>;
+
+type MandatoryDashboardCardAttrs = Pick<
+  DashboardCard,
+  "dashboard_id" | "card" | "col" | "row" | "size_x" | "size_y"
+>;
+
+export function createDashCard(
+  attrs: Partial<NewDashboardCard> & MandatoryDashboardCardAttrs,
+): NewDashboardCard {
   return {
     id: generateTemporaryDashcardId(),
+    dashboard_tab_id: null,
     card_id: null,
-    card: null,
-    series: [],
     parameter_mappings: [],
     visualization_settings: {},
     ...attrs,
   };
 }
 
-export function createVirtualDashCard({
-  display,
-  visualization_settings,
-}: {
-  display: VirtualCardDisplay;
-  visualization_settings?: Omit<
-    VirtualDashboardCard["visualization_settings"],
-    "virtual_card"
-  >;
-}): VirtualDashboardCard {
-  const virtualCard = {
+export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
+  return {
     name: null,
     dataset_query: {},
     display,
     visualization_settings: {},
     archived: false,
   };
-
-  return createDashCard<VirtualDashboardCard>({
-    card: virtualCard,
-    visualization_settings: {
-      ...visualization_settings,
-      virtual_card: virtualCard,
-    },
-  });
 }
