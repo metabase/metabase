@@ -49,13 +49,13 @@
 
   org.bson.Document
   (from-document [input {:keys [keywordize] :or {keywordize true} :as opts}]
-    (reduce (if keywordize
-              (fn [m ^String k]
-                (assoc m (keyword k) (from-document (.get input k) opts)))
-              (fn [m ^String k]
-                (assoc m k (from-document (.get input k) opts))))
-            (ordered-map/ordered-map)
-            (.keySet input))))
+    (persistent! (reduce (if keywordize
+                           (fn [m ^String k]
+                             (assoc! m (keyword k) (from-document (.get input k) opts)))
+                           (fn [m ^String k]
+                             (assoc! m k (from-document (.get input k) opts))))
+                         (transient (ordered-map/ordered-map))
+                         (.keySet input)))))
 
 (defprotocol ConvertToDocument
   (to-document [input] "Converts given piece of Clojure data to org.bson.Document usable by java driver."))
