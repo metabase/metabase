@@ -22,13 +22,11 @@ function FieldInfoPopover({
   delay = POPOVER_DELAY,
   showFingerprintInfo,
   children,
-  ...rest
 }: Props) {
   const group = useDelayGroup();
 
   return (
     <HoverCard
-      {...rest}
       position={position}
       disabled={disabled}
       openDelay={group.shouldDelay ? delay[0] : 0}
