@@ -64,15 +64,6 @@
   nil
   (to-document [_input] nil)
 
-  String
-  (to-document [input] input)
-
-  Boolean
-  (to-document [input] input)
-
-  java.util.Date
-  (to-document [input] input)
-
   clojure.lang.Ratio
   (to-document [input] (double input))
 
@@ -94,9 +85,6 @@
 
   java.util.Set
   (to-document [input] (mapv to-document input))
-
-  com.mongodb.DBRef
-  (to-document [dbref] dbref)
 
   Object
   (to-document [input] input))
