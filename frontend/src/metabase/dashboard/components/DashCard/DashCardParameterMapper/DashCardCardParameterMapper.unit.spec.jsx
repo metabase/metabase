@@ -18,6 +18,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 
+import Question from "metabase-lib/Question";
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 
 const QUESTION_ID = 1;
@@ -32,10 +33,13 @@ const state = createMockState({
 const metadata = getMetadata(state); // metabase-lib Metadata instance
 
 const setup = options => {
+  const card = createMockCard();
+  const dashcard = createMockDashboardCard();
   renderWithProviders(
     <DashCardCardParameterMapper
-      card={createMockCard()}
-      dashcard={createMockDashboardCard()}
+      card={card}
+      question={new Question(card, metadata)}
+      dashcard={dashcard}
       editingParameter={createMockParameter()}
       mappingOptions={[]}
       metadata={metadata}
