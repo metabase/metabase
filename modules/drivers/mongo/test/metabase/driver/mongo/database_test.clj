@@ -10,7 +10,7 @@
     (is (false? (#'mongo.db/fqdn? "localhost")))
     (is (false? (#'mongo.db/fqdn? "localhost.localdomain")))))
 
-(deftest db-name-test
+(deftest ^:parallel db-name-test
   (testing "`dbname` is in db-details"
     (is (= "some_db"
            (mongo.db/db-name {:dbname "some_db"}))))

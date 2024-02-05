@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest transformation-test
+(deftest ^:parallel transformation-test
   (let [m (ordered-map/ordered-map
            :a 1
            :b "x"
