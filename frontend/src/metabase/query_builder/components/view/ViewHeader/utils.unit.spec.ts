@@ -12,7 +12,7 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
-import { canExploreResults } from "./ViewHeaderUtils";
+import { canExploreResults } from "./utils";
 
 describe("canExploreResults", () => {
   const metadata = createMockMetadata({
