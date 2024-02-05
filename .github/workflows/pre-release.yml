@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: find_release_artifact
         id: find_release_artifact
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           result-encoding: string
           script: | # js

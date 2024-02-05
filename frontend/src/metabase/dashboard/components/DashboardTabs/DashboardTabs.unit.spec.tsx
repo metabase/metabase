@@ -35,11 +35,15 @@ function setup({
   };
 
   const DashboardComponent = ({ location }: { location: Location }) => {
-    const { selectedTabId } = useDashboardTabs({ location });
+    const { selectedTabId } = useDashboardTabs({ location, dashboardId: 1 });
 
     return (
       <>
-        <DashboardTabs location={location} isEditing={isEditing} />
+        <DashboardTabs
+          dashboardId={1}
+          location={location}
+          isEditing={isEditing}
+        />
         <span>Selected tab id is {selectedTabId}</span>
         <br />
         <span>Path is {location.pathname + location.search}</span>

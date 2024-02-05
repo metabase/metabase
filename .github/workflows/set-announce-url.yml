@@ -27,7 +27,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
       - name: Update announcement url
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         id: announce_url
         with:
           result-encoding: string

@@ -131,11 +131,19 @@
   "If this is a nested column, add metadata about the parent column."
   [query    :- ::lib.schema/query
    metadata :- ::lib.schema.metadata/column]
-  (let [parent-metadata     (lib.metadata/field query (:parent-id metadata))
-        {parent-name :name} (cond->> parent-metadata
-                              (:parent-id parent-metadata) (add-parent-column-metadata query))]
-    (update metadata :name (fn [field-name]
-                             (str parent-name \. field-name)))))
+  (let [parent-metadata
+        (lib.metadata/field query (:parent-id metadata))
+
+        {parent-name :name, parent-display-name :display-name}
+        (cond->> parent-metadata
+          (:parent-id parent-metadata) (add-parent-column-metadata query))]
+    (-> metadata
+        (assoc :lib/simple-name (:name metadata))
+        (update :name (fn [field-name]
+                        (str parent-name \. field-name)))
+        (assoc ::simple-display-name (:display-name metadata))
+        (update :display-name (fn [display-name]
+                                (str parent-display-name ": " display-name))))))
 
 (defn- column-metadata-effective-type
   "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
@@ -190,20 +198,44 @@
     (cond->> metadata
       (:parent-id metadata) (add-parent-column-metadata query))))
 
+(defn- field-nesting-path
+  [metadata-providerable {:keys [display-name parent-id] :as _field-metadata}]
+  (loop [field-id parent-id, path (list display-name)]
+    (if field-id
+      (let [{:keys [display-name parent-id]} (lib.metadata/field metadata-providerable field-id)]
+        (recur parent-id (conj path display-name)))
+      path)))
+
+(defn- nest-display-name
+  [metadata-providerable field-metadata]
+  (let [path (field-nesting-path metadata-providerable field-metadata)]
+    (when (every? some? path)
+      (str/join ": " path))))
+
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/column
-  [query stage-number {field-display-name :display-name
-                       field-name         :name
-                       temporal-unit      :unit
-                       binning            ::binning
-                       join-alias         :source-alias
-                       fk-field-id        :fk-field-id
-                       table-id           :table-id
-                       :as                field-metadata} style]
-  (let [field-display-name (or field-display-name
+  [query stage-number {field-display-name  :display-name
+                       field-name          :name
+                       temporal-unit       :unit
+                       binning             ::binning
+                       join-alias          :source-alias
+                       fk-field-id         :fk-field-id
+                       table-id            :table-id
+                       parent-id           :parent-id
+                       simple-display-name ::simple-display-name
+                       hide-bin-bucket?    :lib/hide-bin-bucket?
+                       :as                 field-metadata} style]
+  (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
+        field-display-name (or simple-display-name
+                               (when (and parent-id
+                                          ;; check that we haven't nested yet
+                                          (or (nil? field-display-name)
+                                              (= field-display-name humanized-name)))
+                                 (nest-display-name query field-metadata))
+                               field-display-name
                                (if (string? field-name)
-                                 (u.humanization/name->human-readable-name :simple field-name)
+                                 humanized-name
                                  (str field-name)))
         join-display-name  (when (and (= style :long)
                                       ;; don't prepend a join display name if `:display-name` already contains one!
@@ -214,11 +246,11 @@
                                       (not (str/includes? field-display-name " → ")))
                              (or
                               (when fk-field-id
-                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                 ;; "ID" dropped instead.
-                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                 ;; See #30109 for more details.
+                                ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                ;; "ID" dropped instead.
+                                ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                ;; See #30109 for more details.
                                 (if-let [field (lib.metadata/field query fk-field-id)]
                                   (-> (lib.metadata.calculation/display-info query stage-number field)
                                       :display-name
@@ -228,13 +260,19 @@
                               (or join-alias (lib.join.util/current-join-alias field-metadata))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
-                             field-display-name)]
+                             field-display-name)
+        temporal-format    (fn [display-name]
+                             (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                                        (str/replace \- \space)
+                                                                        u/capitalize-en)))
+        bin-format         (fn [display-name]
+                             (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
+    ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (cond
-      temporal-unit (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                               (str/replace \- \space)
-                                                               u/capitalize-en))
-      binning       (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata))
-      :else         display-name)))
+      (and (not= style :long) hide-bin-bucket?) display-name
+      (and temporal-unit (not= display-name (temporal-format humanized-name))) (temporal-format display-name)
+      (and binning       (not= display-name (bin-format humanized-name)))      (bin-format display-name)
+      :else                                                                    display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query
@@ -265,6 +303,10 @@
   [query stage-number field-metadata]
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata)
+   ;; These have to be calculated even if the metadata has display-name to support nested fields
+   ;; because the query processor doesn't produce nested display-names.
+   {:display-name (lib.metadata.calculation/display-name query stage-number field-metadata)
+    :long-display-name (lib.metadata.calculation/display-name query stage-number field-metadata :long)}
    ;; if this column comes from a source Card (Saved Question/Model/etc.) use the name of the Card as the 'table' name
    ;; rather than the ACTUAL table name.
    (when (= (:lib/source field-metadata) :source/card)

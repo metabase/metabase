@@ -181,4 +181,32 @@ describe("scenarios > public > dashboard", () => {
     cy.button("Apply").should("not.exist");
     cy.get(".ScalarValue").should("have.text", COUNT_DOOHICKEY);
   });
+
+  it("should respect dashboard width setting in a public dashboard", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id);
+    });
+
+    // new dashboards should default to 'fixed' width
+    cy.findByTestId("fixed-width-container").should(
+      "have.css",
+      "max-width",
+      "1048px",
+    );
+
+    // toggle full-width
+    cy.get("@dashboardId").then(id => {
+      cy.signInAsAdmin();
+      cy.request("PUT", `/api/dashboard/${id}`, {
+        width: "full",
+      });
+      visitPublicDashboard(id);
+    });
+
+    cy.findByTestId("fixed-width-container").should(
+      "not.have.css",
+      "max-width",
+      "1048px",
+    );
+  });
 });

@@ -522,6 +522,58 @@ describe("scenarios > dashboard", () => {
         getDashboardCards().eq(1).contains("bottom");
       },
     );
+
+    it("(in edit mode) should allow the creator to change the dashboard width to 'fixed' or 'full'", () => {
+      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+        const cards = [
+          // the bottom card intentionally goes first to have unsorted cards coming from the BE
+          getTextCardDetails({
+            row: 1,
+            size_x: 24,
+            size_y: 1,
+            text: "bottom",
+          }),
+          getTextCardDetails({
+            row: 0,
+            size_x: 24,
+            size_y: 1,
+            text: "top",
+          }),
+        ];
+
+        updateDashboardCards({ dashboard_id, cards });
+
+        visitDashboard(dashboard_id);
+      });
+
+      // new dashboards should default to 'fixed' width
+      cy.findByTestId("fixed-width-container").should(
+        "have.css",
+        "max-width",
+        "1048px",
+      );
+
+      // toggle full-width
+      editDashboard();
+      cy.findByLabelText("Toggle width").click();
+      popover().findByText("Full width").click();
+
+      cy.findByTestId("fixed-width-container").should(
+        "not.have.css",
+        "max-width",
+        "1048px",
+      );
+
+      // confirm it saves the state after saving and refreshing
+      saveDashboard();
+      cy.reload();
+
+      cy.findByTestId("fixed-width-container").should(
+        "not.have.css",
+        "max-width",
+        "1048px",
+      );
+    });
   });
 
   it("should add a filter", () => {

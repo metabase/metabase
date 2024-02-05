@@ -8,16 +8,18 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel column-filter-availability-test
   (testing "column-filter is available for any header click, and nothing else"
-    (doseq [[test-case context {:keys [click]}] (canned/canned-clicks)]
-      (if (= click :header)
-        (is (canned/returned test-case context :drill-thru/column-filter))
-        (is (not (canned/returned test-case context :drill-thru/column-filter)))))))
+    (canned/canned-test
+      :drill-thru/column-filter
+      (fn [_test-case context {:keys [click]}]
+        (and (= click :header)
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel returns-column-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
