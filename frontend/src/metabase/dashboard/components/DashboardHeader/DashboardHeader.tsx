@@ -14,7 +14,7 @@ import ActionButton from "metabase/components/ActionButton";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import { Box, Icon } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
@@ -310,9 +310,9 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       >
         {t`Cancel`}
       </Button>,
-      <Tooltip
-        isEnabled={isSaveDisabled}
-        tooltip={disabledSaveTooltip}
+      <DashboardButtonTooltip
+        disabled={!isSaveDisabled}
+        label={disabledSaveTooltip}
         key="save"
       >
         <ActionButton
@@ -324,7 +324,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           successText={t`Saved`}
           disabled={isSaveDisabled}
         />
-      </Tooltip>,
+      </DashboardButtonTooltip>,
     ];
   }
 
@@ -390,12 +390,10 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           key="dashboard-add-heading-or-text-button"
           label={t`Add a heading or text`}
         >
-          <Box>
-            <TextOptionsButton
-              onAddMarkdown={() => this.onAddMarkdownBox()}
-              onAddHeading={() => this.onAddHeading()}
-            />
-          </Box>
+          <TextOptionsButton
+            onAddMarkdown={() => this.onAddMarkdownBox()}
+            onAddHeading={() => this.onAddHeading()}
+          />
         </DashboardButtonTooltip>,
       );
 
