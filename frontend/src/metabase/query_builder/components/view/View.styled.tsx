@@ -7,7 +7,7 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
-import { ViewTitleHeader } from "./ViewHeader";
+import { ViewTitleHeader } from "./ViewHeader/ViewHeader";
 
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
