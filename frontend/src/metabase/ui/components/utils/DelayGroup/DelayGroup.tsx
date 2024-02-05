@@ -39,7 +39,7 @@ export function DelayGroup({
         t.current = setTimeout(() => setShouldDelay(true), timeout);
       },
     }),
-    [timeout, shouldDelay, setShouldDelay],
+    [timeout, shouldDelay],
   );
 
   React.useEffect(function () {
