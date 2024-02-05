@@ -45,7 +45,7 @@
 
   java.util.Date
   (from-document [t _]
-                 (t/instant t))
+    (t/instant t))
 
   org.bson.Document
   (from-document [input {:keys [keywordize] :or {keywordize false} :as opts}]
