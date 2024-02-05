@@ -93,7 +93,7 @@
             (log/debug (u/format-color 'cyan (trs "Closed MongoClient.")))))))))
 
 (defmacro with-mongo-client
-  "Create instance of `MongoClient` for `database` and bind it to [[*mongo-client*]]. `database could anything
+  "Create instance of `MongoClient` for `database` and bind it to [[*mongo-client*]]. `database` can be anything
    digestable by [[mongo.db/details-normalized]]. Call of this macro in its body will reuse existing
    [[*mongo-client*]]."
   {:clj-kondo/lint-as 'clojure.core/let
