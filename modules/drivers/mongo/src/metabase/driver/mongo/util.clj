@@ -61,7 +61,8 @@
 ;; https://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-sync/com/mongodb/client/MongoCollection.html#find()
 (defn do-find
   "Perform find on collection. `sort-criteria` should be sequence of key value pairs (eg. vector of vectors), or
-   `ordered-map`. Keys are the column name. Keys could be keywords."
+   `ordered-map`. Keys are the column name. Keys could be keywords. `opts` could contain also `:keywordize`, which
+   is param for `from-document`."
   [^MongoCollection coll
    & {:keys [limit skip batch-size sort-criteria] :as opts}]
   (->> (cond-> ^FindIterable (.find coll)
@@ -69,7 +70,7 @@
          skip (.skip skip)
          batch-size (.batchSize (int batch-size))
          sort-criteria (.sort (mongo.conversion/to-document (ordered-map/ordered-map sort-criteria))))
-       (mapv #(mongo.conversion/from-document % (select-keys opts [:keywordize])))))
+       (mapv #(mongo.conversion/from-document % opts))))
 
 (defn create-index
   "Create index."
