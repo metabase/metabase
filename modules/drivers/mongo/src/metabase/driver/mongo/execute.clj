@@ -18,6 +18,7 @@
    [metabase.util.malli :as mu])
   (:import
    (com.mongodb.client AggregateIterable ClientSession MongoCursor MongoDatabase)
+   (java.util ArrayList Collection)
    (java.util.concurrent TimeUnit)
    (org.bson BsonBoolean BsonInt32)))
 
@@ -148,7 +149,7 @@
    ^ClientSession session
    stages timeout-ms]
   (let [coll      (.getCollection db coll)
-        pipe      (java.util.ArrayList. ^java.util.Collection (mongo.conversion/to-document stages))
+        pipe      (ArrayList. ^Collection (mongo.conversion/to-document stages))
         aggregate (.aggregate coll session pipe)]
     (init-aggregate! aggregate timeout-ms)))
 
@@ -179,7 +180,7 @@
                (reducible-rows context cursor first-row (post-process-row row-col-names))))))
 
 (defn execute-reducible-query
-  "Process and run a native MongoDB query."
+  "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]]."
   [{{query :query collection-name :collection :as native-query} :native} context respond]
   {:pre [(string? collection-name) (fn? respond)]}
   (let [query  (cond-> query
