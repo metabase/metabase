@@ -135,19 +135,20 @@ class PublicDashboard extends Component {
       return dashboard.dashcards;
     }
     return dashboard.dashcards.filter(
-      dc => dc.dashboard_tab_id === selectedTabId,
+      dashcard => dashcard.dashboard_tab_id === selectedTabId,
     );
   };
 
   getHiddenParameterSlugs = () => {
     const { parameters } = this.props;
     const currentTabParameterIds = this.getCurrentTabDashcards().flatMap(
-      dc => dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
+      dashcard =>
+        dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ?? [],
     );
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
-    return hiddenParameters.map(p => p.slug).join(",");
+    return hiddenParameters.map(parameter => parameter.slug).join(",");
   };
 
   render() {
