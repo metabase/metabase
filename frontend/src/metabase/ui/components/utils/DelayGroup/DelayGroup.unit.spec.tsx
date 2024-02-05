@@ -15,10 +15,10 @@ function setup(opts: SetupOpts) {
 }
 
 function Child() {
-  const ctx = useDelayGroup();
+  const { shouldDelay, onOpen, onClose } = useDelayGroup();
   return (
-    <button onMouseEnter={ctx.onOpen} onMouseLeave={ctx.onClose}>
-      delay: {JSON.stringify(ctx.shouldDelay)}
+    <button onMouseEnter={onOpen} onMouseLeave={onClose}>
+      delay: {JSON.stringify(shouldDelay)}
     </button>
   );
 }
