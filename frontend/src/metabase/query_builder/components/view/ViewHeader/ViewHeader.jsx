@@ -17,10 +17,11 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
-import { FilterHeaderToggle, FilterHeader } from "../QuestionFilters";
+
 import { ConvertQueryButton } from "./components/ConvertQueryButton";
 import { HeadBreadcrumbs } from "./components/HeaderBreadcrumbs";
 import { FilterHeaderButton } from "./components/FilterHeaderButton";
+import { FilterHeaderToggle, FilterHeader } from "./components/QuestionFilters";
 import { ExploreResultsLink } from "./components/ExploreResultsLink";
 import { QuestionActions } from "./components/QuestionActions";
 import { QuestionNotebookButton } from "./components/QuestionNotebookButton";
