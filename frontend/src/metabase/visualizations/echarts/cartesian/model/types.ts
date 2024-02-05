@@ -2,8 +2,9 @@ import type { Insight } from "metabase-types/api/insight";
 
 import type { CardId, DatasetColumn, RowValue } from "metabase-types/api";
 import type {
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+  type NEGATIVE_STACK_TOTAL_DATA_KEY,
+  type POSITIVE_STACK_TOTAL_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 export type BreakoutValue = RowValue;
@@ -58,12 +59,11 @@ export type SeriesModel =
   | ScatterSeriesModel;
 
 export type DimensionModel = {
-  dataKey: DataKey;
   column: DatasetColumn;
   columnIndex: number;
 };
 
-export type Datum = Record<DataKey, RowValue>;
+export type Datum = Record<DataKey, RowValue> & { [X_AXIS_DATA_KEY]: RowValue };
 export type ChartDataset = Datum[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;

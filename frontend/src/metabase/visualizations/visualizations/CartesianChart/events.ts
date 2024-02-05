@@ -32,6 +32,7 @@ import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartes
 import { getSeriesIdFromECharts } from "metabase/visualizations/echarts/cartesian/utils/id";
 import { checkWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/utils";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isStructured } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 import {
@@ -67,9 +68,7 @@ export const getEventDimensionsData = (
 
   const isWaterfallTotal =
     display === "waterfall" && dataIndex === chartModel.dataset.length;
-  const dimensionValue = isWaterfallTotal
-    ? null
-    : datum[chartModel.dimensionModel.dataKey];
+  const dimensionValue = isWaterfallTotal ? null : datum[X_AXIS_DATA_KEY];
 
   const dimensions: ClickObjectDimension[] = [
     {
@@ -114,8 +113,12 @@ export const getEventColumnsData = (
   const datum = chartModel.dataset[dataIndex];
   const isBreakoutSeries = "breakoutColumn" in seriesModel;
 
-  const eventData = getObjectEntries(datum)
+  return getObjectEntries(datum)
     .map(([dataKey, value]) => {
+      if (dataKey === X_AXIS_DATA_KEY) {
+        return null;
+      }
+
       const { cardId, breakoutValue } = parseDataKey(dataKey);
 
       const isSameCard = cardId === seriesModel.cardId;
@@ -136,15 +139,6 @@ export const getEventColumnsData = (
       };
     })
     .filter(isNotNull);
-
-  if (isBreakoutSeries) {
-    eventData.push({
-      key: seriesModel.breakoutColumn.display_name,
-      value: seriesModel.breakoutValue ?? NULL_DISPLAY_VALUE,
-      col: seriesModel.breakoutColumn,
-    });
-  }
-  return eventData;
 };
 
 export const getStackedTooltipModel = (
@@ -179,8 +173,7 @@ export const getStackedTooltipModel = (
     (_row, index) => index === seriesIndex,
   );
 
-  const dimensionValue =
-    chartModel.dataset[dataIndex][chartModel.dimensionModel.dataKey];
+  const dimensionValue = chartModel.dataset[dataIndex][X_AXIS_DATA_KEY];
 
   const headerTitle = String(
     formatValueForTooltip({

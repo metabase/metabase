@@ -1,6 +1,7 @@
 import type { RawSeries, RowValue } from "metabase-types/api";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { DataKey } from "../model/types";
 import { getDatasetKey } from "../model/dataset";
 
@@ -32,6 +33,7 @@ export function getScatterPlotDataset(
         }
 
         if (columnIndex === dimensionIndex || breakoutIndex === undefined) {
+          datum[X_AXIS_DATA_KEY] = rowValue;
           datum[getDatasetKey(column, card.id)] = rowValue;
         } else {
           datum[getDatasetKey(column, card.id, row[breakoutIndex])] = rowValue;

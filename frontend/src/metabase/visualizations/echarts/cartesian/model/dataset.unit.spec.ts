@@ -9,23 +9,31 @@ import type {
   CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
 import type { RowValue, SingleSeries } from "metabase-types/api";
+import {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   sumMetric,
   getDatasetKey,
   getJoinedCardsDataset,
   replaceValues,
-  getNullReplacerFunction,
-  getNormalizedDataset,
   getDatasetExtents,
-  getTransformedDataset,
+  applyVisualizationSettingsDataTransformations,
   applySquareRootScaling,
+  sortDataset,
 } from "./dataset";
-import type { DataKey, DimensionModel, SeriesModel } from "./types";
+import type {
+  DataKey,
+  LegacySeriesSettingsObjectKey,
+  SeriesModel,
+} from "./types";
 
 const createMockSeriesModel = (
   dataKey: DataKey,
-  index: number,
+  columnIndex: number = 1,
 ): SeriesModel => ({
   dataKey,
   name: `name for ${dataKey}`,
@@ -33,17 +41,17 @@ const createMockSeriesModel = (
   legacySeriesSettingsObjectKey: { card: { _seriesKey: dataKey } },
   vizSettingsKey: dataKey,
   column: createMockColumn({ name: dataKey }),
-  columnIndex: index,
+  columnIndex,
 });
 
-const createMockDimensionModel = (
-  dataKey: DataKey,
-  index: number,
-): DimensionModel => ({
-  dataKey,
-  column: createMockColumn({ name: dataKey }),
-  columnIndex: index,
-});
+const createMockComputedVisualizationSettings = (
+  opts: Partial<ComputedVisualizationSettings> = {},
+) => {
+  return createMockVisualizationSettings({
+    series: () => ({}),
+    ...opts,
+  });
+};
 
 describe("dataset transform functions", () => {
   describe("sumMetric", () => {
@@ -68,7 +76,7 @@ describe("dataset transform functions", () => {
     const column = createMockColumn({ name: "count" });
 
     it("should return the column name if cardId and breakoutValue are undefined", () => {
-      expect(getDatasetKey(column, undefined)).toBe("count");
+      expect(getDatasetKey(column, undefined)).toBe("null:count");
     });
 
     it("should return the cardId concatenated with column name if cardId is provided and breakoutValue is undefined", () => {
@@ -77,23 +85,23 @@ describe("dataset transform functions", () => {
 
     it("should return the breakoutValue concatenated with column name if breakoutValue is provided and cardId is undefined", () => {
       expect(getDatasetKey(column, undefined, "breakoutValue")).toBe(
-        "breakoutValue:count",
+        "null:count:breakoutValue",
       );
     });
 
     it("should return the cardId, breakoutValue and column name concatenated if all are provided", () => {
       expect(getDatasetKey(column, 1, "breakoutValue")).toBe(
-        "1:breakoutValue:count",
+        "1:count:breakoutValue",
       );
     });
 
     it("should handle different types of breakout values correctly", () => {
       expect(getDatasetKey(column, 1, "stringValue")).toBe(
-        "1:stringValue:count",
+        "1:count:stringValue",
       );
-      expect(getDatasetKey(column, 1, 123)).toBe("1:123:count");
-      expect(getDatasetKey(column, 1, true)).toBe("1:true:count");
-      expect(getDatasetKey(column, 1, null)).toBe("1:null:count");
+      expect(getDatasetKey(column, 1, 123)).toBe("1:count:123");
+      expect(getDatasetKey(column, 1, true)).toBe("1:count:true");
+      expect(getDatasetKey(column, 1, null)).toBe("1:count:null");
     });
   });
 
@@ -160,22 +168,50 @@ describe("dataset transform functions", () => {
     it("should sum metrics by the specified dimension", () => {
       const result = getJoinedCardsDataset([rawSeries1], [columns1]);
       expect(result).toStrictEqual([
-        { "1:month": 1, "1:count": 200 },
-        { "1:month": 2, "1:count": 300 },
-        { "1:month": 3, "1:count": 900 },
+        {
+          [X_AXIS_DATA_KEY]: 1,
+          "1:category": "category1",
+          "1:month": 1,
+          "1:count": 200,
+        },
+        {
+          [X_AXIS_DATA_KEY]: 2,
+          "1:category": "category1",
+          "1:month": 2,
+          "1:count": 300,
+        },
+        {
+          [X_AXIS_DATA_KEY]: 3,
+          "1:category": "category3",
+          "1:month": 3,
+          "1:count": 900,
+        },
       ]);
     });
 
     it("should handle breakout column if provided", () => {
       const result = getJoinedCardsDataset([rawSeries2], [columns2]);
       expect(result).toStrictEqual([
-        { "2:also_month": 1, "2:count": 100, "2:type1:count": 100 },
-        { "2:also_month": 2, "2:count": 200, "2:type1:count": 200 },
         {
-          "2:also_month": 3,
-          "2:count": 700,
-          "2:type2:count": 300,
-          "2:type3:count": 400,
+          [X_AXIS_DATA_KEY]: 1,
+          "2:also_month:type1": 1,
+          "2:count:type1": 100,
+          "2:type:type1": "type1",
+        },
+        {
+          [X_AXIS_DATA_KEY]: 2,
+          "2:also_month:type1": 2,
+          "2:count:type1": 200,
+          "2:type:type1": "type1",
+        },
+        {
+          [X_AXIS_DATA_KEY]: 3,
+          "2:also_month:type2": 3,
+          "2:also_month:type3": 3,
+          "2:count:type2": 300,
+          "2:count:type3": 400,
+          "2:type:type2": "type2",
+          "2:type:type3": "type3",
         },
       ]);
     });
@@ -187,23 +223,34 @@ describe("dataset transform functions", () => {
       );
       expect(result).toStrictEqual([
         {
+          [X_AXIS_DATA_KEY]: 1,
+          "1:category": "category1",
           "1:month": 1,
           "1:count": 200,
-          "2:count": 100,
-          "2:type1:count": 100,
+          "2:also_month:type1": 1,
+          "2:count:type1": 100,
+          "2:type:type1": "type1",
         },
         {
+          [X_AXIS_DATA_KEY]: 2,
+          "1:category": "category1",
           "1:month": 2,
           "1:count": 300,
-          "2:count": 200,
-          "2:type1:count": 200,
+          "2:also_month:type1": 2,
+          "2:count:type1": 200,
+          "2:type:type1": "type1",
         },
         {
+          [X_AXIS_DATA_KEY]: 3,
+          "1:category": "category3",
           "1:month": 3,
           "1:count": 900,
-          "2:count": 700,
-          "2:type2:count": 300,
-          "2:type3:count": 400,
+          "2:also_month:type2": 3,
+          "2:also_month:type3": 3,
+          "2:count:type2": 300,
+          "2:count:type3": 400,
+          "2:type:type2": "type2",
+          "2:type:type3": "type3",
         },
       ]);
     });
@@ -236,52 +283,77 @@ describe("dataset transform functions", () => {
     });
   });
 
-  describe("getNullReplacerFunction", () => {
-    it("should create a replacer function that replaces null values with zeros for specified series only", () => {
-      const settings: ComputedVisualizationSettings = {
-        series: (key: string) => ({
-          "line.missing": key === "key1" ? "zero" : undefined,
+  describe("applyVisualizationSettingsDataTransformations", () => {
+    const originalDataset = [
+      {
+        [X_AXIS_DATA_KEY]: "A",
+        dimensionKey: "A",
+        series1: 100,
+        series2: 200,
+        unusedSeries: 100,
+      },
+      {
+        [X_AXIS_DATA_KEY]: "B",
+        dimensionKey: "B",
+        series1: 300,
+        series2: 400,
+        unusedSeries: 100,
+      },
+    ];
+
+    const seriesModels = [
+      createMockSeriesModel("series1"),
+      createMockSeriesModel("series2"),
+    ];
+
+    it("should populate dataset with min numeric values for positive and negative stack totals", () => {
+      const result = applyVisualizationSettingsDataTransformations(
+        originalDataset,
+        seriesModels,
+        createMockComputedVisualizationSettings({
+          "stackable.stack_type": "stacked",
         }),
-      };
-
-      const seriesModels = [
-        createMockSeriesModel("key1", 0),
-        createMockSeriesModel("key2", 1),
-      ];
-
-      const replacer = getNullReplacerFunction(settings, seriesModels);
-
-      expect(replacer("key1", null)).toBe(0);
-      expect(replacer("key1", 1)).toBe(1);
-      expect(replacer("key2", null)).toBe(null);
-      expect(replacer("key2", 2)).toBe(2);
-    });
-  });
-
-  describe("getNormalizedDataset", () => {
-    it("should return an array of normalized datasets", () => {
-      const groupedData = [
-        { dimensionKey: "A", series1: 100, series2: 200, unusedSeries: 100 },
-        { dimensionKey: "B", series1: 300, series2: 400, unusedSeries: 100 },
-      ];
-
-      const normalizedSeriesKeys = ["series1", "series2"];
-      const dimensionKey = "dimensionKey";
-
-      const result = getNormalizedDataset(
-        groupedData,
-        normalizedSeriesKeys,
-        dimensionKey,
       );
 
       expect(result).toEqual([
         {
+          [X_AXIS_DATA_KEY]: "A",
+          [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
+          [NEGATIVE_STACK_TOTAL_DATA_KEY]: -Number.MIN_VALUE,
           dimensionKey: "A",
+          series1: 100,
+          series2: 200,
+          unusedSeries: 100,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
+          [NEGATIVE_STACK_TOTAL_DATA_KEY]: -Number.MIN_VALUE,
+          dimensionKey: "B",
+          series1: 300,
+          series2: 400,
+          unusedSeries: 100,
+        },
+      ]);
+    });
+
+    it("should return an array of normalized datasets", () => {
+      const result = applyVisualizationSettingsDataTransformations(
+        originalDataset,
+        seriesModels,
+        createMockComputedVisualizationSettings({
+          "stackable.stack_type": "normalized",
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [X_AXIS_DATA_KEY]: "A",
           series1: 1 / 3,
           series2: 2 / 3,
         },
         {
-          dimensionKey: "B",
+          [X_AXIS_DATA_KEY]: "B",
           series1: 3 / 7,
           series2: 4 / 7,
         },
@@ -289,36 +361,47 @@ describe("dataset transform functions", () => {
     });
 
     it("should handle rows with missing values", () => {
-      const groupedData = [{ dimensionKey: "A", series1: null, series2: 200 }];
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          dimensionKey: "A",
+          series1: null,
+          series2: 200,
+        },
+      ];
 
-      const normalizedSeriesKeys = ["series1", "series2"];
-      const dimensionKey = "dimensionKey";
-
-      const result = getNormalizedDataset(
-        groupedData,
-        normalizedSeriesKeys,
-        dimensionKey,
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        seriesModels,
+        createMockComputedVisualizationSettings({
+          series: (key: LegacySeriesSettingsObjectKey) => ({
+            "line.missing":
+              key.card._seriesKey === "series1" ? "zero" : undefined,
+          }),
+        }),
       );
 
       expect(result).toEqual([
         {
+          [X_AXIS_DATA_KEY]: "A",
           dimensionKey: "A",
           series1: 0,
-          series2: 1,
+          series2: 200,
         },
       ]);
     });
 
     it("should work on empty datasets", () => {
-      const groupedData: Record<DataKey, RowValue>[] = [];
-
-      const normalizedSeriesKeys = ["series1", "series2"];
-      const dimensionKey = "dimensionKey";
-
-      const result = getNormalizedDataset(
-        groupedData,
-        normalizedSeriesKeys,
-        dimensionKey,
+      const result = applyVisualizationSettingsDataTransformations(
+        [],
+        seriesModels,
+        createMockVisualizationSettings({
+          series: (key: LegacySeriesSettingsObjectKey) => ({
+            "line.missing":
+              key.card._seriesKey === "series1" ? "zero" : undefined,
+          }),
+          "stackable.stack_type": "stacked",
+        }),
       );
 
       expect(result).toEqual([]);
@@ -330,9 +413,9 @@ describe("dataset transform functions", () => {
 
     test("should return correct extents for each series", () => {
       const dataset = [
-        { series1: -100, series2: 4 },
-        { series1: 3, series2: 2 },
-        { series1: 2, series2: 5 },
+        { [X_AXIS_DATA_KEY]: 1, series1: -100, series2: 4 },
+        { [X_AXIS_DATA_KEY]: 2, series1: 3, series2: 2 },
+        { [X_AXIS_DATA_KEY]: 3, series1: 2, series2: 5 },
       ];
 
       const result = getDatasetExtents(keys, dataset);
@@ -346,9 +429,9 @@ describe("dataset transform functions", () => {
     test("should ignore non-numeric values", () => {
       const keys = ["series1", "series2"];
       const dataset = [
-        { series1: 1, series2: null },
-        { series1: null, series2: 2 },
-        { series1: 2, series2: null },
+        { [X_AXIS_DATA_KEY]: 1, series1: 1, series2: null },
+        { [X_AXIS_DATA_KEY]: 2, series1: null, series2: 2 },
+        { [X_AXIS_DATA_KEY]: 3, series1: 2, series2: null },
       ];
 
       const result = getDatasetExtents(keys, dataset);
@@ -362,41 +445,47 @@ describe("dataset transform functions", () => {
 
   describe("getTransformedDataset", () => {
     const seriesKey = "value";
-    const dimensionKey = "date";
+    // const dimensionKey = "date";
     const seriesModels = [createMockSeriesModel("value", 0)];
-    const dimensionModel = createMockDimensionModel("date", 1);
+    // const dimensionModel = createMockDimensionModel("date", 1);
 
-    it("should sort dataset based on date for time-series data", () => {
+    it("should sort time-series datasets", () => {
       const dataset = [
-        { [dimensionKey]: "2022-03-01", [seriesKey]: 10 },
-        { [dimensionKey]: "2022-01-01", [seriesKey]: 5 },
-        { [dimensionKey]: "2022-02-01", [seriesKey]: 8 },
+        { [X_AXIS_DATA_KEY]: "2022-03-01", [seriesKey]: 10 },
+        { [X_AXIS_DATA_KEY]: "2022-01-01", [seriesKey]: 5 },
+        { [X_AXIS_DATA_KEY]: "2022-02-01", [seriesKey]: 8 },
       ];
 
-      const settings = createMockVisualizationSettings({
-        "graph.x_axis.scale": "timeseries",
-        series: () => ({}),
-      });
+      const result = sortDataset(dataset, "timeseries");
 
-      const result = getTransformedDataset(
-        dataset,
-        seriesModels,
-        settings,
-        dimensionModel,
-      );
-
-      expect(result[0].date).toBe("2022-01-01");
-      expect(result[1].date).toBe("2022-02-01");
-      expect(result[2].date).toBe("2022-03-01");
+      expect(result[0][X_AXIS_DATA_KEY]).toBe("2022-01-01");
+      expect(result[1][X_AXIS_DATA_KEY]).toBe("2022-02-01");
+      expect(result[2][X_AXIS_DATA_KEY]).toBe("2022-03-01");
     });
+
+    it.each(["linear", "pow", "log"] as const)(
+      "should sort numeric datasets",
+      xAxisScale => {
+        const dataset = [
+          { [X_AXIS_DATA_KEY]: 1000, [seriesKey]: 10 },
+          { [X_AXIS_DATA_KEY]: 1, [seriesKey]: 5 },
+          { [X_AXIS_DATA_KEY]: 5, [seriesKey]: 8 },
+        ];
+
+        const result = sortDataset(dataset, xAxisScale);
+
+        expect(result[0][X_AXIS_DATA_KEY]).toBe(1);
+        expect(result[1][X_AXIS_DATA_KEY]).toBe(5);
+        expect(result[2][X_AXIS_DATA_KEY]).toBe(1000);
+      },
+    );
 
     it("handles empty datasets without errors", () => {
       expect(() =>
-        getTransformedDataset(
+        applyVisualizationSettingsDataTransformations(
           [],
           seriesModels,
-          createMockVisualizationSettings({ series: () => ({}) }),
-          dimensionModel,
+          createMockComputedVisualizationSettings(),
         ),
       ).not.toThrow();
     });
