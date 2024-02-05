@@ -43,11 +43,12 @@
                                                                          :database db-id
                                                                          :query    {:source-table table-id}}}]
           (let [get-card (fn [] (mt/user-http-request :rasta :get 200 (str "card/" card-id)))
-                get-collection-item (fn [] (->> (mt/user-http-request :rasta :get 200 (str "collection/" (:collection_id card) "/items"))
-                                                :data
-                                                (filter (fn [item]
-                                                          (= (:id item) (:id card))))
-                                                first))]
+                get-collection-item (fn []
+                                      (->> (mt/user-http-request :rasta :get 200 (str "collection/" (:collection_id card) "/items?models=dataset"))
+                                           :data
+                                           (filter (fn [item]
+                                                     (= (:id item) (:id card))))
+                                           first))]
             (testing "Sanity check: if the user is not sandboxed, based_on_upload is non-nil"
               (is (= table-id
                      (:based_on_upload (get-card))
