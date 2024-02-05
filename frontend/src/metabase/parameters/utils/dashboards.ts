@@ -148,7 +148,7 @@ function buildFieldFilterUiParameter(
     mapping => mapping.parameter_id === parameter.id,
   );
   const uniqueMappingsForParameters = _.uniq(mappingsForParameter, mapping =>
-    JSON.stringify(mapping.target),
+    mapping.target.toString(),
   );
 
   const mappedFields = uniqueMappingsForParameters.map(mapping => {
