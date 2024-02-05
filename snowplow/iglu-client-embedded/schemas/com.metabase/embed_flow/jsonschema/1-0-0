@@ -46,19 +46,19 @@
       "properties": {
         "locked": {
           "type": "integer",
-          "description": "Indicates if the artifact is locked.",
+          "description": "Number of locked parameters in the artifact.",
           "minimum": 0,
           "maximum": 2147483647
         },
         "editable": {
           "type": "integer",
-          "description": "Indicates if the artifact is editable.",
+          "description": "Number of editable parameters in the artifact.",
           "minimum": 0,
           "maximum": 2147483647
         },
         "disabled": {
           "type": "integer",
-          "description": "Indicates if the artifact is disabled.",
+          "description": "Number of disabled parameters in the artifact.",
           "minimum": 0,
           "maximum": 2147483647
         }
@@ -77,7 +77,7 @@
         "string",
         "null"
       ],
-      "description": "The language of the artifact.",
+      "description": "The backend or view language of the artifact.",
       "maxLength": 1024
     },
     "location": {
@@ -91,6 +91,17 @@
         "code_appearance"
       ],
       "description": "The location in the code where the event is triggered."
+    },
+    "code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "backend",
+        "view"
+      ],
+      "description": "Type of the language of the artifact where the event is triggered."
     },
     "appearance": {
       "type": [
@@ -109,8 +120,7 @@
         },
         "theme": {
           "type": [
-            "string",
-            "null"
+            "string"
           ],
           "enum": [
             "light",
@@ -128,8 +138,11 @@
           "description": "The font type used in the artifact."
         },
         "hide_download_button": {
-          "type": "boolean",
-          "description": "Indicates if the download button is hidden."
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Indicates if the download button is hidden. It will be null on OSS instance since it's not supported."
         }
       }
     },
@@ -156,6 +169,24 @@
         "public-share"
       ],
       "description": "Location where the public link is copied from"
+    },
+    "time_since_creation": {
+      "description": "Number of seconds from the creation of the artifact until the event is triggered.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "time_since_initial_publication": {
+      "description": "Number of seconds from the initial publication of the artifact until the event is triggered.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
     }
   },
   "required": [
