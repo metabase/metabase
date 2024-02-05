@@ -4,6 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
+import { showEmbedHomepage } from "metabase/home/components/EmbedMinimalHomepage/util";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
@@ -196,6 +197,8 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           allow_tracking: isTrackingAllowed.toString(),
         },
       });
+
+      showEmbedHomepage();
 
       MetabaseSettings.set("setup-token", null);
     } catch (error) {
