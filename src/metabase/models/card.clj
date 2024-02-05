@@ -341,6 +341,17 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
+(defn- assert-card-type-and-dataset
+  "Throw an exception if card type and dataset contradicts, return the card if it's not."
+  [{:keys [type dataset] :as card}]
+  (if (and (some? type) (some? dataset)
+           (if (true? dataset)
+             (not= "model" type)
+             (= "model" type)))
+    (throw (ex-info (tru ":dataset is inconsistent with :type")
+                    {:status-code 400}))
+    card))
+
 (defn ensure-type-and-dataset-are-consistent
   "We're in the process of migrating from using `report_card.dataset` to `report_card.type`.
   In the future we'll drop `dataset` and only use `type`. But for now we need to make sure that both keys are aligned
@@ -357,14 +368,7 @@
 
    ;; if both type and dataset is present, makes sure they don't contradict
    (and (some? type) (some? dataset))
-   (do
-    (when-not (if (true? dataset)
-                (= "model" type)
-                (not= "model" type))
-      (throw (ex-info (tru ":dataset is inconsistent with :type")
-                      {:status-code 400})))
-    card)
-
+   (assert-card-type-and-dataset card)
 
    ;; if only type is present, make sure dataset follows
    (some? type)
@@ -673,12 +677,14 @@ saved later when it is ready."
   ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings type] :as card-data} creator delay-event?]
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
+   (assert-card-type-and-dataset card-data)
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
          card-data            (-> (zipmap data-keys (map card-data data-keys))
                                   (assoc
-                                   :dataset    (or (when (= "model"type)
-                                                     true) (boolean dataset))
+                                   :dataset    (or (when (= "model" type)
+                                                     true)
+                                                   (boolean dataset))
                                    :creator_id (:id creator)
                                    :parameters (or parameters [])
                                    :parameter_mappings (or parameter_mappings []))

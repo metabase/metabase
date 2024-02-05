@@ -985,7 +985,11 @@
       (is (= ":dataset is inconsistent with :type"
              (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
                                                                       :dataset true
-                                                                      :type :question)))))
+                                                                      :type :question))))
+      (is (= ":dataset is inconsistent with :type"
+             (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                      :dataset false
+                                                                      :type "model")))))
     (testing "can create a model using dataset"
       (is (=? {:dataset true
                :type    "model"}
