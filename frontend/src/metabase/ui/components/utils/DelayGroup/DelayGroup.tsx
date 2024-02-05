@@ -1,4 +1,11 @@
-import React from "react";
+import {
+  createContext,
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+  useContext,
+} from "react";
 
 type DelayGroupContext = {
   shouldDelay: boolean;
@@ -6,7 +13,7 @@ type DelayGroupContext = {
   onClose: () => void;
 };
 
-const context = React.createContext<DelayGroupContext>({
+const context = createContext<DelayGroupContext>({
   shouldDelay: true,
   onOpen: () => undefined,
   onClose: () => undefined,
@@ -23,11 +30,11 @@ export function DelayGroup({
   children,
   timeout = DEFAULT_TIMEOUT,
 }: DelayGroupProps) {
-  const [shouldDelay, setShouldDelay] = React.useState(true);
+  const [shouldDelay, setShouldDelay] = useState(true);
 
-  const t = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const t = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const value = React.useMemo(
+  const value = useMemo(
     () => ({
       shouldDelay,
       onOpen() {
@@ -42,7 +49,7 @@ export function DelayGroup({
     [timeout, shouldDelay],
   );
 
-  React.useEffect(function () {
+  useEffect(function () {
     return () => clearTimeout(t.current);
   }, []);
 
@@ -50,5 +57,5 @@ export function DelayGroup({
 }
 
 export function useDelayGroup(): DelayGroupContext {
-  return React.useContext(context);
+  return useContext(context);
 }
