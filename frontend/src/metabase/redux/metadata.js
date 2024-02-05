@@ -313,10 +313,6 @@ export const loadMetadataForDependentItems =
         return [Schemas.actions.fetchList({ dbId: id }, options)];
       }
 
-      if (type === "database") {
-        return [Databases.actions.fetch({ id }, options)];
-      }
-
       console.warn(
         `loadMetadataForDependentItems: type ${type} not implemented`,
       );
