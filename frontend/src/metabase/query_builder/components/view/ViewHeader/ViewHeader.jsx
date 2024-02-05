@@ -45,7 +45,7 @@ import {
   BackButtonContainer,
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
-import { canExploreResults } from "./ViewHeaderUtils";
+import { canExploreResults } from "./utils";
 
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,
