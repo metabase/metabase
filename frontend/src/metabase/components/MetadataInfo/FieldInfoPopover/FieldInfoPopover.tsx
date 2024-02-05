@@ -24,17 +24,17 @@ function FieldInfoPopover({
   children,
   ...rest
 }: Props) {
-  const grp = useDelayGroup();
+  const group = useDelayGroup();
 
   return (
     <HoverCard
       {...rest}
       position={position}
       disabled={disabled}
-      openDelay={grp.shouldDelay ? delay[0] : 0}
-      closeDelay={grp.shouldDelay ? delay[1] : 0}
-      onOpen={grp.onOpen}
-      onClose={grp.onClose}
+      openDelay={group.shouldDelay ? delay[0] : 0}
+      closeDelay={group.shouldDelay ? delay[1] : 0}
+      onOpen={group.onOpen}
+      onClose={group.onClose}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
       <HoverCard.Dropdown>
