@@ -10,7 +10,6 @@
 
   If there is not already a key `subkey` in the map, calls `(f x)` and caches the value at `subkey`.
   If there is a value at `subkey`, it is returned directly."
-<<<<<<< HEAD
   ([subkey x f] (side-channel-cache subkey x f false))
   ([subkey x f force?]
    (comment subkey, force?) ; Avoids lint warning for half-unused inputs.
@@ -28,30 +27,3 @@
                       value))
                   (f x)))
               (f x)))))
-=======
-  [subkey x f]
-  (comment subkey) ; Avoids lint warning for half-unused `subkey`.
-  #?(:clj  (f x)
-     :cljs (if (or (object? x) (map? x))
-             (do
-               (when-not (.-__mbcache ^js x)
-                 (set! (.-__mbcache ^js x) (atom {})))
-               (when-not js/window.__mbcache_stats
-                 (set! js/window.__mbcache_stats (js-obj)))
-               (if-let [cache (.-__mbcache ^js x)]
-                 (if-let [cached (get @cache subkey)]
-                   (do
-                     (if-let [^js stats (aget js/window.__mbcache_stats subkey)]
-                       (set! (.-hits stats) (inc (.-hits stats)))
-                       (aset js/window.__mbcache_stats subkey (js-obj "hits" 1 "misses" 0)))
-                     cached)
-                   ;; Cache miss - generate the value and cache it.
-                   (let [value (f x)]
-                     (swap! cache assoc subkey value)
-                     (if-let [^js stats (aget js/window.__mbcache_stats subkey)]
-                       (set! (.-misses stats) (inc (.-misses stats)))
-                       (aset js/window.__mbcache_stats subkey (js-obj "hits" 0 "misses" 1)))
-                     value))
-                 (f x)))
-             (f x))))
->>>>>>> 4eea6a12fa (Revert "Adding cache stats to metabase.lib.cache")
