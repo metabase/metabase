@@ -5,6 +5,7 @@ import {
   openOrdersTable,
   openPeopleTable,
   popover,
+  hovercard,
   restore,
   summarize,
   visualize,
@@ -119,7 +120,7 @@ describe("scenarios > visualizations > table", () => {
     );
   });
 
-  it("should show field metadata in a popover when hovering over a table column header", () => {
+  it("should show field metadata in a hovercard when hovering over a table column header", () => {
     const ccName = "Foo";
 
     openPeopleTable({ mode: "notebook", limit: 2 });
@@ -212,7 +213,7 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
     ].forEach(([column, test]) => {
-      cy.get(".cellData").contains(column).trigger("mouseenter");
+      cy.get(".cellData").contains(column).realHover();
 
       popover().within(() => {
         test();
@@ -227,19 +228,14 @@ describe("scenarios > visualizations > table", () => {
 
     cy.wait("@dataset");
 
-    cy.get(".Visualization").within(() => {
-      cy.contains("Count").trigger("mouseenter");
-    });
-
-    popover().within(() => {
+    cy.get(".cellData").contains("Count").realHover();
+    hovercard().within(() => {
       cy.contains("Quantity");
       cy.findByText("No description");
     });
 
-    cy.get(".Visualization").within(() => {
-      // Make sure new table results loaded with Custom column and Count columns
-      cy.contains(ccName).trigger("mouseenter");
-    });
+    // Make sure new table results loaded with Custom column and Count columns
+    cy.get(".cellData").contains(ccName).realHover();
 
     popover().within(() => {
       cy.contains("No special type");
@@ -250,21 +246,21 @@ describe("scenarios > visualizations > table", () => {
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
     openOrdersTable({ limit: 2 });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Product ID").trigger("mouseenter");
+    cy.get(".cellData").contains("Product ID").realHover();
 
-    popover().within(() => {
+    hovercard().within(() => {
       cy.contains("Foreign Key");
       cy.contains("The product ID.");
     });
   });
 
-  it("should show field metadata popovers for native query tables", () => {
+  it("should show field metadata hovercards for native query tables", () => {
     openNativeEditor().type("select * from products");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.get(".cellData").contains("CATEGORY").trigger("mouseenter");
-    popover().within(() => {
+    cy.get(".cellData").contains("CATEGORY").realHover();
+
+    hovercard().within(() => {
       cy.contains("No special type");
       cy.findByText("No description");
     });
