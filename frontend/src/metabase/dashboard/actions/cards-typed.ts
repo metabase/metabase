@@ -36,7 +36,7 @@ import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
 
-type NewDashCardOpts = {
+export type NewDashCardOpts = {
   dashId: DashboardId;
   tabId: DashboardTabId | null;
 };

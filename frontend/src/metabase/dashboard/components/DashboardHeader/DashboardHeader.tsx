@@ -34,6 +34,7 @@ import {
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
+import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   toggleSidebar,
@@ -74,11 +75,6 @@ import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
 } from "./DashboardHeader.styled";
-
-type NewDashCardOpts = {
-  dashId: DashboardId;
-  tabId: DashboardTabId | null;
-};
 
 interface OwnProps {
   dashboardId: DashboardId;
