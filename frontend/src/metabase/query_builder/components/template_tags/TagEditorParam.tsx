@@ -358,7 +358,7 @@ class TagEditorParamInner extends Component<Props> {
           <ContainerLabel>
             {t`Default filter widget value`}
             {hasNoDefaultValue && tag.required && (
-              <ErrorSpan>{t`(required)`}</ErrorSpan>
+              <ErrorSpan>({t`required`})</ErrorSpan>
             )}
           </ContainerLabel>
           <DefaultParameterValueWidget
