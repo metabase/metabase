@@ -13,6 +13,7 @@ import {
   getDatePickerOverrides,
   getDividerOverrides,
   getFileInputOverrides,
+  getHoverCardOverrides,
   getInputOverrides,
   getMenuOverrides,
   getModalOverrides,
@@ -30,7 +31,6 @@ import {
   getTimeInputOverrides,
   getTitleOverrides,
   getTooltipOverrides,
-  getHoverCardOverrides,
 } from "./components";
 import { getThemeColors } from "./utils/colors";
 
