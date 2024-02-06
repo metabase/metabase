@@ -4,13 +4,14 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
-   [compojure.core :as compojure :refer [GET PUT]]
+   [compojure.core :as compojure :refer [GET]]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2])
-  (:import    [com.fasterxml.jackson.core JsonParseException]))
+  (:import
+   [com.fasterxml.jackson.core JsonParseException]))
 
 (set! *warn-on-reflection* true)
 
