@@ -12,6 +12,8 @@ import type {
   ChartMeasurements,
   Padding,
 } from "metabase/visualizations/echarts/cartesian/option/types";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { isNotNull } from "metabase/lib/types";
 
 const getYAxisTicksWidth = (
   axisModel: YAxisModel,
@@ -33,7 +35,7 @@ const getYAxisTicksWidth = (
     const customRangeValues = [
       settings["graph.y_axis.min"],
       settings["graph.y_axis.max"],
-    ].filter(value => typeof value === "number");
+    ].filter(isNotNull);
 
     valuesToMeasure.push(...customRangeValues);
   }
@@ -42,7 +44,7 @@ const getYAxisTicksWidth = (
     const customRangeValues = [
       settings["graph.y_axis.min"],
       settings["graph.y_axis.max"],
-    ].filter(value => typeof value === "number");
+    ].filter(isNotNull);
 
     valuesToMeasure.push(...customRangeValues);
   }
@@ -85,13 +87,10 @@ const getXAxisTicksHeight = (
   }
 
   const tickWidths = chartModel.dataset.map(datum => {
-    return renderingContext.measureText(
-      formatter(datum[chartModel.dimensionModel.dataKey]),
-      {
-        ...CHART_STYLE.axisTicks,
-        family: renderingContext.fontFamily,
-      },
-    );
+    return renderingContext.measureText(formatter(datum[X_AXIS_DATA_KEY]), {
+      ...CHART_STYLE.axisTicks,
+      family: renderingContext.fontFamily,
+    });
   });
 
   const maxTickWidth = Math.max(...tickWidths);
