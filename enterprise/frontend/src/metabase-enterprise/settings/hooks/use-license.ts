@@ -58,7 +58,7 @@ export const useLicense = (onActivated?: () => void) => {
           validUntil: new Date(response["valid-thru"]),
           isValid: response.valid,
           isTrial: response.trial,
-          features: new Set(response.features.concat("metabase-store-managed")),
+          features: new Set(response.features),
           status: response.status,
         });
       } catch (e) {

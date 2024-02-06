@@ -65,8 +65,6 @@ function BillingInfoRow({
   extraPadding: boolean;
 }) {
   // avoid rendering the entire row if we can't format/display the value
-  // ErrorBoundary serves as an extra guard in case billingInfo schema
-  // changes in a way the current application doesn't expect
   if (!isSupportedLineItem(lineItem)) {
     return null;
   }
@@ -78,6 +76,8 @@ function BillingInfoRow({
     return null;
   }
 
+  // ErrorBoundary serves as an extra guard in case billingInfo schema
+  // changes in a way the current application doesn't expect
   return (
     <ErrorBoundary errorComponent={() => null}>
       <BillingInfoRowContainer extraPadding={extraPadding}>

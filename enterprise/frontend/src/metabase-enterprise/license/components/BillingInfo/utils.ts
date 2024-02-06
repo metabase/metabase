@@ -6,7 +6,9 @@ import {
 } from "metabase-types/api";
 
 const supportedFormatTypesSet = new Set<string>(supportedFormatTypes);
-const supportedDisplayTypesSet = new Set<string>(supportedDisplayTypes);
+const supportedDisplayTypesSet = new Set<string | undefined>(
+  supportedDisplayTypes,
+);
 
 export const isSupportedLineItem = (lineItem: BillingInfoLineItem) => {
   return (
@@ -20,8 +22,12 @@ export const formatBillingValue = (lineItem: BillingInfoLineItem): string => {
     case "string":
       return lineItem.value;
     case "integer":
-    case "float":
       return formatNumber(lineItem.value);
+    case "float":
+      return formatNumber(lineItem.value, {
+        minimumFractionDigits: lineItem.precision,
+        maximumFractionDigits: lineItem.precision,
+      });
     case "datetime": {
       const dow = formatDateTimeWithUnit(lineItem.value, "day-of-week");
       const day = formatDateTimeWithUnit(lineItem.value, "day");
