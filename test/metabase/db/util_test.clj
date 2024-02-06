@@ -8,9 +8,13 @@
 (set! *warn-on-reflection* true)
 
 (deftest idempotent-insert!-test
+  ;; We test both the case where the database protects against duplicates, and where it does not.
+  ;; In the first case using the `idempotent-insert!` rather than a regular `or` prevents the application throwing an
+  ;; exception when there are race conditions, whereas in prevents us from silently inserting duplicates. We test
+  ;; both cases as only the latter case has the phantom read issue and therefore requires serializable isolation.
   (let [columns [:key :value]]
     (doseq [search-col columns]
-      (testing (format "Testing idempotent insertion where the search key %s a uniqueness constraint in the db"
+      (testing (format "Testing idempotent insertion where the search column %s a uniqueness constraint in the db"
                        (if (= :key search-col) "has" "does not have"))
 
         ;; We cannot use with-temp, as it starts its own transaction, which stops us setting the isolation level.

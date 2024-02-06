@@ -71,8 +71,15 @@
    [:in expr (type-keyword->descendants type-keyword)]))
 
 (defmacro idempotent-insert!
-  "Upsert a database record where the computation may be expensive etc. Blah blah toucan.
-   This code is agnostic as to whether there is an underlying db constriant that would prevent duplicates."
+  "Upsert some database state, typically a single row.
+
+   This is more general than an `UPSERT` or `INSERT .. ON CONFLICT`, in that it can be used for multiple entities,
+   e.g. where we also upsert some parent resources. It is also useful in the case where calculating the data to insert
+   is expensive, which could not be done if sending a single SQL command.
+
+   The usage is just like the naive pattern `(or select-expr insert-expr)`, just papering over a number of sharp edges.
+
+   The mechanism is agnostic as to whether there is an underlying db constraint to prevent duplicates."
   [select-expr insert-expr]
   ;; First attempt the select without a serializable transaction, since those are expensive.
   `(or ~select-expr
