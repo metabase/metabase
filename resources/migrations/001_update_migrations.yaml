@@ -5318,7 +5318,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.2024-01-26T20:43:18
+      id: v49.2024-02-06T17:17:53
       author: qwef
       comment: >-
         Added 0.49.0 - Add dashboard_id to cards. Used for when a question is dependent on a dashboard.
@@ -5329,13 +5329,25 @@ databaseChangeLog:
               - column:
                   name: dashboard_id
                   type: int
-                  remarks: "`dashboard_id` will be populated when this card is dependent on a dashboard"
+                  remarks: "`dashboard_id` will be populated when this card is dependent on a dashboard."
                   constraints:
                     nullable: true
+                  foreignKeyName: fk_report_card_ref_dashboard_id
       rollback:
         - dropColumn:
             tableName: report_card
             columnName: dashboard_id
+
+  - changeSet:
+      id: v47.2024-02-06T17:25:08
+      author: qwef
+      comment: Added 0.49.0 - Make report_card.type long enough to add `dashboard_dependent`
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: type
+            newDataType: varchar(32)
+      rollback: # no rollback needed, varchar(32) is backwards compatible
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

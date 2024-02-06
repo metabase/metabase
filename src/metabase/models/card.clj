@@ -718,6 +718,7 @@ saved later when it is ready."
   (and (not (:archived old-card))
        (:archived new-card)))
 
+
 (defn- line-area-bar? [display]
   (contains? #{:line :area :bar} display))
 
