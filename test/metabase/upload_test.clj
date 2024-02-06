@@ -154,18 +154,28 @@
            [" 2022-01-01 "                    #t "2022-01-01"             date-type]
            [" 2022-02-30 "                    " 2022-02-30 "              vchar-type]
            [" -2022-01-01 "                   #t "-2022-01-01"            date-type]
-           [" Jan 30 2018"                    #t "2018-01-30"             date-type]
+           [" Jan 1 2018"                     #t "2018-01-01"             date-type]
+           [" Jan 02 2018"                    #t "2018-01-02"             date-type]
            [" Jan 30 -2018"                   #t "-2018-01-30"            date-type]
-           [" Jan 30, 2018"                   #t "2018-01-30"             date-type]
+           [" Jan 1, 2018"                    #t "2018-01-01"             date-type]
+           [" Jan 02, 2018"                   #t "2018-01-02"             date-type]
            [" Feb 30, 2018"                   " Feb 30, 2018"             vchar-type]
-           [" 30 Jan 2018"                    #t "2018-01-30"             date-type]
-           [" 30 Jan, 2018"                   #t "2018-01-30"             date-type]
-           [" January 30 2018"                #t "2018-01-30"             date-type]
-           [" January 30, 2018"               #t "2018-01-30"             date-type]
-           [" 30 January 2018"                #t "2018-01-30"             date-type]
-           [" 30 January, 2018"               #t "2018-01-30"             date-type]
-           [" Sunday, January 30 2000"        #t "2000-01-30"             date-type]
-           [" Sunday, January 30, 2000"       #t "2000-01-30"             date-type]
+           [" 1 Jan 2018"                     #t "2018-01-01"             date-type]
+           [" 02 Jan 2018"                    #t "2018-01-02"             date-type]
+           [" 1 Jan, 2018"                    #t "2018-01-01"             date-type]
+           [" 02 Jan, 2018"                   #t "2018-01-02"             date-type]
+           [" January 1 2018"                 #t "2018-01-01"             date-type]
+           [" January 02 2018"                #t "2018-01-02"             date-type]
+           [" January 1, 2018"                #t "2018-01-01"             date-type]
+           [" January 02, 2018"               #t "2018-01-02"             date-type]
+           [" 1 January 2018"                 #t "2018-01-01"             date-type]
+           [" 02 January 2018"                #t "2018-01-02"             date-type]
+           [" 1 January, 2018"                #t "2018-01-01"             date-type]
+           [" 02 January, 2018"               #t "2018-01-02"             date-type]
+           [" Saturday, January 1 2000"       #t "2000-01-01"             date-type]
+           [" Sunday, January 02 2000"        #t "2000-01-02"             date-type]
+           [" Saturday, January 1, 2000"      #t "2000-01-01"             date-type]
+           [" Sunday, January 02, 2000"       #t "2000-01-02"             date-type]
            [" 2022-01-01T01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01t01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01 01:00 "              #t "2022-01-01T01:00"       datetime-type]
@@ -380,7 +390,11 @@
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (@#'upload/unique-table-name driver/*driver* "my file name"))))
     (testing "semicolons are removed"
-      (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))))
+      (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))
+    (testing "No collisions"
+      (let [n 50
+            names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
+        (is (= 50 (count (distinct names))))))))
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"

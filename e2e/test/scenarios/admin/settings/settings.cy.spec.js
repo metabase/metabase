@@ -7,7 +7,6 @@ import {
   isOSS,
   isEE,
   setTokenFeatures,
-  main,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -342,19 +341,5 @@ describeEE("scenarios > admin > settings (EE)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon").should("not.exist");
-  });
-
-  it("should not break the root path when given invalid `landing-page` value (metabase#18004) ", () => {
-    cy.visit("/admin/settings/whitelabel");
-
-    main().within(() => {
-      cy.get("#setting-landing-page").type("https://www.metabase.com/").blur();
-    });
-
-    cy.visit("/");
-
-    main().within(() => {
-      cy.findByText(`We're a little lost...`);
-    });
   });
 });

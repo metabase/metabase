@@ -201,6 +201,42 @@
               #"Cannot initialize setting before the db is set up"
               (setting/get :test-setting-custom-init)))))))
 
+(def ^:private base-options
+  {:setter   :none
+   :default  "totally-basic"})
+
+(defsetting test-no-default-with-base-setting
+  "Setting to test the `:base` property of settings. This only shows up in dev."
+  :visibility :internal
+  :base       base-options)
+
+(defsetting test-default-with-base-setting
+  "Setting to test the `:base` property of settings. This only shows up in dev."
+  :visibility :internal
+  :base       base-options
+  :default    "fully-bespoke")
+
+(deftest ^:parallel defsetting-with-base-test
+  (testing "A setting which specifies some base options"
+    (testing "Uses base options when no top-level options are specified"
+      (let [without-override (setting/resolve-setting :test-no-default-with-base-setting)]
+        (is (= "totally-basic" (:default without-override)))
+        (is (= "totally-basic" (test-no-default-with-base-setting)))))
+    (testing "Uses top-level options when they are specified"
+      (let [with-override (setting/resolve-setting :test-default-with-base-setting)]
+        (is (= "fully-bespoke" (:default with-override)))
+        (is (= "fully-bespoke" (test-default-with-base-setting)))))))
+
+;; Avoid a false positive from `deftest-check-parallel` due to referencing the setter function.
+;; Even though we only resolve the (non-existent) setter, and don't call anything, the linter flags it.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(deftest ^:parallel defsetting-with-setter-in-base-test
+  (testing "A setting which inherits :setter from the base options"
+    (let [setting (setting/resolve-setting :test-default-with-base-setting)]
+      (testing "Does not generate a setter"
+        (is (= :none (:setter setting)))
+        (is (nil? (resolve 'test-default-with-base-setting!)))))))
+
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
   (is (= "FANCY NEW VALUE <3"
@@ -622,6 +658,26 @@
       (uncached-setting! "abcdef")
       (is (= nil
              (settings-last-updated-value-in-db))))))
+
+
+;;; ---------------------------------------------- Runtime Setting Options ----------------------------------------------
+
+(def my-setter :none)
+
+(defsetting test-dynamic-setting
+  (deferred-tru "This is a sample sensitive Setting.")
+  :type       :integer
+  :setter     my-setter
+  :visibility (if (some? my-setter) :internal :public))
+
+(deftest var-value-test
+  (let [setting-definition (setting/resolve-setting :test-dynamic-setting)]
+    (testing "The defsetting macro allows references to vars for inputs"
+      (is (= :none (:setter setting-definition)))
+      (testing "And these options are used everywhere as expected"
+        (is (not (resolve `test-dynamic-setting!)))))
+    (testing "The defsetting macro allows arbitrary code forms for values"
+      (is (= :internal (:visibility setting-definition))))))
 
 
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
@@ -1130,7 +1186,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [setting/in-test? (constantly false)]
+  (with-redefs [setting/ns-in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all

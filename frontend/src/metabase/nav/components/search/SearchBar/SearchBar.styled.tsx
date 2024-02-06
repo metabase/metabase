@@ -65,13 +65,14 @@ export const SearchInputContainer = styled.div<{
     width: 2rem;
     height: 2rem;
     border-radius: 99px;
-
+    border-color: transparent;
     ${props =>
       props.isActive &&
       css`
         width: 100%;
+        border-color: ${color("border")};
         ${activeInputCSS};
-      `}
+      `};
   }
 
   ${breakpointMinSmall} {

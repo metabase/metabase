@@ -87,7 +87,7 @@
   joda-time/joda-time                       {:mvn/version "2.12.5"}
   kixi/stats                                {:mvn/version "0.5.5"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
-  lambdaisland/uri                          {:mvn/version "1.16.134"}           ; Used by opanai-clojure. security bump
+  lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "2.2.4"              ; EE SAML integration.

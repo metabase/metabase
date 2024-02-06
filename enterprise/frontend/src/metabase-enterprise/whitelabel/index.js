@@ -17,6 +17,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
+import { LandingPageWidget } from "./components/LandingPageWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
 import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
 import MetabotToggleWidget from "./components/MetabotToggleWidget";
@@ -67,16 +68,7 @@ if (hasPremiumFeature("whitelabel")) {
           display_name: t`Landing Page`,
           type: "string",
           placeholder: "/",
-          props: {
-            normalize(value) {
-              if (typeof value === "string") {
-                const normalizedValue = value.trim();
-                return normalizedValue === "" ? null : normalizedValue;
-              }
-
-              return value;
-            },
-          },
+          widget: LandingPageWidget,
         },
         {
           key: "loading-message",
