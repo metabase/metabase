@@ -1,6 +1,5 @@
 import { t } from "ttag";
 import { useEffect, useReducer } from "react";
-import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { StoreApi } from "metabase/services";
 import type { BillingInfo } from "metabase-types/api";
 
@@ -44,7 +43,6 @@ function reducer(
 
 export const useBillingInfo = (isTokenValid: boolean): UseBillingState => {
   const [state, dispatch] = useReducer(reducer, defaultState);
-  const isEE = PLUGIN_EMBEDDING.isEnabled();
 
   useEffect(() => {
     let cancelled = false;
@@ -64,14 +62,14 @@ export const useBillingInfo = (isTokenValid: boolean): UseBillingState => {
       }
     };
 
-    if (isEE && isTokenValid) {
+    if (isTokenValid) {
       fetchBillingInfo();
     }
 
     return () => {
       cancelled = true;
     };
-  }, [isTokenValid, isEE]);
+  }, [isTokenValid]);
 
   return state;
 };
