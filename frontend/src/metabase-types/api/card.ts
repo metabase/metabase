@@ -7,7 +7,7 @@ import type { UserInfo } from "./user";
 import type { Collection } from "./collection";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question";
+export type CardType = "model" | "question" | "metric";
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
