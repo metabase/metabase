@@ -376,6 +376,7 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
+    ;; identity(1, 1) defines an auto-increment column starting from 1
     ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
     ::upload/float                    [:float]
     ::upload/boolean                  [:boolean]
