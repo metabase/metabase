@@ -1,6 +1,7 @@
 import type {
   DatasetColumn,
   DatabaseId,
+  FieldFingerprint,
   FieldId,
   FieldValuesType,
   RowValue,
@@ -135,6 +136,7 @@ type TableInlineDisplayInfo = Pick<
 
 export type ColumnDisplayInfo = {
   name: string;
+  description?: string;
   displayName: string;
   longDisplayName: string;
   semanticType: string;
@@ -146,6 +148,7 @@ export type ColumnDisplayInfo = {
   isAggregation: boolean;
   isBreakout: boolean;
   table?: TableInlineDisplayInfo;
+  fingerprint?: FieldFingerprint;
 
   breakoutPosition?: number;
   filterPositions?: number[];
