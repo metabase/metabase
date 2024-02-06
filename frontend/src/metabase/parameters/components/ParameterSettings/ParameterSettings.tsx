@@ -8,21 +8,20 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import { TextInput } from "metabase/ui";
+import Toggle from "metabase/core/components/Toggle";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
+  SettingLabelError,
+  SettingRequiredContainer,
+  SettingRequiredLabel,
   SettingSection,
   SettingsRoot,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
-
-const MULTI_SELECT_OPTIONS = [
-  { name: t`Multiple values`, value: true },
-  { name: t`A single value`, value: false },
-];
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
@@ -33,6 +32,7 @@ export interface ParameterSettingsProps {
   onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onChangeRequired: (value: boolean) => void;
 }
 
 const ParameterSettings = ({
@@ -44,6 +44,7 @@ const ParameterSettings = ({
   onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
+  onChangeRequired,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
 
@@ -99,8 +100,30 @@ const ParameterSettings = ({
           />
         </SettingSection>
       )}
+
+      {isSingleOrMultiSelectable(parameter) && (
+        <SettingSection>
+          <SettingLabel>{t`People can pick`}</SettingLabel>
+          <Radio
+            value={getIsMultiSelect(parameter)}
+            options={[
+              { name: t`Multiple values`, value: true },
+              { name: t`A single value`, value: false },
+            ]}
+            vertical
+            onChange={onChangeIsMultiSelect}
+          />
+        </SettingSection>
+      )}
+
       <SettingSection>
-        <SettingLabel>{t`Default value`}</SettingLabel>
+        <SettingLabel>
+          {t`Default value`}
+          {parameter.required && !parameter.default && (
+            <SettingLabelError>({t`required`})</SettingLabelError>
+          )}
+        </SettingLabel>
+
         <SettingValueWidget
           parameter={parameter}
           name={parameter.name}
@@ -108,18 +131,23 @@ const ParameterSettings = ({
           placeholder={t`No default`}
           setValue={onChangeDefaultValue}
         />
-      </SettingSection>
-      {isSingleOrMultiSelectable(parameter) && (
-        <SettingSection>
-          <SettingLabel>{t`People can pick`}</SettingLabel>
-          <Radio
-            value={getIsMultiSelect(parameter)}
-            options={MULTI_SELECT_OPTIONS}
-            vertical
-            onChange={onChangeIsMultiSelect}
+
+        <SettingRequiredContainer>
+          <Toggle
+            id={`parameter-setting-required_${parameter.id}`}
+            value={parameter.required}
+            onChange={onChangeRequired}
           />
-        </SettingSection>
-      )}
+          <div>
+            <SettingRequiredLabel
+              htmlFor={`parameter-setting-required_${parameter.id}`}
+            >
+              {t`Always require a value`}
+            </SettingRequiredLabel>
+            <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
+          </div>
+        </SettingRequiredContainer>
+      </SettingSection>
     </SettingsRoot>
   );
 };

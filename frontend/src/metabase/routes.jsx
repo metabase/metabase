@@ -23,9 +23,8 @@ import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardAp
 import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
 
 /* Browse data */
-import BrowseApp from "metabase/browse/components/BrowseApp";
-import DatabaseBrowser from "metabase/browse/containers/DatabaseBrowser";
-import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
+import { BrowseApp } from "metabase/browse/components/BrowseApp";
+import SchemaBrowser from "metabase/browse/components/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
@@ -219,10 +218,36 @@ export const getRoutes = store => {
             <Route path="metabot" component={QueryBuilder} />
           </Route>
 
-          <Route path="browse" component={BrowseApp}>
-            <IndexRoute component={DatabaseBrowser} />
-            <Route path=":slug" component={SchemaBrowser} />
-            <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
+          <Route path="browse">
+            <IndexRedirect to="/browse/models" />
+            <Route path="models" component={() => <BrowseApp tab="models" />} />
+            <Route
+              path="databases"
+              component={() => <BrowseApp tab="databases" />}
+            />
+            <Route
+              path="databases/:slug"
+              component={({ params }) => (
+                <BrowseApp tab="databases">
+                  <SchemaBrowser params={params} />
+                </BrowseApp>
+              )}
+            />
+            <Route
+              path="databases/:dbId/schema/:schemaName"
+              component={({ params }) => (
+                <BrowseApp tab="databases">
+                  <TableBrowser params={params} />
+                </BrowseApp>
+              )}
+            />
+
+            {/* These two Redirects support legacy paths in v48 and earlier */}
+            <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />
+            <Redirect
+              from=":dbId/schema/:schemaName"
+              to="databases/:dbId/schema/:schemaName"
+            />
           </Route>
 
           {/* INDIVIDUAL DASHBOARDS */}

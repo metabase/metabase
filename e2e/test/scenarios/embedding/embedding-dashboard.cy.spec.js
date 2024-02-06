@@ -11,6 +11,8 @@ import {
   downloadAndAssert,
   assertSheetRowsCount,
   modal,
+  dashboardParametersContainer,
+  goToTab,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -60,7 +62,10 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.get("@allParameters").within(() => {
         // verify that all the parameters on the dashboard are defaulted to disabled
-        cy.findAllByText("Disabled").should("have.length", 4);
+        cy.findAllByText("Disabled").should(
+          "have.length",
+          dashboardDetails.parameters.length,
+        );
 
         // select the dropdown next to the Name parameter so that we can set it to editable
         cy.findByText("Name")
@@ -157,6 +162,49 @@ describe("scenarios > embedding > dashboard parameters", () => {
       filterWidget().should("not.exist");
 
       cy.get(".ScalarValue").invoke("text").should("eq", "2,500");
+    });
+
+    it("should only display filters mapped to cards on the selected tab", () => {
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          embedding_params: {
+            id: "enabled",
+            name: "enabled",
+            source: "enabled",
+            user_id: "enabled",
+          },
+          enable_embedding: true,
+        });
+
+        const payload = {
+          resource: { dashboard: dashboardId },
+          params: {},
+        };
+
+        visitEmbeddedPage(payload);
+
+        // wait for the results to load
+        cy.contains("Test Dashboard");
+        cy.contains("2,500");
+      });
+
+      dashboardParametersContainer().within(() => {
+        cy.findByText("Id").should("be.visible");
+        cy.findByText("Name").should("be.visible");
+        cy.findByText("Source").should("be.visible");
+        cy.findByText("User").should("be.visible");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
+
+      goToTab("Tab 2");
+
+      dashboardParametersContainer().within(() => {
+        cy.findByText("Id").should("not.exist");
+        cy.findByText("Name").should("not.exist");
+        cy.findByText("Source").should("not.exist");
+        cy.findByText("User").should("not.exist");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
     });
   });
 

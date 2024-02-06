@@ -11,21 +11,22 @@ import {
   createMockParameter,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
-import Question from "./Question";
+import Question from "metabase-lib/Question";
+import { canExploreResults } from "./utils";
 
-describe("Question.canExploreResults", () => {
+describe("canExploreResults", () => {
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],
   });
 
   it("should be false if not native", () => {
     const q = new Question(createSavedStructuredCard(), metadata);
-    expect(q.canExploreResults()).toBe(false);
+    expect(canExploreResults(q)).toBe(false);
   });
 
   it("should be false when not saved", () => {
     const q = new Question(createAdHocNativeCard(), metadata);
-    expect(q.canExploreResults()).toBe(false);
+    expect(canExploreResults(q)).toBe(false);
   });
 
   it("should be false with parameters", () => {
@@ -52,7 +53,7 @@ describe("Question.canExploreResults", () => {
       ],
     });
     const q = new Question(card, metadata);
-    expect(q.canExploreResults()).toBe(false);
+    expect(canExploreResults(q)).toBe(false);
   });
 
   it("should be false when not canNest", () => {
@@ -60,7 +61,7 @@ describe("Question.canExploreResults", () => {
       databases: [createSampleDatabase({ features: [] })],
     });
     const q = new Question(createSavedNativeCard(), metadata);
-    expect(q.canExploreResults()).toBe(false);
+    expect(canExploreResults(q)).toBe(false);
   });
 
   it("should be false when is readOnly", () => {
@@ -68,11 +69,11 @@ describe("Question.canExploreResults", () => {
       databases: [createSampleDatabase({ native_permissions: "none" })],
     });
     const q = new Question(createSavedNativeCard(), metadata);
-    expect(q.canExploreResults()).toBe(false);
+    expect(canExploreResults(q)).toBe(false);
   });
 
   it("should be true", () => {
     const q = new Question(createSavedNativeCard(), metadata);
-    expect(q.canExploreResults()).toBe(true);
+    expect(canExploreResults(q)).toBe(true);
   });
 });

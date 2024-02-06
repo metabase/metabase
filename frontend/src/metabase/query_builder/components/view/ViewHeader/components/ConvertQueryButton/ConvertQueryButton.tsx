@@ -17,7 +17,7 @@ interface ConvertQueryButtonProps {
   onOpenModal?: (modalType: string) => void;
 }
 
-const ConvertQueryButton = ({
+export const ConvertQueryButton = ({
   question,
   onOpenModal,
 }: ConvertQueryButtonProps): JSX.Element => {
@@ -46,13 +46,10 @@ ConvertQueryButton.shouldRender = ({
   question,
   queryBuilderMode,
 }: ConvertQueryButtonOpts) => {
-  const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
+  const { isNative } = Lib.queryDisplayInfo(question.query());
   return (
-    isStructured &&
+    !isNative &&
     question.database()?.native_permissions === "write" &&
     queryBuilderMode === "notebook"
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ConvertQueryButton;

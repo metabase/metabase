@@ -25,7 +25,7 @@ You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase
 
 ## Supported databases for storing your Metabase application data
 
-- [PostgreSQL](https://www.postgresql.org/). Minimum version: `9.4`.
+- [PostgreSQL](https://www.postgresql.org/). Minimum version: `9.5`.
 - [MySQL](https://www.mysql.com/). Minimum version: `8.0.17`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 - [MariaDB](https://mariadb.org/). Minimum version: `10.4.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 

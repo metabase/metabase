@@ -16,7 +16,7 @@ describe("AuthCard", () => {
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
 
-  it("should pause active authentication", () => {
+  it("should pause active authentication", async () => {
     const props = getProps({
       setting: getSetting({ value: true }),
       isConfigured: true,
@@ -24,12 +24,13 @@ describe("AuthCard", () => {
 
     render(<AuthCard {...props} />);
     userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await screen.findByRole("dialog");
     userEvent.click(screen.getByText("Pause"));
 
     expect(props.onChange).toHaveBeenCalledWith(false);
   });
 
-  it("should resume paused authentication", () => {
+  it("should resume paused authentication", async () => {
     const props = getProps({
       setting: getSetting({ value: false }),
       isConfigured: true,
@@ -37,12 +38,13 @@ describe("AuthCard", () => {
 
     render(<AuthCard {...props} />);
     userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await screen.findByRole("dialog");
     userEvent.click(screen.getByText("Resume"));
 
     expect(props.onChange).toHaveBeenCalledWith(true);
   });
 
-  it("should deactivate authentication", () => {
+  it("should deactivate authentication", async () => {
     const props = getProps({
       setting: getSetting({ value: false }),
       isConfigured: true,
@@ -50,6 +52,7 @@ describe("AuthCard", () => {
 
     render(<AuthCard {...props} />);
     userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await screen.findByRole("dialog");
     userEvent.click(screen.getByText("Deactivate"));
     userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
 

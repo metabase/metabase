@@ -127,13 +127,6 @@ class StructuredQuery extends AtomicQuery {
   /* Query superclass methods */
 
   /**
-   * @returns true if this query is in a state where it can be run.
-   */
-  canRun() {
-    return !!(this._sourceTableId() || this.sourceQuery());
-  }
-
-  /**
    * @returns true if we have metadata for the root source table loaded
    */
   hasMetadata(): boolean {
@@ -1246,14 +1239,6 @@ class StructuredQuery extends AtomicQuery {
       name: names[index],
     }));
   });
-
-  columnDimensionWithName(columnName) {
-    const index = this.columnNames().findIndex(n => n === columnName);
-
-    if (index >= 0) {
-      return this.columnDimensions()[index];
-    }
-  }
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);

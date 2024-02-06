@@ -46,7 +46,7 @@ describe("scenarios > native question > data reference sidebar", () => {
         name: "Native Products Model",
         description: "A model of the Products table",
         native: { query: "select id as renamed_id from products" },
-        dataset: true,
+        type: "model",
       },
       { visitQuestion: true },
     );

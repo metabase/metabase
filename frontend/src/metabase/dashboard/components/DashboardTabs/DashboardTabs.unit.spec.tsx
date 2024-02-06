@@ -35,11 +35,15 @@ function setup({
   };
 
   const DashboardComponent = ({ location }: { location: Location }) => {
-    const { selectedTabId } = useDashboardTabs({ location });
+    const { selectedTabId } = useDashboardTabs({ location, dashboardId: 1 });
 
     return (
       <>
-        <DashboardTabs location={location} isEditing={isEditing} />
+        <DashboardTabs
+          dashboardId={1}
+          location={location}
+          isEditing={isEditing}
+        />
         <span>Selected tab id is {selectedTabId}</span>
         <br />
         <span>Path is {location.pathname + location.search}</span>
@@ -92,7 +96,19 @@ function createNewTab() {
   userEvent.click(screen.getByLabelText("Create new tab"));
 }
 
-async function selectTabMenuItem(num: number, name: "Delete" | "Rename") {
+async function openTabMenu(num: number) {
+  const dropdownIcons = screen.getAllByRole("img", {
+    name: "chevrondown icon",
+    hidden: true,
+  });
+  userEvent.click(dropdownIcons[num - 1]);
+  await screen.findByRole("option");
+}
+
+async function selectTabMenuItem(
+  num: number,
+  name: "Delete" | "Rename" | "Duplicate",
+) {
   const dropdownIcons = screen.getAllByRole("img", {
     name: "chevrondown icon",
     hidden: true,
@@ -113,6 +129,10 @@ async function renameTab(num: number, name: string) {
     hidden: true,
   });
   userEvent.type(inputEl, `${name}{enter}`);
+}
+
+async function duplicateTab(num: number) {
+  return selectTabMenuItem(num, "Duplicate");
 }
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
@@ -202,21 +222,27 @@ describe("DashboardTabs", () => {
   });
 
   describe("when editing", () => {
-    it("should display a placeholder tab when there are none", () => {
+    it("should display a placeholder tab when there are none", async () => {
       setup({ tabs: [] });
 
-      const placeholderTab = queryTab("Tab 1");
-      expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
+      expect(queryTab("Tab 1")).toBeInTheDocument();
+
+      await openTabMenu(1);
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
+
       expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
 
-    it("should display a placeholder tab when there is only one", () => {
+    it("should display a placeholder tab when there is only one", async () => {
       setup({
         tabs: [getDefaultTab({ tabId: 1, dashId: 1, name: "Lonely tab" })],
       });
 
-      const placeholderTab = queryTab("Lonely tab");
-      expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
+      expect(queryTab("Lonely tab")).toBeInTheDocument();
+
+      await openTabMenu(1);
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
+
       expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
 
@@ -296,7 +322,7 @@ describe("DashboardTabs", () => {
         expect(await findSlug({ tabId: 2, name: "Tab 2" })).toBeInTheDocument();
       });
 
-      it("should disable the last tab and remove slug if the penultimate tab was deleted", async () => {
+      it("should keep the last tab and remove slug if the penultimate tab was deleted", async () => {
         setup();
         await deleteTab(3);
 
@@ -304,7 +330,10 @@ describe("DashboardTabs", () => {
 
         await deleteTab(2);
 
-        expect(queryTab(1)).toHaveAttribute("aria-disabled", "true");
+        expect(queryTab(1)).toBeInTheDocument();
+        await openTabMenu(1);
+        expect(screen.getByText("Duplicate")).toBeInTheDocument();
+
         expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
       });
 
@@ -345,6 +374,31 @@ describe("DashboardTabs", () => {
         expect(queryTab(name)).toBeInTheDocument();
         expect(await findSlug({ tabId: 1, name })).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("when duplicating tabs", () => {
+    it("should allow the user to duplicate the placeholder tab if there are none", async () => {
+      setup({ tabs: [] });
+
+      await duplicateTab(1);
+
+      expect(queryTab("Tab 1")).toBeInTheDocument();
+      expect(queryTab("Copy of Tab 1")).toBeInTheDocument();
+
+      expect(screen.getByText("Selected tab id is -2")).toBeInTheDocument();
+      expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
+    });
+
+    it("should allow the user to duplicate a tab", async () => {
+      setup();
+
+      await duplicateTab(1);
+
+      expect(queryTab("Copy of Tab 1")).toBeInTheDocument();
+
+      expect(screen.getByText("Selected tab id is -2")).toBeInTheDocument();
+      expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
   });
 

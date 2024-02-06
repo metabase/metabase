@@ -2,20 +2,20 @@
 import { t, ngettext, msgid } from "ttag";
 
 import * as Lib from "metabase-lib";
-import QuestionDataSource from "./QuestionDataSource";
+import { QuestionDataSource } from "../QuestionDataSource";
 
 import { AggregationAndBreakoutDescription } from "./QuestionDescription.styled";
 
-const QuestionDescription = ({
+export const QuestionDescription = ({
   question,
   originalQuestion,
   isObjectDetail,
   onClick,
 }) => {
   const query = question.query();
-  const isStructured = !Lib.queryDisplayInfo(query).isNative;
+  const { isNative } = Lib.queryDisplayInfo(query);
 
-  if (isStructured) {
+  if (!isNative) {
     const stageIndex = -1;
     const aggregations = Lib.aggregations(query, stageIndex);
     const breakouts = Lib.breakouts(query, stageIndex);
@@ -71,5 +71,3 @@ const QuestionDescription = ({
     return <span>{t`New question`}</span>;
   }
 };
-
-export default QuestionDescription;

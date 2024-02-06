@@ -370,7 +370,7 @@
        (when-let [inner-metadata (cond
                                    (integer? table-id) (lib.metadata/table query table-id)
                                    (string? table-id)  (lib.metadata/card
-                                                         query (lib.util/legacy-string-table-id->card-id table-id)))]
+                                                        query (lib.util/legacy-string-table-id->card-id table-id)))]
          {:table (display-info query stage-number inner-metadata)}))
      (when-let [source (:lib/source x-metadata)]
        {:is-from-previous-stage (= source :source/previous-stage)
@@ -382,7 +382,9 @@
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
      (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
-       {:is-temporal-extraction (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)})
+       {:is-temporal-extraction
+        (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
+             (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
      (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
@@ -535,7 +537,12 @@
    (visible-columns query -1 x))
 
   ([query stage-number x]
-   (visible-columns query stage-number x nil))
+   (if (and (map? x)
+            (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
+     (lib.cache/side-channel-cache
+       (keyword (str stage-number "__visible-columns-no-opts")) query
+       (fn [_] (visible-columns query stage-number x nil)))
+     (visible-columns query stage-number x nil)))
 
   ([query          :- ::lib.schema/query
     stage-number   :- :int

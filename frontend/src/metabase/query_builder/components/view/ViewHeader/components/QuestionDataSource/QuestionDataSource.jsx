@@ -18,7 +18,7 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/urls";
 
-import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
@@ -34,7 +34,12 @@ function isMaybeBasedOnDataset(question) {
   return isVirtualCardId(sourceTableId);
 }
 
-function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
+export function QuestionDataSource({
+  question,
+  originalQuestion,
+  subHead,
+  ...props
+}) {
   if (!question) {
     return null;
   }
@@ -175,7 +180,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   const parts = [];
   const query = question.query();
   const metadata = question.metadata();
-  const isStructured = !Lib.queryDisplayInfo(query).isNative;
+  const { isNative } = Lib.queryDisplayInfo(query);
 
   const database = metadata.database(Lib.databaseID(query));
   if (database) {
@@ -186,7 +191,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     });
   }
 
-  const table = isStructured
+  const table = !isNative
     ? metadata.table(Lib.sourceTableOrCardId(query))
     : question.legacyQuery().table();
   if (table && table.hasSchema()) {
@@ -201,7 +206,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
   if (table) {
     const hasTableLink = subHead || isObjectDetail;
-    if (!isStructured) {
+    if (isNative) {
       return {
         name: table.displayName(),
         link: hasTableLink ? getTableURL() : "",
@@ -277,5 +282,3 @@ function getTableURL(table) {
   }
   return ML_Urls.getUrl(table.newQuestion());
 }
-
-export default QuestionDataSource;

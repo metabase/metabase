@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import { usePrevious } from "react-use";
 
 import * as Lib from "metabase-lib";
@@ -17,16 +17,21 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
-import QuestionActions from "../QuestionActions";
-import { ExploreResultsLink } from "./ExploreResultsLink";
-import { FilterHeaderButton } from "./FilterHeaderButton";
-import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
-import QuestionDataSource from "./QuestionDataSource";
-import QuestionDescription from "./QuestionDescription";
-import { QuestionNotebookButton } from "./QuestionNotebookButton";
-import ConvertQueryButton from "./ConvertQueryButton";
-import { FilterHeaderToggle, FilterHeader } from "./QuestionFilters";
-import { QuestionSummarizeWidget } from "./QuestionSummaries";
+
+import {
+  ConvertQueryButton,
+  HeadBreadcrumbs,
+  FilterHeaderButton,
+  FilterHeaderToggle,
+  FilterHeader,
+  ExploreResultsLink,
+  QuestionActions,
+  QuestionNotebookButton,
+  QuestionDataSource,
+  QuestionDescription,
+  QuestionSummarizeWidget,
+} from "./components";
+
 import {
   AdHocViewHeading,
   SaveButton,
@@ -45,6 +50,7 @@ import {
   BackButtonContainer,
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
+import { canExploreResults } from "./utils";
 
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,
@@ -77,6 +83,8 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
+
+  requiredTemplateTags: PropTypes.array,
 };
 
 export function ViewTitleHeader(props) {
@@ -384,6 +392,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
+  requiredTemplateTags: PropTypes.array,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -416,11 +425,13 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
+    requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
+
   const hasExploreResultsLink =
-    question.canExploreResults() &&
+    canExploreResults(question) &&
     MetabaseSettings.get("enable-nested-queries");
 
   // Models can't be saved. But changing anything about the model will prompt the user
@@ -443,6 +454,13 @@ function ViewTitleHeaderRightSide(props) {
   const getRunButtonLabel = useCallback(
     () => (isRunning ? t`Cancel` : t`Refresh`),
     [isRunning],
+  );
+
+  const isSaveDisabled = !question.canRun() || !isEditable;
+  const disabledSaveTooltip = getDisabledSaveTooltip(
+    question,
+    isEditable,
+    requiredTemplateTags,
   );
 
   return (
@@ -516,10 +534,10 @@ function ViewTitleHeaderRightSide(props) {
       {hasSaveButton && (
         <SaveButton
           role="button"
-          disabled={!question.canRun() || !isEditable}
+          disabled={isSaveDisabled}
           tooltip={{
-            tooltip: t`You don't have permission to save this question.`,
-            isEnabled: !isEditable,
+            tooltip: disabledSaveTooltip,
+            isEnabled: isSaveDisabled,
             placement: "left",
           }}
           onClick={() => onOpenModal("save")}
@@ -532,3 +550,40 @@ function ViewTitleHeaderRightSide(props) {
 }
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
+
+function getDisabledSaveTooltip(
+  question,
+  isEditable,
+  requiredTemplateTags = [],
+) {
+  if (!isEditable) {
+    return t`You don't have permission to save this question.`;
+  }
+
+  const missingValueRequiredTTags = requiredTemplateTags.filter(
+    tag => tag.required && !tag.default,
+  );
+
+  if (!question.canRun()) {
+    return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
+  }
+
+  // Having an empty tooltip text is ok because it won't be shown.
+  return "";
+}
+
+function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
+  if (!requiredTemplateTags.length) {
+    return "";
+  }
+
+  const names = requiredTemplateTags
+    .map(tag => `"${tag["display-name"] ?? tag.name}"`)
+    .join(", ");
+
+  return ngettext(
+    msgid`The ${names} variable requires a default value but none was provided.`,
+    `The ${names} variables require default values but none were provided.`,
+    requiredTemplateTags.length,
+  );
+}

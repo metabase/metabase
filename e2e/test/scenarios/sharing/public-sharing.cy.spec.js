@@ -205,7 +205,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       query: {
         "source-table": ORDERS_ID,
       },
-      dataset: true,
+      type: "model",
     }).then(({ body }) => {
       const modelId = body.id;
       cy.wrap(modelId).as("modelId");

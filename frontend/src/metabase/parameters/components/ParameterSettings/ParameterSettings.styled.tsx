@@ -17,10 +17,29 @@ export const SettingLabel = styled.label`
   font-weight: bold;
 `;
 
+export const SettingLabelError = styled.span`
+  margin: 0 0.5rem;
+  color: ${color("error")};
+`;
+
 export const SettingValueWidget = styled(ParameterValueWidget)`
   color: ${color("text-dark")};
   padding: 0.75rem 0.75rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   background-color: ${color("white")};
+`;
+
+export const SettingRequiredContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+`;
+
+export const SettingRequiredLabel = styled.label`
+  display: block;
+  margin-top: 0.35rem;
+  font-weight: 700;
+  color: ${color("text-medium")};
+  cursor: pointer;
 `;
