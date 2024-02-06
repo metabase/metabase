@@ -394,7 +394,12 @@
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id)))
+    (list `->UncachedApplicationDatabaseMetadataProvider database-id))
+
+  Object
+  (equals [_this another]
+    (and (instance? UncachedApplicationDatabaseMetadataProvider another)
+         (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
 (mu/defn application-database-metadata-provider :- lib.metadata/MetadataProvider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

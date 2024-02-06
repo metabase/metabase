@@ -434,9 +434,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByText("Update").click();
             });
 
-            cy.get("@dashboardId").then(dashboardId => {
-              visitDashboard(dashboardId);
-            });
+            visitDashboard("@dashboardId");
 
             cy.findByRole("button", { name: "Update Score" }).click();
 

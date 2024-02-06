@@ -87,7 +87,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
   it("should expand the native editor when editing a question from a dashboard", () => {
     createDashboardWithNativeCard();
-    cy.get("@dashboardId").then(visitDashboard);
+    visitDashboard("@dashboardId");
     getDashboardCard().realHover();
     getDashboardCardMenu().click();
     popover().findByText("Edit question").click();
@@ -150,7 +150,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
     createDashboardWithCards();
-    cy.get("@dashboardId").then(visitDashboard);
+    visitDashboard("@dashboardId");
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
@@ -225,7 +225,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   it("should navigate back to a dashboard with permission errors", () => {
     createDashboardWithPermissionError();
     cy.signInAsNormalUser();
-    cy.get("@dashboardId").then(visitDashboard);
+    visitDashboard("@dashboardId");
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 

@@ -400,21 +400,19 @@ describe("scenarios > dashboard > title drill", () => {
     });
 
     it("should lead you to a table question with filtered ID (metabase#17213)", () => {
-      cy.get("@dashboardId").then(dashboardId => {
-        const productRecordId = 3;
-        visitDashboard(dashboardId, { params: { id: productRecordId } });
+      const productRecordId = 3;
+      visitDashboard("@dashboardId", { params: { id: productRecordId } });
 
-        getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
+      getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
 
-        appBar()
-          .contains(`Started from ${baseNestedQuestionDetails.name}`)
-          .should("be.visible");
-        cy.findByTestId("question-row-count")
-          .findByText("Showing 1 row")
-          .should("be.visible");
+      appBar()
+        .contains(`Started from ${baseNestedQuestionDetails.name}`)
+        .should("be.visible");
+      cy.findByTestId("question-row-count")
+        .findByText("Showing 1 row")
+        .should("be.visible");
 
-        cy.findByTestId("object-detail").should("not.exist");
-      });
+      cy.findByTestId("object-detail").should("not.exist");
     });
   });
 });

@@ -667,9 +667,7 @@ const openDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
-    visitDashboard(dashboardId, { params });
-  });
+  visitDashboard("@dashboardId", { params });
 };
 
 const openSlowDashboard = (params = {}) => {

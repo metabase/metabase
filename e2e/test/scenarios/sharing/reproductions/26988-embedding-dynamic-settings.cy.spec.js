@@ -12,7 +12,9 @@ import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 describeEE("issue 26988", () => {
   beforeEach(() => {
     restore();
-    cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+    cy.intercept("GET", "/api/preview_embed/dashboard/*").as(
+      "previewDashboard",
+    );
 
     cy.signInAsAdmin();
     setTokenFeatures("all");
@@ -40,7 +42,7 @@ describeEE("issue 26988", () => {
       acceptTerms: false,
     });
 
-    cy.wait("@dashboard");
+    cy.wait("@previewDashboard");
     getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);
 
     cy.findByLabelText("Playing with appearance options")
@@ -49,13 +51,11 @@ describeEE("issue 26988", () => {
       .click();
     popover().findByText("Oswald").click();
 
-    cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Oswald, sans-serif`);
 
     cy.get("@font-control").click();
     popover().findByText("Slabo 27px").click();
 
-    cy.wait("@dashboard");
     getIframeBody().should(
       "have.css",
       "font-family",
