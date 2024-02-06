@@ -250,8 +250,8 @@
             (is (= [nil]
                    (pulse.test-util/output @#'body/attached-results-text))))))}}
 
-    "11 results results in a CSV being attached and a table being sent"
-    {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 11})
+    "21 results results in a CSV being attached and a table being sent"
+    {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 21})
 
      :assert
      {:email

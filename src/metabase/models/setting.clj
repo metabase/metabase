@@ -1463,6 +1463,7 @@
 ;; Number parsing exceptions will quote the entire input
 (defmethod may-contain-raw-token? :double [_ _] true)
 (defmethod may-contain-raw-token? :integer [_ _] true)
+(defmethod may-contain-raw-token? :positive-integer [_ _] true)
 
 ;; Date parsing may quote the entire input, or a particular sub-portion, e.g. a misspelled month name
 (defmethod may-contain-raw-token? :timestamp [_ _] true)
