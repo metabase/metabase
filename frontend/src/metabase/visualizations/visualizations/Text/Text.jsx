@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeExternalLinks from "rehype-external-links";
@@ -51,6 +51,10 @@ export function Text({
   const preventDragging = e => e.stopPropagation();
 
   const isSingleRow = gridSize?.height === 1;
+
+  useEffect(() => {
+    setTextValue(settings.text);
+  }, [settings.text]);
 
   const content = useMemo(
     () =>
