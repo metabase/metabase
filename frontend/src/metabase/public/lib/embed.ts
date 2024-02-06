@@ -5,7 +5,6 @@ import type {
   EmbedResourceType,
   EmbedResource,
   EmbeddingParameters,
-  EmbeddingDisplayOptions,
 } from "./types";
 
 function getSignedToken(
@@ -29,12 +28,11 @@ function getSignedToken(
   });
 }
 
-export function getSignedPreviewUrl(
+export function getSignedPreviewUrlWithoutHash(
   siteUrl: string,
   resourceType: EmbedResourceType,
   resourceId: EmbedResource["id"],
   params: EmbeddingParameters = {},
-  options: EmbeddingDisplayOptions,
   secretKey: string,
   previewEmbeddingParams: EmbeddingParameters,
 ) {
@@ -45,9 +43,7 @@ export function getSignedPreviewUrl(
     secretKey,
     previewEmbeddingParams,
   );
-  return `${siteUrl}/embed/${resourceType}/${token}${optionsToHashParams(
-    options,
-  )}`;
+  return `${siteUrl}/embed/${resourceType}/${token}`;
 }
 
 export function optionsToHashParams(
