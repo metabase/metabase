@@ -107,9 +107,10 @@ export function newQuestion({
   });
 
   const entity = question.isDataset() ? "model" : "question";
+  const type = question.type() ?? entity;
 
   if (mode) {
-    return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
+    return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
   } else {
     return url;
   }
