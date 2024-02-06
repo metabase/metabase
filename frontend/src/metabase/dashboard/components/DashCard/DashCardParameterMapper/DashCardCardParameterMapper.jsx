@@ -32,7 +32,7 @@ import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
-  getParameterMappingOptions,
+  getDashcardParameterMappingOptions,
   getParameterTarget,
   getQuestionByCard,
 } from "../../../selectors";
@@ -65,7 +65,7 @@ const mapStateToProps = (state, props) => ({
   target: getParameterTarget(state, props),
   metadata: getMetadata(state),
   question: getQuestionByCard(state, props),
-  mappingOptions: getParameterMappingOptions(state, props),
+  mappingOptions: getDashcardParameterMappingOptions(state, props),
 });
 
 const mapDispatchToProps = {

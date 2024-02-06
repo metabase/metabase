@@ -359,21 +359,6 @@ export const getMissingRequiredParameters = createSelector(
 /**
  * It's a memoized version, it uses LRU cache per dashboard identified by id
  */
-export const getQuestionByDashcard = createCachedSelector(
-  [
-    (_state: State, props: { dashcard: DashboardCard }) => props.dashcard,
-    getMetadata,
-  ],
-  (dashcard, metadata) => {
-    return new Question(dashcard.card, metadata);
-  },
-)((_state, props) => {
-  return props.dashcard.id;
-});
-
-/**
- * It's a memoized version, it uses LRU cache per dashboard identified by id
- */
 export const getQuestionByCard = createCachedSelector(
   [(_state: State, props: { card: Card }) => props.card, getMetadata],
   (card, metadata) => {
@@ -383,23 +368,13 @@ export const getQuestionByCard = createCachedSelector(
   return props.card.id;
 });
 
-export const getParameterMappingOptions = createCachedSelector(
+export const getDashcardParameterMappingOptions = createCachedSelector(
   [getMetadata, getEditingParameter, getCard, getDashCard, getQuestionByCard],
-  (metadata, parameter, card, dashcard, q) => {
-    let question;
-
-    if (dashcard.card_id) {
-      question = q;
-    } else {
-      // TODO: probably we can remove it as dashcards are text or heading or action?
-      question = new Question(card, metadata);
-    }
-
+  (metadata, parameter, card, dashcard, question) => {
     return _getParameterMappingOptions(question, parameter, card, dashcard);
   },
 )((state, props) => {
-  // fallback is needed for cards without id
-  return props.card.id ?? props.dashcard.created_at;
+  return props.card.id ?? props.dashcard.id;
 });
 
 export const getIsHeaderVisible = createSelector(
