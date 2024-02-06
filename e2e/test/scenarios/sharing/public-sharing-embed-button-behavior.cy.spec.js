@@ -567,7 +567,6 @@ function enableEmbeddingForResource({ resource, id, isDirty = false }) {
 
 function closeTo(value, offset) {
   return comparedValue => {
-    console.log("closeTo", value, comparedValue);
     return Math.abs(comparedValue - value) <= offset;
   };
 }
