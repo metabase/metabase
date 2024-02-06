@@ -110,7 +110,6 @@ class MetabaseSettings {
    */
   on(key: SettingKey, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this._listeners[key]!.push(callback);
   }
 
