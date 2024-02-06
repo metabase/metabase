@@ -111,7 +111,7 @@
   (->> (t2/select :model/Card {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]})
        ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
        (filter (fn [card]
-                 (let [query (-> card :dataset_query lib.convert/->pMBQL)]
+                 (when-let [query (some-> card :dataset_query lib.convert/->pMBQL)]
                    (case model-type
                      :segment (lib/uses-segment? query model-id)
                      :metric (lib/uses-metric? query model-id)))))))
