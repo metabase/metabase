@@ -323,9 +323,9 @@
                                           :created_by (mt/user->id :rasta))))))
       (testing "return a subset of model for verified filter"
         (t2.with-temp/with-temp
-          [:model/Card       {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
-           :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}
-           :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+            [:model/Card       {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
+             :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}
+             :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
           (testing "when has both :content-verification features"
             (mt/with-premium-features #{:content-verification}
               (mt/with-verified-cards [v-card-id v-model-id]
@@ -399,17 +399,19 @@
                 "don't have collections, so they'll be returned")
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
-        (is (= (default-metric-segment-results)
-               (search-request-data :rasta :q "test"))))))
+        (mt/with-full-data-perms-for-all-users!
+          (is (= (default-metric-segment-results)
+                 (search-request-data :rasta :q "test")))))))
 
   (testing "Users that have root collection permissions should get root collection search results"
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
-        (mt/with-temp [PermissionsGroup           group {}
-                       PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-          (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-          (is (ordered-subset? (remove (comp #{"collection"} :model) (default-search-results))
-                               (search-request-data :rasta :q "test")))))))
+        (mt/with-full-data-perms-for-all-users!
+          (mt/with-temp [PermissionsGroup           group {}
+                         PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+            (is (ordered-subset? (remove (comp #{"collection"} :model) (default-search-results))
+                                 (search-request-data :rasta :q "test"))))))))
 
   (testing "Users without root collection permissions should still see other collections they have access to"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -417,17 +419,18 @@
         (with-search-items-in-root-collection "test2"
           (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-collection-read-permissions! group (u/the-id collection))
-            (is (= (sorted-results
-                    (reverse ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
-                     (into
-                      (default-results-with-collection)
-                      (map #(merge default-search-row % (table-search-results))
-                           [{:name "metric test2 metric", :description "Lookin' for a blueberry",
-                             :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
-                            {:name "segment test2 segment", :description "Lookin' for a blueberry",
-                             :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))))
-                   (search-request-data :rasta :q "test"))))))))
+            (mt/with-full-data-perms-for-all-users!
+              (perms/grant-collection-read-permissions! group (u/the-id collection))
+              (is (= (sorted-results
+                      (reverse ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
+                       (into
+                        (default-results-with-collection)
+                        (map #(merge default-search-row % (table-search-results))
+                             [{:name "metric test2 metric", :description "Lookin' for a blueberry",
+                               :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
+                              {:name "segment test2 segment", :description "Lookin' for a blueberry",
+                               :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))))
+                     (search-request-data :rasta :q "test")))))))))
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
                 "collections they have access to")
@@ -436,49 +439,54 @@
         (with-search-items-in-root-collection "test2"
           (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-            (perms/grant-collection-read-permissions! group collection)
-            (is (ordered-subset? (sorted-results
-                                  (reverse
-                                   (into
-                                    (default-results-with-collection)
-                                    (for [row  (default-search-results)
-                                          :when (not= "collection" (:model row))]
-                                      (update row :name #(str/replace % "test" "test2"))))))
-                                 (search-request-data :rasta :q "test"))))))))
+
+            (mt/with-full-data-perms-for-all-users!
+              (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+              (perms/grant-collection-read-permissions! group collection)
+
+              (is (ordered-subset? (sorted-results
+                                    (reverse
+                                     (into
+                                      (default-results-with-collection)
+                                      (for [row  (default-search-results)
+                                            :when (not= "collection" (:model row))]
+                                        (update row :name #(str/replace % "test" "test2"))))))
+                                   (search-request-data :rasta :q "test")))))))))
 
   (testing "Users with access to multiple collections should see results from all collections they have access to"
     (with-search-items-in-collection {coll-1 :collection} "test"
       (with-search-items-in-collection {coll-2 :collection} "test2"
         (mt/with-temp [PermissionsGroup           group {}
                        PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
-          (perms/grant-collection-read-permissions! group (u/the-id coll-1))
-          (perms/grant-collection-read-permissions! group (u/the-id coll-2))
-          (is (ordered-subset? (sorted-results
-                                (reverse
-                                 (into
-                                  (default-results-with-collection)
-                                  (map (fn [row] (update row :name #(str/replace % "test" "test2")))
-                                       (default-results-with-collection)))))
-                               (search-request-data :rasta :q "test")))))))
+          (mt/with-full-data-perms-for-all-users!
+            (perms/grant-collection-read-permissions! group (u/the-id coll-1))
+            (perms/grant-collection-read-permissions! group (u/the-id coll-2))
+            (is (ordered-subset? (sorted-results
+                                  (reverse
+                                   (into
+                                    (default-results-with-collection)
+                                    (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+                                         (default-results-with-collection)))))
+                                 (search-request-data :rasta :q "test"))))))))
 
   (testing "User should only see results in the collection they have access to"
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-collection {coll-1 :collection} "test"
         (with-search-items-in-collection _ "test2"
-          (mt/with-temp [PermissionsGroup           group {}
-                         PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
-            (perms/grant-collection-read-permissions! group (u/the-id coll-1))
-            (is (= (sorted-results
-                    (reverse
-                     (into
-                      (default-results-with-collection)
-                      (map #(merge default-search-row % (table-search-results))
-                           [{:name "metric test2 metric" :description "Lookin' for a blueberry"
-                             :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
-                            {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
-                             :creator_id true :creator_common_name "Rasta Toucan"}]))))
-                   (search-request-data :rasta :q "test"))))))))
+          (mt/with-full-data-perms-for-all-users!
+            (mt/with-temp [PermissionsGroup           group {}
+                           PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
+              (perms/grant-collection-read-permissions! group (u/the-id coll-1))
+              (is (= (sorted-results
+                      (reverse
+                       (into
+                        (default-results-with-collection)
+                        (map #(merge default-search-row % (table-search-results))
+                             [{:name "metric test2 metric" :description "Lookin' for a blueberry"
+                               :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
+                              {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
+                               :creator_id true :creator_common_name "Rasta Toucan"}]))))
+                     (search-request-data :rasta :q "test")))))))))
 
   (testing "Metrics on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [Database {db-id :id} {}
