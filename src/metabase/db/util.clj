@@ -81,14 +81,16 @@
            (.setTransactionIsolation ^Connection conn# Connection/TRANSACTION_SERIALIZABLE)
            (t2/with-transaction [~'_conn]
              ;; We need to try select the row again now that we're in the transaction to track the dependency.
-             (or ~select-expr
-                 ;; ... and then we can execute the (potentially expensive) mutating branch.
-                 ~insert-expr)))
+             (u/or-with some?
+                      ~select-expr
+                      ;; ... and then we can execute the (potentially expensive) mutating branch.
+                      ~insert-expr)))
          (catch ExceptionInfo e#
            ;; We cannot introspect the exception cause definitively, as it will be driver specific and typically opaque,
            ;; but we should find a result now if we try selecting again after a concurrent modification exception.
-           (or ~select-expr
-               (throw (ex-info "Unable to find element after attempting an idempotent-insert!"
-                               {:select-expr '~select-expr :insert-expr '~insert-expr}
-                               ;; Expose the exception - it might not be due to a concurrent modification.
-                               e#)))))))
+           (u/or-with some?
+             ~select-expr
+             (throw (ex-info "Unable to find element after attempting an idempotent-insert!"
+                             {:select-expr '~select-expr :insert-expr '~insert-expr}
+                             ;; Expose the exception - it might not be due to a concurrent modification.
+                             e#)))))))
