@@ -315,8 +315,7 @@ export const getQuestions = (state: State) => {
   const questionsById = dashcardIds.reduce<Record<DashCardId, Question>>(
     (acc, dashcardId) => {
       const dashcard = getDashCardById(state, dashcardId);
-
-      const question = getQuestionByDashcardMemo(state, { dashcard });
+      const question = getQuestionByDashcard(state, { dashcard });
 
       acc[dashcard.id] = question;
 
@@ -354,7 +353,10 @@ export const getMissingRequiredParameters = createSelector(
     ),
 );
 
-export const getQuestionByDashcardMemo = createCachedSelector(
+/**
+ * It's a memoized version, it uses LRU cache per dashboard identified by id
+ */
+export const getQuestionByDashcard = createCachedSelector(
   [
     (_state: State, props: { dashcard: DashboardCard }) => props.dashcard,
     getMetadata,
@@ -372,7 +374,7 @@ export const getParameterMappingOptions = createCachedSelector(
     getEditingParameter,
     getCard,
     getDashCard,
-    getQuestionByDashcardMemo,
+    getQuestionByDashcard,
   ],
   (metadata, parameter, card, dashcard, q) => {
     let question;
