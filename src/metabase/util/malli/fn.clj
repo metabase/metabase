@@ -300,23 +300,12 @@
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
 (defn instrument-ns?
-  "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
+  "Returns true if mu.fn/fn malli schema validation should happen in production for a given namespace."
   [namespace]
-  (let [lib-and-middleware [#"^metabase\.lib\..*"
-                            #"^metabase\.query-processor\.middleware\..*"
-                            #"^metabase\.sync.*"
-                            #"^metabase\.upload.*"]
-        matches?           (core/fn [namespace regexes]
-                             (let [n (-> namespace ns-name str)]
-                               (some #(re-matches % n) regexes)))
-        ;; empty but placeholder for any namespaces we want to never instrument (in prod)
-        ad-hoc             #{}
-        m                  (meta namespace)]
-    (cond (:instrument/always m)                  true
-          (:instrument/never m)                   false
-          (matches? namespace lib-and-middleware) false
-          (contains? ad-hoc (ns-name namespace))  false
-          :else                                   true)))
+  (let [m (meta namespace)]
+    (cond (:instrument/always m) true
+          (:instrument/never m)  false
+          :else                  true)))
 
 (def ^:private ^:dynamic *skip-ns-decision-fn*
   "Returns true to skip the emission of malli schema validation code in mu.fn/fn and mu/defn."
