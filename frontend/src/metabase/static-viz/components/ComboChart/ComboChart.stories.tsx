@@ -126,6 +126,13 @@ SplitYAxis.args = {
   renderingContext,
 };
 
+export const GoalLineOutOfBounds = Template.bind({});
+GoalLineOutOfBounds.args = {
+  rawSeries: data.goalLineOutOfBounds as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const TrendSingleSeriesLine = Template.bind({});
 TrendSingleSeriesLine.args = {
   rawSeries: data.trendSingleSeriesLine as any,
