@@ -16,6 +16,7 @@ import type { Insight } from "metabase-types/api/insight";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { applySquareRootScaling, replaceValues } from "../model/dataset";
 import type { CartesianChartModel, DataKey } from "../model/types";
+import { CHART_STYLE } from "../constants/style";
 import { getSeriesYAxisIndex } from "./utils";
 
 const TREND_LINE_DATA_KEY = "trend-line";
@@ -173,6 +174,7 @@ export function getTrendLineOptionsAndDatasets(
         type: [5, 5],
         width: 2,
       },
+      zlevel: CHART_STYLE.trendLine.zIndex,
     }),
   );
 
