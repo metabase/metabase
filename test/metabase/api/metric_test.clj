@@ -5,8 +5,6 @@
    [metabase.http-client :as client]
    [metabase.models :refer [Database Revision Segment Table]]
    [metabase.models.metric :as metric :refer [Metric]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -222,22 +220,23 @@
       (mt/with-temp [Database db {}
                      Table    table  {:db_id (u/the-id db)}
                      Metric   metric {:table_id (u/the-id table)}]
-        (perms/revoke-data-perms! (perms-group/all-users) db)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "metric/" (u/the-id metric)))))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "metric/" (u/the-id metric))))))))
 
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
                    Metric   {:keys [id]}   {:creator_id (mt/user->id :crowberto)
                                             :table_id   table-id}]
-      (is (= (merge
+      (mt/with-full-data-perms-for-all-users!
+        (is (= (merge
               metric-defaults
               {:name        "Toucans in the rainforest"
                :description "Lookin' for a blueberry"
                :creator_id  (mt/user->id :crowberto)
                :creator     (user-details (mt/fetch-user :crowberto))})
              (-> (metric-response (mt/user-http-request :rasta :get 200 (format "metric/%d" id)))
-                 (dissoc :query_description)))))))
+                 (dissoc :query_description))))))))
 
 (deftest metric-revisions-test
   (testing "GET /api/metric/:id/revisions"
@@ -245,10 +244,9 @@
       (mt/with-temp [Database db {}
                      Table    table  {:db_id (u/the-id db)}
                      Metric   metric {:table_id (u/the-id table)}]
-        (perms/revoke-data-perms! (perms-group/all-users) db)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "metric/%d/revisions" (u/the-id metric)))))))
-
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "metric/%d/revisions" (u/the-id metric))))))))
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
                    Metric   {:keys [id]}   {:creator_id              (mt/user->id :crowberto)
@@ -272,23 +270,24 @@
                                             :object   {:name       "c"
                                                        :definition {:filter [:and [:> 1 25]]}}
                                             :message  "updated"}]
-      (is (=? [{:is_reversion false
-                :is_creation  false
-                :message      "updated"
-                :user         (-> (user-details (mt/fetch-user :crowberto))
-                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-                :diff         {:name {:before "b" :after "c"}}
-                :description  "renamed this Metric from \"b\" to \"c\"."}
-               {:is_reversion false
-                :is_creation  true
-                :message      nil
-                :user         (-> (user-details (mt/fetch-user :rasta))
-                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-                :diff         {:name       {:after "b"}
-                               :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
-                :description  "created this."}]
-             (for [revision (mt/user-http-request :rasta :get 200 (format "metric/%d/revisions" id))]
-               (dissoc revision :timestamp :id)))))))
+      (mt/with-full-data-perms-for-all-users!
+        (is (=? [{:is_reversion false
+                  :is_creation  false
+                  :message      "updated"
+                  :user         (-> (user-details (mt/fetch-user :crowberto))
+                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                  :diff         {:name {:before "b" :after "c"}}
+                  :description  "renamed this Metric from \"b\" to \"c\"."}
+                 {:is_reversion false
+                  :is_creation  true
+                  :message      nil
+                  :user         (-> (user-details (mt/fetch-user :rasta))
+                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                  :diff         {:name       {:after "b"}
+                                 :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
+                  :description  "created this."}]
+                (for [revision (mt/user-http-request :rasta :get 200 (format "metric/%d/revisions" id))]
+                  (dissoc revision :timestamp :id))))))))
 
 (deftest revert-metric-test
   (testing "POST /api/metric/:id/revert"
@@ -409,17 +408,18 @@
                              ;; inactive metrics shouldn't show up
                              Metric {id-3 :id} {:archived true
                                                 :table_id (mt/id :venues)}]
-      (is (=? [{:name                   "Metric A"
-                :id                     id-1
-                :creator                {}
-                :definition_description nil}
-               {:name                   "Metric B"
-                :id                     id-2
-                :creator                {}
-                :definition_description "Venues, Sum of Category → Name, Filtered by Price is equal to 4 and Segment"}]
-              (filter (fn [{metric-id :id}]
-                        (contains? #{id-1 id-2 id-3} metric-id))
-                      (mt/user-http-request :rasta :get 200 "metric/")))))))
+      (mt/with-full-data-perms-for-all-users!
+        (is (=? [{:name                   "Metric A"
+                  :id                     id-1
+                  :creator                {}
+                  :definition_description nil}
+                 {:name                   "Metric B"
+                  :id                     id-2
+                  :creator                {}
+                  :definition_description "Venues, Sum of Category → Name, Filtered by Price is equal to 4 and Segment"}]
+                (filter (fn [{metric-id :id}]
+                          (contains? #{id-1 id-2 id-3} metric-id))
+                        (mt/user-http-request :rasta :get 200 "metric/"))))))))
 
 (deftest metric-related-entities-test
   (testing "Test related/recommended entities"
