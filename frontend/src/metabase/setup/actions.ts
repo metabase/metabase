@@ -4,7 +4,10 @@ import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
-import { setShowEmbedHomepageFlag } from "metabase/home/components/EmbedMinimalHomepage/util";
+import {
+  removeShowEmbedHomepageFlag,
+  setShowEmbedHomepageFlag,
+} from "metabase/home/components/EmbedMinimalHomepage/util";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
@@ -202,6 +205,9 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
 
       if (usageReason === "embedding" || usageReason === "both") {
         setShowEmbedHomepageFlag();
+      } else {
+        // make sure that state is clean in case of more than one setup on the same browser
+        removeShowEmbedHomepageFlag();
       }
 
       MetabaseSettings.set("setup-token", null);
