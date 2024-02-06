@@ -6,7 +6,7 @@ import { runQuestionQuery } from "metabase/query_builder/actions";
 import Collections from "metabase/entities/collections";
 
 import type { Dispatch, State } from "metabase-types/store";
-import type { CollectionId, TableId } from "metabase-types/api";
+import type { CardId, CollectionId, TableId } from "metabase-types/api";
 import type { FileUploadState } from "metabase-types/store/upload";
 
 import {
@@ -45,10 +45,14 @@ export const uploadFile = createThunkAction(
       file,
       collectionId,
       tableId,
+      modelId,
+      reloadQuestionData,
     }: {
       file: File;
       collectionId?: CollectionId;
       tableId?: TableId;
+      modelId?: CardId;
+      reloadQuestionData?: boolean;
     }) =>
     async (dispatch: Dispatch) => {
       const id = Date.now();
@@ -90,11 +94,11 @@ export const uploadFile = createThunkAction(
         dispatch(
           uploadEnd({
             id,
-            modelId: response,
+            modelId: response || modelId,
           }),
         );
 
-        if (tableId) {
+        if (tableId && reloadQuestionData) {
           dispatch(runQuestionQuery());
         } else if (collectionId) {
           dispatch(Collections.actions.invalidateLists());
