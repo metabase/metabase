@@ -479,8 +479,6 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (let [csv-file-prefix (str (mt/random-name) ".csv")]
             (let [model-1 (upload-example-csv! :csv-file-prefix csv-file-prefix)
-                  ;; sleep for a second to make sure the table name is different
-                  _ (Thread/sleep 1000)
                   model-2 (upload-example-csv! :csv-file-prefix csv-file-prefix)]
               (testing "tables are different between the two uploads"
                 (is (some? (:table_id model-1)))
@@ -652,7 +650,8 @@
   (testing "Upload a CSV file with large names and numbers"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [length-limit (driver/table-name-length-limit driver/*driver*)
-            long-name    (apply str (shuffle (apply concat (repeat 33 (seq "abcdefgh"))))) ; 33×8 = 264. Max is H2 at 256
+            ;; Ensure the name is unique as table names can collide when using redshift
+            long-name    (->> "abc" str cycle (take (inc length-limit)) shuffle (apply str))
             short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))
             table-name   (u/upper-case-en (@#'upload/unique-table-name driver/*driver* long-name))]
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
