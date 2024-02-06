@@ -21,6 +21,7 @@ import {
   createMockTextDashboardCard,
   createMockParameter,
   createMockStructuredDatasetQuery,
+  createMockPlaceholderDashboardCard,
 } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -106,12 +107,14 @@ const PIE_CHART_DASHCARD = createMockDashboardCard({
 const HEADING_DASHCARD = createMockHeadingDashboardCard({ id: 3 });
 const TEXT_DASHCARD = createMockTextDashboardCard({ id: 4 });
 const LINK_DASHCARD = createMockLinkDashboardCard({ id: 5 });
+const PLACEHOLDER_DASHCARD = createMockPlaceholderDashboardCard({ id: 6 });
 
 const DASHCARDS = [
   TABLE_DASHCARD,
   HEADING_DASHCARD,
   TEXT_DASHCARD,
   LINK_DASHCARD,
+  PLACEHOLDER_DASHCARD,
 ];
 
 const DASHBOARD = createMockDashboard({
@@ -228,6 +231,28 @@ describe("dashboard/actions/cards", () => {
       expect(nextDashCard.parameter_mappings).toEqual(
         expectedParameterMappings,
       );
+    });
+
+    it("should handle placeholder cards", async () => {
+      const { nextDashCard } = await runAction({
+        dashcardId: PLACEHOLDER_DASHCARD.id,
+        nextCardId: ORDERS_LINE_CHART_CARD.id,
+      });
+
+      expect(nextDashCard).toStrictEqual({
+        ...PLACEHOLDER_DASHCARD,
+        card_id: ORDERS_LINE_CHART_CARD.id,
+        card: ORDERS_LINE_CHART_CARD,
+
+        // Ensure it resets attributes that
+        // no longer make sense with a new card
+        series: [],
+        parameter_mappings: [],
+        visualization_settings: {},
+
+        // Internal state
+        isDirty: true,
+      });
     });
 
     it.each([
