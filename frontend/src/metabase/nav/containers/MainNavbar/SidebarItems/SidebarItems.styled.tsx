@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import { TreeNode } from "metabase/components/tree/TreeNode";
+import Tooltip from "metabase/core/components/Tooltip";
 import Link from "metabase/core/components/Link";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
@@ -118,7 +119,7 @@ export const ItemName = styled(TreeNode.NameContainer)`
 export function NameContainer({ children: itemName }: { children: string }) {
   if (itemName.length >= ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD) {
     return (
-      <Tooltip label={itemName} withArrow>
+      <Tooltip tooltip={itemName} maxWidth="none">
         <ItemName>{itemName}</ItemName>
       </Tooltip>
     );
