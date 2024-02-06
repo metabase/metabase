@@ -4,6 +4,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -13,6 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
@@ -41,9 +43,20 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
+
+(defmethod mi/can-read? :model/Segment
+  ([instance]
+   (let [table (:table (t2/hydrate instance :table))]
+     (= :yes
+        (data-perms/table-permission-for-user
+         api/*current-user-id*
+         :perms/manage-table-metadata
+         (:db_id table)
+         (u/the-id table)))))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
 
 (t2/define-before-update :model/Segment  [{:keys [creator_id id], :as segment}]
   (u/prog1 (t2/changes segment)
