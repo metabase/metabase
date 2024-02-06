@@ -94,10 +94,8 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy.findByTestId("view-footer").should("contain", "Showing 520 rows");
   });
 
-  it("click behavoir to custom destination should work (metabase#29517-2)", () => {
-    cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-    });
+  it("click behavior to custom destination should work (metabase#29517-2)", () => {
+    visitDashboard("@dashboardId");
 
     cy
       .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)

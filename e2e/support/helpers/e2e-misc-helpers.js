@@ -154,9 +154,20 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
 /**
  * Visit a dashboard and wait for the related queries to load.
  *
- * @param {number} dashboard_id
+ * @param {number|string} dashboardIdOrAlias
+ * @param {Object} config
  */
-export function visitDashboard(dashboard_id, { params = {} } = {}) {
+export function visitDashboard(dashboardIdOrAlias, { params = {} } = {}) {
+  if (typeof dashboardIdOrAlias === "number") {
+    visitDashboardById(dashboardIdOrAlias, { params });
+  }
+
+  if (typeof dashboardIdOrAlias === "string") {
+    visitDashboardByAlias(dashboardIdOrAlias, { params });
+  }
+}
+
+function visitDashboardById(dashboard_id, config) {
   // Some users will not have permissions for this request
   cy.request({
     method: "GET",
@@ -202,7 +213,7 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
 
       cy.visit({
         url: `/dashboard/${dashboard_id}`,
-        qs: params,
+        qs: config.params,
       });
 
       cy.wait(aliases);
@@ -216,6 +227,14 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
       cy.wait(`@${dashboardAlias}`);
     }
   });
+}
+
+/**
+ * Visit a dashboard by using its previously saved dashboard id alias.
+ * @param {string} alias
+ */
+function visitDashboardByAlias(alias, config) {
+  cy.get(alias).then(id => visitDashboard(id, config));
 }
 
 function hasAccess(statusCode) {

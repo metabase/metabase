@@ -91,9 +91,7 @@ describe("scenarios > public > dashboard", () => {
   });
 
   it("should allow users to create public dashboards", () => {
-    cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-    });
+    visitDashboard("@dashboardId");
 
     cy.icon("share").click();
 
