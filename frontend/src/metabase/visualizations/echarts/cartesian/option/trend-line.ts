@@ -13,6 +13,7 @@ import type {
 import type { RowValue, SeriesSettings } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { applySquareRootScaling, replaceValues } from "../model/dataset";
 import type { CartesianChartModel, DataKey } from "../model/types";
 import { getSeriesYAxisIndex } from "./utils";
@@ -37,7 +38,7 @@ function getSingleSeriesTrendDataset(
 ): TrendDataset {
   const xValues = chartModel.dataset.map(
     // We know the value is a string because it has to be a timeseries aggregation
-    row => moment(row[chartModel.dimensionModel.dataKey] as string),
+    row => moment(row[X_AXIS_DATA_KEY] as string),
   );
   const trendDataPoints = getTrendDataPointsFromInsight(
     insight,
@@ -46,8 +47,7 @@ function getSingleSeriesTrendDataset(
   );
 
   return trendDataPoints.map(([_x, y], rowIndex) => ({
-    [chartModel.dimensionModel.dataKey]:
-      chartModel.dataset[rowIndex][chartModel.dimensionModel.dataKey],
+    [X_AXIS_DATA_KEY]: chartModel.dataset[rowIndex][X_AXIS_DATA_KEY],
     [TREND_LINE_DATA_KEY]: y,
   }));
 }
@@ -162,7 +162,7 @@ export function getTrendLineOptionsAndDatasets(
       datasetIndex: index + 1, // offset to account for the chart's dataset (e.g. question results)
       yAxisIndex: getSeriesYAxisIndex(seriesModel, chartModel),
       encode: {
-        x: chartModel.dimensionModel.dataKey,
+        x: X_AXIS_DATA_KEY,
         y: TREND_LINE_DATA_KEY,
       },
       showSymbol: false,
@@ -190,7 +190,7 @@ export function getTrendLineOptionsAndDatasets(
   return {
     options,
     datasets: scaledDatasets.map(dataset => ({
-      dimensions: [chartModel.dimensionModel.dataKey, TREND_LINE_DATA_KEY],
+      dimensions: [X_AXIS_DATA_KEY, TREND_LINE_DATA_KEY],
       source: dataset,
     })) as EChartsOption["dataset"][],
   };

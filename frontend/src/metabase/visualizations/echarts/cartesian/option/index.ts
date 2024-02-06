@@ -14,6 +14,7 @@ import type { TimelineEventId } from "metabase-types/api";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLineOptionsAndDatasets } from "./trend-line";
@@ -67,7 +68,7 @@ export const getCartesianChartOption = (
 
   // dataset option
   const dimensions = [
-    chartModel.dimensionModel.dataKey,
+    X_AXIS_DATA_KEY,
     ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
     ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
   ];
