@@ -5339,7 +5339,7 @@ databaseChangeLog:
             columnName: dashboard_id
 
   - changeSet:
-      id: v47.2024-02-06T17:25:08
+      id: v49.2024-02-06T17:25:08
       author: qwef
       comment: Added 0.49.0 - Make report_card.type long enough to add `dashboard_dependent`
       changes:
