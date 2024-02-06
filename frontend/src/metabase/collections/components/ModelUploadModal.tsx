@@ -74,7 +74,7 @@ export function ModelUploadModal({
   return (
     <Modal
       opened={opened}
-      title={t`Upload a model`}
+      title={t`Select upload destination`}
       styles={{ header: { padding: "1.5rem 2rem" } }}
       onClose={onClose}
     >

@@ -78,7 +78,7 @@ export interface CollectionItem {
   collection_position?: number | null;
   collection_preview?: boolean | null;
   fully_parameterized?: boolean | null;
-  based_on_upload?: TableId | null;
+  based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   display?: CardDisplayType;
   personal_owner_id?: UserId;

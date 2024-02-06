@@ -128,6 +128,7 @@ describe("FileUploadStatus", () => {
                 isPersonalCollectionChild={false}
                 onCreateBookmark={jest.fn()}
                 onDeleteBookmark={jest.fn()}
+                saveFile={jest.fn()}
                 canUpload
                 uploadsEnabled
               />
@@ -184,6 +185,7 @@ describe("FileUploadStatus", () => {
                   isPersonalCollectionChild={false}
                   onCreateBookmark={jest.fn()}
                   onDeleteBookmark={jest.fn()}
+                  saveFile={jest.fn()}
                   canUpload
                   uploadsEnabled
                 />
@@ -239,6 +241,7 @@ describe("FileUploadStatus", () => {
                   isPersonalCollectionChild={false}
                   onCreateBookmark={jest.fn()}
                   onDeleteBookmark={jest.fn()}
+                  saveFile={jest.fn()}
                   canUpload
                   uploadsEnabled
                 />
