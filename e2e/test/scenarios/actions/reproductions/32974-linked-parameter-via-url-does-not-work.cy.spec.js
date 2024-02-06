@@ -45,7 +45,7 @@ const MODEL_DETAILS = {
   name: "Products model",
   query: { "source-table": PRODUCTS_ID },
   database: SAMPLE_DB_ID,
-  dataset: true,
+  type: "model",
 };
 
 const EXPECTED_UPDATED_VALUE = 999;

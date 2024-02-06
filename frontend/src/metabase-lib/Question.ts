@@ -18,12 +18,12 @@ import type BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
-import { FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
+  CardType,
   CollectionId,
   DatabaseId,
   DatasetQuery,
@@ -33,6 +33,7 @@ import type {
   ParameterValues,
   ParameterId,
   VisualizationSettings,
+  CardDisplayType,
   Dataset,
 } from "metabase-types/api";
 
@@ -69,7 +70,7 @@ export type QuestionCreatorOpts = {
   parameterValues?: ParameterValues;
   type?: "query" | "native";
   name?: string;
-  display?: string;
+  display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
   dataset_query?: DatasetQuery;
 };
@@ -258,14 +259,28 @@ class Question {
 
   /**
    * returns whether this question is a model
-   * @returns boolean
+   * @deprecated Use Question.prototype.type instead
    */
-  isDataset() {
+  isDataset(): boolean {
     return this._card && this._card.dataset;
   }
 
-  setDataset(dataset) {
+  type(): CardType | undefined {
+    return this._card && this._card.type;
+  }
+
+  /**
+   * @deprecated Use Question.prototype.setType instead
+   */
+  private _setDataset(dataset: boolean) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setType(type: CardType) {
+    const dataset = type === "model";
+    // _setDataset is still called for backwards compatibility
+    // as we're migrating "dataset" -> "type" incrementally
+    return this.setCard(assoc(this.card(), "type", type))._setDataset(dataset);
   }
 
   isPersisted() {
@@ -335,83 +350,10 @@ class Question {
       return this;
     }
 
-    const query = this.legacyQuery({ useStructuredQuery: true });
+    const query = this.query();
+    const { display, settings = {} } = Lib.defaultDisplay(query);
 
-    if (query instanceof StructuredQuery) {
-      // TODO: move to StructuredQuery?
-      const aggregations = query.aggregations();
-      const breakouts = query.breakouts();
-      const breakoutDimensions = breakouts.map(b => b.dimension());
-      const breakoutFields = breakoutDimensions.map(d => d.field());
-
-      if (aggregations.length === 0 && breakouts.length === 0) {
-        return this.setDisplay("table");
-      }
-
-      if (aggregations.length === 1 && breakouts.length === 0) {
-        return this.setDisplay("scalar");
-      }
-
-      if (aggregations.length === 1 && breakouts.length === 1) {
-        if (breakoutFields[0].isState()) {
-          return this.setDisplay("map").updateSettings({
-            "map.type": "region",
-            "map.region": "us_states",
-          });
-        } else if (breakoutFields[0].isCountry()) {
-          return this.setDisplay("map").updateSettings({
-            "map.type": "region",
-            "map.region": "world_countries",
-          });
-        }
-      }
-
-      if (aggregations.length >= 1 && breakouts.length === 1) {
-        if (breakoutFields[0].isDate()) {
-          if (
-            breakoutDimensions[0] instanceof FieldDimension &&
-            breakoutDimensions[0].temporalUnit() &&
-            breakoutDimensions[0].isTemporalExtraction()
-          ) {
-            return this.setDisplay("bar");
-          } else {
-            return this.setDisplay("line");
-          }
-        }
-
-        if (
-          breakoutDimensions[0] instanceof FieldDimension &&
-          breakoutDimensions[0].binningStrategy()
-        ) {
-          return this.setDisplay("bar");
-        }
-
-        if (breakoutFields[0].isCategory()) {
-          return this.setDisplay("bar");
-        }
-      }
-
-      if (aggregations.length === 1 && breakouts.length === 2) {
-        if (_.any(breakoutFields, f => f.isDate())) {
-          return this.setDisplay("line");
-        }
-
-        if (
-          breakoutFields[0].isCoordinate() &&
-          breakoutFields[1].isCoordinate()
-        ) {
-          return this.setDisplay("map").updateSettings({
-            "map.type": "grid",
-          });
-        }
-
-        if (_.all(breakoutFields, f => f.isCategory())) {
-          return this.setDisplay("bar");
-        }
-      }
-    }
-
-    return this.setDisplay("table");
+    return this.setDisplay(display).updateSettings(settings);
   }
 
   setDefaultQuery() {
@@ -431,12 +373,8 @@ class Question {
     return this.setCard(assoc(this.card(), "visualization_settings", settings));
   }
 
-  updateSettings(settings: VisualizationSettings) {
+  updateSettings(settings: Partial<VisualizationSettings>) {
     return this.setSettings({ ...this.settings(), ...settings });
-  }
-
-  type(): string {
-    return this.datasetQuery().type;
   }
 
   creationType(): string {

@@ -5229,6 +5229,42 @@ databaseChangeLog:
             indexName: idx_field_name_lower
 
   - changeSet:
+      id: v49.2024-01-22T11:50:00
+      author: qnkhuat
+      comment: Add `report_card.type`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  remarks: The type of card, could be 'question', 'model', 'metric'
+                  name: type
+                  type: varchar(16)
+                  defaultValue: "question"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v49.2024-01-22T11:51:00
+      author: qnkhuat
+      comment: Backfill `report_card.type`
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET type = 'model'
+              WHERE dataset is true
+      rollback: # no need, the column will be dropped
+
+  - changeSet:
+      id: v49.2024-01-22T11:52:00
+      author: qnkhuat
+      comment: Backfill `report_card.type`
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CardRevisionAddType"
+
+  - changeSet:
       id: v49.2024-01-29T19:26:40
       author: adam-james
       comment: Add width setting to Dashboards
