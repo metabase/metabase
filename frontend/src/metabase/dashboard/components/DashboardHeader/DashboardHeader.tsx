@@ -14,8 +14,8 @@ import ActionButton from "metabase/components/ActionButton";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import { Icon, Menu } from "metabase/ui";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Icon, Menu, Tooltip } from "metabase/ui";
+import LegacyTooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
@@ -322,7 +322,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       >
         {t`Cancel`}
       </Button>,
-      <Tooltip
+      <LegacyTooltip
         isEnabled={isSaveDisabled}
         tooltip={disabledSaveTooltip}
         key="save"
@@ -336,7 +336,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           successText={t`Saved`}
           disabled={isSaveDisabled}
         />
-      </Tooltip>,
+      </LegacyTooltip>,
     ];
   }
 
@@ -382,19 +382,22 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           : t`Add questions`;
 
       buttons.push(
-        <Tooltip key="add-question-element" tooltip={addQuestionButtonHint}>
+        <LegacyTooltip
+          key="add-question-element"
+          tooltip={addQuestionButtonHint}
+        >
           <DashboardHeaderButton
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             aria-label={t`Add questions`}
           />
-        </Tooltip>,
+        </LegacyTooltip>,
       );
 
       // Text/Headers
       buttons.push(
-        <Tooltip
+        <LegacyTooltip
           key="dashboard-add-heading-or-text-button"
           tooltip={t`Add a heading or text`}
         >
@@ -402,20 +405,20 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             onAddMarkdown={() => this.onAddMarkdownBox()}
             onAddHeading={() => this.onAddHeading()}
           />
-        </Tooltip>,
+        </LegacyTooltip>,
       );
 
       // Add link card button
       buttons.push(
-        <Tooltip key="add-link-card" tooltip={t`Add link card`}>
+        <LegacyTooltip key="add-link-card" tooltip={t`Add link card`}>
           <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
-        </Tooltip>,
+        </LegacyTooltip>,
       );
 
       buttons.push(
-        <Tooltip key="add-section" tooltip={t`Add section`}>
+        <LegacyTooltip key="add-section" tooltip={t`Add section`}>
           <Menu>
             <Menu.Target>
               <DashboardHeaderButton>
@@ -426,8 +429,8 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
               {layoutOptions.map(layout => (
                 <Tooltip
                   key={layout.id}
-                  tooltip={<SectionLayoutPreview layout={layout} />}
-                  placement="left"
+                  label={<SectionLayoutPreview layout={layout} />}
+                  position="left"
                 >
                   <Menu.Item
                     onClick={() => this.onAddSection(layout)}
@@ -439,7 +442,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
               ))}
             </Menu.Dropdown>
           </Menu>
-        </Tooltip>,
+        </LegacyTooltip>,
       );
 
       const {
@@ -464,7 +467,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             }
           >
             <div>
-              <Tooltip tooltip={t`Add a filter`}>
+              <LegacyTooltip tooltip={t`Add a filter`}>
                 <DashboardHeaderButton
                   key="parameters"
                   onClick={showAddParameterPopover}
@@ -472,7 +475,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
                 >
                   <Icon name="filter" />
                 </DashboardHeaderButton>
-              </Tooltip>
+              </LegacyTooltip>
             </div>
           </TippyPopover>
         </span>,
@@ -482,14 +485,17 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         buttons.push(
           <Fragment key="add-action-element">
             <DashboardHeaderActionDivider />
-            <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+            <LegacyTooltip
+              key="add-action-button"
+              tooltip={t`Add action button`}
+            >
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
                 aria-label={t`Add action`}
               >
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>
-            </Tooltip>
+            </LegacyTooltip>
           </Fragment>,
         );
       }
@@ -514,7 +520,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
-        <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
+        <LegacyTooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <DashboardHeaderButton
             visibleOnSmallScreen={false}
             key="edit"
@@ -522,7 +528,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             icon="pencil"
             onClick={() => this.handleEdit(dashboard)}
           />
-        </Tooltip>,
+        </LegacyTooltip>,
       );
     }
 
@@ -583,7 +589,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
+          <LegacyTooltip key="dashboard-info-button" tooltip={t`More info`}>
             <DashboardHeaderButton
               icon="info"
               isActive={isShowingDashboardInfoSidebar}
@@ -593,7 +599,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
                   : setSidebar({ name: SIDEBAR_NAME.info })
               }
             />
-          </Tooltip>,
+          </LegacyTooltip>,
         ].filter(Boolean),
       );
 
