@@ -30,10 +30,11 @@
    [clojure.string :as str]
    [clojure.tools.build.api :as b])
   (:import
-   (java.io FileReader)
-   (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)
-   (org.apache.maven.model License)
-   (org.apache.maven.model.io.xpp3 MavenXpp3Reader)))
+    (java.io FileReader)
+    (java.lang AutoCloseable)
+    (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)
+    (org.apache.maven.model License)
+    (org.apache.maven.model.io.xpp3 MavenXpp3Reader)))
 
 (set! *warn-on-reflection* true)
 
