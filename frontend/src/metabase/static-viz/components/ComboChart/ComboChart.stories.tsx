@@ -126,9 +126,16 @@ SplitYAxis.args = {
   renderingContext,
 };
 
-export const GoalLineOutOfBounds = Template.bind({});
-GoalLineOutOfBounds.args = {
-  rawSeries: data.goalLineOutOfBounds as any,
+export const GoalLineOutOfBounds37848 = Template.bind({});
+GoalLineOutOfBounds37848.args = {
+  rawSeries: data.goalLineOutOfBounds37848 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const GoalLineDisabled = Template.bind({});
+GoalLineDisabled.args = {
+  rawSeries: data.goalLineDisabled as any,
   dashcardSettings: {},
   renderingContext,
 };

@@ -12,7 +12,8 @@ import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-l
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
-import goalLineOutOfBounds from "./goal-line-out-of-bounds-37848.json";
+import goalLineOutOfBounds37848 from "./goal-line-out-of-bounds-37848.json";
+import goalLineDisabled from "./goal-line-disabled.json";
 import trendSingleSeriesLine from "./trend-single-series-line.json";
 import trendMultiSeriesLine from "./trend-multi-series-line.json";
 import trendSingleSeriesArea from "./trend-single-series-area.json";
@@ -46,7 +47,8 @@ export const data = {
   barsBreakoutSortedWithNegativeValuesPowerYAxis,
   autoYSplit,
   messedUpAxis,
-  goalLineOutOfBounds,
+  goalLineOutOfBounds37848,
+  goalLineDisabled,
   trendSingleSeriesLine,
   trendMultiSeriesLine,
   trendSingleSeriesArea,

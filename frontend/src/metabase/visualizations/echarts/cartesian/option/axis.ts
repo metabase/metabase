@@ -33,7 +33,9 @@ export const getYAxisRange = (
 
   const customMin = settings["graph.y_axis.min"];
   const customMax = settings["graph.y_axis.max"];
-  const goalLine = settings["graph.goal_value"];
+  const goalLine = settings["graph.show_goal"]
+    ? settings["graph.goal_value"]
+    : undefined;
 
   const [extentMin, extentMax] = axisModel.extent;
   const min = Math.min(extentMin, customMin ?? Infinity, goalLine ?? Infinity);
