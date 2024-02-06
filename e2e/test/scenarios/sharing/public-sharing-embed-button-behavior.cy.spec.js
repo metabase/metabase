@@ -1,4 +1,3 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createPublicDashboardLink,
   createPublicQuestionLink,
@@ -9,16 +8,17 @@ import {
   expectNoBadSnowplowEvents,
   getEmbedModalSharingPane,
   mantinePopover,
+  modal,
   openEmbedModalFromMenu,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
+  popover,
   resetSnowplow,
   restore,
   setTokenFeatures,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 ["dashboard", "card"].forEach(resource => {
   describe(`embed modal behavior for ${resource}s`, () => {
@@ -448,23 +448,34 @@ describe("embed modal display", () => {
               ),
               time_since_initial_publication: null,
               params: {
-                disabled: 0,
+                disabled: 3,
                 locked: 0,
-                editable: 0,
+                enabled: 0,
               },
             });
           });
 
-          cy.log("Assert `time_since_initial_publication`");
+          cy.log("Assert `time_since_initial_publication` and `params`");
           cy.findByTestId("embed-modal-content-status-bar")
             .button("Unpublish")
             .click();
-          cy.findByTestId("embed-modal-content-status-bar")
-            .button("Publish")
-            .click();
+
+          modal().findByRole("tab", { name: "Parameters" }).click();
+          modal().button("Price").click();
+          popover().findByText("Editable").click();
+
+          modal().button("Category").click();
+          popover().findByText("Locked").click();
 
           cy.then(function () {
-            const timeAfterPublication = Date.now();
+            const HOUR = 60 * 60 * 1000;
+            const timeAfterPublication = this.timeAfterResourceCreation + HOUR;
+            cy.log("Mocks the clock to 1 hour later");
+            cy.clock(new Date(timeAfterPublication));
+            cy.findByTestId("embed-modal-content-status-bar")
+              .button("Publish")
+              .click();
+
             expectGoodSnowplowEvent({
               event: "static_embed_published",
               artifact: resource,
@@ -480,9 +491,9 @@ describe("embed modal display", () => {
                 1,
               ),
               params: {
-                disabled: 0,
-                locked: 0,
-                editable: 0,
+                disabled: 1,
+                locked: 1,
+                enabled: 1,
               },
             });
           });
@@ -521,15 +532,67 @@ function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
 
 function createResource(resource) {
   if (resource === "card" || resource === "question") {
-    return cy.createQuestion({
+    return cy.createNativeQuestion({
       name: "Question",
-      query: { "source-table": PRODUCTS_ID },
-      limit: 1,
+      native: {
+        query: `
+          SELECT *
+          FROM PRODUCTS
+          WHERE true
+            [[AND created_at > {{created_at}}]]
+            [[AND price > {{price}}]]
+            [[AND category = {{category}}]]`,
+        "template-tags": {
+          date: {
+            type: "date",
+            name: "create_at",
+            id: "b2517f32-d2e2-4f42-ab79-c91e07e820a0",
+            "display-name": "Created At",
+          },
+          price: {
+            type: "number",
+            name: "price",
+            id: "879d1597-e673-414c-a96f-ff5887359834",
+            "display-name": "Price",
+          },
+          category: {
+            type: "text",
+            name: "category",
+            id: "1f741a9a-a95e-4ac6-b584-5101e7cf77e1",
+            "display-name": "Category",
+          },
+        },
+      },
+      limit: 10,
     });
   }
 
   if (resource === "dashboard") {
-    return cy.createDashboard({ name: "Dashboard" });
+    const dateFilter = {
+      id: "1",
+      name: "Created At",
+      slug: "filter-date",
+      type: "date/month-year",
+    };
+
+    const numberFilter = {
+      id: "2",
+      name: "Price",
+      slug: "filter-number",
+      type: "number/=",
+    };
+
+    const textFilter = {
+      id: "3",
+      name: "Category",
+      slug: "filter-text",
+      type: "string/contains",
+    };
+
+    return cy.createDashboard({
+      name: "Dashboard",
+      parameters: [dateFilter, numberFilter, textFilter],
+    });
   }
 }
 

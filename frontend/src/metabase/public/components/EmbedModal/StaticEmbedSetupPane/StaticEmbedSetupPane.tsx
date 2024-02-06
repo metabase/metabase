@@ -7,6 +7,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { checkNotNull } from "metabase/lib/types";
 import type {
   EmbeddingDisplayOptions,
+  EmbeddingParametersOptions,
   EmbeddingParametersSettings,
   EmbeddingParametersValues,
   EmbedResource,
@@ -150,7 +151,10 @@ export const StaticEmbedSetupPane = ({
     trackStaticEmbedPublished({
       artifact: resourceType,
       resource,
-      params: countEmbeddingParameterOptions(embeddingParams),
+      params: countEmbeddingParameterOptions({
+        ...convertResourceParametersToEmbeddingParams(resourceParameters),
+        ...embeddingParams,
+      }),
     });
   };
 
@@ -339,4 +343,15 @@ function getNonDisabledEmbeddingParams(
 
     return result;
   }, {} as EmbeddingParametersSettings);
+}
+
+function convertResourceParametersToEmbeddingParams(
+  resourceParameters: EmbedResourceParameter[],
+) {
+  const embeddingParams: EmbeddingParametersSettings = {};
+  for (const parameter of resourceParameters) {
+    embeddingParams[parameter.slug] = "disabled";
+  }
+
+  return embeddingParams;
 }
