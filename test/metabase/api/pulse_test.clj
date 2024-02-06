@@ -978,6 +978,30 @@
                                     :bcc?    true})
                (mt/regex-email-bodies #"Daily Sad Toucans")))))))
 
+(deftest send-placeholder-card-test-pulse-test
+  (testing "POST /api/pulse/test should work with placeholder cards"
+    (mt/with-temp [Dashboard {dashboard-id :id} {}]
+      (mt/with-fake-inbox
+        (is (= {:ok true}
+               (mt/user-http-request :rasta :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                                    :dashboard_id  dashboard-id
+                                                                    :cards         [{:display           "placeholder"
+                                                                                     :id                nil
+                                                                                     :include_csv       false
+                                                                                     :include_xls       false
+                                                                                     :dashboard_card_id nil}]
+                                                                    :channels      [{:enabled       true
+                                                                                     :channel_type  "email"
+                                                                                     :schedule_type "daily"
+                                                                                     :schedule_hour 12
+                                                                                     :schedule_day  nil
+                                                                                     :recipients    [(mt/fetch-user :rasta)]}]
+                                                                    :skip_if_empty false})))
+        (is (= (mt/email-to :rasta {:subject "Daily Sad Toucans"
+                                    :body    {"Daily Sad Toucans" true}
+                                    :bcc?    true})
+               (mt/regex-email-bodies #"Daily Sad Toucans")))))))
+
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
 ;; of the same format that the pulse GET returns
