@@ -485,8 +485,9 @@
 (defn- do-with-upload-table! [t f]
   (try (f t)
        (finally
-         (let [table-ident (#'upload/table-identifier t)]
-           (driver/drop-table! driver/*driver* (mt/id) table-ident)))))
+         (driver/drop-table! driver/*driver* 
+                             (mt/id)
+                             (#'upload/table-identifier t))))
 
 (defmacro with-upload-table!
   "Execute `body` with a table created by evaluating the `table-creator` expression. The table instance is bound to
