@@ -384,6 +384,11 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/table-name-length-limit :redshift
+  [_driver]
+  ;; https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
+  127)
+
 (defmethod driver/insert-into! :redshift
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
