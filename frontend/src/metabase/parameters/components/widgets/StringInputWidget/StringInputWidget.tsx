@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { isEqual, isString, isEmpty } from "underscore";
+import { isString, isEmpty } from "underscore";
 
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import {
@@ -10,6 +10,8 @@ import {
   UpdateButton,
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import type { Parameter } from "metabase-types/api";
+import { getUpdateButtonProps } from "../getUpdateButtonProps";
 
 type StringInputWidgetProps = {
   value: string[] | undefined;
@@ -19,6 +21,7 @@ type StringInputWidgetProps = {
   placeholder?: string;
   arity?: 1 | "n";
   label?: string;
+  parameter: Parameter;
 };
 
 const OPTIONS: any[] = [];
@@ -31,12 +34,12 @@ function StringInputWidget({
   arity = 1,
   placeholder = t`Enter some text`,
   label,
+  parameter,
 }: StringInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<string[]>(arrayValue);
   const multi = arity === "n";
-  const hasValueChanged = !isEqual(arrayValue, unsavedArrayValue);
   const isValid = unsavedArrayValue.every(isString);
 
   const onClick = () => {
@@ -46,6 +49,13 @@ function StringInputWidget({
       setValue(unsavedArrayValue);
     }
   };
+
+  const { label: buttonLabel, disabled: buttonDisabled } = getUpdateButtonProps(
+    value,
+    unsavedArrayValue,
+    parameter.default,
+    parameter.required,
+  );
 
   return (
     <WidgetRoot className={className}>
@@ -63,8 +73,8 @@ function StringInputWidget({
         />
       </TokenFieldWrapper>
       <Footer>
-        <UpdateButton disabled={!isValid || !hasValueChanged} onClick={onClick}>
-          {arrayValue.length ? t`Update filter` : t`Add filter`}
+        <UpdateButton disabled={buttonDisabled || !isValid} onClick={onClick}>
+          {buttonLabel}
         </UpdateButton>
       </Footer>
     </WidgetRoot>

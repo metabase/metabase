@@ -11,6 +11,8 @@ import {
   UpdateButton,
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import type { Parameter } from "metabase-types/api";
+import { getUpdateButtonProps } from "../getUpdateButtonProps";
 
 export type NumberInputWidgetProps = {
   value: number[] | undefined;
@@ -21,6 +23,7 @@ export type NumberInputWidgetProps = {
   autoFocus?: boolean;
   placeholder?: string;
   label?: string;
+  parameter: Parameter;
 };
 
 const OPTIONS: any[] = [];
@@ -34,11 +37,12 @@ function NumberInputWidget({
   autoFocus,
   placeholder = t`Enter a number`,
   label,
+  parameter,
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<(number | undefined)[]>(arrayValue);
-  const hasValueChanged = !_.isEqual(arrayValue, unsavedArrayValue);
+
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
   const allValuesSet = unsavedArrayValue.every(_.isNumber);
   const isValid =
@@ -54,6 +58,13 @@ function NumberInputWidget({
       }
     }
   };
+
+  const { label: buttonLabel, disabled: buttonDisabled } = getUpdateButtonProps(
+    value,
+    unsavedArrayValue,
+    parameter.default,
+    parameter.required,
+  );
 
   return (
     <WidgetRoot className={className}>
@@ -97,8 +108,8 @@ function NumberInputWidget({
         ))
       )}
       <Footer>
-        <UpdateButton disabled={!isValid || !hasValueChanged} onClick={onClick}>
-          {arrayValue.length ? t`Update filter` : t`Add filter`}
+        <UpdateButton disabled={buttonDisabled || !isValid} onClick={onClick}>
+          {buttonLabel}
         </UpdateButton>
       </Footer>
     </WidgetRoot>

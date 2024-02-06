@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { t } from "ttag";
 import cx from "classnames";
 
 import DatePicker from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
@@ -10,6 +9,7 @@ import {
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
 
+import { getUpdateButtonProps } from "metabase/parameters/components/widgets/getUpdateButtonProps";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 // Use a placeholder value as field references are not used in dashboard filters
@@ -18,6 +18,8 @@ const noopRef = null;
 interface DateAllOptionsWidgetProps {
   setValue: (value: string | null) => void;
   value?: string;
+  defaultValue?: string;
+  required?: boolean;
   onClose: () => void;
   disableOperatorSelection?: boolean;
 }
@@ -27,6 +29,8 @@ export const DateAllOptionsWidget = ({
   onClose,
   disableOperatorSelection,
   value,
+  defaultValue,
+  required = false,
 }: DateAllOptionsWidgetProps) => {
   const [filter, setFilter] = useState(
     value != null ? dateParameterValueToMBQL(value, noopRef) || [] : [],
@@ -37,15 +41,20 @@ export const DateAllOptionsWidget = ({
     onClose?.();
   };
 
-  const isValid = () => {
-    const filterValues = filter.slice(2);
-    return filterValues.every((value: any) => value != null);
-  };
+  const isValid = filter.slice(2).every((value: any) => value != null);
+
+  const unsavedValue = filterToUrlEncoded(filter);
+  const { label: buttonLabel, disabled: buttonDisabled } = getUpdateButtonProps(
+    value,
+    unsavedValue,
+    defaultValue,
+    required,
+  );
 
   return (
     <WidgetRoot>
       <DatePicker
-        filter={filter as any}
+        filter={filter}
         onFilterChange={setFilter}
         onCommit={commitAndClose}
         hideEmptinessOperators
@@ -53,12 +62,13 @@ export const DateAllOptionsWidget = ({
         supportsExpressions
       >
         <UpdateButton
+          disabled={buttonDisabled || !isValid}
           className={cx({
-            disabled: !isValid(),
+            disabled: !isValid,
           })}
           onClick={() => commitAndClose()}
         >
-          {t`Update filter`}
+          {buttonLabel}
         </UpdateButton>
       </DatePicker>
     </WidgetRoot>

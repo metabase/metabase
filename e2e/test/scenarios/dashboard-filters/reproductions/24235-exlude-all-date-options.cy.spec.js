@@ -49,7 +49,7 @@ describe("issue 24235", () => {
       cy.findByText("Days of the week...").click();
       cy.findByText("Select none...").click();
       cy.findByText("Select all...").click();
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
     });
 
     cy.wait("@getCardQuery");
