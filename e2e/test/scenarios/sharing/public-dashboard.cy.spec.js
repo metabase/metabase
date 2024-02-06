@@ -234,11 +234,7 @@ describe("scenarios > public > dashboard", () => {
     });
 
     // new dashboards should default to 'fixed' width
-    cy.findByTestId("fixed-width-container").should(
-      "have.css",
-      "max-width",
-      "1048px",
-    );
+    cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
 
     // toggle full-width
     cy.get("@dashboardId").then(id => {
@@ -249,7 +245,7 @@ describe("scenarios > public > dashboard", () => {
       visitPublicDashboard(id);
     });
 
-    cy.findByTestId("fixed-width-container").should(
+    cy.findByTestId("dashboard-grid").should(
       "not.have.css",
       "max-width",
       "1048px",
