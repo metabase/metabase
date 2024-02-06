@@ -10,10 +10,16 @@ import {
 
 import { checkNotNull } from "metabase/lib/types";
 
-import type { CardId, DashCardId } from "metabase-types/api";
+import type {
+  CardId,
+  DashCardId,
+  Dashboard,
+  DashboardTabId,
+} from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockDataset,
   createMockCard,
   createMockHeadingDashboardCard,
@@ -37,8 +43,10 @@ import {
 import { CardApi } from "metabase/services";
 import mainReducers from "metabase/reducers-main";
 
-import { getDashCardById } from "../selectors";
-import { replaceCard } from "./cards-typed";
+import type { SectionLayout } from "../sections";
+import { layoutOptions } from "../sections";
+import { getDashCardById, getDashcards } from "../selectors";
+import { addSectionToDashboard, replaceCard } from "./cards-typed";
 
 const DATE_PARAMETER = createMockParameter({
   id: "1",
@@ -123,20 +131,34 @@ const DASHBOARD = createMockDashboard({
   parameters: [DATE_PARAMETER, NUMERIC_PARAMETER, UNUSED_PARAMETER],
 });
 
+const DASHBOARD_WITH_TABS = createMockDashboard({
+  id: 1,
+  parameters: [DATE_PARAMETER, NUMERIC_PARAMETER, UNUSED_PARAMETER],
+  dashcards: DASHCARDS.map(dc => ({ ...dc, dashboard_tab_id: 1 })),
+  tabs: [
+    createMockDashboardTab({ id: 1, name: "Tab 1" }),
+    createMockDashboardTab({ id: 2, name: "Tab 2" }),
+  ],
+});
+
 type SetupOpts = {
+  dashboard?: Dashboard;
   dashcards?: StoreDashcard[];
 };
 
-function setup({ dashcards = DASHCARDS }: Pick<SetupOpts, "dashcards"> = {}) {
+function setup({
+  dashboard = DASHBOARD,
+  dashcards = DASHCARDS,
+}: SetupOpts = {}) {
   setupCardsEndpoints([ORDERS_TABLE_CARD, ORDERS_LINE_CHART_CARD]);
   setupCardQueryEndpoints(ORDERS_TABLE_CARD, createMockDataset());
   setupCardQueryEndpoints(ORDERS_LINE_CHART_CARD, createMockDataset());
   setupDatabasesEndpoints([createSampleDatabase()]);
 
   const dashboardState = createMockDashboardState({
-    dashboardId: DASHBOARD.id,
+    dashboardId: dashboard.id,
     dashboards: {
-      [DASHBOARD.id]: { ...DASHBOARD, dashcards: dashcards.map(dc => dc.id) },
+      [dashboard.id]: { ...dashboard, dashcards: dashcards.map(dc => dc.id) },
     },
     isEditing: DASHBOARD,
     dashcards: _.indexBy(dashcards, "id"),
@@ -152,35 +174,50 @@ function setup({ dashcards = DASHCARDS }: Pick<SetupOpts, "dashcards"> = {}) {
 }
 
 describe("dashboard/actions/cards", () => {
+  describe("addSectionToDashboard", () => {
+    layoutOptions.forEach(sectionLayout => {
+      describe(sectionLayout.label, () => {
+        const layoutItems = sectionLayout.getLayout({ col: 0, row: 0 });
+
+        it("should add a section", () => {
+          const { nextDashcards } = runAddSectionAction({
+            dashcards: [],
+            sectionLayout,
+          });
+
+          expect(nextDashcards).toHaveLength(layoutItems.length);
+        });
+
+        it("should add a section to existing dashcards", async () => {
+          const { nextDashcards } = runAddSectionAction({
+            dashcards: DASHCARDS,
+            sectionLayout,
+          });
+
+          expect(nextDashcards).toHaveLength(
+            DASHCARDS.length + layoutItems.length,
+          );
+        });
+
+        it("should add a section to specified tab", async () => {
+          const tabId = 2;
+          const { nextDashcards } = runAddSectionAction({
+            dashboard: DASHBOARD_WITH_TABS,
+            dashcards: DASHBOARD_WITH_TABS.dashcards,
+            tabId,
+            sectionLayout,
+          });
+
+          const tabDashcards = nextDashcards.filter(
+            dc => dc.dashboard_tab_id === tabId,
+          );
+          expect(tabDashcards).toHaveLength(layoutItems.length);
+        });
+      });
+    });
+  });
+
   describe("replaceCard", () => {
-    type RunReplaceCardOpts = SetupOpts & {
-      dashcardId: DashCardId;
-      nextCardId: CardId;
-    };
-
-    async function runReplaceCardAction({
-      dashcardId,
-      nextCardId,
-      ...opts
-    }: RunReplaceCardOpts) {
-      const { store } = setup(opts);
-
-      await replaceCard({ dashcardId, nextCardId })(
-        store.dispatch,
-        store.getState,
-      );
-      const nextState = store.getState();
-
-      const dispatchSpy = jest.spyOn(store, "dispatch");
-      const cardQueryEndpointSpy = jest.spyOn(CardApi, "query");
-
-      return {
-        nextDashCard: getDashCardById(nextState, dashcardId),
-        dispatchSpy,
-        cardQueryEndpointSpy,
-      };
-    }
-
     it("should correctly update the dashcard", async () => {
       const { nextDashCard } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
@@ -282,3 +319,53 @@ describe("dashboard/actions/cards", () => {
     });
   });
 });
+
+type RunAddSectionOpts = SetupOpts & {
+  tabId?: DashboardTabId | null;
+  sectionLayout: SectionLayout;
+};
+
+function runAddSectionAction({
+  dashboard = DASHBOARD,
+  tabId = null,
+  sectionLayout,
+  ...opts
+}: RunAddSectionOpts) {
+  const { store } = setup({ dashboard, ...opts });
+
+  addSectionToDashboard({
+    dashId: dashboard.id,
+    tabId,
+    sectionLayout,
+  })(store.dispatch, store.getState);
+
+  const nextState = store.getState();
+  const nextDashcards = Object.values(getDashcards(nextState));
+
+  return { nextDashcards };
+}
+
+type RunReplaceCardOpts = SetupOpts & {
+  dashcardId: DashCardId;
+  nextCardId: CardId;
+};
+
+async function runReplaceCardAction({
+  dashcardId,
+  nextCardId,
+  ...opts
+}: RunReplaceCardOpts) {
+  const { store } = setup(opts);
+
+  await replaceCard({ dashcardId, nextCardId })(store.dispatch, store.getState);
+  const nextState = store.getState();
+
+  const dispatchSpy = jest.spyOn(store, "dispatch");
+  const cardQueryEndpointSpy = jest.spyOn(CardApi, "query");
+
+  return {
+    nextDashCard: getDashCardById(nextState, dashcardId),
+    dispatchSpy,
+    cardQueryEndpointSpy,
+  };
+}
