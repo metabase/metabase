@@ -13,7 +13,7 @@ describe("issue 31905", () => {
     cy.createQuestion(
       {
         name: "Orders Model",
-        dataset: true,
+        type: "model",
         query: { "source-table": ORDERS_ID, limit: 2 },
       },
       { visitQuestion: true },

@@ -20,7 +20,7 @@ jobs:
 
       - name: Assign author and their team. Returns true if team exists.
         id: auto-assign
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |

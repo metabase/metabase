@@ -22,7 +22,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
-import QuestionDataSource from "./QuestionDataSource";
+import { QuestionDataSource } from "./QuestionDataSource";
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;

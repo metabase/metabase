@@ -33,7 +33,7 @@ describe("issue 29378", () => {
   });
 
   it("should not crash the model detail page after searching for an action (metabase#29378)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
     createAction(ACTION_DETAILS);
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);

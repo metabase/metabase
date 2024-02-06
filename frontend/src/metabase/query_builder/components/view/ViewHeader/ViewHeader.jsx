@@ -17,16 +17,21 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
-import QuestionActions from "../QuestionActions";
-import { ExploreResultsLink } from "./ExploreResultsLink";
-import { FilterHeaderButton } from "./FilterHeaderButton";
-import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
-import QuestionDataSource from "./QuestionDataSource";
-import QuestionDescription from "./QuestionDescription";
-import { QuestionNotebookButton } from "./QuestionNotebookButton";
-import ConvertQueryButton from "./ConvertQueryButton";
-import { FilterHeaderToggle, FilterHeader } from "./QuestionFilters";
-import { QuestionSummarizeWidget } from "./QuestionSummaries";
+
+import {
+  ConvertQueryButton,
+  HeadBreadcrumbs,
+  FilterHeaderButton,
+  FilterHeaderToggle,
+  FilterHeader,
+  ExploreResultsLink,
+  QuestionActions,
+  QuestionNotebookButton,
+  QuestionDataSource,
+  QuestionDescription,
+  QuestionSummarizeWidget,
+} from "./components";
+
 import {
   AdHocViewHeading,
   SaveButton,
@@ -45,6 +50,7 @@ import {
   BackButtonContainer,
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
+import { canExploreResults } from "./utils";
 
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,
@@ -423,8 +429,9 @@ function ViewTitleHeaderRightSide(props) {
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
+
   const hasExploreResultsLink =
-    question.canExploreResults() &&
+    canExploreResults(question) &&
     MetabaseSettings.get("enable-nested-queries");
 
   // Models can't be saved. But changing anything about the model will prompt the user

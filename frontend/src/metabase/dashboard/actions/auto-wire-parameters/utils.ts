@@ -44,31 +44,32 @@ export function getAllDashboardCardsWithUnmappedParameters({
 }
 
 export function getMatchingParameterOption(
-  dashcardToCheck: DashboardCard,
-  targetDimension: ParameterTarget,
   targetDashcard: DashboardCard,
+  targetDimension: ParameterTarget,
+  sourceDashcard: DashboardCard,
   metadata: Metadata,
 ): {
   target: ParameterTarget;
 } | null {
-  if (!dashcardToCheck) {
+  if (!targetDashcard) {
     return null;
   }
 
+  const sourceQuestion = new Question(sourceDashcard.card, metadata);
   const targetQuestion = new Question(targetDashcard.card, metadata);
 
   return (
     getParameterMappingOptions(
       metadata,
       null,
-      dashcardToCheck.card,
-      dashcardToCheck,
+      targetDashcard.card,
+      targetDashcard,
     ).find((param: { target: ParameterTarget }) =>
       compareMappingOptionTargets(
         targetDimension,
         param.target,
+        sourceQuestion,
         targetQuestion,
-        new Question(dashcardToCheck.card, metadata),
       ),
     ) ?? null
   );

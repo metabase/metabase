@@ -128,7 +128,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     { tags: "@slow" },
     () => {
       const cardTitle = "Orders by Subtotal";
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
       cy.visit(
         `/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`,
       );
@@ -369,7 +369,7 @@ const createDashboardWithCards = () => {
   const modelDetails = {
     name: "Orders model",
     query: { "source-table": ORDERS_ID },
-    dataset: true,
+    type: "model",
   };
 
   const actionDetails = {

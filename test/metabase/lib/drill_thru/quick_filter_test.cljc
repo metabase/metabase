@@ -7,16 +7,19 @@
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.types.isa :as lib.types.isa]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel quick-filter-availability-test
-  (doseq [[test-case context {:keys [click column-type]}] (canned/canned-clicks)]
-    (if (and (= click :cell)
-             (not (#{:pk :fk} column-type)))
-      (is (canned/returned test-case context :drill-thru/quick-filter))
-      (is (not (canned/returned test-case context :drill-thru/quick-filter))))))
+  (testing "quick-filter is avaiable for cell clicks on non-PK/FK columns"
+    (canned/canned-test
+      :drill-thru/quick-filter
+      (fn [_test-case context {:keys [click column-type]}]
+        (and (= click :cell)
+             (not (#{:pk :fk} column-type))
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel returns-quick-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -32,15 +35,16 @@
                               {:name "≠"}]}}))
 
 (deftest ^:parallel returns-quick-filter-test-2
-  (lib.drill-thru.tu/test-returns-drill
-   {:drill-type  :drill-thru/quick-filter
-    :click-type  :cell
-    :query-type  :unaggregated
-    :column-name "DISCOUNT"
-    :expected    {:type      :drill-thru/quick-filter
-                  :value     :null
-                  :operators [{:name "="}
-                              {:name "≠"}]}}))
+  (testing "if the value is NULL, only = and ≠ are allowed"
+    (lib.drill-thru.tu/test-returns-drill
+      {:drill-type  :drill-thru/quick-filter
+       :click-type  :cell
+       :query-type  :unaggregated
+       :column-name "DISCOUNT"
+       :expected    {:type      :drill-thru/quick-filter
+                     :value     :null
+                     :operators [{:name "="}
+                                 {:name "≠"}]}})))
 
 (deftest ^:parallel returns-quick-filter-test-3
   (lib.drill-thru.tu/test-returns-drill

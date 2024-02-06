@@ -54,7 +54,6 @@
   [query                                   :- ::lib.schema/query
    _stage-number                           :- :int
    {:keys [column value row] :as _context} :- ::lib.schema.drill-thru/context]
-
   (when (and
          ;; ignore clicks on headers (value = nil rather than :null)
          (some? value)
@@ -69,7 +68,8 @@
         (when-let [pk-value (->> row
                                  (m/find-first #(-> % :column :name (= (:name pk-column))))
                                  :value)]
-          (zoom-drill* pk-column pk-value))))))
+          (when-not (nil? pk-value)
+            (zoom-drill* pk-column pk-value)))))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/zoom
   [_query _stage-number drill-thru]
