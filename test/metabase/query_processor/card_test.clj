@@ -101,7 +101,7 @@
           :snippet-name "My Snippet"
           :snippet-id   1}))
 
-(deftest card-template-tag-parameters-test
+(deftest ^:parallel card-template-tag-parameters-test
   (testing "Card with a Field filter parameter"
     (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
       (is (= {"date" :date/all-options}
@@ -115,7 +115,7 @@
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id))))))
 
-(deftest infer-parameter-name-test
+(deftest ^:parallel infer-parameter-name-test
   (is (= "my_param"
          (#'qp.card/infer-parameter-name {:name "my_param", :target [:variable [:template-tag :category]]})))
   (is (= "category"
@@ -123,7 +123,7 @@
   (is (= nil
          (#'qp.card/infer-parameter-name {:target [:field 1000 nil]}))))
 
-(deftest validate-card-parameters-test
+(deftest ^:parallel validate-card-parameters-test
   (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters that aren't actually part of the Card"
       (is (thrown-with-msg?
@@ -141,8 +141,27 @@
                                       {:parameters [{:id    "_FAKE_"
                                                      :name  "fake"
                                                      :type  :date/single
-                                                     :value "2016-01-01"}]})))))
+                                                     :value "2016-01-01"}]})))))))
 
+(deftest ^:parallel validate-card-parameters-shape-test
+  (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
+    (testing "Should disallow parameters that are missing :name"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"\QInvalid parameter: parameter must have either a :name or a :template-tag :target.\E"
+           (#'qp.card/validate-card-parameters card-id [{:id    "_FAKE_"
+                                                         :type  :date/single
+                                                         :value "2016-01-01"}])))
+      (testing "As an API request"
+        (is (=? {:message            #"\QInvalid parameter: parameter must have either a :name or a :template-tag :target.\E"
+                 :invalid-parameter  {:id "_FAKE_", :type "date/single", :value "2016-01-01"}}
+                (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                      {:parameters [{:id    "_FAKE_"
+                                                     :type  :date/single
+                                                     :value "2016-01-01"}]})))))))
+
+(deftest ^:parallel validate-card-parameters-widget-types-test
+  (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters with types not allowed for the widget type"
       (letfn [(validate [param-type]
                 (#'qp.card/validate-card-parameters card-id [{:id    "_DATE_"
@@ -164,8 +183,10 @@
               (testing "should be ignored if `*allow-arbitrary-mbql-parameters*` is enabled"
                 (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
                   (is (= nil
-                         (validate disallowed-type))))))))))
+                         (validate disallowed-type))))))))))))
 
+(deftest ^:parallel validate-card-parameters-happy-path-test
+  (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Happy path -- API request should succeed if parameter is valid"
       (is (= [1000]
              (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)

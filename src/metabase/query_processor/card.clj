@@ -170,11 +170,14 @@
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
       (doseq [request-parameter parameters
-              :let              [parameter-name (infer-parameter-name request-parameter)]]
+              :let              [parameter-name (or (infer-parameter-name request-parameter)
+                                                    (throw (ex-info (tru "Invalid parameter: parameter must have either a :name or a :template-tag :target.")
+                                                                    {:type              qp.error-type/invalid-parameter
+                                                                     :invalid-parameter request-parameter})))]]
         (let [matching-widget-type (or (get template-tags parameter-name)
                                        (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag named {1}."
-                                                            card-id
-                                                            (pr-str parameter-name))
+                                                         card-id
+                                                         (pr-str parameter-name))
                                                        {:type               qp.error-type/invalid-parameter
                                                         :invalid-parameter  request-parameter
                                                         :allowed-parameters (keys template-tags)})))]
