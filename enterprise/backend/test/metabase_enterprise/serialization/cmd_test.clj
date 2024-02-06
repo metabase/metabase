@@ -5,8 +5,11 @@
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.cmd :as cmd]
-   [metabase.models :refer [Card Dashboard DashboardCard Database User]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Database User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -162,3 +165,78 @@
                                            (throw (ex-info "Do not call me!" {})))]
           (is (thrown-with-msg? Exception #"Destination path is not writeable: "
                                 (cmd/export dump-dir))))))))
+
+(deftest snowplow-events-test
+  (testing "Snowplow events are correctly sent"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-empty-h2-app-db
+        (snowplow-test/with-fake-snowplow-collector
+          (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+            (let [coll (ts/create! Collection :name "coll")
+                  _card (ts/create! Card :name "card" :collection_id (:id coll))]
+              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")
+              (testing "Snowplow export event was sent"
+                (is (= {"event"           "serialization_export"
+                        "collection"      (str (:id coll))
+                        "all_collections" false
+                        "data_model"      false
+                        "settings"        true
+                        "field_values"    false
+                        "duration"        0
+                        "count"           3
+                        "source"          "api"
+                        "secrets"         false
+                        "success"         true
+                        "error_message"   nil}
+                       (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
+                            (filter #(= "serialization_export" (get % "event")))
+                            first))))
+
+              (cmd/import dump-dir)
+              (testing "Snowplow import event was sent"
+                (is (= {"event"         "serialization_import"
+                        "duration"      0
+                        "source"        "cli"
+                        "models"        "Setting,Card,Collection"
+                        "count"         3
+                        "success"       true
+                        "error_message" nil}
+                       (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
+
+              (with-redefs [v2.storage/store-settings! (fn [_opts _settings]
+                                                         (throw (ex-info "Cannot load settings" {})))]
+                (is (thrown? Exception
+                             (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
+                (testing "Snowplow export event about error was sent"
+                  (is (= {"event"           "serialization_export"
+                          "collection"      (str (:id coll))
+                          "all_collections" false
+                          "data_model"      false
+                          "settings"        true
+                          "field_values"    false
+                          "duration"        0
+                          "count"           0
+                          "source"          "api"
+                          "secrets"         false
+                          "success"         false
+                          "error_message"   "clojure.lang.ExceptionInfo: Cannot load settings {}"}
+                         (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
+                              (filter #(= "serialization_export" (get % "event")))
+                              first)))))
+
+              (let [load-one! @#'v2.load/load-one!]
+                (with-redefs [v2.load/load-one! (fn [ctx path]
+                                                  (when (= "Collection" (-> path first :model))
+                                                    (throw (ex-info "Cannot import Collection" {})))
+                                                  (load-one! ctx path))]
+                  (is (thrown? Exception
+                               (cmd/import dump-dir)))
+                  (testing "Snowplow import event about error was sent"
+                    (is (= {"event"         "serialization_import"
+                            "duration"      0
+                            "source"        "cli"
+                            "models"        ""
+                            "count"         0
+                            "success"       false
+                            "error_message" "clojure.lang.ExceptionInfo: Cannot import Collection {}"}
+                           (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))
