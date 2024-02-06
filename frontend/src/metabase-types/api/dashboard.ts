@@ -51,17 +51,20 @@ export interface Dashboard {
 
 export type DashCardId = number;
 
-export type BaseDashboardCard = {
+export type DashboardCardLayoutAttrs = {
+  col: number;
+  row: number;
+  size_x: number;
+  size_y: number;
+};
+
+export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   id: DashCardId;
   dashboard_id: DashboardId;
   dashboard_tab_id: DashboardTabId | null;
   card_id: CardId | null;
   card: Card | VirtualCard;
   collection_authority_level?: CollectionAuthorityLevel;
-  size_x: number;
-  size_y: number;
-  col: number;
-  row: number;
   entity_id: string;
   visualization_settings?: {
     [key: string]: unknown;
