@@ -23,6 +23,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import { getObjectValues } from "metabase/lib/objects";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { buildEChartsScatterSeries } from "../scatter/series";
 import { buildEChartsWaterfallSeries } from "../waterfall/series";
 import { checkWaterfallChartModel } from "../waterfall/utils";
@@ -79,7 +80,6 @@ const buildEChartsBarSeries = (
   dataset: ChartDataset,
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
-  dimensionDataKey: string,
   yAxisIndex: number,
   barSeriesCount: number,
   hasMultipleSeries: boolean,
@@ -115,7 +115,7 @@ const buildEChartsBarSeries = (
     barWidth,
     encode: {
       y: seriesModel.dataKey,
-      x: dimensionDataKey,
+      x: X_AXIS_DATA_KEY,
     },
     label: buildEChartsLabelOptions(
       seriesModel,
@@ -182,7 +182,6 @@ const buildEChartsLineAreaSeries = (
   seriesSettings: SeriesSettings,
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  dimensionDataKey: string,
   yAxisIndex: number,
   hasMultipleSeries: boolean,
   chartWidth: number,
@@ -229,7 +228,7 @@ const buildEChartsLineAreaSeries = (
     areaStyle: display === "area" ? { opacity: 0.3 } : undefined,
     encode: {
       y: seriesModel.dataKey,
-      x: dimensionDataKey,
+      x: X_AXIS_DATA_KEY,
     },
     label: buildEChartsLabelOptions(
       seriesModel,
@@ -278,7 +277,7 @@ const generateStackOption = (
     stack: stackName,
     encode: {
       y: signKey,
-      x: chartModel.dimensionModel.dataKey,
+      x: X_AXIS_DATA_KEY,
     },
     label: {
       ...seriesOptionFromStack.label,
@@ -394,7 +393,6 @@ export const buildEChartsSeries = (
             seriesSettings,
             chartModel.dataset,
             settings,
-            chartModel.dimensionModel.dataKey,
             yAxisIndex,
             hasMultipleSeries,
             chartWidth,
@@ -405,7 +403,6 @@ export const buildEChartsSeries = (
             chartModel.transformedDataset,
             seriesModel,
             settings,
-            chartModel.dimensionModel.dataKey,
             yAxisIndex,
             barSeriesCount,
             hasMultipleSeries,
@@ -415,8 +412,6 @@ export const buildEChartsSeries = (
           return buildEChartsScatterSeries(
             seriesModel,
             chartModel.bubbleSizeDomain,
-            chartModel.dataset,
-            chartModel.dimensionModel.dataKey,
             yAxisIndex,
             renderingContext,
           );

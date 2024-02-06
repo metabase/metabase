@@ -13,6 +13,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { ChartMeasurements } from "../option/types";
 
 const tryGetDate = (rowValue: RowValue): Dayjs | null => {
@@ -26,18 +27,15 @@ const tryGetDate = (rowValue: RowValue): Dayjs | null => {
 const getDimensionRange = (
   chartModel: CartesianChartModel,
 ): DateRange | null => {
-  const {
-    transformedDataset,
-    dimensionModel: { dataKey: dimensionKey },
-  } = chartModel;
+  const { transformedDataset } = chartModel;
   if (chartModel.transformedDataset.length === 0) {
     return null;
   }
 
   // Assume the dataset is sorted
-  const minDate = tryGetDate(transformedDataset[0][dimensionKey]);
+  const minDate = tryGetDate(transformedDataset[0][X_AXIS_DATA_KEY]);
   const maxDate = tryGetDate(
-    transformedDataset[transformedDataset.length - 1][dimensionKey],
+    transformedDataset[transformedDataset.length - 1][X_AXIS_DATA_KEY],
   );
 
   if (minDate == null || maxDate == null) {
