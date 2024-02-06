@@ -482,24 +482,25 @@
 (defmacro with-uploads-allowed [& body]
   `(do-with-uploads-allowed (fn [] ~@body)))
 
-(defn- do-with-upload-table! [t f]
-  (try (f t)
+(defn- do-with-upload-table! [table thunk]
+  (try (thunk table)
        (finally
-         (driver/drop-table! driver/*driver* 
+         (driver/drop-table! driver/*driver*
                              (mt/id)
-                             (#'upload/table-identifier t))))
+                             (#'upload/table-identifier table)))))
 
-(defmacro with-upload-table!
-  "Execute `body` with a table created by evaluating the `table-creator` expression. The table instance is bound to
-  `table-sym` in `body`. The table is cleaned up from both the test and app DB after the body executes.
+(defmacro ^:private with-upload-table!
+  "Execute `body` with a table created by evaluating the expression `create-table-expr`. `create-table-expr` must evaluate
+  to a toucan Table instance. The instance is bound to `table-sym` in `body`. The table is cleaned up from both the test
+  and app DB after the body executes.
 
     (with-upload-table [table (create-upload-table! ...)]
       ...)"
   {:style/indent 1}
-  [[table-sym table-creator] & body]
+  [[table-binding create-table-expr] & body]
   `(with-uploads-allowed
      (mt/with-model-cleanup [:model/Table]
-       (do-with-upload-table! ~table-creator (fn [~table-sym] ~@body)))))
+       (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
 
 (deftest load-from-csv-table-name-test
   (testing "Can upload two files with the same name"
