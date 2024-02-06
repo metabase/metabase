@@ -38,7 +38,6 @@ import type {
   Dataset,
 } from "metabase-types/api";
 
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as FILTER from "metabase-lib/queries/utils/filter";
 import * as QUERY from "metabase-lib/queries/utils/query";
 
@@ -483,20 +482,6 @@ class Question {
    * Although most of these are essentially a way to modify the current query, having them as a part
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
-  usesMetric(metricId): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return (
-      !isNative &&
-      _.any(
-        QUERY.getAggregations(
-          this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
-            useStructuredQuery: true,
-          }),
-        ),
-        aggregation => AGGREGATION.getMetric(aggregation) === metricId,
-      )
-    );
-  }
 
   usesSegment(segmentId): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
