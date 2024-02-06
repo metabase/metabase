@@ -39,19 +39,18 @@
               (dotimes [_ threads]
                 (swap! promises conj (future (thunk))))
 
-              ;; Block on all the futures
-              (doseq [p @promises] @p)
+              (let [result-keys (mapv deref @promises)
+                    latest-key  (:key (t2/select-one Setting search-col search-value))]
 
-              (testing "Every call returns the same row"
-                (let [id (:key (t2/select-one Setting search-col search-value))]
-                  (is (= (repeat threads id)
-                         (map deref @promises)))))
+                (testing "Every call returns the same row"
+                  (is (= (repeat threads latest-key) result-keys)))
 
-              (testing "We have not inserted any duplicates"
-                (is (= 1 (count (t2/select Setting search-col search-value)))))
+                (testing "We have not inserted any duplicates"
+                  (is (= 1 (count (t2/select Setting search-col search-value)))))
 
-              (testing "Later calls will just return the existing row as well"
-                (is (= (:key (t2/select-one Setting search-col search-value)) (thunk)))))
+                (testing "Later calls will just return the existing row as well"
+                  (is (= latest-key (thunk)))
+                  (is (= 1 (count (t2/select Setting search-col search-value)))))))
 
             ;; Since we couldn't use with-temp, we need to clean up manually.
             (finally
