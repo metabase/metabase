@@ -52,6 +52,7 @@ export function Text({
 
   const isSingleRow = gridSize?.height === 1;
 
+  // handles a case when settings are updated externally
   useEffect(() => {
     setTextValue(settings.text);
   }, [settings.text]);
