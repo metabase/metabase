@@ -19,12 +19,12 @@ import type {
   ParameterWithTarget,
 } from "metabase-lib/parameters/types";
 import {
-  getTargetFieldFromCard,
+  getParameterTargetField,
   isVariableTarget,
 } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Field from "metabase-lib/metadata/Field";
-import type Question from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: DashCardId;
@@ -154,14 +154,10 @@ function buildFieldFilterUiParameter(
 
   const mappedFields = uniqueMappingsForParameters.map(mapping => {
     const { target, card } = mapping;
+    const question = questions[card.id] ?? new Question(card, metadata);
 
     try {
-      const field = getTargetFieldFromCard(
-        target,
-        card,
-        metadata,
-        questions[card.id],
-      );
+      const field = getParameterTargetField(target, question);
 
       return {
         field,
