@@ -1,16 +1,20 @@
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { trackSchemaEvent } from "metabase/lib/analytics";
-import type { EmbedResource, EmbedResourceType } from "./types";
+import type {
+  EmbeddingDisplayOptions,
+  EmbedResource,
+  EmbedResourceType,
+} from "./types";
 
 const SCHEMA_NAME = "embed_flow";
 const SCHEMA_VERSION = "1-0-0";
 
 type Appearance = {
-  title: boolean;
-  border: boolean;
-  theme: "light" | "dark" | "transparent";
+  titled: boolean;
+  bordered: boolean;
+  theme: "light" | "night" | "transparent";
   font: "instance" | "custom";
-  hide_download_button: boolean;
+  hide_download_button: boolean | null;
 };
 
 export const trackStaticEmbedDiscarded = ({
@@ -76,21 +80,36 @@ export const trackStaticEmbedCodeCopied = ({
   artifact,
   language,
   location,
-  appearance,
+  code,
+  displayOptions,
 }: {
   artifact: EmbedResourceType;
   language: string;
   location: "code_overview" | "code_params" | "code_appearance";
-  appearance: Appearance;
+  code: "backend" | "view";
+  displayOptions: EmbeddingDisplayOptions;
 }): void => {
   trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
     event: "static_embed_code_copied",
     artifact,
     language,
     location,
-    appearance,
+    code,
+    appearance: normalizeAppearance(displayOptions),
   });
 };
+
+function normalizeAppearance(
+  displayOptions: EmbeddingDisplayOptions,
+): Appearance {
+  return {
+    titled: displayOptions.titled,
+    bordered: displayOptions.bordered,
+    theme: displayOptions.theme ?? "light",
+    font: displayOptions.font ? "custom" : "instance",
+    hide_download_button: displayOptions.hide_download_button,
+  };
+}
 
 export const trackPublicLinkCopied = ({
   artifact,

@@ -126,7 +126,7 @@
           ],
           "enum": [
             "light",
-            "dark",
+            "night",
             "transparent"
           ],
           "description": "The theme of the artifact's appearance."

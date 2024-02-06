@@ -261,7 +261,7 @@ describe("embed modal display", () => {
 });
 
 ["dashboard", "question"].forEach(resource => {
-  describeWithSnowplow("public sharing snowplow events", () => {
+  describeWithSnowplow(`public ${resource} sharing snowplow events`, () => {
     beforeEach(() => {
       restore();
       resetSnowplow();
@@ -385,20 +385,225 @@ describe("embed modal display", () => {
             visitResource(resource, id);
           });
           openStaticEmbeddingModal();
-          cy.findByTestId("embed-frontend").within(() => {
-            cy.findByTestId("copy-button").realClick();
-          });
+
+          cy.log("Assert copying codes in Overview tab");
+          cy.findByTestId("embed-backend")
+            .findByTestId("copy-button")
+            .realClick();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
-            language: "Node.js",
+            language: "node",
             location: "code_overview",
+            code: "backend",
             appearance: {
-              border: true,
-              title: true,
+              bordered: true,
+              titled: true,
               font: "instance",
               theme: "light",
+              hide_download_button: null,
             },
+          });
+
+          cy.findByTestId("embed-frontend")
+            .findByTestId("copy-button")
+            .realClick();
+          expectGoodSnowplowEvent({
+            event: "static_embed_code_copied",
+            artifact: resource,
+            language: "pug",
+            location: "code_overview",
+            code: "view",
+            appearance: {
+              bordered: true,
+              titled: true,
+              font: "instance",
+              theme: "light",
+              hide_download_button: null,
+            },
+          });
+
+          cy.log("Assert copying code in Parameters tab");
+          modal().within(() => {
+            cy.findByRole("tab", { name: "Parameters" }).click();
+
+            cy.findByText("Node.js").click();
+          });
+          popover().findByText("Ruby").click();
+          cy.findByTestId("embed-backend")
+            .findByTestId("copy-button")
+            .realClick();
+          expectGoodSnowplowEvent({
+            event: "static_embed_code_copied",
+            artifact: resource,
+            language: "ruby",
+            location: "code_params",
+            code: "backend",
+            appearance: {
+              bordered: true,
+              titled: true,
+              font: "instance",
+              theme: "light",
+              hide_download_button: null,
+            },
+          });
+
+          cy.log("Assert copying code in Appearance tab");
+          modal().within(() => {
+            cy.findByRole("tab", { name: "Appearance" }).click();
+
+            cy.findByText("Ruby").click();
+          });
+
+          popover().findByText("Python").click();
+
+          modal().within(() => {
+            cy.findByLabelText("Dark").click({ force: true });
+            if (resource === "dashboard") {
+              cy.findByLabelText("Dashboard title").click({ force: true });
+            }
+            if (resource === "question") {
+              cy.findByLabelText("Question title").click({ force: true });
+            }
+            cy.findByLabelText("Border").click({ force: true });
+          });
+
+          cy.findByTestId("embed-backend")
+            .findByTestId("copy-button")
+            .realClick();
+          expectGoodSnowplowEvent({
+            event: "static_embed_code_copied",
+            artifact: resource,
+            language: "python",
+            location: "code_appearance",
+            code: "backend",
+            appearance: {
+              bordered: false,
+              titled: false,
+              font: "instance",
+              theme: "night",
+              hide_download_button: null,
+            },
+          });
+        });
+
+        describeEE("Pro/EE instances", () => {
+          beforeEach(() => {
+            setTokenFeatures("all");
+          });
+
+          it("should send `static_embed_code_copied` when copying the static embed code", () => {
+            cy.get("@resourceId").then(id => {
+              visitResource(resource, id);
+            });
+            openStaticEmbeddingModal({ acceptTerms: false });
+
+            cy.log("Assert copying codes in Overview tab");
+            cy.findByTestId("embed-backend")
+              .findByTestId("copy-button")
+              .realClick();
+            expectGoodSnowplowEvent({
+              event: "static_embed_code_copied",
+              artifact: resource,
+              language: "node",
+              location: "code_overview",
+              code: "backend",
+              appearance: {
+                bordered: true,
+                titled: true,
+                font: "instance",
+                theme: "light",
+                hide_download_button: resource === "question" ? false : null,
+              },
+            });
+
+            cy.findByTestId("embed-frontend")
+              .findByTestId("copy-button")
+              .realClick();
+            expectGoodSnowplowEvent({
+              event: "static_embed_code_copied",
+              artifact: resource,
+              language: "pug",
+              location: "code_overview",
+              code: "view",
+              appearance: {
+                bordered: true,
+                titled: true,
+                font: "instance",
+                theme: "light",
+                hide_download_button: resource === "question" ? false : null,
+              },
+            });
+
+            cy.log("Assert copying code in Parameters tab");
+            modal().within(() => {
+              cy.findByRole("tab", { name: "Parameters" }).click();
+
+              cy.findByText("Node.js").click();
+            });
+            popover().findByText("Ruby").click();
+            cy.findByTestId("embed-backend")
+              .findByTestId("copy-button")
+              .realClick();
+            expectGoodSnowplowEvent({
+              event: "static_embed_code_copied",
+              artifact: resource,
+              language: "ruby",
+              location: "code_params",
+              code: "backend",
+              appearance: {
+                bordered: true,
+                titled: true,
+                font: "instance",
+                theme: "light",
+                hide_download_button: resource === "question" ? false : null,
+              },
+            });
+
+            cy.log("Assert copying code in Appearance tab");
+            modal().within(() => {
+              cy.findByRole("tab", { name: "Appearance" }).click();
+
+              cy.findByText("Ruby").click();
+            });
+
+            popover().findByText("Python").click();
+
+            modal().within(() => {
+              cy.findByLabelText("Dark").click({ force: true });
+              if (resource === "dashboard") {
+                cy.findByLabelText("Dashboard title").click({ force: true });
+              }
+              if (resource === "question") {
+                cy.findByLabelText("Question title").click({ force: true });
+              }
+              cy.findByLabelText("Border").click({ force: true });
+              cy.findByLabelText("Font").click();
+            });
+
+            popover().findByText("Oswald").click();
+
+            if (resource === "question") {
+              modal().findByLabelText("Download data").click({ force: true });
+            }
+
+            cy.findByTestId("embed-backend")
+              .findByTestId("copy-button")
+              .realClick();
+            expectGoodSnowplowEvent({
+              event: "static_embed_code_copied",
+              artifact: resource,
+              language: "python",
+              location: "code_appearance",
+              code: "backend",
+              appearance: {
+                bordered: false,
+                titled: false,
+                font: "custom",
+                theme: "night",
+                hide_download_button: resource === "question" ? true : null,
+              },
+            });
           });
         });
 

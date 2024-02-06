@@ -5,12 +5,20 @@ import type {
 } from "./types";
 import { optionsToHashParams } from "./embed";
 
+function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
+  const DEFAULT_THEME = "light";
+  const options = {
+    ...displayOptions,
+    theme: displayOptions.theme === DEFAULT_THEME ? null : displayOptions.theme,
+  };
+  return JSON.stringify(optionsToHashParams(options));
+}
+
 export const node = {
   getParametersSource: (params: EmbeddingParametersValues) =>
     `params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},`,
 
-  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
-    JSON.stringify(optionsToHashParams(displayOptions)),
+  getIframeQuerySource,
 
   getServerSource: ({
     siteUrl,
@@ -46,8 +54,7 @@ export const python = {
       .join(",\n    ")}
   },`,
 
-  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
-    JSON.stringify(optionsToHashParams(displayOptions)),
+  getIframeQuerySource,
 
   getServerSource: ({
     siteUrl,
@@ -89,8 +96,7 @@ export const ruby = {
       .join(",\n    ")}
   },`,
 
-  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
-    JSON.stringify(optionsToHashParams(displayOptions)),
+  getIframeQuerySource,
 
   getServerSource: ({
     siteUrl,
@@ -124,8 +130,7 @@ export const clojure = {
       .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
       .join(",\n              ")}}`,
 
-  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
-    JSON.stringify(optionsToHashParams(displayOptions)),
+  getIframeQuerySource,
 
   getServerSource: ({
     siteUrl,

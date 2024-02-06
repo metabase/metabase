@@ -12,15 +12,17 @@ interface ClientEmbedCodePaneProps {
   clientCodeOptions: ClientCodeSampleConfig[];
   selectedClientCodeOptionName: string;
   setSelectedClientCodeOptionName: (languageName: string) => void;
+  onCopy: () => void;
 }
 
 export const ClientEmbedCodePane = ({
   clientCodeOptions,
   selectedClientCodeOptionName,
   setSelectedClientCodeOptionName,
+  onCopy,
 }: ClientEmbedCodePaneProps): JSX.Element | null => {
   const selectedClientCodeOption = clientCodeOptions.find(
-    ({ name }) => name === selectedClientCodeOptionName,
+    ({ id }) => id === selectedClientCodeOptionName,
   );
 
   if (!selectedClientCodeOption) {
@@ -31,11 +33,12 @@ export const ClientEmbedCodePane = ({
     <CodeSample
       dataTestId="embed-frontend"
       title={t`Then insert this code snippet in your HTML template or single page app.`}
-      selectedOptionName={selectedClientCodeOptionName}
-      languageOptions={clientCodeOptions.map(({ name }) => name)}
+      selectedOptionId={selectedClientCodeOptionName}
+      languageOptions={clientCodeOptions}
       source={selectedClientCodeOption.source}
       textHighlightMode={selectedClientCodeOption.mode}
       onChangeOption={setSelectedClientCodeOptionName}
+      onCopy={onCopy}
     />
   );
 };

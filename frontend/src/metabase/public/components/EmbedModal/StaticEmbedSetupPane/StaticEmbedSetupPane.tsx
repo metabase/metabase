@@ -18,11 +18,13 @@ import { getSignedPreviewUrl } from "metabase/public/lib/embed";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 
 import {
+  trackStaticEmbedCodeCopied,
   trackStaticEmbedDiscarded,
   trackStaticEmbedPublished,
   trackStaticEmbedUnpublished,
 } from "metabase/public/lib/analytics";
-import { DEFAULT_DISPLAY_OPTIONS } from "./config";
+import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { getDefaultDisplayOptions } from "./config";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { ParametersSettings } from "./ParametersSettings";
@@ -77,8 +79,11 @@ export const StaticEmbedSetupPane = ({
     useState<EmbeddingParametersSettings>(initialEmbeddingParams);
   const [parameterValues, setParameterValues] =
     useState<EmbeddingParametersValues>({});
+
+  const canWhitelabel = useSelector(getCanWhitelabel);
+  const shouldShowDownloadData = canWhitelabel && resourceType === "question";
   const [displayOptions, setDisplayOptions] = useState<EmbeddingDisplayOptions>(
-    DEFAULT_DISPLAY_OPTIONS,
+    getDefaultDisplayOptions(shouldShowDownloadData),
   );
 
   const previewParametersBySlug = useMemo(
@@ -109,11 +114,12 @@ export const StaticEmbedSetupPane = ({
     displayOptions,
   });
 
-  const [selectedServerCodeOptionName, setSelectedServerCodeOptionName] =
-    useState(serverCodeOptions[0].name);
+  const [selectedServerCodeOptionId, setSelectedServerCodeOptionId] = useState(
+    serverCodeOptions[0].id,
+  );
 
   const selectedServerCodeOption = serverCodeOptions.find(
-    ({ name }) => name === selectedServerCodeOptionName,
+    ({ id }) => id === selectedServerCodeOptionId,
   );
 
   const hasSettingsChanges = getHasSettingsChanges({
@@ -173,22 +179,54 @@ export const StaticEmbedSetupPane = ({
     });
   };
 
-  const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => (
-    <ServerEmbedCodePane
-      className="flex-full w-full"
-      variant={variant}
-      initialPreviewParameters={initialPreviewParameters}
-      resource={resource}
-      resourceType={resourceType}
-      siteUrl={siteUrl}
-      secretKey={secretKey}
-      params={previewParametersBySlug}
-      displayOptions={displayOptions}
-      serverCodeOptions={serverCodeOptions}
-      selectedServerCodeOptionName={selectedServerCodeOptionName}
-      setSelectedServerCodeOptionName={setSelectedServerCodeOptionName}
-    />
-  );
+  const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => {
+    return (
+      <ServerEmbedCodePane
+        className="flex-full w-full"
+        variant={variant}
+        initialPreviewParameters={initialPreviewParameters}
+        resource={resource}
+        resourceType={resourceType}
+        siteUrl={siteUrl}
+        secretKey={secretKey}
+        params={previewParametersBySlug}
+        displayOptions={displayOptions}
+        serverCodeOptions={serverCodeOptions}
+        selectedServerCodeOptionId={selectedServerCodeOptionId}
+        setSelectedServerCodeOptionId={setSelectedServerCodeOptionId}
+        onCopy={() =>
+          handleCodeCopy({
+            code: "backend",
+            variant,
+            language: selectedServerCodeOptionId,
+          })
+        }
+      />
+    );
+  };
+
+  const handleCodeCopy = ({
+    code,
+    variant,
+    language,
+  }: {
+    code: "backend" | "view";
+    variant: EmbedCodePaneVariant;
+    language: string;
+  }) => {
+    const locationMap = {
+      overview: "code_overview",
+      parameters: "code_params",
+      appearance: "code_appearance",
+    } as const;
+    trackStaticEmbedCodeCopied({
+      artifact: resourceType,
+      location: locationMap[variant],
+      code,
+      language,
+      displayOptions,
+    });
+  };
 
   return (
     <Stack spacing={0}>
@@ -221,6 +259,9 @@ export const StaticEmbedSetupPane = ({
             serverEmbedCodeSlot={getServerEmbedCodePane(
               EMBED_MODAL_TABS.Overview,
             )}
+            onClientCodeCopy={language =>
+              handleCodeCopy({ code: "view", variant: "overview", language })
+            }
           />
         </Tabs.Panel>
         <Tabs.Panel value={EMBED_MODAL_TABS.Parameters}>
