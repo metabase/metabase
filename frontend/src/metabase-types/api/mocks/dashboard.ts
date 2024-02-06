@@ -148,3 +148,12 @@ export const createMockLinkDashboardCard = ({
       },
     },
   });
+
+export const createMockPlaceholderDashboardCard = ({
+  visualization_settings,
+  ...opts
+}: VirtualDashboardCardOpts = {}): VirtualDashboardCard =>
+  createMockVirtualDashCard({
+    ...opts,
+    card: createMockVirtualCard({ display: "placeholder" }),
+  });
