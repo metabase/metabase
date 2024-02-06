@@ -61,7 +61,7 @@
 
 (deftest site-url-settings-normalize
   (testing "We should normalize `site-url` when set via env var we should still normalize it (#9764)"
-    (mt/with-temp-env-var-value [mb-site-url "localhost:3000/"]
+    (mt/with-temp-env-var-value! [mb-site-url "localhost:3000/"]
       (is (= "localhost:3000/"
              (setting/get-value-of-type :string :site-url)))
       (is (= "http://localhost:3000"
@@ -70,7 +70,7 @@
 (deftest invalid-site-url-env-var-test
   (testing (str "If `site-url` is set via an env var, and it's invalid, we should return `nil` rather than having the"
                 " whole instance break")
-    (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
+    (mt/with-temp-env-var-value! [mb-site-url "asd_12w31%$;"]
       (is (= "asd_12w31%$;"
              (setting/get-value-of-type :string :site-url)))
       (is (= nil
@@ -185,7 +185,7 @@
                    (public-settings/redirect-all-requests-to-https)))))))))
 
 (deftest cloud-gateway-ips-test
-  (mt/with-temp-env-var-value [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
+  (mt/with-temp-env-var-value! [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Setting returns ips given comma delimited ips."
         (is (= ["1.2.3.4" "5.6.7.8"]
@@ -202,16 +202,16 @@
            Throwable
            #"Invalid day of week: :fraturday"
            (public-settings/start-of-week! :fraturday))))
-    (mt/with-temp-env-var-value [start-of-week nil]
+    (mt/with-temp-env-var-value! [start-of-week nil]
       (testing "Should default to Sunday"
         (is (= :sunday
                (public-settings/start-of-week))))
       (testing "Sanity check: make sure we're setting the env var value correctly for the assertion after this"
-        (mt/with-temp-env-var-value [:mb-start-of-week "monday"]
+        (mt/with-temp-env-var-value! [:mb-start-of-week "monday"]
           (is (= :monday
                  (public-settings/start-of-week)))))
       (testing "Fall back to default if value is invalid"
-        (mt/with-temp-env-var-value [:mb-start-of-week "fraturday"]
+        (mt/with-temp-env-var-value! [:mb-start-of-week "fraturday"]
           (is (= :sunday
                  (public-settings/start-of-week))))))))
 

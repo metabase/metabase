@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
+import { useDispatch } from "metabase/lib/redux";
 
 import { getSetting } from "metabase/selectors/settings";
 import { updateSettings } from "metabase/admin/settings/settings";
@@ -99,6 +100,7 @@ export function UploadSettingsView({
     settings.uploads_table_prefix ?? null,
   );
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
+  const dispatch = useDispatch();
 
   const showSchema = dbId && dbHasSchema(databases, dbId);
   const databaseOptions = getDatabaseOptions(databases);
@@ -135,6 +137,7 @@ export function UploadSettingsView({
         setSchemaName(schemaName);
         setTablePrefix(tablePrefix);
         saveStatusRef?.current?.setSaved();
+        dispatch(Databases.actions.invalidateLists());
       })
       .catch(() => showError(enableErrorMessage));
   };

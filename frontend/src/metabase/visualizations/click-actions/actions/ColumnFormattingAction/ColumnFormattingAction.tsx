@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import * as Lib from "metabase-lib";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
@@ -14,12 +15,14 @@ import { PopoverRoot } from "./ColumnFormattingAction.styled";
 export const POPOVER_TEST_ID = "column-formatting-settings";
 
 export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.column ||
     clicked?.extraData?.isRawTable ||
-    !question.isQueryEditable()
+    !isEditable
   ) {
     return [];
   }

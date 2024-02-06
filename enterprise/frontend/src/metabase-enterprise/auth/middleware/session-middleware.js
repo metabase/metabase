@@ -28,6 +28,13 @@ export const createSessionMiddleware = (
 
       let wasLoggedIn = getIsLoggedIn();
 
+      // get the redirect url before refreshing the session because after the refresh the url will be reset
+      const redirectUrl = getRedirectUrl();
+
+      if (wasLoggedIn && !!redirectUrl) {
+        store.dispatch(replace(redirectUrl));
+      }
+
       intervalId = setInterval(async () => {
         const isLoggedIn = getIsLoggedIn();
 
@@ -35,8 +42,6 @@ export const createSessionMiddleware = (
           wasLoggedIn = isLoggedIn;
 
           if (isLoggedIn) {
-            // get the redirect url before refreshing the session because after the refresh the url will be reset
-            const redirectUrl = getRedirectUrl();
             await store.dispatch(refreshSession())?.unwrap();
 
             if (redirectUrl !== null) {

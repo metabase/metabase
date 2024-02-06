@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+import { displayInfo } from "./metadata";
 import type {
   Aggregable,
   AggregationClause,
@@ -35,6 +36,22 @@ export function aggregate(
   return ML.aggregate(query, stageIndex, clause);
 }
 
+export function aggregateByCount(query: Query): Query {
+  const stageIndex = -1;
+  const operators = availableAggregationOperators(query, stageIndex);
+  const countOperator = operators.find(operator => {
+    const info = displayInfo(query, stageIndex, operator);
+    return info.shortName === "count";
+  });
+
+  if (!countOperator) {
+    return query;
+  }
+
+  const aggregation = aggregationClause(countOperator);
+  return aggregate(query, stageIndex, aggregation);
+}
+
 export function aggregations(
   query: Query,
   stageIndex: number,
@@ -47,4 +64,12 @@ export function aggregationClause(
   column?: ColumnMetadata,
 ): AggregationClause {
   return ML.aggregation_clause(operator, column);
+}
+
+export function aggregationColumn(
+  query: Query,
+  stageIndex: number,
+  aggregation: AggregationClause,
+): ColumnMetadata {
+  return ML.aggregation_column(query, stageIndex, aggregation);
 }

@@ -22,6 +22,10 @@ const openSidebarCSS = css`
   }
 `;
 
+const closeSidebarCSS = css`
+  opacity: 0;
+`;
+
 export const Sidebar = styled.aside<{ isOpen: boolean }>`
   width: 0;
   height: 100%;
@@ -35,7 +39,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   overflow-x: hidden;
   z-index: 4;
 
-  ${props => props.isOpen && openSidebarCSS};
+  ${props => (props.isOpen ? openSidebarCSS : closeSidebarCSS)};
 
   ${breakpointMaxSmall} {
     position: absolute;
@@ -136,7 +140,7 @@ export const LoadingTitle = styled.h2`
 `;
 
 export const PaddedSidebarLink = styled(SidebarLink)`
-  padding-left: ${space(2)};
+  padding-left: 12px;
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`

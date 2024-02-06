@@ -295,7 +295,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  describe("arithmetic (metabase#13175)", () => {
+  describe("arithmetic (metabase#13175, metabase#18094)", () => {
     beforeEach(() => {
       // This is required because TableInteractive won't render columns
       // that don't fit into the viewport
@@ -350,6 +350,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     const CASES = {
       CountIf: ["CountIf(([Subtotal] + [Tax]) > 10)", "18,760"],
       SumIf: ["SumIf([Subtotal], ([Subtotal] + [Tax] > 20))", "1,447,850.28"],
+      SumIf2: [
+        'SumIf([Total], [Created At] > "2016-01-01") + SumIf([Subtotal], [Created At] > "2016-01-01")',
+        "2,958,809.85",
+      ],
+      CountIf2: [
+        'CountIf([Created At] > "2016-01-01") + CountIf([Created At] > "2016-01-01")',
+        "37,520",
+      ],
     };
 
     Object.entries(CASES).forEach(([filter, formula]) => {
@@ -357,30 +365,26 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       it(`should work on custom aggregation with ${filter}`, () => {
         summarize({ mode: "notebook" });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Custom Expression").click();
+        popover().contains("Custom Expression").click();
 
         enterCustomColumnDetails({ formula: expression });
 
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
-          .type(filter, { delay: 100 });
+          .type(filter);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(/^expected closing parenthesis/i).should("not.exist");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(/^redundant input/i).should("not.exist");
-
+        popover().within(() => {
+          cy.contains(/^expected closing parenthesis/i).should("not.exist");
+          cy.contains(/^redundant input/i).should("not.exist");
+        });
         cy.button("Done").should("not.be.disabled").click();
 
         cy.findByTestId("aggregate-step").contains(filter).should("exist");
 
         visualize();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(filter);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(result);
+        cy.findByTestId("qb-header").contains(filter);
+        cy.findByTestId("query-builder-main").contains(result);
       });
     });
   });
@@ -461,7 +465,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
-      dataset: true,
+      type: "model",
       display: "table",
     });
 
@@ -469,7 +473,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       {
         name: "Orders model",
         query: { "source-table": ORDERS_ID },
-        dataset: true,
+        type: "model",
         display: "table",
       },
       { visitQuestion: true },
@@ -529,7 +533,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     () => {
       cy.createNativeQuestion({
         name: "Orders, Model",
-        dataset: true,
+        type: "model",
         native: { query: "SELECT * FROM ORDERS" },
       });
 

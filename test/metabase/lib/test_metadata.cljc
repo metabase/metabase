@@ -2058,7 +2058,7 @@
   [_table-name _field-name]
   {:description                nil
    :database-type              "CHARACTER VARYING"
-   :semantic-type              nil
+   :semantic-type              :type/Description
    :table-id                   (id :reviews)
    :coercion-strategy          nil
    :name                       "BODY"
@@ -2413,6 +2413,7 @@
    :options                     nil
    :engine                      :h2
    :initial-sync-status         "complete"
+   :native-permissions          :write
    :dbms-version                {:flavor "H2", :version "2.1.212 (2022-04-09)", :semantic-version [2 1]}
    :refingerprint               nil
    :points-of-interest          nil
@@ -2426,6 +2427,12 @@
 (def metadata-provider
   "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."
   (meta.graph-provider/->SimpleGraphMetadataProvider metadata))
+
+(defn updated-metadata-provider
+  "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]] after it has been adjusted by
+  the provided function, called like [[update]], that is `(f metadata args...)`."
+  [f & args]
+  (meta.graph-provider/->SimpleGraphMetadataProvider (apply f metadata args)))
 
 (mu/defn tables :- [:set :keyword]
   "Set of valid table names."

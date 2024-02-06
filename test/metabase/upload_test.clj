@@ -169,18 +169,28 @@
            [" 2022-01-01 "                    #t "2022-01-01"             date-type]
            [" 2022-02-30 "                    " 2022-02-30 "              vchar-type]
            [" -2022-01-01 "                   #t "-2022-01-01"            date-type]
-           [" Jan 30 2018"                    #t "2018-01-30"             date-type]
+           [" Jan 1 2018"                     #t "2018-01-01"             date-type]
+           [" Jan 02 2018"                    #t "2018-01-02"             date-type]
            [" Jan 30 -2018"                   #t "-2018-01-30"            date-type]
-           [" Jan 30, 2018"                   #t "2018-01-30"             date-type]
+           [" Jan 1, 2018"                    #t "2018-01-01"             date-type]
+           [" Jan 02, 2018"                   #t "2018-01-02"             date-type]
            [" Feb 30, 2018"                   " Feb 30, 2018"             vchar-type]
-           [" 30 Jan 2018"                    #t "2018-01-30"             date-type]
-           [" 30 Jan, 2018"                   #t "2018-01-30"             date-type]
-           [" January 30 2018"                #t "2018-01-30"             date-type]
-           [" January 30, 2018"               #t "2018-01-30"             date-type]
-           [" 30 January 2018"                #t "2018-01-30"             date-type]
-           [" 30 January, 2018"               #t "2018-01-30"             date-type]
-           [" Sunday, January 30 2000"        #t "2000-01-30"             date-type]
-           [" Sunday, January 30, 2000"       #t "2000-01-30"             date-type]
+           [" 1 Jan 2018"                     #t "2018-01-01"             date-type]
+           [" 02 Jan 2018"                    #t "2018-01-02"             date-type]
+           [" 1 Jan, 2018"                    #t "2018-01-01"             date-type]
+           [" 02 Jan, 2018"                   #t "2018-01-02"             date-type]
+           [" January 1 2018"                 #t "2018-01-01"             date-type]
+           [" January 02 2018"                #t "2018-01-02"             date-type]
+           [" January 1, 2018"                #t "2018-01-01"             date-type]
+           [" January 02, 2018"               #t "2018-01-02"             date-type]
+           [" 1 January 2018"                 #t "2018-01-01"             date-type]
+           [" 02 January 2018"                #t "2018-01-02"             date-type]
+           [" 1 January, 2018"                #t "2018-01-01"             date-type]
+           [" 02 January, 2018"               #t "2018-01-02"             date-type]
+           [" Saturday, January 1 2000"       #t "2000-01-01"             date-type]
+           [" Sunday, January 02 2000"        #t "2000-01-02"             date-type]
+           [" Saturday, January 1, 2000"      #t "2000-01-01"             date-type]
+           [" Sunday, January 02, 2000"       #t "2000-01-02"             date-type]
            [" 2022-01-01T01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01t01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01 01:00 "              #t "2022-01-01T01:00"       datetime-type]
@@ -402,7 +412,11 @@
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (@#'upload/unique-table-name driver/*driver* "my file name"))))
     (testing "semicolons are removed"
-      (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))))
+      (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))
+    (testing "No collisions"
+      (let [n 50
+            names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
+        (is (= 50 (count (distinct names))))))))
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
@@ -1235,7 +1249,7 @@
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
       (testing "The CSV file must not be empty"
-        (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
+        (is (= {:message "The CSV file is missing columns that are in the table: \"name\".",
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
       (testing "Uploads must be supported"
@@ -1286,7 +1300,7 @@
                  "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
 
                  [""]
-                 "The CSV file contains extra columns that are not in the table: \"id\", \"name\"."
+                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
 
                  ["_mb_row_id,extra 1, extra 2"]
                  "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
@@ -1600,26 +1614,35 @@
             ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
-              (doseq [{:keys [upload-type uncoerced coerced]}
-                      [{:upload-type ::upload/int,     :uncoerced "2.1", :coerced 2}
-                       {:upload-type ::upload/int,     :uncoerced "2.5", :coerced 2}
-                       {:upload-type ::upload/int,     :uncoerced "2.9", :coerced 2}
+              (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
+                      [{:upload-type ::upload/int,     :uncoerced "2.1", :fail-msg "'2.1' is not an integer"}
+                       {:upload-type ::upload/int,     :uncoerced "2.0", :coerced 2}
                        {:upload-type ::upload/float,   :uncoerced "2",   :coerced 2.0}
-                       {:upload-type ::upload/boolean, :uncoerced "0",   :coerced false}]]
-                (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
-                                 uncoerced (name upload-type) coerced)
-                  (let [table (create-upload-table!
-                               {:col->upload-type (ordered-map/ordered-map
-                                                   (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
-                                                   :test_column upload-type)
-                                :rows             []})
-                        csv-rows ["test_column" uncoerced]
-                        file  (csv-file-with csv-rows (mt/random-name))]
-                    (testing "\nAppend should succeed"
-                      (is (= {:row-count 1}
-                             (append-csv! {:file     file
-                                           :table-id (:id table)}))))
-                    (testing "\nCheck the value was coerced correctly"
+                       {:upload-type ::upload/boolean, :uncoerced "0",   :coerced false}
+                       {:upload-type ::upload/boolean, :uncoerced "1.0", :fail-msg "'1.0' is not a recognizable boolean"}
+                       {:upload-type ::upload/boolean, :uncoerced "0.0", :fail-msg "'0.0' is not a recognizable boolean"}]]
+                (let [table (create-upload-table!
+                             {:col->upload-type (ordered-map/ordered-map
+                                                 (keyword @#'upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                                                 :test_column upload-type)
+                              :rows             []})
+                      csv-rows ["test_column" uncoerced]
+                      file  (csv-file-with csv-rows (mt/random-name))
+                      append! (fn []
+                                (append-csv! {:file     file
+                                              :table-id (:id table)}))]
+                  (if (contains? args :coerced)
+                    (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
+                                     uncoerced (name upload-type) coerced)
+                      (testing "\nAppend should succeed"
+                        (is (= {:row-count 1}
+                               (append!))))
                       (is (= [[1 coerced]]
                              (rows-for-table table))))
-                    (io/delete-file file)))))))))))
+                    (testing (format "\nUploading %s into a column of type %s should fail to coerce"
+                                     uncoerced (name upload-type))
+                      (is (thrown-with-msg?
+                            clojure.lang.ExceptionInfo
+                            (re-pattern (str "^" fail-msg "$"))
+                            (append!)))))
+                  (io/delete-file file))))))))))

@@ -854,7 +854,7 @@
   (let [{global-grants   :global
          database-grants :database
          table-grants    :table} (group-by :level privilege-grants)
-        lower-database-name (u/lower-case-en database-name)
+        lower-database-name  (u/lower-case-en database-name)
         all-table-privileges (set/union (:privilege-types (first global-grants))
                                         (:privilege-types (m/find-first #(= (:object %) (str "`" lower-database-name "`.*"))
                                                                         database-grants)))
@@ -876,11 +876,14 @@
   ;; for the mysql database), so we can't query the full privileges of the current user.
   (when-not (mariadb? database)
     (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+          db-name     (or (get-in database [:details :db])
+                          ;; some tests are stil using dbname
+                          (get-in database [:details :dbname]))
           table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
                            (drop 1)
                            (map first))]
       (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()")
-                                                             (:name database)
+                                                             db-name
                                                              table-names)]
         {:role   nil
          :schema nil

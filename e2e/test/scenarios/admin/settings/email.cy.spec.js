@@ -109,7 +109,9 @@ describe("scenarios > admin > settings > email settings", () => {
     });
     cy.visit("/admin/settings/email/smtp");
     main().findByText("Send test email").click();
-    cy.findAllByText("Couldn't connect to host, port: localhost, 1234; timeout -1");
+    cy.findAllByText(
+      "Couldn't connect to host, port: localhost, 1234; timeout -1",
+    );
   });
 
   it(

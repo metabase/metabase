@@ -39,7 +39,7 @@ export function withDefaultTemporalBucket(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
-) {
+): ColumnMetadata {
   const buckets = availableTemporalBuckets(query, stageIndex, column);
   const defaultBucket = buckets.find(
     bucket => displayInfo(query, stageIndex, bucket).default,

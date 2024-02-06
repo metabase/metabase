@@ -3,50 +3,6 @@ import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 describe("Legacy Q_DEPRECATED library", () => {
-  describe("createQuery", () => {
-    it("should provide a structured query with no args", () => {
-      expect(Q_DEPRECATED.createQuery()).toEqual({
-        database: null,
-        type: "query",
-        query: {
-          "source-table": null,
-        },
-      });
-    });
-
-    it("should be able to create a native type query", () => {
-      expect(Q_DEPRECATED.createQuery("native")).toEqual({
-        database: null,
-        type: "native",
-        native: {
-          query: "",
-        },
-      });
-    });
-
-    it("should populate the databaseId if specified", () => {
-      expect(Q_DEPRECATED.createQuery("query", 123).database).toEqual(123);
-    });
-
-    it("should populate the tableId if specified", () => {
-      expect(
-        Q_DEPRECATED.createQuery("query", 123, 456).query["source-table"],
-      ).toEqual(456);
-    });
-
-    it("should NOT set the tableId if query type is native", () => {
-      expect(Q_DEPRECATED.createQuery("native", 123, 456).query).toEqual(
-        undefined,
-      );
-    });
-
-    it("should NOT populate the tableId if no database specified", () => {
-      expect(
-        Q_DEPRECATED.createQuery("query", null, 456).query["source-table"],
-      ).toEqual(null);
-    });
-  });
-
   describe("cleanQuery", () => {
     it("should pass for a query created with metabase-lib", () => {
       const datasetQuery = createMockStructuredDatasetQuery({

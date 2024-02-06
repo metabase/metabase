@@ -20,6 +20,7 @@ import "ace/snippets/json";
 import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
+import * as Lib from "metabase-lib";
 
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
@@ -56,6 +57,7 @@ import { ResponsiveParametersList } from "../ResponsiveParametersList";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 import {
   calcInitialEditorHeight,
+  formatQuery,
   getEditorLineHeight,
   getMaxAutoSizeLines,
 } from "./utils";
@@ -84,6 +86,12 @@ type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
 };
 
 type AutocompleteItem = [string, string];
+
+type LastAutoComplete = {
+  timestamp: number;
+  prefix: string | null;
+  results: AutocompleteItem[];
+};
 
 type OwnProps = typeof NativeQueryEditor.defaultProps & {
   question: Question;
@@ -122,7 +130,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   runQuestionQuery: (opts?: {
-    overrideWithCard?: Card;
+    overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
   setNativeEditorSelectedRange: (range: Ace.Range) => void;
@@ -131,6 +139,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
+  setParameterValueToDefault: (parameterId: ParameterId) => void;
   onOpenModal: (modalType: string) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
@@ -183,11 +192,6 @@ export class NativeQueryEditor extends Component<
   nextCompleters?: (position: Ace.Position) => Ace.Completer[] = undefined;
 
   _editor: Ace.Editor | null = null;
-  _lastAutoComplete: {
-    timestamp: number;
-    prefix: string | null;
-    results: AutocompleteItem[];
-  } = { timestamp: 0, prefix: null, results: [] };
   _localUpdate = false;
 
   constructor(props: Props) {
@@ -382,10 +386,10 @@ export class NativeQueryEditor extends Component<
     const selectedText = this._editor?.getSelectedText();
 
     if (selectedText) {
-      const temporaryCard = query.setQueryText(selectedText).question().card();
+      const temporaryQuestion = query.setQueryText(selectedText).question();
 
       runQuestionQuery({
-        overrideWithCard: temporaryCard,
+        overrideWithQuestion: temporaryQuestion,
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
@@ -440,7 +444,18 @@ export class NativeQueryEditor extends Component<
       showLineNumbers: true,
     });
 
-    this._lastAutoComplete = { timestamp: 0, prefix: null, results: [] };
+    let lastAutoComplete: LastAutoComplete = {
+      timestamp: 0,
+      prefix: "",
+      results: [],
+    };
+
+    const prepareResultsForAce = (results: [string, string][]) =>
+      results.map(([name, meta]) => ({
+        name: name,
+        value: name,
+        meta: meta,
+      }));
 
     aceLanguageTools.addCompleter({
       getCompletions: async (
@@ -455,18 +470,35 @@ export class NativeQueryEditor extends Component<
         }
 
         try {
-          let { results, timestamp } = this._lastAutoComplete;
+          if (prefix.length <= 1 && prefix !== lastAutoComplete.prefix) {
+            // ACE triggers an autocomplete immediately when the user starts typing that is
+            // not debounced by debouncing _retriggerAutocomplete.
+            // Here we prevent it from actually calling the autocomplete endpoint.
+            // It will run eventually even if the prefix is only one character,
+            // after the user stops typing, because _retriggerAutocomplete will get called with the same prefix.
+            lastAutoComplete = {
+              timestamp: 0,
+              prefix,
+              results: lastAutoComplete.results,
+            };
+
+            callback(null, prepareResultsForAce(lastAutoComplete.results));
+            return;
+          }
+
+          let { results, timestamp } = lastAutoComplete;
           const cacheHit =
             Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
-            this._lastAutoComplete.prefix === prefix;
+            lastAutoComplete.prefix === prefix;
+
           if (!cacheHit) {
             // Get models and fields from tables
             // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
             const apiResults = await this.props.autocompleteResultsFn(prefix);
-            this._lastAutoComplete = {
+            lastAutoComplete = {
               timestamp: Date.now(),
               prefix,
-              results,
+              results: apiResults,
             };
 
             // Get referenced questions
@@ -505,12 +537,7 @@ export class NativeQueryEditor extends Component<
           }
 
           // transform results into what ACE expects
-          const resultsForAce = results?.map(([name, meta]) => ({
-            name: name,
-            value: name,
-            meta: meta,
-          }));
-          callback(null, resultsForAce || []);
+          callback(null, prepareResultsForAce(results));
         } catch (error) {
           console.error("error getting autocompletion data", error);
           callback(null, []);
@@ -723,6 +750,16 @@ export class NativeQueryEditor extends Component<
     );
   };
 
+  formatQuery = async () => {
+    const { question } = this.props;
+    const query = question.query();
+    const engine = Lib.engine(query);
+    const queryText = Lib.rawNativeQuery(query);
+
+    this.handleQueryUpdate(await formatQuery(queryText, engine));
+    this._editor?.focus();
+  };
+
   render() {
     const {
       question,
@@ -741,6 +778,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery,
       sidebarFeatures,
       canChangeDatabase,
+      setParameterValueToDefault,
     } = this.props;
 
     const isPromptInputVisible = this.isPromptInputVisible();
@@ -778,6 +816,8 @@ export class NativeQueryEditor extends Component<
                 parameters={parameters}
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
+                setParameterValueToDefault={setParameterValueToDefault}
+                enableParameterRequiredBehavior
               />
             )}
             {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
@@ -854,6 +894,7 @@ export class NativeQueryEditor extends Component<
                 features={sidebarFeatures}
                 onShowPromptInput={this.togglePromptVisibility}
                 isPromptInputVisible={isPromptInputVisible}
+                onFormatQuery={this.formatQuery}
                 {...this.props}
               />
             )}

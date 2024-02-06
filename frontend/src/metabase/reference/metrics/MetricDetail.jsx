@@ -16,6 +16,7 @@ import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 import Formula from "metabase/reference/components/Formula";
 
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as actions from "metabase/reference/reference";
 import { getQuestionUrl } from "../utils";
 
@@ -38,6 +39,7 @@ const mapStateToProps = (state, props) => {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
+    metadata: getMetadata(state),
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
@@ -81,6 +83,7 @@ const propTypes = {
   isFormulaExpanded: PropTypes.bool,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
+  metadata: PropTypes.object.isRequired,
   onSubmit: PropTypes.func.isRequired,
   onChangeLocation: PropTypes.func.isRequired,
 };
@@ -100,6 +103,7 @@ const MetricDetail = props => {
     expandFormula,
     collapseFormula,
     isFormulaExpanded,
+    metadata,
     onSubmit,
     onChangeLocation,
   } = props;
@@ -144,6 +148,7 @@ const MetricDetail = props => {
           dbId: table && table.db_id,
           tableId: entity.table_id,
           metricId: entity.id,
+          metadata,
         })}
         name={t`Details`}
         user={user}

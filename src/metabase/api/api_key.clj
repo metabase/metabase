@@ -59,7 +59,7 @@
   (api/checkp (not (t2/exists? :model/ApiKey :name name))
     "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
-        email        (format "api-key-user-%s@api-key.invalid" (u/slugify name))]
+        email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
     (t2/with-transaction [_conn]
       (let [user (first
                   (t2/insert-returning-instances! :model/User

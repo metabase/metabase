@@ -559,3 +559,17 @@
       (is (=? {:stages [{:aggregation [[:count {}]]
                          :breakout    [[:field {} (meta/id :people :longitude)]]}]}
               (lib.breakout/remove-existing-breakouts-for-column query' (meta/field-metadata :people :latitude)))))))
+
+(deftest ^:parallel breakout-column-test
+  (let [query      (-> lib.tu/venues-query
+                       (lib/breakout  (meta/field-metadata :venues :category-id))
+                       (lib/breakout  (meta/field-metadata :venues :price))
+                       (lib/aggregate (lib/count)))
+        category   (m/find-first #(= (:name %) "CATEGORY_ID") (lib/visible-columns query))
+        price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
+        breakouts  (lib/breakouts query)]
+    (is (= (count breakouts) 2))
+    (is (=? category
+            (lib.breakout/breakout-column query -1 (first breakouts))))
+    (is (=? price
+            (lib.breakout/breakout-column query -1 (second breakouts))))))

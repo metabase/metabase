@@ -1,5 +1,6 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
   dashboardHeader,
@@ -19,7 +20,10 @@ import {
   visitEmbeddedPage,
 } from "e2e/support/helpers";
 
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import {
+  createMockActionParameter,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 const COUNT_COLUMN_ID = "count";
@@ -52,7 +56,7 @@ const FIRST_TAB = { id: 900, name: "first" };
 const SECOND_TAB = { id: 901, name: "second" };
 const THIRD_TAB = { id: 902, name: "third" };
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
 const TARGET_DASHBOARD = {
   name: "Target dashboard",
@@ -109,6 +113,14 @@ const DASHBOARD_FILTER_TIME = createMockActionParameter({
   sectionId: "date",
 });
 
+const DASHBOARD_FILTER_NUMBER = createMockActionParameter({
+  id: "3",
+  name: "Number filter",
+  slug: "filter-number",
+  type: "number/>=",
+  sectionId: "number",
+});
+
 const QUERY_FILTER_CREATED_AT = [
   "between",
   [
@@ -116,7 +128,6 @@ const QUERY_FILTER_CREATED_AT = [
     ORDERS.CREATED_AT,
     {
       "base-type": "type/DateTime",
-      "temporal-unit": "month",
     },
   ],
   "2022-08-01",
@@ -264,7 +275,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           wrapId: true,
           idAlias: "targetDashboardId",
         },
-      );
+      ).then(dashboardId => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          dashcards: [
+            createMockDashboardCard({
+              card_id: ORDERS_QUESTION_ID,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+              ],
+            }),
+          ],
+        });
+      });
+
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -306,7 +329,20 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           wrapId: true,
           idAlias: "targetDashboardId",
         },
-      );
+      ).then(dashboardId => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          dashcards: [
+            createMockDashboardCard({
+              card_id: ORDERS_QUESTION_ID,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+              ],
+            }),
+          ],
+        });
+      });
+
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -353,7 +389,20 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       };
 
-      createDashboardWithTabs({ dashboard, tabs, options });
+      createDashboardWithTabs({
+        dashboard,
+        tabs,
+        dashcards: [
+          createMockDashboardCard({
+            dashboard_tab_id: SECOND_TAB.id,
+            card_id: ORDERS_QUESTION_ID,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+            ],
+          }),
+        ],
+        options,
+      });
 
       const TAB_SLUG_MAP = {};
 
@@ -788,8 +837,17 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       };
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: card }) => {
-          visitDashboard(card.dashboard_id);
+        ({ body: dashcard }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
+          });
+          visitDashboard(dashcard.dashboard_id);
         },
       );
 
@@ -816,7 +874,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
         cy.button("Add filter").click();
       });
 
@@ -846,12 +904,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("allows updating single dashboard filter and changing it back to default click behavior", () => {
       const dashboardDetails = {
-        parameters: [DASHBOARD_FILTER_TEXT],
+        parameters: [DASHBOARD_FILTER_NUMBER],
       };
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: card }) => {
-          visitDashboard(card.dashboard_id);
+        ({ body: dashcard }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createNumberFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
+          });
+          visitDashboard(dashcard.dashboard_id);
           cy.location().then(({ pathname }) => {
             cy.wrap(pathname).as("originalPathname");
           });
@@ -862,7 +929,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       getDashboardCard().realHover().icon("click").click();
       cy.get("aside").findByText("Update a dashboard filter").click();
-      addTextParameter();
+      addNumericParameter();
       cy.get("aside").button("Done").click();
 
       saveDashboard({ waitMs: 250 });
@@ -875,7 +942,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(originalPathname);
           expect(search).to.equal(
-            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
+            `?${DASHBOARD_FILTER_NUMBER.slug}=${POINT_COUNT}`,
           );
         });
       });
@@ -889,8 +956,18 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       };
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: card }) => {
-          visitDashboard(card.dashboard_id);
+        ({ body: dashcard }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashcard.card_id }),
+                createTimeFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
+          });
+          visitDashboard(dashcard.dashboard_id);
           cy.location().then(({ pathname }) => {
             cy.wrap(pathname).as("originalPathname");
           });
@@ -945,8 +1022,18 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       };
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: card }) => {
-          visitDashboard(card.dashboard_id);
+        ({ body: dashcard }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashcard.card_id }),
+                createTimeFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
+          });
+          visitDashboard(dashcard.dashboard_id);
           cy.location().then(({ pathname }) => {
             cy.wrap(pathname).as("originalPathname");
           });
@@ -1012,6 +1099,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         {
           ...TARGET_DASHBOARD,
           parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+          dashcards: [
+            createMockDashboardCard({
+              card_id: ORDERS_QUESTION_ID,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+              ],
+            }),
+          ],
         },
         {
           wrapId: true,
@@ -1141,7 +1237,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       };
 
-      createDashboardWithTabs({ dashboard, tabs, options });
+      createDashboardWithTabs({
+        dashboard,
+        tabs,
+        dashcards: [
+          createMockDashboardCard({
+            dashboard_tab_id: SECOND_TAB.id,
+            card_id: ORDERS_QUESTION_ID,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+              createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+            ],
+          }),
+        ],
+        options,
+      });
 
       const TAB_SLUG_MAP = {};
       tabs.forEach(tab => {
@@ -1203,6 +1313,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         {
           ...TARGET_DASHBOARD,
           parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+          dashcards: [
+            createMockDashboardCard({
+              card_id: ORDERS_QUESTION_ID,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+              ],
+            }),
+          ],
         },
         {
           wrapId: true,
@@ -1210,8 +1329,17 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         },
       );
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: card }) => {
-          visitDashboard(card.dashboard_id);
+        ({ body: dashcard }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashcard.card_id }),
+              ],
+            },
+          });
+          visitDashboard(dashcard.dashboard_id);
           cy.location().then(({ pathname }) => {
             cy.wrap(pathname).as("originalPathname");
           });
@@ -1293,7 +1421,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
         popover().within(() => {
           cy.icon("close").click();
-          cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+          cy.findByPlaceholderText("Search by Name").type("Dell Adams");
           cy.button("Update filter").click();
         });
         onNextAnchorClick(anchor => {
@@ -1302,7 +1430,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(anchor).to.have.attr("target", "_blank");
         });
         getTableCell(COLUMN_INDEX.CREATED_AT)
-          .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
+          .should("have.text", `Created at: November 2023`)
           .click();
       })();
     });
@@ -1436,12 +1564,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
-      }).then(({ body: card }) => {
+      }).then(({ body: dashCard }) => {
         addOrUpdateDashboardCard({
-          dashboard_id: card.dashboard_id,
-          card_id: card.card_id,
+          dashboard_id: dashCard.dashboard_id,
+          card_id: dashCard.card_id,
           card: {
-            id: card.id,
+            id: dashCard.id,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: dashCard.card_id }),
+            ],
             visualization_settings: {
               click_behavior: {
                 type: "link",
@@ -1453,7 +1584,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
         visitEmbeddedPage({
-          resource: { dashboard: card.dashboard_id },
+          resource: { dashboard: dashCard.dashboard_id },
           params: {},
         });
         cy.wait("@dashboard");
@@ -1462,7 +1593,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
         cy.button("Add filter").click();
       });
       onNextAnchorClick(anchor => {
@@ -1534,12 +1665,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
-      }).then(({ body: card }) => {
+      }).then(({ body: dashCard }) => {
         addOrUpdateDashboardCard({
-          dashboard_id: card.dashboard_id,
-          card_id: card.card_id,
+          dashboard_id: dashCard.dashboard_id,
+          card_id: dashCard.card_id,
           card: {
-            id: card.id,
+            id: dashCard.id,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: dashCard.card_id }),
+              createTimeFilterMapping({ card_id: dashCard.card_id }),
+            ],
             visualization_settings: {
               click_behavior: {
                 type: "crossfilter",
@@ -1561,7 +1696,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
         visitEmbeddedPage({
-          resource: { dashboard: card.dashboard_id },
+          resource: { dashboard: dashCard.dashboard_id },
           params: {},
         });
         cy.wait("@dashboard");
@@ -1641,7 +1776,10 @@ const addSavedQuestionDestination = () => {
 };
 
 const addSavedQuestionCreatedAtParameter = () => {
-  cy.get("aside").findByText("Orders → Created At").click();
+  cy.get("aside")
+    .findByTestId("click-mappings")
+    .findByText("Created At")
+    .click();
   popover().within(() => {
     cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
     cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
@@ -1649,7 +1787,7 @@ const addSavedQuestionCreatedAtParameter = () => {
 };
 
 const addSavedQuestionQuantityParameter = () => {
-  cy.get("aside").findByText("Orders → Quantity").click();
+  cy.get("aside").findByTestId("click-mappings").findByText("Quantity").click();
   popover().within(() => {
     cy.findByText(CREATED_AT_COLUMN_NAME).should("not.exist");
     cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
@@ -1670,6 +1808,55 @@ const addTimeParameter = () => {
     cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
     cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
   });
+};
+
+const addNumericParameter = () => {
+  cy.get("aside").findByText(DASHBOARD_FILTER_NUMBER.name).click();
+  popover().within(() => {
+    cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+    cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+  });
+};
+
+const createTextFilterMapping = ({ card_id }) => {
+  const fieldRef = [
+    "field",
+    PEOPLE.NAME,
+    {
+      "base-type": "type/Text",
+      "source-field": ORDERS.USER_ID,
+    },
+  ];
+
+  return {
+    card_id,
+    parameter_id: DASHBOARD_FILTER_TEXT.id,
+    target: ["dimension", fieldRef],
+  };
+};
+
+const createTimeFilterMapping = ({ card_id }) => {
+  const fieldRef = [
+    "field",
+    ORDERS.CREATED_AT,
+    { "base-type": "type/DateTime" },
+  ];
+
+  return {
+    card_id,
+    parameter_id: DASHBOARD_FILTER_TIME.id,
+    target: ["dimension", fieldRef],
+  };
+};
+
+const createNumberFilterMapping = ({ card_id }) => {
+  const fieldRef = ["field", ORDERS.QUANTITY, { "base-type": "type/Number" }];
+
+  return {
+    card_id,
+    parameter_id: DASHBOARD_FILTER_NUMBER.id,
+    target: ["dimension", fieldRef],
+  };
 };
 
 const assertDrillThroughMenuOpen = () => {
@@ -1728,21 +1915,24 @@ const getCountToDashboardFilterMapping = () => {
   return cy.get("aside").contains(`${COUNT_COLUMN_NAME} updates 1 filter`);
 };
 
-const createDashboardWithTabs = ({ dashboard, tabs, options }) => {
-  cy.createDashboard(dashboard, options);
-
-  cy.get(`@${options.idAlias}`)
-    .then(dashboardId => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-        cards: [],
-        tabs,
-      });
-    })
-    .then(({ body }) => {
-      // wrap tabs
-
-      body.tabs.forEach(tab => {
+const createDashboardWithTabs = ({
+  dashboard: dashboardDetails,
+  tabs,
+  dashcards = [],
+  options,
+}) => {
+  cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    if (options.wrapId) {
+      cy.wrap(dashboard.id).as(options.idAlias ?? "dashboardId");
+    }
+    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+      dashcards,
+      tabs,
+    }).then(({ body: dashboard }) => {
+      dashboard.tabs.forEach(tab => {
         cy.wrap(tab.id).as(`${tab.name}-id`);
       });
     });
+  });
 };

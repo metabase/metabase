@@ -243,7 +243,13 @@ export type PickerInfo = {
   isModel?: boolean;
 };
 
-export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
+/**
+ * Returns `null` when the joined table/card isn't available, e.g. due to sandboxing.
+ */
+export function pickerInfo(
+  query: Query,
+  metadata: Joinable,
+): PickerInfo | null {
   return ML.picker_info(query, metadata);
 }
 

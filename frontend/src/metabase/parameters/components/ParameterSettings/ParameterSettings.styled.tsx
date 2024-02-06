@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ParameterValueWidget from "../ParameterValueWidget";
 
 export const SettingsRoot = styled.div`
@@ -18,6 +17,11 @@ export const SettingLabel = styled.label`
   font-weight: bold;
 `;
 
+export const SettingLabelError = styled.span`
+  margin: 0 0.5rem;
+  color: ${color("error")};
+`;
+
 export const SettingValueWidget = styled(ParameterValueWidget)`
   color: ${color("text-dark")};
   padding: 0.75rem 0.75rem;
@@ -26,11 +30,16 @@ export const SettingValueWidget = styled(ParameterValueWidget)`
   background-color: ${color("white")};
 `;
 
-export const SettingRemoveButton = styled(IconButtonWrapper)`
-  color: ${color("text-medium")};
-  font-weight: bold;
+export const SettingRequiredContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+`;
 
-  &:hover {
-    color: ${color("error")};
-  }
+export const SettingRequiredLabel = styled.label`
+  display: block;
+  margin-top: 0.35rem;
+  font-weight: 700;
+  color: ${color("text-medium")};
+  cursor: pointer;
 `;

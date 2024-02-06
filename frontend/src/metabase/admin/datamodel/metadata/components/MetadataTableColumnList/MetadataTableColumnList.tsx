@@ -84,7 +84,7 @@ const MetadataTableColumnList = ({
   );
 
   return (
-    <div id="ColumnsList" className={cx("my3", { disabled: isHidden })}>
+    <div id="ColumnsList" className={cx("mt3", { disabled: isHidden })}>
       <div className="text-uppercase text-medium py1">
         <div className="relative">
           <div

@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
+import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
@@ -32,6 +32,7 @@ DashboardSidebars.propTypes = {
   setParameterSourceType: PropTypes.func.isRequired,
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
+  setParameterRequired: PropTypes.func.isRequired,
   dashcardData: PropTypes.object,
   isSharing: PropTypes.bool.isRequired,
   isEditing: PropTypes.bool.isRequired,
@@ -65,6 +66,7 @@ export function DashboardSidebars({
   setParameterSourceType,
   setParameterSourceConfig,
   setParameterFilteringParameters,
+  setParameterRequired,
   dashcardData,
   isFullscreen,
   onCancel,
@@ -146,6 +148,7 @@ export function DashboardSidebars({
           onRemoveParameter={removeParameter}
           onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
+          onChangeRequired={setParameterRequired}
         />
       );
     }

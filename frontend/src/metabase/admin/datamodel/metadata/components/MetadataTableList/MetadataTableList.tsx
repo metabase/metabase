@@ -103,7 +103,7 @@ const MetadataTableList = ({
   }, [selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <div className="MetadataEditor-table-list AdminList flex-no-shrink">
+    <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
       {canGoBack && (
         <TableBreadcrumbs
@@ -148,7 +148,7 @@ const MetadataTableList = ({
           <TableEmptyState />
         )}
       </ul>
-    </div>
+    </aside>
   );
 };
 

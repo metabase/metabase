@@ -9,6 +9,7 @@ export const SetupHelp = (): JSX.Element => {
       {t`If you feel stuck`},{" "}
       <ExternalLink
         className="link"
+        // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
         href={MetabaseSettings.docsUrl(
           "configuring-metabase/setting-up-metabase",
         )}

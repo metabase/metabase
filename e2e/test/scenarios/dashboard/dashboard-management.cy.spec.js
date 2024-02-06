@@ -2,6 +2,8 @@ import { onlyOn } from "@cypress/skip-test";
 import {
   restore,
   popover,
+  openNavigationSidebar,
+  navigationSidebar,
   visitDashboard,
   modal,
   rightSidebar,
@@ -204,9 +206,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   .should("contain", newDashboardName)
                   .and("contain", newQuestionName);
 
-                cy.findByTestId("main-navbar-root")
-                  .findByText("Our analytics")
-                  .click();
+                openNavigationSidebar();
+                navigationSidebar().findByText("Our analytics").click();
                 cy.findAllByTestId("collection-entry-name")
                   .should("contain", dashboardName)
                   .and("contain", originalQuestionName);

@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 const LOG_PREFIX = ".react-ansi-style";
 
@@ -16,7 +17,12 @@ const LOG_COLORS = {
   cyan: "cyan",
 };
 
-export const LogsContainer = styled.div`
+export const LogsContainer = styled(LoadingAndErrorWrapper)`
+  height: 100%;
+  padding-left: 1rem;
+`;
+
+export const LogsContent = styled.div`
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   background-color: ${color("bg-light")};
@@ -24,7 +30,8 @@ export const LogsContainer = styled.div`
   font-size: 14px;
   white-space: pre;
   padding: 1em;
-  overflow-x: scroll;
+  overflow: auto;
+  height: 100%;
 
   ${LOG_PREFIX}-bold {
     font-weight: bold;

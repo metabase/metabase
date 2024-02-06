@@ -53,6 +53,7 @@
    :database_id                false
    :dataset_query              nil
    :description                nil
+   :display                    nil
    :id                         true
    :initial_sync_status        nil
    :model_id                   false
@@ -106,8 +107,8 @@
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
     (merge
@@ -244,6 +245,7 @@
              [:like [:lower :description]       "%foo%"] [:inline 0]
              [:like [:lower :collection_name]   "%foo%"] [:inline 0]
              [:like [:lower :collection_type]   "%foo%"] [:inline 0]
+             [:like [:lower :display]           "%foo%"] [:inline 0]
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
@@ -353,7 +355,8 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil))]
+                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
+                         :dataset_query nil :display "table"))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -1093,7 +1096,9 @@
             :id           id
             :user-id      user-id
             :is-creation? true
-            :object       {:id id}}))
+            :object       (merge {:id id}
+                                 (when (= model :model/Card)
+                                   {:type "question"}))}))
 
         (testing "Able to filter by last editor"
           (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id)]
@@ -1230,7 +1235,9 @@
           :id           id
           :user-id      (mt/user->id :rasta)
           :is-creation? true
-          :object       {:id id}}))
+          :object       (merge {:id id}
+                               (when (= model :model/Card)
+                                 {:type "question"}))}))
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
           (is (= #{[action-id "action"]
@@ -1255,7 +1262,9 @@
             :id           id
             :user-id      (mt/user->id :rasta)
             :is-creation? true
-            :object       {:id id}}))
+            :object       (merge {:id id}
+                                 (when (= model :model/Card)
+                                   {:type "question"}))}))
         (is (= #{"dashboard" "dataset" "metric" "card"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta))
                    :available_models
@@ -1510,14 +1519,14 @@
         :id           card-id-1
         :user-id      user-id-1
         :is-creation? true
-        :object       {:id card-id-1}})
+        :object       {:id card-id-1 :type "question"}})
 
       (revision/push-revision!
        {:entity       :model/Card
         :id           card-id-2
         :user-id      user-id-2
         :is-creation? true
-        :object       {:id card-id-2}})
+        :object       {:id card-id-2 :type "question"}})
 
       (testing "search result should returns creator_common_name and last_editor_common_name"
         (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]

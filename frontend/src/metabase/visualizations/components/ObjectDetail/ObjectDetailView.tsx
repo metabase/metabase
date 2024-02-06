@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import type {
   ConcreteTableId,
+  DatasetColumn,
   DatasetData,
   WritebackActionId,
 } from "metabase-types/api";
@@ -19,10 +20,10 @@ import { NotFound } from "metabase/containers/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
+import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/types/utils/isa";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 
 import { DeleteObjectModal } from "./DeleteObjectModal";
 import { ObjectDetailBody } from "./ObjectDetailBody";
@@ -32,13 +33,41 @@ import {
   ObjectDetailContainer,
   ObjectDetailWrapperDiv,
 } from "./ObjectDetailView.styled";
-import type { ObjectDetailProps } from "./types";
+import type { ObjectDetailProps, ObjectId } from "./types";
 import {
   getActionItems,
   getDisplayId,
   getObjectName,
   getSinglePKIndex,
 } from "./utils";
+
+function filterByPk(
+  query: Lib.Query,
+  pkField: DatasetColumn,
+  zoomedRowID: ObjectId | undefined,
+) {
+  if (typeof zoomedRowID === "undefined") {
+    return query;
+  }
+
+  const stageIndex = -1;
+  const column = Lib.fromLegacyColumn(query, stageIndex, pkField);
+  const filterClause =
+    typeof zoomedRowID === "number"
+      ? Lib.numberFilterClause({
+          operator: "=",
+          column,
+          values: [zoomedRowID],
+        })
+      : Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: [zoomedRowID],
+          options: {},
+        });
+
+  return Lib.filter(query, stageIndex, filterClause);
+}
 
 export function ObjectDetailView({
   data: passedData,
@@ -155,11 +184,12 @@ export function ObjectDetailView({
     if (maybeLoading && pkIndex !== undefined) {
       // if we don't have the row in the current data, try to fetch this single row
       const pkField = passedData.cols[pkIndex];
-      const filteredQuestion = question
-        ?.legacyQuery({ useStructuredQuery: true })
-        .filter(["=", fieldRefForColumn(pkField), zoomedRowID ?? null])
-        .question();
-      MetabaseApi.dataset(filteredQuestion?._card.dataset_query)
+      const query = question?.query();
+      const datasetQuery = query
+        ? Lib.toLegacyQuery(filterByPk(query, pkField, zoomedRowID))
+        : undefined;
+
+      MetabaseApi.dataset(datasetQuery)
         .then(result => {
           if (result?.data?.rows?.length > 0) {
             const newRow = result.data.rows[0];

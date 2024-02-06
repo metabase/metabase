@@ -130,15 +130,6 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   return dashboards[dashboardId];
 };
 
-export const getSingleDashCardData = (state: State, dashcardId: DashCardId) => {
-  const dashcard = getDashCardById(state, dashcardId);
-  const cardDataMap = getCardData(state);
-  if (!dashcard?.card_id || !cardDataMap) {
-    return;
-  }
-  return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
-};
-
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) => {
@@ -179,7 +170,7 @@ export const getDraftParameterValues = (state: State) =>
 
 export const getIsAutoApplyFilters = createSelector(
   [getDashboard],
-  dashboard => dashboard?.auto_apply_filters,
+  dashboard => !!dashboard?.auto_apply_filters,
 );
 export const getHasUnappliedParameterValues = createSelector(
   [getParameterValues, getDraftParameterValues],
@@ -320,6 +311,16 @@ export const getParameters = createSelector(
   },
 );
 
+export const getMissingRequiredParameters = createSelector(
+  [getParameters],
+  parameters =>
+    parameters.filter(
+      p =>
+        p.required &&
+        (!p.default || (Array.isArray(p.default) && p.default.length === 0)),
+    ),
+);
+
 export const getParameterMappingOptions = createSelector(
   [getMetadata, getEditingParameter, getCard, getDashCard],
   (metadata, parameter, card, dashcard) => {
@@ -329,12 +330,12 @@ export const getParameterMappingOptions = createSelector(
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+  (isEmbedded, embedOptions) => !isEmbedded || !!embedOptions.header,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
+  (isEmbedded, embedOptions) => !isEmbedded || !!embedOptions.additional_info,
 );
 
 export const getTabs = createSelector([getDashboard], dashboard => {

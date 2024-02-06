@@ -74,8 +74,7 @@
     (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
          "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
-  :setter     :none
-  :type       ::public-settings/uuid-nonce
+  :base       setting/uuid-nonce-base
   :doc        false)
 
 (defsetting snowplow-available

@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -16,7 +15,6 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -249,30 +247,6 @@
    (when include-joined?
      (lib.join/all-joins-visible-columns query stage-number unique-name-fn))))
 
-(defn- ref-to? [[tag _opts pointer :as clause] column]
-  (case tag
-    :field (if (or (number? pointer) (string? pointer))
-             (= pointer (:id column))
-             (throw (ex-info "unknown type of :field ref in lib.stage/ref-to?"
-                             {:clause clause
-                              :column column})))
-    :expression (= pointer (:name column))
-    (throw (ex-info "unknown clause in lib.stage/ref-to?"
-                    {:clause clause
-                     :column column}))))
-
-(defn- mark-selected-breakouts [query stage-number columns]
-  (if-let [breakouts (:breakout (lib.util/query-stage query stage-number))]
-    (for [column columns]
-      (if-let [match (m/find-first #(ref-to? % column) breakouts)]
-        (let [binning        (lib.binning/binning match)
-              {:keys [unit]} (lib.temporal-bucket/temporal-bucket match)]
-          (cond-> column
-            binning (lib.binning/with-binning binning)
-            unit    (lib.temporal-bucket/with-temporal-bucket unit)))
-        column))
-    columns))
-
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
   (let [query            (ensure-previous-stages-have-metadata query stage-number)
@@ -284,7 +258,7 @@
                       (or (not (:source-card (lib.util/query-stage query stage-number)))
                           (:include-implicitly-joinable-for-source-card? options)))
              (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
-         (mark-selected-breakouts query stage-number))))
+         vec)))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
@@ -354,6 +328,12 @@
                                               (lib.util/query-stage query previous-stage-number)
                                               style)))))
 
+(mu/defn has-clauses? :- :boolean
+  "Does given query stage have any clauses?"
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
+
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
   [query]
@@ -369,6 +349,6 @@
 (mu/defn drop-stage-if-empty :- ::lib.schema/query
   "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
   [query :- ::lib.schema/query]
-  (if (empty? (dissoc (lib.util/query-stage query -1) :lib/type))
+  (if-not (has-clauses? query -1)
     (drop-stage query)
     query))

@@ -76,10 +76,10 @@
         {:name   label
          :filter (operator op field-ref value)})
 
-      (lib.types.isa/string? column)
-      (for [[op label] [[:=  "="]
-                        [:!= "≠"]
-                        [:contains "contains"]
+      (and (lib.types.isa/string? column)
+           (or (lib.types.isa/comment? column)
+               (lib.types.isa/description? column)))
+      (for [[op label] [[:contains "contains"]
                         [:does-not-contain "does-not-contain"]]]
         {:name   label
          :filter (operator op field-ref value)})
@@ -106,6 +106,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
+             (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/foreign-key? column)))
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.

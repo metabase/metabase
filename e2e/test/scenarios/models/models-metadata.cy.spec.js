@@ -6,6 +6,7 @@ import {
   visitDashboard,
   popover,
   openQuestionActions,
+  queryBuilderHeader,
   questionInfoButton,
   addOrUpdateDashboardCard,
   openColumnOptions,
@@ -40,7 +41,7 @@ describe("scenarios > models metadata", () => {
           "source-table": ORDERS_ID,
           limit: 5,
         },
-        dataset: true,
+        type: "model",
       };
 
       cy.createQuestion(modelDetails).then(({ body: { id } }) => {
@@ -125,7 +126,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -175,7 +176,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -197,7 +198,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -233,7 +234,7 @@ describe("scenarios > models metadata", () => {
 
       cy.createNativeQuestion({
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -288,9 +289,9 @@ describe("scenarios > models metadata", () => {
       cy.createNativeQuestion(
         {
           name: "Native Model",
-          dataset: true,
+          type: "model",
           native: {
-            query: "select * from orders limit 10",
+            query: "select * from orders limit 100",
           },
         },
         { wrapId: true, idAlias: "modelId" },
@@ -350,6 +351,40 @@ describe("scenarios > models metadata", () => {
       });
     });
 
+    it("should show implicit joins on FK columns with real DB columns (#37067)", () => {
+      cy.get("@modelId").then(modelId => {
+        cy.visit(`/model/${modelId}`);
+        cy.wait("@dataset");
+
+        // Drill to People table
+        // FK column is mapped to real DB column
+        queryBuilderHeader().button("Filter").click();
+
+        modal().within(() => {
+          cy.findByRole("tablist").within(() => {
+            cy.get("button").should("have.length", 2); // Just the two we're expecting and not the other fake FK.
+            cy.findByText("Native Model").should("exist");
+
+            const userTab = cy.findByText("User");
+            userTab.should("exist");
+            userTab.click();
+          });
+
+          cy.findByTestId("filter-column-Source").findByText("Twitter").click();
+          cy.findByTestId("apply-filters").click();
+        });
+
+        cy.wait("@dataset");
+        cy.findByTestId("question-row-count")
+          .invoke("text")
+          .should("match", /Showing \d+ rows/);
+        cy.findByTestId("question-row-count").should(
+          "not.contain",
+          "Showing 100 rows",
+        );
+      });
+    });
+
     it("should allow drills on FK columns from dashboards", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
@@ -392,7 +427,7 @@ describe("scenarios > models metadata", () => {
 
       const questionDetails = {
         name: "22521",
-        dataset: true,
+        type: "model",
         query: {
           "source-table": PRODUCTS_ID,
           limit: 5,

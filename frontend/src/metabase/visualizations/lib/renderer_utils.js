@@ -11,6 +11,8 @@ import {
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 
+import { isNative } from "metabase-lib/queries/utils/card";
+import { isNumeric } from "metabase-lib/types/utils/isa";
 import {
   computeTimeseriesDataInverval,
   dimensionIsTimeseries,
@@ -355,13 +357,14 @@ export function xValueForWaterfallTotal({ settings, series }) {
 
 const uniqueCards = series => _.uniq(series.map(({ card }) => card.id)).length;
 
-const aggregateColumns = series => {
+const getMetricColumnsCount = series => {
+  const metricColumnPredicate = !isNative(series[0]?.card)
+    ? column => column.source === "aggregation"
+    : column => isNumeric(column);
+
   return _.uniq(
     series
-      .map(({ data: { cols } }) => {
-        return cols.filter(col => col.source === "aggregation");
-      })
-      .flat()
+      .flatMap(({ data: { cols } }) => cols.filter(metricColumnPredicate))
       .map(({ name }) => name),
   ).length;
 };
@@ -371,13 +374,19 @@ export function shouldSplitYAxis(
   datas,
   yExtents,
 ) {
-  if (
-    isScalarSeries ||
-    chartType === "scatter" ||
-    settings["graph.y_axis.auto_split"] === false ||
-    (uniqueCards(series) < 2 && aggregateColumns(series) < 2) ||
-    isStacked(settings, datas)
-  ) {
+  const isSuitableChartType = !isScalarSeries && chartType !== "scatter";
+  if (!isSuitableChartType) {
+    return false;
+  }
+
+  if (!settings["graph.y_axis.auto_split"]) {
+    return false;
+  }
+
+  const isSingleCardWithSingleMetricColumn =
+    uniqueCards(series) <= 1 && getMetricColumnsCount(series) <= 1;
+
+  if (isSingleCardWithSingleMetricColumn || isStacked(settings, datas)) {
     return false;
   }
 

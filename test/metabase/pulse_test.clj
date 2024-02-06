@@ -977,3 +977,38 @@
           (#'metabase.pulse/send-notifications! [fake-slack-notification])
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))))))
+
+(deftest alerts-do-not-remove-user-metadata
+  (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
+    (mt/dataset test-data
+      (let [q               {:database (mt/id)
+                             :type     :query
+                             :query
+                             {:source-table (mt/id :reviews)
+                              :aggregation  [[:count]]}}
+            result-metadata [{:base_type         :type/Integer
+                              :name              "count"
+                              :display_name      "ASDF Count"
+                              :description       "ASDF Some description"
+                              :semantic_type     :type/Quantity
+                              :source            :aggregation
+                              :field_ref         [:aggregation 0]
+                              :aggregation_index 0}]]
+        (mt/with-temp [Card {card-id :id} {:display         :table
+                                           :dataset_query   q
+                                           :dataset         true
+                                           :result_metadata result-metadata}
+                       Pulse {pulse-id :id :as p} {:name "Test Pulse"}
+                       PulseCard _ {:pulse_id pulse-id
+                                    :card_id  card-id}
+                       PulseChannel _ {:channel_type :email
+                                       :pulse_id     pulse-id
+                                       :enabled      true}]
+          (metabase.pulse/send-pulse! p)
+          (testing "The custom columns defined in the result-metadata (:display_name and :description) are still present after the alert has run."
+              (is (= (-> result-metadata
+                         first
+                         (select-keys [:display_name :description]))
+                     (t2/select-one-fn
+                      (comp #(select-keys % [:display_name :description]) first :result_metadata)
+                      :model/Card :id card-id)))))))))

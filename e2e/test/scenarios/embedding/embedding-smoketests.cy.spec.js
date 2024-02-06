@@ -29,7 +29,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   it("should not offer to share or embed models (metabase#20815)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
@@ -137,111 +137,107 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       dashboard: ORDERS_DASHBOARD_ID,
     };
     ["question", "dashboard"].forEach(object => {
-      it(
-        `should be able to publish/embed and then unpublish a ${object} without filters`,
-        { tags: "@flaky" },
-        () => {
-          const embeddableObject = object === "question" ? "card" : "dashboard";
-          const objectName =
-            object === "question" ? "Orders" : "Orders in a dashboard";
+      it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
+        const embeddableObject = object === "question" ? "card" : "dashboard";
+        const objectName =
+          object === "question" ? "Orders" : "Orders in a dashboard";
 
-          cy.intercept("PUT", `/api/${embeddableObject}/${ids[object]}`).as(
-            "embedObject",
+        cy.intercept("PUT", `/api/${embeddableObject}/${ids[object]}`).as(
+          "embedObject",
+        );
+        cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
+          "currentlyEmbeddedObject",
+        );
+
+        visitAndEnableSharing(object);
+
+        modal().within(() => {
+          cy.findByRole("tab", { name: "Appearance" }).click();
+
+          cy.findByText("Background");
+          cy.findByText("Dashboard title");
+          cy.findByText("Border");
+          cy.findByText(
+            (_, element) =>
+              element.textContent ===
+              "You can change the font with a paid plan.",
           );
-          cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
-            "currentlyEmbeddedObject",
-          );
+          cy.findByText("Download data").should("not.exist");
 
-          visitAndEnableSharing(object);
+          cy.findByRole("tab", { name: "Parameters" }).click();
 
-          modal().within(() => {
-            cy.findByRole("tab", { name: "Appearance" }).click();
-
-            cy.findByText("Background");
-            cy.findByText("Dashboard title");
-            cy.findByText("Border");
-            cy.findByText(
-              (_, element) =>
-                element.textContent ===
-                "You can change the font with a paid plan.",
-            );
-            cy.findByText("Download data").should("not.exist");
-
-            cy.findByRole("tab", { name: "Parameters" }).click();
-
-            cy.findByText(
-              `This ${object} doesn't have any parameters to configure yet.`,
-            );
-
-            cy.findByText(
-              `You will need to publish this ${object} before you can embed it in another application.`,
-            );
-
-            cy.button("Publish changes").click();
-
-            cy.wait("@embedObject");
-          });
-
-          visitIframe();
-
-          cy.findByTestId("embed-frame").within(() => {
-            cy.findByRole("heading", { name: objectName });
-            cy.get(".cellData").contains("37.65");
-          });
-
-          cy.findByRole("contentinfo").within(() => {
-            cy.findByRole("link")
-              .should("have.text", "Powered by Metabase")
-              .and("have.attr", "href")
-              .and("eq", "https://metabase.com/");
-          });
-
-          cy.log(
-            `Make sure the ${object} shows up in the standalone embeds page`,
-          );
-          cy.signInAsAdmin();
-          cy.visit(standalonePath);
-          cy.wait("@currentlyEmbeddedObject");
-
-          const sectionTestId = {
-            dashboard: "-embedded-dashboards-setting",
-            question: "-embedded-questions-setting",
-          }[object];
-
-          cy.findByTestId(sectionTestId)
-            .find("tbody tr")
-            .should("have.length", 1)
-            .and("contain", objectName);
-
-          cy.log(`Unpublish ${object}`);
-          visitAndEnableSharing(object);
-
-          modal().within(() => {
-            cy.findByText(
-              `This ${object} is published and ready to be embedded.`,
-            );
-            cy.button("Unpublish").click();
-
-            cy.wait("@embedObject");
-
-            cy.findByRole("tab", { name: "Parameters" }).click();
-          });
-
-          visitIframe();
-
-          cy.findByTestId("embed-frame").findByText(
-            "Embedding is not enabled for this object.",
+          cy.findByText(
+            `This ${object} doesn't have any parameters to configure yet.`,
           );
 
-          cy.signInAsAdmin();
-          cy.visit(standalonePath);
-          cy.wait("@currentlyEmbeddedObject");
+          cy.findByText(
+            `You will need to publish this ${object} before you can embed it in another application.`,
+          );
 
-          mainPage()
-            .findAllByText(/No (questions|dashboards) have been embedded yet./)
-            .should("have.length", 2);
-        },
-      );
+          cy.button("Publish").click();
+
+          cy.wait("@embedObject");
+        });
+
+        visitIframe();
+
+        cy.findByTestId("embed-frame").within(() => {
+          cy.findByRole("heading", { name: objectName });
+          cy.get(".cellData").contains("37.65");
+        });
+
+        cy.findByRole("contentinfo").within(() => {
+          cy.findByRole("link")
+            .should("have.text", "Powered by Metabase")
+            .and("have.attr", "href")
+            .and("eq", "https://metabase.com/");
+        });
+
+        cy.log(
+          `Make sure the ${object} shows up in the standalone embeds page`,
+        );
+        cy.signInAsAdmin();
+        cy.visit(standalonePath);
+        cy.wait("@currentlyEmbeddedObject");
+
+        const sectionTestId = {
+          dashboard: "-embedded-dashboards-setting",
+          question: "-embedded-questions-setting",
+        }[object];
+
+        cy.findByTestId(sectionTestId)
+          .find("tbody tr")
+          .should("have.length", 1)
+          .and("contain", objectName);
+
+        cy.log(`Unpublish ${object}`);
+        visitAndEnableSharing(object, false);
+
+        modal().within(() => {
+          cy.findByText(
+            `This ${object} is published and ready to be embedded.`,
+          );
+          cy.button("Unpublish").click();
+
+          cy.wait("@embedObject");
+
+          cy.findByRole("tab", { name: "Parameters" }).click();
+        });
+
+        visitIframe();
+
+        cy.findByTestId("embed-frame").findByText(
+          "Embedding is not enabled for this object.",
+        );
+
+        cy.signInAsAdmin();
+        cy.visit(standalonePath);
+        cy.wait("@currentlyEmbeddedObject");
+
+        mainPage()
+          .findAllByText(/No (questions|dashboards) have been embedded yet./)
+          .should("have.length", 2);
+      });
     });
 
     it("should regenerate embedding token and invalidate previous embed url", () => {
@@ -335,7 +331,7 @@ function ensureEmbeddingIsDisabled() {
   });
 }
 
-function visitAndEnableSharing(object) {
+function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "question") {
     visitQuestion(ORDERS_QUESTION_ID);
   }
@@ -344,13 +340,13 @@ function visitAndEnableSharing(object) {
     visitDashboard(ORDERS_DASHBOARD_ID);
   }
 
-  openStaticEmbeddingModal();
+  openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {
-  return cy.get(".AdminList");
+  return cy.findByTestId("admin-layout-sidebar");
 }
 
 function mainPage() {
-  return sidebar().next();
+  return cy.findByTestId("admin-layout-content");
 }
