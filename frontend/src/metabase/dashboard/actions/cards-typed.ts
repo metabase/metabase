@@ -208,7 +208,10 @@ export const replaceCard =
     const dashboardId = getDashboardId(getState());
 
     let dashcard = getDashCardById(getState(), dashcardId);
-    if (isVirtualDashCard(dashcard)) {
+    if (
+      isVirtualDashCard(dashcard) &&
+      dashcard.card.display !== "placeholder"
+    ) {
       return;
     }
 
