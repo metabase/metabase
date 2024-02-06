@@ -20,6 +20,84 @@ describe("scenarios > filters > sql filters > field filter", () => {
     cy.signInAsAdmin();
   });
 
+  describe("required tag", () => {
+    beforeEach(() => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM products WHERE {{filter}}",
+      );
+
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+
+      FieldFilter.mapTo({
+        table: "Products",
+        field: "ID",
+      });
+
+      FieldFilter.setWidgetType("ID");
+    });
+
+    function setDefaultFieldValue(value) {
+      cy.findByTestId("sidebar-content")
+        .findByText("Enter a default value…")
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a default value…").type(value);
+        cy.button("Add filter").click();
+      });
+    }
+
+    it("needs a default value to run or save the query", () => {
+      SQLFilter.toggleRequired();
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
+
+      SQLFilter.getSaveQueryButton().realHover();
+      cy.get("body").findByText(
+        'The "Filter" variable requires a default value but none was provided.',
+      );
+
+      setDefaultFieldValue(4);
+
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+    });
+
+    it("when there's a default value, enabling required sets it as a parameter value", () => {
+      setDefaultFieldValue(5);
+      filterWidget().click();
+      clearFilterWidget();
+      SQLFilter.toggleRequired();
+      filterWidget().findByTestId("field-set-content").should("have.text", "5");
+    });
+
+    it("when there's a default value and value is unset, updating filter sets the default back", () => {
+      setDefaultFieldValue(10);
+      SQLFilter.toggleRequired();
+      filterWidget().click();
+      popover().within(() => {
+        cy.icon("close").click();
+        cy.findByText("Update filter").click();
+      });
+      filterWidget()
+        .findByTestId("field-set-content")
+        .should("have.text", "10");
+    });
+
+    it("when there's a default value and template tag is required, can reset it back", () => {
+      setDefaultFieldValue(8);
+      SQLFilter.toggleRequired();
+      filterWidget().click();
+      popover().within(() => {
+        cy.get("input").type("10{enter}");
+        cy.findByText("Update filter").click();
+      });
+      filterWidget().icon("refresh").click();
+      filterWidget().findByTestId("field-set-content").should("have.text", "8");
+    });
+  });
+
   context("ID filter", () => {
     beforeEach(() => {
       openNativeEditor();
@@ -52,16 +130,6 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.get(".Visualization").within(() => {
         cy.findByText("Small Marble Shoes");
         cy.findByText("Rustic Paper Wallet");
-      });
-
-      cy.log("set the value through the filter widget");
-      SQLFilter.toggleRequired();
-      FieldFilter.openEntryForm();
-      FieldFilter.addWidgetStringFilter("1");
-      SQLFilter.runQuery();
-      cy.get(".Visualization").within(() => {
-        cy.findByText("Rustic Paper Wallet");
-        cy.findByText("Small Marble Shoes").should("not.exist");
       });
     });
   });

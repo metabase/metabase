@@ -29,7 +29,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   it("should not offer to share or embed models (metabase#20815)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
@@ -174,7 +174,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
             `You will need to publish this ${object} before you can embed it in another application.`,
           );
 
-          cy.button("Publish changes").click();
+          cy.button("Publish").click();
 
           cy.wait("@embedObject");
         });
@@ -340,7 +340,7 @@ function visitAndEnableSharing(object, acceptTerms = true) {
     visitDashboard(ORDERS_DASHBOARD_ID);
   }
 
-  openStaticEmbeddingModal({acceptTerms});
+  openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {

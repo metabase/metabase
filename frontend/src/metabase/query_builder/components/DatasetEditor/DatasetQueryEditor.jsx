@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import styled from "@emotion/styled";
+import * as Lib from "metabase-lib";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import ResizableNotebook from "./ResizableNotebook";
@@ -27,7 +28,8 @@ function DatasetQueryEditor({
 }) {
   // Datasets/models by default behave like they are already nested,
   // so we need to edit the dataset/model question like it is a normal question
-  const question = dataset.setDataset(false);
+  const question = dataset.setType("question");
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const [isResizing, setResizing] = useState(false);
 
@@ -64,7 +66,7 @@ function DatasetQueryEditor({
 
   return (
     <QueryEditorContainer isActive={isActive}>
-      {question.isNative() ? (
+      {isNative ? (
         <NativeQueryEditor
           {...props}
           question={question}

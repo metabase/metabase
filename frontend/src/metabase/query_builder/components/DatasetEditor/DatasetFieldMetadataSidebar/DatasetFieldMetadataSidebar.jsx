@@ -14,6 +14,7 @@ import { usePrevious } from "react-use";
 
 import Radio from "metabase/core/components/Radio";
 
+import * as Lib from "metabase-lib";
 import {
   field_visibility_types,
   field_semantic_types,
@@ -82,6 +83,8 @@ function getFormFields({ dataset, field }) {
   const canIndex =
     dataset.isSaved() && ModelIndexes.utils.canIndexField(field, dataset);
 
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+
   return formFieldValues =>
     [
       {
@@ -95,7 +98,7 @@ function getFormFields({ dataset, field }) {
         placeholder: t`It’s optional, but oh, so helpful`,
         type: "text",
       },
-      dataset.isNative() && {
+      isNative && {
         name: "id",
         title: t`Database column this maps to`,
         widget: MappedFieldPicker,
@@ -178,7 +181,9 @@ function DatasetFieldMetadataSidebar({
       visibility_type: field.visibility_type || "normal",
       should_index: ModelIndexes.utils.fieldHasIndex(modelIndexes, field),
     };
-    if (dataset.isNative()) {
+    const { isNative } = Lib.queryDisplayInfo(dataset.query());
+
+    if (isNative) {
       values.id = field.id;
     }
     return values;
@@ -308,6 +313,8 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChange],
   );
 
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+
   return (
     <SidebarContent>
       <RootForm
@@ -329,7 +336,7 @@ function DatasetFieldMetadataSidebar({
                 onChange={onDescriptionChange}
                 tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
               />
-              {dataset.isNative() && (
+              {isNative && (
                 <FormField
                   name="id"
                   tableId={field.table_id}

@@ -12,7 +12,7 @@ import {
 import { Group, Stack } from "metabase/ui";
 import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
-import FieldSet from "metabase/components/FieldSet";
+import { FieldSet } from "metabase/components/FieldSet";
 import type { Metric, StructuredQuery } from "metabase-types/api";
 import * as Q from "metabase-lib/queries/utils/query";
 import FormInput from "../FormInput";

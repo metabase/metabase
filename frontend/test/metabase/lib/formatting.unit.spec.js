@@ -612,12 +612,23 @@ describe("formatting", () => {
     ];
 
     test.each(FORMAT_TIME_TESTS)(
-      `parseTime(%p) to be %p`,
+      `formatTime(%p) to be %p`,
       (value, resultStr) => {
         const result = formatTime(value);
         expect(result).toBe(resultStr);
       },
     );
+
+    it("should use options when formatting times", () => {
+      const value = "20:34:56";
+      const t12 = formatTime(value, "default", {});
+      expect(t12).toBe("8:34 PM");
+      const t24 = formatTime(value, "default", {
+        time_enabled: "minutes",
+        time_style: "HH:mm",
+      });
+      expect(t24).toBe("20:34");
+    });
   });
 
   describe("formatTimeWithUnit", () => {

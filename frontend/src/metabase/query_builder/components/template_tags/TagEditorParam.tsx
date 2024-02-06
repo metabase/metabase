@@ -49,6 +49,8 @@ import {
   InputContainer,
   TagContainer,
   TagName,
+  ToggleContainer,
+  ToggleLabel,
 } from "./TagEditorParam.styled";
 
 interface Props {
@@ -117,13 +119,17 @@ class TagEditorParamInner extends Component<Props> {
     }
   }
 
-  setRequired(required: boolean) {
-    const { tag, setTemplateTag } = this.props;
+  setRequired = (required: boolean) => {
+    const { tag, parameter, setTemplateTag, setParameterValue } = this.props;
 
     if (tag.required !== required) {
-      setTemplateTag({ ...tag, required: required, default: undefined });
+      setTemplateTag({ ...tag, required: required });
     }
-  }
+
+    if (!parameter.value && required && tag.default) {
+      setParameterValue(tag.id, tag.default);
+    }
+  };
 
   setQueryType = (queryType: ValuesQueryType) => {
     const { tag, parameter, setTemplateTagConfig } = this.props;
@@ -217,6 +223,7 @@ class TagEditorParamInner extends Component<Props> {
     const hasNoWidgetType =
       tag["widget-type"] === "none" || !tag["widget-type"];
     const hasNoWidgetLabel = !tag["display-name"];
+    const hasNoDefaultValue = !tag.default;
 
     return (
       <TagContainer>
@@ -280,7 +287,7 @@ class TagEditorParamInner extends Component<Props> {
           <InputContainer>
             <ContainerLabel>
               {t`Filter widget type`}
-              {hasNoWidgetType && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+              {hasNoWidgetType && <ErrorSpan>({t`required`})</ErrorSpan>}
             </ContainerLabel>
             <Select
               className="block"
@@ -304,6 +311,7 @@ class TagEditorParamInner extends Component<Props> {
               <p>
                 {t`There aren't any filter widgets for this type of field yet.`}{" "}
                 <Link
+                  // eslint-disable-next-line no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
                   to={MetabaseSettings.docsUrl(
                     "questions/native-editor/sql-parameters",
                     "the-field-filter-variable-type",
@@ -322,10 +330,10 @@ class TagEditorParamInner extends Component<Props> {
           <InputContainer>
             <ContainerLabel>
               {t`Filter widget label`}
-              {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+              {hasNoWidgetLabel && <ErrorSpan>({t`required`})</ErrorSpan>}
             </ContainerLabel>
             <InputBlurChange
-              id="tag-editor-display-name"
+              id={`tag-editor-display-name_${tag.id}`}
               type="text"
               value={tag["display-name"]}
               onBlurChange={e =>
@@ -346,46 +354,52 @@ class TagEditorParamInner extends Component<Props> {
           </InputContainer>
         )}
 
-        <InputContainer lessBottomPadding>
-          <ContainerLabel>{t`Required?`}</ContainerLabel>
-          <Toggle
-            id="tag-editor-required"
-            value={tag.required}
-            onChange={value => this.setRequired(value)}
+        <div>
+          <ContainerLabel>
+            {t`Default filter widget value`}
+            {hasNoDefaultValue && tag.required && (
+              <ErrorSpan>({t`required`})</ErrorSpan>
+            )}
+          </ContainerLabel>
+          <DefaultParameterValueWidget
+            parameter={
+              tag.type === "text" || tag.type === "dimension"
+                ? parameter || {
+                    fields: [],
+                    ...tag,
+                    type: tag["widget-type"] || null,
+                  }
+                : {
+                    fields: [],
+                    hasVariableTemplateTagTarget: true,
+                    type:
+                      tag["widget-type"] ||
+                      (tag.type === "date" ? "date/single" : null),
+                  }
+            }
+            value={tag.default}
+            setValue={value => {
+              this.setParameterAttribute("default", value);
+              this.props.setParameterValue(tag.id, value);
+            }}
+            isEditing
+            commitImmediately
           />
-        </InputContainer>
 
-        {((tag.type !== "dimension" && tag.required) ||
-          tag.type === "dimension" ||
-          (tag["widget-type"] && tag["widget-type"] !== "none")) && (
-          <InputContainer lessBottomPadding>
-            <ContainerLabel>{t`Default filter widget value`}</ContainerLabel>
-            <DefaultParameterValueWidget
-              parameter={
-                tag.type === "text" || tag.type === "dimension"
-                  ? parameter || {
-                      fields: [],
-                      ...tag,
-                      type: tag["widget-type"] || null,
-                    }
-                  : {
-                      fields: [],
-                      hasVariableTemplateTagTarget: true,
-                      type:
-                        tag["widget-type"] ||
-                        (tag.type === "date" ? "date/single" : null),
-                    }
-              }
-              value={tag.default}
-              setValue={value => {
-                this.setParameterAttribute("default", value);
-                this.props.setParameterValue(tag.id, value);
-              }}
-              isEditing
-              commitImmediately
+          <ToggleContainer>
+            <Toggle
+              id={`tag-editor-required_${tag.id}`}
+              value={tag.required}
+              onChange={this.setRequired}
             />
-          </InputContainer>
-        )}
+            <div>
+              <ToggleLabel htmlFor={`tag-editor-required_${tag.id}`}>
+                {t`Always require a value`}
+              </ToggleLabel>
+              <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
+            </div>
+          </ToggleContainer>
+        </div>
       </TagContainer>
     );
   }

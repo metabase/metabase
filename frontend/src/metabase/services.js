@@ -4,6 +4,7 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import Question from "metabase-lib/Question";
 import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
+import { isNative } from "metabase-lib/queries/utils/card";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
 import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
@@ -59,7 +60,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   }
   if (
     question.display() !== "pivot" ||
-    !question.isStructured() ||
+    isNative(card) ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
   ) {
@@ -340,7 +341,7 @@ export const MetabaseApi = {
   db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
-  // table_get:                   GET("/api/table/:tableId"),
+  table_get: GET("/api/table/:tableId"),
   table_update: PUT("/api/table/:id"),
   // table_fields:                GET("/api/table/:tableId/fields"),
   table_fks: GET("/api/table/:tableId/fks"),
@@ -352,6 +353,10 @@ export const MetabaseApi = {
   // table_sync_metadata:        POST("/api/table/:tableId/sync"),
   table_rescan_values: POST("/api/table/:tableId/rescan_values"),
   table_discard_values: POST("/api/table/:tableId/discard_values"),
+  tableAppendCSV: POST("/api/table/:tableId/append-csv", {
+    formData: true,
+    fetch: true,
+  }),
   field_get: GET("/api/field/:fieldId"),
   // field_summary:               GET("/api/field/:fieldId/summary"),
   field_values: GET("/api/field/:fieldId/values"),

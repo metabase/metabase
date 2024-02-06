@@ -23,7 +23,6 @@ import type {
   DashCardDataMap,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
-import Question from "metabase-lib/Question";
 import {
   isDateParameter,
   isNumberParameter,
@@ -97,7 +96,8 @@ export function isLinkDashCard(dashcard: DashboardCard) {
 }
 
 export function isNativeDashCard(dashcard: DashboardCard) {
-  return dashcard.card && new Question(dashcard.card).isNative();
+  // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
+  return dashcard.card.dataset_query?.type === "native";
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the

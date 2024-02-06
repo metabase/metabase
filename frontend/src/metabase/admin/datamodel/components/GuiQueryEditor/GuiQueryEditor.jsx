@@ -78,7 +78,7 @@ export class GuiQueryEditor extends Component {
   }
 
   renderFilters() {
-    const { legacyQuery, features, setDatasetQuery } = this.props;
+    const { legacyQuery, query, features, setDatasetQuery } = this.props;
 
     if (!features.filter) {
       return;
@@ -88,7 +88,9 @@ export class GuiQueryEditor extends Component {
     let filterList;
     let addFilterButton;
 
-    if (legacyQuery.isEditable()) {
+    const { isEditable } = Lib.queryDisplayInfo(query);
+
+    if (isEditable) {
       enabled = true;
 
       const filters = legacyQuery.filters();
@@ -151,18 +153,19 @@ export class GuiQueryEditor extends Component {
 
   renderAggregation() {
     const {
+      query,
       legacyQuery,
       features,
       setDatasetQuery,
       supportMultipleAggregations,
     } = this.props;
+    const { isEditable } = Lib.queryDisplayInfo(query);
 
     if (!features.aggregation) {
       return;
     }
-
     // aggregation clause.  must have table details available
-    if (legacyQuery.isEditable()) {
+    if (isEditable) {
       const aggregations = [...legacyQuery.aggregations()];
 
       if (aggregations.length === 0) {

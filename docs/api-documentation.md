@@ -19,18 +19,22 @@ clojure -M:ee:run api-documentation
 
 Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
 
+## API keys
+
+Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
+
 ## API endpoints
 
 _* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
 
 
-- [API key](api/api-key.md)
 - [Action](api/action.md)
 - [Activity](api/activity.md)
 - [Advanced config logs*](api/ee/advanced-config-logs.md)
 - [Advanced permissions application*](api/ee/advanced-permissions-application.md)
 - [Advanced permissions impersonation*](api/ee/advanced-permissions-impersonation.md)
 - [Alert](api/alert.md)
+- [API key](api/api-key.md)
 - [Audit app user*](api/ee/audit-app-user.md)
 - [Automagic dashboards](api/automagic-dashboards.md)
 - [Bookmark](api/bookmark.md)
@@ -59,17 +63,18 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Public](api/public.md)
 - [Pulse](api/pulse.md)
 - [Revision](api/revision.md)
-- [SSO*](api/ee/sso.md)
-- [SSO SAML](api/sso-saml.md)
 - [Sandbox GTAP*](api/ee/sandbox-gtap.md)
 - [Sandbox table*](api/ee/sandbox-table.md)
 - [Sandbox user*](api/ee/sandbox-user.md)
 - [Search](api/search.md)
 - [Segment](api/segment.md)
+- [Serialization*](api/ee/serialization.md)
 - [Session](api/session.md)
 - [Setting](api/setting.md)
 - [Setup](api/setup.md)
 - [Slack](api/slack.md)
+- [SSO*](api/ee/sso.md)
+- [SSO SAML](api/sso-saml.md)
 - [Table](api/table.md)
 - [Task](api/task.md)
 - [Tiles](api/tiles.md)

@@ -16,7 +16,7 @@ const setupPremium = (opts?: SetupOpts) => {
 };
 
 describe("CollectionMenu", () => {
-  it("should be able to make the collection official", () => {
+  it("should be able to make the collection official", async () => {
     const collection = createMockCollection({
       can_write: true,
     });
@@ -26,13 +26,13 @@ describe("CollectionMenu", () => {
     });
 
     userEvent.click(getIcon("ellipsis"));
-    userEvent.click(screen.getByText("Make collection official"));
+    userEvent.click(await screen.findByText("Make collection official"));
     expect(onUpdateCollection).toHaveBeenCalledWith(collection, {
       authority_level: "official",
     });
   });
 
-  it("should be able to make the collection regular", () => {
+  it("should be able to make the collection regular", async () => {
     const collection = createMockCollection({
       can_write: true,
       authority_level: "official",
@@ -43,7 +43,7 @@ describe("CollectionMenu", () => {
     });
 
     userEvent.click(getIcon("ellipsis"));
-    userEvent.click(screen.getByText("Remove Official badge"));
+    userEvent.click(await screen.findByText("Remove Official badge"));
     expect(onUpdateCollection).toHaveBeenCalledWith(collection, {
       authority_level: null,
     });

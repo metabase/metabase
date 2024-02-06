@@ -1,4 +1,9 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  editDashboard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -74,7 +79,7 @@ describe("issues 15119 and 16112", () => {
 
         // Actually need to setup the linked filter:
         visitDashboard(dashboard_id);
-        cy.get('[data-metabase-event="Dashboard;Edit"]').click();
+        editDashboard();
         cy.findByText("Rating Filter").click();
         cy.findByText("Linked filters").click();
         // cy.findByText("Reviewer Filter").click();

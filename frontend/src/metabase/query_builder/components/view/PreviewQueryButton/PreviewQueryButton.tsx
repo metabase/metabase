@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+import * as Lib from "metabase-lib";
 import Tooltip from "metabase/core/components/Tooltip";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import type Question from "metabase-lib/Question";
@@ -31,9 +32,11 @@ interface PreviewQueryButtonOpts {
 }
 
 PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
   return (
+    isNative &&
     question.canRun() &&
-    question.isNative() &&
     (question.legacyQuery() as NativeQuery).hasVariableTemplateTags()
   );
 };

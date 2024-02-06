@@ -29,6 +29,7 @@ export const getStoreUrl = (path = "") => {
 };
 
 export const getLearnUrl = (path = "") => {
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
   return `https://www.metabase.com/learn/${path}`;
 };
 
@@ -78,6 +79,7 @@ export const getDocsUrlForVersion = (
     anchor = `#${anchor}`;
   }
 
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/lib/settings"
   return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
 };
 

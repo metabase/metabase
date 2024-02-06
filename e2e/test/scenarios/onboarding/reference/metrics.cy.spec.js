@@ -1,4 +1,4 @@
-import { restore } from "e2e/support/helpers";
+import { modal, restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -55,12 +55,9 @@ describe("scenarios > reference > metrics", () => {
       .type("Count of orders under $100");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Reason for changes")
-      .parent()
-      .parent()
-      .find("textarea")
-      .type("Renaming the description");
+
+    modal().find("textarea").type("Renaming the description");
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").click();
 

@@ -205,19 +205,19 @@
     (is (=? {:type  :query
              :query {:source-table 1
                      :aggregation  [[:sum [:field 1 nil]]]
-                     :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
+                     :breakout     [[:aggregation-options [:aggregation 0] {:display-name "Revenue"}]]}}
             (let [ag-uuid (str (random-uuid))]
               (lib.convert/->legacy-MBQL
-                {:lib/type :mbql/query
-                 :stages   [{:lib/type     :mbql.stage/mbql
-                             :source-table 1
-                             :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                             [:field {:lib/uuid string?
-                                                      :effective-type :type/Integer} 1]]]
-                             :breakout     [[:aggregation
-                                             {:display-name   "Revenue"
-                                              :effective-type :type/Integer}
-                                             ag-uuid]]}]}))))))
+               {:lib/type :mbql/query
+                :stages   [{:lib/type     :mbql.stage/mbql
+                            :source-table 1
+                            :aggregation  [[:sum {:lib/uuid ag-uuid}
+                                            [:field {:lib/uuid string?
+                                                     :effective-type :type/Integer} 1]]]
+                            :breakout     [[:aggregation
+                                            {:display-name   "Revenue"
+                                             :effective-type :type/Integer}
+                                            ag-uuid]]}]}))))))
 
 (deftest ^:parallel source-card-test
   (let [original {:database 1

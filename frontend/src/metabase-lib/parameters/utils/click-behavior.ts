@@ -132,15 +132,13 @@ function notRelativeDateOrRange({ type }: Parameter) {
 }
 
 export function getTargetsForQuestion(question: Question): Target[] {
-  if (question.isStructured()) {
-    return getTargetsForStructuredQuestion(question);
-  }
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  if (question.isNative()) {
+  if (isNative) {
     return getTargetsForNativeQuestion(question);
   }
 
-  return [];
+  return getTargetsForStructuredQuestion(question);
 }
 
 function getTargetsForStructuredQuestion(question: Question): Target[] {
@@ -151,7 +149,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
   return visibleColumns.map(targetColumn => {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
-      Lib.legacyRef(targetColumn),
+      Lib.legacyRef(query, stageIndex, targetColumn),
     ];
     const id = JSON.stringify(dimension);
     const target: ClickBehaviorTarget = { type: "dimension", id, dimension };

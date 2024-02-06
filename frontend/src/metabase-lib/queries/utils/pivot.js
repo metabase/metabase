@@ -1,10 +1,12 @@
 import _ from "underscore";
+import * as Lib from "metabase-lib";
 import { FieldDimension } from "metabase-lib/Dimension";
 
 export function getPivotColumnSplit(question) {
   const setting = question.setting("pivot_table.column_split");
+  const { isNative } = Lib.queryDisplayInfo(question.query());
   const breakout =
-    (question.isStructured() &&
+    (!isNative &&
       question.legacyQuery({ useStructuredQuery: true }).breakouts()) ||
     [];
   const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(

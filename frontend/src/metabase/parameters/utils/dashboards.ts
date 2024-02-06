@@ -22,7 +22,6 @@ import {
 } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Field from "metabase-lib/metadata/Field";
-import Question from "metabase-lib/Question";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
@@ -139,12 +138,15 @@ function buildFieldFilterUiParameter(
   );
   const mappedFields = mappingsForParameter.map(mapping => {
     const { target, card } = mapping;
-    const question = new Question(card, metadata);
 
     try {
       const field = getTargetFieldFromCard(target, card, metadata);
 
-      return { field, shouldResolveFkField: !question.isNative() };
+      return {
+        field,
+        // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
+        shouldResolveFkField: card.dataset_query?.type === "query",
+      };
     } catch (e) {
       console.error("Error getting a field from a card", { card });
       throw e;

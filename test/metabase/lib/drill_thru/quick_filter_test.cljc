@@ -5,10 +5,21 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.types.isa :as lib.types.isa]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel quick-filter-availability-test
+  (testing "quick-filter is avaiable for cell clicks on non-PK/FK columns"
+    (canned/canned-test
+      :drill-thru/quick-filter
+      (fn [_test-case context {:keys [click column-type]}]
+        (and (= click :cell)
+             (not (#{:pk :fk} column-type))
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel returns-quick-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -24,15 +35,16 @@
                               {:name "≠"}]}}))
 
 (deftest ^:parallel returns-quick-filter-test-2
-  (lib.drill-thru.tu/test-returns-drill
-   {:drill-type  :drill-thru/quick-filter
-    :click-type  :cell
-    :query-type  :unaggregated
-    :column-name "DISCOUNT"
-    :expected    {:type      :drill-thru/quick-filter
-                  :value     :null
-                  :operators [{:name "="}
-                              {:name "≠"}]}}))
+  (testing "if the value is NULL, only = and ≠ are allowed"
+    (lib.drill-thru.tu/test-returns-drill
+      {:drill-type  :drill-thru/quick-filter
+       :click-type  :cell
+       :query-type  :unaggregated
+       :column-name "DISCOUNT"
+       :expected    {:type      :drill-thru/quick-filter
+                     :value     :null
+                     :operators [{:name "="}
+                                 {:name "≠"}]}})))
 
 (deftest ^:parallel returns-quick-filter-test-3
   (lib.drill-thru.tu/test-returns-drill
@@ -111,6 +123,19 @@
                     :operators [{:name "="}
                                 {:name "≠"}]}})))
 
+(deftest ^:parallel returns-quick-filter-test-9
+  (testing "quick-filter should return = and ≠ only for other field types (eg. generic strings)"
+    (lib.drill-thru.tu/test-returns-drill
+      {:drill-type  :drill-thru/quick-filter
+       :click-type  :cell
+       :query-type  :unaggregated
+       :query-table "PRODUCTS"
+       :column-name "TITLE"
+       :expected    {:type      :drill-thru/quick-filter
+                     :value     (get-in lib.drill-thru.tu/test-queries ["PRODUCTS" :unaggregated :row "TITLE"])
+                     :operators [{:name "="}
+                                 {:name "≠"}]}})))
+
 (deftest ^:parallel apply-quick-filter-on-correct-level-test
   (testing "quick-filter on an aggregation should introduce an new stage (#34346)"
     (lib.drill-thru.tu/test-drill-application
@@ -182,16 +207,14 @@
                                 (lib/available-drill-thrus query -1 context))]
       (is (=? {:lib/type  :metabase.lib.drill-thru/drill-thru
                :type      :drill-thru/quick-filter
-               :operators [{:name "="}
-                           {:name "≠"}
-                           {:name "contains"}
+               :operators [{:name "contains"}
                            {:name "does-not-contain"}]
                :value     "text"
                :column    {:name "BODY"}}
               drill))
       (testing "Should include :value in the display info (#33560)"
         (is (=? {:type      :drill-thru/quick-filter
-                 :operators ["=" "≠" "contains" "does-not-contain"]
+                 :operators ["contains" "does-not-contain"]
                  :value     "text"}
                 (lib/display-info query drill))))
       (testing "apply drills"

@@ -9,6 +9,11 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mongo.operators :refer [$add $addToSet $and $avg $concat $cond
+                                            $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
+                                            $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
+                                            $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
+                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
@@ -25,12 +30,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [monger.operators :refer [$add $addToSet $and $avg $concat $cond
-                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute
-                             $mod $month $multiply $ne $not $or $project $regexMatch $second $size $skip $sort
-                             $strcasecmp $subtract $sum $toLower $unwind $year]])
+   [metabase.util.malli.schema :as ms])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -1370,7 +1370,15 @@
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
   (try
-    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument com.mongodb.BasicDBObject.))
+    ;; TODO: Fixme! In following expression we were previously creating BasicDBObject's. As part of Monger removal
+    ;;       in favor of plain mongo-java-driver we now create Documents. I believe following conversion was and is
+    ;;       responsible for https://github.com/metabase/metabase/issues/38181. When pipeline is deserialized,
+    ;;       we end up with vector of `Document`s into which are appended new query stages, which are clojure
+    ;;       structures. When we render the query in "view native query" in query builder, clojure structures
+    ;;       are transformed to json correctly. But documents are rendered to their string representation (screenshot
+    ;;       in the issue). Possible fix could be to represent native queries in ejson v2, which conforms to json rfc,
+    ;;       hence there would be no need for special bson values handling. That is to be further investigated.
+    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument org.bson.Document.))
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))

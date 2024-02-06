@@ -2,7 +2,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import type { Location } from "history";
 
@@ -32,6 +32,7 @@ import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
+  getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
 import {
   addActionToDashboard,
@@ -66,6 +67,7 @@ import type {
   State,
 } from "metabase-types/store";
 
+import type { UiParameter } from "metabase-lib/parameters/types";
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import {
@@ -147,6 +149,7 @@ interface StateProps {
   isNavBarOpen: boolean;
   isShowingDashboardInfoSidebar: boolean;
   isHomepageDashboard: boolean;
+  missingRequiredParameters: UiParameter[];
 }
 
 interface DispatchProps {
@@ -176,6 +179,7 @@ const mapStateToProps = (state: State, props: OwnProps): StateProps => {
     isHomepageDashboard:
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
+    missingRequiredParameters: getMissingRequiredParameters(state),
   };
 };
 
@@ -291,24 +295,35 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
   }
 
   getEditingButtons() {
+    const { missingRequiredParameters } = this.props;
+    const disabledSaveTooltip = getDisabledSaveButtonTooltip(
+      missingRequiredParameters,
+    );
+    const isSaveDisabled = missingRequiredParameters.length > 0;
+
     return [
       <Button
-        data-metabase-event="Dashboard;Cancel Edits"
         key="cancel"
         className="Button Button--small mr1"
         onClick={this.onRequestCancel}
       >
         {t`Cancel`}
       </Button>,
-      <ActionButton
+      <Tooltip
+        isEnabled={isSaveDisabled}
+        tooltip={disabledSaveTooltip}
         key="save"
-        actionFn={() => this.onSave()}
-        className="Button Button--primary Button--small"
-        normalText={t`Save`}
-        activeText={t`Saving…`}
-        failedText={t`Save failed`}
-        successText={t`Saved`}
-      />,
+      >
+        <ActionButton
+          actionFn={() => this.onSave()}
+          className="Button Button--primary Button--small"
+          normalText={t`Save`}
+          activeText={t`Saving…`}
+          failedText={t`Save failed`}
+          successText={t`Saved`}
+          disabled={isSaveDisabled}
+        />
+      </Tooltip>,
     ];
   }
 
@@ -360,7 +375,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             aria-label={t`Add questions`}
-            data-metabase-event="Dashboard;Add Card Sidebar"
           />
         </Tooltip>,
       );
@@ -381,10 +395,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       // Add link card button
       buttons.push(
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
-          <DashboardHeaderButton
-            onClick={() => this.onAddLinkCard()}
-            data-metabase-event={`Dashboard;Add Link Card`}
-          >
+          <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
         </Tooltip>,
@@ -434,7 +445,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
                 aria-label={t`Add action`}
-                data-metabase-event={`Dashboard;Add Action Button`}
               >
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>
@@ -455,7 +465,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       buttons.push(
         <Button
           icon="clone"
-          data-metabase-event="Dashboard;Copy"
           to={`${location.pathname}/copy`}
           as={Link}
         >{t`Make a copy`}</Button>,
@@ -469,7 +478,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             visibleOnSmallScreen={false}
             key="edit"
             aria-label={t`Edit dashboard`}
-            data-metabase-event="Dashboard;Edit"
             icon="pencil"
             onClick={() => this.handleEdit(dashboard)}
           />
@@ -566,7 +574,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         <DashboardHeaderButton
           key="expand"
           aria-label={t`Enter Fullscreen`}
-          data-metabase-event={`Dashboard;Fullscreen Mode;${!isFullscreen}`}
           icon="expand"
           className="text-brand-hover cursor-pointer"
           onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
@@ -635,6 +642,24 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       </>
     );
   }
+}
+
+function getDisabledSaveButtonTooltip(
+  missingRequiredParams: UiParameter[],
+): string {
+  if (!missingRequiredParams.length) {
+    return "";
+  }
+
+  const names = missingRequiredParams
+    .map(param => `"${param.name}"`)
+    .join(", ");
+
+  return ngettext(
+    msgid`The ${names} parameter requires a default value but none was provided.`,
+    `The ${names} parameters require default values but none were provided.`,
+    missingRequiredParams.length,
+  );
 }
 
 export const DashboardHeader = _.compose(

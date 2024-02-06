@@ -21,14 +21,14 @@ export function processSource(options: {
         throw new Error(t`Unknown Metric: ${name}`);
       }
 
-      return Lib.legacyRef(metric);
+      return Lib.legacyRef(query, stageIndex, metric);
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
         throw new Error(t`Unknown Segment: ${name}`);
       }
 
-      return Lib.legacyRef(segment);
+      return Lib.legacyRef(query, stageIndex, segment);
     } else {
       const reference = options.name ?? ""; // avoid circular reference
 
@@ -38,7 +38,7 @@ export function processSource(options: {
         throw new Error(t`Unknown Field: ${name}`);
       }
 
-      return Lib.legacyRef(dimension);
+      return Lib.legacyRef(query, stageIndex, dimension);
     }
   };
 

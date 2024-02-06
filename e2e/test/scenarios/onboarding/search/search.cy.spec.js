@@ -104,7 +104,19 @@ describe("scenarios > search", () => {
   describe("universal search", () => {
     it("should work for admin (metabase#20018)", () => {
       cy.visit("/");
-      getSearchBar().as("searchBox").type("product").blur();
+      getSearchBar().as("searchBox").clear().type("orders count").blur();
+
+      expectSearchResultContent({
+        expectedSearchResults: [
+          {
+            name: /Orders, Count, Grouped by/i,
+            icon: "line",
+          },
+        ],
+        strict: false,
+      });
+
+      getSearchBar().clear().type("product").blur();
 
       cy.wait("@search");
 
@@ -302,7 +314,7 @@ describe("scenarios > search", () => {
         cy.createQuestion({
           name: "Orders Model",
           query: { "source-table": ORDERS_ID },
-          dataset: true,
+          type: "model",
         }).then(({ body: { id } }) => {
           createAction({
             name: "Update orders quantity",
@@ -328,7 +340,7 @@ describe("scenarios > search", () => {
           {
             name: "Products Model",
             query: { "source-table": PRODUCTS_ID },
-            dataset: true,
+            type: "model",
           },
           { wrapId: true, idAlias: "modelId" },
         );
@@ -1597,14 +1609,12 @@ function expectSearchResultContent({ expectedSearchResults, strict = true }) {
   for (const expectedSearchResult of expectedSearchResults) {
     cy.contains(searchResultItemSelector, expectedSearchResult.name).within(
       () => {
-        cy.findByTestId("search-result-item-name").should(
-          "have.text",
+        cy.findByTestId("search-result-item-name").findByText(
           expectedSearchResult.name,
         );
 
         if (expectedSearchResult.description) {
-          cy.findByTestId("result-description").should(
-            "have.text",
+          cy.findByTestId("result-description").findByText(
             expectedSearchResult.description,
           );
         }
@@ -1615,10 +1625,12 @@ function expectSearchResultContent({ expectedSearchResults, strict = true }) {
           });
         }
         if (expectedSearchResult.timestamp) {
-          cy.findByTestId("revision-history-button").should(
-            "have.text",
+          cy.findByTestId("revision-history-button").findByText(
             expectedSearchResult.timestamp,
           );
+        }
+        if (expectedSearchResult.icon) {
+          cy.icon(expectedSearchResult.icon);
         }
       },
     );

@@ -71,9 +71,30 @@ const sourceFilter = {
 
 const userFilter = { name: "User", slug: "user_id", id: "4", type: "id" };
 
-const parameters = [idFilter, nameFilter, sourceFilter, userFilter];
+const unusedFilter = {
+  name: "Not Used Filter",
+  slug: "not_used",
+  id: "5",
+  type: "category",
+};
+
+const parameters = [
+  idFilter,
+  nameFilter,
+  sourceFilter,
+  userFilter,
+  unusedFilter,
+];
+
+const defaultTabId = 1;
+
+const tabs = [
+  { id: defaultTabId, name: "Tab 1" },
+  { id: 2, name: "Tab 2" },
+];
 
 export const dashboardDetails = {
+  tabs,
   parameters,
 };
 
@@ -91,11 +112,18 @@ function getParameterMappings(parameters, card_id) {
   return parameter_mappings;
 }
 
-export function mapParameters({ id, card_id, dashboard_id } = {}) {
+export function mapParameters({
+  id,
+  card_id,
+  dashboard_id,
+  dashboard_tab_id = defaultTabId,
+} = {}) {
   return cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+    tabs,
     dashcards: [
       {
         id,
+        dashboard_tab_id,
         card_id,
         row: 0,
         col: 0,

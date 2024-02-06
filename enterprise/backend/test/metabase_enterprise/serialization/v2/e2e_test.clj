@@ -107,10 +107,10 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (let [extraction (atom nil)
           entities   (atom nil)]
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         ;; TODO Generating some nested collections would make these tests more robust, but that's difficult.
         ;; There are handwritten tests for storage and ingestion that check out the nesting, at least.
-        (ts/with-source-db
+        (ts/with-db source-db
           (testing "insert"
             (test-gen/insert!
               {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
@@ -308,7 +308,7 @@
               (is (.exists (io/file dump-dir "settings.yaml")))))
 
           (testing "ingest and load"
-            (ts/with-dest-db
+            (ts/with-db dest-db
               (testing "ingested set matches extracted set"
                 (let [extracted-set (set (map (comp #'ingest/strip-labels serdes/path) @extraction))]
                   (is (= (count extracted-set)
@@ -429,8 +429,8 @@
 (deftest card-and-dashboard-has-parameter-with-source-is-card-test
   (testing "Dashboard and Card that has parameter with source is a card must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (ts/with-source-and-dest-dbs
-        (ts/with-source-db
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
           ;; preparation
           (mt/test-helpers-set-global-values!
             (mt/with-temp
@@ -491,7 +491,7 @@
                   (storage/store! (seq extraction) dump-dir)))
 
              (testing "ingest and load"
-               (ts/with-dest-db
+               (ts/with-db dest-db
                  ;; ingest
                  (testing "doing ingestion"
                    (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
@@ -521,8 +521,8 @@
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-source-and-dest-dbs
-      (ts/with-source-db
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
         (let [link-card-viz-setting (fn [model id]
                                       {:virtual_card {:display "link"}
                                        :link         {:entity {:id    id
@@ -600,7 +600,7 @@
 
             (testing "ingest and load"
               ;; ingest
-              (ts/with-dest-db
+              (ts/with-db dest-db
                 (testing "doing ingestion"
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
@@ -633,8 +633,8 @@
 
 (deftest dashcards-with-series-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-source-and-dest-dbs
-      (ts/with-source-db
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
         (mt/with-temp
           [:model/Collection {coll-id :id} {:name "Some Collection"}
            :model/Card {c1-id :id :as c1} {:name "Some Question", :collection_id coll-id}
@@ -658,7 +658,7 @@
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
               (storage/store! (seq extraction) dump-dir)))
           (testing "ingest and load"
-            (ts/with-dest-db
+            (ts/with-db dest-db
               (testing "doing ingestion"
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful"))
@@ -686,8 +686,8 @@
 (deftest dashboard-with-tabs-test
   (testing "Dashboard with tabs must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-     (ts/with-source-and-dest-dbs
-       (ts/with-source-db
+     (ts/with-dbs [source-db dest-db]
+       (ts/with-db source-db
          ;; preparation
          (t2.with-temp/with-temp
            [Dashboard           {dashboard-id :id
@@ -716,7 +716,7 @@
              (storage/store! (seq extraction) dump-dir))
 
            (testing "ingest and load"
-             (ts/with-dest-db
+             (ts/with-db dest-db
                ;; ingest
                (testing "doing ingestion"
                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
@@ -755,8 +755,8 @@
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (mt/with-premium-features #{:serialization}
-        (ts/with-source-and-dest-dbs
-          (ts/with-source-db
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
@@ -764,7 +764,7 @@
                     "works"))
 
               (testing "import (v2-load) command"
-                (ts/with-dest-db
+                (ts/with-db dest-db
                   (testing "doing ingestion"
                     (is (cmd/v2-load! dump-dir {})
                         "works"))))))))))
@@ -772,8 +772,8 @@
   (testing "without :serialization feature enabled"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (mt/with-premium-features #{}
-        (ts/with-source-and-dest-dbs
-          (ts/with-source-db
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
@@ -782,7 +782,7 @@
                     "throws"))
 
               (testing "import (v2-load) command"
-                (ts/with-dest-db
+                (ts/with-db dest-db
                   (testing "doing ingestion"
                     (is (thrown-with-msg? Exception #"Please upgrade"
                                           (cmd/v2-load! dump-dir {}))
@@ -793,8 +793,8 @@
     (let [old-ids (atom nil)
           card1s  (atom nil)]
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        (ts/with-source-and-dest-dbs
-          (ts/with-source-db
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
             (mt/dataset test-data
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
@@ -825,7 +825,7 @@
                   (reset! card1s card)
                   (storage/store! (extract/extract {}) dump-dir)))))
 
-          (ts/with-dest-db
+          (ts/with-db dest-db
             ;; ensure there is something in db so that test-data gets different field ids for sure
             (mt/dataset office-checkins
               (mt/db))
@@ -856,61 +856,3 @@
                            (get-in viz [:column_settings
                                         (format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                         :pivot_table.column_sort_order])))))))))))))
-
-(deftest exported-settings-test
-  ;; this is the only relevant settings namespace that hadn't been imported already
-  (require 'metabase-enterprise.advanced-config.models.pulse-channel)
-  ;; TODO: delete this, it's here as a temporary measure during migration {} to reassure us that we haven't made a mistake
-  (let [expected-exports
-        '#{application-colors
-           application-favicon-url
-           application-font
-           application-font-files
-           application-logo-url
-           application-name
-           available-fonts
-           available-locales
-           available-timezones
-           breakout-bins-num
-           custom-formatting
-           custom-geojson
-           custom-geojson-enabled
-           enable-embedding
-           enable-nested-queries
-           enable-sandboxes?
-           enable-whitelabeling?
-           enable-xrays
-           hide-embed-branding?
-           humanization-strategy
-           landing-page
-           loading-message
-           aggregated-query-row-limit
-           unaggregated-query-row-limit
-           native-query-autocomplete-match-style
-           persisted-models-enabled
-           report-timezone
-           report-timezone-long
-           report-timezone-short
-           search-typeahead-enabled
-           show-homepage-data
-           show-homepage-pin-message
-           show-homepage-xrays
-           show-lighthouse-illustration
-           show-metabot
-           show-static-embed-terms
-           site-locale
-           site-name
-           source-address-header
-           start-of-week
-           subscription-allowed-domains
-           uploads-enabled
-           uploads-database-id
-           uploads-schema-name}]
-    (testing "We have not had a regression around which settings are exported"
-      (is (= expected-exports
-             (->> @setting/registered-settings
-                  (remove (comp #{:internal} :visibility val))
-                  keys
-                  (filter #'setting/export?)
-                  (map symbol)
-                  set))))))

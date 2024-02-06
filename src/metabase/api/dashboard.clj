@@ -179,11 +179,14 @@
 (defn- card->query-hashes
   "Return a tuple of possible hashes that would be associated with executions of CARD. The first is the hash of the
   query dictionary as-is; the second is one with the `default-query-constraints`, which is how it will most likely be
-  run."
+  run.
+
+  Returns nil if `:dataset_query` isn't set, eg. for a markdown card."
   [{:keys [dataset_query]}]
-  (u/ignore-exceptions
-    [(qp.util/query-hash dataset_query)
-     (qp.util/query-hash (assoc dataset_query :constraints (qp.constraints/default-query-constraints)))]))
+  (when dataset_query
+    (u/ignore-exceptions
+      [(qp.util/query-hash dataset_query)
+       (qp.util/query-hash (assoc dataset_query :constraints (qp.constraints/default-query-constraints)))])))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."
@@ -617,7 +620,7 @@
             (when-let [updates (not-empty
                                  (u/select-keys-when
                                    dash-updates
-                                   :present #{:description :position :collection_id :collection_position :cache_ttl}
+                                   :present #{:description :position :width :collection_id :collection_position :cache_ttl}
                                    :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                               :embedding_params :archived :auto_apply_filters}))]
               (t2/update! Dashboard id updates))
@@ -666,8 +669,8 @@
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl dashcards tabs]
-            :as dash-updates} :body}]
+                   embedding_params position width archived collection_id collection_position cache_ttl dashcards tabs]
+            :as   dash-updates} :body}]
   {id                      ms/PositiveInt
    name                    [:maybe ms/NonBlankString]
    description             [:maybe :string]
@@ -678,6 +681,7 @@
    embedding_params        [:maybe ms/EmbeddingParams]
    parameters              [:maybe [:sequential ms/Parameter]]
    position                [:maybe ms/PositiveInt]
+   width                   [:maybe [:enum "fixed" "full"]]
    archived                [:maybe :boolean]
    collection_id           [:maybe ms/PositiveInt]
    collection_position     [:maybe ms/PositiveInt]

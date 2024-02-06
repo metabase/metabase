@@ -19,10 +19,13 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Enterprise Edition releases
 
+- [v1.48.5](https://github.com/metabase/metabase/releases/tag/v1.48.5)
+- [v1.48.4](https://github.com/metabase/metabase/releases/tag/v1.48.4)
 - [v1.48.3](https://github.com/metabase/metabase/releases/tag/v1.48.3)
 - [v1.48.2](https://github.com/metabase/metabase/releases/tag/v1.48.2)
 - [v1.48.1](https://github.com/metabase/metabase/releases/tag/v1.48.1)
 - [v1.48.0](https://github.com/metabase/metabase/releases/tag/v1.48.0)
+- [v1.47.13](https://github.com/metabase/metabase/releases/tag/v1.47.13)
 - [v1.47.12](https://github.com/metabase/metabase/releases/tag/v1.47.12)
 - [v1.47.11](https://github.com/metabase/metabase/releases/tag/v1.47.11)
 - [v1.47.10](https://github.com/metabase/metabase/releases/tag/v1.47.10)
@@ -142,10 +145,13 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Open Source Edition releases
 
+- [v0.48.5](https://github.com/metabase/metabase/releases/tag/v0.48.5)
+- [v0.48.4](https://github.com/metabase/metabase/releases/tag/v0.48.4)
 - [v0.48.3](https://github.com/metabase/metabase/releases/tag/v0.48.3)
 - [v0.48.2](https://github.com/metabase/metabase/releases/tag/v0.48.2)
 - [v0.48.1](https://github.com/metabase/metabase/releases/tag/v0.48.1)
 - [v0.48.0](https://github.com/metabase/metabase/releases/tag/v0.48.0)
+- [v0.47.13](https://github.com/metabase/metabase/releases/tag/v0.47.13)
 - [v0.47.12](https://github.com/metabase/metabase/releases/tag/v0.47.12)
 - [v0.47.11](https://github.com/metabase/metabase/releases/tag/v0.47.11)
 - [v0.47.10](https://github.com/metabase/metabase/releases/tag/v0.47.10)
