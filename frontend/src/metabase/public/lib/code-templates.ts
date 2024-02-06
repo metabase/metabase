@@ -1,12 +1,12 @@
 import type {
   CodeSampleParameters,
   EmbeddingDisplayOptions,
-  EmbeddingParameters,
+  EmbeddingParametersValues,
 } from "./types";
 import { optionsToHashParams } from "./embed";
 
 export const node = {
-  getParametersSource: (params: EmbeddingParameters) =>
+  getParametersSource: (params: EmbeddingParametersValues) =>
     `params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},`,
 
   getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
@@ -39,7 +39,7 @@ var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
 };
 
 export const python = {
-  getParametersSource: (params: EmbeddingParameters) =>
+  getParametersSource: (params: EmbeddingParametersValues) =>
     `"params": {
     ${Object.entries(params)
       .map(([key, value]) => JSON.stringify(key) + ": " + JSON.stringify(value))
@@ -77,7 +77,7 @@ iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
 };
 
 export const ruby = {
-  getParametersSource: (params: EmbeddingParameters) =>
+  getParametersSource: (params: EmbeddingParametersValues) =>
     `:params => {
     ${Object.entries(params)
       .map(
@@ -119,7 +119,7 @@ iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
 };
 
 export const clojure = {
-  getParametersSource: (params: EmbeddingParameters) =>
+  getParametersSource: (params: EmbeddingParametersValues) =>
     `:params   {${Object.entries(params)
       .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
       .join(",\n              ")}}`,

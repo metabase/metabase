@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbeddingDisplayOptions,
-  EmbeddingParameters,
+  EmbeddingParametersValues,
   EmbedResource,
   EmbedResourceType,
   ServerCodeSampleConfig,
@@ -24,9 +24,9 @@ type EmbedCodePaneProps = {
   variant: EmbedCodePaneVariant;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
-  params: EmbeddingParameters;
+  params: EmbeddingParametersValues;
   displayOptions: EmbeddingDisplayOptions;
-  initialPreviewParameters: EmbeddingParameters;
+  initialPreviewParameters: EmbeddingParametersValues;
 
   serverCodeOptions: ServerCodeSampleConfig[];
   selectedServerCodeOptionName: string;
@@ -107,9 +107,9 @@ function getHighlightedText({
   secretKey: string;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
-  params: EmbeddingParameters;
+  params: EmbeddingParametersValues;
   displayOptions: EmbeddingDisplayOptions;
-  initialPreviewParameters: EmbeddingParameters;
+  initialPreviewParameters: EmbeddingParametersValues;
 
   selectedServerCodeOption: ServerCodeSampleConfig;
   selectedServerCodeOptionName: string;

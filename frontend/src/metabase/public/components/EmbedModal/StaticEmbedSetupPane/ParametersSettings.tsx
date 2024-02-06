@@ -7,7 +7,8 @@ import Select, { Option } from "metabase/core/components/Select";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import type {
   EmbeddingDisplayOptions,
-  EmbeddingParameters,
+  EmbeddingParametersOptions,
+  EmbeddingParametersSettings,
   EmbeddingParametersValues,
   EmbedResourceParameter,
   EmbedResourceType,
@@ -29,7 +30,7 @@ export interface ParametersSettingsProps {
   resourceType: EmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
-  embeddingParams: EmbeddingParameters;
+  embeddingParams: EmbeddingParametersSettings;
   lockedParameters: EmbedResourceParameter[];
   parameterValues: EmbeddingParametersValues;
 
@@ -37,7 +38,9 @@ export interface ParametersSettingsProps {
   displayOptions: EmbeddingDisplayOptions;
   serverEmbedCodeSlot: ReactNode;
 
-  onChangeEmbeddingParameters: (parameters: EmbeddingParameters) => void;
+  onChangeEmbeddingParameters: (
+    parameters: EmbeddingParametersSettings,
+  ) => void;
   onChangeParameterValue: (id: string, value: string) => void;
 
   onChangePane: (pane: ActivePreviewPane) => void;
@@ -93,7 +96,8 @@ export const ParametersSettings = ({
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                         onChangeEmbeddingParameters({
                           ...embeddingParams,
-                          [parameter.slug]: e.target.value,
+                          [parameter.slug]: e.target
+                            .value as EmbeddingParametersOptions,
                         })
                       }
                     >

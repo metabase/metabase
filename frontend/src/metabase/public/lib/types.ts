@@ -3,7 +3,7 @@ import type { Card, Dashboard } from "metabase-types/api";
 export type EmbedModalStep = "application" | "legalese" | null;
 
 export type EmbedResource = (Card | Dashboard) & {
-  embedding_params?: EmbeddingParameters | null;
+  embedding_params?: EmbeddingParametersSettings | null;
 };
 
 export type EmbedResourceType = "dashboard" | "question";
@@ -15,7 +15,12 @@ export type EmbedResourceParameter = {
   type: string;
 };
 
-export type EmbeddingParameters = Record<string, string>;
+export type EmbeddingParametersOptions = "disabled" | "enabled" | "locked";
+
+export type EmbeddingParametersSettings = Record<
+  string,
+  EmbeddingParametersOptions
+>;
 
 export type EmbeddingParametersValues = Record<string, string>;
 
@@ -32,7 +37,7 @@ export type CodeSampleParameters = {
   secretKey: string;
   resourceType: EmbedResourceType;
   resourceId: EmbedResource["id"];
-  params: EmbeddingParameters;
+  params: EmbeddingParametersValues;
   displayOptions: EmbeddingDisplayOptions;
 };
 

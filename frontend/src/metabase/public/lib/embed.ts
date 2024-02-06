@@ -4,16 +4,16 @@ import { KJUR } from "jsrsasign"; // using jsrsasign because jsonwebtoken doesn'
 import type {
   EmbedResourceType,
   EmbedResource,
-  EmbeddingParameters,
   EmbeddingDisplayOptions,
+  EmbeddingParametersValues,
 } from "./types";
 
 function getSignedToken(
   resourceType: EmbedResourceType,
   resourceId: EmbedResource["id"],
-  params: EmbeddingParameters = {},
+  params: EmbeddingParametersValues = {},
   secretKey: string,
-  previewEmbeddingParams: EmbeddingParameters,
+  previewEmbeddingParams: EmbeddingParametersValues,
 ) {
   const unsignedToken: Record<string, any> = {
     resource: { [resourceType]: resourceId },
@@ -33,10 +33,10 @@ export function getSignedPreviewUrl(
   siteUrl: string,
   resourceType: EmbedResourceType,
   resourceId: EmbedResource["id"],
-  params: EmbeddingParameters = {},
+  params: EmbeddingParametersValues = {},
   options: EmbeddingDisplayOptions,
   secretKey: string,
-  previewEmbeddingParams: EmbeddingParameters,
+  previewEmbeddingParams: EmbeddingParametersValues,
 ) {
   const token = getSignedToken(
     resourceType,

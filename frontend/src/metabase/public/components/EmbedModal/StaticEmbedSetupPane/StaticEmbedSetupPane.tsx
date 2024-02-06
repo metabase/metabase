@@ -7,7 +7,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { checkNotNull } from "metabase/lib/types";
 import type {
   EmbeddingDisplayOptions,
-  EmbeddingParameters,
+  EmbeddingParametersSettings,
   EmbeddingParametersValues,
   EmbedResource,
   EmbedResourceParameter,
@@ -30,13 +30,18 @@ import { OverviewSettings } from "./OverviewSettings";
 import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 import { EMBED_MODAL_TABS } from "./tabs";
 
-const countEmbeddingParameterOptions = (embeddingParams: EmbeddingParameters) =>
+const countEmbeddingParameterOptions = (
+  embeddingParams: EmbeddingParametersSettings,
+) =>
   Object.values(embeddingParams).reduce(
     (acc, value) => {
       acc[value] += 1;
       return acc;
     },
-    { disabled: 0, locked: 0, editable: 0 } as Record<string, number>,
+    { disabled: 0, locked: 0, enabled: 0 } as Record<
+      EmbeddingParametersOptions,
+      number
+    >,
   );
 
 export interface StaticEmbedSetupPaneProps {
@@ -46,7 +51,7 @@ export interface StaticEmbedSetupPaneProps {
 
   onUpdateEnableEmbedding: (enableEmbedding: boolean) => void | Promise<void>;
   onUpdateEmbeddingParams: (
-    embeddingParams: EmbeddingParameters,
+    embeddingParams: EmbeddingParametersSettings,
   ) => void | Promise<void>;
 }
 
@@ -67,9 +72,8 @@ export const StaticEmbedSetupPane = ({
     resource,
     resourceParameters,
   );
-  const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
-    initialEmbeddingParams,
-  );
+  const [embeddingParams, setEmbeddingParams] =
+    useState<EmbeddingParametersSettings>(initialEmbeddingParams);
   const [parameterValues, setParameterValues] =
     useState<EmbeddingParametersValues>({});
   const [displayOptions, setDisplayOptions] = useState<EmbeddingDisplayOptions>(
@@ -259,7 +263,7 @@ export const StaticEmbedSetupPane = ({
 function getDefaultEmbeddingParams(
   resource: EmbedResource,
   resourceParameters: EmbedResourceParameter[],
-): EmbeddingParameters {
+): EmbeddingParametersSettings {
   return filterValidResourceParameters(
     resourceParameters,
     resource.embedding_params || {},
@@ -268,7 +272,7 @@ function getDefaultEmbeddingParams(
 
 function filterValidResourceParameters(
   resourceParameters: EmbedResourceParameter[],
-  embeddingParams: EmbeddingParameters,
+  embeddingParams: EmbeddingParametersSettings,
 ) {
   const validParameters = resourceParameters.map(parameter => parameter.slug);
 
@@ -281,7 +285,7 @@ function getPreviewParamsBySlug({
   parameterValues,
 }: {
   resourceParameters: EmbedResourceParameter[];
-  embeddingParams: EmbeddingParameters;
+  embeddingParams: EmbeddingParametersSettings;
   parameterValues: EmbeddingParametersValues;
 }) {
   const lockedParameters = getLockedPreviewParameters(
@@ -299,7 +303,7 @@ function getPreviewParamsBySlug({
 
 function getLockedPreviewParameters(
   resourceParameters: EmbedResourceParameter[],
-  embeddingParams: EmbeddingParameters,
+  embeddingParams: EmbeddingParametersSettings,
 ) {
   return resourceParameters.filter(
     parameter => embeddingParams[parameter.slug] === "locked",
@@ -310,8 +314,8 @@ function getHasSettingsChanges({
   initialEmbeddingParams,
   embeddingParams,
 }: {
-  initialEmbeddingParams: EmbeddingParameters;
-  embeddingParams: EmbeddingParameters;
+  initialEmbeddingParams: EmbeddingParametersSettings;
+  embeddingParams: EmbeddingParametersSettings;
 }): boolean {
   const nonDisabledInitialEmbeddingParams = getNonDisabledEmbeddingParams(
     initialEmbeddingParams,
@@ -326,13 +330,13 @@ function getHasSettingsChanges({
 }
 
 function getNonDisabledEmbeddingParams(
-  embeddingParams: EmbeddingParameters,
-): EmbeddingParameters {
+  embeddingParams: EmbeddingParametersSettings,
+): EmbeddingParametersSettings {
   return Object.keys(embeddingParams).reduce((result, key) => {
     if (embeddingParams[key] !== "disabled") {
       result[key] = embeddingParams[key];
     }
 
     return result;
-  }, {} as EmbeddingParameters);
+  }, {} as EmbeddingParametersSettings);
 }
