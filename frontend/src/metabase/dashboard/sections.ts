@@ -35,7 +35,10 @@ function createHeadingDashCard({
   return {
     ...opts,
     card,
-    visualization_settings: { virtual_card: card },
+    visualization_settings: {
+      "dashcard.background": false,
+      virtual_card: card,
+    },
     size_x,
     size_y,
   };
