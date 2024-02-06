@@ -126,8 +126,9 @@ To edit dashboard cards and move them around, click the **pencil** icon in the t
 
 ![Editing dashboard](images/duplicate-card.png)
 
-- **Duplicate a card**: Hover over the card and click the Duplicate icon.
-- **Move a card**: click and drag the card. Other cards will move out of the way.
+- **Duplicate a card**: hover over the card and click the Duplicate icon.
+- **Move a card to a new tab**: hover over the card, click the move icon, and select that tab you want to move the card to.
+- **Move a card within a tab**: click and drag the card. Other cards will move out of the way.
 - **Resize a card**: click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
 - **Remove a card**: hover over the card and click the X icon in the top right corner.
 - **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card.
