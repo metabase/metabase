@@ -59,6 +59,8 @@ function convertActionToQuestionCard(
 ): Card<NativeDatasetQuery> {
   return {
     id: action.id,
+    created_at: action.created_at,
+    updated_at: action.updated_at,
     name: action.name,
     description: action.description,
     dataset_query: action.dataset_query,

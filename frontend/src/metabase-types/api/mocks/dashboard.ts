@@ -9,6 +9,8 @@ import { createMockCard } from "./card";
 
 export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   id: 1,
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-01T00:00:00Z",
   collection_id: null,
   name: "Dashboard",
   dashcards: [],

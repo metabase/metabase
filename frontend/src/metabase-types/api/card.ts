@@ -9,9 +9,9 @@ import type { SmartScalarComparison } from "./visualization-settings";
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
+  id: CardId;
   created_at: string;
   updated_at: string;
-  id: CardId;
   name: string;
   description: string | null;
   dataset: boolean;
