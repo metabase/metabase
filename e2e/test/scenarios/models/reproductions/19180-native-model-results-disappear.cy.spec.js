@@ -13,7 +13,7 @@ describe("issue 19180", () => {
 
   it("shouldn't drop native model query results after leaving the query editor", () => {
     cy.createNativeQuestion(QUESTION).then(({ body: { id: QUESTION_ID } }) => {
-      cy.request("PUT", `/api/card/${QUESTION_ID}`, { dataset: true }).then(
+      cy.request("PUT", `/api/card/${QUESTION_ID}`, { type: "model" }).then(
         () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
           cy.wait("@cardQuery");

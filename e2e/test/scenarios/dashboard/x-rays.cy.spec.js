@@ -337,11 +337,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.wait("@dataset", { timeout: 60000 });
 
     // x-ray dashboards should default to 'fixed' width
-    cy.findByTestId("fixed-width-container").should(
-      "have.css",
-      "max-width",
-      "1048px",
-    );
+    cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
   });
 });
 

@@ -9,6 +9,8 @@
    [metabase.util.malli :as mu]
    #?@(:clj ([pretty.core :as pretty]))))
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (defn- get-in-cache [cache ks]
   (when-some [cached-value (get-in @cache ks)]
     (when-not (= cached-value ::nil)
@@ -108,6 +110,12 @@
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]
     (bulk-metadata cache metadata-provider metadata-type ids))
+
+  #?(:clj Object :cljs IEquiv)
+  (#?(:clj equals :cljs -equiv) [_this another]
+    (and (instance? CachedProxyMetadataProvider another)
+         (= metadata-provider
+            (.-metadata-provider ^CachedProxyMetadataProvider another))))
 
   #?@(:clj
       [pretty/PrettyPrintable

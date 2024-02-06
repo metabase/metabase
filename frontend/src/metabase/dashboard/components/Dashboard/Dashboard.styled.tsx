@@ -138,18 +138,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     `}
 `;
 
-export const FIXED_WIDTH = "1048px";
-export const FixedWidthContainer = styled.div<{
-  isFixedWidth: boolean;
-}>`
-  margin: 0 auto;
-  ${({ isFixedWidth }) =>
-    isFixedWidth &&
-    css`
-      max-width: ${FIXED_WIDTH};
-    `}
-`;
-
 export const CardsContainer = styled(FullWidthContainer)`
   margin-top: 8px;
 

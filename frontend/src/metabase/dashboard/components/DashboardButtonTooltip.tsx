@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import { Text, Tooltip } from "metabase/ui";
+import { Box, Text, Tooltip } from "metabase/ui";
 
 type DashboardButtonTooltipProps = {
   children: ReactNode;
   label: string;
+  disabled?: boolean;
 };
 
 export function DashboardButtonTooltip({
   children,
+  disabled = false,
   label,
 }: DashboardButtonTooltipProps) {
   return (
@@ -23,8 +25,9 @@ export function DashboardButtonTooltip({
       }
       withArrow
       arrowSize={10}
+      disabled={disabled}
     >
-      {children}
+      <Box>{children}</Box>
     </Tooltip>
   );
 }

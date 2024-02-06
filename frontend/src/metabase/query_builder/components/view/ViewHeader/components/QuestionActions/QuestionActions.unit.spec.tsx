@@ -16,7 +16,7 @@ import {
   screen,
 } from "__support__/ui";
 import type Question from "metabase-lib/Question";
-import QuestionActions from "./QuestionActions";
+import { QuestionActions } from "./QuestionActions";
 
 const ICON_CASES_CARDS = [
   createMockCard({ name: "GUI" }),

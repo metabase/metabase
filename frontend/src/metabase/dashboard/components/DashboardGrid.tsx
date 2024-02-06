@@ -50,7 +50,10 @@ import type {
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-import { DashboardCardContainer } from "./DashboardGrid.styled";
+import {
+  DashboardCardContainer,
+  FixedWidthContainer,
+} from "./DashboardGrid.styled";
 
 import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
 import { GridLayout } from "./grid/GridLayout";
@@ -59,7 +62,6 @@ import { generateMobileLayout } from "./grid/utils";
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { QuestionPickerModal } from "./QuestionPickerModal";
 import { DashCard } from "./DashCard/DashCard";
-import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";
 
 type GridBreakpoint = "desktop" | "mobile";
 
@@ -618,14 +620,12 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     const { dashboard, width } = this.props;
     return (
       <FixedWidthContainer
-        data-testid="fixed-width-container"
+        data-testid="dashboard-grid"
         isFixedWidth={dashboard?.width === "fixed"}
       >
-        <div className="flex layout-centered" data-testid="dashboard-grid">
-          {width > 0 ? this.renderGrid() : <div />}
-          {this.renderAddSeriesModal()}
-          {this.renderReplaceCardModal()}
-        </div>
+        {width > 0 ? this.renderGrid() : <div />}
+        {this.renderAddSeriesModal()}
+        {this.renderReplaceCardModal()}
       </FixedWidthContainer>
     );
   }

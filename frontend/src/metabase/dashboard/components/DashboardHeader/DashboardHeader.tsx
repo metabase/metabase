@@ -2,7 +2,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import type { Location } from "history";
 
@@ -14,7 +14,7 @@ import ActionButton from "metabase/components/ActionButton";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import { Box, Icon } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
@@ -31,6 +31,7 @@ import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
+  getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
 import {
   addActionToDashboard,
@@ -65,6 +66,7 @@ import type {
   State,
 } from "metabase-types/store";
 
+import type { UiParameter } from "metabase-lib/parameters/types";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
 import { SIDEBAR_NAME } from "../../constants";
@@ -148,6 +150,7 @@ interface StateProps {
   isNavBarOpen: boolean;
   isShowingDashboardInfoSidebar: boolean;
   isHomepageDashboard: boolean;
+  missingRequiredParameters: UiParameter[];
 }
 
 interface DispatchProps {
@@ -177,6 +180,7 @@ const mapStateToProps = (state: State, props: OwnProps): StateProps => {
     isHomepageDashboard:
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
+    missingRequiredParameters: getMissingRequiredParameters(state),
   };
 };
 
@@ -292,6 +296,12 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
   }
 
   getEditingButtons() {
+    const { missingRequiredParameters } = this.props;
+    const disabledSaveTooltip = getDisabledSaveButtonTooltip(
+      missingRequiredParameters,
+    );
+    const isSaveDisabled = missingRequiredParameters.length > 0;
+
     return [
       <Button
         key="cancel"
@@ -300,15 +310,21 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       >
         {t`Cancel`}
       </Button>,
-      <ActionButton
+      <DashboardButtonTooltip
+        disabled={!isSaveDisabled}
+        label={disabledSaveTooltip}
         key="save"
-        actionFn={() => this.onSave()}
-        className="Button Button--primary Button--small"
-        normalText={t`Save`}
-        activeText={t`Saving…`}
-        failedText={t`Save failed`}
-        successText={t`Saved`}
-      />,
+      >
+        <ActionButton
+          actionFn={() => this.onSave()}
+          className="Button Button--primary Button--small"
+          normalText={t`Save`}
+          activeText={t`Saving…`}
+          failedText={t`Save failed`}
+          successText={t`Saved`}
+          disabled={isSaveDisabled}
+        />
+      </DashboardButtonTooltip>,
     ];
   }
 
@@ -374,12 +390,10 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           key="dashboard-add-heading-or-text-button"
           label={t`Add a heading or text`}
         >
-          <Box>
-            <TextOptionsButton
-              onAddMarkdown={() => this.onAddMarkdownBox()}
-              onAddHeading={() => this.onAddHeading()}
-            />
-          </Box>
+          <TextOptionsButton
+            onAddMarkdown={() => this.onAddMarkdownBox()}
+            onAddHeading={() => this.onAddHeading()}
+          />
         </DashboardButtonTooltip>,
       );
 
@@ -648,6 +662,24 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       </>
     );
   }
+}
+
+function getDisabledSaveButtonTooltip(
+  missingRequiredParams: UiParameter[],
+): string {
+  if (!missingRequiredParams.length) {
+    return "";
+  }
+
+  const names = missingRequiredParams
+    .map(param => `"${param.name}"`)
+    .join(", ");
+
+  return ngettext(
+    msgid`The ${names} parameter requires a default value but none was provided.`,
+    `The ${names} parameters require default values but none were provided.`,
+    missingRequiredParams.length,
+  );
 }
 
 export const DashboardHeader = _.compose(

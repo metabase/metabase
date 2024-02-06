@@ -6,7 +6,7 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const questionDetails = {
   name: "Orders model",
   query: { "source-table": ORDERS_ID },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 25537", () => {
