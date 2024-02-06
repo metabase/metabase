@@ -17,7 +17,7 @@ interface ConvertQueryButtonProps {
   onOpenModal?: (modalType: string) => void;
 }
 
-const ConvertQueryButton = ({
+export const ConvertQueryButton = ({
   question,
   onOpenModal,
 }: ConvertQueryButtonProps): JSX.Element => {
@@ -53,6 +53,3 @@ ConvertQueryButton.shouldRender = ({
     queryBuilderMode === "notebook"
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ConvertQueryButton;

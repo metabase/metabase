@@ -26,7 +26,7 @@ describe("scenarios > question > native subquery", () => {
         native: {
           query: "SELECT id AS another_unique_column_name FROM PEOPLE",
         },
-        dataset: true,
+        type: "model",
       }).then(({ body: { id: questionId2 } }) => {
         const tagName1 = `#${questionId1}-a-people-question`;
         const queryText = `{{${tagName1}}}`;
@@ -70,7 +70,7 @@ describe("scenarios > question > native subquery", () => {
         native: {
           query: "SELECT id FROM PEOPLE",
         },
-        dataset: true,
+        type: "model",
       }).then(({ body: { id: questionId2 } }) => {
         // Move question 2 to personal collection
         cy.visit(`/question/${questionId2}`);

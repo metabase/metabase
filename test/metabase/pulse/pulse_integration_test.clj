@@ -4,16 +4,16 @@
   These tests should build content then mock out distrubution by usual channels (e.g. email) and check the results of
   the distributed content for correctness."
   (:require
-    [clojure.data.csv :as csv]
-    [clojure.string :as str]
-    [clojure.test :refer :all]
-    [hickory.core :as hik]
-    [hickory.select :as hik.s]
-    [metabase.email :as email]
-    [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
-    [metabase.pulse]
-    [metabase.test :as mt]
-    [metabase.util :as u]))
+   [clojure.data.csv :as csv]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [hickory.core :as hik]
+   [hickory.select :as hik.s]
+   [metabase.email :as email]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.pulse]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defmacro with-metadata-data-cards
   "Provide a fixture that includes:
@@ -755,3 +755,62 @@
                   (metabase.pulse/send-pulse! pulse)))
               (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (is (false? (str/includes? html-body "An error occurred while displaying this card.")))))))))))
+
+(deftest geographic-coordinates-formatting-test
+  (testing "Longitude and latitude columns should format correctly on export (#38419)"
+    (mt/dataset airports
+      (let [base-card {:dataset_query {:database (mt/id)
+                                       :type     :query
+                                       :query    {:source-table (mt/id :airport)
+                                                  :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
+                                                                 [:field (mt/id :airport :longitude) {:base-type :type/Float}]
+                                                                 [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
+                                                  :order-by     [[:asc (mt/id :airport :id)]]
+                                                  :limit        5}}}
+            model     {:dataset_query   {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :airport)
+                                                    :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
+                                                                   [:field (mt/id :airport :longitude) {:base-type :type/Float}]
+                                                                   [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
+                                                    :order-by     [[:asc (mt/id :airport :id)]]
+                                                    :limit        5}}
+                       :dataset         true
+                       :result_metadata [{:name "ID"
+                                          :id   (mt/id :airport :id)}
+                                         {:semantic_type :type/Longitude
+                                          :field_ref     [:field (mt/id :airport :longitude) {:base-type :type/Float}]}
+                                         {:semantic_type :type/Latitude
+                                          :field_ref     [:field (mt/id :airport :latitude) {:base-type :type/Float}]}]}]
+        (mt/with-temp [Card {card-id :id} base-card
+                       Card {model-id :id} model
+                       Dashboard {dash-id :id} {}
+                       DashboardCard {dash-card-id :id} {:dashboard_id dash-id
+                                                         :card_id      card-id}
+                       DashboardCard {model-card-id :id} {:dashboard_id dash-id
+                                                          :card_id      model-id}
+                       Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                       :dashboard_id dash-id}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           card-id
+                                    :dashboard_card_id dash-card-id}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           model-id
+                                    :dashboard_card_id model-card-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (testing "The html output renders the table cells as geographic coordinates"
+            (is (= [[["1" "9.85" "57.09"]
+                     ["2" "39.22" "-6.2"]
+                     ["3" "-2.2" "57.2"]
+                     ["4" "-89.68" "39.84"]
+                     ["5" "54.65" "24.43"]]
+                    [["1" "9.84924316° E" "57.09275891° N"]
+                     ["2" "39.22489900° E" "6.22202000° S"]
+                     ["3" "2.19777989° W" "57.20190048° N"]
+                     ["4" "89.67790222° W" "39.84410095° N"]
+                     ["5" "54.65110016° E" "24.43300056° N"]]]
+                   (run-pulse-and-return-data-tables pulse)))))))))

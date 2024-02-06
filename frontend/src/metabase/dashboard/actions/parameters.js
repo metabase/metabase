@@ -228,6 +228,39 @@ export const setParameterDefaultValue = createThunkAction(
   },
 );
 
+export const SET_PARAMETER_VALUE_TO_DEFAULT =
+  "metabase/dashboard/SET_PARAMETER_VALUE_TO_DEFAULT";
+export const setParameterValueToDefault = createThunkAction(
+  SET_PARAMETER_VALUE_TO_DEFAULT,
+  parameterId => (dispatch, getState) => {
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+    const defaultValue = parameter?.default;
+    if (defaultValue) {
+      dispatch(setParameterValue(parameterId, defaultValue));
+    }
+  },
+);
+
+export const SET_PARAMETER_REQUIRED =
+  "metabase/dashboard/SET_PARAMETER_REQUIRED";
+export const setParameterRequired = createThunkAction(
+  SET_PARAMETER_REQUIRED,
+  (parameterId, value) => (dispatch, getState) => {
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+
+    if (parameter.required !== value) {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        required: value,
+      }));
+    }
+  },
+);
+
 export const SET_PARAMETER_IS_MULTI_SELECT =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 export const setParameterIsMultiSelect = createThunkAction(
