@@ -54,7 +54,7 @@
   (let [selectable-models ["gpt-4-turbo-preview"
                            "gpt-4"
                            "gpt-3.5-turbo"]
-        available-models (zipmap (map :id models) (map #(select-keys % [:id :owned_by ]) models))]
+        available-models (zipmap (map :id models) (map #(select-keys % [:id :owned_by]) models))]
     (keep available-models selectable-models)))
 
 (def ^:private memoized-fetch-openai-models
