@@ -2,7 +2,9 @@ import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { DelayGroup, Icon } from "metabase/ui";
+
+import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";
 import type Table from "metabase-lib/metadata/Table";
 import type Field from "metabase-lib/metadata/Field";
 import DataSelectorLoading from "../DataSelectorLoading";
@@ -11,6 +13,7 @@ import {
   Container,
   HeaderContainer,
   HeaderName,
+  PopoverHoverTarget,
 } from "./DataSelectorFieldPicker.styled";
 
 type DataSelectorFieldPickerProps = {
@@ -73,20 +76,31 @@ const DataSelectorFieldPicker = ({
 
   return (
     <Container>
-      <AccordionList
-        id="FieldPicker"
-        key="fieldPicker"
-        className="text-brand"
-        hasInitialFocus={hasInitialFocus}
-        sections={sections}
-        maxHeight={Infinity}
-        width="100%"
-        searchable={hasFiltering}
-        onChange={(item: { field: Field }) => onChangeField(item.field)}
-        itemIsSelected={checkIfItemIsSelected}
-        itemIsClickable={(item: FieldWithName) => item.field}
-        renderItemIcon={renderItemIcon}
-      />
+      <DelayGroup>
+        <AccordionList
+          id="FieldPicker"
+          key="fieldPicker"
+          className="text-brand"
+          hasInitialFocus={hasInitialFocus}
+          sections={sections}
+          maxHeight={Infinity}
+          width="100%"
+          searchable={hasFiltering}
+          onChange={(item: { field: Field }) => onChangeField(item.field)}
+          itemIsSelected={checkIfItemIsSelected}
+          itemIsClickable={(item: FieldWithName) => item.field}
+          renderItemIcon={renderItemIcon}
+          renderItemName={(item: FieldWithName) => (
+            <FieldInfoPopover
+              field={item.field}
+              delay={[700, 300]}
+              position="left-start"
+            >
+              <PopoverHoverTarget>{item.name}</PopoverHoverTarget>
+            </FieldInfoPopover>
+          )}
+        />
+      </DelayGroup>
     </Container>
   );
 };

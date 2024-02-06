@@ -21,3 +21,9 @@ export const HeaderName = styled.span`
   word-break: break-word;
   word-wrap: anywhere;
 `;
+
+export const PopoverHoverTarget = styled.span`
+  &:hover {
+    text-decoration: underline;
+  }
+`;
