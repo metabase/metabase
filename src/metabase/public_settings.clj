@@ -701,3 +701,15 @@
   :visibility :authenticated
   :type       :string
   :audit      :getter)
+
+(defsetting attachment-table-row-limit
+  (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
+  :visibility :internal
+  :type       :positive-integer
+  :default    20
+  :audit      :getter
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :positive-integer :attachment-table-row-limit)]
+                  (if-not (pos-int? value)
+                    20
+                    value))))

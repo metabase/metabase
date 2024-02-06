@@ -1447,6 +1447,21 @@
           #_"For input string: \"{raw-value}\""
           :integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
+(define-setting-for-type :positive-integer)
+
+(deftest valid-positive-Integer-setting-test
+  (testing "Validation is a no-op if the string represents a positive-integer"
+    (is (nil? (get-parse-exception :integer "1")))
+    (is (nil? (get-parse-exception :integer "0")))))
+
+(deftest invalid-positive-integer-setting-test
+  (doseq [raw-value ["a" "2.4" "1e9" "1.2.3" "0x3" "[2]"]]
+    (testing (format "Validation will throw an exception when trying to parse %s as a positive-integer" raw-value)
+      (let [ex (get-parse-exception :positive-integer raw-value)]
+        (assert-parser-exception!
+         #_"For input string: \"{raw-value}\""
+         :positive-integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+
 (define-setting-for-type :timestamp)
 
 (deftest valid-timestamp-setting-test

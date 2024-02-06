@@ -684,6 +684,10 @@
   [_setting-type setting-definition-or-name]
   (get-raw-value setting-definition-or-name integer? #(Long/parseLong ^String %)))
 
+(defmethod get-value-of-type :positive-integer
+  [_setting-type setting-definition-or-name]
+  (get-raw-value setting-definition-or-name pos-int? #(Long/parseLong ^String %)))
+
 (defmethod get-value-of-type :double
   [_setting-type setting-definition-or-name]
   (get-raw-value setting-definition-or-name double? #(Double/parseDouble ^String %)))
@@ -849,6 +853,16 @@
      (assert (or (integer? new-value)
                  (and (string? new-value)
                       (re-matches #"^-?\d+$" new-value))))
+     (str new-value))))
+
+(defmethod set-value-of-type! :positive-integer
+  [_setting-type setting-definition-or-name new-value]
+  (set-value-of-type!
+   :string setting-definition-or-name
+   (when new-value
+     (assert (or (pos-int? new-value)
+                 (and (string? new-value)
+                      (re-matches #"^[1-9]\d*$" new-value))))
      (str new-value))))
 
 (defmethod set-value-of-type! :double
@@ -1449,6 +1463,7 @@
 ;; Number parsing exceptions will quote the entire input
 (defmethod may-contain-raw-token? :double [_ _] true)
 (defmethod may-contain-raw-token? :integer [_ _] true)
+(defmethod may-contain-raw-token? :positive-integer [_ _] true)
 
 ;; Date parsing may quote the entire input, or a particular sub-portion, e.g. a misspelled month name
 (defmethod may-contain-raw-token? :timestamp [_ _] true)

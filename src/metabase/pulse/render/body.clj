@@ -52,10 +52,6 @@
                           :padding     :16px})}
            (trs "An error occurred while displaying this card.")]}))
 
-(def rows-limit
-  "Maximum number of rows to render in a Pulse image."
-  10)
-
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -173,6 +169,10 @@
                                                 [fmt-fn maybe-remapped-row-cell])]]
               (fmt-fn row-cell))})))
 
+(def rows-limit
+  "Maximum number of rows to render in a Pulse image."
+  (min (public-settings/attachment-table-row-limit) 100))
+
 (s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
@@ -187,7 +187,7 @@
        timezone-id
        remapping-lookup
        cols
-       (take rows-limit rows)
+       (take (min (public-settings/attachment-table-row-limit) 100) rows)
        viz-settings
        data-attributes)))))
 
