@@ -12,6 +12,8 @@
    [metabase.api.field :as api.field]
    [metabase.driver :as driver]
    [metabase.events :as events]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
@@ -104,6 +106,24 @@
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
+(defn- cards-for-segment-or-metric
+  [model-type model-id]
+  (->> (t2/select :model/Card {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]})
+       ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
+       (filter (fn [card]
+                 (when-let [query (some-> card :dataset_query lib.convert/->pMBQL)]
+                   (case model-type
+                     :segment (lib/uses-segment? query model-id)
+                     :metric (lib/uses-metric? query model-id)))))))
+
+(defmethod cards-for-filter-option* :using_metric
+  [_filter-option model-id]
+  (cards-for-segment-or-metric :metric model-id))
+
+(defmethod cards-for-filter-option* :using_segment
+  [_filter-option model-id]
+  (cards-for-segment-or-metric :segment model-id))
+
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
       (t2/hydrate :creator :collection)))
@@ -113,21 +133,31 @@
   "a valid card filter option."
   (map name (keys (methods cards-for-filter-option*))))
 
+(defn- db-id-via-table
+  [model model-id]
+  (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
+                                         :from [[:metabase_table :t]]
+                                         :join [[model :m] [:= :t.id :m.table_id]]
+                                         :where [:= :m.id model-id]}))
+
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model` and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filterp option. :card_index:"
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
+  `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior of each
+  filterp option. :card_index:"
   [f model_id]
   {f        [:maybe (into [:enum] card-filter-options)]
    model_id [:maybe ms/PositiveInt]}
   (let [f (or (keyword f) :all)]
-    (when (contains? #{:database :table :using_model} f)
+    (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
       (case f
-        :database    (api/read-check Database model_id)
-        :table       (api/read-check Database (t2/select-one-fn :db_id Table, :id model_id))
-        :using_model (api/read-check Card model_id)))
+        :database      (api/read-check Database model_id)
+        :table         (api/read-check Database (t2/select-one-fn :db_id Table, :id model_id))
+        :using_model   (api/read-check Card model_id)
+        :using_metric  (api/read-check Database (db-id-via-table :metric model_id))
+        :using_segment (api/read-check Database (db-id-via-table :segment model_id))))
     (let [cards          (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
       (into []
