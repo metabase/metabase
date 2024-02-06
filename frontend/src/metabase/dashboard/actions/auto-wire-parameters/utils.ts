@@ -48,7 +48,7 @@ export function getMatchingParameterOption(
   targetDimension: ParameterTarget,
   sourceDashcard: DashboardCard,
   metadata: Metadata,
-  questions: Record<DashCardId, Question>,
+  questions: Record<CardId, Question>,
 ): {
   target: ParameterTarget;
 } | null {
@@ -58,9 +58,11 @@ export function getMatchingParameterOption(
 
   // TODO: verify if fallback can be dropped
   const sourceQuestion =
-    questions[sourceDashcard.id] ?? new Question(sourceDashcard.card, metadata);
+    questions[sourceDashcard.card.id] ??
+    new Question(sourceDashcard.card, metadata);
   const targetQuestion =
-    questions[targetDashcard.id] ?? new Question(targetDashcard.card, metadata);
+    questions[targetDashcard.card.id] ??
+    new Question(targetDashcard.card, metadata);
 
   return (
     getParameterMappingOptions(
@@ -92,7 +94,7 @@ export function getAutoWiredMappingsForDashcards(
   parameter_id: ParameterId,
   target: ParameterTarget,
   metadata: Metadata,
-  questions: Record<DashCardId, Question>,
+  questions: Record<CardId, Question>,
 ): DashCardAttribute[] {
   if (targetDashcards.length === 0) {
     return [];

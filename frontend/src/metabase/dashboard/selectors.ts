@@ -17,6 +17,7 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type {
   Bookmark,
   Card,
+  CardId,
   DashboardCard,
   DashboardId,
   DashCardId,
@@ -312,12 +313,14 @@ export const getQuestions = (state: State) => {
 
   const dashcardIds = dashboard.dashcards;
 
-  const questionsById = dashcardIds.reduce<Record<DashCardId, Question>>(
+  const questionsById = dashcardIds.reduce<Record<CardId, Question>>(
     (acc, dashcardId) => {
       const dashcard = getDashCardById(state, dashcardId);
-      const question = getQuestionByDashcard(state, { dashcard });
+      const cards = [dashcard.card, ...(dashcard.series ?? [])];
 
-      acc[dashcard.id] = question;
+      for (const card of cards) {
+        acc[card.id] = getQuestionByCard(state, { card });
+      }
 
       return acc;
     },
@@ -368,14 +371,20 @@ export const getQuestionByDashcard = createCachedSelector(
   return props.dashcard.id;
 });
 
+/**
+ * It's a memoized version, it uses LRU cache per dashboard identified by id
+ */
+export const getQuestionByCard = createCachedSelector(
+  [(_state: State, props: { card: Card }) => props.card, getMetadata],
+  (card, metadata) => {
+    return new Question(card, metadata);
+  },
+)((_state, props) => {
+  return props.card.id;
+});
+
 export const getParameterMappingOptions = createCachedSelector(
-  [
-    getMetadata,
-    getEditingParameter,
-    getCard,
-    getDashCard,
-    getQuestionByDashcard,
-  ],
+  [getMetadata, getEditingParameter, getCard, getDashCard, getQuestionByCard],
   (metadata, parameter, card, dashcard, q) => {
     let question;
 
@@ -389,7 +398,8 @@ export const getParameterMappingOptions = createCachedSelector(
     return _getParameterMappingOptions(question, parameter, card, dashcard);
   },
 )((state, props) => {
-  return props.dashcard.id;
+  // fallback is needed for cards without id
+  return props.card.id ?? props.dashcard.created_at;
 });
 
 export const getIsHeaderVisible = createSelector(

@@ -34,7 +34,7 @@ import {
   getEditingParameter,
   getParameterMappingOptions,
   getParameterTarget,
-  getQuestionByDashcard,
+  getQuestionByCard,
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
@@ -64,7 +64,7 @@ const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
   metadata: getMetadata(state),
-  question: getQuestionByDashcard(state, props),
+  question: getQuestionByCard(state, props),
   mappingOptions: getParameterMappingOptions(state, props),
 });
 
