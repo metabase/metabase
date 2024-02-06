@@ -7,12 +7,18 @@ import type { UserInfo } from "./user";
 import type { Collection } from "./collection";
 import type { SmartScalarComparison } from "./visualization-settings";
 
+export type CardType = "model" | "question";
+
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
   name: string;
   description: string | null;
+  /**
+   * @deprecated Use "type" instead
+   */
   dataset: boolean;
+  type: CardType;
   public_uuid: string | null;
 
   /* Indicates whether static embedding for this card has been published */
@@ -30,6 +36,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   last_query_start: string | null;
   average_query_time: number | null;
   cache_ttl: number | null;
+  based_on_upload?: number | null; // table id of upload table, if any
 
   archived: boolean;
 

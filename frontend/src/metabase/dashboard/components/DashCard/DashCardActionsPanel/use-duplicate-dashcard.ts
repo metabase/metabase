@@ -16,6 +16,7 @@ import {
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
+import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 
 export function useDuplicateDashCard({
   dashboard,
@@ -68,6 +69,8 @@ export function useDuplicateDashCard({
         }),
       );
     }
+
+    trackDashcardDuplicated(dashboard.id);
   }, [
     dispatch,
     dashboard.id,
