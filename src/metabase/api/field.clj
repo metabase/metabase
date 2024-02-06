@@ -4,6 +4,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.util :as mdb.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
@@ -12,7 +13,7 @@
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.models.permissions :as perms]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -314,13 +315,13 @@
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
     (let [human-readable-values? (validate-human-readable-pairs value-pairs)
-          update-map  {:values                (map first value-pairs)
-                       :human_readable_values (when human-readable-values?
-                                                (map second value-pairs))}]
-      (t2/with-transaction [_conn]
-        (if-let [field-value-id (:id (field-values/get-latest-full-field-values id))]
-          (update-field-values! field-value-id update-map)
-          (create-field-values! field update-map)))))
+          update-map             {:values                (map first value-pairs)
+                                  :human_readable_values (when human-readable-values?
+                                                           (map second value-pairs))}]
+      (mdb.u/idempotent-insert!
+        (when-let [field-values-id (:id (field-values/get-latest-full-field-values id))]
+          (update-field-values! field-values-id update-map))
+        (create-field-values! field update-map))))
   {:status :success})
 
 (api/defendpoint POST "/:id/rescan_values"
