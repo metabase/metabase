@@ -3,13 +3,8 @@ import type { RegisteredSeriesOption } from "echarts/types/dist/shared";
 
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import type {
-  DataKey,
-  Datum,
-  Extent,
-  ChartDataset,
-  SeriesModel,
-} from "../model/types";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { DataKey, Datum, Extent, SeriesModel } from "../model/types";
 
 const BUBBLE_SCALE_FACTOR_MAX = 64;
 
@@ -34,8 +29,6 @@ function getBubbleSizeScale(
 export function buildEChartsScatterSeries(
   seriesModel: SeriesModel,
   bubbleSizeDomain: Extent | null,
-  dataset: ChartDataset,
-  dimensionDataKey: DataKey,
   yAxisIndex: number,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["scatter"] {
@@ -50,7 +43,7 @@ export function buildEChartsScatterSeries(
     symbolSize: getBubbleSizeScale(bubbleSizeDomain, bubbleSizeDataKey),
     encode: {
       y: seriesModel.dataKey,
-      x: dimensionDataKey,
+      x: X_AXIS_DATA_KEY,
     },
     itemStyle: {
       color: seriesModel.color,

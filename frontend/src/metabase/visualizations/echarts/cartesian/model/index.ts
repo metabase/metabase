@@ -15,7 +15,7 @@ import {
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   getSortedSeriesModels,
-  getTransformedDataset,
+  applyVisualizationSettingsDataTransformations,
   sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
@@ -98,17 +98,12 @@ export const getCartesianChartModel = (
     default:
       dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
   }
-  dataset = sortDataset(
-    dataset,
-    dimensionModel.dataKey,
-    settings["graph.x_axis.scale"],
-  );
+  dataset = sortDataset(dataset, settings["graph.x_axis.scale"]);
 
-  const transformedDataset = getTransformedDataset(
+  const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,
     seriesModels,
     settings,
-    dimensionModel,
   );
 
   const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
