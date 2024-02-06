@@ -48,8 +48,6 @@ describe("setup", () => {
       skipWelcomeScreen();
       skipLanguageStep();
       await submitUserInfoStep();
-
-      await screen.findByText("Self-service analytics for my own company");
     }
 
     describe("when selecting 'Self service'", () => {
@@ -152,6 +150,12 @@ const submitUserInfoStep = async ({
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled(),
   );
   clickNextStep();
+  // formik+yup validation is async, we need to wait for the submit to finish
+  await waitFor(() =>
+    expect(
+      screen.queryByText("What should we call you?"),
+    ).not.toBeInTheDocument(),
+  );
 };
 
 const selectUsageReason = (usageReason: UsageReason) => {
