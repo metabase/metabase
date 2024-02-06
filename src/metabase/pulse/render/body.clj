@@ -169,6 +169,10 @@
                                                 [fmt-fn maybe-remapped-row-cell])]]
               (fmt-fn row-cell))})))
 
+(def rows-limit
+  "Maximum number of rows to render in a Pulse image."
+  (min (public-settings/attachment-table-row-limit) 100))
+
 (s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
@@ -183,7 +187,7 @@
        timezone-id
        remapping-lookup
        cols
-       (take (min (public-settings/attachment-table-row-limit) 100) rows)
+       (take rows-limit rows)
        viz-settings
        data-attributes)))))
 
@@ -241,7 +245,7 @@
                                       (color/make-color-selector data viz-settings)
                                       (mapv :name ordered-cols)
                                       (prep-for-html-rendering timezone-id card data))
-                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
+                                     (render-truncation-warning rows-limit (count rows))]]
     {:attachments
      nil
 
