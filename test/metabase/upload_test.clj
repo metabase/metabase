@@ -273,11 +273,11 @@
   "Create a temp csv file with the given content and return the file"
   ([rows]
    (csv-file-with rows "test"))
-  ([rows filename]
-   (csv-file-with rows filename io/writer))
-  ([rows filename writer-fn]
+  ([rows file-prefix]
+   (csv-file-with rows file-prefix io/writer))
+  ([rows file-prefix writer-fn]
    (let [contents (str/join "\n" rows)
-         csv-file (doto (File/createTempFile filename ".csv")
+         csv-file (doto (File/createTempFile file-prefix ".csv")
                     (.deleteOnExit))]
      (with-open [^java.io.Writer w (writer-fn csv-file)]
        (.write w contents))
@@ -438,8 +438,9 @@
            user-id             (mt/user->id :rasta)
            db-id               (mt/id)
            sync-synchronously? true
-           ;; Make the file-name unique so the table names don't collide
-           csv-file-prefix       (str "example csv file " (random-uuid))}
+           ;; Make the file-name unique so the table names don't collide on cloud databases like redshift, where we use
+           ;; the same schema between test runs
+           csv-file-prefix     (str "example csv file " (random-uuid))}
       :as args}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
@@ -477,7 +478,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (mt/with-current-user (mt/user->id :crowberto)
-          (let [csv-file-prefix (str (mt/random-name) ".csv")]
+          (let [csv-file-prefix (mt/random-name)]
             (let [model-1 (upload-example-csv! :csv-file-prefix csv-file-prefix)
                   model-2 (upload-example-csv! :csv-file-prefix csv-file-prefix)]
               (testing "tables are different between the two uploads"
