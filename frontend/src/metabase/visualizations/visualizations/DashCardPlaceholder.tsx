@@ -9,9 +9,15 @@ import type { VisualizationProps } from "../types";
 
 type Props = VisualizationProps & {
   dashcard: VirtualDashboardCard;
+  isEditingParameter?: boolean;
 };
 
-function DashCardPlaceholderInner({ dashcard, isDashboard, isEditing }: Props) {
+function DashCardPlaceholderInner({
+  dashcard,
+  isDashboard,
+  isEditing,
+  isEditingParameter,
+}: Props) {
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
@@ -23,14 +29,22 @@ function DashCardPlaceholderInner({ dashcard, isDashboard, isEditing }: Props) {
     return null;
   }
 
+  const pointerEvents = isEditingParameter ? "none" : "all";
+
   return (
     <>
-      <Flex align="center" justify="center" p={2} style={{ flex: 1 }}>
+      <Flex
+        align="center"
+        justify="center"
+        p={2}
+        style={{ flex: 1, pointerEvents }}
+        opacity={isEditingParameter ? 0.25 : 1}
+      >
         {isEditing && (
           <Button
             onClick={() => setQuestionPickerOpen(true)}
             onMouseDown={preventDragging}
-            style={{ pointerEvents: "all" }}
+            style={{ pointerEvents }}
           >{t`Select question`}</Button>
         )}
       </Flex>
