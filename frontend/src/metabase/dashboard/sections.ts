@@ -142,7 +142,7 @@ const getLargeChartKpiColLayout: LayoutFn = position => {
   return [heading, largeCard, ...scalarCardsColumn];
 };
 
-export const getKpiLargeChartBelowLayout: LayoutFn = position => {
+const getKpiLargeChartBelowLayout: LayoutFn = position => {
   const heading = createHeadingDashCard({
     ...position,
     size_x: GRID_WIDTH,
@@ -201,6 +201,6 @@ export const layoutOptions: SectionLayout[] = [
   {
     id: "kpi-lg-chart-below",
     label: t`KPIs w/ large chart below`,
-    getLayout: getKpiGridLayout,
+    getLayout: getKpiLargeChartBelowLayout,
   },
 ];
