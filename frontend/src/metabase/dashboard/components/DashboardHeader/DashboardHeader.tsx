@@ -14,7 +14,7 @@ import ActionButton from "metabase/components/ActionButton";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
@@ -34,12 +34,18 @@ import {
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
-import type { NewDashCardOpts } from "metabase/dashboard/actions";
+import type {
+  AddSectionOpts,
+  NewDashCardOpts,
+} from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
+  addSectionToDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
+import type { SectionLayout } from "metabase/dashboard/sections";
+import { layoutOptions } from "metabase/dashboard/sections";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
@@ -71,6 +77,7 @@ import type {
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
+import { SectionLayoutPreview } from "./SectionLayoutPreview";
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
@@ -105,6 +112,7 @@ interface OwnProps {
   addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addSectionToDashboard: (opts: AddSectionOpts) => void;
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
@@ -188,6 +196,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
   toggleSidebar,
   addActionToDashboard,
+  addSectionToDashboard,
   dismissAllUndo,
 };
 
@@ -226,6 +235,14 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
     this.props.addLinkDashCardToDashboard({
       dashId: this.props.dashboard.id,
       tabId: this.props.selectedTabId,
+    });
+  }
+
+  onAddSection(sectionLayout: SectionLayout) {
+    this.props.addSectionToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+      sectionLayout,
     });
   }
 
@@ -394,6 +411,34 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
+        </Tooltip>,
+      );
+
+      buttons.push(
+        <Tooltip key="add-section" tooltip={t`Add section`}>
+          <Menu>
+            <Menu.Target>
+              <DashboardHeaderButton>
+                <Icon name="table_spaced" size={18} />
+              </DashboardHeaderButton>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {layoutOptions.map(layout => (
+                <Tooltip
+                  key={layout.id}
+                  tooltip={<SectionLayoutPreview layout={layout} />}
+                  placement="left"
+                >
+                  <Menu.Item
+                    onClick={() => this.onAddSection(layout)}
+                    fw="bold"
+                  >
+                    {layout.label}
+                  </Menu.Item>
+                </Tooltip>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
         </Tooltip>,
       );
 
