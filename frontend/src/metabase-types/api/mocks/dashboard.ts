@@ -4,6 +4,7 @@ import type {
   VirtualCard,
   ActionDashboardCard,
   VirtualDashboardCard,
+  DashboardTab,
 } from "metabase-types/api";
 import { createMockCard } from "./card";
 
@@ -27,6 +28,18 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   public_uuid: null,
   enable_embedding: false,
   embedding_params: null,
+  ...opts,
+});
+
+export const createMockDashboardTab = (
+  opts?: Partial<DashboardTab>,
+): DashboardTab => ({
+  id: 1,
+  dashboard_id: 1,
+  name: "Tab 1",
+  entity_id: "abc_123",
+  created_at: "2020-01-01T12:30:30.000000",
+  updated_at: "2020-01-01T12:30:30.000000",
   ...opts,
 });
 
