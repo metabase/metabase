@@ -97,6 +97,42 @@
                          mt/process-query
                          mt/rows))))))))))
 
+(deftest conn-impersonation-test-redshift
+  (mt/test-driver :redshift
+    (mt/with-premium-features #{:advanced-permissions}
+      (let [details (mt/dbdef->connection-details :redshift nil nil)
+            spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
+        (t2.with-temp/with-temp [Database database {:engine :redshift, :details details}]
+          (try
+            (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
+                               "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
+                               "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
+                               "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"
+                               "DROP USER IF EXISTS \"impersonation.user\";"
+                               "CREATE USER \"impersonation.user\";"
+                               "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.user\";"
+                               "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.user\";"]]
+              (jdbc/execute! spec [statement]))
+            (mt/with-db database (sync/sync-database! database)
+              (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                          :attributes     {"impersonation_attr" "impersonation.user"}}
+                (is (= []
+                       (-> {:query "SELECT * FROM \"table_with_access\";"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows)))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"permission denied"
+                                      (-> {:query "SELECT * FROM \"table_without_access\";"}
+                                          mt/native-query
+                                          mt/process-query
+                                          mt/rows)))))
+            (finally
+              (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
+                                 "DROP TABLE IF EXISTS public.table_without_access;"
+                                 "DROP USER IF EXISTS \"impersonation.user\";"]]
+                (jdbc/execute! spec [statement])))))))))
+
 (deftest conn-impersonation-test-snowflake
   (mt/test-driver :snowflake
     (mt/with-premium-features #{:advanced-permissions}
