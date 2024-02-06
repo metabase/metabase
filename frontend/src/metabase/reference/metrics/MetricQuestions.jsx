@@ -2,6 +2,7 @@
 import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import _ from "underscore";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { t } from "ttag";
@@ -19,17 +20,12 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
+import Questions from "metabase/entities/questions";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getQuestionUrl } from "../utils";
 
-import {
-  getMetricQuestions,
-  getError,
-  getLoading,
-  getTable,
-  getMetric,
-} from "../selectors";
+import { getError, getLoading, getTable, getMetric } from "../selectors";
 
 const emptyStateData = (table, metric, metadata) => {
   return {
@@ -49,7 +45,6 @@ const mapStateToProps = (state, props) => ({
   metric: getMetric(state, props),
   table: getTable(state, props),
   metadata: getMetadata(state),
-  entities: getMetricQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),
 });
@@ -61,7 +56,7 @@ const mapDispatchToProps = {
 class MetricQuestions extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
-    entities: PropTypes.object.isRequired,
+    questions: PropTypes.array.isRequired,
     loading: PropTypes.bool,
     loadingError: PropTypes.object,
     metric: PropTypes.object,
@@ -70,7 +65,7 @@ class MetricQuestions extends Component {
   };
 
   render() {
-    const { entities, style, loadingError, loading, table, metric, metadata } =
+    const { questions, style, loadingError, loading, table, metric, metadata } =
       this.props;
 
     return (
@@ -85,22 +80,22 @@ class MetricQuestions extends Component {
           error={loadingError}
         >
           {() =>
-            Object.keys(entities).length > 0 ? (
+            questions.length > 0 ? (
               <div className="wrapper wrapper--trim">
                 <List>
-                  {Object.values(entities).map(
-                    entity =>
-                      entity &&
-                      entity.id &&
-                      entity.name && (
+                  {questions.map(
+                    ({ _card: question }) =>
+                      question &&
+                      question.id &&
+                      question.name && (
                         <ListItem
-                          key={entity.id}
-                          name={entity.display_name || entity.name}
+                          key={question.id}
+                          name={question.display_name || question.name}
                           description={t`Created ${moment(
-                            entity.created_at,
-                          ).fromNow()} by ${entity.creator.common_name}`}
-                          url={Urls.question(entity)}
-                          icon={visualizations.get(entity.display).iconName}
+                            question.created_at,
+                          ).fromNow()} by ${question.creator.common_name}`}
+                          url={Urls.question(question)}
+                          icon={visualizations.get(question.display).iconName}
                         />
                       ),
                   )}
@@ -120,4 +115,14 @@ class MetricQuestions extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(MetricQuestions);
+export default _.compose(
+  Questions.loadList({
+    query: (_state, { metricId }) => {
+      return {
+        f: "using_metric",
+        model_id: metricId,
+      };
+    },
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(MetricQuestions);
