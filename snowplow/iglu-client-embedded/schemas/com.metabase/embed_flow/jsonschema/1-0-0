@@ -88,7 +88,8 @@
       "enum": [
         "code_overview",
         "code_params",
-        "code_appearance"
+        "code_appearance",
+        null
       ],
       "description": "The location in the code where the event is triggered."
     },
@@ -99,7 +100,8 @@
       ],
       "enum": [
         "backend",
-        "view"
+        "view",
+        null
       ],
       "description": "Type of the language of the artifact where the event is triggered."
     },
@@ -155,7 +157,8 @@
         "html",
         "csv",
         "xlsx",
-        "json"
+        "json",
+        null
       ],
       "description": "The format of the public link."
     },
@@ -166,7 +169,8 @@
       ],
       "enum": [
         "public-embed",
-        "public-share"
+        "public-share",
+        null
       ],
       "description": "Location where the public link is copied from"
     },
