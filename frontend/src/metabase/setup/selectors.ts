@@ -21,6 +21,10 @@ export const getUserEmail = (state: State): string | undefined => {
   return getUser(state)?.email;
 };
 
+export const getUsageReason = (state: State) => {
+  return state.setup.usageReason;
+};
+
 export const getDatabase = (state: State): DatabaseData | undefined => {
   return state.setup.database;
 };
