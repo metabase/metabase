@@ -76,9 +76,7 @@ describe(
 
       it("does not show model actions in model visualization on a dashboard", () => {
         asAdmin(() => {
-          cy.get("@dashboardId").then(dashboardId => {
-            visitDashboard(dashboardId);
-          });
+          visitDashboard("@dashboardId");
 
           cy.findByTestId("dashcard").within(() => {
             assertActionsDropdownNotExists();

@@ -1081,9 +1081,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       it("should autowire and filter cards with foreign keys when added to the dashboard via the sidebar", () => {
-        cy.get("@dashboardId").then(dashboardId => {
-          visitDashboard(dashboardId);
-        });
+        visitDashboard("@dashboardId");
         editDashboard();
         setFilter("ID");
         selectDashboardFilter(getDashboardCard(0), "ID");
@@ -1123,10 +1121,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       it("should autowire and filter cards with foreign keys when added to the dashboard via the query builder", () => {
-        cy.get("@dashboardId").then(dashboardId => {
-          visitDashboard(dashboardId);
-        });
-
+        visitDashboard("@dashboardId");
         editDashboard();
         setFilter("ID");
         selectDashboardFilter(getDashboardCard(0), "ID");

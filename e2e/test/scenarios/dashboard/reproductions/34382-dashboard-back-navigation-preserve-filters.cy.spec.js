@@ -21,7 +21,7 @@ describe("issue 34382", () => {
 
   it("should preserve filter value when navigating between the dashboard and the query builder with auto-apply disabled (metabase#34382)", () => {
     createDashboardWithCards();
-    cy.get("@dashboardId").then(visitDashboard);
+    visitDashboard("@dashboardId");
 
     addFilterValue("Gizmo");
     applyFilter();
