@@ -273,11 +273,11 @@
   "Create a temp csv file with the given content and return the file"
   ([rows]
    (csv-file-with rows "test"))
-  ([rows filename]
-   (csv-file-with rows filename io/writer))
-  ([rows filename writer-fn]
+  ([rows file-prefix]
+   (csv-file-with rows file-prefix io/writer))
+  ([rows file-prefix writer-fn]
    (let [contents (str/join "\n" rows)
-         csv-file (doto (File/createTempFile filename ".csv")
+         csv-file (doto (File/createTempFile file-prefix ".csv")
                     (.deleteOnExit))]
      (with-open [^java.io.Writer w (writer-fn csv-file)]
        (.write w contents))
@@ -438,8 +438,9 @@
            user-id             (mt/user->id :rasta)
            db-id               (mt/id)
            sync-synchronously? true
-           ;; Make the file-name unique so the table names don't collide
-           csv-file-prefix       (str "example csv file " (random-uuid))}
+           ;; Make the file-name unique so the table names don't collide on cloud databases like redshift, where we use
+           ;; the same schema between test runs
+           csv-file-prefix     (str "example csv file " (random-uuid))}
       :as args}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
@@ -680,7 +681,8 @@
   (testing "Upload a CSV file with large names and numbers"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [length-limit (driver/table-name-length-limit driver/*driver*)
-            long-name    (apply str (shuffle (apply concat (repeat 33 (seq "abcdefgh"))))) ; 33×8 = 264. Max is H2 at 256
+            ;; Ensure the name is unique as table names can collide when using redshift
+            long-name    (->> "abc" str cycle (take (inc length-limit)) shuffle (apply str))
             short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))
             table-name   (u/upper-case-en (@#'upload/unique-table-name driver/*driver* long-name))]
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
