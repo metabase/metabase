@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { t } from "ttag";
 
@@ -47,6 +47,11 @@ export function Heading({
   const [textValue, setTextValue] = useState(settings.text);
   const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
     e.stopPropagation();
+
+  // handles a case when settings are updated externally
+  useEffect(() => {
+    setTextValue(settings.text);
+  }, [settings.text]);
 
   const content = useMemo(
     () =>

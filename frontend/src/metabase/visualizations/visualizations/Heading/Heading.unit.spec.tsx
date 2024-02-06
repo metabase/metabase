@@ -206,6 +206,26 @@ describe("Text", () => {
           screen.getByDisplayValue("Variable: {{variable}}"),
         ).toBeInTheDocument();
       });
+
+      it("should call onUpdateVisualizationSettings on blur", () => {
+        const mockOnUpdateVisualizationSettings = jest.fn();
+        const options = {
+          settings: getSettingsWithText("text"),
+          isEditing: true,
+          onUpdateVisualizationSettings: mockOnUpdateVisualizationSettings,
+        };
+        setup(options);
+
+        userEvent.click(
+          screen.getByTestId("editing-dashboard-heading-preview"),
+        );
+        userEvent.type(screen.getByRole("textbox"), "foo");
+        userEvent.tab();
+
+        expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledWith({
+          text: "textfoo",
+        });
+      });
     });
   });
 });
