@@ -26,7 +26,7 @@ describe("issue 34382", () => {
     { tags: "@flaky" },
     () => {
       createDashboardWithCards();
-      cy.get("@dashboardId").then(visitDashboard);
+      visitDashboard("@dashboardId");
 
       addFilterValue("Gizmo");
       applyFilter();
