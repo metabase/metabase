@@ -75,7 +75,12 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   updated_at: string;
 };
 
-export type VirtualCardDisplay = "text" | "action" | "link" | "heading";
+export type VirtualCardDisplay =
+  | "action"
+  | "heading"
+  | "link"
+  | "placeholder"
+  | "text";
 
 export type VirtualCard = Partial<
   Omit<Card, "name" | "dataset_query" | "visualization_settings">
