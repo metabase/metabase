@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { Icon } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -22,8 +23,21 @@ export const HeaderName = styled.span`
   word-wrap: anywhere;
 `;
 
-export const PopoverHoverTarget = styled.span`
-  &:hover {
-    text-decoration: underline;
-  }
+export const FieldName = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  flex-grow: 1;
+  position: relative;
+`;
+
+export const PopoverHoverTarget = styled(Icon)`
+  margin-left: 0.5em;
+  right: 0;
+  position: absolute;
+  padding: 0.7em 0.65em;
+  padding-right: 0;
+  padding-left: 2em;
+  color: red;
 `;
