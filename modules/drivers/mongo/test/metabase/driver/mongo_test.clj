@@ -8,6 +8,7 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mongo :as mongo]
+   [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
@@ -25,8 +26,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mongo :as tdm]
    [metabase.util.log :as log]
-   [monger.collection :as mcoll]
-   [monger.core :as mg]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -73,9 +72,11 @@
                                                              :port   3000
                                                              :dbname "bad-db-name?connectTimeoutMS=50"}
                                                   :expected false}
-                                                 {:details  {:conn-uri "mongodb://metabase:metasample123@localhost:27017/sample-dataset?authSource=admin"}
+                                                 {:details  {:use-conn-uri true
+                                                             :conn-uri "mongodb://metabase:metasample123@localhost:27017/test-data?authSource=admin"}
                                                   :expected (not (tdm/ssl-required?))}
-                                                 {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
+                                                 {:details  {:use-conn-uri true
+                                                             :conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
                                                   :expected false}]
              :let [ssl-details (tdm/conn-details details)]]
        (testing (str "connect with " details)
@@ -492,17 +493,18 @@
         (tx/destroy-db! :mongo dbdef)
         (let [details (tx/dbdef->connection-details :mongo :db dbdef)]
           ;; load rows
-          (mongo.util/with-mongo-connection [conn details]
-            (doseq [[i row] (map-indexed vector row-maps)
-                    :let    [row (assoc row :_id (inc i))]]
-              (try
-                (mcoll/insert conn collection-name row)
-                (catch Throwable e
-                  (throw (ex-info (format "Error inserting row: %s" (ex-message e))
-                                  {:database database-name, :collection collection-name, :details details, :row row}
-                                  e)))))
-            (log/infof "Inserted %d rows into %s collection %s."
-                       (count row-maps) (pr-str database-name) (pr-str collection-name)))
+          (mongo.connection/with-mongo-database [db details]
+            (let [coll (mongo.util/collection db collection-name)]
+              (doseq [[i row] (map-indexed vector row-maps)
+                      :let    [row (assoc row :_id (inc i))]]
+                (try
+                  (mongo.util/insert-one coll row)
+                  (catch Throwable e
+                    (throw (ex-info (format "Error inserting row: %s" (ex-message e))
+                                    {:database database-name, :collection collection-name, :details details, :row row}
+                                    e)))))
+              (log/infof "Inserted %d rows into %s collection %s."
+                         (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
           (let [db (first (t2/insert-returning-instances! Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
@@ -551,15 +553,15 @@
 (deftest strange-versionArray-test
   (mt/test-driver :mongo
     (testing "Negative values in versionArray are ignored (#29678)"
-      (with-redefs [mg/command (constantly {"version" "4.0.28-23"
-                                            "versionArray" [4 0 29 -100]})]
+      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+                                                       "versionArray" [4 0 29 -100]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
 
     (testing "Any values after rubbish in versionArray are ignored"
-      (with-redefs [mg/command (constantly {"version" "4.0.28-23"
-                                            "versionArray" [4 0 "NaN" 29]})]
+      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+                                                       "versionArray" [4 0 "NaN" 29]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))

@@ -9,12 +9,12 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.mongo.util :refer [with-mongo-connection]]
-   [metabase.test.data.interface :as tx]
-   [monger.collection :as mcoll]
-   [monger.core :as mg])
+   [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.util :as mongo.util]
+   [metabase.test.data.interface :as tx])
   (:import
-   (com.fasterxml.jackson.core JsonGenerator)))
+   (com.fasterxml.jackson.core JsonGenerator)
+   (com.mongodb.client MongoDatabase)))
 
 (set! *warn-on-reflection* true)
 
@@ -58,8 +58,8 @@
                    {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
-  (with-mongo-connection [^com.mongodb.DB mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
-    (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
+  (mongo.connection/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :server dbdef)]
+    (.drop db)))
 
 (def ^:dynamic *remove-nil?*
   "When creating a dataset, omit any nil-valued fields from the documents."
@@ -69,7 +69,7 @@
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
   (when-not skip-drop-db?
     (destroy-db! driver dbdef))
-  (with-mongo-connection [mongo-db (tx/dbdef->connection-details driver :db dbdef)]
+  (mongo.connection/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :db dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
       (let [field-names (for [field-definition field-definitions]
                           (keyword (:field-name field-definition)))]
@@ -77,9 +77,10 @@
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            (mcoll/insert mongo-db (name table-name) (into (ordered-map/ordered-map :_id (inc i))
-                                                           (cond->> (zipmap field-names row)
-                                                             *remove-nil?* (m/remove-vals nil?))))
+            (mongo.util/insert-one (mongo.util/collection db (name table-name))
+                                  (into (ordered-map/ordered-map :_id (inc i))
+                                        (cond->> (zipmap field-names row)
+                                          *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 
