@@ -11,6 +11,8 @@ import {
   downloadAndAssert,
   assertSheetRowsCount,
   modal,
+  dashboardParametersContainer,
+  goToTab,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -56,11 +58,14 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
 
-      cy.findByLabelText("Enable or lock parameters").as("allParameters");
+      cy.findByLabelText("Configuring parameters").as("allParameters");
 
       cy.get("@allParameters").within(() => {
         // verify that all the parameters on the dashboard are defaulted to disabled
-        cy.findAllByText("Disabled").should("have.length", 4);
+        cy.findAllByText("Disabled").should(
+          "have.length",
+          dashboardDetails.parameters.length,
+        );
 
         // select the dropdown next to the Name parameter so that we can set it to editable
         cy.findByText("Name")
@@ -82,7 +87,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       modal().within(() => {
         // set the locked parameter's value
-        cy.findByText("Preview locked parameters")
+        cy.findByText("Previewing locked parameters")
           .parent()
           .findByText("Id")
           .click();
@@ -157,6 +162,49 @@ describe("scenarios > embedding > dashboard parameters", () => {
       filterWidget().should("not.exist");
 
       cy.get(".ScalarValue").invoke("text").should("eq", "2,500");
+    });
+
+    it("should only display filters mapped to cards on the selected tab", () => {
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          embedding_params: {
+            id: "enabled",
+            name: "enabled",
+            source: "enabled",
+            user_id: "enabled",
+          },
+          enable_embedding: true,
+        });
+
+        const payload = {
+          resource: { dashboard: dashboardId },
+          params: {},
+        };
+
+        visitEmbeddedPage(payload);
+
+        // wait for the results to load
+        cy.contains("Test Dashboard");
+        cy.contains("2,500");
+      });
+
+      dashboardParametersContainer().within(() => {
+        cy.findByText("Id").should("be.visible");
+        cy.findByText("Name").should("be.visible");
+        cy.findByText("Source").should("be.visible");
+        cy.findByText("User").should("be.visible");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
+
+      goToTab("Tab 2");
+
+      dashboardParametersContainer().within(() => {
+        cy.findByText("Id").should("not.exist");
+        cy.findByText("Name").should("not.exist");
+        cy.findByText("Source").should("not.exist");
+        cy.findByText("User").should("not.exist");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
     });
   });
 
@@ -430,7 +478,7 @@ function openFilterOptions(name) {
 function publishChanges(callback) {
   cy.intercept("PUT", "/api/dashboard/*").as("publishChanges");
 
-  cy.button("Publish changes").click();
+  cy.button(/^(Publish|Publish changes)$/).click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.
@@ -443,7 +491,7 @@ function publishChanges(callback) {
 }
 
 function setParameter(name, filter) {
-  cy.findByLabelText("Enable or lock parameters")
+  cy.findByLabelText("Configuring parameters")
     .parent()
     .findByText(name)
     .siblings("a")

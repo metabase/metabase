@@ -7,8 +7,8 @@ import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils"; // legacy
 
-export function isStructured(card) {
-  return card.dataset_query.type === "query";
+export function isNative(card) {
+  return card?.dataset_query?.type === "native";
 }
 
 function cardVisualizationIsEquivalent(cardA, cardB) {

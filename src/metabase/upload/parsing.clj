@@ -5,9 +5,9 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [tru]])
   (:import
+   (java.text NumberFormat)
    (java.time LocalDate)
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder ResolverStyle)
-   (java.text NumberFormat)
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
@@ -37,10 +37,10 @@
   ;; uuuu is like yyyy but is required for strict parsing and also supports negative years for BC dates
   ;; see https://stackoverflow.com/questions/41103603/issue-with-datetimeparseexception-when-using-strict-resolver-style
   ;; uuuu is faster than using yyyy and setting a default era
-  ["MMM dd uuuu"        ; Jan 30 2000
-   "MMM dd, uuuu"       ; Jan 30, 2000
-   "dd MMM uuuu"        ; 30 Jan 2000
-   "dd MMM, uuuu"       ; 30 Jan, 2000
+  ["MMM d uuuu"         ; Jan 30 2000
+   "MMM d, uuuu"        ; Jan 30, 2000
+   "d MMM uuuu"         ; 30 Jan 2000
+   "d MMM, uuuu"        ; 30 Jan, 2000
    "MMMM d uuuu"        ; January 30 2000
    "MMMM d, uuuu"       ; January 30, 2000
    "d MMMM uuuu"        ; 30 January 2000
@@ -65,10 +65,10 @@
 
   Supported formats:
     - yyyy-MM-dd
-    - MMM dd yyyy
-    - MMM dd, yyyy
-    - dd MMM yyyy
-    - dd MMM, yyyy
+    - MMM d yyyy
+    - MMM d, yyyy
+    - d MMM yyyy
+    - d MMM, yyyy
     - MMMM d yyyy
     - MMMM d, yyyy
     - d MMMM yyyy
@@ -162,7 +162,10 @@
 (defn- parse-as-biginteger
   "Parses a string representing a number as a java.math.BigInteger, rounding down if necessary."
   [number-separators s]
-  (biginteger (parse-number number-separators s)))
+  (let [n (parse-number number-separators s)]
+    (when-not (zero? (mod n 1))
+      (throw (IllegalArgumentException. (tru "''{0}'' is not an integer" s))))
+    (biginteger n)))
 
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` column type that will parse a string value (from a CSV) into a value

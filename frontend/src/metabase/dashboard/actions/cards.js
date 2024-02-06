@@ -30,7 +30,7 @@ export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
 let tempId = -1;
 
-function generateTemporaryDashcardId() {
+export function generateTemporaryDashcardId() {
   return tempId--;
 }
 

@@ -15,7 +15,7 @@ describe("issue 22518", () => {
         native: {
           query: "select 1 id, 'a' foo",
         },
-        dataset: true,
+        type: "model",
       },
       { visitQuestion: true },
     );

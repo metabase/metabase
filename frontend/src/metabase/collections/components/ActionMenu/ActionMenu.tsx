@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { connect } from "react-redux";
 import EventSandbox from "metabase/components/EventSandbox";
 import { getSetting } from "metabase/selectors/settings";
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   canArchiveItem,
   canMoveItem,
@@ -121,7 +120,6 @@ function ActionMenu({
         onArchive={canArchive ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
         onTogglePreview={canPreview ? handleTogglePreview : null}
-        analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>
   );

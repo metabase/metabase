@@ -349,10 +349,6 @@ export const getQuestion = createSelector(
   },
 );
 
-function isQuestionEditable(question) {
-  return question ? question.isQueryEditable() : false;
-}
-
 function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
   return Lib.areLegacyQueriesEqual(
     queryA,
@@ -446,10 +442,12 @@ export const getIsResultDirty = createSelector(
     tableMetadata,
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
+    const isEditable =
+      question && Lib.queryDisplayInfo(question.query()).isEditable;
 
     return (
       haveParametersChanged ||
-      (isQuestionEditable(question) &&
+      (isEditable &&
         !areQueriesEquivalent({
           originalQuestion,
           lastRunQuestion,
@@ -577,7 +575,8 @@ export const getIsRunnable = createSelector(
       return false;
     }
     if (!question.isSaved() || isDirty) {
-      return question.canRun() && question.isQueryEditable();
+      const { isEditable } = Lib.queryDisplayInfo(question.query());
+      return question.canRun() && isEditable;
     }
     return question.canRun();
   },
@@ -640,7 +639,11 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       return isSavedQuestionChanged;
     }
 
-    if (originalQuestion?.isStructured()) {
+    const isOriginalQuestionNative =
+      originalQuestion &&
+      Lib.queryDisplayInfo(originalQuestion.query()).isNative;
+
+    if (!isOriginalQuestionNative) {
       return uiControls.isModifiedFromNotebook;
     }
 
@@ -991,3 +994,33 @@ export const getIsEditingInDashboard = state => {
 export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
 };
+
+export const canUploadToQuestion = question => state => {
+  const uploadsEnabled = getSetting(state, "uploads-enabled");
+  if (!uploadsEnabled) {
+    return false;
+  }
+  const uploadsDbId = getSetting(state, "uploads-database-id");
+  const canUploadToDb =
+    uploadsDbId === question.databaseId() &&
+    Databases.selectors
+      .getObject(state, {
+        entityId: uploadsDbId,
+      })
+      ?.canUpload();
+  return canUploadToDb;
+};
+
+export const getTemplateTags = createSelector([getCard], card =>
+  getIn(card, ["dataset_query", "native", "template-tags"]),
+);
+
+export const getRequiredTemplateTags = createSelector(
+  [getTemplateTags],
+  templateTags =>
+    templateTags
+      ? Object.keys(templateTags)
+          .filter(key => templateTags[key].required)
+          .map(key => templateTags[key])
+      : [],
+);

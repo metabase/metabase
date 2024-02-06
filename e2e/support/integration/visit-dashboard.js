@@ -34,7 +34,7 @@ const questionDetails = {
 const modelDetails = {
   name: "GUI Model",
   query: { "source-table": PRODUCTS_ID },
-  dataset: true,
+  type: "model",
 };
 
 const pivotTable = {

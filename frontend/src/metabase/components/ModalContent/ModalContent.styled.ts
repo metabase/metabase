@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 
@@ -15,13 +16,21 @@ export const HeaderContainer = styled.div`
   align-items: center;
 `;
 
-export const HeaderText = styled.h2`
+export const HeaderText = styled.h2<{
+  textCentered?: boolean;
+}>`
   font-weight: 700;
 
   flex-grow: 1;
 
   display: flex;
   align-items: center;
+
+  ${({ textCentered }) =>
+    textCentered &&
+    css`
+      justify-content: center;
+    `}
 `;
 
 export const ActionsWrapper = styled.div`
@@ -40,4 +49,32 @@ export const ModalContentActionIcon = styled(Icon)`
   &:hover {
     color: ${color("text-medium")};
   }
+`;
+
+export const ModalHeaderBackIcon = styled(ModalContentActionIcon)`
+  flex-shrink: 0;
+
+  margin: -0.5rem 0 -0.5rem -0.5rem;
+
+  :hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const HeaderTextContainer = styled.div<{
+  onClick?: () => void;
+}>`
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  flex-grow: 1;
+
+  ${({ onClick }) =>
+    onClick &&
+    css`
+      &:hover > * {
+        color: ${color("brand")};
+        cursor: pointer;
+      }
+    `}
 `;

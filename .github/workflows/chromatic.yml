@@ -20,9 +20,9 @@ jobs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
+        uses: dorny/paths-filter@v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Prepare front-end environment

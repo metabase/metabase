@@ -146,7 +146,8 @@
     {:name       "hydrate-card-details"
      :attributes {:card/id card-id}}
     (-> card
-        (t2/hydrate :creator
+        (t2/hydrate :based_on_upload
+                    :creator
                     :dashboard_count
                     :can_write
                     :average_query_time
@@ -155,7 +156,7 @@
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card
-          (:dataset card) (t2/hydrate :persisted)))))
+          (card/model? card) (t2/hydrate :persisted)))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
@@ -383,12 +384,14 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
+
 (api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset dataset_query description display name
-                parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
+                parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
    dataset                [:maybe :boolean]
+   type                   [:maybe card/CardTypes]
    dataset_query          ms/Map
    parameters             [:maybe [:sequential ms/Parameter]]
    parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
@@ -440,13 +443,14 @@
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
-                   cache_ttl dataset collection_preview]
+                   cache_ttl dataset collection_preview type]
             :as   card-updates} :body}]
   {id                     ms/PositiveInt
    name                   [:maybe ms/NonBlankString]
    parameters             [:maybe [:sequential ms/Parameter]]
    dataset_query          [:maybe ms/Map]
    dataset                [:maybe :boolean]
+   type                   [:maybe card/CardTypes]
    display                [:maybe ms/NonBlankString]
    description            [:maybe :string]
    visualization_settings [:maybe ms/Map]
@@ -458,8 +462,11 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
-  (let [card-before-update (t2/hydrate (api/write-check Card id)
-                                       [:moderation_reviews :moderator_details])]
+  (let [card-before-update     (t2/hydrate (api/write-check Card id)
+                                           [:moderation_reviews :moderator_details])
+        is-model-after-update? (if (and (nil? type) (nil? dataset))
+                                 (card/model? card-before-update)
+                                 (card/model? (card/ensure-type-and-dataset-are-consistent card-updates)))]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
@@ -470,11 +477,10 @@
                                                              :query             dataset_query
                                                              :metadata          result_metadata
                                                              :original-metadata (:result_metadata card-before-update)
-                                                             :dataset?          (if (some? dataset)
-                                                                                  dataset
-                                                                                  (:dataset card-before-update))})
+                                                             :dataset?          is-model-after-update?})
           card-updates          (merge card-updates
-                                       (when dataset
+                                       (when (and (or (some? type) (some? dataset))
+                                                  is-model-after-update?)
                                          {:display :table}))
           metadata-timeout      (a/timeout card/metadata-sync-wait-ms)
           [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
@@ -702,7 +708,7 @@
   [card-id]
   {card-id ms/PositiveInt}
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [{:keys [dataset database_id] :as card} (t2/select-one Card :id card-id)]
+  (api/let-404 [{:keys [database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
       (when-not (driver/database-supports? (:engine database)
@@ -715,7 +721,7 @@
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not dataset
+      (when-not (card/model? card)
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
       (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
@@ -727,7 +733,7 @@
   {card-id ms/PositiveInt}
   (api/let-404 [card           (t2/select-one Card :id card-id)
                 persisted-info (t2/select-one PersistedInfo :card_id card-id)]
-    (when (not (:dataset card))
+    (when (not (card/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))

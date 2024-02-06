@@ -1,5 +1,5 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
-import type * as React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -53,8 +53,9 @@ interface OwnProps {
   parameters?: Parameter[];
   parameterValues?: ParameterValues;
   draftParameterValues?: ParameterValues;
+  hiddenParameterSlugs?: string;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface StateProps {
@@ -94,6 +95,7 @@ function EmbedFrame({
   parameters,
   parameterValues,
   draftParameterValues,
+  hiddenParameterSlugs,
   setParameterValue,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
@@ -109,6 +111,10 @@ function EmbedFrame({
     hide_parameters,
     hide_download_button,
   } = parseHashOptions(location.hash) as HashOptions;
+
+  const hideParameters = [hide_parameters, hiddenParameterSlugs]
+    .filter(Boolean)
+    .join(",");
 
   const showFooter =
     hasEmbedBranding || (!hide_download_button && actionButtons);
@@ -151,7 +157,7 @@ function EmbedFrame({
                       : draftParameterValues,
                   )}
                   setParameterValue={setParameterValue}
-                  hideParameters={hide_parameters}
+                  hideParameters={hideParameters}
                 />
                 {dashboard && <FilterApplyButton />}
               </ParametersWidgetContainer>

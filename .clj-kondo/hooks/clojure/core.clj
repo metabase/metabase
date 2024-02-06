@@ -21,7 +21,9 @@
      toucan2.core/delete!
      toucan2.core/update!
      toucan2.core/insert!
+     toucan2.core/insert-returning-instance!
      toucan2.core/insert-returning-instances!
+     toucan2.core/insert-returning-pk!
      toucan2.core/insert-returning-pks!
      clojure.core.async/<!!
      clojure.core.async/>!!

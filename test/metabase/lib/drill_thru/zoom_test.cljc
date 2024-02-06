@@ -4,7 +4,25 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]))
+
+(deftest ^:parallel zoom-availability-test
+  (testing "zoom drill is available for cell clicks on non-FKs in tables with only 1 PK, and the PK in the result set"
+    (canned/canned-test
+      :drill-thru/zoom
+      (fn [test-case {:keys [value]} {:keys [click column-type]}]
+        (and (= click :cell)
+             ;; With an FK column and a non-NULL value, this will be an fk-filter drill instead.
+             ;; So we don't expect a zoom drill in that case.
+             (not (and (= column-type :fk)
+                       (some? value)
+                       (not= value :null)))
+             ;; PK must be in the result set; if not, no zoom drill. This happens for eg. aggregations.
+             ((set (keys (:row test-case))) "ID")
+             ;; Special case: clicking a NULL PK does not return the zoom drill.
+             (not (and (= value :null)
+                       (= column-type :pk))))))))
 
 (deftest ^:parallel returns-zoom-test-1
   (lib.drill-thru.tu/test-returns-drill

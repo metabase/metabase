@@ -97,7 +97,8 @@
                   (case changes
                     :none  "no longer has any perms"
                     :all   "now has full data perms"
-                    :block "is now BLOCKED from all non-data-perms access")
+                    :block "is now BLOCKED from all non-data-perms access"
+                    :impersonated "is now using connection impersonation")
                   database-id)
       (delete-gtaps-with-condition! group-id [:= :table.db_id database-id]))
     (doseq [schema-name (set (keys changes))]
