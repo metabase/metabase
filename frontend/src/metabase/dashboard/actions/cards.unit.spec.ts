@@ -123,17 +123,16 @@ const DASHBOARD = createMockDashboard({
   parameters: [DATE_PARAMETER, NUMERIC_PARAMETER, UNUSED_PARAMETER],
 });
 
-type RunActionOpts = {
-  dashcardId: DashCardId;
-  nextCardId: CardId;
+type SetupOpts = {
   dashcards?: StoreDashcard[];
 };
 
-async function runAction({
-  dashcardId,
-  nextCardId,
-  dashcards = DASHCARDS,
-}: RunActionOpts) {
+function setup({ dashcards = DASHCARDS }: Pick<SetupOpts, "dashcards"> = {}) {
+  setupCardsEndpoints([ORDERS_TABLE_CARD, ORDERS_LINE_CHART_CARD]);
+  setupCardQueryEndpoints(ORDERS_TABLE_CARD, createMockDataset());
+  setupCardQueryEndpoints(ORDERS_LINE_CHART_CARD, createMockDataset());
+  setupDatabasesEndpoints([createSampleDatabase()]);
+
   const dashboardState = createMockDashboardState({
     dashboardId: DASHBOARD.id,
     dashboards: {
@@ -149,28 +148,41 @@ async function runAction({
     createMockState({ dashboard: dashboardState }),
   ) as Store<State>;
 
-  setupCardsEndpoints([ORDERS_TABLE_CARD, ORDERS_LINE_CHART_CARD]);
-  setupCardQueryEndpoints(ORDERS_TABLE_CARD, createMockDataset());
-  setupCardQueryEndpoints(ORDERS_LINE_CHART_CARD, createMockDataset());
-  setupDatabasesEndpoints([createSampleDatabase()]);
-
-  await replaceCard({ dashcardId, nextCardId })(store.dispatch, store.getState);
-  const nextState = store.getState();
-
-  const dispatchSpy = jest.spyOn(store, "dispatch");
-  const cardQueryEndpointSpy = jest.spyOn(CardApi, "query");
-
-  return {
-    nextDashCard: getDashCardById(nextState, dashcardId),
-    dispatchSpy,
-    cardQueryEndpointSpy,
-  };
+  return { store };
 }
 
 describe("dashboard/actions/cards", () => {
   describe("replaceCard", () => {
+    type RunReplaceCardOpts = SetupOpts & {
+      dashcardId: DashCardId;
+      nextCardId: CardId;
+    };
+
+    async function runReplaceCardAction({
+      dashcardId,
+      nextCardId,
+      ...opts
+    }: RunReplaceCardOpts) {
+      const { store } = setup(opts);
+
+      await replaceCard({ dashcardId, nextCardId })(
+        store.dispatch,
+        store.getState,
+      );
+      const nextState = store.getState();
+
+      const dispatchSpy = jest.spyOn(store, "dispatch");
+      const cardQueryEndpointSpy = jest.spyOn(CardApi, "query");
+
+      return {
+        nextDashCard: getDashCardById(nextState, dashcardId),
+        dispatchSpy,
+        cardQueryEndpointSpy,
+      };
+    }
+
     it("should correctly update the dashcard", async () => {
-      const { nextDashCard } = await runAction({
+      const { nextDashCard } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
@@ -192,7 +204,7 @@ describe("dashboard/actions/cards", () => {
     });
 
     it("should run a new card query", async () => {
-      const { cardQueryEndpointSpy } = await runAction({
+      const { cardQueryEndpointSpy } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
@@ -222,7 +234,7 @@ describe("dashboard/actions/cards", () => {
         }),
       );
 
-      const { nextDashCard } = await runAction({
+      const { nextDashCard } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: nextCardId,
         dashcards: [...DASHCARDS, PIE_CHART_DASHCARD],
@@ -234,7 +246,7 @@ describe("dashboard/actions/cards", () => {
     });
 
     it("should handle placeholder cards", async () => {
-      const { nextDashCard } = await runAction({
+      const { nextDashCard } = await runReplaceCardAction({
         dashcardId: PLACEHOLDER_DASHCARD.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
@@ -260,7 +272,7 @@ describe("dashboard/actions/cards", () => {
       ["text", TEXT_DASHCARD],
       ["link", LINK_DASHCARD],
     ])("should ignore %s dashboard cards", async (_, dashcard) => {
-      const { nextDashCard, dispatchSpy } = await runAction({
+      const { nextDashCard, dispatchSpy } = await runReplaceCardAction({
         dashcardId: dashcard.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
