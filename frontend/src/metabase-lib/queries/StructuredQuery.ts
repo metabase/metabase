@@ -273,19 +273,6 @@ class StructuredQuery extends AtomicQuery {
     return this; // TODO
   }
 
-  /**
-   * If this query is empty and there's a source-query, strip off this query, returning the source-query
-   */
-  cleanEmpty(): StructuredQuery {
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery && !this.hasAnyClauses()) {
-      return sourceQuery;
-    } else {
-      return this;
-    }
-  }
-
   isValid() {
     if (!this.hasData()) {
       return false;
