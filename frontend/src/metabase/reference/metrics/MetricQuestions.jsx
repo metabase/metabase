@@ -77,17 +77,19 @@ export const MetricQuestions = ({ style, table, metric, metadata }) => {
           data.length > 0 ? (
             <div className="wrapper wrapper--trim">
               <List>
-                {data.map(question => {
-                  question.id() && question.displayName() && (
-                    <ListItem
-                      key={question.id()}
-                      name={question.displayName()}
-                      description={getDescription(question)}
-                      url={Urls.question(question.card())}
-                      icon={visualizations.get(question.display()).iconName}
-                    />
-                  );
-                })}
+                {data.map(
+                  question =>
+                    question.id() &&
+                    question.displayName() && (
+                      <ListItem
+                        key={question.id()}
+                        name={question.displayName()}
+                        description={getDescription(question)}
+                        url={Urls.question(question.card())}
+                        icon={visualizations.get(question.display()).iconName}
+                      />
+                    ),
+                )}
               </List>
             </div>
           ) : (
