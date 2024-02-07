@@ -63,6 +63,7 @@ describe("scenarios > dashboard cards > sections", () => {
 
     dashboardGrid().within(() => {
       getDashboardCards().should("have.length", 7);
+      cy.findAllByText("Select question").should("have.length", 0);
 
       cy.findByText("This is a heading").should("exist");
       cy.findByText("Orders, Count").should("exist");
@@ -78,6 +79,7 @@ describe("scenarios > dashboard cards > sections", () => {
 
     dashboardGrid().within(() => {
       getDashboardCards().should("have.length", 5);
+      cy.findAllByText("Select question").should("have.length", 0);
 
       cy.findByText("Line chart").should("exist");
 
