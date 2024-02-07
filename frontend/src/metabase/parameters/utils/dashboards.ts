@@ -1,5 +1,5 @@
 import _ from "underscore";
-
+import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
 import type {
@@ -114,7 +114,8 @@ export function getDashboardUiParameters(
   metadata: Metadata,
 ): UiParameter[] {
   const { parameters, dashcards } = dashboard;
-  const mappings = getMappings(dashcards as QuestionDashboardCard[]);
+  const mappableDashcards = dashcards.filter(isQuestionDashCard);
+  const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
@@ -220,7 +221,8 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(dashboard.dashcards as QuestionDashboardCard[]);
+  const mappableParameters = dashboard.dashcards.filter(isQuestionDashCard);
+  const mappings = getMappings(mappableParameters);
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );
