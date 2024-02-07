@@ -32,25 +32,27 @@ export function DelayGroup({
 }: DelayGroupProps) {
   const [shouldDelay, setShouldDelay] = useState(true);
 
-  const t = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   const value = useMemo(
     () => ({
       shouldDelay,
       onOpen() {
-        clearTimeout(t.current);
+        clearTimeout(timeoutRef.current);
         setShouldDelay(false);
       },
       onClose() {
-        clearTimeout(t.current);
-        t.current = setTimeout(() => setShouldDelay(true), timeout);
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => setShouldDelay(true), timeout);
       },
     }),
     [timeout, shouldDelay],
   );
 
   useEffect(function () {
-    return () => clearTimeout(t.current);
+    return () => clearTimeout(timeoutRef.current);
   }, []);
 
   return <context.Provider value={value}>{children}</context.Provider>;
