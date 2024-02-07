@@ -12,8 +12,7 @@ export function shouldShowParameterMapper({
 }) {
   const display = getVirtualCardType(dashcard);
   return (
-    display &&
     isEditingParameter &&
-    !VIZ_WITH_CUSTOM_MAPPING_UI.includes(display)
+    !(display && VIZ_WITH_CUSTOM_MAPPING_UI.includes(display))
   );
 }
