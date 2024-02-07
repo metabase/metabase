@@ -6,12 +6,26 @@ import type {
 import { optionsToHashParams } from "./embed";
 
 function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
-  const DEFAULT_THEME = "light";
-  const options = {
-    ...displayOptions,
-    theme: displayOptions.theme === DEFAULT_THEME ? null : displayOptions.theme,
-  };
-  return JSON.stringify(optionsToHashParams(options));
+  return JSON.stringify(
+    optionsToHashParams(
+      removeDefaultValueParameters(displayOptions, {
+        theme: "light",
+        hide_download_button: false,
+      }),
+    ),
+  );
+}
+
+function removeDefaultValueParameters(
+  options: EmbeddingDisplayOptions,
+  defaultValues: Partial<EmbeddingDisplayOptions>,
+): Partial<EmbeddingDisplayOptions> {
+  return Object.fromEntries(
+    Object.entries(options).filter(
+      ([key, value]) =>
+        value !== defaultValues[key as keyof EmbeddingDisplayOptions],
+    ),
+  );
 }
 
 export const node = {
