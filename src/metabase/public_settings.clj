@@ -115,12 +115,12 @@
 
 <<<<<<< HEAD
 (defsetting default-browse-tab
-  (deferred-tru "Which tab is shown by default when this user visits the Browse Data page. Can be 'models', 'databases', or '' (meaning no known preference)")
+  (deferred-tru "Which tab is shown by default when this user visits the Browse Data page. Can be 'models', 'databases', or nil.")
   :user-local :only
   :visibility :authenticated
   :type       :string
   :export?    true
-  :default    ""
+  :default    nil
   :audit      :never)
 
 (defsetting only-show-verified-models-in-browse-data

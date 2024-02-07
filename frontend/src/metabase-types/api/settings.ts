@@ -204,7 +204,7 @@ export interface Settings {
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": number | null;
-  "default-browse-tab"?: "models" | "databases" | null;
+  "default-browse-tab": string | null;
   "deprecation-notice-version"?: string;
   "dismissed-custom-dashboard-toast"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
