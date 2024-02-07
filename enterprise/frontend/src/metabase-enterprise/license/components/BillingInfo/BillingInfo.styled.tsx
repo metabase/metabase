@@ -6,10 +6,14 @@ import Card from "metabase/components/Card";
 import { Text, Icon } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 
-export const BillingErrorMessage = styled.div`
+export const BillingErrorContainer = styled.div`
   margin-top: 0.5rem;
   white-space: nowrap;
   color: ${color("error")};
+`;
+
+export const BillingErrorMessage = styled.div`
+  margin-top: 1rem;
 `;
 
 export const BillingInfoCard = styled(Card)`
