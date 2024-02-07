@@ -124,7 +124,8 @@
                             :success       (nil? @err)
                             :error_message (some-> @err str)})
     (when @err
-      (throw @err))))
+      (throw @err))
+    imported))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -257,9 +258,9 @@
                             :success         (nil? @err)
                             :error_message   (some-> @err str)})
     (when @err
-      (throw @err)))
-  (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦"))
-  ::v2-dump-complete)
+      (throw @err))
+    (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
+    report))
 
 (defn seed-entity-ids!
   "Add entity IDs for instances of serializable models that don't already have them.
