@@ -40,6 +40,24 @@ const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   return t`Save new question`;
 };
 
+const getMultiStepTitle = (question: Question): string => {
+  const type = question.type();
+
+  if (type === "question") {
+    return t`First, save your question`;
+  }
+
+  if (type === "model") {
+    return t`First, save your model`;
+  }
+
+  if (type === "metric") {
+    return t`First, save your metric`;
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
+};
+
 const SAVE_QUESTION_SCHEMA = Yup.object({
   saveType: Yup.string(),
   name: Yup.string().when("saveType", {
@@ -171,11 +189,7 @@ export const SaveQuestionModal = ({
   };
 
   const questionType = question.isDataset() ? "model" : "question";
-
-  const multiStepTitle =
-    questionType === "question"
-      ? t`First, save your question`
-      : t`First, save your model`;
+  const multiStepTitle = getMultiStepTitle(question);
 
   const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   const showSaveType =
