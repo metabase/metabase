@@ -7,7 +7,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { isEmpty } from "metabase/lib/validate";
 import type {
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   ParameterValueOrArray,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -24,7 +24,7 @@ import {
 interface HeadingProps {
   isEditing: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   settings: VisualizationSettings;
   dashboard: Dashboard;
   parameterValues: { [id: string]: ParameterValueOrArray };
