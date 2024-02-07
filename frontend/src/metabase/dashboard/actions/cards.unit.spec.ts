@@ -281,42 +281,6 @@ describe("dashboard/actions/cards", () => {
         expectedParameterMappings,
       );
     });
-
-    it("should handle placeholder cards", async () => {
-      const { nextDashCard } = await runReplaceCardAction({
-        dashcardId: PLACEHOLDER_DASHCARD.id,
-        nextCardId: ORDERS_LINE_CHART_CARD.id,
-      });
-
-      expect(nextDashCard).toStrictEqual({
-        ...PLACEHOLDER_DASHCARD,
-        card_id: ORDERS_LINE_CHART_CARD.id,
-        card: ORDERS_LINE_CHART_CARD,
-
-        // Ensure it resets attributes that
-        // no longer make sense with a new card
-        series: [],
-        parameter_mappings: [],
-        visualization_settings: {},
-
-        // Internal state
-        isDirty: true,
-      });
-    });
-
-    it.each([
-      ["heading", HEADING_DASHCARD],
-      ["text", TEXT_DASHCARD],
-      ["link", LINK_DASHCARD],
-    ])("should ignore %s dashboard cards", async (_, dashcard) => {
-      const { nextDashCard, dispatchSpy } = await runReplaceCardAction({
-        dashcardId: dashcard.id,
-        nextCardId: ORDERS_LINE_CHART_CARD.id,
-      });
-
-      expect(nextDashCard).toEqual(dashcard);
-      expect(dispatchSpy).not.toHaveBeenCalled();
-    });
   });
 });
 
