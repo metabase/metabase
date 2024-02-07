@@ -418,31 +418,35 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       );
 
       buttons.push(
-        <LegacyTooltip key="add-section" tooltip={t`Add section`}>
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <DashboardHeaderButton aria-label={t`Add section`}>
-                <Icon name="table_spaced" size={18} />
-              </DashboardHeaderButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {layoutOptions.map(layout => (
-                <Tooltip
-                  key={layout.id}
-                  label={<SectionLayoutPreview layout={layout} />}
-                  position="left"
-                >
+        <Menu key="add-section" position="bottom-end">
+          <Menu.Target>
+            <span>
+              <LegacyTooltip tooltip={t`Add section`}>
+                <DashboardHeaderButton aria-label={t`Add section`}>
+                  <Icon name="table_spaced" size={18} />
+                </DashboardHeaderButton>
+              </LegacyTooltip>
+            </span>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {layoutOptions.map(layout => (
+              <Tooltip
+                key={layout.id}
+                label={<SectionLayoutPreview layout={layout} />}
+                position="left"
+              >
+                <span>
                   <Menu.Item
                     onClick={() => this.onAddSection(layout)}
                     fw="bold"
                   >
                     {layout.label}
                   </Menu.Item>
-                </Tooltip>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-        </LegacyTooltip>,
+                </span>
+              </Tooltip>
+            ))}
+          </Menu.Dropdown>
+        </Menu>,
       );
 
       const {
