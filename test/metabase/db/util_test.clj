@@ -17,7 +17,7 @@
   ;; It's important to test both, as only the latter has a phantom read issue and thus requires serializable isolation.
   (let [columns [:key :value]]
     (doseq [search-col columns]
-      (testing (format "Testing idempotent insertion where the search column %s a uniqueness constraint in the db"
+      (testing (format "When the search column %s a uniqueness constraint in the db"
                        (if (= :key search-col) "has" "does not have"))
 
         ;; We cannot use with-temp, as it starts its own transaction, which stops us setting the isolation level.
@@ -45,13 +45,13 @@
               (let [result-keys (mapv deref @promises)
                     latest-key  (t2/select-one-pk Setting search-col search-value)]
 
-                (testing "Every call returns the same row"
-                  (is (= (repeat threads latest-key) result-keys)))
+                (testing "every call returns the same row"
+                  (is (= [latest-key] (distinct result-keys))))
 
-                (testing "We have not inserted any duplicates"
+                (testing "we never insert any duplicates"
                   (is (= 1 (count (t2/select Setting search-col search-value)))))
 
-                (testing "Later calls will just return the existing row as well"
+                (testing "later calls will return the existing row"
                   (is (= latest-key (thunk)))
                   (is (= 1 (count (t2/select Setting search-col search-value)))))))
 
