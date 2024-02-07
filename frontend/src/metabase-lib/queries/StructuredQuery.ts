@@ -323,11 +323,6 @@ class StructuredQuery extends AtomicQuery {
     return this.breakouts().length > 0;
   }
 
-  hasLimit(stageIndex = this.queries().length - 1) {
-    const query = this.getMLv2Query();
-    return Lib.hasLimit(query, stageIndex);
-  }
-
   _hasFields() {
     return this.fields().length > 0;
   }
