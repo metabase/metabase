@@ -44,10 +44,6 @@ export function removeFilter(filter, index) {
 export function clearFilters(filter) {
   return getFilterClause(clear());
 }
-export function clearSegments(filters) {
-  const newFilters = filters.filter(f => !isSegment(f));
-  return getFilterClause(newFilters);
-}
 
 // MISC
 
