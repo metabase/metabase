@@ -732,21 +732,21 @@
                            [:table_id      [:maybe ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization
                            [:is_upload {:optional true} [:maybe :boolean]]]]]
-  (let [table-ids            (->> models
-                                  ;; as an optimization when listing collection items (GET /api/collection/items),
-                                  ;; we might already know that the table is not an upload if is_upload=false. We
-                                  ;; can skip making more queries if so
-                                  (remove #(false? (:is_upload %)))
-                                  (keep :table_id)
-                                  set)
-        mbql?               (fn [model] (= "query" (name (:query_type model "query"))))
-        uploadable?          (comp (uploadable-table-ids table-ids) :table_id)]
+  (let [table-ids             (->> models
+                                   ;; as an optimization when listing collection items (GET /api/collection/items),
+                                   ;; we might already know that the table is not an upload if is_upload=false. We
+                                   ;; can skip making more queries if so
+                                   (remove #(false? (:is_upload %)))
+                                   (keep :table_id)
+                                   set)
+        mbql?                 (fn [model] (= "query" (name (:query_type model "query"))))
+        has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
       (m/assoc-some
         model
         :based_on_upload
         (when-let [query (some-> model :dataset_query lib/->pMBQL)]
-          (when (and (query? model) (uploadable? model) (no-joins? query))
+          (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
             (lib/source-table-id query)))))))
 
 (mi/define-batched-hydration-method based-on-upload
@@ -759,6 +759,6 @@
     - uploads are enabled
   Otherwise based_on_upload is nil."
   [cards]
-  (let [id->model   (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))
-        card->model (comp id->model :id)]
-    (map #(or (card->model %) %) cards)))
+  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))
+        card->maybe-model (comp id->model :id)]
+    (map #(or (card->maybe-model %) %) cards)))
