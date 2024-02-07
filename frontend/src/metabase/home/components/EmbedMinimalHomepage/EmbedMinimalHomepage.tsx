@@ -63,7 +63,10 @@ export const EmbedMinimalHomepage = ({
             </Link>
 
             <Text>{jt`${(
-              <ExternalLink href={learnMoreUrl}>{t`Learn more`}</ExternalLink>
+              <ExternalLink
+                href={learnMoreUrl}
+                key="link"
+              >{t`Learn more`}</ExternalLink>
             )} about embedding`}</Text>
           </Stack>
         </Stack>
