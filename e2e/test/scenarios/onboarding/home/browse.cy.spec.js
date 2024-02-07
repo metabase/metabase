@@ -48,12 +48,14 @@ describe("scenarios > browse data", () => {
     );
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByRole("tab", { name: "Databases" }).click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.log(
       "/browse/ now defaults to /browse/databases/ because it was the last tab visited",
     );
     cy.location("pathname").should("eq", "/browse/databases");
     cy.findByRole("tab", { name: "Models" }).click();
+    cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.log(
       "/browse/ now defaults to /browse/models/ because it was the last tab visited",
