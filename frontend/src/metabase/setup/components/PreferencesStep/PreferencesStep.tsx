@@ -6,7 +6,6 @@ import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { selectStep, submitSetup, updateTracking } from "../../actions";
-import { PREFERENCES_STEP } from "../../constants";
 import {
   getIsSetupCompleted,
   getIsStepActive,
@@ -31,10 +30,10 @@ export const PreferencesStep = ({
   const [errorMessage, setErrorMessage] = useState<string>();
   const isTrackingAllowed = useSelector(getIsTrackingAllowed);
   const isStepActive = useSelector(state =>
-    getIsStepActive(state, PREFERENCES_STEP),
+    getIsStepActive(state, "data_usage"),
   );
   const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, PREFERENCES_STEP),
+    getIsStepCompleted(state, "data_usage"),
   );
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
@@ -44,7 +43,7 @@ export const PreferencesStep = ({
   };
 
   const handleStepSelect = () => {
-    dispatch(selectStep(PREFERENCES_STEP));
+    dispatch(selectStep("data_usage"));
   };
 
   const handleStepSubmit = async () => {

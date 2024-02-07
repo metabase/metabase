@@ -1,31 +1,31 @@
 import LogoIcon from "metabase/components/LogoIcon";
-import { isNotFalsy } from "metabase/lib/types";
 import { useSelector } from "metabase/lib/redux";
-import { getUsageReason } from "metabase/setup/selectors";
+import { getSteps } from "metabase/setup/selectors";
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
-import { DatabaseStep } from "../DatabaseStep";
 import { CompletedStep } from "../CompletedStep";
+import { DatabaseHelp } from "../DatabaseHelp";
+import { DatabaseStep } from "../DatabaseStep";
 import { LanguageStep } from "../LanguageStep";
 import { PreferencesStep } from "../PreferencesStep";
-import { UserStep } from "../UserStep";
 import { SetupHelp } from "../SetupHelp";
-import { DatabaseHelp } from "../DatabaseHelp";
+import type { NumberedStepProps } from "../types";
 import { UsageQuestionStep } from "../UsageQuestionStep";
+import { UserStep } from "../UserStep";
 import { PageBody, PageHeader } from "./SettingsPage.styled";
 
-export const SettingsPage = (): JSX.Element => {
-  const usageReason = useSelector(getUsageReason);
+const STEP_COMPONENTS: Record<
+  string,
+  (props: NumberedStepProps) => React.ReactElement
+> = {
+  language: LanguageStep,
+  user_info: UserStep,
+  usage_question: UsageQuestionStep,
+  db_connection: DatabaseStep,
+  data_usage: PreferencesStep,
+};
 
-  const numberedSteps = [
-    { component: LanguageStep, key: "language-step" },
-    { component: UserStep, key: "user-step" },
-    { component: UsageQuestionStep, key: "usage-question-step" },
-    usageReason !== "embedding" && {
-      component: DatabaseStep,
-      key: "database-step",
-    },
-    { component: PreferencesStep, key: "preferences-step" },
-  ].filter(isNotFalsy);
+export const SettingsPage = (): JSX.Element => {
+  const steps = useSelector(getSteps);
 
   return (
     <div data-testid="setup-forms">
@@ -33,9 +33,12 @@ export const SettingsPage = (): JSX.Element => {
         <LogoIcon height={51} />
       </PageHeader>
       <PageBody>
-        {numberedSteps.map(({ component: Component, key }, index) => (
-          <Component key={key} stepLabel={index + 1} />
-        ))}
+        {steps.map(({ key }, index) => {
+          const Component = STEP_COMPONENTS[key];
+          if (Component) {
+            return <Component key={key} stepLabel={index} />;
+          }
+        })}
         <CompletedStep />
         <CloudMigrationHelp />
         <SetupHelp />

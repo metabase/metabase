@@ -28,6 +28,7 @@ import {
   getUser,
 } from "./selectors";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
+import type { SetupStep } from "./types";
 
 interface ThunkConfig {
   state: State;
@@ -69,7 +70,7 @@ export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
 );
 
 export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
-export const selectStep = createAction<number>(SELECT_STEP);
+export const selectStep = createAction<SetupStep>(SELECT_STEP);
 
 export const SUBMIT_WELCOME = "metabase/setup/SUBMIT_WELCOME_STEP";
 export const submitWelcome = createAsyncThunk(SUBMIT_WELCOME, () => {

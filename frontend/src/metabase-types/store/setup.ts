@@ -1,4 +1,5 @@
 import type { DatabaseData, UsageReason } from "metabase-types/api";
+import type { SetupStep } from "metabase/setup/types";
 
 export interface Locale {
   name: string;
@@ -25,7 +26,7 @@ export interface SubscribeInfo {
 }
 
 export interface SetupState {
-  step: number;
+  step: SetupStep;
   locale?: Locale;
   user?: UserInfo;
   usageReason?: UsageReason;

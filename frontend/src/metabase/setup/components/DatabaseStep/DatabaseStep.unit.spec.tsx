@@ -5,18 +5,18 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
 import { renderWithProviders, screen } from "__support__/ui";
-import { DATABASE_STEP, PREFERENCES_STEP } from "../../constants";
 import { DatabaseStep } from "./DatabaseStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
   database?: DatabaseData;
   isEmailConfigured?: boolean;
 }
 
 const setup = ({
-  step = DATABASE_STEP,
+  step = "db_connection",
   database,
   isEmailConfigured = false,
 }: SetupOpts = {}) => {
@@ -44,7 +44,7 @@ describe("DatabaseStep", () => {
 
   it("should render in completed state", () => {
     setup({
-      step: PREFERENCES_STEP,
+      step: "data_usage",
       database: createMockDatabaseData({ name: "Test" }),
     });
 
