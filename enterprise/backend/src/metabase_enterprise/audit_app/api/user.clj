@@ -14,15 +14,15 @@
 
 (api/defendpoint GET "/audit-info"
   "Gets audit info for the current user if he has permissions to access the audit collection.
-  Otherwise return an empty response."
+  Otherwise return an empty map."
   []
-  (when (mi/can-read? (audit-db/default-audit-collection))
-    (let [custom-reports     (audit-db/default-custom-reports-collection)
-          question-overview  (audit-db/entity-id->object :model/Dashboard audit-db/default-question-overview-entity-id)
-          dashboard-overview (audit-db/entity-id->object :model/Dashboard audit-db/default-dashboard-overview-entity-id)]
-      {(:slug custom-reports)                 (:id custom-reports)
-       (u/slugify (:name question-overview))  (:id question-overview)
-       (u/slugify (:name dashboard-overview)) (:id dashboard-overview)})))
+  (let [custom-reports     (audit-db/default-custom-reports-collection)
+        question-overview  (audit-db/entity-id->object :model/Dashboard audit-db/default-question-overview-entity-id)
+        dashboard-overview (audit-db/entity-id->object :model/Dashboard audit-db/default-dashboard-overview-entity-id)]
+    (cond-> {}
+      (mi/can-read? (audit-db/default-custom-reports-collection)) (assoc (:slug custom-reports) (:id custom-reports))
+      (mi/can-read? (audit-db/default-audit-collection)) (assoc (u/slugify (:name question-overview)) (:id question-overview)
+                                                                (u/slugify (:name dashboard-overview)) (:id dashboard-overview)))))
 
 (api/defendpoint DELETE "/:id/subscriptions"
   "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
