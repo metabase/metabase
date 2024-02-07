@@ -1,5 +1,14 @@
-import { createMockDatabase } from "metabase-types/api/mocks";
+import fetchMock from "fetch-mock";
+import {
+  createMockDatabase,
+  createMockSettingDefinition,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import type Database from "metabase-lib/metadata/Database";
 import { BrowseDatabases } from "./BrowseDatabases";
 
@@ -18,6 +27,11 @@ const mockDatabases = [...Array(100)].map(
 );
 
 describe("BrowseDatabases", () => {
+  beforeEach(() => {
+    setupPropertiesEndpoints(createMockSettings());
+    setupSettingsEndpoints([createMockSettingDefinition()]);
+    fetchMock.put("path:/api/setting/default-browse-tab", 200);
+  });
   afterEach(() => {
     jest.restoreAllMocks();
   });
