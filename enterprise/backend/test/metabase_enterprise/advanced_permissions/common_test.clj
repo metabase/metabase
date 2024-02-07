@@ -30,7 +30,7 @@
       (perms.test-util/with-no-data-perms-for-all-users!
         (perms.test-util/with-restored-perms!
           (perms.test-util/with-restored-data-perms!
-            (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
+            (@#'perms/update-group-permissions! all-users-group-id graph)
             (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
             (f)))))))
 

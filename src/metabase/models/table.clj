@@ -13,6 +13,8 @@
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
+   [metabase.public-settings.premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -93,22 +95,23 @@
 
 (defmethod mi/can-read? :model/Table
   ([instance]
-   (contains? #{:unrestricted :no-self-service}
-              (data-perms/table-permission-for-user
-               api/*current-user-id*
-               :perms/data-access
-               (:db_id instance)
-               (:id instance))))
+   (= :unrestricted (data-perms/table-permission-for-user
+                     api/*current-user-id*
+                     :perms/data-access
+                     (:db_id instance)
+                     (:id instance))))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 
+(defenterprise current-user-can-write-table?
+  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  metabase-enterprise.advanced-permissions.common
+  [_instance]
+  (mi/superuser?))
+
 (defmethod mi/can-write? :model/Table
   ([instance]
-   (= :yes (data-perms/table-permission-for-user
-            api/*current-user-id*
-            :perms/manage-table-metadata
-            (:db_id instance)
-            (:id instance))))
+   (current-user-can-write-table? instance))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
 
