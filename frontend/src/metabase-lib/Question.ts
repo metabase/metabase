@@ -1012,6 +1012,7 @@ class Question {
       display: this._card.display,
       parameters: this._card.parameters,
       dataset: this._card.dataset,
+      type: this._card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
