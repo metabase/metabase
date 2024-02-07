@@ -13,6 +13,7 @@ import {
   TitleContainer,
   RemoveButton,
   Root,
+  InfoIcon,
 } from "./BreakoutColumnListItem.styled";
 
 const STAGE_INDEX = -1;
@@ -87,6 +88,7 @@ export function BreakoutColumnListItem({
         <TitleContainer>
           <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
+          <InfoIcon name="info_filled" />
         </TitleContainer>
         {renderBucketPicker()}
         {isSelected && (

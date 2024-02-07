@@ -32,6 +32,19 @@ export const TitleContainer = styled.div`
   margin-left: 0.5rem;
   padding: 0.5rem 0;
   flex-grow: 1;
+
+  position: relative;
+`;
+
+export const InfoIcon = styled(Icon)`
+  position: absolute;
+  right: 0;
+  opacity: 0;
+  padding: 0 0.5em;
+
+  ${Content}:hover & {
+    opacity: 1;
+  }
 `;
 
 export const RemoveButton = styled(Button)`
