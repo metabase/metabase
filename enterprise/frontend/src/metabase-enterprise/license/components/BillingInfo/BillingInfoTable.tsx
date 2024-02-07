@@ -101,12 +101,8 @@ function BillingInfoRow({
 export const BillingInfoTable = ({
   billingInfo,
 }: {
-  billingInfo?: BillingInfo | null;
+  billingInfo: BillingInfo;
 }) => {
-  if (!billingInfo || !billingInfo.content || !billingInfo.content.length) {
-    return null;
-  }
-
   return (
     <>
       <SectionHeader>{t`Billing`}</SectionHeader>

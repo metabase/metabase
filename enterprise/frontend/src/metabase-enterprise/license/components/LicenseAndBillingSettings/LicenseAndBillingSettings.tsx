@@ -116,7 +116,7 @@ const LicenseAndBillingSettings = ({
     );
   }
 
-  const hasToken = !!token || is_env_setting;
+  const hasToken = Boolean(!!token || is_env_setting);
   const description = getDescription(tokenStatus, hasToken);
 
   const shouldShowLicenseInput =
@@ -128,6 +128,7 @@ const LicenseAndBillingSettings = ({
     <SettingsLicenseContainer data-testid="license-and-billing-content">
       <BillingInfo
         isStoreManagedBilling={isStoreManagedBilling}
+        hasToken={hasToken}
         billingInfo={billingInfo}
         error={billingError}
       />

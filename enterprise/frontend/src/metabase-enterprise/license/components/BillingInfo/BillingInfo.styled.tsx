@@ -54,3 +54,19 @@ export const BillingExternalLink = styled(ExternalLink)(linkStyles);
 export const BillingExternalLinkIcon = styled(Icon)`
   margin-left: 0.25rem;
 `;
+
+export const StoreButtonLink = styled(ExternalLink)`
+  display: inline-flex;
+  background-color: ${color("brand")};
+  color: ${color("text-white")};
+  align-items: center;
+  font-weight: bold;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  border-radius: 6px;
+
+  &:hover {
+    opacity: 0.88;
+    transition: all 200ms linear;
+  }
+`;

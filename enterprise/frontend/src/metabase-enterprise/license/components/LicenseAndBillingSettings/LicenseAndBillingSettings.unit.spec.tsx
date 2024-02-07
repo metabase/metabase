@@ -266,6 +266,15 @@ describe("LicenseAndBilling", () => {
     ).toBeDisabled();
   });
 
+  it("does not render an input when token has hosting feature enabled", async () => {
+    mockTokenStatus(true, ["hosting"]);
+    renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
+    expect(
+      await screen.findByText("Go to the Metabase Store"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("license-input")).not.toBeInTheDocument();
+  });
+
   it("shows an error when entered license is not valid", async () => {
     mockTokenNotExist();
     mockUpdateToken(false);
