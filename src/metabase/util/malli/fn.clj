@@ -305,7 +305,7 @@
   (let [m (meta namespace)]
     (cond (:instrument/always m) true
           (:instrument/never m)  false
-          :else                  true)))
+          :else                  false)))
 
 (def ^:private ^:dynamic *skip-ns-decision-fn*
   "Returns true to skip the emission of malli schema validation code in mu.fn/fn and mu/defn."
