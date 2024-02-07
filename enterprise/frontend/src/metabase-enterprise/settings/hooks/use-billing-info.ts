@@ -1,22 +1,21 @@
-import { t } from "ttag";
 import { useEffect, useReducer } from "react";
 import { StoreApi } from "metabase/services";
 import type { BillingInfo } from "metabase-types/api";
 
 type UseBillingAction =
   | { type: "SET_LOADING" }
-  | { type: "SET_ERROR"; payload: string }
+  | { type: "SET_ERROR" }
   | { type: "SET_DATA"; payload: BillingInfo };
 
 type UseBillingState =
-  | { loading: false; error: undefined; billingInfo: undefined }
-  | { loading: true; error: undefined; billingInfo: undefined }
-  | { loading: false; error: string; billingInfo: undefined }
-  | { loading: false; error: undefined; billingInfo: BillingInfo };
+  | { loading: false; error: false; billingInfo: undefined }
+  | { loading: true; error: false; billingInfo: undefined }
+  | { loading: false; error: true; billingInfo: undefined }
+  | { loading: false; error: false; billingInfo: BillingInfo };
 
 const defaultState: UseBillingState = {
   loading: false,
-  error: undefined,
+  error: false,
   billingInfo: undefined,
 };
 
@@ -26,11 +25,11 @@ function reducer(
 ): UseBillingState {
   switch (action.type) {
     case "SET_LOADING":
-      return { loading: true, error: undefined, billingInfo: undefined };
+      return { loading: true, error: false, billingInfo: undefined };
     case "SET_ERROR":
-      return { loading: false, error: action.payload, billingInfo: undefined };
+      return { loading: false, error: true, billingInfo: undefined };
     case "SET_DATA":
-      return { loading: false, error: undefined, billingInfo: action.payload };
+      return { loading: false, error: false, billingInfo: action.payload };
     default: {
       const _exhaustiveCheck: never = action;
       throw Error(
@@ -41,7 +40,9 @@ function reducer(
   }
 }
 
-export const useBillingInfo = (isTokenValid: boolean): UseBillingState => {
+export const useBillingInfo = (
+  shouldFetchBillingInfo: boolean,
+): UseBillingState => {
   const [state, dispatch] = useReducer(reducer, defaultState);
 
   useEffect(() => {
@@ -57,19 +58,19 @@ export const useBillingInfo = (isTokenValid: boolean): UseBillingState => {
         }
       } catch (err: any) {
         if (!cancelled) {
-          dispatch({ type: "SET_ERROR", payload: t`An error occurred` });
+          dispatch({ type: "SET_ERROR" });
         }
       }
     };
 
-    if (isTokenValid) {
+    if (shouldFetchBillingInfo) {
       fetchBillingInfo();
     }
 
     return () => {
       cancelled = true;
     };
-  }, [isTokenValid]);
+  }, [shouldFetchBillingInfo]);
 
   return state;
 };

@@ -54,3 +54,7 @@ export const isUnsupportedInternalLink = (lineItem: BillingInfoLineItem) => {
     ? !internalLinkMap[lineItem.link]
     : false;
 };
+
+export const getBillingInfoId = (lineItem: BillingInfoLineItem) => {
+  return lineItem.name.toLowerCase().replaceAll(" ", "-");
+};

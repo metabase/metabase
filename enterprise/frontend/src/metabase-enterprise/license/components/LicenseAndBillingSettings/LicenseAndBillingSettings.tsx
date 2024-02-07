@@ -93,11 +93,16 @@ const LicenseAndBillingSettings = ({
   const isInvalidToken =
     !!licenseError || (tokenStatus != null && !tokenStatus.isValid);
 
+  const isStoreManagedBilling =
+    tokenStatus?.features?.has(STORE_MANAGED_FEATURE_KEY) ?? false;
+  const shouldFetchBillingInfo =
+    !licenseLoading && !isInvalidToken && isStoreManagedBilling;
+
   const {
     loading: billingLoading,
     error: billingError,
     billingInfo,
-  } = useBillingInfo(!licenseLoading && !isInvalidToken);
+  } = useBillingInfo(shouldFetchBillingInfo);
 
   const isLoading = licenseLoading || billingLoading;
 
@@ -111,10 +116,8 @@ const LicenseAndBillingSettings = ({
     );
   }
 
-  const description = getDescription(tokenStatus, !!token);
-
-  const isStoreManagedBilling =
-    tokenStatus?.features?.has(STORE_MANAGED_FEATURE_KEY) ?? false;
+  const hasToken = !!token || is_env_setting;
+  const description = getDescription(tokenStatus, hasToken);
 
   const shouldShowLicenseInput =
     !tokenStatus?.features?.has(HOSTING_FEATURE_KEY);
