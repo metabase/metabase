@@ -891,13 +891,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeFilter, arguments);
   }
 
-  /**
-   * @returns {StructuredQuery} new query with all filters removed.
-   */
-  clearFilters() {
-    return this._updateQuery(Q.clearFilters, arguments);
-  }
-
   // EXPRESSIONS
   expressions = _.once((): ExpressionClause => {
     return Q.getExpressions(this.legacyQuery({ useStructuredQuery: true }));

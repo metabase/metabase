@@ -84,8 +84,6 @@ export const updateFilter = (query, index, filter) =>
   setFilterClause(query, F.updateFilter(query.filter, index, filter));
 export const removeFilter = (query, index) =>
   setFilterClause(query, F.removeFilter(query.filter, index));
-export const clearFilters = query =>
-  setFilterClause(query, F.clearFilters(query.filter));
 
 export const canAddFilter = query => F.canAddFilter(query.filter);
 
