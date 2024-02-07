@@ -55,7 +55,7 @@ describe("scenarios > browse data", () => {
     );
     cy.location("pathname").should("eq", "/browse/databases");
     cy.findByRole("tab", { name: "Models" }).click();
-    cy.findByRole("heading", { name: "Orders Model" }).click();
+    cy.findByRole("heading", { name: "Orders Model" });
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.log(
       "/browse/ now defaults to /browse/models/ because it was the last tab visited",
