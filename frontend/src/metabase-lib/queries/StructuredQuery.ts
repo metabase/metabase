@@ -315,10 +315,6 @@ class StructuredQuery extends AtomicQuery {
     return !!this.table();
   }
 
-  hasFilters() {
-    return this.filters().length > 0;
-  }
-
   hasAggregations() {
     return this.aggregations().length > 0;
   }
