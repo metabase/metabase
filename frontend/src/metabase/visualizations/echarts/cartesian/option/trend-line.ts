@@ -182,6 +182,10 @@ export function getTrendLineOptionsAndDatasets(
   const rawDatasets = chartModel.insights.map(insight =>
     getSingleSeriesTrendDataset(insight, chartModel),
   );
+  if (settings["stackable.stack_type"] != null) {
+    rawDatasets.reverse(); // stacked series order is reversed in order to render from top to bottom
+  }
+
   const normalizedDatasets = normalizeTrendDatasets(
     rawDatasets,
     chartModel,
