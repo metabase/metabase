@@ -73,6 +73,7 @@ import type {
   State,
 } from "metabase-types/store";
 
+import { PLUGIN_INSTANCE_ANALYTICS } from "metabase/plugins";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
@@ -361,7 +362,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       collection,
       setDashboardAttribute,
       onChangeLocation,
-      isAdmin,
     } = this.props;
 
     const canEdit = dashboard.can_write;
@@ -550,20 +550,13 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
     }
 
     if (!isFullscreen && !isEditing && !isAnalyticsDashboard) {
-      if (isAdmin) {
-        extraButtons.push({
-          title: t`Usage insights`,
-          icon: "audit",
-          action: () => {
-            onChangeLocation({
-              pathname: "/dashboard/9",
-              query: {
-                dashboard_id: dashboard.id.toString(),
-              },
-            });
-          },
-        });
-      }
+      extraButtons.push(
+        ...PLUGIN_INSTANCE_ANALYTICS.dashboardAuditLink(
+          dashboard,
+          onChangeLocation,
+        ),
+      );
+
       extraButtons.push({
         title: t`Enter fullscreen`,
         icon: "expand",

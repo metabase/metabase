@@ -323,3 +323,8 @@ export const PLUGIN_EMBEDDING = {
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
 };
+
+export const PLUGIN_INSTANCE_ANALYTICS = {
+  dashboardAuditLink: (_dashboard?: any, _push?: any) => [],
+  questionAuditLink: (_question?: any, _push?: any) => [],
+};

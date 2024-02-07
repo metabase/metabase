@@ -3,12 +3,17 @@ import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import { push } from "react-router-redux";
+import type { LocationDescriptor } from "history";
 import * as Urls from "metabase/lib/urls";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
-import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import {
+  PLUGIN_MODERATION,
+  PLUGIN_MODEL_PERSISTENCE,
+  PLUGIN_INSTANCE_ANALYTICS,
+} from "metabase/plugins";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
@@ -61,8 +66,6 @@ interface Props {
   onModelPersistenceChange: () => void;
 }
 
-const QUESITON_OVERVIEW_DASHBOARD_ID = 5;
-
 export const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
@@ -81,7 +84,6 @@ export const QuestionActions = ({
   const canUpload = useSelector(canUploadToQuestion(question));
 
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
-  const isAdmin = useSelector(getUserIsAdmin);
 
   const dispatch = useDispatch();
 
@@ -124,6 +126,13 @@ export const QuestionActions = ({
     onOpenModal(modal);
   }, [onOpenModal, question]);
 
+  const onChangeLocation = useCallback(
+    (location: LocationDescriptor) => {
+      dispatch(push(location));
+    },
+    [dispatch],
+  );
+
   const extraButtons = [];
 
   if (
@@ -140,29 +149,16 @@ export const QuestionActions = ({
   }
 
   extraButtons.push(
+    ...PLUGIN_INSTANCE_ANALYTICS.questionAuditLink(question, onChangeLocation),
+  );
+
+  extraButtons.push(
     ...PLUGIN_MODERATION.getMenuItems(
       question,
       isModerator,
       dispatchSoftReloadCard,
     ),
   );
-
-  if (isAdmin) {
-    extraButtons.push({
-      title: t`View question analytics`,
-      icon: "audit",
-      action: () => {
-        dispatch(
-          push({
-            pathname: `/dashboard/${QUESITON_OVERVIEW_DASHBOARD_ID}`,
-            query: {
-              question_id: question.id(),
-            },
-          }),
-        );
-      },
-    });
-  }
 
   if (canWrite && isDataset) {
     extraButtons.push(
