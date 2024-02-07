@@ -125,14 +125,6 @@ export const getSegmentRevisions = createSelector(
   (segmentId, revisions) => getIn(revisions, ["segment", segmentId]) || {},
 );
 
-export const getSegmentQuestions = createSelector(
-  [getSegmentId, getQuestions],
-  (segmentId, questions) =>
-    Object.values(questions)
-      .filter(question => new Question(question).usesSegment(segmentId))
-      .reduce((map, question) => assoc(map, question.id, question), {}),
-);
-
 export const getTableQuestions = createSelector(
   [getTable, getQuestions],
   (table, questions) =>
