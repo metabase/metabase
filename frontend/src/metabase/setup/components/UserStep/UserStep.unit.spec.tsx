@@ -5,11 +5,12 @@ import {
   createMockState,
   createMockUserInfo,
 } from "metabase-types/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
 import { DATABASE_STEP, USER_STEP } from "../../constants";
 import { UserStep } from "./UserStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
   user?: UserInfo;
 }
 

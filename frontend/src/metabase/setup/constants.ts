@@ -1,17 +1,20 @@
+import type { SetupStep } from "./types";
+
 export const LOCALE_TIMEOUT = 300;
 
-export const WELCOME_STEP = 0;
-export const LANGUAGE_STEP = 1;
-export const USER_STEP = 2;
-export const USAGE_STEP = 3;
-export const DATABASE_STEP = 4;
-export const PREFERENCES_STEP = 5;
-export const COMPLETED_STEP = 6;
+export const WELCOME_STEP: SetupStep = "welcome";
+export const LANGUAGE_STEP: SetupStep = "language";
+export const USER_STEP: SetupStep = "user_info";
+export const USAGE_STEP: SetupStep = "usage_question";
+export const DATABASE_STEP: SetupStep = "db_connection";
+export const PREFERENCES_STEP: SetupStep = "data_usage";
+export const COMPLETED_STEP: SetupStep = "completed";
 
-export const STEPS: Record<number, string> = {
+export const STEPS: Record<SetupStep, SetupStep> = {
   [WELCOME_STEP]: "welcome",
   [LANGUAGE_STEP]: "language",
   [USER_STEP]: "user_info",
+  [USAGE_STEP]: "usage_question",
   [DATABASE_STEP]: "db_connection",
   [PREFERENCES_STEP]: "data_usage",
   [COMPLETED_STEP]: "completed",

@@ -5,12 +5,13 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
 import { renderWithProviders, screen } from "__support__/ui";
 import { DATABASE_STEP, PREFERENCES_STEP } from "../../constants";
 import { DatabaseStep } from "./DatabaseStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
   database?: DatabaseData;
   isEmailConfigured?: boolean;
 }

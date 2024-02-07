@@ -3,13 +3,14 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
 import { setupErrorSetupEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { PREFERENCES_STEP, USER_STEP } from "../../constants";
 import { PreferencesStep } from "./PreferencesStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
 }
 
 const setup = ({ step = PREFERENCES_STEP }: SetupOpts = {}) => {

@@ -6,12 +6,13 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
 import { renderWithProviders, screen } from "__support__/ui";
 import { LANGUAGE_STEP, USER_STEP } from "../../constants";
 import { LanguageStep } from "./LanguageStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
   locale?: Locale;
 }
 

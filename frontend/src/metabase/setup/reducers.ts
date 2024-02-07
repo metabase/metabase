@@ -19,11 +19,10 @@ import {
   DATABASE_STEP,
   PREFERENCES_STEP,
   USAGE_STEP,
-  WELCOME_STEP,
 } from "./constants";
 
 const initialState: SetupState = {
-  step: WELCOME_STEP,
+  step: "welcome",
   isLocaleLoaded: false,
   isTrackingAllowed: true,
 };

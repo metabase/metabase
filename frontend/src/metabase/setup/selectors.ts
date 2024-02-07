@@ -1,11 +1,13 @@
 import type { DatabaseData, LocaleData } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import { getSetting } from "metabase/selectors/settings";
+import { isNotFalsy } from "./../lib/types";
+import type { SetupStep } from "./types";
 import { COMPLETED_STEP } from "./constants";
 
 const DEFAULT_LOCALES: LocaleData[] = [];
 
-export const getStep = (state: State): number => {
+export const getStep = (state: State): SetupStep => {
   return state.setup.step;
 };
 
@@ -41,12 +43,15 @@ export const getIsTrackingAllowed = (state: State): boolean => {
   return state.setup.isTrackingAllowed;
 };
 
-export const getIsStepActive = (state: State, step: number): boolean => {
+export const getIsStepActive = (state: State, step: SetupStep): boolean => {
   return getStep(state) === step;
 };
 
-export const getIsStepCompleted = (state: State, step: number): boolean => {
-  return getStep(state) > step;
+export const getIsStepCompleted = (state: State, step: SetupStep): boolean => {
+  const steps = getSteps(state);
+  return (
+    steps.findIndex(s => s.key === step) < steps.findIndex(s => s.isActiveStep)
+  );
 };
 
 export const getIsSetupCompleted = (state: State): boolean => {
@@ -71,4 +76,23 @@ export const getAvailableLocales = (state: State): LocaleData[] => {
 
 export const getIsEmailConfigured = (state: State): boolean => {
   return getSetting(state, "email-configured?");
+};
+
+export const getSteps = (state: State) => {
+  const usageReason = getUsageReason(state);
+  const activeStep = getStep(state);
+
+  const steps: { key: SetupStep; isActiveStep: boolean }[] = [
+    { key: "language" as const },
+    { key: "user_info" as const },
+    { key: "usage_question" as const },
+    usageReason !== ("embedding" as const) && {
+      key: "db_connection" as const,
+    },
+    { key: "data_usage" as const },
+  ]
+    .filter(isNotFalsy)
+    .map(({ key }) => ({ key, isActiveStep: activeStep === key }));
+
+  return steps;
 };

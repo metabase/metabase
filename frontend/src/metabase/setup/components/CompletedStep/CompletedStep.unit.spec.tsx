@@ -2,12 +2,13 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
 import { renderWithProviders, screen } from "__support__/ui";
 import { COMPLETED_STEP, USER_STEP } from "../../constants";
 import { CompletedStep } from "./CompletedStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
 }
 
 const setup = ({ step = COMPLETED_STEP }: SetupOpts = {}) => {

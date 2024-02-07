@@ -11,8 +11,9 @@ import {
 } from "metabase-types/store/mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Setup } from "./components/Setup";
+import type { SetupStep } from "./types";
 
-async function setup({ step = 0 } = {}) {
+async function setup({ step = "welcome" }: { step?: SetupStep } = {}) {
   const state = createMockState({
     setup: createMockSetupState({
       step,
