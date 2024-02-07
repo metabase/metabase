@@ -351,11 +351,17 @@ describe("scenarios > setup", () => {
       );
       cy.button("Finish").click();
 
-      // Finish & Subscribedddddd
+      // Finish & Subscribe
       cy.findByText("Take me to Metabase").click();
     });
 
     cy.location("pathname").should("eq", "/");
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("exist");
+
+    cy.reload();
 
     main()
       .findByText("Get started with Embedding Metabase in your app")
