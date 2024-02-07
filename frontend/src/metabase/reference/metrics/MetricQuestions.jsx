@@ -1,14 +1,13 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import _ from "underscore";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
 
+import { useQuestionListQuery } from "metabase/common/hooks";
 import S from "metabase/components/List/List.css";
 
 import List from "metabase/components/List";
@@ -20,12 +19,11 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import Questions from "metabase/entities/questions";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getQuestionUrl } from "../utils";
 
-import { getError, getLoading, getTable, getMetric } from "../selectors";
+import { getTable, getMetric } from "../selectors";
 
 const emptyStateData = (table, metric, metadata) => {
   return {
@@ -45,84 +43,71 @@ const mapStateToProps = (state, props) => ({
   metric: getMetric(state, props),
   table: getTable(state, props),
   metadata: getMetadata(state),
-  loading: getLoading(state, props),
-  loadingError: getError(state, props),
 });
 
 const mapDispatchToProps = {
   ...metadataActions,
 };
 
-class MetricQuestions extends Component {
-  static propTypes = {
-    style: PropTypes.object.isRequired,
-    questions: PropTypes.array.isRequired,
-    loading: PropTypes.bool,
-    loadingError: PropTypes.object,
-    metric: PropTypes.object,
-    table: PropTypes.object,
-    metadata: PropTypes.object.isRequired,
-  };
+export const MetricQuestions = ({ style, table, metric, metadata }) => {
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuestionListQuery({
+    query: { f: "using_metric", model_id: metric.id },
+    enabled: true,
+  });
 
-  render() {
-    const { questions, style, loadingError, loading, table, metric, metadata } =
-      this.props;
+  return (
+    <div style={style} className="full">
+      <ReferenceHeader
+        name={t`Questions about ${metric.name}`}
+        type="questions"
+        headerIcon="ruler"
+      />
+      <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
+        {() =>
+          data.length > 0 ? (
+            <div className="wrapper wrapper--trim">
+              <List>
+                {data.map(question => {
+                  const card = question.card();
+                  return (
+                    question.id() &&
+                    question.displayName() && (
+                      <ListItem
+                        key={question.id()}
+                        name={question.displayName()}
+                        description={t`Created ${moment(
+                          card.created_at,
+                        ).fromNow()} by ${card.creator.common_name}`}
+                        url={Urls.question(card)}
+                        icon={visualizations.get(question.display()).iconName}
+                      />
+                    )
+                  );
+                })}
+              </List>
+            </div>
+          ) : (
+            <div className={S.empty}>
+              <AdminAwareEmptyState
+                {...emptyStateData(table, metric, metadata)}
+              />
+            </div>
+          )
+        }
+      </LoadingAndErrorWrapper>
+    </div>
+  );
+};
 
-    return (
-      <div style={style} className="full">
-        <ReferenceHeader
-          name={t`Questions about ${this.props.metric.name}`}
-          type="questions"
-          headerIcon="ruler"
-        />
-        <LoadingAndErrorWrapper
-          loading={!loadingError && loading}
-          error={loadingError}
-        >
-          {() =>
-            questions.length > 0 ? (
-              <div className="wrapper wrapper--trim">
-                <List>
-                  {questions.map(
-                    ({ _card: question }) =>
-                      question &&
-                      question.id &&
-                      question.name && (
-                        <ListItem
-                          key={question.id}
-                          name={question.display_name || question.name}
-                          description={t`Created ${moment(
-                            question.created_at,
-                          ).fromNow()} by ${question.creator.common_name}`}
-                          url={Urls.question(question)}
-                          icon={visualizations.get(question.display).iconName}
-                        />
-                      ),
-                  )}
-                </List>
-              </div>
-            ) : (
-              <div className={S.empty}>
-                <AdminAwareEmptyState
-                  {...emptyStateData(table, metric, metadata)}
-                />
-              </div>
-            )
-          }
-        </LoadingAndErrorWrapper>
-      </div>
-    );
-  }
-}
+MetricQuestions.propTypes = {
+  metric: PropTypes.object,
+  table: PropTypes.object,
+  style: PropTypes.object.isRequired,
+  metadata: PropTypes.object.isRequired,
+};
 
-export default _.compose(
-  Questions.loadList({
-    query: (_state, { metricId }) => {
-      return {
-        f: "using_metric",
-        model_id: metricId,
-      };
-    },
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(MetricQuestions);
+export default connect(mapStateToProps, mapDispatchToProps)(MetricQuestions);
