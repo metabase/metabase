@@ -31,28 +31,28 @@
                   promises (atom [])
                   thunk    (fn []
                              (mdb.u/idempotent-insert!
-                               (t2/select-one-pk Setting search-col search-value)
+                               (t2/select-one Setting search-col search-value)
                                ;; Pause to ensure multiple threads hit the mutating path
                                (do (Thread/sleep 300)
-                                   (t2/insert-returning-pk! Setting
-                                                            search-col search-value
-                                                            other-col (str (random-uuid))))))]
+                                   (t2/insert-returning-instance! Setting
+                                                                  search-col search-value
+                                                                  other-col (str (random-uuid))))))]
 
               ;; hit it
               (dotimes [_ threads]
                 (swap! promises conj (future (thunk))))
 
-              (let [result-keys (mapv deref @promises)
-                    latest-key  (t2/select-one-pk Setting search-col search-value)]
+              (let [results (mapv deref @promises)
+                    latest  (t2/select-one Setting search-col search-value)]
 
                 (testing "every call returns the same row"
-                  (is (= [latest-key] (distinct result-keys))))
+                  (is (= [latest] (distinct results))))
 
                 (testing "we never insert any duplicates"
                   (is (= 1 (count (t2/select Setting search-col search-value)))))
 
                 (testing "later calls will return the existing row"
-                  (is (= latest-key (thunk)))
+                  (is (= latest (thunk)))
                   (is (= 1 (count (t2/select Setting search-col search-value)))))))
 
             ;; Since we couldn't use with-temp, we need to clean up manually.
