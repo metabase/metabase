@@ -1,10 +1,10 @@
 import type {
   Dashboard,
+  DashboardTab,
   QuestionDashboardCard,
   VirtualCard,
   ActionDashboardCard,
   VirtualDashboardCard,
-  DashboardTab,
 } from "metabase-types/api";
 import { createMockCard } from "./card";
 
