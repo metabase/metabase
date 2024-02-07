@@ -96,7 +96,7 @@ const DataSelectorFieldPicker = ({
               {item.name}
               <FieldInfoPopover
                 field={item.field}
-                delay={[700, 300]}
+                delay={[0, 100]}
                 position="top-end"
               >
                 <PopoverHoverTarget name="info_filled" />
