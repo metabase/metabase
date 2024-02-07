@@ -37,12 +37,6 @@ export const removeAggregation = (query, index) =>
 /**
  * @deprecated use MLv2
  */
-export const clearAggregations = query =>
-  setAggregationClause(query, A.clearAggregations(query.aggregation));
-
-/**
- * @deprecated use MLv2
- */
 export const isBareRows = query => A.isBareRows(query.aggregation);
 
 // BREAKOUT

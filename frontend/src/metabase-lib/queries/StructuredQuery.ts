@@ -644,13 +644,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeAggregation, arguments);
   }
 
-  /**
-   * @returns {StructuredQuery} new query with all aggregations removed.
-   */
-  clearAggregations(): StructuredQuery {
-    return this._updateQuery(Q.clearAggregations, arguments);
-  }
-
   // BREAKOUTS
 
   /**
