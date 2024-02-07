@@ -28,6 +28,7 @@ import {
   getUser,
 } from "./selectors";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
+import type { SetupStep } from "./types";
 
 interface ThunkConfig {
   state: State;
