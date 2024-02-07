@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "master"
-      - "models-in-browse-data-polish"
     paths-ignore:
       # config files
       - ".**"
