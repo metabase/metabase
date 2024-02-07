@@ -3,7 +3,11 @@ import { HoverCard, useDelayGroup } from "metabase/ui";
 import type { DatasetColumn } from "metabase-types/api";
 import type Field from "metabase-lib/metadata/Field";
 
-import { WidthBoundFieldInfo } from "./FieldInfoPopover.styled";
+import {
+  WidthBoundFieldInfo,
+  Dropdown,
+  Target,
+} from "./FieldInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 
@@ -30,19 +34,25 @@ function FieldInfoPopover({
       position={position}
       disabled={disabled}
       openDelay={group.shouldDelay ? delay[0] : 0}
-      closeDelay={group.shouldDelay ? delay[1] : 0}
+      closeDelay={group.shouldDelay ? delay[1] : 50}
       onOpen={group.onOpen}
       onClose={group.onClose}
-      transitionProps={{ duration: group.shouldDelay ? 150 : 0 }}
+      transitionProps={{
+        duration: group.shouldDelay ? 150 : 0,
+        keepMounted: true,
+      }}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
-      <HoverCard.Dropdown>
+      <Dropdown>
+        {/* HACK: adds an element between the target and the card */}
+        {/* to avoid the card from disappearing */}
+        <Target />
         <WidthBoundFieldInfo
           field={field}
           timezone={timezone}
           showFingerprintInfo={showFingerprintInfo}
         />
-      </HoverCard.Dropdown>
+      </Dropdown>
     </HoverCard>
   );
 }
