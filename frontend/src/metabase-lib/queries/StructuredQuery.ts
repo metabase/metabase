@@ -257,20 +257,6 @@ class StructuredQuery extends AtomicQuery {
     return getStructuredQueryTable(this.question(), this);
   });
 
-  /**
-   * Removes empty/useless layers of nesting (recursively)
-   */
-  cleanNesting(): StructuredQuery {
-    // first clean the sourceQuery, if any, recursively
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery) {
-      return this.setSourceQuery(sourceQuery.cleanNesting()).cleanEmpty();
-    } else {
-      return this;
-    }
-  }
-
   private cleanJoins(): StructuredQuery {
     return this._cleanClauseList("joins");
   }
