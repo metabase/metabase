@@ -1,5 +1,6 @@
 import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
+import { createCachedSelector } from "re-reselect";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -16,6 +17,7 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type {
   Bookmark,
   Card,
+  CardId,
   QuestionDashboardCard,
   DashboardId,
   DashCardId,
@@ -25,6 +27,8 @@ import type {
   EditParameterSidebarState,
   State,
 } from "metabase-types/store";
+import Question from "metabase-lib/Question";
+import { isQuestionDashCard } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -303,13 +307,48 @@ export const getParameterTarget = createSelector(
   },
 );
 
+export const getQuestions = (state: State) => {
+  const dashboard = getDashboard(state);
+
+  if (!dashboard) {
+    return [];
+  }
+
+  const dashcardIds = dashboard.dashcards;
+
+  const questionsById = dashcardIds.reduce<Record<CardId, Question>>(
+    (acc, dashcardId) => {
+      const dashcard = getDashCardById(state, dashcardId);
+
+      if (isQuestionDashCard(dashcard)) {
+        const cards = [dashcard.card, ...(dashcard.series ?? [])];
+
+        for (const card of cards) {
+          acc[card.id] = getQuestionByCard(state, { card });
+        }
+      }
+
+      return acc;
+    },
+    {},
+  );
+
+  return questionsById;
+};
+
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata],
-  (dashboard, metadata) => {
+  [getDashboardComplete, getMetadata, getQuestions],
+  (dashboard, metadata, questions) => {
     if (!dashboard || !metadata) {
       return [];
     }
-    return getDashboardUiParameters(dashboard, metadata);
+
+    return getDashboardUiParameters(
+      dashboard.dashcards,
+      dashboard.parameters,
+      metadata,
+      questions,
+    );
   },
 );
 
@@ -323,12 +362,26 @@ export const getMissingRequiredParameters = createSelector(
     ),
 );
 
-export const getParameterMappingOptions = createSelector(
-  [getMetadata, getEditingParameter, getCard, getDashCard],
-  (metadata, parameter, card, dashcard) => {
-    return _getParameterMappingOptions(metadata, parameter, card, dashcard);
+/**
+ * It's a memoized version, it uses LRU cache per dashboard identified by id
+ */
+export const getQuestionByCard = createCachedSelector(
+  [(_state: State, props: { card: Card }) => props.card, getMetadata],
+  (card, metadata) => {
+    return new Question(card, metadata);
   },
-);
+)((_state, props) => {
+  return props.card.id;
+});
+
+export const getDashcardParameterMappingOptions = createCachedSelector(
+  [getQuestionByCard, getEditingParameter, getCard, getDashCard],
+  (question, parameter, card, dashcard) => {
+    return _getParameterMappingOptions(question, parameter, card, dashcard);
+  },
+)((state, props) => {
+  return props.card.id ?? props.dashcard.id;
+});
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
