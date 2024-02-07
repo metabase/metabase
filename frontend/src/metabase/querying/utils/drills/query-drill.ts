@@ -38,7 +38,7 @@ export function queryDrill(
       stageIndex,
       drill,
       drillInfo,
-      isDashboard: clicked?.extraData?.dashboard != null,
+      isDashboard,
       applyDrill,
     });
   });
