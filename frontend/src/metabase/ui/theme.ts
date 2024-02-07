@@ -13,6 +13,7 @@ import {
   getDatePickerOverrides,
   getDividerOverrides,
   getFileInputOverrides,
+  getHoverCardOverrides,
   getInputOverrides,
   getMenuOverrides,
   getModalOverrides,
@@ -120,5 +121,6 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getTimeInputOverrides(),
     ...getTitleOverrides(),
     ...getTooltipOverrides(),
+    ...getHoverCardOverrides(),
   },
 });

@@ -309,7 +309,6 @@ export const XYChart = ({
                 label={settings.goal.label}
                 x1={0}
                 x2={calculatedInnerWidth}
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 y={defaultYScale!(settings.goal.value)}
                 color={style.goalColor}
               />

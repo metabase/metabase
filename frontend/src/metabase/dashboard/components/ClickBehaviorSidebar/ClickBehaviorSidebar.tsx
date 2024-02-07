@@ -8,7 +8,7 @@ import { Sidebar } from "metabase/dashboard/components/Sidebar";
 
 import type {
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   DashCardId,
   CardId,
   ClickBehavior,
@@ -35,7 +35,7 @@ type VizSettings = Record<string, unknown>;
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   parameters: UiParameter[];
   hideClickBehaviorSidebar: () => void;
