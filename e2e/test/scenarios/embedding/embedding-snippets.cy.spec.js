@@ -26,7 +26,6 @@ features.forEach(feature => {
 
     it("dashboard should have the correct embed snippet", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      console.log("feature", feature);
       openStaticEmbeddingModal({ acceptTerms: false });
 
       modal().within(() => {
@@ -96,7 +95,6 @@ features.forEach(feature => {
 
     it("question should have the correct embed snippet", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      console.log("feature", feature);
       openStaticEmbeddingModal({ acceptTerms: false });
 
       modal().within(() => {
