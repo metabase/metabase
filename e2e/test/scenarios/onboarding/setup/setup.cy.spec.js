@@ -3,6 +3,7 @@ import {
   describeWithSnowplow,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  main,
   resetSnowplow,
   restore,
 } from "e2e/support/helpers";
@@ -215,6 +216,10 @@ describe("scenarios > setup", () => {
       cy.findByText("Take me to Metabase").click();
     });
     cy.location("pathname").should("eq", "/");
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("not.exist");
   });
 
   // Values in this test are set through MB_USER_DEFAULTS environment variable!
@@ -303,6 +308,76 @@ describe("scenarios > setup", () => {
 
     cy.visit("/browse");
     cy.findByTestId("database-browser").findByText(dbName);
+  });
+
+  it("embedded use-case, it should hide the db step and show the embedding homepage", () => {
+    cy.visit("/setup");
+
+    cy.location("pathname").should("eq", "/setup");
+    cy.findByTestId("welcome-page").within(() => {
+      cy.findByText("Welcome to Metabase");
+      cy.findByTextEnsureVisible("Let's get started").click();
+    });
+
+    cy.findByTestId("setup-forms").within(() => {
+      // Language
+      cy.findByText("What's your preferred language?");
+      cy.findByText("English").click();
+      cy.button("Next").click();
+
+      // User
+      cy.findByText("What should we call you?");
+      cy.findByLabelText("Email").type(admin.email);
+      cy.findByLabelText("Company or team name").type("Epic Team");
+      cy.findByLabelText("Create a password").type(admin.password);
+      cy.findByLabelText("Confirm your password").type(admin.password);
+      cy.button("Next").click();
+
+      cy.findByText("Hi. Nice to meet you!");
+
+      cy.findByText("Embedding analytics into my application").click();
+      cy.button("Next").click();
+
+      // Database
+      cy.findByText("Add your data").should("not.exist");
+
+      // Turns off anonymous data collection
+      cy.findByLabelText(
+        "Allow Metabase to anonymously collect usage events",
+      ).click();
+
+      cy.findByText("All collection is completely anonymous.").should(
+        "not.exist",
+      );
+      cy.button("Finish").click();
+
+      // Finish & Subscribe
+      cy.findByText("Take me to Metabase").click();
+    });
+
+    cy.location("pathname").should("eq", "/");
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("exist");
+
+    cy.reload();
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("exist");
+
+    cy.icon("close").click();
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("not.exist");
+
+    cy.reload();
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("not.exist");
   });
 });
 

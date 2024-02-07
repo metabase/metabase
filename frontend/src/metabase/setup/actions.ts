@@ -4,6 +4,11 @@ import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
+
+import {
+  removeShowEmbedHomepageFlag,
+  setShowEmbedHomepageFlag,
+} from "metabase/home/utils";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
@@ -19,6 +24,7 @@ import {
   getIsTrackingAllowed,
   getLocale,
   getSetupToken,
+  getUsageReason,
   getUser,
 } from "./selectors";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
@@ -183,6 +189,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     const database = getDatabase(getState());
     const invite = getInvite(getState());
     const isTrackingAllowed = getIsTrackingAllowed(getState());
+    const usageReason = getUsageReason(getState());
 
     try {
       await SetupApi.create({
@@ -196,6 +203,13 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           allow_tracking: isTrackingAllowed.toString(),
         },
       });
+
+      if (usageReason === "embedding" || usageReason === "both") {
+        setShowEmbedHomepageFlag();
+      } else {
+        // make sure that state is clean in case of more than one setup on the same browser
+        removeShowEmbedHomepageFlag();
+      }
 
       MetabaseSettings.set("setup-token", null);
     } catch (error) {
