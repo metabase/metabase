@@ -32,6 +32,7 @@ const DEFAULT_OPTIONS = {
 export class Api extends EventEmitter {
   basename = "";
   apiKey = "";
+  sessionToken = ""
 
   GET;
   POST;
@@ -94,6 +95,10 @@ export class Api extends EventEmitter {
 
         if (this.apiKey) {
           headers["x-api-key"] = this.apiKey;
+        }
+
+        if (this.sessionToken) {
+          headers["X-Metabase-Session"] = this.sessionToken;
         }
 
         if (isWithinIframe()) {

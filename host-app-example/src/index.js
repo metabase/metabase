@@ -1,7 +1,27 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
+import * as React from "react";
+import * as ReactDOM from "react-dom/client";
+import {
+    createBrowserRouter,
+    RouterProvider,
+} from "react-router-dom";
 import "./index.css";
+import {MetabaseProvider} from "metabase-embedding-sdk";
+import {SignIn} from "./SignIn";
 import App from "./App";
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
+const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <SignIn/>,
+    },
+    {
+        path: "/app",
+        element: <App/>,
+    }
+]);
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+        <React.StrictMode>
+            <RouterProvider router={router}/>
+        </React.StrictMode>
+);

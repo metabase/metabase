@@ -1,47 +1,58 @@
-import { memo, useEffect } from "react";
-import { refreshCurrentUser } from "metabase/redux/user";
-import { reloadSettings } from "metabase/admin/settings/settings";
+import {memo, useEffect, useState} from "react";
+import {refreshCurrentUser} from "metabase/redux/user";
+import {reloadSettings} from "metabase/admin/settings/settings";
 import registerVisualizations from "metabase/visualizations/register";
-import { useDispatch } from "metabase/lib/redux";
+import {useDispatch} from "metabase/lib/redux";
 import api from "metabase/lib/api";
+import {getSessionToken} from "./utils";
+import type {SDKConfigType} from "./config";
+
 
 interface InitDataLoaderProps {
-  apiKey: string;
-  apiUrl: string;
-  onInitialize: () => void;
-  onLogin: (isLoggedIn: boolean) => void;
+    apiUrl: SDKConfigType["metabaseInstanceUrl"];
+    jwtProviderUri: SDKConfigType["jwtProviderUri"]
+    onInitialize: () => void;
+    onLogin: (isLoggedIn: boolean) => void;
 }
 
 const InitDataLoaderInternal = ({
-  apiKey,
-  apiUrl,
-  onInitialize,
-  onLogin,
-}: InitDataLoaderProps): JSX.Element | null => {
-  const dispatch = useDispatch();
+                                    apiUrl,
+    jwtProviderUri,
+                                    onInitialize,
+                                    onLogin,
+                                }: InitDataLoaderProps): JSX.Element | null => {
 
-  useEffect(() => {
-    registerVisualizations();
-  }, []);
+    const [sessionToken, setSessionToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (apiKey && apiUrl) {
-      api.basename = apiUrl;
-      api.apiKey = apiKey;
 
-      Promise.all([
-        dispatch(refreshCurrentUser()),
-        dispatch(reloadSettings()),
-      ]).then(() => {
-        onInitialize();
-        onLogin(true);
-      });
-    } else {
-      onLogin(false);
-    }
-  }, [apiKey, apiUrl, dispatch, onInitialize, onLogin]);
+    const dispatch = useDispatch();
 
-  return null;
+    useEffect(() => {
+        registerVisualizations();
+    }, []);
+
+    useEffect(() => {
+        getSessionToken(jwtProviderUri).then(response => setSessionToken(response.response.token.id));
+    }, [jwtProviderUri]);
+
+    useEffect(() => {
+        if (sessionToken && apiUrl) {
+            api.basename = apiUrl;
+            api.sessionToken = sessionToken;
+
+            Promise.all([
+                dispatch(refreshCurrentUser()),
+                dispatch(reloadSettings()),
+            ]).then(() => {
+                onInitialize();
+                onLogin(true);
+            });
+        } else {
+            onLogin(false);
+        }
+    }, [apiUrl, dispatch, onInitialize, onLogin, sessionToken]);
+
+    return null;
 };
 
 export const InitDataLoader = memo(InitDataLoaderInternal);
