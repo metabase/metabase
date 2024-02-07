@@ -18,7 +18,7 @@ import {
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 export function getAllDashboardCardsWithUnmappedParameters({
   dashboardState,
@@ -51,6 +51,7 @@ export function getMatchingParameterOption(
   targetDimension: ParameterTarget,
   sourceDashcard: QuestionDashboardCard,
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): {
   target: ParameterTarget;
 } | null {
@@ -58,12 +59,12 @@ export function getMatchingParameterOption(
     return null;
   }
 
-  const sourceQuestion = new Question(sourceDashcard.card, metadata);
-  const targetQuestion = new Question(targetDashcard.card, metadata);
+  const sourceQuestion = questions[sourceDashcard.card.id];
+  const targetQuestion = questions[targetDashcard.card.id];
 
   return (
     getParameterMappingOptions(
-      metadata,
+      targetQuestion,
       null,
       targetDashcard.card,
       targetDashcard,
@@ -91,6 +92,7 @@ export function getAutoWiredMappingsForDashcards(
   parameter_id: ParameterId,
   target: ParameterTarget,
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): DashCardAttribute[] {
   if (targetDashcards.length === 0) {
     return [];
@@ -106,6 +108,7 @@ export function getAutoWiredMappingsForDashcards(
       target,
       sourceDashcard,
       metadata,
+      questions,
     );
 
     if (selectedMappingOption && targetDashcard.card_id) {
