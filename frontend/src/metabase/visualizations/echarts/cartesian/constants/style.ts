@@ -23,6 +23,9 @@ export const CHART_STYLE = {
     y: 12,
   },
   symbolSize: 6,
+  trendLine: {
+    zIndex: 3,
+  },
   timelineEvents: {
     height: 14,
     minDistance: 16,
