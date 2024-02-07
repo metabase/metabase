@@ -140,7 +140,7 @@
    field_values     [:maybe ms/BooleanValue]
    database_secrets [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (let [start              (System/currentTimeMillis)
+  (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)
                                                             collection)
                             :no-collections           (and (empty? collection)
@@ -157,7 +157,7 @@
                 callback]} (serialize&pack opts)]
     (snowplow/track-event! ::snowplow/serialization-export api/*current-user-id*
                            {:source          "api"
-                            :duration_ms     (- (System/currentTimeMillis) start)
+                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
                             :collection      (str/join "," (map str collection))
                             :all_collections (and (empty? collection)
@@ -187,16 +187,16 @@
   [:as {raw-params :params}]
   (api/check-superuser)
   (try
-    (let [start              (System/currentTimeMillis)
+    (let [start              (System/nanoTime)
           {:keys [log-file
                   error-message
                   report
                   callback]} (unpack&import (get-in raw-params ["file" :tempfile])
                                             (get-in raw-params ["file" :size]))
-          imported           (set (map (comp :model last) (:seen report)))]
+          imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
       (snowplow/track-event! ::snowplow/serialization-import api/*current-user-id*
                              {:source        "api"
-                              :duration_ms   (- (System/currentTimeMillis) start)
+                              :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                               :models        (str/join "," imported)
                               :count         (if (contains? imported "Setting")
                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))

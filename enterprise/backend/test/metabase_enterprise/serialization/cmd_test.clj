@@ -184,7 +184,7 @@
                          "field_values"    false
                          "duration_ms"     pos?
                          "count"           3
-                         "source"          "api"
+                         "source"          "cli"
                          "secrets"         false
                          "success"         true
                          "error_message"   nil}
@@ -216,7 +216,7 @@
                            "field_values"    false
                            "duration_ms"     pos?
                            "count"           0
-                           "source"          "api"
+                           "source"          "cli"
                            "secrets"         false
                            "success"         false
                            "error_message"   "java.lang.Exception: Cannot load settings"}

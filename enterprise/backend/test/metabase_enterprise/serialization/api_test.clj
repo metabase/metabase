@@ -157,7 +157,7 @@
                       (is (=? {"event"         "serialization_import"
                                "duration_ms"   pos?
                                "source"        "api"
-                               "models"        "Dashboard,Card,Collection"
+                               "models"        "Card,Collection,Dashboard"
                                "count"         3
                                "success"       true
                                "error_message" nil}

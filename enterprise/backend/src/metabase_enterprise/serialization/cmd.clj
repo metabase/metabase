@@ -107,7 +107,7 @@
   [path :- :string
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]]]
-  (let [start    (System/currentTimeMillis)
+  (let [start    (System/nanoTime)
         err      (atom nil)
         report   (try
                    (v2-load-internal! path opts :token-check? true)
@@ -116,7 +116,7 @@
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
     (snowplow/track-event! ::snowplow/serialization-import nil
                            {:source        "cli"
-                            :duration_ms   (- (System/currentTimeMillis) start)
+                            :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                             :models        (str/join "," imported)
                             :count         (if (contains? imported "Setting")
                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
@@ -233,7 +233,7 @@
     (.mkdirs f)
     (when-not (.canWrite f)
       (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
-  (let [start  (System/currentTimeMillis)
+  (let [start  (System/nanoTime)
         err    (atom nil)
         report (try
                  (serdes/with-cache
@@ -245,8 +245,8 @@
                  (catch Exception e
                    (reset! err e)))]
     (snowplow/track-event! ::snowplow/serialization-export nil
-                           {:source          "api"
-                            :duration_ms     (- (System/currentTimeMillis) start)
+                           {:source          "cli"
+                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
                             :collection      (str/join "," collection-ids)
                             :all_collections (and (empty? collection-ids)
