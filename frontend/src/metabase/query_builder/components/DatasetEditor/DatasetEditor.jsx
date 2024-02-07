@@ -455,7 +455,10 @@ function DatasetEditor(props) {
                 id: "metadata",
                 name: t`Metadata`,
                 icon: "label",
-                disabled: !resultsMetadata,
+                // Metadata tab is temporarily disabled for metrics.
+                // It should be enabled in #37993
+                // @see https://github.com/metabase/metabase/issues/37993
+                disabled: !resultsMetadata || dataset.type() === "metric",
               },
             ]}
           />
