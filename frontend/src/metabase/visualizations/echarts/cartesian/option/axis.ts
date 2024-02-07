@@ -7,6 +7,7 @@ import type {
 import type {
   AxisFormatter,
   CartesianChartModel,
+  Extent,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
@@ -21,38 +22,38 @@ export const getAxisNameGap = (ticksWidth: number): number => {
   return ticksWidth + CHART_STYLE.axisNameMargin;
 };
 
+const getCustomAxisRange = (
+  axisExtent: Extent,
+  min: number | undefined,
+  max: number | undefined,
+) => {
+  const [extentMin, extentMax] = axisExtent;
+  // if min/max are not specified or within series extents return `undefined`
+  // so that ECharts compute a rounded range automatically
+  const finalMin = min != null && min < extentMin ? min : undefined;
+  const finalMax = max != null && max > extentMax ? max : undefined;
+
+  return { min: finalMin, max: finalMax };
+};
+
 export const getYAxisRange = (
   axisModel: YAxisModel,
   settings: ComputedVisualizationSettings,
 ) => {
-  const isAutoRangeEnabled = settings["graph.y_axis.auto_range"];
   const isNormalized = settings["stackable.stack_type"] === "normalized";
-  if (isAutoRangeEnabled && isNormalized) {
-    return NORMALIZED_RANGE;
+  const isAutoRangeEnabled = settings["graph.y_axis.auto_range"];
+
+  if (isAutoRangeEnabled) {
+    return isNormalized ? NORMALIZED_RANGE : {};
   }
 
   const customMin = settings["graph.y_axis.min"];
   const customMax = settings["graph.y_axis.max"];
-  const goalLine = settings["graph.show_goal"]
-    ? settings["graph.goal_value"]
-    : undefined;
 
-  const [extentMin, extentMax] = axisModel.extent;
-  const min = Math.min(extentMin, customMin ?? Infinity, goalLine ?? Infinity);
-  const max = Math.max(
-    extentMax,
-    customMax ?? -Infinity,
-    goalLine ?? -Infinity,
-  );
-
-  return {
-    // if Min or Max is not from custom min/max or goal line setting, return undefined
-    // so ECharts can computed a rounded range automatically
-    min: min === extentMin ? undefined : min,
-    max: max === extentMax ? undefined : max,
-  };
+  return axisModel.extent
+    ? getCustomAxisRange(axisModel.extent, customMin, customMax)
+    : {};
 };
-
 export const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
   nameGap: number,
