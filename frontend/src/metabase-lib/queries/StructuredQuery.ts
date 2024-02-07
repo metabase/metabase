@@ -258,26 +258,6 @@ class StructuredQuery extends AtomicQuery {
   });
 
   /**
-   * Removes invalid clauses from the query (and source-query, recursively)
-   */
-  clean({ skipFilters = false } = {}): StructuredQuery {
-    if (!this.hasMetadata()) {
-      console.warn("Warning: can't clean query without metadata!");
-      return this;
-    }
-
-    let query = this;
-    // first clean the sourceQuery, if any, recursively
-    const sourceQuery = query.sourceQuery();
-
-    if (sourceQuery) {
-      query = query.setSourceQuery(sourceQuery.clean({ skipFilters }));
-    }
-
-    return query.cleanJoins().cleanExpressions().cleanFields().cleanEmpty();
-  }
-
-  /**
    * Removes empty/useless layers of nesting (recursively)
    */
   cleanNesting(): StructuredQuery {
