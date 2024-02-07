@@ -12,6 +12,7 @@ import { mergeSettings } from "metabase/visualizations/lib/settings";
 import {
   getDashcardResultsError,
   isDashcardLoading,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 
 import { isActionCard } from "metabase/actions/utils";
@@ -144,7 +145,7 @@ function DashCardInner({
   );
 
   const cards = useMemo(() => {
-    if ("series" in dashcard && Array.isArray(dashcard.series)) {
+    if (isQuestionDashCard(dashcard) && Array.isArray(dashcard.series)) {
       return [mainCard, ...dashcard.series];
     }
     return [mainCard];
