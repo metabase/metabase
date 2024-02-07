@@ -644,13 +644,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeAggregation, arguments);
   }
 
-  /**
-   * @returns {StructuredQuery} new query with all aggregations removed.
-   */
-  clearAggregations(): StructuredQuery {
-    return this._updateQuery(Q.clearAggregations, arguments);
-  }
-
   // BREAKOUTS
 
   /**
@@ -708,14 +701,6 @@ class StructuredQuery extends AtomicQuery {
 
   canNest(): boolean {
     return Boolean(this._database()?.hasFeature("nested-queries"));
-  }
-
-  /**
-   * @returns whether the current query has a valid breakout
-   */
-  hasValidBreakout() {
-    const breakouts = this.breakouts();
-    return breakouts.length > 0 && breakouts[0].isValid();
   }
 
   /**
@@ -891,20 +876,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeFilter, arguments);
   }
 
-  /**
-   * @returns {StructuredQuery} new query with all filters removed.
-   */
-  clearFilters() {
-    return this._updateQuery(Q.clearFilters, arguments);
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with all segment filters removed
-   */
-  clearSegments() {
-    return this._updateQuery(Q.clearSegments, arguments);
-  }
-
   // EXPRESSIONS
   expressions = _.once((): ExpressionClause => {
     return Q.getExpressions(this.legacyQuery({ useStructuredQuery: true }));
@@ -919,26 +890,6 @@ class StructuredQuery extends AtomicQuery {
     // TODO: push into query/expression?
     if (query._hasFields() && query.isRaw()) {
       query = query.addField(["expression", uniqueName]);
-    }
-
-    return query;
-  }
-
-  clearExpressions() {
-    let query = this._updateQuery(Q.clearExpressions, arguments);
-
-    // extra logic for removing expressions in fields clause
-    // TODO: push into query/expression?
-    for (const name of Object.keys(this.expressions())) {
-      const index = query._indexOfField(["expression", name]);
-
-      if (index >= 0) {
-        query = query.removeField(index);
-      }
-    }
-
-    if (this.isRaw() && this.sourceQuery()) {
-      query = query.clearFields();
     }
 
     return query;

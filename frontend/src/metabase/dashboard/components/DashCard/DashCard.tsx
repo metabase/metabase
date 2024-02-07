@@ -12,6 +12,7 @@ import { mergeSettings } from "metabase/visualizations/lib/settings";
 import {
   getDashcardResultsError,
   isDashcardLoading,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 
 import { isActionCard } from "metabase/actions/utils";
@@ -22,13 +23,15 @@ import type {
   Card,
   CardId,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   DashCardId,
   ParameterId,
   ParameterValueOrArray,
   VisualizationSettings,
   DashCardDataMap,
+  VirtualCard,
 } from "metabase-types/api";
+import type { StoreDashcard } from "metabase-types/store";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -51,7 +54,7 @@ function preventDragging(event: React.SyntheticEvent) {
 
 export interface DashCardProps {
   dashboard: Dashboard;
-  dashcard: DashboardCard & { justAdded?: boolean };
+  dashcard: StoreDashcard;
   gridItemWidth: number;
   totalNumGridCols: number;
   dashcardData: DashCardDataMap;
@@ -60,7 +63,7 @@ export interface DashCardProps {
   metadata: Metadata;
   mode?: Mode;
 
-  clickBehaviorSidebarDashcard?: DashboardCard | null;
+  clickBehaviorSidebarDashcard?: QuestionDashboardCard | null;
 
   isEditing?: boolean;
   isEditingParameter?: boolean;
@@ -130,11 +133,11 @@ function DashCardInner({
     }
   });
 
-  const mainCard: Card = useMemo(
+  const mainCard: Card | VirtualCard = useMemo(
     () => ({
       ...dashcard.card,
       visualization_settings: mergeSettings(
-        dashcard.card.visualization_settings,
+        dashcard?.card?.visualization_settings,
         dashcard.visualization_settings,
       ),
     }),
@@ -142,21 +145,30 @@ function DashCardInner({
   );
 
   const cards = useMemo(() => {
-    if (Array.isArray(dashcard.series)) {
+    if (isQuestionDashCard(dashcard) && Array.isArray(dashcard.series)) {
       return [mainCard, ...dashcard.series];
     }
     return [mainCard];
   }, [mainCard, dashcard]);
 
   const series = useMemo(() => {
-    return cards.map(card => ({
-      ...getIn(dashcardData, [dashcard.id, card.id]),
-      card: card,
-      isSlow: slowCards[card.id],
-      isUsuallyFast:
+    return cards.map(card => {
+      const isSlow = card.id ? slowCards[card.id] : false;
+      const isUsuallyFast =
         card.query_average_duration &&
-        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT,
-    }));
+        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT;
+
+      if (!card.id) {
+        return { card, isSlow, isUsuallyFast };
+      }
+
+      return {
+        ...getIn(dashcardData, [dashcard.id, card.id]),
+        card,
+        isSlow,
+        isUsuallyFast,
+      };
+    });
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
   const isLoading = useMemo(

@@ -55,7 +55,6 @@ function BaseTreeNodeList({
             />
             {isExpanded && (
               <BaseTreeNodeList
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 items={item.children!}
                 expandedIds={expandedIds}
                 selectedId={selectedId}
