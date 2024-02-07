@@ -777,10 +777,6 @@ class StructuredQuery extends AtomicQuery {
     return query;
   }
 
-  _indexOfField(fieldRef) {
-    return this.fields().findIndex(f => _.isEqual(f, fieldRef));
-  }
-
   // FIELDS
   fields() {
     // FIMXE: implement field functions in query lib
