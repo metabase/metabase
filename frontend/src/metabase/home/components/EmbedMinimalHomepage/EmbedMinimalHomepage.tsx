@@ -14,9 +14,9 @@ type EmbedMinimalHomepageProps = {
 export const EmbedMinimalHomepage = ({
   onDismiss,
 }: EmbedMinimalHomepageProps) => {
-  const learnMoreUrl = useSelector(s =>
+  const learnMoreUrl = useSelector(state =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
-    getDocsUrl(s, { page: "embedding/start" }),
+    getDocsUrl(state, { page: "embedding/start" }),
   );
 
   const dismiss = () => {
