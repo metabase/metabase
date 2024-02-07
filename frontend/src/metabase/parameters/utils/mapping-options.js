@@ -66,7 +66,7 @@ function buildTextTagOption(tagName) {
  * @param {import("metabase-lib/metadata/Metadata").default} metadata
  * @param {import("metabase-types/api").Parameter|null} parameter
  * @param {import("metabase-types/api").Card} card
- * @param {import("metabase-types/store").DashboardCard|null} [dashcard]
+ * @param {import("metabase-types/store").StoreDashcard|null} [dashcard]
  * @returns {*}
  */
 export function getParameterMappingOptions(

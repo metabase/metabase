@@ -18,7 +18,7 @@ import type {
   Bookmark,
   Card,
   CardId,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardId,
   DashCardId,
 } from "metabase-types/api";
@@ -28,6 +28,7 @@ import type {
   State,
 } from "metabase-types/store";
 import Question from "metabase-lib/Question";
+import { isQuestionDashCard } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -283,8 +284,10 @@ export const getEditingParameter = createSelector(
 );
 
 const getCard = (state: State, { card }: { card: Card }) => card;
-const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
-  dashcard;
+const getDashCard = (
+  state: State,
+  { dashcard }: { dashcard: QuestionDashboardCard },
+) => dashcard;
 
 export const getParameterTarget = createSelector(
   [getEditingParameter, getCard, getDashCard],
@@ -316,10 +319,13 @@ export const getQuestions = (state: State) => {
   const questionsById = dashcardIds.reduce<Record<CardId, Question>>(
     (acc, dashcardId) => {
       const dashcard = getDashCardById(state, dashcardId);
-      const cards = [dashcard.card, ...(dashcard.series ?? [])];
 
-      for (const card of cards) {
-        acc[card.id] = getQuestionByCard(state, { card });
+      if (isQuestionDashCard(dashcard)) {
+        const cards = [dashcard.card, ...(dashcard.series ?? [])];
+
+        for (const card of cards) {
+          acc[card.id] = getQuestionByCard(state, { card });
+        }
       }
 
       return acc;

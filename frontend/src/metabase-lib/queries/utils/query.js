@@ -37,12 +37,6 @@ export const removeAggregation = (query, index) =>
 /**
  * @deprecated use MLv2
  */
-export const clearAggregations = query =>
-  setAggregationClause(query, A.clearAggregations(query.aggregation));
-
-/**
- * @deprecated use MLv2
- */
 export const isBareRows = query => A.isBareRows(query.aggregation);
 
 // BREAKOUT
@@ -84,10 +78,6 @@ export const updateFilter = (query, index, filter) =>
   setFilterClause(query, F.updateFilter(query.filter, index, filter));
 export const removeFilter = (query, index) =>
   setFilterClause(query, F.removeFilter(query.filter, index));
-export const clearFilters = query =>
-  setFilterClause(query, F.clearFilters(query.filter));
-export const clearSegments = query =>
-  setFilterClause(query, F.clearSegments(getFilters(query)));
 
 export const canAddFilter = query => F.canAddFilter(query.filter);
 
@@ -131,8 +121,6 @@ export const addExpression = (query, name, expression) =>
     query,
     E.addExpression(query.expressions, name, expression),
   );
-export const clearExpressions = query =>
-  setExpressionClause(query, E.clearExpressions(query.expressions));
 
 // we can enforce various constraints in these functions:
 

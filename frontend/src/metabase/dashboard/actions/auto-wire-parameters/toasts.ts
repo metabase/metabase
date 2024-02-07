@@ -1,7 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 import type {
-  DashboardCard,
+  ActionParametersMapping,
+  QuestionDashboardCard,
   DashboardParameterMapping,
   DashCardId,
 } from "metabase-types/api";
@@ -18,7 +19,11 @@ type ShowAutoWireParametersToastType = {
   dashcardAttributes: {
     id: DashCardId;
     attributes: {
-      parameter_mappings: DashboardParameterMapping[] | null | undefined;
+      parameter_mappings:
+        | ActionParametersMapping[]
+        | DashboardParameterMapping[]
+        | null
+        | undefined;
     };
   }[];
 };
@@ -48,7 +53,7 @@ export const showAddedCardAutoWireParametersToast =
     targetDashcard,
     dashcard_id,
   }: {
-    targetDashcard: DashboardCard;
+    targetDashcard: QuestionDashboardCard;
     dashcard_id: DashCardId;
   }) =>
   (dispatch: Dispatch) => {

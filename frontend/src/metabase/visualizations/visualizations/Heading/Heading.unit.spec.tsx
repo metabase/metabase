@@ -7,7 +7,7 @@ import {
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import type {
-  DashboardCard,
+  QuestionDashboardCard,
   Dashboard,
   ParameterId,
   Parameter,
@@ -24,7 +24,7 @@ interface Settings {
 }
 
 interface Options {
-  dashcard?: DashboardCard;
+  dashcard?: QuestionDashboardCard;
   isEditing?: boolean;
   isEditingParameter?: boolean;
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
