@@ -1133,8 +1133,8 @@ class Question {
     name,
     display = "table",
     visualization_settings = {},
-    dataset,
-    cardType,
+    dataset = false,
+    cardType = "question",
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
