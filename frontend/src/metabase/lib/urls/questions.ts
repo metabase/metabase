@@ -107,9 +107,7 @@ export function newQuestion({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
-
-  const entity = question.isDataset() ? "model" : "question";
-  const type = question.type() ?? entity;
+  const type = question.type();
 
   if (mode) {
     return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
