@@ -903,26 +903,6 @@ class StructuredQuery extends AtomicQuery {
     return query;
   }
 
-  clearExpressions() {
-    let query = this._updateQuery(Q.clearExpressions, arguments);
-
-    // extra logic for removing expressions in fields clause
-    // TODO: push into query/expression?
-    for (const name of Object.keys(this.expressions())) {
-      const index = query._indexOfField(["expression", name]);
-
-      if (index >= 0) {
-        query = query.removeField(index);
-      }
-    }
-
-    if (this.isRaw() && this.sourceQuery()) {
-      query = query.clearFields();
-    }
-
-    return query;
-  }
-
   _indexOfField(fieldRef) {
     return this.fields().findIndex(f => _.isEqual(f, fieldRef));
   }

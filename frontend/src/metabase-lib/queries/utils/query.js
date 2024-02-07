@@ -121,8 +121,6 @@ export const addExpression = (query, name, expression) =>
     query,
     E.addExpression(query.expressions, name, expression),
   );
-export const clearExpressions = query =>
-  setExpressionClause(query, E.clearExpressions(query.expressions));
 
 // we can enforce various constraints in these functions:
 
