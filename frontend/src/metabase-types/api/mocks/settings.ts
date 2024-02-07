@@ -149,7 +149,7 @@ export const createMockSettings = (
   "custom-homepage-dashboard": null,
   "help-link": "metabase",
   "help-link-custom-destination": "",
-  "default-browse-tab": undefined,
+  "default-browse-tab": null,
   "deprecation-notice-version": undefined,
   "email-configured?": false,
   "embedding-app-origin": "",
