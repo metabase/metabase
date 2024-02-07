@@ -1,16 +1,22 @@
 import type { UsageReason } from "metabase-types/api";
 import { trackSchemaEvent } from "metabase/lib/analytics";
+import type { SetupStep } from "./types";
 
 const ONBOARDING_VERSION = "1.1.0";
 const SCHEMA_VERSION = "1-0-1";
 
-// TODO: make it accept {stepName, stepNumber} instead of just step
-export const trackStepSeen = (step: any) => {
+export const trackStepSeen = ({
+  stepName,
+  stepNumber,
+}: {
+  stepName: SetupStep;
+  stepNumber: number;
+}) => {
   trackSchemaEvent("setup", SCHEMA_VERSION, {
     event: "step_seen",
-    version: "1.0.0",
-    step: step, // TODO: will be fixed with the todo above
-    step_number: step,
+    version: ONBOARDING_VERSION,
+    step: stepName,
+    step_number: stepNumber,
   });
 };
 
