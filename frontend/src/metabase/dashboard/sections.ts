@@ -24,6 +24,8 @@ export type SectionLayout = {
 };
 
 const HEADING_HEIGHT = 1;
+const SCALAR_CARD_WIDTH = 6;
+const SCALAR_CARD_HEIGHT = 3;
 
 function createHeadingDashCard({
   size_x = GRID_WIDTH,
@@ -107,28 +109,26 @@ const getLargeChartKpiColLayout: LayoutFn = position => {
   });
 
   const row = position.row + HEADING_HEIGHT;
-  const scalarCardWidth = 7;
-  const scalarCardHeight = 3;
-  const largeCardWidth = GRID_WIDTH - scalarCardWidth;
+  const largeCardWidth = GRID_WIDTH - SCALAR_CARD_WIDTH;
 
   const scalarCardsColumn = [
     createPlaceholderDashCard({
       col: largeCardWidth,
       row: row,
-      size_x: scalarCardWidth,
-      size_y: scalarCardHeight,
+      size_x: SCALAR_CARD_WIDTH,
+      size_y: SCALAR_CARD_HEIGHT,
     }),
     createPlaceholderDashCard({
       col: largeCardWidth,
-      row: row + scalarCardHeight,
-      size_x: scalarCardWidth,
-      size_y: scalarCardHeight,
+      row: row + SCALAR_CARD_HEIGHT,
+      size_x: SCALAR_CARD_WIDTH,
+      size_y: SCALAR_CARD_HEIGHT,
     }),
     createPlaceholderDashCard({
       col: largeCardWidth,
-      row: row + scalarCardHeight * 2,
-      size_x: scalarCardWidth,
-      size_y: scalarCardHeight,
+      row: row + SCALAR_CARD_HEIGHT * 2,
+      size_x: SCALAR_CARD_WIDTH,
+      size_y: SCALAR_CARD_HEIGHT,
     }),
   ];
 
@@ -136,7 +136,7 @@ const getLargeChartKpiColLayout: LayoutFn = position => {
     col: position.col,
     row,
     size_x: largeCardWidth,
-    size_y: scalarCardHeight * scalarCardsColumn.length,
+    size_y: SCALAR_CARD_HEIGHT * scalarCardsColumn.length,
   });
 
   return [heading, largeCard, ...scalarCardsColumn];
@@ -150,8 +150,6 @@ const getKpiLargeChartBelowLayout: LayoutFn = position => {
   });
 
   const row = position.row + HEADING_HEIGHT;
-  const scalarCardWidth = GRID_WIDTH / 3;
-  const scalarCardHeight = 3;
 
   const largeCardWidth = GRID_WIDTH;
   const largeCardHeight = 9;
@@ -160,26 +158,32 @@ const getKpiLargeChartBelowLayout: LayoutFn = position => {
     createPlaceholderDashCard({
       col: 0,
       row: row,
-      size_x: scalarCardWidth,
-      size_y: scalarCardHeight,
+      size_x: SCALAR_CARD_WIDTH,
+      size_y: SCALAR_CARD_HEIGHT,
     }),
     createPlaceholderDashCard({
-      col: scalarCardWidth,
+      col: SCALAR_CARD_WIDTH,
       row: row,
-      size_x: scalarCardWidth,
-      size_y: scalarCardHeight,
+      size_x: SCALAR_CARD_WIDTH,
+      size_y: SCALAR_CARD_HEIGHT,
     }),
     createPlaceholderDashCard({
-      col: scalarCardWidth * 2,
+      col: SCALAR_CARD_WIDTH * 2,
       row: row,
-      size_x: scalarCardWidth,
-      size_y: scalarCardHeight,
+      size_x: SCALAR_CARD_WIDTH,
+      size_y: SCALAR_CARD_HEIGHT,
+    }),
+    createPlaceholderDashCard({
+      col: SCALAR_CARD_WIDTH * 3,
+      row: row,
+      size_x: SCALAR_CARD_WIDTH,
+      size_y: SCALAR_CARD_HEIGHT,
     }),
   ];
 
   const largeCard = createPlaceholderDashCard({
     col: position.col,
-    row: row + scalarCardHeight,
+    row: row + SCALAR_CARD_HEIGHT,
     size_x: largeCardWidth,
     size_y: largeCardHeight,
   });
