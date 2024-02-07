@@ -36,17 +36,6 @@ export const TitleContainer = styled.div`
   position: relative;
 `;
 
-export const InfoIcon = styled(Icon)`
-  position: absolute;
-  right: 0;
-  opacity: 0;
-  padding: 0 0.5em;
-
-  ${Content}:hover & {
-    opacity: 1;
-  }
-`;
-
 export const RemoveButton = styled(Button)`
   color: ${color("white")};
   background-color: transparent;
@@ -146,4 +135,15 @@ export const Root = styled.li<{ isSelected: boolean }>`
   min-height: 34px;
 
   ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
+`;
+
+export const InfoIcon = styled(Icon)`
+  position: absolute;
+  right: 0;
+  opacity: 0;
+  padding: 0.7em 0.5em;
+
+  ${Root}:hover & {
+    opacity: 1;
+  }
 `;

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
+import { DelayGroup } from "metabase/ui";
 import Input from "metabase/core/components/Input";
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -113,55 +114,57 @@ export function BreakoutColumnList({
           onChange={handleChangeSearchQuery}
         />
       </SearchContainer>
-      {!isSearching && (
-        <ul data-testid="pinned-dimensions">
-          {pinnedItems.map(item => (
-            <BreakoutColumnListItem
-              key={item.longDisplayName}
-              query={query}
-              item={item}
-              breakout={item.breakout}
-              isPinned
-              onAddColumn={onAddBreakout}
-              onUpdateColumn={column => {
-                if (item.breakout) {
-                  onUpdateBreakout(item.breakout, column);
-                } else {
-                  onAddBreakout(column);
-                }
-              }}
-              onRemoveColumn={handleRemovePinnedBreakout}
-            />
+      <DelayGroup>
+        {!isSearching && (
+          <ul data-testid="pinned-dimensions">
+            {pinnedItems.map(item => (
+              <BreakoutColumnListItem
+                key={item.longDisplayName}
+                query={query}
+                item={item}
+                breakout={item.breakout}
+                isPinned
+                onAddColumn={onAddBreakout}
+                onUpdateColumn={column => {
+                  if (item.breakout) {
+                    onUpdateBreakout(item.breakout, column);
+                  } else {
+                    onAddBreakout(column);
+                  }
+                }}
+                onRemoveColumn={handleRemovePinnedBreakout}
+              />
+            ))}
+          </ul>
+        )}
+        <ul data-testid="unpinned-dimensions">
+          {sections.map(section => (
+            <li key={section.name}>
+              <ColumnGroupName>{section.name}</ColumnGroupName>
+              <ul>
+                {section.items.map(item => (
+                  <BreakoutColumnListItem
+                    key={item.longDisplayName}
+                    query={query}
+                    item={item}
+                    breakout={item.breakout}
+                    onAddColumn={onAddBreakout}
+                    onUpdateColumn={column => {
+                      if (item.breakout) {
+                        onUpdateBreakout(item.breakout, column);
+                      } else {
+                        onAddBreakout(column);
+                      }
+                    }}
+                    onRemoveColumn={onRemoveBreakout}
+                    onReplaceColumns={handleReplaceBreakout}
+                  />
+                ))}
+              </ul>
+            </li>
           ))}
         </ul>
-      )}
-      <ul data-testid="unpinned-dimensions">
-        {sections.map(section => (
-          <li key={section.name}>
-            <ColumnGroupName>{section.name}</ColumnGroupName>
-            <ul>
-              {section.items.map(item => (
-                <BreakoutColumnListItem
-                  key={item.longDisplayName}
-                  query={query}
-                  item={item}
-                  breakout={item.breakout}
-                  onAddColumn={onAddBreakout}
-                  onUpdateColumn={column => {
-                    if (item.breakout) {
-                      onUpdateBreakout(item.breakout, column);
-                    } else {
-                      onAddBreakout(column);
-                    }
-                  }}
-                  onRemoveColumn={onRemoveBreakout}
-                  onReplaceColumns={handleReplaceBreakout}
-                />
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
+      </DelayGroup>
     </>
   );
 }

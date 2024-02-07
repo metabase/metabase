@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import Tooltip from "metabase/core/components/Tooltip";
+import { FieldInfoPopoverMLv2 } from "metabase/components/MetadataInfo/FieldInfoPopover";
 import * as Lib from "metabase-lib";
 import {
   AddButton,
@@ -88,7 +89,15 @@ export function BreakoutColumnListItem({
         <TitleContainer>
           <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
-          <InfoIcon name="info_filled" />
+          <FieldInfoPopoverMLv2
+            query={query}
+            column={item.column}
+            state={STAGE_INDEX}
+            delay={[0, 100]}
+            position="top-end"
+          >
+            <InfoIcon name="info_filled" />
+          </FieldInfoPopoverMLv2>
         </TitleContainer>
         {renderBucketPicker()}
         {isSelected && (
