@@ -315,26 +315,6 @@ class StructuredQuery extends AtomicQuery {
     return !!this.table();
   }
 
-  hasAnyClauses() {
-    // this list should be kept in sync with BE in `metabase.models.card/model-supports-implicit-actions?`
-
-    const query = this.getMLv2Query();
-    const stageIndex = this.getQueryStageIndex();
-
-    const hasJoins = Lib.joins(query, stageIndex).length > 0;
-
-    return (
-      hasJoins ||
-      this.hasExpressions() ||
-      this.hasFilters() ||
-      this.hasAggregations() ||
-      this.hasBreakouts() ||
-      this._hasSorts() ||
-      this.hasLimit() ||
-      this._hasFields()
-    );
-  }
-
   hasExpressions() {
     return Object.keys(this.expressions()).length > 0;
   }
