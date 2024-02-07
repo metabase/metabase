@@ -1,5 +1,7 @@
 import { useAsync } from "react-use";
 
+import { Badge } from '@mantine/core';
+
 import * as Lib from "metabase-lib";
 import { useSelector } from "metabase/lib/redux";
 import { Group } from "metabase/ui";
@@ -75,17 +77,25 @@ export const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
         return null;
       }
       return (
-        <Group position="right">
-          <div>
-            <span className="suggestionLoading3">✨</span>
-            <span className="suggestionLoading2">✨</span>
-            <span className="suggestionLoading">✨</span>
-            Generating question title and description
-            <span className="suggestionLoading"> ✨</span>
-            <span className="suggestionLoading2">✨</span>
-            <span className="suggestionLoading3">✨</span>
+        <Badge variant="outline" radius="xl" className="loading-badge">
+          <div title="Running...">
+            <span className="pulse">✨</span>
+            <span className="pulse">✨</span>
+            <span className="pulse">✨</span>
           </div>
-        </Group>
+        </Badge>
+
+      // <Group position="right">
+      //   <div>
+      //     <span className="suggestionLoading3">✨</span>
+      //     <span className="suggestionLoading2">✨</span>
+      //     <span className="suggestionLoading">✨</span>
+      //     Generating question title and description
+      //     <span className="suggestionLoading"> ✨</span>
+      //     <span className="suggestionLoading2">✨</span>
+      //     <span className="suggestionLoading3">✨</span>
+      //   </div>
+      // </Group>
       );
     },
   };
