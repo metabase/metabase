@@ -163,7 +163,7 @@ export const getChartPadding = (
   };
 
   // Prevent data labels from being rendered outside the chart
-  if (settings["graph.show_values"]) {
+  if (settings["graph.show_values"] || settings["graph.goal_label"]) {
     padding.top +=
       CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset;
   }
