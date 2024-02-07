@@ -14,12 +14,6 @@ import {
   submitSetup,
   submitUsageReason,
 } from "./actions";
-import {
-  COMPLETED_STEP,
-  DATABASE_STEP,
-  PREFERENCES_STEP,
-  USAGE_STEP,
-} from "./constants";
 
 const initialState: SetupState = {
   step: "welcome",
@@ -50,13 +44,13 @@ export const reducer = createReducer(initialState, builder => {
   });
   builder.addCase(submitUser.pending, (state, { meta }) => {
     state.user = meta.arg;
-    state.step = USAGE_STEP;
+    state.step = "usage_question";
   });
   builder.addCase(submitUsageReason.pending, (state, { meta }) => {
     const usageReason = meta.arg;
     state.usageReason = usageReason;
     // this logic will be refactored before we introduce more steps, to be less fragile
-    state.step = usageReason === "embedding" ? PREFERENCES_STEP : DATABASE_STEP;
+    state.step = usageReason === "embedding" ? "data_usage" : "db_connection";
   });
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
     state.databaseEngine = meta.arg;
@@ -64,22 +58,22 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(submitDatabase.fulfilled, (state, { payload: database }) => {
     state.database = database;
     state.invite = undefined;
-    state.step = PREFERENCES_STEP;
+    state.step = "data_usage";
   });
   builder.addCase(submitUserInvite.pending, (state, { meta }) => {
     state.database = undefined;
     state.invite = meta.arg;
-    state.step = PREFERENCES_STEP;
+    state.step = "data_usage";
   });
   builder.addCase(skipDatabase.pending, state => {
     state.database = undefined;
     state.invite = undefined;
-    state.step = PREFERENCES_STEP;
+    state.step = "data_usage";
   });
   builder.addCase(updateTracking.pending, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;
   });
   builder.addCase(submitSetup.fulfilled, state => {
-    state.step = COMPLETED_STEP;
+    state.step = "completed";
   });
 });

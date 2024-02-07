@@ -3,7 +3,6 @@ import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import { getSetting } from "metabase/selectors/settings";
 import { isNotFalsy } from "./../lib/types";
 import type { SetupStep } from "./types";
-import { COMPLETED_STEP } from "./constants";
 
 const DEFAULT_LOCALES: LocaleData[] = [];
 
@@ -55,7 +54,7 @@ export const getIsStepCompleted = (state: State, step: SetupStep): boolean => {
 };
 
 export const getIsSetupCompleted = (state: State): boolean => {
-  return getStep(state) === COMPLETED_STEP;
+  return getStep(state) === "completed";
 };
 
 export const getDatabaseEngine = (state: State): string | undefined => {

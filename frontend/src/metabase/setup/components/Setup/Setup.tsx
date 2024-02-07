@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useUpdate } from "react-use";
 import { useSelector } from "metabase/lib/redux";
 import { trackStepSeen } from "../../analytics";
-import { WELCOME_STEP } from "../../constants";
 import { getIsLocaleLoaded, getStep } from "../../selectors";
 import { SettingsPage } from "../SettingsPage";
 import { WelcomePage } from "../WelcomePage";
@@ -22,7 +21,7 @@ export const Setup = (): JSX.Element => {
     }
   }, [update, isLocaleLoaded]);
 
-  if (step === WELCOME_STEP) {
+  if (step === "welcome") {
     return <WelcomePage />;
   } else {
     return <SettingsPage />;

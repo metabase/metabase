@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
 import type { Locale } from "metabase-types/store";
 import { selectStep, updateLocale } from "../../actions";
-import { LANGUAGE_STEP, USER_STEP } from "../../constants";
 import {
   getAvailableLocales,
   getIsSetupCompleted,
@@ -28,11 +27,9 @@ import {
 export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const locale = useSelector(getLocale);
   const localeData = useSelector(getAvailableLocales);
-  const isStepActive = useSelector(state =>
-    getIsStepActive(state, LANGUAGE_STEP),
-  );
+  const isStepActive = useSelector(state => getIsStepActive(state, "language"));
   const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, LANGUAGE_STEP),
+    getIsStepCompleted(state, "language"),
   );
   const isSetupCompleted = useSelector(state => getIsSetupCompleted(state));
   const fieldId = useMemo(() => _.uniqueId(), []);
@@ -44,11 +41,11 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   };
 
   const handleStepSelect = () => {
-    dispatch(selectStep(LANGUAGE_STEP));
+    dispatch(selectStep("language"));
   };
 
   const handleStepSubmit = () => {
-    dispatch(selectStep(USER_STEP));
+    dispatch(selectStep("user_info"));
   };
 
   if (!isStepActive) {

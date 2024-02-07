@@ -5,7 +5,6 @@ import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import { UserForm } from "../UserForm";
 import { selectStep, submitUser } from "../../actions";
-import { USER_STEP } from "../../constants";
 import {
   getIsHosted,
   getIsSetupCompleted,
@@ -20,15 +19,17 @@ import { StepDescription } from "./UserStep.styled";
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
-  const isStepActive = useSelector(state => getIsStepActive(state, USER_STEP));
+  const isStepActive = useSelector(state =>
+    getIsStepActive(state, "user_info"),
+  );
   const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, USER_STEP),
+    getIsStepCompleted(state, "user_info"),
   );
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
   const handleStepSelect = () => {
-    dispatch(selectStep(USER_STEP));
+    dispatch(selectStep("user_info"));
   };
 
   const handleSubmit = (user: UserInfo) => {

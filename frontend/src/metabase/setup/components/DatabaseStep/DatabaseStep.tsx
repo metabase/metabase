@@ -11,7 +11,6 @@ import {
   submitUserInvite,
   updateDatabaseEngine,
 } from "../../actions";
-import { DATABASE_STEP } from "../../constants";
 import {
   getDatabase,
   getDatabaseEngine,
@@ -36,10 +35,10 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const invite = useSelector(getInvite);
   const isEmailConfigured = useSelector(getIsEmailConfigured);
   const isStepActive = useSelector(state =>
-    getIsStepActive(state, DATABASE_STEP),
+    getIsStepActive(state, "db_connection"),
   );
   const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, DATABASE_STEP),
+    getIsStepCompleted(state, "db_connection"),
   );
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
@@ -61,7 +60,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   };
 
   const handleStepSelect = () => {
-    dispatch(selectStep(DATABASE_STEP));
+    dispatch(selectStep("db_connection"));
   };
 
   const handleStepCancel = () => {

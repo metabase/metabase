@@ -5,7 +5,6 @@ import { Divider, Radio, Stack, Text } from "metabase/ui";
 import Button from "metabase/core/components/Button";
 import type { UsageReason } from "metabase-types/api";
 import { selectStep, submitUsageReason } from "../../actions";
-import { USAGE_STEP } from "../../constants";
 import {
   getIsSetupCompleted,
   getIsStepActive,
@@ -27,15 +26,17 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
     "self-service-analytics",
   );
 
-  const isStepActive = useSelector(state => getIsStepActive(state, USAGE_STEP));
+  const isStepActive = useSelector(state =>
+    getIsStepActive(state, "usage_question"),
+  );
   const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, USAGE_STEP),
+    getIsStepCompleted(state, "usage_question"),
   );
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
   const handleStepSelect = () => {
-    dispatch(selectStep(USAGE_STEP));
+    dispatch(selectStep("usage_question"));
   };
 
   const handleSubmit = () => {

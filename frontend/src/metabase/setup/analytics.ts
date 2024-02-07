@@ -1,13 +1,11 @@
 import { trackSchemaEvent, trackStructEvent } from "metabase/lib/analytics";
-import { STEPS } from "./constants";
 
 // TODO: make it accept {stepName, stepNumber} instead of just step
 export const trackStepSeen = (step: any) => {
   trackSchemaEvent("setup", "1-0-1", {
     event: "step_seen",
     version: "1.0.0",
-    // @ts-expect-error -- tmp
-    step: STEPS[step],
+    step: step, // TODO: will be fixed with the todo above
     step_number: step,
   });
 };
