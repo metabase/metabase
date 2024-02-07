@@ -104,12 +104,11 @@
 
 (defmethod mi/can-write? :model/Table
   ([instance]
-   (contains? #{:unrestricted :no-self-service}
-              (data-perms/table-permission-for-user
-               api/*current-user-id*
-               :perms/manage-table-metadata
-               (:db_id instance)
-               (:id instance))))
+   (= :yes (data-perms/table-permission-for-user
+            api/*current-user-id*
+            :perms/manage-table-metadata
+            (:db_id instance)
+            (:id instance))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
 
