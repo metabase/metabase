@@ -95,3 +95,9 @@ export const getSteps = (state: State) => {
 
   return steps;
 };
+
+export const getNextStep = (state: State) => {
+  const steps = getSteps(state);
+  const activeStepIndex = steps.findIndex(s => s.isActiveStep);
+  return steps[activeStepIndex + 1].key;
+};

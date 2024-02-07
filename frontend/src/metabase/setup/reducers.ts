@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import type { SetupState } from "metabase-types/store";
+import type { SetupState, State } from "metabase-types/store";
 import {
   skipDatabase,
   loadLocaleDefaults,
@@ -14,6 +14,7 @@ import {
   submitSetup,
   submitUsageReason,
 } from "./actions";
+import { getNextStep } from "./selectors";
 
 const initialState: SetupState = {
   step: "welcome",
@@ -44,13 +45,12 @@ export const reducer = createReducer(initialState, builder => {
   });
   builder.addCase(submitUser.pending, (state, { meta }) => {
     state.user = meta.arg;
-    state.step = "usage_question";
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(submitUsageReason.pending, (state, { meta }) => {
     const usageReason = meta.arg;
     state.usageReason = usageReason;
-    // this logic will be refactored before we introduce more steps, to be less fragile
-    state.step = usageReason === "embedding" ? "data_usage" : "db_connection";
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
     state.databaseEngine = meta.arg;
@@ -58,17 +58,17 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(submitDatabase.fulfilled, (state, { payload: database }) => {
     state.database = database;
     state.invite = undefined;
-    state.step = "data_usage";
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(submitUserInvite.pending, (state, { meta }) => {
     state.database = undefined;
     state.invite = meta.arg;
-    state.step = "data_usage";
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(skipDatabase.pending, state => {
     state.database = undefined;
     state.invite = undefined;
-    state.step = "data_usage";
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(updateTracking.pending, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;
