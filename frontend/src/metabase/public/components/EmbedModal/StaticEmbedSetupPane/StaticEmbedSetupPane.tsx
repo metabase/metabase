@@ -14,7 +14,10 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
 } from "metabase/public/lib/types";
-import { getSignedPreviewUrl } from "metabase/public/lib/embed";
+import {
+  getSignedPreviewUrlWithoutHash,
+  optionsToHashParams,
+} from "metabase/public/lib/embed";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 
 import {
@@ -32,6 +35,9 @@ import { AppearanceSettings } from "./AppearanceSettings";
 import { OverviewSettings } from "./OverviewSettings";
 import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 import { EMBED_MODAL_TABS } from "./tabs";
+import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
+import { PreviewModeSelector } from "./PreviewModeSelector";
+import { PreviewPane } from "./PreviewPane";
 
 const countEmbeddingParameterOptions = (
   embeddingParams: EmbeddingParametersSettings,
@@ -127,19 +133,17 @@ export const StaticEmbedSetupPane = ({
     embeddingParams,
   });
 
-  const iframeUrl = useMemo(
+  const iframeUrlWithoutHash = useMemo(
     () =>
-      getSignedPreviewUrl(
+      getSignedPreviewUrlWithoutHash(
         siteUrl,
         resourceType,
         resource.id,
         previewParametersBySlug,
-        displayOptions,
         secretKey,
         embeddingParams,
       ),
     [
-      displayOptions,
       embeddingParams,
       previewParametersBySlug,
       resource.id,
@@ -148,6 +152,8 @@ export const StaticEmbedSetupPane = ({
       siteUrl,
     ],
   );
+
+  const iframeUrl = iframeUrlWithoutHash + optionsToHashParams(displayOptions);
 
   const handleSave = async () => {
     if (!resource.enable_embedding) {
@@ -228,6 +234,9 @@ export const StaticEmbedSetupPane = ({
     });
   };
 
+  const [activeTab, setActiveTab] = useState<
+    typeof EMBED_MODAL_TABS[keyof typeof EMBED_MODAL_TABS]
+  >(EMBED_MODAL_TABS.Overview);
   return (
     <Stack spacing={0}>
       <EmbedModalContentStatusBar
@@ -244,61 +253,108 @@ export const StaticEmbedSetupPane = ({
         data-testid="embedding-preview"
       >
         <Tabs.List p="0 1.5rem">
-          <Tabs.Tab value={EMBED_MODAL_TABS.Overview}>{t`Overview`}</Tabs.Tab>
+          <Tabs.Tab
+            value={EMBED_MODAL_TABS.Overview}
+            onClick={() => setActiveTab(EMBED_MODAL_TABS.Overview)}
+          >{t`Overview`}</Tabs.Tab>
           <Tabs.Tab
             value={EMBED_MODAL_TABS.Parameters}
+            onClick={() => setActiveTab(EMBED_MODAL_TABS.Parameters)}
           >{t`Parameters`}</Tabs.Tab>
           <Tabs.Tab
             value={EMBED_MODAL_TABS.Appearance}
+            onClick={() => setActiveTab(EMBED_MODAL_TABS.Appearance)}
           >{t`Appearance`}</Tabs.Tab>
         </Tabs.List>
-        <Tabs.Panel value={EMBED_MODAL_TABS.Overview}>
-          <OverviewSettings
-            resourceType={resourceType}
-            selectedServerCodeOption={selectedServerCodeOption}
-            serverEmbedCodeSlot={getServerEmbedCodePane(
-              EMBED_MODAL_TABS.Overview,
-            )}
-            onClientCodeCopy={language =>
-              handleCodeCopy({ code: "view", variant: "overview", language })
-            }
-          />
-        </Tabs.Panel>
-        <Tabs.Panel value={EMBED_MODAL_TABS.Parameters}>
-          <ParametersSettings
-            activePane={activePane}
-            resourceType={resourceType}
-            resourceParameters={resourceParameters}
-            embeddingParams={embeddingParams}
-            lockedParameters={lockedParameters}
-            parameterValues={parameterValues}
-            iframeUrl={iframeUrl}
-            displayOptions={displayOptions}
-            serverEmbedCodeSlot={getServerEmbedCodePane(
-              EMBED_MODAL_TABS.Parameters,
-            )}
-            onChangeEmbeddingParameters={setEmbeddingParams}
-            onChangeParameterValue={(id: string, value: string) =>
-              setParameterValues(state => ({
-                ...state,
-                [id]: value,
-              }))
-            }
-            onChangePane={setActivePane}
-          />
-        </Tabs.Panel>
-        <Tabs.Panel value={EMBED_MODAL_TABS.Appearance}>
-          <AppearanceSettings
-            activePane={activePane}
-            resourceType={resourceType}
-            iframeUrl={iframeUrl}
-            displayOptions={displayOptions}
-            serverEmbedCodeSlot={getServerEmbedCodePane(
-              EMBED_MODAL_TABS.Appearance,
-            )}
-            onChangePane={setActivePane}
-            onChangeDisplayOptions={setDisplayOptions}
-          />
+        {/**
+         * Please do not add more than one `Tabs.Panel` here.
+         *
+         * The reason there is only one `Tabs.Panel` is because I don't want
+         * the iframe (rendered inside `PreviewPane`) to be re-mounted when
+         * changing tabs. Otherwise, the preview will be reloaded
+         * every time we change tabs which makes it hard for users to see
+         * the preview while editing settings.
+         *
+         * This is because React will unmount everything
+         * when you change to a different tab since they're all rendered inside
+         * different `Tabs.Panel` if you were to use it as Mantine suggests.
+         */}
+        <Tabs.Panel value={activeTab}>
+          {activeTab === EMBED_MODAL_TABS.Overview ? (
+            <OverviewSettings
+              resourceType={resourceType}
+              selectedServerCodeOption={selectedServerCodeOption}
+              serverEmbedCodeSlot={getServerEmbedCodePane(
+                EMBED_MODAL_TABS.Overview,
+              )}
+              onClientCodeCopy={language =>
+                handleCodeCopy({ code: "view", variant: "overview", language })
+              }
+            />
+          ) : activeTab === EMBED_MODAL_TABS.Parameters ? (
+            <SettingsTabLayout
+              settingsSlot={
+                <ParametersSettings
+                  resourceType={resourceType}
+                  resourceParameters={resourceParameters}
+                  embeddingParams={embeddingParams}
+                  lockedParameters={lockedParameters}
+                  parameterValues={parameterValues}
+                  onChangeEmbeddingParameters={setEmbeddingParams}
+                  onChangeParameterValue={(id: string, value: string) =>
+                    setParameterValues(state => ({
+                      ...state,
+                      [id]: value,
+                    }))
+                  }
+                />
+              }
+              previewSlot={
+                <>
+                  <PreviewModeSelector
+                    value={activePane}
+                    onChange={setActivePane}
+                  />
+                  <PreviewPane
+                    hidden={activePane !== "preview"}
+                    className="flex-full"
+                    previewUrl={iframeUrl}
+                    isTransparent={displayOptions.theme === "transparent"}
+                  />
+                  {activePane === "code"
+                    ? getServerEmbedCodePane(EMBED_MODAL_TABS.Parameters)
+                    : null}
+                </>
+              }
+            />
+          ) : activeTab === EMBED_MODAL_TABS.Appearance ? (
+            <SettingsTabLayout
+              settingsSlot={
+                <AppearanceSettings
+                  resourceType={resourceType}
+                  displayOptions={displayOptions}
+                  onChangeDisplayOptions={setDisplayOptions}
+                />
+              }
+              previewSlot={
+                <>
+                  <PreviewModeSelector
+                    value={activePane}
+                    onChange={setActivePane}
+                  />
+                  <PreviewPane
+                    hidden={activePane !== "preview"}
+                    className="flex-full"
+                    previewUrl={iframeUrl}
+                    isTransparent={displayOptions.theme === "transparent"}
+                  />
+                  {activePane === "code"
+                    ? getServerEmbedCodePane(EMBED_MODAL_TABS.Appearance)
+                    : null}
+                </>
+              }
+            />
+          ) : null}
         </Tabs.Panel>
       </Tabs>
     </Stack>

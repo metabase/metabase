@@ -4,7 +4,6 @@ import { KJUR } from "jsrsasign"; // using jsrsasign because jsonwebtoken doesn'
 import type {
   EmbedResourceType,
   EmbedResource,
-  EmbeddingDisplayOptions,
   EmbeddingParametersValues,
 } from "./types";
 
@@ -29,12 +28,11 @@ function getSignedToken(
   });
 }
 
-export function getSignedPreviewUrl(
+export function getSignedPreviewUrlWithoutHash(
   siteUrl: string,
   resourceType: EmbedResourceType,
   resourceId: EmbedResource["id"],
   params: EmbeddingParametersValues = {},
-  options: EmbeddingDisplayOptions,
   secretKey: string,
   previewEmbeddingParams: EmbeddingParametersValues,
 ) {
@@ -45,9 +43,7 @@ export function getSignedPreviewUrl(
     secretKey,
     previewEmbeddingParams,
   );
-  return `${siteUrl}/embed/${resourceType}/${token}${optionsToHashParams(
-    options,
-  )}`;
+  return `${siteUrl}/embed/${resourceType}/${token}`;
 }
 
 export function optionsToHashParams(
