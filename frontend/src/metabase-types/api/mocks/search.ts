@@ -75,3 +75,6 @@ export const createMockSearchResults = ({
     ...options,
   };
 };
+
+export const createMockModelResult = (model: Partial<SearchResult>) =>
+  createMockSearchResult({ model: "dataset", ...model });

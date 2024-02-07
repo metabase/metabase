@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 
-import { useCallback, useState } from "react";
+import { useEffect } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -20,8 +20,8 @@ import NoResults from "assets/img/no_results.svg";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { color } from "metabase/lib/colors";
 import { updateSetting } from "metabase/admin/settings/settings";
-import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
@@ -41,6 +41,7 @@ export const BrowseModels = ({
 }: {
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
 }) => {
+  const dispatch = useDispatch();
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
@@ -62,6 +63,18 @@ export const BrowseModels = ({
       }),
     );
   }, [dispatch]);
+
+  useEffect(() => {
+    if (error || isLoading) {
+      return;
+    }
+    dispatch(
+      updateSetting({
+        key: "default-browse-tab",
+        value: "models",
+      }),
+    );
+  }, [error, isLoading, dispatch]);
 
   if (error || isLoading) {
     return (
