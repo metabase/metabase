@@ -63,6 +63,13 @@ LineShowDotsOff.args = {
   renderingContext,
 };
 
+export const LineCustomYAxisRangeEqualsExtents = Template.bind({});
+LineCustomYAxisRangeEqualsExtents.args = {
+  rawSeries: data.lineCustomYAxisRangeEqualsExtents as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarLinearXScale = Template.bind({});
 BarLinearXScale.args = {
   rawSeries: data.barLinearXScale as any,
@@ -129,6 +136,20 @@ SplitYAxis.args = {
 export const GoalLineOutOfBounds37848 = Template.bind({});
 GoalLineOutOfBounds37848.args = {
   rawSeries: data.goalLineOutOfBounds37848 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const GoalVerySmall = Template.bind({});
+GoalVerySmall.args = {
+  rawSeries: data.goalVerySmall as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const GoalBetweenExtentAndChartBound = Template.bind({});
+GoalBetweenExtentAndChartBound.args = {
+  rawSeries: data.goalBetweenExtentAndChartBound as any,
   dashcardSettings: {},
   renderingContext,
 };

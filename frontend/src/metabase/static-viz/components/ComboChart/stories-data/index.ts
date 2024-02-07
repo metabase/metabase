@@ -3,6 +3,7 @@ import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
 import lineShowDotsAuto from "./line-show-dots-auto.json";
 import lineShowDotsOn from "./line-show-dots-on.json";
 import lineShowDotsOff from "./line-show-dots-off.json";
+import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
@@ -13,6 +14,8 @@ import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
 import goalLineOutOfBounds37848 from "./goal-line-out-of-bounds-37848.json";
+import goalVerySmall from "./goal-very-small.json";
+import goalBetweenExtentAndChartBound from "./goal-between-extent-and-chart-bound.json";
 import goalLineDisabled from "./goal-line-disabled.json";
 import trendSingleSeriesLine from "./trend-single-series-line.json";
 import trendMultiSeriesLine from "./trend-multi-series-line.json";
@@ -37,6 +40,7 @@ export const data = {
   lineShowDotsAuto,
   lineShowDotsOn,
   lineShowDotsOff,
+  lineCustomYAxisRangeEqualsExtents,
   barLinearXScale,
   barHistogramXScale,
   barOrdinalXScale,
@@ -48,6 +52,8 @@ export const data = {
   autoYSplit,
   messedUpAxis,
   goalLineOutOfBounds37848,
+  goalVerySmall,
+  goalBetweenExtentAndChartBound,
   goalLineDisabled,
   trendSingleSeriesLine,
   trendMultiSeriesLine,
