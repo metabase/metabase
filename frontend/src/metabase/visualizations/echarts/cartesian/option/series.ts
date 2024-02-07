@@ -426,8 +426,11 @@ export const buildEChartsSeries = (
       }
     })
     .flat()
-    .filter(isNotNull)
-    .reverse(); // stacks the series from stop to bottom to match legend and sidebar #28772
+    .filter(isNotNull);
+
+  if (settings["stackable.stack_type"] != null) {
+    series.reverse(); // stacks the series from stop to bottom to match legend and sidebar #28772
+  }
 
   if (
     settings["stackable.stack_type"] === "stacked" &&
