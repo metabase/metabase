@@ -79,6 +79,7 @@ const NewItemMenu = ({
           mode: "notebook",
           creationType: "custom_question",
           collectionId,
+          cardType: "question",
         }),
         onClose: onCloseNavbar,
       });
@@ -92,6 +93,7 @@ const NewItemMenu = ({
           type: "native",
           creationType: "native_question",
           collectionId,
+          cardType: "question",
         }),
         onClose: onCloseNavbar,
       });
