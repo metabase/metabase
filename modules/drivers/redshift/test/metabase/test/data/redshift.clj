@@ -174,7 +174,7 @@
      (delete-old-schemas! conn)
      (create-session-schema! conn))))
 
-(defn- delete-session-schemas!
+(defn- delete-session-schema!
   "Delete our session schema when the test suite has finished running (CLI only)."
   [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]
@@ -188,7 +188,7 @@
    driver
    (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
    {:write? true}
-   delete-session-schemas!))
+   delete-session-schema!))
 
 (defonce ^:private ^{:arglists '([driver connection metadata _ _])}
   original-filtered-syncable-schemas
