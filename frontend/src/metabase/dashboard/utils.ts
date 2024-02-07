@@ -11,7 +11,7 @@ import type {
   Card,
   CardId,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   Database,
   Dataset,
   NativeDatasetQuery,
@@ -21,6 +21,8 @@ import type {
   EmbedDataset,
   BaseDashboardCard,
   DashCardDataMap,
+  VirtualCard,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import {
@@ -68,7 +70,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
   };
 }
 
-export function expandInlineCard(card?: Card) {
+export function expandInlineCard(card?: Card | VirtualCard) {
   return {
     name: "",
     visualization_settings: {},
@@ -77,25 +79,40 @@ export function expandInlineCard(card?: Card) {
   };
 }
 
-export function isDashCardWithQuery(
+export function isQuestionDashCard(
   dashcard: BaseDashboardCard,
-): dashcard is DashboardCard {
-  return "card_id" in dashcard && "card" in dashcard;
+): dashcard is QuestionDashboardCard {
+  return (
+    "card_id" in dashcard &&
+    "card" in dashcard &&
+    !isVirtualDashCard(dashcard) &&
+    !isActionDashCard(dashcard)
+  );
 }
 
-export function isVirtualDashCard(dashcard: BaseDashboardCard) {
+export function isActionDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is ActionDashboardCard {
+  return "action" in dashcard;
+}
+
+export function isVirtualDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
-export function getVirtualCardType(dashcard: DashboardCard) {
+export function getVirtualCardType(dashcard: BaseDashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
 
-export function isLinkDashCard(dashcard: DashboardCard) {
+export function isLinkDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
   return getVirtualCardType(dashcard) === "link";
 }
 
-export function isNativeDashCard(dashcard: DashboardCard) {
+export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
   return dashcard.card.dataset_query?.type === "native";
 }
@@ -103,7 +120,7 @@ export function isNativeDashCard(dashcard: DashboardCard) {
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   isMobile: boolean,
 ) {
   if (isVirtualDashCard(dashcard)) {
@@ -183,7 +200,7 @@ export function getDatasetQueryParams(
 }
 
 export function isDashcardLoading(
-  dashcard: DashboardCard,
+  dashcard: BaseDashboardCard,
   dashcardsData: DashCardDataMap,
 ) {
   if (isVirtualDashCard(dashcard)) {

@@ -43,6 +43,9 @@
 (def ^:private segment-metadata
   (lib.metadata/segment query-with-segment segment-id))
 
+(deftest ^:parallel uses-segment?-test
+  (is (lib/uses-segment? query-with-segment segment-id)))
+
 (deftest ^:parallel query-suggested-name-test
   (is (= "Venues, Filtered by ID is 5 and PriceID-BBQ"
          (lib.metadata.calculation/suggested-name query-with-segment))))
@@ -92,6 +95,7 @@
                 :filter-positions [0]}]
               (map #(lib/display-info query %) available-segments)))
       (let [multi-stage-query (lib/append-stage query)]
+        (is (lib/uses-segment? multi-stage-query segment-id))
         (testing "not the first stage -- don't return Segments (#36196)"
           (is (nil? (lib/available-segments multi-stage-query)))
           (is (nil? (lib/available-segments multi-stage-query -1)))
@@ -107,10 +111,12 @@
                     (lib/join (-> (lib/join-clause (lib/query metadata-provider (meta/table-metadata :venues))
                                                    [(lib/= (meta/field-metadata :venues :price) 4)])
                                   (lib/with-join-fields :all))))]
+      (is (not (lib/uses-segment? query segment-id)))
       (is (nil? (lib/available-segments query)))))
   (testing "query based on a card -- don't return Segments"
     (doseq [card-key [:venues :venues/native]]
       (let [query (lib/query metadata-provider-with-cards (card-key lib.tu/mock-cards))]
+        (is (not (lib/uses-segment? query segment-id)))
         (is (nil? (lib/available-segments (lib/append-stage query))))))))
 
 (deftest ^:parallel filter-with-segment-test
@@ -124,6 +130,7 @@
                       [:segment {:lib/uuid (str (random-uuid))} segment-id]]]
         (testing (pr-str (list 'lib/filter 'query segment))
           (let [query' (lib/filter query segment)]
+            (is (lib/uses-segment? query' segment-id))
             (is (=? {:lib/type :mbql/query
                      :stages   [{:lib/type     :mbql.stage/mbql
                                  :source-table (meta/id :venues)

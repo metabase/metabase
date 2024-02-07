@@ -1,6 +1,6 @@
 import { STANDARD_AGGREGATIONS } from "metabase-lib/expressions";
 import * as FieldRef from "./field-ref";
-import { add, update, remove, clear } from "./util";
+import { add, update, remove } from "./util";
 
 /**
  * Returns canonical list of Aggregations, i.e. with deprecated "rows" removed
@@ -54,13 +54,6 @@ export function updateAggregation(aggregation, index, updatedAggregation) {
  */
 export function removeAggregation(aggregation, index) {
   return getAggregationClause(remove(getAggregations(aggregation), index));
-}
-
-/**
- * @deprecated use MLv2
- */
-export function clearAggregations(ac) {
-  return getAggregationClause(clear());
 }
 
 // MISC
