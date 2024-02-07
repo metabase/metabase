@@ -106,9 +106,9 @@ export const MetricQuestions = ({ style, table, metric, metadata }) => {
 };
 
 MetricQuestions.propTypes = {
-  metric: PropTypes.object,
   table: PropTypes.object,
   style: PropTypes.object.isRequired,
+  metric: PropTypes.object.isRequired,
   metadata: PropTypes.object.isRequired,
 };
 
