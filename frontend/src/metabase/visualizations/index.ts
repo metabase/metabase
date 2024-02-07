@@ -56,7 +56,9 @@ export function registerVisualization(visualization: Visualization) {
   }
 }
 
-export function getVisualizationRaw(series: Series) {
+type SeriesLike = Array<{ card: { display: string } }>;
+
+export function getVisualizationRaw(series: SeriesLike) {
   return visualizations.get(series[0].card.display);
 }
 
@@ -117,6 +119,11 @@ export function getMaxDimensionsSupported(display: string) {
 export function canSavePng(display: string) {
   const visualization = visualizations.get(display);
   return visualization?.canSavePng ?? true;
+}
+
+export function getDefaultSize(display: string) {
+  const visualization = visualizations.get(display);
+  return visualization?.defaultSize;
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column

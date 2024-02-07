@@ -41,6 +41,7 @@ import {
   getDashboardById,
   getDashCardById,
   getSelectedTabId,
+  getQuestions,
 } from "../selectors";
 
 import {
@@ -266,7 +267,13 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       const metadata = getMetadata(getState());
-      const parameters = getDashboardUiParameters(result, metadata);
+      const questions = getQuestions(getState());
+      const parameters = getDashboardUiParameters(
+        result.dashcards,
+        result.parameters,
+        metadata,
+        questions,
+      );
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())

@@ -10,7 +10,7 @@ import {
 
 import { checkNotNull } from "metabase/lib/types";
 
-import type { CardId, DashCardId, DashboardCard } from "metabase-types/api";
+import type { CardId, DashCardId } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -27,7 +27,7 @@ import {
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import type { State } from "metabase-types/store";
+import type { State, StoreDashcard } from "metabase-types/store";
 import {
   createMockDashboardState,
   createMockState,
@@ -37,7 +37,7 @@ import { CardApi } from "metabase/services";
 import mainReducers from "metabase/reducers-main";
 
 import { getDashCardById } from "../selectors";
-import { replaceCard } from "./cards";
+import { replaceCard } from "./cards-typed";
 
 const DATE_PARAMETER = createMockParameter({
   id: "1",
@@ -123,7 +123,7 @@ const DASHBOARD = createMockDashboard({
 type RunActionOpts = {
   dashcardId: DashCardId;
   nextCardId: CardId;
-  dashcards?: DashboardCard[];
+  dashcards?: StoreDashcard[];
 };
 
 async function runAction({
