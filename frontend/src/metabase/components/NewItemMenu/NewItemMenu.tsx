@@ -138,9 +138,10 @@ const NewItemMenu = ({
         title: t`Metric`,
         icon: "metric",
         link: Urls.newQuestion({
-          mode: "notebook",
-          collectionId,
+          mode: "query",
+          creationType: "custom_question",
           cardType: "metric",
+          collectionId,
         }),
         onClose: onCloseNavbar,
       });
