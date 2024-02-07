@@ -419,7 +419,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
       buttons.push(
         <LegacyTooltip key="add-section" tooltip={t`Add section`}>
-          <Menu>
+          <Menu position="bottom-end">
             <Menu.Target>
               <DashboardHeaderButton aria-label={t`Add section`}>
                 <Icon name="table_spaced" size={18} />
