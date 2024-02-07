@@ -199,8 +199,11 @@
   [query stage-number option]
   (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)
           :short-name (u/qualified-name (raw-temporal-bucket option))
-          :is-temporal-extraction (contains? lib.schema.temporal-bucketing/datetime-extraction-units
-                                             (raw-temporal-bucket option))}
+          :is-temporal-extraction (let [bucket (raw-temporal-bucket option)]
+                                    (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units
+                                                    bucket)
+                                         (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units
+                                                         bucket))))}
          (select-keys option [:default :selected])))
 
 (defmulti available-temporal-buckets-method

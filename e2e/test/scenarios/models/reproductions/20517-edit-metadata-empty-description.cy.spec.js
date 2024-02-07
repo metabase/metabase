@@ -9,7 +9,7 @@ const modelDetails = {
     "source-table": ORDERS_ID,
     limit: 5,
   },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 20517", () => {

@@ -51,7 +51,7 @@ describe("parameters/utils/mapping-options", () => {
         const question = ordersTable.question();
         dataset = question
           .setCard({ ...question.card(), id: 123 })
-          .setDataset(true);
+          .setType("model");
 
         // create a virtual table for the card
         // that contains fields with custom, model-specific metadata

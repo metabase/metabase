@@ -195,3 +195,7 @@
             (lib.metadata/card
              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
              card-id)))))
+
+(deftest ^:parallel equality-test
+  (is (= (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+         (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
