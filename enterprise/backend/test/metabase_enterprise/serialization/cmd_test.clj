@@ -172,57 +172,57 @@
       (mt/with-empty-h2-app-db
         (snowplow-test/with-fake-snowplow-collector
           (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-            (let [coll (ts/create! Collection :name "coll")
+            (let [coll  (ts/create! Collection :name "coll")
                   _card (ts/create! Card :name "card" :collection_id (:id coll))]
               (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")
               (testing "Snowplow export event was sent"
-                (is (= {"event"           "serialization_export"
-                        "collection"      (str (:id coll))
-                        "all_collections" false
-                        "data_model"      false
-                        "settings"        true
-                        "field_values"    false
-                        "duration"        0
-                        "count"           3
-                        "source"          "api"
-                        "secrets"         false
-                        "success"         true
-                        "error_message"   nil}
-                       (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
-                            (filter #(= "serialization_export" (get % "event")))
-                            first))))
+                (is (=? {"event"           "serialization_export"
+                         "collection"      (str (:id coll))
+                         "all_collections" false
+                         "data_model"      false
+                         "settings"        true
+                         "field_values"    false
+                         "duration_ms"     pos?
+                         "count"           3
+                         "source"          "api"
+                         "secrets"         false
+                         "success"         true
+                         "error_message"   nil}
+                        (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
+                             (filter #(= "serialization_export" (get % "event")))
+                             first))))
 
               (cmd/import dump-dir)
               (testing "Snowplow import event was sent"
-                (is (= {"event"         "serialization_import"
-                        "duration"      0
-                        "source"        "cli"
-                        "models"        "Card,Collection,Setting"
-                        "count"         3
-                        "success"       true
-                        "error_message" nil}
-                       (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
+                (is (=? {"event"         "serialization_import"
+                         "duration_ms"   pos?
+                         "source"        "cli"
+                         "models"        "Card,Collection,Setting"
+                         "count"         3
+                         "success"       true
+                         "error_message" nil}
+                        (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
 
               (with-redefs [v2.storage/store-settings! (fn [_opts _settings]
                                                          (throw (Exception. "Cannot load settings")))]
                 (is (thrown? Exception
                              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
                 (testing "Snowplow export event about error was sent"
-                  (is (= {"event"           "serialization_export"
-                          "collection"      (str (:id coll))
-                          "all_collections" false
-                          "data_model"      false
-                          "settings"        true
-                          "field_values"    false
-                          "duration"        0
-                          "count"           0
-                          "source"          "api"
-                          "secrets"         false
-                          "success"         false
-                          "error_message"   "java.lang.Exception: Cannot load settings"}
-                         (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
-                              (filter #(= "serialization_export" (get % "event")))
-                              first)))))
+                  (is (=? {"event"           "serialization_export"
+                           "collection"      (str (:id coll))
+                           "all_collections" false
+                           "data_model"      false
+                           "settings"        true
+                           "field_values"    false
+                           "duration_ms"     pos?
+                           "count"           0
+                           "source"          "api"
+                           "secrets"         false
+                           "success"         false
+                           "error_message"   "java.lang.Exception: Cannot load settings"}
+                          (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
+                               (filter #(= "serialization_export" (get % "event")))
+                               first)))))
 
               (let [load-one! @#'v2.load/load-one!]
                 (with-redefs [v2.load/load-one! (fn [ctx path]
@@ -233,7 +233,7 @@
                                (cmd/import dump-dir)))
                   (testing "Snowplow import event about error was sent"
                     (is (=? {"event"         "serialization_import"
-                             "duration"      0
+                             "duration_ms"   pos?
                              "source"        "cli"
                              "models"        ""
                              "count"         0

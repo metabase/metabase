@@ -127,19 +127,19 @@
                   (is (= 4 (count @files*))))
 
                 (testing "Snowplow export event was sent"
-                  (is (= {"event"           "serialization_export"
-                          "collection"      (str (:id coll))
-                          "all_collections" false
-                          "data_model"      false
-                          "settings"        false
-                          "field_values"    false
-                          "duration"        0
-                          "count"           3
-                          "source"          "api"
-                          "secrets"         false
-                          "success"         true
-                          "error_message"   nil}
-                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
+                  (is (=? {"event"           "serialization_export"
+                           "collection"      (str (:id coll))
+                           "all_collections" false
+                           "data_model"      false
+                           "settings"        false
+                           "field_values"    false
+                           "duration_ms"     pos?
+                           "count"           3
+                           "source"          "api"
+                           "secrets"         false
+                           "success"         true
+                           "error_message"   nil}
+                          (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
 
                 (testing "POST /api/ee/serialization/import"
                   (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
@@ -154,14 +154,14 @@
                       (is (= (:name card)
                              (t2/select-one-fn :name :model/Card :id (:id card)))))
                     (testing "Snowplow import event was sent"
-                      (is (= {"event"         "serialization_import"
-                              "duration"      0
-                              "source"        "api"
-                              "models"        "Dashboard,Card,Collection"
-                              "count"         3
-                              "success"       true
-                              "error_message" nil}
-                             (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))
+                      (is (=? {"event"         "serialization_import"
+                               "duration_ms"   pos?
+                               "source"        "api"
+                               "models"        "Dashboard,Card,Collection"
+                               "count"         3
+                               "success"       true
+                               "error_message" nil}
+                              (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))
 
               (testing "ERROR /api/ee/serialization/export"
                 (with-redefs [u.compress/tgz (fn [& _] (throw (ex-info "Just an error" {})))]
@@ -170,18 +170,18 @@
                           ;; consume response to remove on-disk data
                           io/input-stream))
                   (testing "Snowplow event about error was sent"
-                    (is (= {"event"           "serialization_export"
-                            "duration"        0
-                            "source"          "api"
-                            "count"           0
-                            "collection"      (str (:id coll))
-                            "all_collections" false
-                            "data_model"      false
-                            "settings"        false
-                            "field_values"    false
-                            "secrets"         false
-                            "success"         false
-                            "error_message"   "clojure.lang.ExceptionInfo: Just an error {}"}
+                    (is (=? {"event"           "serialization_export"
+                             "duration_ms"     pos?
+                             "source"          "api"
+                             "count"           0
+                             "collection"      (str (:id coll))
+                             "all_collections" false
+                             "data_model"      false
+                             "settings"        false
+                             "field_values"    false
+                             "secrets"         false
+                             "success"         false
+                             "error_message"   "clojure.lang.ExceptionInfo: Just an error {}"}
                            (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))))
 
               (testing "Only admins can export/import"
