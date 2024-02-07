@@ -1,12 +1,12 @@
 import _ from "underscore";
-
+import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
 import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
-  DashboardCard,
+  QuestionDashboardCard,
   Parameter,
   ParameterMappingOptions,
 } from "metabase-types/api";
@@ -90,7 +90,7 @@ export function isDashboardParameterWithoutMapping(
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
-function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
+function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
   return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
@@ -114,7 +114,8 @@ export function getDashboardUiParameters(
   metadata: Metadata,
 ): UiParameter[] {
   const { parameters, dashcards } = dashboard;
-  const mappings = getMappings(dashcards as DashboardCard[]);
+  const mappableDashcards = dashcards.filter(isQuestionDashCard);
+  const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
@@ -181,7 +182,7 @@ function buildFieldFilterUiParameter(
 
 export function getParametersMappedToDashcard(
   dashboard: Dashboard,
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
 ): ParameterWithTarget[] {
   const { parameters } = dashboard;
   const { parameter_mappings } = dashcard;
@@ -220,7 +221,8 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(dashboard.dashcards as DashboardCard[]);
+  const mappableParameters = dashboard.dashcards.filter(isQuestionDashCard);
+  const mappings = getMappings(mappableParameters);
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );

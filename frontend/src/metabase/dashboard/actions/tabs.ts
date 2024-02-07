@@ -343,7 +343,7 @@ export const tabsReducer = createReducer<DashboardState>(
           if (isVirtualDashCard(sourceDashCard)) {
             return;
           }
-          if (sourceDashCard.card_id === null) {
+          if (sourceDashCard.card_id == null) {
             throw Error("sourceDashCard is non-virtual yet has null card_id");
           }
           state.dashcardData[newDashCardId] = {

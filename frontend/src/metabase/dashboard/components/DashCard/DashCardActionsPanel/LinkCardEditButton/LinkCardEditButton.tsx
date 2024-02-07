@@ -1,12 +1,15 @@
 import { t } from "ttag";
 
-import type { DashboardCard, VisualizationSettings } from "metabase-types/api";
+import type {
+  VirtualDashboardCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
 interface Props {
-  dashcard: DashboardCard;
+  dashcard: VirtualDashboardCard;
   onUpdateVisualizationSettings: (
     settings: Partial<VisualizationSettings>,
   ) => void;

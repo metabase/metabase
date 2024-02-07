@@ -1,11 +1,11 @@
-import type { DashboardCard } from "metabase-types/api";
+import type { BaseDashboardCard } from "metabase-types/api";
 import { getVirtualCardType } from "metabase/dashboard/utils";
 
 export function shouldShowParameterMapper({
   dashcard,
   isEditingParameter,
 }: {
-  dashcard: DashboardCard;
+  dashcard: BaseDashboardCard;
   isEditingParameter?: boolean;
 }) {
   return (

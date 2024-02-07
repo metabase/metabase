@@ -1,5 +1,5 @@
 import type {
-  DashboardCard,
+  QuestionDashboardCard,
   DashCardId,
   ParameterId,
   ParameterTarget,
@@ -19,6 +19,7 @@ import {
   getAutoWiredMappingsForDashcards,
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
+import { isQuestionDashCard } from "metabase/dashboard/utils";
 
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { getDashCardById } from "metabase/dashboard/selectors";
@@ -29,7 +30,7 @@ import Question from "metabase-lib/Question";
 
 export function autoWireDashcardsWithMatchingParameters(
   parameter_id: ParameterId,
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   target: ParameterTarget,
 ) {
   return function (dispatch: Dispatch, getState: GetState) {
@@ -113,7 +114,7 @@ export function autoWireParametersToNewCard({
       dashcard_id,
     );
 
-    if (!targetDashcard) {
+    if (!targetDashcard || !isQuestionDashCard(targetDashcard)) {
       return;
     }
 
