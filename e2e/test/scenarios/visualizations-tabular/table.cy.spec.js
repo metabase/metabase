@@ -215,6 +215,9 @@ describe("scenarios > visualizations > table", () => {
     ].forEach(([column, test]) => {
       cy.get(".cellData").contains(column).realHover();
 
+      // Add a delay here because there can be two popovers active for a very short time.
+      cy.wait(100);
+
       popover().within(() => {
         test();
       });
@@ -236,6 +239,7 @@ describe("scenarios > visualizations > table", () => {
 
     // Make sure new table results loaded with Custom column and Count columns
     cy.get(".cellData").contains(ccName).realHover();
+    cy.wait(100);
 
     popover().within(() => {
       cy.contains("No special type");

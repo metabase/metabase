@@ -12,6 +12,10 @@ import {
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 export const POPOVER_TRANSITION_DURATION = 150;
 
+// When switching to another hover target in the same delay group,
+// we don't closing immediatly but delay by a short amount to avoid flicker.
+export const POPOVER_CLOSE_DELAY = 25;
+
 type Props = {
   field: Field | DatasetColumn;
   timezone?: string;
@@ -35,12 +39,11 @@ function FieldInfoPopover({
       position={position}
       disabled={disabled}
       openDelay={group.shouldDelay ? delay[0] : 0}
-      closeDelay={group.shouldDelay ? delay[1] : 50}
+      closeDelay={group.shouldDelay ? delay[1] : POPOVER_CLOSE_DELAY}
       onOpen={group.onOpen}
       onClose={group.onClose}
       transitionProps={{
         duration: group.shouldDelay ? POPOVER_TRANSITION_DURATION : 0,
-        keepMounted: true,
       }}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
