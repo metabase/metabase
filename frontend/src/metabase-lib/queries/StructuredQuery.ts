@@ -257,22 +257,6 @@ class StructuredQuery extends AtomicQuery {
     return getStructuredQueryTable(this.question(), this);
   });
 
-  private cleanJoins(): StructuredQuery {
-    return this._cleanClauseList("joins");
-  }
-
-  cleanExpressions(): StructuredQuery {
-    return this; // TODO
-  }
-
-  cleanFilters(): StructuredQuery {
-    return this._cleanClauseList("filters");
-  }
-
-  cleanFields(): StructuredQuery {
-    return this; // TODO
-  }
-
   isValid() {
     if (!this.hasData()) {
       return false;
@@ -303,23 +287,6 @@ class StructuredQuery extends AtomicQuery {
     }
 
     return true;
-  }
-
-  _cleanClauseList(listName) {
-    let query = this;
-
-    for (let index = 0; index < query[listName]().length; index++) {
-      const clause = query[listName]()[index];
-
-      if (!this._validateClause(clause)) {
-        console.warn("Removing invalid MBQL clause", clause);
-        query = clause.remove();
-        // since we're removing them in order we need to decrement index when we remove one
-        index -= 1;
-      }
-    }
-
-    return query;
   }
 
   _isValidClauseList(listName) {
