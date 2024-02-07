@@ -82,7 +82,12 @@ export function expandInlineCard(card?: Card | VirtualCard) {
 export function isQuestionDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is QuestionDashboardCard {
-  return "card_id" in dashcard && "card" in dashcard;
+  return (
+    "card_id" in dashcard &&
+    "card" in dashcard &&
+    !isVirtualDashCard(dashcard) &&
+    !isActionDashCard(dashcard)
+  );
 }
 
 export function isActionDashCard(
