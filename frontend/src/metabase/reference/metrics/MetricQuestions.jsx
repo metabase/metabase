@@ -49,6 +49,12 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
+const getDescription = question => {
+  const timestamp = moment(question.getCreatedAt()).fromNow();
+  const author = question.getCreator().common_name;
+  return t`Created ${timestamp} by ${author}`;
+};
+
 export const MetricQuestions = ({ style, table, metric, metadata }) => {
   const {
     data = [],
@@ -72,20 +78,14 @@ export const MetricQuestions = ({ style, table, metric, metadata }) => {
             <div className="wrapper wrapper--trim">
               <List>
                 {data.map(question => {
-                  const card = question.card();
-                  return (
-                    question.id() &&
-                    question.displayName() && (
-                      <ListItem
-                        key={question.id()}
-                        name={question.displayName()}
-                        description={t`Created ${moment(
-                          card.created_at,
-                        ).fromNow()} by ${card.creator.common_name}`}
-                        url={Urls.question(card)}
-                        icon={visualizations.get(question.display()).iconName}
-                      />
-                    )
+                  question.id() && question.displayName() && (
+                    <ListItem
+                      key={question.id()}
+                      name={question.displayName()}
+                      description={getDescription(question)}
+                      url={Urls.question(question.card())}
+                      icon={visualizations.get(question.display()).iconName}
+                    />
                   );
                 })}
               </List>
