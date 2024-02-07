@@ -199,9 +199,7 @@ describe("embed modal display", () => {
   describeEE("when the user has a paid instance", () => {
     it("should display a link to the interactive embedding settings", () => {
       setTokenFeatures("all");
-      cy.get("@dashboardId").then(id => {
-        visitResource("dashboard", id);
-      });
+      visitDashboard("@dashboardId");
 
       openEmbedModalFromMenu();
 
@@ -229,9 +227,7 @@ describe("embed modal display", () => {
   describe("when the user has an OSS instance", () => {
     it("should display a link to the product page for embedded analytics", () => {
       cy.signInAsAdmin();
-      cy.get("@dashboardId").then(id => {
-        visitResource("dashboard", id);
-      });
+      visitDashboard("@dashboardId");
       openEmbedModalFromMenu();
 
       getEmbedModalSharingPane().within(() => {

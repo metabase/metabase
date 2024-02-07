@@ -23,7 +23,7 @@ describe("filtering based on the remapped column name should result in a correct
       visitQuestion(id);
 
       // Turn the question into a model
-      cy.request("PUT", `/api/card/${id}`, { dataset: true });
+      cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
       // Let's go straight to the model metadata editor
       cy.visit(`/model/${id}/metadata`);

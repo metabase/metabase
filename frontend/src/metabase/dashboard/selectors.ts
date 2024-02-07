@@ -16,7 +16,7 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type {
   Bookmark,
   Card,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardId,
   DashCardId,
 } from "metabase-types/api";
@@ -128,15 +128,6 @@ export const getLoadingDashCards = (state: State) =>
 export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
-};
-
-export const getSingleDashCardData = (state: State, dashcardId: DashCardId) => {
-  const dashcard = getDashCardById(state, dashcardId);
-  const cardDataMap = getCardData(state);
-  if (!dashcard?.card_id || !cardDataMap) {
-    return;
-  }
-  return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
 };
 
 export const getDashboardComplete = createSelector(
@@ -289,8 +280,10 @@ export const getEditingParameter = createSelector(
 );
 
 const getCard = (state: State, { card }: { card: Card }) => card;
-const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
-  dashcard;
+const getDashCard = (
+  state: State,
+  { dashcard }: { dashcard: QuestionDashboardCard },
+) => dashcard;
 
 export const getParameterTarget = createSelector(
   [getEditingParameter, getCard, getDashCard],
@@ -318,6 +311,16 @@ export const getParameters = createSelector(
     }
     return getDashboardUiParameters(dashboard, metadata);
   },
+);
+
+export const getMissingRequiredParameters = createSelector(
+  [getParameters],
+  parameters =>
+    parameters.filter(
+      p =>
+        p.required &&
+        (!p.default || (Array.isArray(p.default) && p.default.length === 0)),
+    ),
 );
 
 export const getParameterMappingOptions = createSelector(

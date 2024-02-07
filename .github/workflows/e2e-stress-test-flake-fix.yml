@@ -78,7 +78,7 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: 11
           distribution: "temurin"
@@ -98,7 +98,7 @@ jobs:
           --browser 'replay-chromium'
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: cypress-failed-tests-recording

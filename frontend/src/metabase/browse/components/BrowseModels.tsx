@@ -15,13 +15,13 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { useSearchListQuery } from "metabase/common/hooks";
 
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
+import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { getCollectionName, groupModels } from "../utils";
-import { CenteredEmptyState } from "./BrowseApp.styled";
-import NoResults from "assets/img/no_results.svg";
 import { trackModelClick } from "../analytics";
+import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
   CollectionHeaderGroup,

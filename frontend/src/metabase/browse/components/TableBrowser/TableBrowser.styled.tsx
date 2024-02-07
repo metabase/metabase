@@ -10,7 +10,6 @@ import { Grid, GridItem } from "metabase/components/Grid";
 
 export const TableGrid = styled(Grid)`
   width: 100%;
-  flex: 1;
 `;
 
 export const TableGridItem = styled(GridItem)`

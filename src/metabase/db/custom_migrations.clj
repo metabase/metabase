@@ -1033,3 +1033,78 @@
 (define-reversible-migration UnifyTimeColumnsType
   (unify-time-column-type! :up)
   (unify-time-column-type! :down))
+
+(define-reversible-migration CardRevisionAddType
+  (case (mdb.connection/db-type)
+    :postgres
+    (t2/query ["UPDATE revision
+               SET object = jsonb_set(
+                  object::jsonb, '{type}',
+                  to_jsonb(CASE
+                              WHEN (object::jsonb->>'dataset')::boolean THEN 'model'
+                              ELSE 'question'
+                           END)::jsonb, true)
+               WHERE model = 'Card' AND (object::jsonb->>'dataset') IS NOT NULL;"])
+
+    :mysql
+    (t2/query ["UPDATE revision
+               SET object = JSON_SET(
+                   object,
+                   '$.type',
+                   CASE
+                       WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) = 'true' THEN 'model'
+                       ELSE 'question'
+                   END)
+               WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) IS NOT NULL;;"])
+    :h2
+    (let [migrate! (fn [revision]
+                     (let [object     (json/parse-string (:object revision) keyword)
+                           new-object (assoc object :type (if (:dataset object)
+                                                            "model"
+                                                            "question"))]
+                       (t2/query {:update :revision
+                                  :set    {:object (json/generate-string new-object)}
+                                  :where  [:= :id (:id revision)]})))]
+      (run! migrate! (t2/reducible-query {:select [:*]
+                                          :from   [:revision]
+                                          :where  [:= :model "Card"]}))))
+  (case (mdb.connection/db-type)
+    :postgres
+    (t2/query ["UPDATE revision
+                SET object = jsonb_set(
+                    object::jsonb - 'type',
+                    '{dataset}',
+                    to_jsonb(CASE
+                                 WHEN (object::jsonb->>'type') = 'model'
+                                 THEN true ELSE false
+                             END)
+                )
+                WHERE model = 'Card' AND (object::jsonb->>'type') IS NOT NULL;"])
+
+    :mysql
+    (do
+     (t2/query ["UPDATE revision
+                 SET object = JSON_SET(
+                     object,
+                     '$.dataset',
+                     CASE
+                         WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) = 'model'
+                         THEN true ELSE false
+                     END)
+                 WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
+     (t2/query ["UPDATE revision
+                 SET object = JSON_REMOVE(object, '$.type')
+                 WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
+
+    :h2
+    (let [rollback! (fn [revision]
+                      (let [object     (json/parse-string (:object revision) keyword)
+                            new-object (-> object
+                                           (assoc :dataset (= (:type object) "model"))
+                                           (dissoc :type))]
+                        (t2/query {:update :revision
+                                   :set    {:object (json/generate-string new-object)}
+                                   :where  [:= :id (:id revision)]})))]
+      (run! rollback! (t2/reducible-query {:select [:*]
+                                           :from   [:revision]
+                                           :where  [:= :model "Card"]})))))

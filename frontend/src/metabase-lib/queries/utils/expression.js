@@ -7,9 +7,6 @@ export function getExpressions(expressions = {}) {
 export function addExpression(expressions = {}, name, expression) {
   return { ...expressions, [name]: expression };
 }
-export function clearExpressions(expressions) {
-  return {};
-}
 
 /**
  * Ensures expression's name uniqueness

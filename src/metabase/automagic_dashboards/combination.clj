@@ -214,13 +214,14 @@
                                                                cat)
                                                          all-satisfied-metrics)
                 bound-metric-dimension-name->field (apply merge (map :dimension-name->field all-satisfied-metrics))
+                all-names->field (into dimension-name->field bound-metric-dimension-name->field)
                 card             (-> card-template
                                      (visualization/expand-visualization
                                        (vals dimension-name->field)
                                        nil)
                                      (instantiate-metadata base-context
                                                            {}
-                                                           (into dimension-name->field bound-metric-dimension-name->field)))
+                                                           all-names->field))
                 score-components (list* (:card-score card)
                                         (:metric-score grounded-metric)
                                         dim-score)]]
@@ -232,6 +233,8 @@
               :affinity-name card-name
               :card-score card-score
               :total-score (long (/ (apply + score-components) (count score-components)))
+              ;; Update dimension-name->field to include named contributions from both metrics and dimensions
+              :dimension-name->field all-names->field
               :score-components score-components)
             (assoc-in [:metric-definition :aggregation] final-aggregate)
             (update :metric-definition add-breakouts-and-filter

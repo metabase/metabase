@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.card-test :as api.card-test]
    [metabase.api.collection :as api.collection]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard ModerationReview
@@ -638,6 +639,17 @@
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
+
+(deftest collection-items-based-on-upload-test
+  (testing "GET /api/collection/:id/items"
+    (testing "check that based_on_upload is returned for cards correctly"
+      (api.card-test/run-based-on-upload-test
+       (fn [card]
+         (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (:collection_id card) "/items?models=card&models=dataset"))
+              :data
+              (filter (fn [item]
+                        (= (:id item) (:id card))))
+              first))))))
 
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"

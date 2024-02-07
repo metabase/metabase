@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
+        uses: dorny/paths-filter@v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
@@ -51,13 +51,13 @@ jobs:
       - name: Build static-viz frontend
         run: yarn build-static-viz
       - name: Upload Static Viz Bundle Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
       - name: Check for static viz changes
-        uses: dorny/paths-filter@v2.11.1
+        uses: dorny/paths-filter@v3.0.0
         id: static_viz
         with:
           token: ${{ github.token }}
@@ -196,7 +196,7 @@ jobs:
         run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
         if: needs.static-viz-files-changed.outputs.static_viz == 'true'
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist

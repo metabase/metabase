@@ -2,7 +2,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import type { Location } from "history";
 
@@ -32,6 +32,7 @@ import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
+  getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
 import {
   addActionToDashboard,
@@ -66,6 +67,7 @@ import type {
   State,
 } from "metabase-types/store";
 
+import type { UiParameter } from "metabase-lib/parameters/types";
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import {
@@ -147,6 +149,7 @@ interface StateProps {
   isNavBarOpen: boolean;
   isShowingDashboardInfoSidebar: boolean;
   isHomepageDashboard: boolean;
+  missingRequiredParameters: UiParameter[];
 }
 
 interface DispatchProps {
@@ -176,6 +179,7 @@ const mapStateToProps = (state: State, props: OwnProps): StateProps => {
     isHomepageDashboard:
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
+    missingRequiredParameters: getMissingRequiredParameters(state),
   };
 };
 
@@ -291,6 +295,12 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
   }
 
   getEditingButtons() {
+    const { missingRequiredParameters } = this.props;
+    const disabledSaveTooltip = getDisabledSaveButtonTooltip(
+      missingRequiredParameters,
+    );
+    const isSaveDisabled = missingRequiredParameters.length > 0;
+
     return [
       <Button
         key="cancel"
@@ -299,15 +309,21 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       >
         {t`Cancel`}
       </Button>,
-      <ActionButton
+      <Tooltip
+        isEnabled={isSaveDisabled}
+        tooltip={disabledSaveTooltip}
         key="save"
-        actionFn={() => this.onSave()}
-        className="Button Button--primary Button--small"
-        normalText={t`Save`}
-        activeText={t`Saving…`}
-        failedText={t`Save failed`}
-        successText={t`Saved`}
-      />,
+      >
+        <ActionButton
+          actionFn={() => this.onSave()}
+          className="Button Button--primary Button--small"
+          normalText={t`Save`}
+          activeText={t`Saving…`}
+          failedText={t`Save failed`}
+          successText={t`Saved`}
+          disabled={isSaveDisabled}
+        />
+      </Tooltip>,
     ];
   }
 
@@ -626,6 +642,24 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       </>
     );
   }
+}
+
+function getDisabledSaveButtonTooltip(
+  missingRequiredParams: UiParameter[],
+): string {
+  if (!missingRequiredParams.length) {
+    return "";
+  }
+
+  const names = missingRequiredParams
+    .map(param => `"${param.name}"`)
+    .join(", ");
+
+  return ngettext(
+    msgid`The ${names} parameter requires a default value but none was provided.`,
+    `The ${names} parameters require default values but none were provided.`,
+    missingRequiredParams.length,
+  );
 }
 
 export const DashboardHeader = _.compose(
