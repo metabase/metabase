@@ -4,10 +4,11 @@ import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
+
 import {
   removeShowEmbedHomepageFlag,
   setShowEmbedHomepageFlag,
-} from "metabase/home/components/EmbedMinimalHomepage/util";
+} from "metabase/home/utils";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,

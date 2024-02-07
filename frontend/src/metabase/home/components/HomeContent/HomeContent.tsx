@@ -14,8 +14,7 @@ import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 import { getIsXrayEnabled } from "../../selectors";
-import { isWithinWeeks } from "../../utils";
-import { shouldSHowEmbedHomepage } from "../EmbedMinimalHomepage/util";
+import { isWithinWeeks, shouldShowEmbedHomepage } from "../../utils";
 import { EmbedMinimalHomepage } from "../EmbedMinimalHomepage";
 
 export const HomeContent = (): JSX.Element | null => {
@@ -31,7 +30,7 @@ export const HomeContent = (): JSX.Element | null => {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (isAdmin && shouldSHowEmbedHomepage()) {
+  if (isAdmin && shouldShowEmbedHomepage()) {
     return <EmbedMinimalHomepage onDismiss={update} />;
   }
 

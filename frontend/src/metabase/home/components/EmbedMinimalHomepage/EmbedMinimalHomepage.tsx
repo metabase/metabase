@@ -4,7 +4,7 @@ import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
-import { removeShowEmbedHomepageFlag } from "./util";
+import { removeShowEmbedHomepageFlag } from "../../utils";
 import { NumberedList } from "./EmbedMinimalHomepage.styled";
 
 type EmbedMinimalHomepageProps = {
