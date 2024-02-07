@@ -1,10 +1,12 @@
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
 import type { DatasetColumn } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
 import type Field from "metabase-lib/metadata/Field";
 
 import {
   WidthBoundFieldInfo,
+  WidthBoundFieldInfoMLv2,
   Dropdown,
   Target,
 } from "./FieldInfoPopover.styled";
@@ -57,6 +59,51 @@ function FieldInfoPopover({
           showFingerprintInfo={showFingerprintInfo}
         />
       </Dropdown>
+    </HoverCard>
+  );
+}
+
+type PropsMLv2 = {
+  query: Lib.Query;
+  column: Lib.ColumnMetadata;
+  timezone?: string;
+  stage?: number;
+  delay: [number, number];
+  showFingerprintInfo?: boolean;
+} & Pick<HoverCardProps, "children" | "position" | "disabled">;
+
+export function FieldInfoPopoverMLv2({
+  query,
+  column,
+  stage,
+  timezone,
+  position = "bottom-start",
+  disabled,
+  delay = POPOVER_DELAY,
+  showFingerprintInfo,
+  children,
+}: PropsMLv2) {
+  const group = useDelayGroup();
+
+  return (
+    <HoverCard
+      position={position}
+      disabled={disabled}
+      openDelay={group.shouldDelay ? delay[0] : 0}
+      closeDelay={group.shouldDelay ? delay[1] : 0}
+      onOpen={group.onOpen}
+      onClose={group.onClose}
+    >
+      <HoverCard.Target>{children}</HoverCard.Target>
+      <HoverCard.Dropdown>
+        <WidthBoundFieldInfoMLv2
+          query={query}
+          column={column}
+          stage={stage}
+          timezone={timezone}
+          showFingerprintInfo={showFingerprintInfo}
+        />
+      </HoverCard.Dropdown>
     </HoverCard>
   );
 }

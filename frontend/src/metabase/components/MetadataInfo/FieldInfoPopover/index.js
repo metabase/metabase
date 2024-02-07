@@ -1,1 +1,1 @@
-export { default } from "./FieldInfoPopover";
+export { default, FieldInfoPopoverMLv2 } from "./FieldInfoPopover";

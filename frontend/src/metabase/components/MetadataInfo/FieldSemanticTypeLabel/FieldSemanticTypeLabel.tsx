@@ -20,7 +20,35 @@ type Props = {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FieldSemanticTypeLabel({ className, field }: Props) {
+  return (
+    <SemanticTypeLabel
+      className={className}
+      semanticType={field.semantic_type}
+    />
+  );
+
   const semanticType = field.semantic_type;
+  const semanticTypeIcon = getSemanticTypeIcon(semanticType) || "ellipsis";
+  const semanticTypeName =
+    getSemanticTypeName(semanticType) || t`No special type`;
+
+  return (
+    <LabelContainer className={className}>
+      <InvertedColorRelativeSizeIcon name={semanticTypeIcon} />
+      <Label>{semanticTypeName}</Label>
+    </LabelContainer>
+  );
+}
+
+type FieldSemanticTypeLabelProps = {
+  className?: string;
+  semanticType: string | null | undefined;
+};
+
+export function SemanticTypeLabel({
+  className,
+  semanticType,
+}: FieldSemanticTypeLabelProps) {
   const semanticTypeIcon = getSemanticTypeIcon(semanticType) || "ellipsis";
   const semanticTypeName =
     getSemanticTypeName(semanticType) || t`No special type`;
