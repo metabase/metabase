@@ -1,8 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
@@ -19,7 +17,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 
-import { getQuestionUrl } from "../utils";
+import { getQuestionUrl, getDescription } from "../utils";
 
 import { getTableBySegment, getSegment } from "../selectors";
 
@@ -68,24 +66,19 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
           data.length > 0 ? (
             <div className="wrapper wrapper--trim">
               <List>
-                {data.map(question => {
-                  const card = question.card();
-
-                  return (
+                {data.map(
+                  question =>
                     question.id() &&
                     question.displayName() && (
                       <ListItem
                         key={question.id()}
                         name={question.displayName()}
-                        description={t`Created ${moment(
-                          card.created_at,
-                        ).fromNow()} by ${card.creator.common_name}`}
-                        url={Urls.question(card)}
+                        description={getDescription(question)}
+                        url={Urls.question(question.card())}
                         icon={visualizations.get(question.display()).iconName}
                       />
-                    )
-                  );
-                })}
+                    ),
+                )}
               </List>
             </div>
           ) : (
