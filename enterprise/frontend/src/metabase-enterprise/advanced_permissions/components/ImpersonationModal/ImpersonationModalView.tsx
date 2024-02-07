@@ -70,11 +70,22 @@ export const ImpersonationModalView = ({
     database.features.includes("connection-impersonation-requires-role") &&
     database.details["role"] == null;
 
+  // for redshift, we impersonate using users, not roles
+  const impersonationUsesUsers = database.engine === "redshift";
+
+  const modalTitle = impersonationUsesUsers
+    ? t`Map a Metabase user attribute to database users`
+    : t`Map a user attribute to database roles`;
+
+  const modalMessage = impersonationUsesUsers
+    ? t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
+    : t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
+
   return (
     <ImpersonationModalViewRoot>
-      <h2>{t`Map a user attribute to database roles`}</h2>
+      <h2>{modalTitle}</h2>
       <ImpersonationDescription>
-        {t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`}{" "}
+        {modalMessage}{" "}
         <ExternalLink
           className="link"
           // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
