@@ -446,22 +446,24 @@ function DatasetEditor(props) {
         data-testid="dataset-edit-bar"
         title={dataset.displayName()}
         center={
-          <EditorTabs
-            currentTab={datasetEditorTab}
-            onChange={onChangeEditorTab}
-            options={[
-              { id: "query", name: t`Query`, icon: "notebook" },
-              {
-                id: "metadata",
-                name: t`Metadata`,
-                icon: "label",
-                // Metadata tab is temporarily disabled for metrics.
-                // It should be enabled in #37993
-                // @see https://github.com/metabase/metabase/issues/37993
-                disabled: !resultsMetadata || dataset.type() === "metric",
-              },
-            ]}
-          />
+          // Metadata tab is temporarily disabled for metrics.
+          // It should be enabled in #37993
+          // @see https://github.com/metabase/metabase/issues/37993
+          dataset.type() === "metric" ? null : (
+            <EditorTabs
+              currentTab={datasetEditorTab}
+              onChange={onChangeEditorTab}
+              options={[
+                { id: "query", name: t`Query`, icon: "notebook" },
+                {
+                  id: "metadata",
+                  name: t`Metadata`,
+                  icon: "label",
+                  disabled: !resultsMetadata,
+                },
+              ]}
+            />
+          )
         }
         buttons={[
           <Button
