@@ -51,7 +51,7 @@ const getLabels = (question: Question, showSaveType: boolean) => {
 
   if (type === "metric") {
     return {
-      singleStepTitle: showSaveType ? t`Save metric` : t`Save new metric`,
+      singleStepTitle: t`Save metric`,
       multiStepTitle: t`First, save your metric`,
       nameInputPlaceholder: t`What is the name of your metric?`,
     };
