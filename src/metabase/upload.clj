@@ -743,11 +743,11 @@
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
       (m/assoc-some
-        model
-        :based_on_upload
-        (when-let [query (some-> model :dataset_query lib/->pMBQL)]
-          (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
-            (lib/source-table-id query)))))))
+       model
+       :based_on_upload
+       (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)] ; dataset_query can be empty in tests
+         (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
+           (lib/source-table-id query)))))))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
