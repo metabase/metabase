@@ -1029,6 +1029,14 @@ class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 
+  getCreator(): string {
+    return getIn(this, ["_card", "creator"]) || "";
+  }
+
+  getCreatedAt(): string {
+    return getIn(this, ["_card", "created_at"]) || "";
+  }
+
   /**
    * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
