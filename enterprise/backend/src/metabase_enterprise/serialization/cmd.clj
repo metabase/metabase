@@ -96,7 +96,7 @@
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
-  (log/info (trs "Loading serialized Metabase files from {0}" path))
+  (log/infof "Loading serialized Metabase files from %s" path)
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
@@ -113,18 +113,18 @@
                    (v2-load-internal! path opts :token-check? true)
                    (catch Exception e
                      (reset! err e)))
-        imported (set (map (comp :model last) (:seen report)))]
+        imported (into (sorted-set) (map (comp :model last)) (:seen report))]
     (snowplow/track-event! ::snowplow/serialization-import nil
                            {:source        "cli"
-                            :duration      (long (/ (- (System/currentTimeMillis) start) 1000))
+                            :duration_ms   (- (System/currentTimeMillis) start)
                             :models        (str/join "," imported)
                             :count         (if (contains? imported "Setting")
                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
                                              (count (:seen report)))
                             :success       (nil? @err)
                             :error_message (some-> @err str)})
-    (when err
-      (throw err))))
+    (when @err
+      (throw @err))))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -245,9 +245,9 @@
                    (reset! err e)))]
     (snowplow/track-event! ::snowplow/serialization-export nil
                            {:source          "api"
-                            :duration        (long (/ (- (System/currentTimeMillis) start) 1000))
+                            :duration_ms     (- (System/currentTimeMillis) start)
                             :count           (count (:seen report))
-                            :collection      (str/join "," (map str collection-ids))
+                            :collection      (str/join "," collection-ids)
                             :all_collections (and (empty? collection-ids)
                                                   (not (:no-collections opts)))
                             :data_model      (not (:no-data-model opts))
@@ -256,8 +256,8 @@
                             :secrets         (boolean (:include-database-secrets opts))
                             :success         (nil? @err)
                             :error_message   (some-> @err str)})
-    (when err
-      (throw err)))
+    (when @err
+      (throw @err)))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦"))
   ::v2-dump-complete)
 

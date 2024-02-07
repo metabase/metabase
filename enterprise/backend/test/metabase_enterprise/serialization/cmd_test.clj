@@ -197,14 +197,14 @@
                 (is (= {"event"         "serialization_import"
                         "duration"      0
                         "source"        "cli"
-                        "models"        "Setting,Card,Collection"
+                        "models"        "Card,Collection,Setting"
                         "count"         3
                         "success"       true
                         "error_message" nil}
                        (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
 
               (with-redefs [v2.storage/store-settings! (fn [_opts _settings]
-                                                         (throw (ex-info "Cannot load settings" {})))]
+                                                         (throw (Exception. "Cannot load settings")))]
                 (is (thrown? Exception
                              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
                 (testing "Snowplow export event about error was sent"
@@ -219,7 +219,7 @@
                           "source"          "api"
                           "secrets"         false
                           "success"         false
-                          "error_message"   "clojure.lang.ExceptionInfo: Cannot load settings {}"}
+                          "error_message"   "java.lang.Exception: Cannot load settings"}
                          (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                               (filter #(= "serialization_export" (get % "event")))
                               first)))))
@@ -227,16 +227,17 @@
               (let [load-one! @#'v2.load/load-one!]
                 (with-redefs [v2.load/load-one! (fn [ctx path]
                                                   (when (= "Collection" (-> path first :model))
-                                                    (throw (ex-info "Cannot import Collection" {})))
+                                                    (throw (Exception. "Cannot import Collection")))
                                                   (load-one! ctx path))]
                   (is (thrown? Exception
                                (cmd/import dump-dir)))
                   (testing "Snowplow import event about error was sent"
-                    (is (= {"event"         "serialization_import"
-                            "duration"      0
-                            "source"        "cli"
-                            "models"        ""
-                            "count"         0
-                            "success"       false
-                            "error_message" "clojure.lang.ExceptionInfo: Cannot import Collection {}"}
-                           (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))
+                    (is (=? {"event"         "serialization_import"
+                             "duration"      0
+                             "source"        "cli"
+                             "models"        ""
+                             "count"         0
+                             "success"       false
+                             ;; t2/with-transactions re-wraps errors with data about toucan connections
+                             "error_message" #".*Cannot import Collection.*"}
+                            (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))

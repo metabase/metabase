@@ -21,8 +21,8 @@
       "type": "string",
       "enum": ["cli", "api"]
     },
-    "duration": {
-      "description": "Time in seconds it took to generate an export",
+    "duration_ms": {
+      "description": "Time in milliseconds it took to generate an export",
       "type": "integer"
     },
     "success": {

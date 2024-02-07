@@ -104,10 +104,10 @@
                          (-> (v2.ingest/ingest-yaml (.getPath (io/file dst path)))
                              (v2.load/load-metabase!))))
                      (catch Exception e
-                       (reset! err (str e))
+                       (reset! err e)
                        (log/error e "Error during serialization"))))]
     {:log-file      log-file
-     :error-message @err
+     :error-message (some-> @err str)
      :report        report
      :callback      #(when (.exists dst)
                        (run! io/delete-file (reverse (file-seq dst))))}))
@@ -157,7 +157,7 @@
                 callback]} (serialize&pack opts)]
     (snowplow/track-event! ::snowplow/serialization-export api/*current-user-id*
                            {:source          "api"
-                            :duration        (long (/ (- (System/currentTimeMillis) start) 1000))
+                            :duration_ms     (- (System/currentTimeMillis) start)
                             :count           (count (:seen report))
                             :collection      (str/join "," (map str collection))
                             :all_collections (and (empty? collection)
@@ -196,7 +196,7 @@
           imported           (set (map (comp :model last) (:seen report)))]
       (snowplow/track-event! ::snowplow/serialization-import api/*current-user-id*
                              {:source        "api"
-                              :duration      (long (/ (- (System/currentTimeMillis) start) 1000))
+                              :duration_ms   (- (System/currentTimeMillis) start)
                               :models        (str/join "," imported)
                               :count         (if (contains? imported "Setting")
                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
