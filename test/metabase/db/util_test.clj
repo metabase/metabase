@@ -40,7 +40,7 @@
                 (swap! promises conj (future (thunk))))
 
               (let [result-keys (mapv deref @promises)
-                    latest-key  (:key (t2/select-one Setting search-col search-value))]
+                    latest-key  (t2/select-one-pk Setting search-col search-value)]
 
                 (testing "Every call returns the same row"
                   (is (= (repeat threads latest-key) result-keys)))
