@@ -28,7 +28,7 @@
                   promises (atom [])
                   thunk    (fn []
                              (mdb.u/idempotent-insert!
-                               (:key (t2/select-one Setting search-col search-value))
+                               (t2/select-one-pk Setting search-col search-value)
                                ;; Pause to ensure multiple threads hit the mutating path
                                (do (Thread/sleep 300)
                                    (t2/insert-returning-pk! Setting
