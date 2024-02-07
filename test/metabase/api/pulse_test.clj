@@ -151,8 +151,6 @@
       (is (=? expected-error
               (mt/user-http-request :rasta :post 400 "pulse" input))))))
 
-(mt/user-http-request :rasta :post 400 "pulse" {:name "abc"})
-
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
     (-> channel
@@ -415,8 +413,6 @@
       (testing (pr-str input)
         (is (=? expected-error
                 (mt/user-http-request :rasta :put 400 "pulse/1" input)))))))
-
-(mt/user-http-request :rasta :put 400 "pulse/1" {:cards "foobar"})
 
 (deftest update-test
   (testing "PUT /api/pulse/:id"
