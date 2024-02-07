@@ -6,7 +6,7 @@ import type {
   ClickBehaviorSource,
   ClickBehaviorTarget,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardId,
   DatasetColumn,
   DatetimeUnit,
@@ -255,7 +255,7 @@ function getTargetsForVariables(legacyQuery: NativeQuery): Target[] {
 
 export function getTargetsForDashboard(
   dashboard: Dashboard,
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
 ): Target[] {
   if (!dashboard.parameters) {
     return [];
