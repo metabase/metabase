@@ -37,6 +37,7 @@ const getLabels = (question: Question, showSaveType: boolean) => {
     return {
       singleStepTitle: t`Save model`,
       multiStepTitle: t`First, save your model`,
+      nameInputPlaceholder: t`What is the name of your model?`,
     };
   }
 
@@ -44,6 +45,7 @@ const getLabels = (question: Question, showSaveType: boolean) => {
     return {
       singleStepTitle: showSaveType ? t`Save question` : t`Save new question`,
       multiStepTitle: t`First, save your question`,
+      nameInputPlaceholder: t`What is the name of your question?`,
     };
   }
 
@@ -51,6 +53,7 @@ const getLabels = (question: Question, showSaveType: boolean) => {
     return {
       singleStepTitle: showSaveType ? t`Save metric` : t`Save new metric`,
       multiStepTitle: t`First, save your metric`,
+      nameInputPlaceholder: t`What is the name of your metric?`,
     };
   }
 
@@ -187,20 +190,18 @@ export const SaveQuestionModal = ({
         : "create",
   };
 
-  const questionType = question.isDataset() ? "model" : "question";
   const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   const showSaveType =
     isSavedQuestionChanged &&
     originalQuestion != null &&
     originalQuestion.canWrite();
 
-  const { multiStepTitle, singleStepTitle } = getLabels(question, showSaveType);
+  const { multiStepTitle, singleStepTitle, nameInputPlaceholder } = getLabels(
+    question,
+    showSaveType,
+  );
   const title = multiStep ? multiStepTitle : singleStepTitle;
 
-  const nameInputPlaceholder =
-    questionType === "question"
-      ? t`What is the name of your question?`
-      : t`What is the name of your model?`;
   return (
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (
