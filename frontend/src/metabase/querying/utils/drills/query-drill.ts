@@ -18,7 +18,11 @@ export function queryDrill(
     clicked?.dimensions,
   );
 
-  question = question.lockDisplay();
+  const isDashboard = clicked?.extraData?.dashboard != null;
+
+  if (isDashboard) {
+    question = question.lockDisplay();
+  }
 
   const applyDrill = (drill: Lib.DrillThru, ...args: unknown[]) => {
     const newQuery = Lib.drillThru(query, stageIndex, drill, ...args);
