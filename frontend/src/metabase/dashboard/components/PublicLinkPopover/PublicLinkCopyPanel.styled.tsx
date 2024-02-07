@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
-import type { HTMLAttributes, ElementType, ComponentProps } from "react";
-
+import type { ComponentProps, ElementType, HTMLAttributes } from "react";
 import { CopyButton } from "metabase/components/CopyButton";
 import { Anchor } from "metabase/ui";
 
@@ -14,9 +13,8 @@ export const PublicLinkCopyButton = styled(CopyButton)`
   }
 `;
 
-type PolymorphicAnchor = typeof Anchor<ElementType>;
 export const RemoveLinkAnchor = styled(Anchor)<
-  ComponentProps<PolymorphicAnchor> & HTMLAttributes<HTMLAnchorElement>
+  ComponentProps<typeof Anchor<ElementType>> & HTMLAttributes<HTMLAnchorElement>
 >`
   white-space: nowrap;
 `;
