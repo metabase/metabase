@@ -432,7 +432,7 @@
            {:card "nullable value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}
            :specific-errors
            {:card
-            ["value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., received: \"foobar\""]}}
+            ["value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., received: \"foobar\""]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition  "rows"
                                      :alert_first_only false
