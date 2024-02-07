@@ -18,6 +18,8 @@ export function queryDrill(
     clicked?.dimensions,
   );
 
+  question = question.lockDisplay();
+
   const applyDrill = (drill: Lib.DrillThru, ...args: unknown[]) => {
     const newQuery = Lib.drillThru(query, stageIndex, drill, ...args);
     return question.setQuery(newQuery);

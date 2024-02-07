@@ -62,7 +62,11 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
     if (Lib.isDate(column)) {
       const info = Lib.displayInfo(query, stageIndex, breakout);
 
-      return info;
+      if (info.isTemporalExtraction) {
+        return { display: "bar" };
+      }
+
+      return { display: "line" };
     }
 
     const binning = Lib.binning(breakout);
