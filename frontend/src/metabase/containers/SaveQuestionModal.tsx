@@ -31,7 +31,7 @@ import type Question from "metabase-lib/Question";
 import "./SaveQuestionModal.css";
 
 const getLabels = (question: Question, showSaveType: boolean) => {
-  const type = question.type();
+  const type = question.type() ?? "question";
 
   if (type === "model") {
     return {
