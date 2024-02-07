@@ -282,7 +282,7 @@ describe("embed modal display", () => {
           });
 
           openPublicLinkPopoverFromMenu();
-          cy.findByTestId("copy-button").realClick();
+          cy.findByTestId("copy-button").click();
           if (resource === "dashboard") {
             expectGoodSnowplowEvent({
               event: "public_link_copied",
@@ -299,7 +299,7 @@ describe("embed modal display", () => {
             });
 
             mantinePopover().findByText("csv").click();
-            cy.findByTestId("copy-button").realClick();
+            cy.findByTestId("copy-button").click();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
@@ -307,7 +307,7 @@ describe("embed modal display", () => {
             });
 
             mantinePopover().findByText("xlsx").click();
-            cy.findByTestId("copy-button").realClick();
+            cy.findByTestId("copy-button").click();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
@@ -315,7 +315,7 @@ describe("embed modal display", () => {
             });
 
             mantinePopover().findByText("json").click();
-            cy.findByTestId("copy-button").realClick();
+            cy.findByTestId("copy-button").click();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
@@ -348,7 +348,7 @@ describe("embed modal display", () => {
           openEmbedModalFromMenu();
           cy.findByTestId("sharing-pane-public-embed-button").within(() => {
             cy.findByText("Get an embed link").click();
-            cy.findByTestId("copy-button").realClick();
+            cy.findByTestId("copy-button").click();
           });
           expectGoodSnowplowEvent({
             event: "public_embed_code_copied",
@@ -383,9 +383,7 @@ describe("embed modal display", () => {
           openStaticEmbeddingModal();
 
           cy.log("Assert copying codes in Overview tab");
-          cy.findByTestId("embed-backend")
-            .findByTestId("copy-button")
-            .realClick();
+          cy.findByTestId("embed-backend").findByTestId("copy-button").click();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
@@ -401,9 +399,7 @@ describe("embed modal display", () => {
             },
           });
 
-          cy.findByTestId("embed-frontend")
-            .findByTestId("copy-button")
-            .realClick();
+          cy.findByTestId("embed-frontend").findByTestId("copy-button").click();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
@@ -426,9 +422,7 @@ describe("embed modal display", () => {
             cy.findByText("Node.js").click();
           });
           popover().findByText("Ruby").click();
-          cy.findByTestId("embed-backend")
-            .findByTestId("copy-button")
-            .realClick();
+          cy.findByTestId("embed-backend").findByTestId("copy-button").click();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
@@ -464,9 +458,7 @@ describe("embed modal display", () => {
             cy.findByLabelText("Border").click({ force: true });
           });
 
-          cy.findByTestId("embed-backend")
-            .findByTestId("copy-button")
-            .realClick();
+          cy.findByTestId("embed-backend").findByTestId("copy-button").click();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
@@ -497,7 +489,7 @@ describe("embed modal display", () => {
             cy.log("Assert copying codes in Overview tab");
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
-              .realClick();
+              .click();
             expectGoodSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
@@ -515,7 +507,7 @@ describe("embed modal display", () => {
 
             cy.findByTestId("embed-frontend")
               .findByTestId("copy-button")
-              .realClick();
+              .click();
             expectGoodSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
@@ -540,7 +532,7 @@ describe("embed modal display", () => {
             popover().findByText("Ruby").click();
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
-              .realClick();
+              .click();
             expectGoodSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
@@ -585,7 +577,7 @@ describe("embed modal display", () => {
 
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
-              .realClick();
+              .click();
             expectGoodSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
@@ -605,11 +597,14 @@ describe("embed modal display", () => {
 
         it("should send `static_embed_discarded` when discarding changes in the static embed modal", () => {
           cy.get("@resourceId").then(id => {
-            enableEmbeddingForResource({ resource, id, isDirty: true });
+            enableEmbeddingForResource({ resource, id });
             visitResource(resource, id);
           });
 
-          openStaticEmbeddingModal();
+          cy.log("changing parameters, so we could discard changes");
+          openStaticEmbeddingModal({ activeTab: "parameters" });
+          modal().button("Price").click();
+          popover().findByText("Editable").click();
 
           cy.findByTestId("embed-modal-content-status-bar").within(() => {
             cy.findByText("Discard changes").click();
@@ -681,16 +676,8 @@ describe("embed modal display", () => {
               event: "static_embed_published",
               artifact: resource,
               new_embed: false,
-              time_since_creation: closeTo(
-                toSecond(timeAfterPublication - this.timeAfterResourceCreation),
-                1,
-              ),
-              time_since_initial_publication: closeTo(
-                toSecond(
-                  timeAfterPublication - this.timeAfterInitialPublication,
-                ),
-                1,
-              ),
+              time_since_creation: closeTo(toSecond(HOUR), 10),
+              time_since_initial_publication: closeTo(toSecond(HOUR), 10),
               params: {
                 disabled: 1,
                 locked: 1,
@@ -707,6 +694,8 @@ describe("embed modal display", () => {
           });
           openStaticEmbeddingModal();
 
+          const HOUR = 60 * 60 * 1000;
+          cy.clock(new Date(Date.now() + HOUR));
           cy.findByTestId("embed-modal-content-status-bar").within(() => {
             cy.findByText("Unpublish").click();
           });
@@ -714,7 +703,8 @@ describe("embed modal display", () => {
           expectGoodSnowplowEvent({
             event: "static_embed_unpublished",
             artifact: resource,
-            initially_published_at: "2021-01-01T00:00:00.000Z",
+            time_since_creation: closeTo(toSecond(HOUR), 10),
+            time_since_initial_publication: closeTo(toSecond(HOUR), 10),
           });
         });
       });
@@ -746,7 +736,7 @@ function createResource(resource) {
         "template-tags": {
           date: {
             type: "date",
-            name: "create_at",
+            name: "created_at",
             id: "b2517f32-d2e2-4f42-ab79-c91e07e820a0",
             "display-name": "Created At",
           },
@@ -772,21 +762,21 @@ function createResource(resource) {
     const dateFilter = {
       id: "1",
       name: "Created At",
-      slug: "filter-date",
+      slug: "created_at",
       type: "date/month-year",
     };
 
     const numberFilter = {
       id: "2",
       name: "Price",
-      slug: "filter-number",
+      slug: "price",
       type: "number/=",
     };
 
     const textFilter = {
       id: "3",
       name: "Category",
-      slug: "filter-text",
+      slug: "category",
       type: "string/contains",
     };
 
@@ -816,16 +806,10 @@ function visitResource(resource, id) {
   }
 }
 
-function enableEmbeddingForResource({ resource, id, isDirty = false }) {
+function enableEmbeddingForResource({ resource, id }) {
   const endpoint = resource === "question" ? "card" : "dashboard";
   cy.request("PUT", `/api/${endpoint}/${id}`, {
     enable_embedding: true,
-    embedding_params: isDirty
-      ? {
-          test: "locked",
-        }
-      : {},
-    initially_published_at: "2021-01-01T00:00:00.000Z",
   });
 }
 
