@@ -2,33 +2,85 @@ import fetchMock from "fetch-mock";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
-import { createMockUpload, createMockState } from "metabase-types/store/mocks";
+import {
+  createMockUpload,
+  createMockState,
+  createMockSettingsState,
+} from "metabase-types/store/mocks";
 
 import { renderWithProviders } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
-import CollectionHeader from "metabase/collections/containers/CollectionHeader";
+import {
+  createMockCollection,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
+import CollectionContent from "metabase/collections/containers/CollectionContent";
+import {
+  setupBookmarksEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import { FileUploadStatus } from "./FileUploadStatus";
 
-describe("FileUploadStatus", () => {
-  const firstCollectionId = 1;
-  const firstCollection = createMockCollection({
-    id: firstCollectionId,
-    can_write: true,
+const firstCollectionId = 1;
+const firstCollection = createMockCollection({
+  id: firstCollectionId,
+  can_write: true,
+});
+
+const secondCollectionId = 2;
+const secondCollection = createMockCollection({
+  id: secondCollectionId,
+  name: "Second Collection",
+});
+
+async function setup(overrides = {}) {
+  setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
+  setupSearchEndpoints([]);
+  setupBookmarksEndpoints([]);
+
+  const settings = createMockSettingsState({
+    "uploads-enabled": true,
+    "uploads-database-id": 1,
   });
 
-  const secondCollectionId = 2;
-
-  beforeEach(() => {
-    fetchMock.get("path:/api/collection/1", firstCollection);
-
-    fetchMock.get(
-      "path:/api/collection/2",
-      createMockCollection({
-        id: 2,
-        name: "Second Collection",
+  renderWithProviders(
+    <Route
+      path="/"
+      component={() => {
+        return (
+          <>
+            <CollectionContent
+              collectionId={firstCollectionId}
+              {...overrides}
+            />
+            <FileUploadStatus />
+          </>
+        );
+      }}
+    />,
+    {
+      withRouter: true,
+      withDND: true,
+      storeInitialState: createMockState({
+        settings,
       }),
-    );
+    },
+  );
 
+  // wait for loading to complete
+  await screen.findByTestId("upload-input");
+}
+
+describe("FileUploadStatus", () => {
+  beforeEach(() => {
+    setupCollectionByIdEndpoint({
+      collections: [firstCollection, secondCollection],
+    });
+    setupCollectionsEndpoints({
+      collections: [firstCollection, secondCollection],
+    });
     fetchMock.get(
       "path:/api/table/123",
       createMockCollection({
@@ -115,32 +167,7 @@ describe("FileUploadStatus", () => {
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post("path:/api/card/from-csv", "3", { delay: 1000 });
 
-    renderWithProviders(
-      <Route
-        path="/"
-        component={() => {
-          return (
-            <>
-              <CollectionHeader
-                collection={firstCollection}
-                isAdmin={true}
-                isBookmarked={false}
-                isPersonalCollectionChild={false}
-                onCreateBookmark={jest.fn()}
-                onDeleteBookmark={jest.fn()}
-                saveFile={jest.fn()}
-                canUpload
-                uploadsEnabled
-              />
-              <FileUploadStatus />
-            </>
-          );
-        }}
-      />,
-      {
-        withRouter: true,
-      },
-    );
+    await setup();
 
     userEvent.upload(
       screen.getByTestId("upload-input"),
@@ -171,33 +198,9 @@ describe("FileUploadStatus", () => {
         status: 400,
       },
       { delay: 1000 },
-    ),
-      renderWithProviders(
-        <Route
-          path="/"
-          component={() => {
-            return (
-              <>
-                <CollectionHeader
-                  collection={firstCollection}
-                  isAdmin={true}
-                  isBookmarked={false}
-                  isPersonalCollectionChild={false}
-                  onCreateBookmark={jest.fn()}
-                  onDeleteBookmark={jest.fn()}
-                  saveFile={jest.fn()}
-                  canUpload
-                  uploadsEnabled
-                />
-                <FileUploadStatus />
-              </>
-            );
-          }}
-        />,
-        {
-          withRouter: true,
-        },
-      );
+    );
+
+    await setup();
 
     userEvent.upload(
       screen.getByTestId("upload-input"),
@@ -228,32 +231,7 @@ describe("FileUploadStatus", () => {
       jest.useFakeTimers({ advanceTimers: true });
       fetchMock.post("path:/api/card/from-csv", "3", { delay: 90 * 1000 });
 
-      renderWithProviders(
-        <Route
-          path="/"
-          component={() => {
-            return (
-              <>
-                <CollectionHeader
-                  collection={firstCollection}
-                  isAdmin={true}
-                  isBookmarked={false}
-                  isPersonalCollectionChild={false}
-                  onCreateBookmark={jest.fn()}
-                  onDeleteBookmark={jest.fn()}
-                  saveFile={jest.fn()}
-                  canUpload
-                  uploadsEnabled
-                />
-                <FileUploadStatus />
-              </>
-            );
-          }}
-        />,
-        {
-          withRouter: true,
-        },
-      );
+      await setup();
 
       userEvent.upload(
         screen.getByTestId("upload-input"),
