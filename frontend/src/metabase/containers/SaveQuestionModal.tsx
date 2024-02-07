@@ -30,45 +30,28 @@ import type Question from "metabase-lib/Question";
 
 import "./SaveQuestionModal.css";
 
-const getSingleStepTitle = (question: Question, showSaveType: boolean) => {
+const getLabels = (question: Question, showSaveType: boolean) => {
   const type = question.type();
 
   if (type === "model") {
-    return t`Save model`;
+    return {
+      singleStepTitle: t`Save model`,
+      multiStepTitle: t`First, save your model`,
+    };
   }
 
   if (type === "question") {
-    if (showSaveType) {
-      return t`Save question`;
-    }
-
-    return t`Save new question`;
+    return {
+      singleStepTitle: showSaveType ? t`Save question` : t`Save new question`,
+      multiStepTitle: t`First, save your question`,
+    };
   }
 
   if (type === "metric") {
-    if (showSaveType) {
-      return t`Save metric`;
-    }
-
-    return t`Save new metric`;
-  }
-
-  throw new Error(`Unknown question.type(): ${type}`);
-};
-
-const getMultiStepTitle = (question: Question): string => {
-  const type = question.type();
-
-  if (type === "question") {
-    return t`First, save your question`;
-  }
-
-  if (type === "model") {
-    return t`First, save your model`;
-  }
-
-  if (type === "metric") {
-    return t`First, save your metric`;
+    return {
+      singleStepTitle: showSaveType ? t`Save metric` : t`Save new metric`,
+      multiStepTitle: t`First, save your metric`,
+    };
   }
 
   throw new Error(`Unknown question.type(): ${type}`);
@@ -205,16 +188,13 @@ export const SaveQuestionModal = ({
   };
 
   const questionType = question.isDataset() ? "model" : "question";
-  const multiStepTitle = getMultiStepTitle(question);
-
   const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   const showSaveType =
     isSavedQuestionChanged &&
     originalQuestion != null &&
     originalQuestion.canWrite();
 
-  const singleStepTitle = getSingleStepTitle(question, showSaveType);
-
+  const { multiStepTitle, singleStepTitle } = getLabels(question, showSaveType);
   const title = multiStep ? multiStepTitle : singleStepTitle;
 
   const nameInputPlaceholder =
