@@ -34,6 +34,6 @@ export type BillingInfoLineItem = BillingInfoFormatType &
   BillingInfoDisplayType;
 
 export type BillingInfo = {
-  version: number;
+  version: string;
   content: BillingInfoLineItem[] | null;
 };

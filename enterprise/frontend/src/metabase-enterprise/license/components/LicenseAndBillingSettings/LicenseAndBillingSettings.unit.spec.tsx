@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
+import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockAdminState } from "metabase-types/store/mocks";
@@ -62,69 +63,71 @@ describe("LicenseAndBilling", () => {
   it("renders billing info for store managed billing with a valid token", async () => {
     mockTokenStatus(true, ["metabase-store-managed"]);
 
-    const plan = {
+    const plan: BillingInfoLineItem = {
       name: "Plan",
       value: "Metabase Cloud Pro",
       format: "string",
       display: "value",
     };
-    const users = {
+    const users: BillingInfoLineItem = {
       name: "Users",
       value: 4000,
       format: "integer",
       display: "internal-link",
       link: "user-list",
     };
-    const nextCharge = {
+    const nextCharge: BillingInfoLineItem = {
       name: "Next charge",
       value: "2024-01-22T13:08:54Z",
       format: "datetime",
       display: "value",
     };
-    const billingFreq = {
+    const billingFreq: BillingInfoLineItem = {
       name: "Billing frequency",
       value: "Monthly",
       format: "string",
       display: "value",
     };
-    const nextChargeValue = {
+    const nextChargeValue: BillingInfoLineItem = {
       name: "Next charge value",
       value: 500,
       format: "currency",
       currency: "USD",
       display: "value",
     };
-    const float = {
+    const float: BillingInfoLineItem = {
       name: "Pi",
       value: 3.14159,
       format: "float",
       display: "value",
       precision: 2,
     };
-    const unsupportedFormat = {
+    // mocking some future format that doesn't exist yet
+    const unsupportedFormat: any = {
       name: "Unsupported format",
       value: "Unsupported format",
       format: "unsupported-format",
       display: "value",
     };
-    const unsupportedDisplay = {
+    // mocking some future diplay that doesn't exist yet
+    const unsupportedDisplay: any = {
       name: "Unsupported display",
       value: "Unsupported display",
       format: "string",
       display: "unsupported-display",
     };
-    const invalidValue = {
+    // mocking some incorrect data we're not expecting
+    const invalidValue: any = {
       name: "Invalid value",
     };
-    const managePreferences = {
+    const managePreferences: BillingInfoLineItem = {
       name: "Visit the Metabase store to manage your account and billing preferences.",
       value: "Manage preferences",
       format: "string",
       display: "external-link",
       link: "https://store.metabase.com/",
     };
-
-    fetchMock.get("path:/api/ee/billing", {
+    const mockData: BillingInfo = {
       version: "v1",
       content: [
         plan,
@@ -138,7 +141,9 @@ describe("LicenseAndBilling", () => {
         invalidValue,
         managePreferences,
       ],
-    });
+    };
+
+    fetchMock.get("path:/api/ee/billing", mockData);
 
     renderWithProviders(
       <Route path="/" component={LicenseAndBillingSettings}></Route>,
