@@ -54,6 +54,7 @@ export const getYAxisRange = (
     ? getCustomAxisRange(axisModel.extent, customMin, customMax)
     : {};
 };
+
 export const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
   nameGap: number,
