@@ -10,6 +10,7 @@ import {
 } from "./FieldInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
+export const POPOVER_TRANSITION_DURATION = 150;
 
 type Props = {
   field: Field | DatasetColumn;
@@ -38,7 +39,7 @@ function FieldInfoPopover({
       onOpen={group.onOpen}
       onClose={group.onClose}
       transitionProps={{
-        duration: group.shouldDelay ? 150 : 0,
+        duration: group.shouldDelay ? POPOVER_TRANSITION_DURATION : 0,
         keepMounted: true,
       }}
     >
