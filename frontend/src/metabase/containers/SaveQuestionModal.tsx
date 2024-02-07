@@ -30,14 +30,30 @@ import type Question from "metabase-lib/Question";
 
 import "./SaveQuestionModal.css";
 
-const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
-  if (questionType === "model") {
+const getSingleStepTitle = (question: Question, showSaveType: boolean) => {
+  const type = question.type();
+
+  if (type === "model") {
     return t`Save model`;
-  } else if (showSaveType) {
-    return t`Save question`;
   }
 
-  return t`Save new question`;
+  if (type === "question") {
+    if (showSaveType) {
+      return t`Save question`;
+    }
+
+    return t`Save new question`;
+  }
+
+  if (type === "metric") {
+    if (showSaveType) {
+      return t`Save metric`;
+    }
+
+    return t`Save new metric`;
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
 };
 
 const getMultiStepTitle = (question: Question): string => {
@@ -197,7 +213,7 @@ export const SaveQuestionModal = ({
     originalQuestion != null &&
     originalQuestion.canWrite();
 
-  const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
+  const singleStepTitle = getSingleStepTitle(question, showSaveType);
 
   const title = multiStep ? multiStepTitle : singleStepTitle;
 
