@@ -8,6 +8,7 @@ import type {
 import { createVirtualCard } from "./utils";
 
 type Position = Pick<DashboardCardLayoutAttrs, "col" | "row">;
+type Size = Pick<DashboardCardLayoutAttrs, "size_x" | "size_y">;
 
 type SectionDashboardCardAttrs = Partial<VirtualDashboardCard> &
   DashboardCardLayoutAttrs & {
@@ -57,6 +58,16 @@ function createPlaceholderDashCard(
   };
 }
 
+function createScalarDashCardPlaceholder(
+  opts: Partial<VirtualDashboardCard> & Position & Partial<Size>,
+): SectionDashboardCardAttrs {
+  return createPlaceholderDashCard({
+    size_x: SCALAR_CARD_WIDTH,
+    size_y: SCALAR_CARD_HEIGHT,
+    ...opts,
+  });
+}
+
 const getKpiGridLayout: LayoutFn = position => {
   const heading = createHeadingDashCard({
     ...position,
@@ -69,13 +80,13 @@ const getKpiGridLayout: LayoutFn = position => {
   const scalarCardHeight = 5;
 
   const row1 = [
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: 0,
       row,
       size_x: scalarCardWidth,
       size_y: scalarCardHeight,
     }),
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: scalarCardWidth,
       row,
       size_x: scalarCardWidth,
@@ -84,13 +95,13 @@ const getKpiGridLayout: LayoutFn = position => {
   ];
 
   const row2 = [
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: 0,
       row: row + scalarCardHeight,
       size_x: scalarCardWidth,
       size_y: scalarCardHeight,
     }),
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: scalarCardWidth,
       row: row + scalarCardHeight,
       size_x: scalarCardWidth,
@@ -112,23 +123,17 @@ const getLargeChartKpiColLayout: LayoutFn = position => {
   const largeCardWidth = GRID_WIDTH - SCALAR_CARD_WIDTH;
 
   const scalarCardsColumn = [
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: largeCardWidth,
       row: row,
-      size_x: SCALAR_CARD_WIDTH,
-      size_y: SCALAR_CARD_HEIGHT,
     }),
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: largeCardWidth,
       row: row + SCALAR_CARD_HEIGHT,
-      size_x: SCALAR_CARD_WIDTH,
-      size_y: SCALAR_CARD_HEIGHT,
     }),
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: largeCardWidth,
       row: row + SCALAR_CARD_HEIGHT * 2,
-      size_x: SCALAR_CARD_WIDTH,
-      size_y: SCALAR_CARD_HEIGHT,
     }),
   ];
 
@@ -155,29 +160,21 @@ const getKpiLargeChartBelowLayout: LayoutFn = position => {
   const largeCardHeight = 9;
 
   const scalarCardsRow = [
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: 0,
       row: row,
-      size_x: SCALAR_CARD_WIDTH,
-      size_y: SCALAR_CARD_HEIGHT,
     }),
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: SCALAR_CARD_WIDTH,
       row: row,
-      size_x: SCALAR_CARD_WIDTH,
-      size_y: SCALAR_CARD_HEIGHT,
     }),
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: SCALAR_CARD_WIDTH * 2,
       row: row,
-      size_x: SCALAR_CARD_WIDTH,
-      size_y: SCALAR_CARD_HEIGHT,
     }),
-    createPlaceholderDashCard({
+    createScalarDashCardPlaceholder({
       col: SCALAR_CARD_WIDTH * 3,
       row: row,
-      size_x: SCALAR_CARD_WIDTH,
-      size_y: SCALAR_CARD_HEIGHT,
     }),
   ];
 
