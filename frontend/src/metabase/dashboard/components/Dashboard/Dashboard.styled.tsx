@@ -150,3 +150,17 @@ export const CardsContainer = styled(FullWidthContainer)`
     }
   }
 `;
+
+export const FIXED_WIDTH = "1048px";
+export const FixedWidthContainer = styled.div<{
+  isFixedWidth: boolean;
+}>`
+  width: 100%;
+  margin: 0 auto;
+
+  ${({ isFixedWidth }) =>
+    isFixedWidth &&
+    css`
+      max-width: ${FIXED_WIDTH};
+    `}
+`;

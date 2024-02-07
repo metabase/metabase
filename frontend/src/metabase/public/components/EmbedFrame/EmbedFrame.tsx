@@ -27,6 +27,7 @@ import type { State } from "metabase-types/store";
 
 import { useDispatch } from "metabase/lib/redux";
 import { setOptions } from "metabase/redux/embed";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import type Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -154,20 +155,25 @@ function EmbedFrame({
             )}
             {hasParameters && (
               <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
-                <SyncedParametersList
-                  className="mt1"
-                  question={question}
-                  dashboard={dashboard}
-                  parameters={getValuePopulatedParameters(
-                    parameters,
-                    _.isEmpty(draftParameterValues)
-                      ? parameterValues
-                      : draftParameterValues,
-                  )}
-                  setParameterValue={setParameterValue}
-                  hideParameters={hideParameters}
-                />
-                {dashboard && <FilterApplyButton />}
+                <FixedWidthContainer
+                  data-testid="fixed-width-filters"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <SyncedParametersList
+                    className="mt1"
+                    question={question}
+                    dashboard={dashboard}
+                    parameters={getValuePopulatedParameters(
+                      parameters,
+                      _.isEmpty(draftParameterValues)
+                        ? parameterValues
+                        : draftParameterValues,
+                    )}
+                    setParameterValue={setParameterValue}
+                    hideParameters={hideParameters}
+                  />
+                  {dashboard && <FilterApplyButton />}
+                </FixedWidthContainer>
               </ParametersWidgetContainer>
             )}
           </Header>
