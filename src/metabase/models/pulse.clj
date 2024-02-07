@@ -210,7 +210,7 @@
                         "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
-  "Schema for functions accepting either a `HybridPulseCard` or `CardRef`."
+  "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
   [:or HybridPulseCard CardRef CardBase])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------

@@ -111,7 +111,8 @@
   {:errors
    {:cards (str "one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
-                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
+                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
 (deftest create-pulse-validation-test
   (doseq [[input expected-error]
@@ -149,6 +150,8 @@
     (testing (pr-str input)
       (is (=? expected-error
               (mt/user-http-request :rasta :post 400 "pulse" input))))))
+
+(mt/user-http-request :rasta :post 400 "pulse" {:name "abc"})
 
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
@@ -382,7 +385,8 @@
   {:errors
    {:cards (str "nullable one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
-                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
+                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"
@@ -411,6 +415,8 @@
       (testing (pr-str input)
         (is (=? expected-error
                 (mt/user-http-request :rasta :put 400 "pulse/1" input)))))))
+
+(mt/user-http-request :rasta :put 400 "pulse/1" {:cards "foobar"})
 
 (deftest update-test
   (testing "PUT /api/pulse/:id"
