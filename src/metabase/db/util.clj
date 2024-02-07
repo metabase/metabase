@@ -73,13 +73,14 @@
 (defmacro idempotent-insert!
   "Create or update some database state, typically a single row, atomically.
 
-   This is more general than an `UPSERT` or `INSERT .. ON CONFLICT`, in that it can be used for multiple entities,
-   e.g. where we also upsert some parent resources. It is also useful if we want to avoid calculating the data to
-   insert, e.g. because it is expensive. This can not be done when sending a single SQL command.
+   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, in that it can be used for multiple
+   entities, e.g. where we also upsert some parent resources. It is also useful if we want to avoid calculating the
+   data to insert, e.g. because it is expensive. This can not be done when sending a single SQL command.
 
    The usage is just like the naive pattern `(or select-expr insert-expr)`, just papering over a number of sharp edges.
+   One should be careful about side-effects in `select-expr`, as the expression could be executed up to 3 times.
 
-   The mechanism is agnostic as to whether there is an underlying db constraint to prevent duplicates."
+   The mechanism is agnostic whether there is an underlying db constraint to prevent duplicates."
   [select-expr insert-expr]
   ;; First attempt the select without a serializable transaction, since those are expensive.
   `(or ~select-expr
