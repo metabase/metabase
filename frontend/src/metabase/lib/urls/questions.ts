@@ -51,7 +51,7 @@ export function question(
 
   const isModel = card?.dataset || card?.model === "dataset";
   const fallbackPath = isModel ? "model" : "question";
-  let path: string = card?.type ? card.type : fallbackPath;
+  let path: string = card?.type ?? fallbackPath;
 
   if (!card || !card.id) {
     return `/${path}${query}${hash}`;
