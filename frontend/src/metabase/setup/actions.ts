@@ -13,6 +13,7 @@ import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
   trackTrackingChanged,
+  trackUsageReasonSelected,
 } from "./analytics";
 import {
   getAvailableLocales,
@@ -87,8 +88,8 @@ export const submitUser = createAsyncThunk(
 
 export const submitUsageReason = createAsyncThunk(
   "metabase/setup/SUBMIT_USAGE_REASON",
-  (_: UsageReason) => {
-    // TODO: add tracking
+  (usageReason: UsageReason) => {
+    trackUsageReasonSelected(usageReason);
   },
 );
 
