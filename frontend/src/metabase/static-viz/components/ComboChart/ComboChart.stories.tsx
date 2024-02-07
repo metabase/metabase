@@ -84,6 +84,27 @@ BarHistogramXScale.args = {
   renderingContext,
 };
 
+export const BarHistogramMultiSeries = Template.bind({});
+BarHistogramMultiSeries.args = {
+  rawSeries: data.barHistogramMultiSeries as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarHistogramStacked = Template.bind({});
+BarHistogramStacked.args = {
+  rawSeries: data.barHistogramStacked as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarHistogramStackedNormalized = Template.bind({});
+BarHistogramStackedNormalized.args = {
+  rawSeries: data.barHistogramStackedNormalized as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarOrdinalXScale = Template.bind({});
 BarOrdinalXScale.args = {
   rawSeries: data.barOrdinalXScale as any,
