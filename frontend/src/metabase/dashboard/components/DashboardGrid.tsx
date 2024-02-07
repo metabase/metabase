@@ -44,7 +44,6 @@ import type {
   DashboardTabId,
   ParameterId,
   ParameterValueOrArray,
-  SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -291,9 +290,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   getLayoutForDashCard = (dashcard: BaseDashboardCard) => {
-    const visualization = getVisualizationRaw([
-      { card: (dashcard as QuestionDashboardCard).card } as SingleSeries,
-    ]);
+    const visualization = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization?.minSize || DEFAULT_CARD_SIZE;
 

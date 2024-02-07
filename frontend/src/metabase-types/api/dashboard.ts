@@ -55,6 +55,8 @@ export type BaseDashboardCard = {
   id: DashCardId;
   dashboard_id: DashboardId;
   dashboard_tab_id?: DashboardTabId;
+  card_id: CardId | null;
+  card: Card | VirtualCard;
   collection_authority_level?: CollectionAuthorityLevel;
   size_x: number;
   size_y: number;
