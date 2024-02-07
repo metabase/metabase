@@ -37,13 +37,13 @@ export function getAllDashboardCardsWithUnmappedParameters({
     dashboardId,
   );
   return dashCards.filter(
-    dashcard =>
+    (dashcard): dashcard is QuestionDashboardCard =>
       isQuestionDashCard(dashcard) &&
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
         mapping => mapping.parameter_id === parameterId,
       ),
-  ) as QuestionDashboardCard[];
+  );
 }
 
 export function getMatchingParameterOption(
