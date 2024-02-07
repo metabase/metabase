@@ -9,6 +9,7 @@ import type { SearchResult } from "metabase-types/api";
 import { useDispatch } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
+import { isValidBrowseTab, type BrowseTabId } from "../utils";
 import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseModels } from "./BrowseModels";
 import {
@@ -24,16 +25,11 @@ import {
 } from "./BrowseApp.styled";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
 
-export type BrowseTabId = "models" | "databases";
-
-const isValidBrowseTab = (value: unknown): value is BrowseTabId =>
-  value === "models" || value === "databases";
-
 export const BrowseApp = ({
-  tab = "models",
+  tab,
   children,
 }: {
-  tab?: string;
+  tab: BrowseTabId;
   children?: React.ReactNode;
 }) => {
   const dispatch = useDispatch();
@@ -49,9 +45,19 @@ export const BrowseApp = ({
     return <LoadingAndErrorWrapper error />;
   }
 
+  // If no children specified, use the tab id to determine what to show inside the tab
+  if (!children) {
+    if (tab === "models") {
+      children = <BrowseModels modelsResult={modelsResult} />;
+    }
+    if (tab === "databases") {
+      children = <BrowseDatabases databasesResult={databasesResult} />;
+    }
+  }
+
   return (
-    <BrowseAppRoot data-testid="browse-data">
-      <BrowseContainer data-testid="data-browser">
+    <BrowseAppRoot data-testid="browse-app">
+      <BrowseContainer>
         <BrowseDataHeader>
           <BrowseSectionContainer>
             <h2>{t`Browse data`}</h2>
@@ -97,14 +103,7 @@ export const BrowseApp = ({
             </BrowseSectionContainer>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
-            <BrowseTabsContainer>
-              {children ||
-                (tab === "models" ? (
-                  <BrowseModels modelsResult={modelsResult} />
-                ) : (
-                  <BrowseDatabases databasesResult={databasesResult} />
-                ))}
-            </BrowseTabsContainer>
+            <BrowseTabsContainer>{children}</BrowseTabsContainer>
           </BrowseTabsPanel>
         </BrowseTabs>
       </BrowseContainer>

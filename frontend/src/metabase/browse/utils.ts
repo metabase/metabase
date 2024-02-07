@@ -39,3 +39,8 @@ export const groupModels = (
   groupsOfModels.sort(sortFunction);
   return groupsOfModels;
 };
+
+export type BrowseTabId = "models" | "databases";
+
+export const isValidBrowseTab = (value: unknown): value is BrowseTabId =>
+  value === "models" || value === "databases";
