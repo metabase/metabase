@@ -1,13 +1,13 @@
 import type {
   Dashboard,
   DashboardId,
-  DashboardCard,
   DashCardId,
   DashCardDataMap,
   ParameterId,
   ParameterValueOrArray,
   DashboardTab,
   DashboardTabId,
+  DashboardCard,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =

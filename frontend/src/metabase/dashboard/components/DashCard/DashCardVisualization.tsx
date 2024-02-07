@@ -17,7 +17,6 @@ import {
 
 import type {
   Dashboard,
-  DashboardCard,
   DashCardId,
   Dataset,
   Series,
@@ -25,6 +24,7 @@ import type {
   ParameterValueOrArray,
   VirtualCardDisplay,
   VisualizationSettings,
+  DashboardCard,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 

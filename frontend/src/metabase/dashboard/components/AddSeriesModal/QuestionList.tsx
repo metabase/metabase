@@ -11,7 +11,7 @@ import { CardApi } from "metabase/services";
 import type {
   Card,
   CardId,
-  DashboardCard,
+  QuestionDashboardCard,
   GetCompatibleCardsPayload,
 } from "metabase-types/api";
 import {
@@ -30,7 +30,7 @@ const PAGE_SIZE = 50;
 interface QuestionListProps {
   enabledCards: Card[];
   onSelect: (card: Card, isChecked: boolean) => void;
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
 }
 
 export const QuestionList = memo(function QuestionList({
