@@ -71,11 +71,11 @@
    [:in expr (type-keyword->descendants type-keyword)]))
 
 (defmacro idempotent-insert!
-  "Upsert some database state, typically a single row.
+  "Create or update some database state, typically a single row, atomically.
 
    This is more general than an `UPSERT` or `INSERT .. ON CONFLICT`, in that it can be used for multiple entities,
-   e.g. where we also upsert some parent resources. It is also useful in the case where calculating the data to insert
-   is expensive, which could not be done if sending a single SQL command.
+   e.g. where we also upsert some parent resources. It is also useful if we want to avoid calculating the data to
+   insert, e.g. because it is expensive. This can not be done when sending a single SQL command.
 
    The usage is just like the naive pattern `(or select-expr insert-expr)`, just papering over a number of sharp edges.
 
