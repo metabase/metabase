@@ -375,8 +375,8 @@ export const getQuestionByCard = createCachedSelector(
 });
 
 export const getDashcardParameterMappingOptions = createCachedSelector(
-  [getMetadata, getEditingParameter, getCard, getDashCard, getQuestionByCard],
-  (metadata, parameter, card, dashcard, question) => {
+  [getQuestionByCard, getEditingParameter, getCard, getDashCard],
+  (question, parameter, card, dashcard) => {
     return _getParameterMappingOptions(question, parameter, card, dashcard);
   },
 )((state, props) => {

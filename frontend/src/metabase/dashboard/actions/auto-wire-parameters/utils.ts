@@ -18,7 +18,7 @@ import {
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 export function getAllDashboardCardsWithUnmappedParameters({
   dashboardState,
@@ -59,13 +59,8 @@ export function getMatchingParameterOption(
     return null;
   }
 
-  // TODO: verify if fallback can be dropped
-  const sourceQuestion =
-    questions[sourceDashcard.card.id] ??
-    new Question(sourceDashcard.card, metadata);
-  const targetQuestion =
-    questions[targetDashcard.card.id] ??
-    new Question(targetDashcard.card, metadata);
+  const sourceQuestion = questions[sourceDashcard.card.id];
+  const targetQuestion = questions[targetDashcard.card.id];
 
   return (
     getParameterMappingOptions(
