@@ -113,6 +113,7 @@
   :visibility :public
   :audit      :getter)
 
+<<<<<<< HEAD
 (defsetting default-browse-tab
   (deferred-tru "Which tab is shown by default when this user visits the Browse Data page. Can be 'models', 'databases', or '' (meaning no known preference)")
   :user-local :only
@@ -131,6 +132,18 @@
   :default    true
   :audit      :never)
 
+||||||| parent of a91d6baafa (Use BrowseRedirect to set default tab properly, and test)
+=======
+(defsetting default-browse-tab
+  (deferred-tru "Which tab is shown by default when this user visits the Browse Data page. Can be 'models', 'databases', or '' (meaning no known preference)")
+  :user-local :only
+  :visibility :authenticated
+  :type       :string
+  :export?    true
+  :default    ""
+  :audit      :never)
+
+>>>>>>> a91d6baafa (Use BrowseRedirect to set default tab properly, and test)
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only

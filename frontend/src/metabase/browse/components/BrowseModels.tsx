@@ -1,8 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
 
-import { useEffect, useCallback, useState } from "react";
-import { useCallback, useState } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -13,13 +11,12 @@ import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Search from "metabase/entities/search";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
-
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 
@@ -60,6 +57,7 @@ export const BrowseModels = ({
     modelsWithoutInstanceAnalyticsCollection,
     localeCode,
   );
+
   if (error || isLoading) {
     return (
       <LoadingAndErrorWrapper
