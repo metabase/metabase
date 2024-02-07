@@ -40,4 +40,9 @@ export const PopoverHoverTarget = styled(Icon)`
   padding-right: 0;
   padding-left: 2em;
   color: red;
+  opacity: 0;
+
+  [role="option"]:hover & {
+    opacity: 1;
+  }
 `;
