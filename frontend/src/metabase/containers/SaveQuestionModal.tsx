@@ -30,6 +30,7 @@ import { useSelector } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
 
 import "./SaveQuestionModal.css";
+import { Indicator } from "@mantine/core";
 
 const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {
@@ -250,14 +251,19 @@ export const SaveQuestionModal = ({
                         exit: 500,
                       }}
                     >
-                      <div className="saveQuestionModalFields">
-                        <LLMLoadingIndicator />
-                        <FormInput
-                          loading={loading}
-                          name="name"
-                          title={t`Name`}
-                          placeholder={nameInputPlaceholder}
-                        />
+                      <Indicator
+                        processing
+                        size={16}
+                        color="#0000f0"
+                        label="AI">
+                        <div className="saveQuestionModalFields">
+                        {/*<LLMLoadingIndicator />*/}
+                          <FormInput
+                            loading={loading}
+                            name="name"
+                            title={t`Name`}
+                            placeholder={nameInputPlaceholder}
+                          />
                         <FormTextArea
                           name="description"
                           loading={loading}
@@ -269,6 +275,7 @@ export const SaveQuestionModal = ({
                           title={t`Which collection should this go in?`}
                         />
                       </div>
+                      </Indicator>
                     </CSSTransition>
                   )}
                 </TransitionGroup>
