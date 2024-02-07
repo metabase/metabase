@@ -110,10 +110,10 @@ export function newQuestion({
   const type = question.type();
 
   if (mode) {
-    return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
-  } else {
-    return url;
+    return url.replace(/^\/(question|model|metric)/, `/${type}\/${mode}`);
   }
+
+  return url;
 }
 
 export function publicQuestion({
