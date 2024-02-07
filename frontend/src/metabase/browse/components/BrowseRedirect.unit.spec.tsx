@@ -30,10 +30,10 @@ const mockModels: SearchResult[] = [
 
 const setup = ({
   models,
-  defaultTab = null,
+  defaultTab,
 }: {
   models: SearchResult[];
-  defaultTab?: Settings["default-browse-tab"];
+  defaultTab: Settings["default-browse-tab"];
 }) => {
   setupSearchEndpoints(models);
   setupPropertiesEndpoints(createMockSettings());
@@ -48,22 +48,22 @@ const setup = ({
 };
 
 describe("BrowseRedirect", () => {
-  it("if there is no saved user setting, redirects to /databases if there are no models", async () => {
-    const { store } = setup({ models: [] });
+  it("redirects to /databases if there are no models and no saved setting", async () => {
+    const { store } = setup({ models: [], defaultTab: null });
     const mockDispatch = jest.spyOn(store, "dispatch");
     await waitFor(() => {
       expect(mockDispatch).toHaveBeenCalledWith(replace("/browse/databases"));
     });
   });
-  it("if there is no saved user setting, redirects to /models if there are some models", async () => {
-    const { store } = setup({ models: mockModels.slice(0, 1) });
+  it("redirects to /models if there are some models but no saved setting", async () => {
+    const { store } = setup({ models: mockModels, defaultTab: null });
     const mockDispatch = jest.spyOn(store, "dispatch");
     await waitFor(() => {
       expect(mockDispatch).toHaveBeenCalledWith(replace("/browse/models"));
     });
   });
 
-  it("redirects to /models if the user has a default-browse-tab setting set to 'models'", async () => {
+  it("redirects to /models if the user's default-browse-tab setting = 'models'", async () => {
     const { store, rerender } = setup({
       models: [],
       defaultTab: "models",
@@ -85,10 +85,10 @@ describe("BrowseRedirect", () => {
       expect(mockDispatch).toHaveBeenCalledWith(replace("/browse/databases"));
     });
   });
-  it("redirects to /browse/models if the user has an invalid default-browse-tab setting", async () => {
+  it("redirects to /browse/models if the user has an invalid default-browse-tab setting and some models exist", async () => {
     const { store, rerender } = setup({
       models: mockModels,
-      defaultTab: "invalid value",
+      defaultTab: "this is an invalid value",
     });
     const mockDispatch = jest.spyOn(store, "dispatch");
     rerender(<BrowseRedirect />);
