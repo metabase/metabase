@@ -35,7 +35,9 @@ export const SettingsPage = (): JSX.Element => {
       <PageBody>
         {steps.map(({ key }, index) => {
           const Component = STEP_COMPONENTS[key];
-          return <Component key={key} stepLabel={index + 1} />;
+          if (Component) {
+            return <Component key={key} stepLabel={index} />;
+          }
         })}
         <CompletedStep />
         <CloudMigrationHelp />

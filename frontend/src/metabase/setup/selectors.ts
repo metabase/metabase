@@ -82,6 +82,7 @@ export const getSteps = (state: State) => {
   const activeStep = getStep(state);
 
   const steps: { key: SetupStep; isActiveStep: boolean }[] = [
+    { key: "welcome" as const },
     { key: "language" as const },
     { key: "user_info" as const },
     { key: "usage_question" as const },
@@ -89,9 +90,13 @@ export const getSteps = (state: State) => {
       key: "db_connection" as const,
     },
     { key: "data_usage" as const },
+    { key: "completed" as const },
   ]
     .filter(isNotFalsy)
-    .map(({ key }) => ({ key, isActiveStep: activeStep === key }));
+    .map(({ key }) => ({
+      key,
+      isActiveStep: activeStep === key,
+    }));
 
   return steps;
 };
