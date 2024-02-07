@@ -1,4 +1,4 @@
-import { trackSchemaEvent, trackStructEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent } from "metabase/lib/analytics";
 
 const ONBOARDING_VERSION = "1.1.0";
 
@@ -37,32 +37,4 @@ export const trackTrackingChanged = (isTrackingAllowed: boolean) => {
       : "tracking_permission_disabled",
     source: "setup",
   });
-};
-
-export const trackWelcomeStepCompleted = () => {
-  trackStructEvent("Setup", "Welcome");
-};
-
-export const trackUserStepCompleted = () => {
-  trackStructEvent("Setup", "User Details Step");
-};
-
-export const trackDatabaseStepCompleted = (engine?: string) => {
-  trackStructEvent("Setup", "Database Step", engine);
-};
-
-export const trackPreferencesStepCompleted = (isTrackingAllowed: boolean) => {
-  trackStructEvent("Setup", "Preferences Step", isTrackingAllowed);
-};
-
-export const trackSetupCompleted = () => {
-  trackStructEvent("Setup", "Complete");
-};
-
-export const trackPasswordValidationError = () => {
-  trackStructEvent("Setup", "Error", "password validation");
-};
-
-export const trackDatabaseValidationError = (engine: string) => {
-  trackStructEvent("Setup", "Error", "database validation: " + engine);
 };
