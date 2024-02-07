@@ -704,14 +704,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @returns whether the current query has a valid breakout
-   */
-  hasValidBreakout() {
-    const breakouts = this.breakouts();
-    return breakouts.length > 0 && breakouts[0].isValid();
-  }
-
-  /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Breakout} added.
    */
   addBreakout(_breakout: Breakout) {
