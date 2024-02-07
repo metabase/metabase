@@ -1,3 +1,5 @@
+/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
+
 import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
@@ -34,12 +36,31 @@ describe("setup", () => {
   it("default step order should be correct", async () => {
     await setup();
     skipWelcomeScreen();
-    /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel"] }] */
     expectSectionToHaveLabel("What's your preferred language?", "1");
     expectSectionToHaveLabel("What should we call you?", "2");
     expectSectionToHaveLabel("What will you use Metabase for?", "3");
     expectSectionToHaveLabel("Add your data", "4");
     expectSectionToHaveLabel("Usage data preferences", "5");
+
+    expectSectionsToHaveLabelsInOrder();
+  });
+
+  it("should keep steps in order through the whole setup", async () => {
+    await setup();
+    skipWelcomeScreen();
+    expectSectionsToHaveLabelsInOrder({ from: 0 });
+
+    skipLanguageStep();
+    expectSectionsToHaveLabelsInOrder({ from: 1 });
+
+    await submitUserInfoStep();
+    expectSectionsToHaveLabelsInOrder({ from: 2 });
+
+    clickNextStep(); // Usage question
+    expectSectionsToHaveLabelsInOrder({ from: 3 });
+
+    userEvent.click(screen.getByText("I'll add my data later"));
+    expectSectionsToHaveLabelsInOrder({ from: 4 });
   });
 
   describe("Usage question", () => {
@@ -173,4 +194,16 @@ const expectSectionToHaveLabel = (sectionName: string, label: string) => {
   const section = getSection(sectionName);
 
   expect(within(section).getByText(label)).toBeInTheDocument();
+};
+
+const expectSectionsToHaveLabelsInOrder = ({
+  from = 0,
+}: {
+  from?: number;
+} = {}): void => {
+  screen.getAllByRole("listitem").forEach((section, index) => {
+    if (index >= from) {
+      expect(within(section).getByText(`${index + 1}`)).toBeInTheDocument();
+    }
+  });
 };
