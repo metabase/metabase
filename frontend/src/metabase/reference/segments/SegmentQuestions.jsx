@@ -2,6 +2,7 @@
 import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import _ from "underscore";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { t } from "ttag";
@@ -13,8 +14,9 @@ import S from "metabase/components/List/List.css";
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+import Questions from "metabase/entities/questions";
 
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -23,7 +25,6 @@ import ReferenceHeader from "../components/ReferenceHeader";
 import { getQuestionUrl } from "../utils";
 
 import {
-  getSegmentQuestions,
   getError,
   getLoading,
   getTableBySegment,
@@ -46,7 +47,6 @@ const emptyStateData = (table, segment, metadata) => {
 const mapStateToProps = (state, props) => ({
   segment: getSegment(state, props),
   table: getTableBySegment(state, props),
-  entities: getSegmentQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),
   metadata: getMetadata(state),
@@ -61,15 +61,22 @@ class SegmentQuestions extends Component {
     table: PropTypes.object.isRequired,
     segment: PropTypes.object.isRequired,
     style: PropTypes.object.isRequired,
-    entities: PropTypes.object.isRequired,
+    questions: PropTypes.array.isRequired,
     loading: PropTypes.bool,
     loadingError: PropTypes.object,
     metadata: PropTypes.object.isRequired,
   };
 
   render() {
-    const { entities, style, loadingError, loading, table, segment, metadata } =
-      this.props;
+    const {
+      questions,
+      style,
+      loadingError,
+      loading,
+      table,
+      segment,
+      metadata,
+    } = this.props;
 
     return (
       <div style={style} className="full">
@@ -83,22 +90,22 @@ class SegmentQuestions extends Component {
           error={loadingError}
         >
           {() =>
-            Object.keys(entities).length > 0 ? (
+            questions.length > 0 ? (
               <div className="wrapper wrapper--trim">
                 <List>
-                  {Object.values(entities).map(
-                    entity =>
-                      entity &&
-                      entity.id &&
-                      entity.name && (
+                  {questions.map(
+                    ({ _card: question }) =>
+                      question &&
+                      question.id &&
+                      question.name && (
                         <ListItem
-                          key={entity.id}
-                          name={entity.display_name || entity.name}
+                          key={question.id}
+                          name={question.display_name || question.name}
                           description={t`Created ${moment(
-                            entity.created_at,
-                          ).fromNow()} by ${entity.creator.common_name}`}
-                          url={Urls.question(entity)}
-                          icon={visualizations.get(entity.display).iconName}
+                            question.created_at,
+                          ).fromNow()} by ${question.creator.common_name}`}
+                          url={Urls.question(question)}
+                          icon={visualizations.get(question.display).iconName}
                         />
                       ),
                   )}
@@ -118,4 +125,14 @@ class SegmentQuestions extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentQuestions);
+export default _.compose(
+  Questions.loadList({
+    query: (_state, { segmentId }) => {
+      return {
+        f: "using_segment",
+        model_id: segmentId,
+      };
+    },
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(SegmentQuestions);
