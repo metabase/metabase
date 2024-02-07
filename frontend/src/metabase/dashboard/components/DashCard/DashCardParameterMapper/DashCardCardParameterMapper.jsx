@@ -96,9 +96,18 @@ export function DashCardCardParameterMapper({
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const selectedMappingOption = _.find(mappingOptions, option =>
-    _.isEqual(normalize(option.target), normalize(target)),
-  );
+  const selectedMappingOption =
+    !!target &&
+    _.find(mappingOptions, option => {
+      const [type1, legacyRef1] = normalize(option.target);
+      const [type2, legacyRef2] = normalize(target);
+
+      return (
+        type1 === type2 &&
+        // base-type is not presented in MLv1
+        _.isEqual(legacyRef1.slice(0, -1), legacyRef2.slice(0, -1))
+      );
+    });
 
   const handleChangeTarget = useCallback(
     target => {
