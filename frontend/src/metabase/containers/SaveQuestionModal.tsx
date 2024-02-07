@@ -33,19 +33,19 @@ import "./SaveQuestionModal.css";
 const getLabels = (question: Question, showSaveType: boolean) => {
   const type = question.type() ?? "question";
 
-  if (type === "model") {
-    return {
-      singleStepTitle: t`Save model`,
-      multiStepTitle: t`First, save your model`,
-      nameInputPlaceholder: t`What is the name of your model?`,
-    };
-  }
-
   if (type === "question") {
     return {
       singleStepTitle: showSaveType ? t`Save question` : t`Save new question`,
       multiStepTitle: t`First, save your question`,
       nameInputPlaceholder: t`What is the name of your question?`,
+    };
+  }
+
+  if (type === "model") {
+    return {
+      singleStepTitle: t`Save model`,
+      multiStepTitle: t`First, save your model`,
+      nameInputPlaceholder: t`What is the name of your model?`,
     };
   }
 
