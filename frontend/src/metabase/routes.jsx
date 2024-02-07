@@ -218,6 +218,13 @@ export const getRoutes = store => {
             <Route path="metabot" component={QueryBuilder} />
           </Route>
 
+          {/* METRICS V2 */}
+
+          <Route path="/metric">
+            <IndexRoute component={QueryBuilder} />
+            <Route path="notebook" component={QueryBuilder} />
+          </Route>
+
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
             <Route path="models" component={() => <BrowseApp tab="models" />} />

@@ -65,6 +65,7 @@ import type { Query } from "./types";
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
   dataset?: boolean;
+  cardType?: CardType;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -1059,6 +1060,7 @@ class Question {
     display = "table",
     visualization_settings = {},
     dataset,
+    cardType,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1070,6 +1072,7 @@ class Question {
       visualization_settings,
       dataset,
       dataset_query,
+      type: cardType,
     };
 
     if (type === "native") {
