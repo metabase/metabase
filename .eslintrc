@@ -178,7 +178,9 @@
             "ignoreRestSiblings": true,
             "destructuredArrayIgnorePattern": "^_"
           }
-        ]
+        ],
+        // This was introduced in 6.0.0
+        "@typescript-eslint/no-unsafe-declaration-merging": "off"
       }
     },
     {
