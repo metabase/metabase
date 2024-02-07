@@ -5,7 +5,6 @@ import { copy } from "metabase/lib/utils";
 import * as Lib from "metabase-lib";
 import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
-import * as Q_DEPRECATED from "metabase-lib/queries/utils"; // legacy
 
 export function isNative(card) {
   return card?.dataset_query?.type === "native";
@@ -57,7 +56,9 @@ export function applyParameters(
   const datasetQuery = copy(card.dataset_query);
   // clean the query
   if (datasetQuery.type === "query") {
-    datasetQuery.query = Q_DEPRECATED.cleanQuery(datasetQuery.query);
+    const mlv2Query = datasetQuery.query.getMLv2Query();
+    const cleanQuery = Lib.dropStageIfEmpty(mlv2Query, -1);
+    datasetQuery.query = Lib.toLegacyQuery(cleanQuery);
   }
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
