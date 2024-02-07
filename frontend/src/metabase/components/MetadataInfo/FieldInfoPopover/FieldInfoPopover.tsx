@@ -33,6 +33,7 @@ function FieldInfoPopover({
       closeDelay={group.shouldDelay ? delay[1] : 0}
       onOpen={group.onOpen}
       onClose={group.onClose}
+      transitionProps={{ duration: group.shouldDelay ? 150 : 0 }}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
       <HoverCard.Dropdown>
