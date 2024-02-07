@@ -3,20 +3,45 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { CartesianChartModel } from "../model/types";
+import type { CartesianChartModel, ChartDataset } from "../model/types";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
+
+function getFirstNonNullXValue(dataset: ChartDataset) {
+  for (let i = 0; i < dataset.length; i++) {
+    const xValue = dataset[i][X_AXIS_DATA_KEY];
+
+    if (xValue != null) {
+      if (typeof xValue === "boolean") {
+        return String(xValue); // convert bool to string since echarts doesn't support null as data value
+      }
+      return xValue;
+    }
+  }
+  return String(null);
+}
 
 export function getGoalLineSeriesOption(
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["line"] | null {
-  if (!settings["graph.show_goal"]) {
+  if (!settings["graph.show_goal"] || settings["graph.goal_value"] == null) {
     return null;
   }
 
   return {
-    type: "line", // type is irrelevant since we don't render any series data
-    data: [],
+    type: "line",
+    data: [
+      [getFirstNonNullXValue(chartModel.dataset), settings["graph.goal_value"]],
+    ],
+    lineStyle: {
+      opacity: 0,
+    },
+    itemStyle: {
+      opacity: 0,
+    },
+    // we hide the above line, it only exists to prevent the goal line from
+    // rendering out of bounds
     silent: true,
     markLine: {
       data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }],
