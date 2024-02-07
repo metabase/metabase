@@ -134,11 +134,7 @@
                  (audit-db/ensure-audit-db-installed!))))))))
 
 (deftest should-load-audit?-test
-  (testing "load-analytics-content + checksums dont match => load"
-    (is (= (#'audit-db/should-load-audit? true 1 3) true)))
+  (testing "checksums dont match => load"
+    (is (= (#'audit-db/should-load-audit? 1 3) true)))
   (testing "checksums are the same => do not load"
-    (is (= (#'audit-db/should-load-audit? true 3 3) false)))
-  (testing "load-analytics-content false => do not load"
-    (is (= (#'audit-db/should-load-audit? false 3 5) false)))
-  (testing "load-analytics-content is false + checksums do not match  => do not load"
-    (is (= (#'audit-db/should-load-audit? false 1 3) false))))
+    (is (= (#'audit-db/should-load-audit? 3 3) false))))
