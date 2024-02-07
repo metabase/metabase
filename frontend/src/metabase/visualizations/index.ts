@@ -121,6 +121,11 @@ export function canSavePng(display: string) {
   return visualization?.canSavePng ?? true;
 }
 
+export function getDefaultSize(display: string) {
+  const visualization = visualizations.get(display);
+  return visualization?.defaultSize;
+}
+
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 export const extractRemappedColumns = (data: DatasetData) => {
   const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({
