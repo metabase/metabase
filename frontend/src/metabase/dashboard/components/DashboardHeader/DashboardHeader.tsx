@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import type { Location } from "history";
+import type { Location, LocationDescriptor } from "history";
 
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
@@ -162,7 +162,7 @@ interface DispatchProps {
   deleteBookmark: (args: { id: DashboardId }) => void;
   fetchPulseFormInput: () => void;
   toggleSidebar: (sidebarName: DashboardSidebarName) => void;
-  onChangeLocation: (location: Location) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
   addActionToDashboard: (
     opts: NewDashCardOpts & {
       action: Partial<WritebackAction>;
@@ -360,6 +360,8 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       databases,
       collection,
       setDashboardAttribute,
+      onChangeLocation,
+      isAdmin,
     } = this.props;
 
     const canEdit = dashboard.can_write;
@@ -548,6 +550,20 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
     }
 
     if (!isFullscreen && !isEditing && !isAnalyticsDashboard) {
+      if (isAdmin) {
+        extraButtons.push({
+          title: t`Usage insights`,
+          icon: "audit",
+          action: () => {
+            onChangeLocation({
+              pathname: "/dashboard/9",
+              query: {
+                dashboard_id: dashboard.id.toString(),
+              },
+            });
+          },
+        });
+      }
       extraButtons.push({
         title: t`Enter fullscreen`,
         icon: "expand",

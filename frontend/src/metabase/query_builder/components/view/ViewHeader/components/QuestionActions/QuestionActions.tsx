@@ -2,6 +2,7 @@ import type { ChangeEvent } from "react";
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
+import { push } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -60,6 +61,8 @@ interface Props {
   onModelPersistenceChange: () => void;
 }
 
+const QUESITON_OVERVIEW_DASHBOARD_ID = 5;
+
 export const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
@@ -78,6 +81,7 @@ export const QuestionActions = ({
   const canUpload = useSelector(canUploadToQuestion(question));
 
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const dispatch = useDispatch();
 
@@ -142,6 +146,23 @@ export const QuestionActions = ({
       dispatchSoftReloadCard,
     ),
   );
+
+  if (isAdmin) {
+    extraButtons.push({
+      title: t`View question analytics`,
+      icon: "audit",
+      action: () => {
+        dispatch(
+          push({
+            pathname: `/dashboard/${QUESITON_OVERVIEW_DASHBOARD_ID}`,
+            query: {
+              question_id: question.id(),
+            },
+          }),
+        );
+      },
+    });
+  }
 
   if (canWrite && isDataset) {
     extraButtons.push(
