@@ -11,6 +11,7 @@ import type {
   ParameterMappingOptions,
   DashCardId,
   CardId,
+  ParameterTarget,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -149,9 +150,18 @@ function buildFieldFilterUiParameter(
   const mappingsForParameter = mappings.filter(
     mapping => mapping.parameter_id === parameter.id,
   );
-  const uniqueMappingsForParameters = _.uniq(mappingsForParameter, mapping =>
-    mapping.target.toString(),
-  );
+  const uniqueTargets: ParameterTarget[] = [];
+  const uniqueMappingsForParameters = mappingsForParameter.filter(mapping => {
+    const isTargetUnique = uniqueTargets.every(
+      target => _.isEqual(target, mapping.target) === false,
+    );
+
+    if (isTargetUnique) {
+      uniqueTargets.push(mapping.target);
+    }
+
+    return isTargetUnique;
+  });
 
   const mappedFields = uniqueMappingsForParameters.map(mapping => {
     const { target, card } = mapping;
