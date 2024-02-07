@@ -25,7 +25,8 @@
    [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -281,7 +282,7 @@
 
 (defonce
   ^{:private true
-    :doc     "A map of all zone-id to the corresponding window-zone.
+    :doc     "A map of all zone-id to the corresponding windows-zone.
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
   (let [data (-> (io/resource "timezones/windowsZones.xml")
@@ -527,6 +528,42 @@
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(def ^:private ^:dynamic *compared-field-options* nil)
+
+(defn- timezoneless-comparison?
+  []
+  (contains? #{:type/DateTime :type/Time} (:base-type *compared-field-options*)))
+
+(defn- format-without-trainling-zeros
+  [value  ^DateTimeFormatter formatter]
+  (-> (.format formatter value)
+      (str/replace #"\.?0*$" "")))
+
+(def ^:private ^DateTimeFormatter time-format
+  (DateTimeFormatter/ofPattern "HH:mm:ss.SSSSSSS"))
+
+(defmethod sql.qp/->honeysql [:sqlserver OffsetTime]
+  [_driver t]
+  (cond-> t
+    (timezoneless-comparison?) (format-without-trainling-zeros time-format)))
+
+(def ^:private ^DateTimeFormatter datetime-format
+  (DateTimeFormatter/ofPattern "y-MM-dd HH:mm:ss.SSSSSSS"))
+
+(doseq [c [OffsetDateTime ZonedDateTime]]
+  (defmethod sql.qp/->honeysql [:sqlserver c]
+    [_driver t]
+    (cond-> t
+      (timezoneless-comparison?) (format-without-trainling-zeros datetime-format))))
+
+(doseq [op [:= :!= :< :<= :> :>= :between]]
+  (defmethod sql.qp/->honeysql [:sqlserver op]
+    [driver [_ field :as clause]]
+    (binding [*compared-field-options* (when (and (vector? field)
+                                                  (= (get field 0) :field))
+                                         (get field 2))]
+      ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause))))
 
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
