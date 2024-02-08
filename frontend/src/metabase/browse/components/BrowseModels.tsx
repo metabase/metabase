@@ -49,7 +49,6 @@ export const BrowseModels = ({
     model => !isInstanceAnalyticsCollection(model.collection),
   );
   const groupsOfModels = groupModels(modelsFiltered, localeCode);
-  const forceUpdate = useForceUpdate();
   const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
   const dispatch = useDispatch();
 
@@ -85,7 +84,6 @@ export const BrowseModels = ({
                     value: true,
                   }),
                 );
-                forceUpdate();
               }}
             >
               <Icon name="close" />
