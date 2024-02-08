@@ -448,7 +448,8 @@
       (let [db                (t2/select-one :model/Database db-id)
             schema-name       (if (contains? args :schema-name)
                                 (:schema-name args)
-                                (when (driver/database-supports? driver/*driver* :schemas db)
+                                (when (and db ; the db can be nil for testing "db doesn't exist" exceptions
+                                           (driver/database-supports? driver/*driver* :schemas db))
                                   (or (sql.tx/session-schema driver/*driver*) "public")))
             ;; make sure the schema exists
             _ (when schema-name
