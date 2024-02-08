@@ -4,8 +4,8 @@ DROP VIEW IF EXISTS v_users;
 CREATE OR REPLACE VIEW v_users AS
 SELECT id AS user_id,
        concat('user_', id) AS entity_qualified_id,
+       type,
        CASE WHEN type = 'api-key' THEN null ELSE email END as email,
-       email,
        first_name,
        last_name,
        concat(first_name, ' ', last_name) AS full_name,
