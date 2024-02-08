@@ -68,7 +68,7 @@ export const BrowseModels = ({
     return (
       <>
         {shouldShowBanner && (
-          <Banner>
+          <Banner role="complementary">
             <BannerModelIcon>
               <Icon name="model" />
             </BannerModelIcon>

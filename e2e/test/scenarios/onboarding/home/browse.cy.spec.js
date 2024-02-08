@@ -40,4 +40,24 @@ describe("scenarios > browse data", () => {
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("gridcell", { name: "Rustic Paper Wallet" });
   });
+  it("can see and dismiss the modal explainer banner", () => {
+    cy.visit("/");
+    cy.findByRole("listitem", { name: "Browse data" }).click();
+    const banner = cy
+      .findByRole("tabpanel", {
+        name: /Models/,
+      })
+      .findByRole("complementary");
+    const bannerCloseButton = banner.findByRole("button", {
+      name: /close icon/i,
+    });
+    bannerCloseButton.click();
+    cy.visit("/");
+    cy.findByRole("listitem", { name: "Browse data" }).click();
+    cy.findByRole("tabpanel", {
+      name: /Models/,
+    })
+      .findByRole("complementary")
+      .should("not.exist");
+  });
 });
