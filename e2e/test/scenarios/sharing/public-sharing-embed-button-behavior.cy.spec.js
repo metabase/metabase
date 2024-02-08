@@ -497,7 +497,7 @@ describe("embed modal display", () => {
             cy.log("Assert copying codes in Overview tab");
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
-              .click();
+              .realClick();
             expectGoodSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
@@ -515,7 +515,7 @@ describe("embed modal display", () => {
 
             cy.findByTestId("embed-frontend")
               .findByTestId("copy-button")
-              .click();
+              .realClick();
             expectGoodSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
@@ -540,7 +540,7 @@ describe("embed modal display", () => {
             popover().findByText("Ruby").click();
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
-              .click();
+              .realClick();
             expectGoodSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
@@ -585,7 +585,7 @@ describe("embed modal display", () => {
 
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
-              .click();
+              .realClick();
             expectGoodSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
