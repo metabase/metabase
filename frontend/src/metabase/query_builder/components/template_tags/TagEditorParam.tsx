@@ -5,11 +5,10 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import Schemas from "metabase/entities/schemas";
-import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
-
+import { Text } from "metabase/ui";
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
 
 import { fetchField } from "metabase/redux/metadata";
@@ -31,7 +30,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Icon, Tooltip } from "metabase/ui";
+import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle/RequiredParamToggle";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
@@ -51,8 +50,6 @@ import {
   InputContainer,
   TagContainer,
   TagName,
-  ToggleContainer,
-  ToggleLabel,
 } from "./TagEditorParam.styled";
 
 interface Props {
@@ -397,32 +394,30 @@ class TagEditorParamInner extends Component<Props> {
             commitImmediately
           />
 
-          <ToggleContainer>
-            <Toggle
-              disabled={isEmbeddedDisabled}
-              id={`tag-editor-required_${tag.id}`}
-              value={tag.required}
-              onChange={this.setRequired}
-            />
-            <div>
-              <ToggleLabel htmlFor={`tag-editor-required_${tag.id}`}>
-                {t`Always require a value`}
-                {isEmbeddedDisabled && (
-                  <Tooltip
-                    width={200}
-                    multiline
-                    withArrow
-                    label={
-                      'This filter visiblity is set to "disabled" in the embedded question, so you can\'t make it required'
-                    }
-                  >
-                    <Icon name="warning" />
-                  </Tooltip>
-                )}
-              </ToggleLabel>
-              <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
-            </div>
-          </ToggleContainer>
+          <RequiredParamToggle
+            uniqueId={tag.id}
+            disabled={isEmbeddedDisabled}
+            value={tag.required ?? false}
+            onChange={this.setRequired}
+            disabledTooltip={
+              <>
+                <Text lh={1.4}>
+                  {t`This filter is set to disabled in an embedded question.`}
+                </Text>
+                <Text lh={1.4}>
+                  {t`To always require a value, first visit embedding settings,
+                    make this filter editable or locked, re-publish the
+                    question, then return to this page.`}
+                </Text>
+                <Text size="sm">
+                  {t`Note`}:{" "}
+                  {t`making it locked, will require updating the
+                    embedding code before proceeding, otherwise the embed will
+                    break.`}
+                </Text>
+              </>
+            }
+          />
         </div>
       </TagContainer>
     );

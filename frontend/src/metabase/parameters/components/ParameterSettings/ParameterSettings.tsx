@@ -161,7 +161,6 @@ export const ParameterSettings = ({
               </Text>
             </>
           }
-          description={t`When enabled, people can change the value or reset it, but can't clear it entirely.`}
         ></RequiredParamToggle>
       </SettingSection>
     </SettingsRoot>
