@@ -10,18 +10,39 @@ interface Props {
   onClose: () => void;
 }
 
+const getLabels = (question: Question) => {
+  const type = question.type() ?? "question";
+
+  if (type === "question") {
+    return {
+      title: t`It's okay to play around with saved questions`,
+      message: t`You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question.`,
+    };
+  }
+
+  if (type === "model") {
+    return {
+      title: t`It's okay to play around with models`,
+      message: t`You won't make any permanent changes to them unless you edit their query definition.`,
+    };
+  }
+
+  if (type === "metric") {
+    return {
+      title: t`It's okay to play around with metrics`,
+      message: t`You won't make any permanent changes to them unless you edit their query definition.`,
+    };
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
+};
+
 export const SavedQuestionIntroModal = ({
   question,
   isShowingNewbModal,
   onClose,
 }: Props) => {
-  const isModel = question.isDataset();
-  const title = isModel
-    ? t`It's okay to play around with models`
-    : t`It's okay to play around with saved questions`;
-  const message = isModel
-    ? t`You won't make any permanent changes to them unless you edit their query definition.`
-    : t`You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question.`;
+  const { title, message } = getLabels(question);
 
   return (
     <Modal isOpen={isShowingNewbModal}>
