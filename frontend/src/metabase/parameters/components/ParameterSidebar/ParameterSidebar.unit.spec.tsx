@@ -41,6 +41,7 @@ const setup = ({
         </button>
         <ParameterSidebar
           parameter={parameter}
+          embeddingParameters={{}}
           otherParameters={otherParameters}
           onChangeName={onChangeName}
           onChangeDefaultValue={jest.fn()}

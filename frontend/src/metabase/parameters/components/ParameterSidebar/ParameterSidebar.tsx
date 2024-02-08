@@ -51,7 +51,7 @@ export interface ParameterSidebarProps {
 export const ParameterSidebar = ({
   parameter,
   otherParameters,
-  embeddingParameters: embedParams,
+  embeddingParameters,
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
@@ -145,7 +145,7 @@ export const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
-            embeddedParameterVisibility={embedParams[parameter.slug]}
+            embeddedParameterVisibility={embeddingParameters[parameter.slug]}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
