@@ -159,7 +159,8 @@
      (comp (mapcat (fn [schema]
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema table-name :name}]
-                     (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name))))
+                     (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name)))
+           (map #(dissoc % :type)))
      (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
                                                         schema-inclusion-filters schema-exclusion-filters))))
 
