@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import Input from "metabase/core/components/Input";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
@@ -31,6 +30,7 @@ import {
   SearchResultsContainer,
   StyledRecentsList,
   ExternalLink,
+  StyledInput,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
@@ -162,7 +162,7 @@ function LinkVizInner({
           }
           placement="bottom"
         >
-          <Input
+          <StyledInput
             fullWidth
             value={url ?? ""}
             autoFocus={autoFocus}
