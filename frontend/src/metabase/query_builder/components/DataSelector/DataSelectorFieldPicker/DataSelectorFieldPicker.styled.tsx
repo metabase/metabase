@@ -34,12 +34,9 @@ export const FieldName = styled.span`
 
 export const PopoverHoverTarget = styled(Icon)`
   margin-left: 0.5em;
-  right: 0;
+  right: -0.5em;
   position: absolute;
   padding: 0.7em 0.65em;
-  padding-right: 0;
-  padding-left: 2em;
-  color: red;
   opacity: 0;
 
   [role="option"]:hover & {
