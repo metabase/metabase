@@ -58,6 +58,8 @@
 
 (defmethod sql.tx/pk-sql-type :redshift [_] "INTEGER IDENTITY(1,1)")
 
+(defmethod sql.tx/session-schema :redshift [_driver] (unique-session-schema))
+
 (defmethod sql.tx/qualified-name-components :redshift [& args]
   (apply tx/single-db-qualified-name-components (unique-session-schema) args))
 

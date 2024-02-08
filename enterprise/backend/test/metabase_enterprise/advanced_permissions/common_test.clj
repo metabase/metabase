@@ -698,7 +698,8 @@
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
 
 (deftest upload-csv-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads :schemas)
+                         :redshift) ; Remove redshift for now because writing this test is complicated with session schemas
     (testing "Uploads should be blocked without data access"
       (mt/with-empty-db
         (let [table-name (mt/random-name)]
