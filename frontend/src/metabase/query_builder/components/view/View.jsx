@@ -20,7 +20,7 @@ import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 import { SnippetSidebar } from "../template_tags/SnippetSidebar";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
+import { SavedQuestionIntroModal } from "../SavedQuestionIntroModal";
 
 import QueryModals from "../QueryModals";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
@@ -396,6 +396,7 @@ class View extends Component {
         {isShowingNewbModal && (
           <SavedQuestionIntroModal
             question={question}
+            isShowingNewbModal={isShowingNewbModal}
             onClose={() => closeQbNewbModal()}
           />
         )}
