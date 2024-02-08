@@ -3,7 +3,7 @@ import { trackSchemaEvent } from "metabase/lib/analytics";
 import type { SetupStep } from "./types";
 
 const ONBOARDING_VERSION = "1.1.0";
-const SCHEMA_VERSION = "1-0-1";
+const SCHEMA_VERSION = "1-0-2";
 
 export const trackStepSeen = ({
   stepName,
