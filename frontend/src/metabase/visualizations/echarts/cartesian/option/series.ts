@@ -89,7 +89,18 @@ const buildEChartsBarSeries = (
     settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
 
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
-  const barWidth = isHistogram ? `${100 / barSeriesCount - 1}%` : undefined;
+
+  let barWidth: string | undefined = undefined;
+  if (isHistogram) {
+    const stackedOrSingleSeries =
+      stackName !== undefined || barSeriesCount === 1;
+
+    if (stackedOrSingleSeries) {
+      barWidth = "99.5%"; // a tiny gap looks better than 100%
+    } else {
+      barWidth = `${99.5 / barSeriesCount}%`;
+    }
+  }
 
   return {
     id: seriesModel.dataKey,
