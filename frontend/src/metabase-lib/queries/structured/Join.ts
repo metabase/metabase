@@ -1,7 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import type {
-  Join as JoinObject,
   JoinFields,
   JoinAlias,
   JoinCondition,
@@ -28,13 +27,6 @@ class Join extends MBQLObjectClause {
    */
   set(join: any): Join {
     return super.set(join);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  replace(join: Join | JoinObject): StructuredQuery {
-    return this._query.updateJoin(this._index, join);
   }
 
   /**
