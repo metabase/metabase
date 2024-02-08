@@ -363,7 +363,7 @@ export const getMissingRequiredParameters = createSelector(
 );
 
 /**
- * It's a memoized version, it uses LRU cache per dashboard identified by id
+ * It's a memoized version, it uses LRU cache per card identified by id
  */
 export const getQuestionByCard = createCachedSelector(
   [(_state: State, props: { card: Card }) => props.card, getMetadata],

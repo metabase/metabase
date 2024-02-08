@@ -1,3 +1,4 @@
+import _ from "underscore";
 import type { Dashboard } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -27,7 +28,9 @@ export const DashboardSharingEmbeddingModal = (
 ) => {
   const { className, dashboard, isOpen, onClose } = props;
 
-  const parameters = useSelector(getParameters);
+  // TODO: _.isEqual is added to avoid unnecessary re-renderings
+  // should be safe to remove when (metabase#38502) is completed
+  const parameters = useSelector(getParameters, _.isEqual);
 
   const dispatch = useDispatch();
 
