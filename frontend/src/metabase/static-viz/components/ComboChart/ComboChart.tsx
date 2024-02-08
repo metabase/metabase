@@ -19,6 +19,7 @@ export const ComboChart = ({
   renderingContext,
   width = WIDTH,
   height = HEIGHT,
+  isStorybook = false,
 }: IsomorphicStaticChartProps) => {
   const chart = init(null, null, {
     renderer: "svg",
@@ -54,7 +55,7 @@ export const ComboChart = ({
 
   chart.setOption(option);
 
-  const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString());
+  const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
 
   return (
     <svg width={width} height={height + legendHeight}>
