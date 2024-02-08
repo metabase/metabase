@@ -27,6 +27,7 @@ export function AppBarToggle({
       label={getSidebarTooltipLabel(isNavBarOpen)}
       disabled={isSmallAppBar}
       offset={-12}
+      openDelay={1000}
     >
       <SidebarButton
         isSmallAppBar={isSmallAppBar}
