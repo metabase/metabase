@@ -203,7 +203,6 @@ const ModelGroup = ({
   /** This id is used by aria-labelledby */
   const collectionHtmlId = `collection-${collection.id}`;
 
-  // TODO: Check padding above the collection header
   return (
     <>
       <CollectionHeader

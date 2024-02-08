@@ -1,17 +1,16 @@
 import { t } from "ttag";
 import { push } from "react-router-redux";
+import { useState } from "react";
 import { Flex, Icon, Switch, Text } from "metabase/ui";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import type { SearchResult } from "metabase-types/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
-import { updateSetting } from "metabase/admin/settings/settings";
 import { isValidBrowseTab, type BrowseTabId } from "../utils";
-import { getVerifiedModelsFilterForBrowseModels } from "../selectors";
 import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseModels } from "./BrowseModels";
 import {
@@ -41,9 +40,17 @@ export const BrowseApp = ({
   });
   const databasesResult = useDatabaseListQuery();
 
-  const onlyShowVerifiedModels = useSelector(
-    getVerifiedModelsFilterForBrowseModels,
+  const [onlyShowVerifiedModels, setOnlyShowVerifiedModels] = useState(
+    localStorage.getItem("onlyShowVerifiedModelsInBrowseData") !== "false",
   );
+
+  const changeOnlyShowVerifiedModels = (newValue: boolean) => {
+    localStorage.setItem(
+      "onlyShowVerifiedModelsInBrowseData",
+      newValue ? "true" : "false",
+    );
+    setOnlyShowVerifiedModels(newValue);
+  };
 
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;
@@ -107,13 +114,8 @@ export const BrowseApp = ({
                   labelPosition="left"
                   checked={onlyShowVerifiedModels}
                   label={<strong>{t`Only show verified models`}</strong>}
-                  onChange={() => {
-                    dispatch(
-                      updateSetting({
-                        key: "only-show-verified-models-in-browse-data",
-                        value: !onlyShowVerifiedModels,
-                      }),
-                    );
+                  onChange={e => {
+                    changeOnlyShowVerifiedModels(e.target.checked);
                   }}
                 />
               )}
