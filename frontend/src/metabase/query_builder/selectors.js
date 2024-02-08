@@ -1032,3 +1032,15 @@ export const getEmbeddingParameters = createSelector([getCard], card => {
 
   return card.embedding_params ?? {};
 });
+
+// Embeddings might be published without passing embedding_params to the server,
+// in which case it's an empty object. We should treat such situations with
+// caution, assuming that an absent parameter is "disabled".
+export function getEmbeddedParameterVisibility(state, slug) {
+  const card = getCard(state);
+  if (!card?.enable_embedding) {
+    return null;
+  }
+
+  return (card.embedding_params ?? {})[slug] ?? "disabled";
+}

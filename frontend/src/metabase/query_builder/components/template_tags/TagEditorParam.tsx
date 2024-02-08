@@ -413,7 +413,7 @@ class TagEditorParamInner extends Component<Props> {
                     multiline
                     withArrow
                     label={
-                      'This parameter visiblity is set to "disabled" in the embedded question, so you can\'t make it required'
+                      'This filter visiblity is set to "disabled" in the embedded question, so you can\'t make it required'
                     }
                   >
                     <Icon name="warning" />
