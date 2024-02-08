@@ -1024,3 +1024,11 @@ export const getRequiredTemplateTags = createSelector(
           .map(key => templateTags[key])
       : [],
 );
+
+export const getEmbeddingParameters = createSelector([getCard], card => {
+  if (!card?.enable_embedding) {
+    return {};
+  }
+
+  return card.embedding_params ?? {};
+});

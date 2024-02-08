@@ -30,6 +30,8 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { Icon, Tooltip } from "metabase/ui";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
@@ -56,6 +58,7 @@ import {
 interface Props {
   tag: TemplateTag;
   parameter: Parameter;
+  embeddedParameterVisibility?: EmbeddingParameterVisibility;
   database?: Database | null;
   databases: Database[];
   databaseFields?: Field[];
@@ -202,7 +205,14 @@ class TagEditorParamInner extends Component<Props> {
   };
 
   render() {
-    const { tag, database, databases, metadata, parameter } = this.props;
+    const {
+      tag,
+      database,
+      databases,
+      metadata,
+      parameter,
+      embeddedParameterVisibility,
+    } = this.props;
     let widgetOptions: { name?: string; type: string }[] = [];
     let field: Field | null = null;
     let table: Table | null | undefined = null;
@@ -224,6 +234,7 @@ class TagEditorParamInner extends Component<Props> {
       tag["widget-type"] === "none" || !tag["widget-type"];
     const hasNoWidgetLabel = !tag["display-name"];
     const hasNoDefaultValue = !tag.default;
+    const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
 
     return (
       <TagContainer>
@@ -388,6 +399,7 @@ class TagEditorParamInner extends Component<Props> {
 
           <ToggleContainer>
             <Toggle
+              disabled={isEmbeddedDisabled}
               id={`tag-editor-required_${tag.id}`}
               value={tag.required}
               onChange={this.setRequired}
@@ -395,6 +407,18 @@ class TagEditorParamInner extends Component<Props> {
             <div>
               <ToggleLabel htmlFor={`tag-editor-required_${tag.id}`}>
                 {t`Always require a value`}
+                {isEmbeddedDisabled && (
+                  <Tooltip
+                    width={200}
+                    multiline
+                    withArrow
+                    label={
+                      'This parameter visiblity is set to "disabled" in the embedded question, so you can\'t make it required'
+                    }
+                  >
+                    <Icon name="warning" />
+                  </Tooltip>
+                )}
               </ToggleLabel>
               <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
             </div>

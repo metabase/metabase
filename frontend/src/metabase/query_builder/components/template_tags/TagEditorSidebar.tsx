@@ -17,6 +17,7 @@ import type {
   TemplateTag,
   TemplateTagId,
 } from "metabase-types/api";
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Database from "metabase-lib/metadata/Database";
 import type Field from "metabase-lib/metadata/Field";
@@ -37,6 +38,7 @@ interface TagEditorSidebarProps {
   setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   onClose: () => void;
+  embeddingParameters: EmbeddingParameters;
 }
 
 interface TagEditorSidebarState {
@@ -80,6 +82,7 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
       setTemplateTagConfig,
       setParameterValue,
       onClose,
+      embeddingParameters,
     } = this.props;
     const tags = query.variableTemplateTags();
     const database = question.database();
@@ -121,6 +124,7 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
               setTemplateTag={setTemplateTag}
               setTemplateTagConfig={setTemplateTagConfig}
               setParameterValue={setParameterValue}
+              embeddingParameters={embeddingParameters}
             />
           ) : (
             <TagEditorHelp
@@ -142,6 +146,7 @@ interface SettingsPaneProps {
   databases: Database[];
   databaseFields: Field[];
   parametersById: Record<ParameterId, Parameter>;
+  embeddingParameters: EmbeddingParameters;
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
@@ -156,6 +161,7 @@ const SettingsPane = ({
   setTemplateTag,
   setTemplateTagConfig,
   setParameterValue,
+  embeddingParameters,
 }: SettingsPaneProps) => (
   <div>
     {tags.map(tag => (
@@ -164,6 +170,9 @@ const SettingsPane = ({
           tag={tag}
           key={tag.name}
           parameter={parametersById[tag.id]}
+          embeddedParameterVisibility={
+            embeddingParameters[parametersById[tag.id].slug]
+          }
           databaseFields={databaseFields}
           database={database}
           databases={databases}
