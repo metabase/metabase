@@ -98,18 +98,22 @@ export function DashCardCardParameterMapper({
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const selectedMappingOption =
-    !!target &&
-    _.find(mappingOptions, option => {
-      const [type1, legacyRef1] = normalize(option.target);
-      const [type2, legacyRef2] = normalize(target);
+  const selectedMappingOption = target
+    ? _.find(mappingOptions, option => {
+        const normalizedTarget = normalize(target);
+        const normalizedOptionTarget = normalize(option.target);
 
-      return (
-        type1 === type2 &&
-        // base-type is not presented in MLv1
-        _.isEqual(legacyRef1.slice(0, -1), legacyRef2.slice(0, -1))
-      );
-    });
+        // This trick is needed because MLv2 has `base-type` in target[1]
+        // but response from BE doesn't provide `base-type`, so isEqual fails
+        return (
+          normalizedTarget[0] === normalizedOptionTarget[0] &&
+          _.isEqual(
+            normalizedTarget[1].slice(0, -1),
+            normalizedOptionTarget[1].slice(0, -1),
+          )
+        );
+      })
+    : undefined;
 
   const handleChangeTarget = useCallback(
     target => {
