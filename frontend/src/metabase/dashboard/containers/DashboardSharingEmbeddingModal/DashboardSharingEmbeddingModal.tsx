@@ -1,4 +1,3 @@
-import _ from "underscore";
 import type { Dashboard } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
 import { useDispatch, useSelector } from "metabase/lib/redux";
