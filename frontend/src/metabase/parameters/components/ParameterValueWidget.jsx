@@ -284,7 +284,7 @@ function Widget({
     return (
       <TextWidget
         value={value}
-        setValue={setValue}
+        setValue={setValueOrDefault}
         className={className}
         isEditing={isEditing}
         commitImmediately={commitImmediately}
