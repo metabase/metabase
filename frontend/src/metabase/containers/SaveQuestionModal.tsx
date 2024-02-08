@@ -127,7 +127,7 @@ export const SaveQuestionModal = ({
     ],
   );
 
-  const { generatedName, generatedDescription, loading, LLMLoadingBadge } =
+  const { generatedName, generatedDescription, LLMLoadingBadge } =
     PLUGIN_LLM_AUTODESCRIPTION.useLLMIndicator({
       initialValues,
       question,

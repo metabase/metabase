@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { PLUGIN_CACHING, PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { Switch } from "metabase/ui";
@@ -43,10 +43,10 @@ export function DashboardInfoSidebar({
     query: { model_type: "dashboard", model_id: dashboard.id },
   });
 
-  const { loading, generatedDescription, SuggestDescriptionButton } =
-    PLUGIN_LLM_AUTODESCRIPTION.useLLMDashboardDescription({
-      dashboardId: dashboard.id,
-    });
+  // const { loading, generatedDescription, SuggestDescriptionButton } =
+  //   PLUGIN_LLM_AUTODESCRIPTION.useLLMDashboardDescription({
+  //     dashboardId: dashboard.id,
+  //   });
 
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
@@ -85,8 +85,8 @@ export function DashboardInfoSidebar({
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
         <StyledEditableText
-          initialValue={generatedDescription || dashboard.description}
-          loading={loading}
+          initialValue={dashboard.description}
+          // loading={loading}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
           isOptional
@@ -95,7 +95,7 @@ export function DashboardInfoSidebar({
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
         />
-        <SuggestDescriptionButton />
+        {/*<SuggestDescriptionButton />*/}
       </ContentSection>
 
       <ContentSection>
