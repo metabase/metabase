@@ -425,7 +425,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             <span>
               <DashboardButtonTooltip label={t`Add section`}>
                 <DashboardHeaderButton aria-label={t`Add section`}>
-                  <Icon name="table_spaced" size={18} />
+                  <Icon name="section" size={18} />
                 </DashboardHeaderButton>
               </DashboardButtonTooltip>
             </span>
