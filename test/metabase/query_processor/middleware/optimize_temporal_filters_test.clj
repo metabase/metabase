@@ -10,21 +10,26 @@
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]))
 
-(driver/register! ::timezone-driver, :abstract? true)
+(deftest ^:parallel temporal-arithmetic?-test
+  (is (#'optimize-temporal-filters/temporal-arithmetic?
+       [:+ [:field 1 {:base-type :type/DateTime}] [:interval -2 :month]])))
 
-(defmethod driver/database-supports? [::timezone-driver :set-timezone] [_driver _feature _db] true)
+(deftest ^:parallel group-temporal-arithmetic-args-test
+  (is (= {:tag          :+
+          :intervals    [[:interval -2 :month]]
+          :non-interval [:field 1 {:base-type :type/DateTime}]}
+         (#'optimize-temporal-filters/group-temporal-arithmetic-args
+          [:+ [:field 1 {:base-type :type/DateTime}] [:interval -2 :month]]))))
 
-(defn- optimize-temporal-filters [filter-clause]
-  (let [query {:database 1
-               :type     :query
-               :query    {:filter filter-clause}}]
-    (-> (optimize-temporal-filters/optimize-temporal-filters query)
-        (get-in [:query :filter]))))
+(deftest ^:parallel temporal-category-test
+  (is (= ::optimize-temporal-filters/arithmetic-wrapping-ref
+         (#'optimize-temporal-filters/temporal-category
+          [:+ [:field 1 {:base-type :type/DateTime}] [:interval -2 :month]]))))
 
-(deftest optimize-day-bucketed-filter-test
+(deftest ^:parallel optimize-day-bucketed-filter-test
   (testing "Make sure we aren't doing anything wacky when optimzing filters against fields bucketed by day"
     (letfn [(optimize [filter-type]
-              (#'optimize-temporal-filters/optimize-filter
+              (#'optimize-temporal-filters/optimize
                [filter-type
                 [:field 1 {:temporal-unit :day}]
                 [:absolute-datetime (t/zoned-date-time "2014-03-04T12:30Z[UTC]") :day]]))]
@@ -87,99 +92,93 @@
     :lower        (u.date/parse "2019-01-01" "UTC")
     :upper        (u.date/parse "2020-01-01" "UTC")}])
 
-(deftest optimize-temporal-filters-test
-  (driver/with-driver ::timezone-driver
-    (doseq [{:keys [unit filter-value lower upper]} test-units-and-values]
-      (let [lower [:absolute-datetime lower :default]
-            upper [:absolute-datetime upper :default]]
-        (testing unit
-          (testing :=
-            (is (= [:and
-                    [:>= [:field 1 {:temporal-unit :default}] lower]
-                    [:< [:field 1 {:temporal-unit :default}] upper]]
-                   (optimize-temporal-filters
-                    [:=
-                     [:field 1 {:temporal-unit unit}]
-                     [:absolute-datetime filter-value unit]]))))
-          (testing :!=
-            (is (= [:or
-                    [:< [:field 1 {:temporal-unit :default}] lower]
-                    [:>= [:field 1 {:temporal-unit :default}] upper]]
-                   (optimize-temporal-filters
-                    [:!=
-                     [:field 1 {:temporal-unit unit}]
-                     [:absolute-datetime filter-value unit]]))))
-          (testing :<
-            (is (= [:< [:field 1 {:temporal-unit :default}] lower]
-                   (optimize-temporal-filters
-                    [:<
-                     [:field 1 {:temporal-unit unit}]
-                     [:absolute-datetime filter-value unit]]))))
-          (testing :<=
-            (is (= [:< [:field 1 {:temporal-unit :default}] upper]
-                   (optimize-temporal-filters
-                    [:<=
-                     [:field 1 {:temporal-unit unit}]
-                     [:absolute-datetime filter-value unit]]))))
-          (testing :>
-            (is (= [:>= [:field 1 {:temporal-unit :default}] upper]
-                   (optimize-temporal-filters
-                    [:>
-                     [:field 1 {:temporal-unit unit}]
-                     [:absolute-datetime filter-value unit]]))))
-          (testing :>=
-            (is (= [:>= [:field 1 {:temporal-unit :default}] lower]
-                   (optimize-temporal-filters
-                    [:>=
-                     [:field 1 {:temporal-unit unit}]
-                     [:absolute-datetime filter-value unit]]))))
-          (testing :between
-            (is (= [:and
-                    [:>= [:field 1 {:temporal-unit :default}] lower]
-                    [:< [:field 1 {:temporal-unit :default}] upper]]
-                   (optimize-temporal-filters
-                    [:between
-                     [:field 1 {:temporal-unit unit}]
-                     [:absolute-datetime filter-value unit]
-                     [:absolute-datetime filter-value unit]])))))))))
+(deftest ^:parallel optimize-temporal-filters-test
+  (doseq [{:keys [unit filter-value lower upper]} test-units-and-values]
+    (let [lower [:absolute-datetime lower :default]
+          upper [:absolute-datetime upper :default]]
+      (testing unit
+        (testing :=
+          (is (= [:and
+                  [:>= [:field 1 {:temporal-unit :default}] lower]
+                  [:< [:field 1 {:temporal-unit :default}] upper]]
+                 (#'optimize-temporal-filters/optimize
+                  [:=
+                   [:field 1 {:temporal-unit unit}]
+                   [:absolute-datetime filter-value unit]])
+                 (#'optimize-temporal-filters/optimize
+                  [:=
+                   [:absolute-datetime filter-value unit]
+                   [:field 1 {:temporal-unit unit}]]))))
+        (testing :!=
+          (is (= [:or
+                  [:< [:field 1 {:temporal-unit :default}] lower]
+                  [:>= [:field 1 {:temporal-unit :default}] upper]]
+                 (#'optimize-temporal-filters/optimize
+                  [:!=
+                   [:field 1 {:temporal-unit unit}]
+                   [:absolute-datetime filter-value unit]]))))
+        (testing :<
+          (is (= [:< [:field 1 {:temporal-unit :default}] lower]
+                 (#'optimize-temporal-filters/optimize
+                  [:<
+                   [:field 1 {:temporal-unit unit}]
+                   [:absolute-datetime filter-value unit]]))))
+        (testing :<=
+          (is (= [:< [:field 1 {:temporal-unit :default}] upper]
+                 (#'optimize-temporal-filters/optimize
+                  [:<=
+                   [:field 1 {:temporal-unit unit}]
+                   [:absolute-datetime filter-value unit]]))))
+        (testing :>
+          (is (= [:>= [:field 1 {:temporal-unit :default}] upper]
+                 (#'optimize-temporal-filters/optimize
+                  [:>
+                   [:field 1 {:temporal-unit unit}]
+                   [:absolute-datetime filter-value unit]]))))
+        (testing :>=
+          (is (= [:>= [:field 1 {:temporal-unit :default}] lower]
+                 (#'optimize-temporal-filters/optimize
+                  [:>=
+                   [:field 1 {:temporal-unit unit}]
+                   [:absolute-datetime filter-value unit]]))))
+        (testing :between
+          (is (= [:and
+                  [:>= [:field 1 {:temporal-unit :default}] lower]
+                  [:< [:field 1 {:temporal-unit :default}] upper]]
+                 (#'optimize-temporal-filters/optimize
+                  [:between
+                   [:field 1 {:temporal-unit unit}]
+                   [:absolute-datetime filter-value unit]
+                   [:absolute-datetime filter-value unit]]))))))))
 
-(defn- optimize-filter-clauses [t]
-  (let [query {:database 1
-               :type     :query
-               :query    {:filter [:=
-                                   [:field 1 {:temporal-unit :day}]
-                                   [:absolute-datetime t :day]]}}]
-    (-> (optimize-temporal-filters/optimize-temporal-filters query)
-        (get-in [:query :filter]))))
+(deftest ^:parallel timezones-test
+  (doseq [timezone-id ["UTC" "US/Pacific"]]
+    (testing (format "%s timezone" timezone-id)
+      (let [t     (u.date/parse "2015-11-18" timezone-id)
+            lower (t/zoned-date-time (t/local-date 2015 11 18) (t/local-time 0) timezone-id)
+            upper (t/zoned-date-time (t/local-date 2015 11 19) (t/local-time 0) timezone-id)]
+        (testing "lower-bound and upper-bound util fns"
+          (is (= lower
+                 (#'optimize-temporal-filters/temporal-literal-lower-bound :day t))
+              (format "lower bound of day(%s) in the %s timezone should be %s" t timezone-id lower))
+          (is (= upper
+                 (#'optimize-temporal-filters/temporal-literal-upper-bound :day t))
+              (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
+        (testing "optimize-with-datetime"
+          (let [expected [:and
+                          [:>= [:field 1 {:temporal-unit :default}] [:absolute-datetime lower :default]]
+                          [:<  [:field 1 {:temporal-unit :default}] [:absolute-datetime upper :default]]]]
+            (is (= expected
+                   (#'optimize-temporal-filters/optimize [:=
+                                                          [:field 1 {:temporal-unit :day}]
+                                                          [:absolute-datetime t :day]]))
+                (format "= %s in the %s timezone should be optimized to range %s -> %s"
+                        t timezone-id lower upper))))))))
 
-(deftest timezones-test
-  (driver/with-driver ::timezone-driver
-    (doseq [timezone-id ["UTC" "US/Pacific"]]
-      (testing (format "%s timezone" timezone-id)
-        (let [t     (u.date/parse "2015-11-18" timezone-id)
-              lower (t/zoned-date-time (t/local-date 2015 11 18) (t/local-time 0) timezone-id)
-              upper (t/zoned-date-time (t/local-date 2015 11 19) (t/local-time 0) timezone-id)]
-          (mt/with-report-timezone-id timezone-id
-            (testing "lower-bound and upper-bound util fns"
-              (is (= lower
-                     (#'optimize-temporal-filters/temporal-literal-lower-bound :day t))
-                  (format "lower bound of day(%s) in the %s timezone should be %s" t timezone-id lower))
-              (is (= upper
-                     (#'optimize-temporal-filters/temporal-literal-upper-bound :day t))
-                  (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
-            (testing "optimize-with-datetime"
-              (let [expected [:and
-                              [:>= [:field 1 {:temporal-unit :default}] [:absolute-datetime lower :default]]
-                              [:<  [:field 1 {:temporal-unit :default}] [:absolute-datetime upper :default]]]]
-                (is (= expected
-                       (optimize-filter-clauses t))
-                    (format "= %s in the %s timezone should be optimized to range %s -> %s"
-                            t timezone-id lower upper))))))))))
-
-(deftest skip-optimization-test
+(deftest ^:parallel skip-optimization-test
   (let [clause [:= [:field 1 {:temporal-unit :day}] [:absolute-datetime #t "2019-01-01" :month]]]
     (is (= clause
-           (optimize-temporal-filters clause))
+           (#'optimize-temporal-filters/optimize clause))
         "Filters with different units in the datetime field and absolute-datetime shouldn't get optimized")))
 
 ;; Make sure the optimization logic is actually applied in the resulting native query!
@@ -192,154 +191,156 @@
                                (str/replace #"\"" "")
                                (str/replace #"PUBLIC\." "")))))
 
-(deftest e2e-test
+(deftest ^:parallel e2e-test
   (testing :=
     (is (= {:query  "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
             :params [(t/zoned-date-time (t/local-date 2019 9 24) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 9 25) (t/local-time 0) "UTC")]}
            (mt/$ids checkins
-             (filter->sql [:= !day.date "2019-09-24T12:00:00.000Z"])))))
+             (filter->sql [:= !day.date "2019-09-24T12:00:00.000Z"]))))))
+
+(deftest ^:parallel e2e-test-2
   (testing :<
     (is (= {:query  "WHERE CHECKINS.DATE < ?"
             :params [(t/zoned-date-time (t/local-date 2019 9 24) (t/local-time 0) "UTC")]}
            (mt/$ids checkins
-             (filter->sql [:< !day.date "2019-09-24T12:00:00.000Z"])))))
+             (filter->sql [:< !day.date "2019-09-24T12:00:00.000Z"]))))))
+
+(deftest ^:parallel e2e-test-3
   (testing :between
     (is (= {:query  "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
             :params [(t/zoned-date-time (t/local-date 2019  9 1) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 11 1) (t/local-time 0) "UTC")]}
            (mt/$ids checkins
-             (filter->sql [:between !month.date "2019-09-02T12:00:00.000Z" "2019-10-05T12:00:00.000Z"]))))
-    (is (= {:query "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
-            :params           [(t/zoned-date-time "2019-09-01T00:00Z[UTC]")
-                               (t/zoned-date-time "2019-10-02T00:00Z[UTC]")]}
+             (filter->sql [:between !month.date "2019-09-02T12:00:00.000Z" "2019-10-05T12:00:00.000Z"]))))))
+
+(deftest ^:parallel e2e-test-4
+  (testing :between
+    (is (= {:query  "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
+            :params [(t/zoned-date-time "2019-09-01T00:00Z[UTC]")
+                     (t/zoned-date-time "2019-10-02T00:00Z[UTC]")]}
            (mt/$ids checkins
              (filter->sql [:between !day.date "2019-09-01" "2019-10-01"]))))))
 
-(deftest optimize-relative-datetimes-test
+(def ^:private relative-datetime-units
+  "second/millisecond are not currently allowed in `:relative-datetime`, but if we add them we can re-enable their
+  tests."
+  [#_:millisecond #_:second :minute :hour :day :week :month :quarter :year])
+
+(deftest ^:parallel optimize-relative-datetimes-last-test
   (testing "Should optimize relative-datetime clauses (#11837)"
-    (mt/dataset attempted-murders
-      ;; second/millisecond are not currently allowed in `:relative-datetime`, but if we add them we can re-enable
-      ;; their tests
-      (doseq [unit [#_:millisecond #_:second :minute :hour :day :week :month :quarter :year]]
-        (testing (format "last %s" unit)
-          (is (= (mt/mbql-query attempts
-                   {:aggregation [[:count]]
-                    :filter      [:and
-                                  [:>=
-                                   [:field %datetime {:temporal-unit :default}]
-                                   [:relative-datetime -1 unit]]
-                                  [:<
-                                   [:field %datetime {:temporal-unit :default}]
-                                   [:relative-datetime 0 unit]]]})
+    (doseq [unit relative-datetime-units]
+      (testing (format "last %s" unit)
+        (is (= [:and
+                [:>=
+                 [:field 1 {:temporal-unit :default}]
+                 [:relative-datetime -1 unit]]
+                [:<
+                 [:field 1 {:temporal-unit :default}]
+                 [:relative-datetime 0 unit]]]
+               (#'optimize-temporal-filters/optimize
+                [:=
+                 [:field 1 {:temporal-unit unit}]
+                 [:relative-datetime -1 unit]])))))))
 
-                 (optimize-temporal-filters
-                  (mt/mbql-query attempts
-                    {:aggregation [[:count]]
-                     :filter      [:=
-                                   [:field %datetime {:temporal-unit unit}]
-                                   [:relative-datetime -1 unit]]})))))
-        (testing (format "this %s" unit)
-          ;; test the various different ways we might refer to 'now'
-          (doseq [clause [[:relative-datetime 0]
-                          [:relative-datetime :current]
-                          [:relative-datetime 0 unit]]]
-            (testing (format "clause = %s" (pr-str clause))
-              (is (= (mt/mbql-query attempts
-                       {:aggregation [[:count]]
-                        :filter      [:and
-                                      [:>=
-                                       [:field %datetime {:temporal-unit :default}]
-                                       [:relative-datetime 0 unit]]
-                                      [:<
-                                       [:field %datetime {:temporal-unit :default}]
-                                       [:relative-datetime 1 unit]]]})
-                     (optimize-temporal-filters
-                      (mt/mbql-query attempts
-                        {:aggregation [[:count]]
-                         :filter      [:=
-                                       [:field %datetime {:temporal-unit unit}]
-                                       clause]})))))))
-        (testing (format "next %s" unit)
-          (is (= (mt/mbql-query attempts
-                   {:aggregation [[:count]]
-                    :filter      [:and
-                                  [:>=
-                                   [:field %datetime {:temporal-unit :default}]
-                                   [:relative-datetime 1 unit]]
-                                  [:<
-                                   [:field %datetime {:temporal-unit :default}]
-                                   [:relative-datetime 2 unit]]]})
-                 (optimize-temporal-filters
-                  (mt/mbql-query attempts
-                    {:aggregation [[:count]]
-                     :filter      [:=
-                                   [:field %datetime {:temporal-unit unit}]
-                                   [:relative-datetime 1 unit]]})))))))))
+(deftest ^:parallel optimize-relative-datetimes-this-test
+  (testing "Should optimize relative-datetime clauses (#11837)"
+    (doseq [unit relative-datetime-units]
+      (testing (format "this %s" unit)
+        ;; test the various different ways we might refer to 'now'
+        (doseq [clause [[:relative-datetime 0]
+                        [:relative-datetime :current]
+                        [:relative-datetime 0 unit]]]
+          (testing (format "clause = %s" (pr-str clause))
+            (is (= [:and
+                    [:>=
+                     [:field 1 {:temporal-unit :default}]
+                     [:relative-datetime 0 unit]]
+                    [:<
+                     [:field 1 {:temporal-unit :default}]
+                     [:relative-datetime 1 unit]]]
+                   (#'optimize-temporal-filters/optimize
+                    [:=
+                     [:field 1 {:temporal-unit unit}]
+                     clause])))))))))
 
-(deftest optimize-mixed-temporal-values-test
+(deftest ^:parallel optimize-relative-datetimes-next-test
+  (testing "Should optimize relative-datetime clauses (#11837)"
+    (doseq [unit relative-datetime-units]
+      (testing (format "next %s" unit)
+        (is (= [:and
+                [:>=
+                 [:field 1 {:temporal-unit :default}]
+                 [:relative-datetime 1 unit]]
+                [:<
+                 [:field 1 {:temporal-unit :default}]
+                 [:relative-datetime 2 unit]]]
+               (#'optimize-temporal-filters/optimize
+                [:=
+                 [:field 1 {:temporal-unit unit}]
+                 [:relative-datetime 1 unit]])))))))
+
+(deftest ^:parallel optimize-mixed-temporal-values-test
   (testing "We should be able to optimize mixed usages of `:absolute-datetime` and `:relative-datetime`"
-    (mt/dataset attempted-murders
-      (testing "between month(2021-01-15) and month(now) [inclusive]"
-        ;; i.e. between 2021-01-01T00:00:00 and [first-day-of-next-month]T00:00:00
-        (is (= (mt/mbql-query attempts
-                 {:aggregation [[:count]]
-                  :filter      [:and
-                                [:>=
-                                 [:field %datetime {:temporal-unit :default}]
-                                 [:absolute-datetime #t "2021-01-01T00:00:00Z" :default]]
-                                [:<
-                                 [:field %datetime {:temporal-unit :default}]
-                                 [:relative-datetime 1 :month]]]})
-               (optimize-temporal-filters
-                (mt/mbql-query attempts
-                  {:aggregation [[:count]]
-                   :filter      [:between
-                                 [:field %datetime {:temporal-unit :month}]
-                                 [:absolute-datetime #t "2021-01-15T00:00:00Z" :month]
-                                 [:relative-datetime 0]]}))))))))
+    (testing "between month(2021-01-15) and month(now) [inclusive]"
+      ;; i.e. between 2021-01-01T00:00:00 and [first-day-of-next-month]T00:00:00
+      (is (= [:and
+              [:>=
+               [:field 1 {:temporal-unit :default}]
+               [:absolute-datetime #t "2021-01-01T00:00:00Z" :default]]
+              [:<
+               [:field 1 {:temporal-unit :default}]
+               [:relative-datetime 1 :month]]]
+             (#'optimize-temporal-filters/optimize
+              [:between
+               [:field 1 {:temporal-unit :month}]
+               [:absolute-datetime #t "2021-01-15T00:00:00Z" :month]
+               [:relative-datetime 0]]))))))
 
-(deftest optimize-relative-datetimes-e2e-test
+(deftest ^:parallel optimize-relative-datetimes-e2e-test
   (testing "Should optimize relative-datetime clauses (#11837)"
     (mt/dataset attempted-murders
-      (is (= (str "SELECT COUNT(*) AS \"count\" "
-                  "FROM \"PUBLIC\".\"ATTEMPTS\" "
-                  "WHERE"
-                  " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " >= DATE_TRUNC('month', DATEADD('month', CAST(-1 AS long), CAST(NOW() AS datetime))))"
-                  " AND"
-                  " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " < DATE_TRUNC('month', NOW()))")
-             (:query
-              (qp/compile
-               (mt/mbql-query attempts
-                 {:aggregation [[:count]]
-                  :filter      [:time-interval $datetime :last :month]}))))))))
+      (is (= ["SELECT"
+              "  COUNT(*) AS \"count\""
+              "FROM"
+              "  \"PUBLIC\".\"ATTEMPTS\""
+              "WHERE"
+              "  ("
+              "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" >= DATE_TRUNC('month', DATEADD('month', -1, NOW()))"
+              "  )"
+              "  AND ("
+              "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" < DATE_TRUNC('month', NOW())"
+              "  )"]
+             (->> (qp/compile
+                   (mt/mbql-query attempts
+                     {:aggregation [[:count]]
+                      :filter      [:time-interval $datetime :last :month]}))
+                  :query
+                  (driver/prettify-native-form :h2)
+                  str/split-lines))))))
 
-(deftest flatten-filters-test
+(deftest ^:parallel flatten-filters-test
   (testing "Should flatten the `:filter` clause after optimizing"
-    (mt/$ids checkins
-      (is (= [:and
-              [:= $venue_id 1]
-              [:>= [:field %date {:temporal-unit :default}] [:relative-datetime -1 :month]]
-              [:< [:field %date {:temporal-unit :default}] [:relative-datetime 0 :month]]]
-             (optimize-temporal-filters
-              [:and
-               [:= $venue_id 1]
-               [:= [:field %date {:temporal-unit :month}] [:relative-datetime -1 :month]]]))))))
+    (is (= [:and
+            [:= [:field 1 nil] 1]
+            [:>= [:field 2 {:temporal-unit :default}] [:relative-datetime -1 :month]]
+            [:< [:field 2 {:temporal-unit :default}] [:relative-datetime 0 :month]]]
+           (#'optimize-temporal-filters/optimize
+            [:and
+             [:= [:field 1 nil] 1]
+             [:= [:field 2 {:temporal-unit :month}] [:relative-datetime -1 :month]]])))))
 
-(deftest deduplicate-filters-tets
+(deftest ^:parallel deduplicate-filters-tets
   (testing "Should deduplicate the optimized filters with any existing ones"
-    (mt/$ids checkins
-      (is (= [:and
-              [:< [:field %date {:temporal-unit :default}] [:relative-datetime 0 :month]]
-              [:>= [:field %date {:temporal-unit :default}] [:relative-datetime -1 :month]]]
-             (optimize-temporal-filters
-              [:and
-               [:< [:field %date {:temporal-unit :default}] [:relative-datetime 0 :month]]
-               [:= [:field %date {:temporal-unit :month}] [:relative-datetime -1 :month]]]))))))
+    (is (= [:and
+            [:< [:field 1 {:temporal-unit :default}] [:relative-datetime 0 :month]]
+            [:>= [:field 1 {:temporal-unit :default}] [:relative-datetime -1 :month]]]
+           (#'optimize-temporal-filters/optimize
+            [:and
+             [:< [:field 1 {:temporal-unit :default}] [:relative-datetime 0 :month]]
+             [:= [:field 1 {:temporal-unit :month}] [:relative-datetime -1 :month]]])))))
 
-(deftest optimize-filters-all-levels-test
+(deftest ^:parallel optimizes-all-levels-test
   (testing "Should optimize filters at all levels of the query"
     (mt/$ids checkins
       (is (= (mt/mbql-query checkins
@@ -354,26 +355,160 @@
                  {:source-table $$checkins
                   :filter       [:= [:field %date {:temporal-unit :month}] [:relative-datetime -1 :month]]}})))))))
 
-(deftest optimize-filter-with-nested-compatible-field
+(deftest ^:parallel optimize-with-nested-compatible-field
   (testing "Should optimize fields when starting n :temporal-unit ago (#25378)"
-    (mt/$ids users
-      (is (= (mt/mbql-query users
-                            {:filter [:and
-                                      [:>=
-                                       [:+ [:field %last_login {:temporal-unit :default}] [:interval 3 :month]]
-                                       [:relative-datetime -12 :month]]
-                                      [:<
-                                       [:+ [:field %last_login {:temporal-unit :default}] [:interval 3 :month]]
-                                       [:relative-datetime 1 :month]]]
-                             :source-query {:source-table $$users
-                                            :aggregation [[:count]]
-                                            :breakout [[:field %last_login {:temporal-unit :month}]]}})
-             (optimize-temporal-filters/optimize-temporal-filters
-               (mt/mbql-query users
-                              {:filter [:between
-                                        [:+ [:field %last_login {:temporal-unit :month}] [:interval 3 :month]]
-                                        [:relative-datetime -12 :month]
-                                        [:relative-datetime 0 :month]]
-                               :source-query {:source-table $$users
-                                              :aggregation [[:count]]
-                                              :breakout [[:field %last_login {:temporal-unit :month}]]}})))))))
+    (is (= [:and
+            [:>=
+             [:field 1 {:temporal-unit :default}]
+             [:relative-datetime -15 :month]]
+            [:<
+             [:field 1 {:temporal-unit :default}]
+             [:relative-datetime -2 :month]]]
+           (#'optimize-temporal-filters/optimize
+            [:between
+             [:+ [:field 1 {:temporal-unit :month}] [:interval 3 :month]]
+             [:relative-datetime -12 :month]
+             [:relative-datetime 0 :month]])))))
+
+(deftest ^:parallel optimize-with-expression-ref-test
+  (is (= [:and
+          [:>=
+           [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+           [:absolute-datetime #t "2017-10-07" :default]]
+          [:<
+           [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+           [:absolute-datetime #t "2017-10-08" :default]]]
+         (#'optimize-temporal-filters/optimize
+          [:=
+           [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+           [:absolute-datetime #t "2017-10-07" :day]]))))
+
+(deftest ^:parallel optimize-with-expression-ref-test-2
+  (testing ":between is inclusive"
+    (is (= [:and
+            [:>=
+             [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+             [:absolute-datetime #t "2017-10-07" :default]]
+            [:<
+             [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+             [:absolute-datetime #t "2017-10-09" :default]]]
+           (#'optimize-temporal-filters/optimize
+            [:between
+             [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+             [:absolute-datetime #t "2017-10-07" :day]
+             [:absolute-datetime #t "2017-10-08" :day]])))))
+
+(deftest ^:parallel unoptimizable-test
+  (testing "Do not barf when things are unoptimizable (#35582)"
+    (doseq [operator [:= :!= :< :> :<= :>=]]
+      (testing operator
+        (let [clause [operator
+                      [:field 1 {:base-type :type/DateTime, :temporal-unit :day}]
+                      [:field 2 {:base-type :type/DateTime, :temporal-unit :day}]]]
+          (is (= clause
+                 (#'optimize-temporal-filters/optimize clause))))))
+    (testing :between
+      (let [clause [:between
+                    [:field 1 {:base-type :type/DateTime, :temporal-unit :day}]
+                    [:field 2 {:base-type :type/DateTime, :temporal-unit :day}]
+                    [:field 3 {:base-type :type/DateTime, :temporal-unit :day}]]]
+        (is (= clause
+               (#'optimize-temporal-filters/optimize clause)))))))
+
+(deftest ^:parallel optimize-relative-datetimes-test
+  (are [field] (= [:and
+                   [:>=
+                    [:field 1 {:base-type :type/DateTime, :temporal-unit :default}]
+                    [:relative-datetime -3 :month]]
+                   [:<
+                    [:field 1 {:base-type :type/DateTime, :temporal-unit :default}]
+                    [:relative-datetime -1 :month]]]
+                  (#'optimize-temporal-filters/optimize
+                   [:between
+                    [:+ field [:interval 2 :month]]
+                    [:relative-datetime -1 :month]
+                    [:relative-datetime 0 :month]]))
+    [:field 1 {:base-type :type/DateTime}]
+    [:field 1 {:base-type :type/DateTime, :temporal-unit :month}]
+    [:field 1 {:base-type :type/DateTime, :temporal-unit :default}]))
+
+(deftest ^:parallel optimize-plus-expressions-relative-datetimes-test
+  (are [clause expected] (= expected
+                            (#'optimize-temporal-filters/optimize clause))
+    [:+ [:relative-datetime -2 :month] [:interval -2 :month]]
+    [:relative-datetime -4 :month]
+
+    [:+ [:relative-datetime -2 :month] [:interval -2 :month] [:interval -1 :month]]
+    [:relative-datetime -5 :month]
+
+    [:+ [:relative-datetime -2 :month] [:interval -1 :day]]
+    [:+ [:relative-datetime -2 :month] [:interval -1 :day]]
+
+    [:+ [:interval -2 :month] [:relative-datetime -2 :month]]
+    [:relative-datetime -4 :month]
+
+    [:+ [:interval -2 :month] [:relative-datetime -2 :month] [:interval -1 :month]]
+    [:relative-datetime -5 :month]
+
+    [:+ [:interval -2 :month] [:interval -1 :month] [:relative-datetime -2 :month]]
+    [:relative-datetime -5 :month]))
+
+(deftest ^:parallel optimize-minus-expressions-relative-datetimes-test
+  (are [clause expected] (= expected
+                            (#'optimize-temporal-filters/optimize clause))
+    [:- [:relative-datetime -2 :month] [:interval -2 :month]]
+    [:relative-datetime 0 :month]
+
+    [:- [:relative-datetime -2 :month] [:interval -2 :month] [:interval -1 :month]]
+    [:relative-datetime 1 :month]
+
+    [:- [:relative-datetime -2 :month] [:interval -1 :day]]
+    [:- [:relative-datetime -2 :month] [:interval -1 :day]]
+
+    [:- [:interval -2 :month] [:relative-datetime -2 :month] [:interval -1 :month]]
+    [:relative-datetime 1 :month]
+
+    [:- [:interval -2 :month] [:interval -1 :month] [:relative-datetime -2 :month]]
+    [:relative-datetime 1 :month]))
+
+(deftest ^:parallel optimize-plus-expressions-absolute-datetimes-test
+  (are [clause expected] (= expected
+                            (#'optimize-temporal-filters/optimize clause))
+    [:+ [:absolute-datetime #t "2023-11-22" :month] [:interval -2 :month]]
+    [:absolute-datetime #t "2023-09-22" :month]
+
+    [:+ [:absolute-datetime #t "2023-11-22" :month] [:interval -2 :month] [:interval -1 :month]]
+    [:absolute-datetime #t "2023-08-22" :month]
+
+    [:+ [:absolute-datetime #t "2023-11-22" :month] [:interval -1 :day]]
+    [:+ [:absolute-datetime #t "2023-11-22" :month] [:interval -1 :day]]
+
+    [:+ [:interval -2 :month] [:absolute-datetime #t "2023-11-22" :month]]
+    [:absolute-datetime #t "2023-09-22" :month]
+
+    [:+ [:interval -2 :month] [:absolute-datetime #t "2023-11-22" :month] [:interval -1 :month]]
+    [:absolute-datetime #t "2023-08-22" :month]
+
+    [:+ [:interval -2 :month] [:interval -1 :month] [:absolute-datetime #t "2023-11-22" :month]]
+    [:absolute-datetime #t "2023-08-22" :month]))
+
+(deftest ^:parallel optimize-minus-expressions-absolute-datetimes-test
+  (are [clause expected] (= expected
+                            (#'optimize-temporal-filters/optimize clause))
+    [:- [:absolute-datetime #t "2023-11-22" :month] [:interval -2 :month]]
+    [:absolute-datetime #t "2024-01-22" :month]
+
+    [:- [:absolute-datetime #t "2023-11-22" :month] [:interval -2 :month] [:interval -1 :month]]
+    [:absolute-datetime #t "2024-02-22" :month]
+
+    [:- [:absolute-datetime #t "2023-11-22" :month] [:interval -1 :day]]
+    [:- [:absolute-datetime #t "2023-11-22" :month] [:interval -1 :day]]
+
+    [:- [:interval -2 :month] [:absolute-datetime #t "2023-11-22" :month]]
+    [:absolute-datetime #t "2024-01-22" :month]
+
+    [:- [:interval -2 :month] [:absolute-datetime #t "2023-11-22" :month] [:interval -1 :month]]
+    [:absolute-datetime #t "2024-02-22" :month]
+
+    [:- [:interval -2 :month] [:interval -1 :month] [:absolute-datetime #t "2023-11-22" :month]]
+    [:absolute-datetime #t "2024-02-22" :month]))

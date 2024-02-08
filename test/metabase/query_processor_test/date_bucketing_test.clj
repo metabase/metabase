@@ -1155,7 +1155,7 @@
                 "WHERE ("
                 "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(NOW() AS date)) "
                 "AND "
-                "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
+                "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', 1, NOW()) AS date)"
                 ")")
            (:query
             (qp/compile
@@ -1169,7 +1169,7 @@
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
                   "FROM CHECKINS "
                   "WHERE ("
-                  "CHECKINS.DATE >= DATE_TRUNC('month', DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))))"
+                  "CHECKINS.DATE >= DATE_TRUNC('month', DATEADD('month', -4, NOW())))"
                   " AND "
                   "(CHECKINS.DATE < DATE_TRUNC('month', NOW())) "
                   "GROUP BY CHECKINS.DATE "

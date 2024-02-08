@@ -53,6 +53,8 @@
                   (str "Cannot add a " unit " interval to a " expr-type " expression")))
               intervals)))))
 
+;;; TODO -- doesn't really make sense to say something like `[:- <interval -1 day> "2023-11-23"]`, does it? What does -1
+;;; day minus <date> mean?
 (defn- plus-minus-temporal-interval-schema
   "Create a schema for `:+` or `:-` with temporal args: <temporal> ± <interval(s)> in any order"
   [tag]

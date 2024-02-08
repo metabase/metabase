@@ -644,17 +644,17 @@
               "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
               nil))))))
 
-(deftest expand-exclude-field-filter-test
+(deftest ^:parallel expand-exclude-field-filter-test
   (mt/with-driver :h2
     (testing "exclude date parts"
       (testing "one exclusion"
         (is (= {:query
-                "SELECT * FROM checkins WHERE ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL));",
+                "SELECT * FROM checkins WHERE ((extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") <> extract(month from ?)) OR (extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") IS NULL));",
                 :params [#t "2016-01-01T00:00Z[UTC]"]}
                (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"}))))
       (testing "two exclusions"
         (is (= {:query
-                "SELECT * FROM checkins WHERE (((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)) AND ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)));",
+                "SELECT * FROM checkins WHERE (((extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") <> extract(month from ?)) OR (extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") IS NULL)) AND ((extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") <> extract(month from ?)) OR (extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") IS NULL)));"
                 :params [#t "2016-01-01T00:00Z[UTC]" #t "2016-02-01T00:00Z[UTC]"]}
                (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})))))))
 

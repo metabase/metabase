@@ -3,6 +3,9 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -64,7 +67,7 @@
                       [:> $id 50]
                       [:< $price 5]]})))))
 
-(defn- parse-with-timezone [datetime-str ^String timezone-id]
+(defn- parse-with-timezone! [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
     (mt/with-report-timezone-id timezone-id
       (is (= (qp.timezone/results-timezone-id)
@@ -73,11 +76,11 @@
       (second (#'qp.wrap-value-literals/add-type-info datetime-str
                                                       {:unit :day})))))
 
-(deftest ^:parallel parse-datetime-literal-strings-test
+(deftest parse-datetime-literal-strings-test
   (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
                                "US/Pacific" (t/zoned-date-time "2018-10-01T00:00:00-07:00[US/Pacific]")}]
     (is (= expected
-           (parse-with-timezone "2018-10-01" timezone))
+           (parse-with-timezone! "2018-10-01" timezone))
         (format "datetime literal string '2018-10-01' parsed with the %s timezone should be %s" timezone expected))))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test
@@ -167,7 +170,7 @@
                          [:< !day.date "2015-06-03"]]}))))
         "should also apply if the Fields are UNIX timestamps or other things with semantic type of :type/Datetime")))
 
-(deftest ^:parallel wrap-datetime-literal-strings-test-6
+(deftest wrap-datetime-literal-strings-test-6
   (mt/with-report-timezone-id "US/Pacific"
     (is (= (:query
             (lib.tu.macros/mbql-query checkins
@@ -232,3 +235,31 @@
              :filter       [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]],
              :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
             nil)))))
+
+(deftest ^:parallel expression-test
+  (testing "Value literals compared to :expression refs should get wrapped"
+    (qp.store/with-metadata-provider (mt/id)
+      (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
+            created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
+            query      (as-> (lib/query (qp.store/metadata-provider) people) query
+                         (lib/expression query "CC Created At" created-at)
+                         (lib/filter query (lib/=
+                                            (lib/expression-ref query "CC Created At")
+                                            "2017-10-07"))
+                         (lib/aggregate query (lib/count)))]
+
+        (is (=? {:stages [{:filters
+                           [[:=
+                             {}
+                             [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
+                             "2017-10-07"]]}]}
+                query))
+        (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+                           :filters  [[:=
+                                       {}
+                                       [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
+                                       [:absolute-datetime {} #t "2017-10-07T00:00Z[UTC]" :day]]]}]}
+                (->> query
+                     lib.convert/->legacy-MBQL
+                     wrap-value-literals
+                     (lib/query query))))))))

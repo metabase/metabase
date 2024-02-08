@@ -346,6 +346,8 @@
 
 (defmethod id-field-type ::test-extensions [_] :type/Integer)
 
+;;; TODO -- we should just make these all test-specific features and use [[metabase.driver/database-supports?]] to check
+;;; these things.
 
 (defmulti sorts-nil-first?
   "Whether this database will sort nil values (of type `base-type`) before or after non-nil values. Defaults to `true`.

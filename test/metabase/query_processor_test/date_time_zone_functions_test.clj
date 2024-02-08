@@ -19,7 +19,7 @@
 ;;; |                                                Date extract tests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn test-temporal-extract
+(defn- test-temporal-extract
   [{:keys [aggregation breakout expressions fields filter limit]}]
   (if breakout
     (->> (mt/run-mbql-query times {:expressions expressions
@@ -154,6 +154,25 @@
                         first
                         (zipmap ops))))))))))
 
+;;; I'm experimenting with using one-off driver features like these as opposed to hardcoding driver names in tests. This
+;;; is definitely preferable, but it would be even better if these features were defined somewhere more general so we
+;;; had a list we could easily reuse in different places. This will do for now tho.
+
+;;; whether this driver stores a TIMESTAMP WITH TIME ZONE column in a way that preserves either the original time zone
+;;; ID or the original zone offset. As opposed to something like Postgres where TIMESTAMP WITH TIME ZONE is always
+;;; stored normalized to UTC
+(doseq [driver #{:sqlserver :h2 :presto-jdbc :snowflake :oracle}]
+  (defmethod driver/database-supports? [driver ::preserves-timestamp-tz-timezone]
+    [_driver _feature _database]
+    true))
+
+;;; this driver supports the `:set-timezone` feature (i.e., supports setting a session time zone), but does not do
+;;; temporal extraction like `:get-year` in the session timezone. These drivers are broken! TIMEZONE FIXME
+(doseq [driver #{:presto-jdbc :snowflake :oracle}]
+  (defmethod driver/database-supports? [driver ::does-not-do-temporal-extraction-in-session-timezone]
+    [_driver _feature _database]
+    true))
+
 (deftest extraction-function-timestamp-with-time-zone-test
   (mt/dataset times-mixed
     (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract))
@@ -179,38 +198,65 @@
                                           :fields      (into [] (for [op ops] [:expression (name op)]))
                                           :filter      [:= $index 1]
                                           :limit       1})]
+          ;; dt_tz = #t "2004-03-19T09:19:09+07:00[Asia/Ho_Chi_Minh]"
+          ;;
+          ;; shifted-hour = dt_tz - 78 days - 4 hours
+          ;;              = #t "2004-01-01T05:19:09+07:00[Asia/Ho_Chi_Minh]"
+          ;;              = #t "2004-01-01T02:49:09+04:30[Asia/Kabul]"       [**CORRECT**]
+          ;;              = #t "2003-12-31T22:19:09Z[UTC]"
           (mt/with-native-query-testing-context query
-            (is (= (if (or (= driver/*driver* :sqlserver)
-                           (driver/database-supports? driver/*driver* :set-timezone (mt/db)))
-                     {:get-year        2004
-                      :get-quarter     1
-                      :get-month       1
-                      :get-day         1
-                      :get-day-of-week 5
-                      ;; TIMEZONE FIXME these drivers are returning the extracted hours in
-                      ;; the timezone that they were inserted in
-                      ;; maybe they need explicit convert-timezone to the report-tz before extraction?
-                      :get-hour        (case driver/*driver*
-                                         (:sqlserver :snowflake :oracle) 5
-                                         2)
-                      :get-minute      (case driver/*driver*
-                                         (:sqlserver :snowflake :oracle) 19
-                                         49)
-                      :get-second      9}
-                     {:get-year        2003
-                      :get-quarter     4
-                      :get-month       12
-                      :get-day         31
-                      :get-day-of-week 4
-                      :get-hour        22
-                      :get-minute      19
-                      :get-second      9})
-                   (->> (mt/process-query query)
-                        (mt/formatted-rows (repeat int))
-                        first
-                        (zipmap ops))))))))))
+            ;; For databases that support session timezones, we would expect the Asia/Kabul
+            ;; answers (`expected-asia-kabul`), those should be considered correct. It should be doing operations like
+            ;; get-year in the `Asia/Kabul` timezone.
+            ;;
+            ;; For databases that do not support session timezones/doing temporal arithmetic in specific timezones, the
+            ;; results depend on whether the database is storing these columns as TIMESTAMP WITH TIME ZONE and
+            ;; preserving the zone ID or offset, or normalizing to UTC; if timezones are being normalized to UTC, we
+            ;; should see `expected-utc`; if they preserve the original `Asia/Ho_Chin_Minh` timezone, we should see
+            ;; `expected-asia-ho-chi-minh`.
+            (let [expected-asia-kabul             {:get-year        2004
+                                                   :get-quarter     1
+                                                   :get-month       1
+                                                   :get-day         1
+                                                   :get-day-of-week 5
+                                                   :get-hour        2
+                                                   :get-minute      49
+                                                   :get-second      9}
+                  ;; TIMEZONE FIXME these drivers are operating on the columns
+                  expected-asia-ho-chi-minh       {:get-year        2004
+                                                   :get-quarter     1
+                                                   :get-month       1
+                                                   :get-day         1
+                                                   :get-day-of-week 5
+                                                   :get-hour        5
+                                                   :get-minute      19
+                                                   :get-second      9}
+                  expected-utc                    {:get-year        2003
+                                                   :get-quarter     4
+                                                   :get-month       12
+                                                   :get-day         31
+                                                   :get-day-of-week 4
+                                                   :get-hour        22
+                                                   :get-minute      19
+                                                   :get-second      9}
+                  supports-session-timezone?      (driver/database-supports? driver/*driver* :set-timezone (mt/db))
+                  extracts-done-in-session-tz?    (and supports-session-timezone?
+                                                       (not (driver/database-supports? driver/*driver*
+                                                                                       ::does-not-do-temporal-extraction-in-session-timezone
+                                                                                       (mt/db))))
+                  preserves-timestamptz-timezone? (driver/database-supports? driver/*driver*
+                                                                             ::preserves-timestamp-tz-timezone
+                                                                             (mt/db))
+                  expected                        (cond extracts-done-in-session-tz?    expected-asia-kabul
+                                                        preserves-timestamptz-timezone? expected-asia-ho-chi-minh
+                                                        :else                           expected-utc)]
+              (is (= expected
+                     (->> (mt/process-query query)
+                          (mt/formatted-rows (repeat int))
+                          first
+                          (zipmap ops)))))))))))
 
-(deftest temporal-extraction-with-filter-expresion-tests
+(deftest ^:parallel temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
@@ -236,14 +282,14 @@
                 :query    {:filter [:< [:get-year [:field (mt/id :times :dt) nil]] 2005]
                            :fields [[:field (mt/id :times :index) nil]]}}
 
-               {:title    "Nested expression in fitler"
+               {:title    "Nested expression in filter"
                 :expected [1]
                 :query    {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
                            :fields [[:field (mt/id :times :index) nil]]}}]]
         (testing title
           (is (= expected (test-temporal-extract query))))))))
 
-(deftest temporal-extraction-with-datetime-arithmetic-expression-tests
+(deftest ^:parallel temporal-extraction-with-datetime-arithmetic-expression-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}

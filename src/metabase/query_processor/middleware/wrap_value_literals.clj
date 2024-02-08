@@ -7,9 +7,11 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.shared.util.internal.time-common :as shared.ut.common]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
@@ -44,6 +46,10 @@
      {:unit (:temporal-unit opts)})
    (when (:base-type opts)
      {:base_type (:base-type opts)})))
+
+(defmethod type-info :expression
+  [[_expression _expression-name opts]]
+  (u/snake-keys (select-keys opts [:base-type :effective-type :temporal-unit])))
 
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
@@ -89,19 +95,27 @@
   [this info & _]
   [:absolute-datetime this (get info :unit :default)])
 
+(defn- temporal-value? [info]
+  (or (:unit info)
+      (some-> ((some-fn :effective_type :base_type) info) (isa? :type/Temporal))))
+
 (defmethod add-type-info String
-  [this {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
-                                    :or   {parse-datetime-strings? true}}]
-  (if-let [temporal-value (when (and unit
+  [s {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
+                                 :or   {parse-datetime-strings? true}}]
+  (if-let [temporal-value (when (and (temporal-value? info)
                                      parse-datetime-strings?
-                                     (string? this))
+                                     (string? s))
                             ;; TIMEZONE FIXME - I think this should actually use
                             ;; (qp.timezone/report-timezone-id-if-supported) instead ?
-                            (u.date/parse this (qp.timezone/results-timezone-id)))]
-    (if (some #(instance? % temporal-value) [LocalTime OffsetTime])
-      [:time temporal-value unit]
-      [:absolute-datetime temporal-value unit])
-    [:value this info]))
+                            (u.date/parse s (qp.timezone/results-timezone-id)))]
+    (let [unit (or unit
+                   (if (shared.ut.common/matches-date? s)
+                     :day
+                     :default))]
+      (if (some #(instance? % temporal-value) [LocalTime OffsetTime])
+        [:time temporal-value unit]
+        [:absolute-datetime temporal-value unit]))
+    [:value s info]))
 
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
@@ -163,5 +177,8 @@
   [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
-    (mbql.s/validate-query
-     (update query :query wrap-value-literals-in-mbql-query nil))))
+    (let [query' (update query :query wrap-value-literals-in-mbql-query nil)]
+      (when-not (= query query')
+        (log/debugf "Wrapped literals in :value clauses:\n%s" (u/pprint-to-str query'))
+        (mbql.s/validate-query query'))
+      query')))
