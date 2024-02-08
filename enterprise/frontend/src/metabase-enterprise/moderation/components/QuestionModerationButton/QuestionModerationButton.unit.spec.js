@@ -25,6 +25,7 @@ const BASE_MODEL = {
   collection_id: null,
   can_write: true,
   dataset: true,
+  type: "model",
   display: "table",
   visualization_settings: {},
   dataset_query: {

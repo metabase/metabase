@@ -14,6 +14,33 @@ const mapDispatchToProps = {
   archive: card => Questions.actions.setArchived(card, true),
 };
 
+const getLabels = question => {
+  const type = question.type() ?? "question";
+
+  if (type === "question") {
+    return {
+      title: t`Archive this question?`,
+      message: t`This question will be removed from any dashboards or pulses using it.`,
+    };
+  }
+
+  if (type === "model") {
+    return {
+      title: t`Archive this model?`,
+      message: t`This model will be removed from any dashboards or pulses using it.`,
+    };
+  }
+
+  if (type === "metric") {
+    return {
+      title: t`Archive this metric?`,
+      message: t`This metric will be removed from any dashboards or pulses using it.`,
+    };
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
+};
+
 class ArchiveQuestionModal extends Component {
   onArchive = () => {
     const { question, archive, router } = this.props;
@@ -26,16 +53,8 @@ class ArchiveQuestionModal extends Component {
   render() {
     const { onClose, question } = this.props;
 
-    const isModel = question.isDataset();
-
-    const title = isModel ? t`Archive this model?` : t`Archive this question?`;
-
-    const message = isModel
-      ? t`This model will be removed from any dashboards or pulses using it.`
-      : t`This question will be removed from any dashboards or pulses using it.`;
-
+    const { title, message } = getLabels(question);
     const widgetCount = question.getParameterUsageCount();
-
     const additionalWarning =
       widgetCount > 0
         ? " " +

@@ -3,6 +3,7 @@ import { jt } from "ttag";
 import { coerceCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
+import type Question from "metabase-lib/Question";
 
 import {
   CollectionLink,
@@ -11,19 +12,35 @@ import {
 } from "./QuestionMoveToast.styled";
 
 interface QuestionMoveToastProps {
-  isModel: boolean;
   collectionId: CollectionId;
+  question: Question;
 }
 
-function QuestionMoveToast({ isModel, collectionId }: QuestionMoveToastProps) {
+const getMessage = (question: Question, collectionLink: JSX.Element) => {
+  const type = question.type() ?? "question";
+
+  if (type === "question") {
+    return jt`Question moved to ${collectionLink}`;
+  }
+
+  if (type === "model") {
+    return jt`Model moved to ${collectionLink}`;
+  }
+
+  if (type === "metric") {
+    return jt`Metric moved to ${collectionLink}`;
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
+};
+
+function QuestionMoveToast({ collectionId, question }: QuestionMoveToastProps) {
   const id = coerceCollectionId(collectionId);
   const collectionLink = <CollectionLink key="collection-link" id={id} />;
   return (
     <ToastRoot>
       <StyledIcon name="collection" />
-      {isModel
-        ? jt`Model moved to ${collectionLink}`
-        : jt`Question moved to ${collectionLink}`}
+      {getMessage(question, collectionLink)}
     </ToastRoot>
   );
 }

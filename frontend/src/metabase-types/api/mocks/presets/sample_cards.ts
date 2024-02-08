@@ -102,6 +102,7 @@ export const createStructuredModelCard = (
 ): StructuredCard => {
   return createSavedStructuredCard({
     dataset: true,
+    type: "model",
     ...opts,
   });
 };
@@ -111,6 +112,7 @@ export const createNativeModelCard = (
 ): NativeCard => {
   return createSavedNativeCard({
     dataset: true,
+    type: "model",
     ...opts,
   });
 };
