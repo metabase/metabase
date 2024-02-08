@@ -413,7 +413,10 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       // Add link card button
       buttons.push(
         <DashboardButtonTooltip key="add-link-card" label={t`Add link card`}>
-          <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
+          <DashboardHeaderButton
+            aria-label={t`Add link card`}
+            onClick={() => this.onAddLinkCard()}
+          >
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
         </DashboardButtonTooltip>,
