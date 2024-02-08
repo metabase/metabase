@@ -126,14 +126,6 @@ class StructuredQuery extends AtomicQuery {
 
   /* Query superclass methods */
 
-  /**
-   * @returns true if we have metadata for the root source table loaded
-   */
-  hasMetadata(): boolean {
-    const metadata = this.metadata();
-    return metadata != null && metadata.table(this._sourceTableId()) != null;
-  }
-
   /* AtomicQuery superclass methods */
 
   /**
@@ -162,22 +154,7 @@ class StructuredQuery extends AtomicQuery {
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
-  /**
-   * @returns the database engine object, if a database is selected and loaded.
-   */
-  engine(): string | null | undefined {
-    const database = this._database();
-    return database && database.engine;
-  }
-
   /* Methods unique to this query type */
-
-  /**
-   * @returns a new reset @type {StructuredQuery} with the same parent @type {Question}
-   */
-  reset(): StructuredQuery {
-    return new StructuredQuery(this._originalQuestion);
-  }
 
   /**
    * @returns the underlying MBQL query object
@@ -523,13 +500,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeBreakout, arguments);
   }
 
-  /**
-   * @returns {StructuredQuery} new query with all breakouts removed.
-   */
-  clearBreakouts() {
-    return this._updateQuery(Q.clearBreakouts, arguments);
-  }
-
   // FILTERS
 
   /**
@@ -710,10 +680,6 @@ class StructuredQuery extends AtomicQuery {
 
   removeField(_name) {
     return this._updateQuery(Q.removeField, arguments);
-  }
-
-  clearFields() {
-    return this._updateQuery(Q.clearFields, arguments);
   }
 
   // DIMENSION OPTIONS

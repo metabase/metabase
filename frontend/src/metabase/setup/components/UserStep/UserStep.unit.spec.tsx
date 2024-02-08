@@ -5,15 +5,15 @@ import {
   createMockState,
   createMockUserInfo,
 } from "metabase-types/store/mocks";
-import { DATABASE_STEP, USER_STEP } from "../../constants";
+import type { SetupStep } from "metabase/setup/types";
 import { UserStep } from "./UserStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
   user?: UserInfo;
 }
 
-const setup = ({ step = USER_STEP, user }: SetupOpts = {}) => {
+const setup = ({ step = "user_info", user }: SetupOpts = {}) => {
   const state = createMockState({
     setup: createMockSetupState({
       step,
@@ -21,19 +21,19 @@ const setup = ({ step = USER_STEP, user }: SetupOpts = {}) => {
     }),
   });
 
-  renderWithProviders(<UserStep />, { storeInitialState: state });
+  renderWithProviders(<UserStep stepLabel={0} />, { storeInitialState: state });
 };
 
 describe("UserStep", () => {
   it("should render in active state", () => {
-    setup({ step: USER_STEP });
+    setup({ step: "user_info" });
 
     expect(screen.getByText("What should we call you?")).toBeInTheDocument();
   });
 
   it("should render in completed state", () => {
     setup({
-      step: DATABASE_STEP,
+      step: "db_connection",
       user: createMockUserInfo({ first_name: "Testy" }),
     });
 
