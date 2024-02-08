@@ -4,8 +4,6 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 
-import SettingToggle from "../SettingToggle";
-
 export const GroupMappingsWidgetAndErrorRoot = styled.div`
   display: flex;
   flex-direction: column;
@@ -44,11 +42,6 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
     padding-right: ${space(1)};
     padding-top: 0;
   }
-`;
-
-export const GroupMappingsToggle = styled(SettingToggle)`
-  padding-top: 0;
-  opacity: 0.5;
 `;
 
 export const GroupMappingsWidgetAbout = styled.div`
