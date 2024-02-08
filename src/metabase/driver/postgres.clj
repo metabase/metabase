@@ -61,7 +61,8 @@
                               :datetime-diff            true
                               :now                      true
                               :persist-models           true
-                              :table-privileges         true
+                              ;; disabled for now, pending investigation into some issues
+                              :table-privileges         false
                               :schemas                  true
                               :connection-impersonation true
                               :uploads                  true}]

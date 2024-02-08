@@ -151,39 +151,36 @@
 
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
-  [driver database ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
+  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
-  (let [metadata                  (.getMetaData conn)
-        syncable-schemas          (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
-                                                                                     schema-inclusion-filters schema-exclusion-filters)
-        have-select-privilege-fn? (have-select-privilege-fn driver database conn)]
-    (eduction (mapcat (fn [schema]
-                        (->> (db-tables driver metadata schema db-name-or-nil)
-                             (filter have-select-privilege-fn?)
-                             (map #(dissoc % :type))))) syncable-schemas)))
+  (let [metadata (.getMetaData conn)]
+    (eduction
+     (comp (mapcat (fn [schema]
+                     (db-tables driver metadata schema db-name-or-nil)))
+           (filter (fn [{table-schema :schema table-name :name}]
+                     (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name))))
+     (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
+                                                        schema-inclusion-filters schema-exclusion-filters))))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
-  [driver database connection schema-inclusion-filters schema-exclusion-filters]
-  (fast-active-tables driver database connection nil schema-inclusion-filters schema-exclusion-filters))
+  [driver connection schema-inclusion-filters schema-exclusion-filters]
+  (fast-active-tables driver connection nil schema-inclusion-filters schema-exclusion-filters))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver database ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
+  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
-  (let [have-select-privilege-fn? (have-select-privilege-fn driver database conn)]
-    (eduction
-     (comp
-      (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
-                (fn [{table-schema :schema :as table}]
-                  (and (not (contains? excluded table-schema))
-                       (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
-                       (have-select-privilege-fn? table)))))
-      (map #(dissoc % :type)))
-     (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
+  (eduction
+   (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
+             (fn [{table-schema :schema, table-name :name}]
+               (and (not (contains? excluded table-schema))
+                    (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
+                    (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name)))))
+   (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
 
 (defn- db-or-id-or-spec->database [db-or-id-or-spec]
-  (cond (mi/instance-of? :model/Database db-or-id-or-spec)
+  (cond (mi/instance-of? Database db-or-id-or-spec)
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
@@ -205,16 +202,13 @@
     (fn [^Connection conn]
       (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
             has-schema-filter-prop? (some? schema-filter-prop)
-            database                (db-or-id-or-spec->database db-or-id-or-spec)
-            default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver database conn nil nil))]
+            default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver conn nil nil))]
         (if has-schema-filter-prop?
-          ;; TODO: the else of this branch seems uncessary, why do you want to call describe-database on a database that
-          ;; does not exists?
-          (if (some? database)
+          (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
             (let [prop-nm                                 (:name schema-filter-prop)
                   [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
                                                            prop-nm
                                                            database)]
-              (into #{} (sql-jdbc.sync.interface/active-tables driver database conn inclusion-patterns exclusion-patterns)))
+              (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
             (default-active-tbl-fn))
           (default-active-tbl-fn)))))})
