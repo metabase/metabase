@@ -15,7 +15,7 @@ import type { useSearchListQuery } from "metabase/common/hooks";
 
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
@@ -51,7 +51,7 @@ export const BrowseModels = ({
   const groupsOfModels = groupModels(modelsFiltered, localeCode);
   const forceUpdate = useForceUpdate();
   const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
-  console.log('hasDismissedBanner', hasDismissedBanner);
+  const dispatch = useDispatch();
 
   const shouldShowBanner = !hasDismissedBanner;
 
@@ -79,10 +79,12 @@ export const BrowseModels = ({
             </Text>
             <BannerCloseButton
               onClick={() => {
-                updateSetting({
-                  key: "dismissed-browse-models-banner",
-                  value: true,
-                });
+                dispatch(
+                  updateSetting({
+                    key: "dismissed-browse-models-banner",
+                    value: true,
+                  }),
+                );
                 forceUpdate();
               }}
             >
