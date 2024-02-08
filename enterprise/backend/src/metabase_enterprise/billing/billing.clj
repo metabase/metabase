@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String metabase-billing-info-url (str premium-features/store-url "/api/v2/metabase/billing_info"))
+(def ^:private ^String metabase-billing-info-url "https://store-api.metabase.com/api/v2/metabase/billing_info")
 
 (def ^:private ^{:arglists '([token email language])} fetch-billing-status*
   (memoize/ttl
