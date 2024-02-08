@@ -45,16 +45,6 @@ export const BrowseApp = ({
     return <LoadingAndErrorWrapper error />;
   }
 
-  // If no children specified, use the tab id to determine what to show inside the tab
-  if (!children) {
-    if (tab === "models") {
-      children = <BrowseModels modelsResult={modelsResult} />;
-    }
-    if (tab === "databases") {
-      children = <BrowseDatabases databasesResult={databasesResult} />;
-    }
-  }
-
   return (
     <BrowseAppRoot data-testid="browse-app">
       <BrowseContainer>
@@ -94,10 +84,38 @@ export const BrowseApp = ({
             </BrowseSectionContainer>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
-            <BrowseTabsContainer>{children}</BrowseTabsContainer>
+            <BrowseTabsContainer>
+              <BrowseTabContent
+                tab={tab}
+                modelsResult={modelsResult}
+                databasesResult={databasesResult}
+              />
+              {children}
+            </BrowseTabsContainer>
           </BrowseTabsPanel>
         </BrowseTabs>
       </BrowseContainer>
     </BrowseAppRoot>
   );
+};
+
+const BrowseTabContent = ({
+  tab,
+  children,
+  modelsResult,
+  databasesResult,
+}: {
+  tab: BrowseTabId;
+  children?: React.ReactNode;
+  modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
+  databasesResult: ReturnType<typeof useDatabaseListQuery>;
+}) => {
+  if (children) {
+    return <>{children}</>;
+  }
+  if (tab === "models") {
+    return <BrowseModels modelsResult={modelsResult} />;
+  } else {
+    return <BrowseDatabases databasesResult={databasesResult} />;
+  }
 };
