@@ -79,6 +79,7 @@ describe("getQuestion", () => {
     const card = {
       id: 5,
       dataset: true,
+      type: "model",
       dataset_query: {
         database: 1,
         type: "query",
@@ -99,6 +100,7 @@ describe("getQuestion", () => {
     const card = {
       id: 5,
       dataset: true,
+      type: "model",
       dataset_query: {
         database: 1,
         type: "query",
@@ -315,6 +317,7 @@ describe("getIsResultDirty", () => {
       return getBaseCard({
         id: 1,
         dataset: true,
+        type: "model",
         dataset_query: { type: "query", query },
       });
     }

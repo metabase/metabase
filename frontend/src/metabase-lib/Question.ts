@@ -528,7 +528,7 @@ class Question {
   }
 
   composeDataset(): Question {
-    if (!this.isDataset() || !this.isSaved()) {
+    if (this.type() !== "model" || !this.isSaved()) {
       return this;
     }
 

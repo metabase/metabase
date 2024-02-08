@@ -11,6 +11,7 @@ import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
+import type { IconName } from "metabase/ui";
 import type Table from "metabase-lib/metadata/Table";
 import type Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
@@ -33,6 +34,24 @@ interface QuestionPaneProps {
   collection: Collection | null;
 }
 
+const getIcon = (question: Question): IconName => {
+  const type = question.type() ?? "question";
+
+  if (type === "question") {
+    return "table";
+  }
+
+  if (type === "model") {
+    return "model";
+  }
+
+  if (type === "metric") {
+    return "metric";
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
+};
+
 const QuestionPane = ({
   onItemClick,
   question,
@@ -44,7 +63,7 @@ const QuestionPane = ({
   return (
     <SidebarContent
       title={question.displayName() || undefined}
-      icon={question.isDataset() ? "model" : "table"}
+      icon={getIcon(question)}
       onBack={onBack}
       onClose={onClose}
     >

@@ -16,6 +16,7 @@ import {
 
 import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
+import { getVerifyQuestionTitle } from "../../utils";
 import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
 
 interface Props {
@@ -76,9 +77,7 @@ function QuestionModerationButton({
           data-testid="moderation-verify-action"
           {...verifyButtonProps}
         >
-          {question.isDataset()
-            ? t`Verify this model`
-            : t`Verify this question`}
+          {getVerifyQuestionTitle(question)}
         </VerifyButton>
       )}
       {isModerator && isVerified && (
