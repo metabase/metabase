@@ -15,11 +15,11 @@
   #{:second :minute :hour :day :week :month :quarter :year})
 
 (defn- temporal-unit [field]
-  (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts)))
+  (mbql.u/match-one field [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)] (:temporal-unit opts)))
 
 (defn- optimizable-field? [field]
   (mbql.u/match-one field
-    [:field _ (_ :guard (comp optimizable-units :temporal-unit))]))
+    [(_ :guard #{:field :expression}) _ (_ :guard (comp optimizable-units :temporal-unit))]))
 
 (defmulti ^:private can-optimize-filter?
   mbql.u/dispatch-by-clause-name-or-class)
@@ -73,7 +73,7 @@
 
 (defn- change-temporal-unit-to-default [field]
   (mbql.u/replace field
-    [:field _ (_ :guard (comp optimizable-units :temporal-unit))]
+    [(_ :guard #{:field :expression}) _ (_ :guard (comp optimizable-units :temporal-unit))]
     (mbql.u/update-field-options &match assoc :temporal-unit :default)))
 
 (defmulti ^:private temporal-value-lower-bound
@@ -105,14 +105,14 @@
   [:relative-datetime (inc (if (= n :current) 0 n)) (or unit temporal-unit)])
 
 (defmulti ^:private optimize-filter
-  "Optimize a filter clause against a temporal-bucketed `:field` clause and `:absolute-datetime` or `:relative-datetime`
+  "Optimize a filter clause against a temporal-bucketed `:field` or `:expression` clause and `:absolute-datetime` or `:relative-datetime`
   value by converting to an unbucketed range."
   {:arglists '([clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod optimize-filter :=
   [[_tag field temporal-value]]
-  (let [temporal-unit (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
+  (let [temporal-unit (mbql.u/match-one field [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
     (when (field-and-temporal-value-have-compatible-units? field temporal-value)
       (let [field' (change-temporal-unit-to-default field)]
         [:and
