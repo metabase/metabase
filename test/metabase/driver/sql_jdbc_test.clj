@@ -248,7 +248,7 @@
             filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
             patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
         (testing "syncable-schemas works as expected"
-          (testing " with an inclusion filter"
+          (testing "with an inclusion filter"
             (t2.with-temp/with-temp [Database db-filtered {:engine  driver
                                                            :details (-> (mt/db)
                                                                         :details
@@ -258,7 +258,7 @@
                              "public"))
               (is (not (contains? (driver/syncable-schemas driver/*driver* db-filtered)
                                   fake-schema-name)))))
-          (testing " with an exclusion filter"
+          (testing "with an exclusion filter"
             (t2.with-temp/with-temp [Database db-filtered {:engine  driver
                                                            :details (-> (mt/db)
                                                                         :details
@@ -266,5 +266,5 @@
                                                                                patterns-type-prop "public"))}]
               (is (not (contains? (driver/syncable-schemas driver/*driver* db-filtered)
                                   "public")))
-              (is (contains? (driver/syncable-schemas driver/*driver* db-filtered)
-                             fake-schema-name)))))))))
+              (is (not (contains? (driver/syncable-schemas driver/*driver* db-filtered)
+                                  fake-schema-name))))))))))
