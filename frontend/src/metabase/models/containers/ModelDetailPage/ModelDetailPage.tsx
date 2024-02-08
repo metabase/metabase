@@ -174,7 +174,9 @@ function ModelDetailPage({
     (collection: Collection) => {
       onChangeCollection(model.card() as Card, collection, {
         notify: {
-          message: <QuestionMoveToast collectionId={collection.id} isModel />,
+          message: (
+            <QuestionMoveToast collectionId={collection.id} question={model} />
+          ),
           undo: false,
         },
       });

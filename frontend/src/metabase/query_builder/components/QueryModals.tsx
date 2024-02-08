@@ -261,8 +261,8 @@ class QueryModals extends Component<QueryModalsProps> {
                     notify: {
                       message: (
                         <QuestionMoveToast
-                          question={question}
                           collectionId={collection.id || ROOT_COLLECTION.id}
+                          question={question}
                         />
                       ),
                       undo: false,

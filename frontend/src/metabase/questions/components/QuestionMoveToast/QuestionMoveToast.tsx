@@ -12,8 +12,8 @@ import {
 } from "./QuestionMoveToast.styled";
 
 interface QuestionMoveToastProps {
-  question: Question;
   collectionId: CollectionId;
+  question: Question;
 }
 
 const getMessage = (question: Question, collectionLink: JSX.Element) => {
@@ -34,7 +34,7 @@ const getMessage = (question: Question, collectionLink: JSX.Element) => {
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
-function QuestionMoveToast({ question, collectionId }: QuestionMoveToastProps) {
+function QuestionMoveToast({ collectionId, question }: QuestionMoveToastProps) {
   const id = coerceCollectionId(collectionId);
   const collectionLink = <CollectionLink key="collection-link" id={id} />;
   return (
