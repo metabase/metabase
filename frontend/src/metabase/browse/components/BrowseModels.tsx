@@ -23,6 +23,7 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
 import { getCollectionName, groupModels } from "../utils";
+import { getFiltersForBrowseModels } from "../selectors";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   BannerCloseButton,
@@ -36,6 +37,24 @@ import {
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
 
+type Filter = {
+  filterFunc: (model: SearchResult) => boolean;
+  appliedByDefault: boolean;
+};
+
+const possibleFilters: Record<string, Filter> = {
+  onlyShowVerifiedModels: {
+    filterFunc: (model: SearchResult) => model.moderated_status === "verified",
+    appliedByDefault: true,
+  },
+  hideCSVModels: {
+    // TODO: Find a way to filter out csv uploads
+    filterFunc: (_model: SearchResult) => true,
+    appliedByDefault: true,
+  },
+};
+const defaultFilters = { onlyShowVerifiedModels: true, hideCSVUploads: true };
+
 export const BrowseModels = ({
   modelsResult,
 }: {
@@ -45,9 +64,31 @@ export const BrowseModels = ({
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
-  const modelsFiltered = models.filter(
-    model => !isInstanceAnalyticsCollection(model.collection),
+  const filtersJSON = useSelector(getFiltersForBrowseModels);
+  let filtersFromServer = {};
+  try {
+    filtersFromServer = JSON.parse(filtersJSON || "{}");
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      dispatch(
+        updateSetting({
+          key: "browse-models-filters",
+          value: JSON.stringify(defaultFilters),
+        }),
+      );
+    }
+  }
+  const activeFilters = { ...defaultFilters, ...filtersFromServer };
+  const filterFunctions = Object.entries(activeFilters).map(
+    ([filterName, shouldApply]) =>
+      shouldApply ? possibleFilters[filterName].filterFunc : () => true,
   );
+  filterFunctions.push(
+    (model: SearchResult) => !isInstanceAnalyticsCollection(model.collection),
+  );
+  const modelsFiltered = filterFunctions.reduce((models, filterFunc) => {
+    return models.filter(filterFunc);
+  }, models);
   const groupsOfModels = groupModels(modelsFiltered, localeCode);
   const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
 

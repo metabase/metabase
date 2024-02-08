@@ -122,6 +122,15 @@
   :default    nil
   :audit      :never)
 
+(defsetting filters-for-browse-models
+  (deferred-tru "A JSON string describing filters used to limit the models shown in the Browse Data page.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :string
+  :export?    true
+  :default    "{}"
+  :audit      :never)
+
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only
