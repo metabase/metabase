@@ -367,6 +367,13 @@ describe("scenarios > setup", () => {
       .findByText("Get started with Embedding Metabase in your app")
       .should("exist");
 
+    main().findByRole("link", { name: "Learn more" }).should(
+      "have.attr",
+      "href",
+      // eslint-disable-next-line no-unconditional-metabase-links-render -- this is a test file
+      "https://www.metabase.com/docs/latest/embedding/start.html?utm_media=embed-minimal-homepage",
+    );
+
     cy.icon("close").click();
 
     main()
