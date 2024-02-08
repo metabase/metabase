@@ -116,6 +116,7 @@ const LicenseAndBillingSettings = ({
         {isStoreManagedBilling && (
           <>
             <SectionDescription>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`Manage your Cloud account, including billing preferences, in your Metabase Store account.`}
             </SectionDescription>
 
@@ -123,6 +124,7 @@ const LicenseAndBillingSettings = ({
               href={MetabaseSettings.storeUrl()}
               className="Button Button--primary"
             >
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`Go to the Metabase Store`}
             </ExternalLink>
           </>
