@@ -54,7 +54,6 @@ export const MetricQuestions = ({ style, table, metric, metadata }) => {
     error,
   } = useQuestionListQuery({
     query: { f: "using_metric", model_id: metric.id },
-    enabled: true,
   });
 
   return (

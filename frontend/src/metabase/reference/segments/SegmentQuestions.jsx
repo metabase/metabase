@@ -51,7 +51,6 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
     error,
   } = useQuestionListQuery({
     query: { f: "using_segment", model_id: segment.id },
-    enabled: true,
   });
 
   return (
