@@ -261,7 +261,7 @@ class QueryModals extends Component<QueryModalsProps> {
                     notify: {
                       message: (
                         <QuestionMoveToast
-                          isModel={question.isDataset()}
+                          question={question}
                           collectionId={collection.id || ROOT_COLLECTION.id}
                         />
                       ),
