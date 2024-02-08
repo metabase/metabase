@@ -309,12 +309,6 @@ describe("StructuredQuery", () => {
         ).toBe(ORDERS_ID);
       });
     });
-    describe("setDatabase", () => {
-      it("allows you to set a new database", () => {
-        const db = metadata.database(ANOTHER_DB_ID);
-        expect(query.setDatabase(db)._database().id).toBe(db.id);
-      });
-    });
     describe("_sourceTableId", () => {
       it("Return the right table id", () => {
         expect(query._sourceTableId()).toBe(ORDERS_ID);

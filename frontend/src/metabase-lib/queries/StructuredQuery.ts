@@ -197,13 +197,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @returns a new query with the provided Database set.
-   */
-  setDatabase(database: Database): StructuredQuery {
-    return this.setDatabaseId(database.id);
-  }
-
-  /**
    * @returns the table ID, if a table is selected.
    * @deprecated Use MLv2
    */
