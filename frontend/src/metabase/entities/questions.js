@@ -154,7 +154,7 @@ const Questions = createEntity({
 
 export function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
-    if (question.authority_level === "official") {
+    if (question.moderated_status === "verified") {
       return { name: "model_with_badge", color: "saturated-yellow" };
     } else {
       return { name: "model" };
