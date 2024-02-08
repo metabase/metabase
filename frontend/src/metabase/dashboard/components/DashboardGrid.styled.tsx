@@ -72,11 +72,10 @@ export const DashboardGridContainer = styled.div<{
   align-items: center;
   justify-content: center;
 
-  margin: 0 auto;
-
   ${({ isFixedWidth }) =>
     isFixedWidth &&
     css`
+      margin: 0 auto;
       max-width: ${FIXED_WIDTH};
     `}
 `;
