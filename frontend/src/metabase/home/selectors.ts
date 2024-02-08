@@ -27,8 +27,3 @@ export const getCustomHomePageDashboardId = createSelector(
 export const getHasDismissedCustomHomePageToast = (state: State) => {
   return getSetting(state, "dismissed-custom-dashboard-toast");
 };
-
-// TODO: Move to browse/selectors
-export const getHasDismissedBrowseModelsBanner = (state: State) => {
-  return getSetting(state, "dismissed-browse-models-banner");
-};

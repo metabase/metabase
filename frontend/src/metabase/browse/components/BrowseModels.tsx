@@ -21,7 +21,7 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { updateSetting } from "metabase/admin/settings/settings";
-import { getHasDismissedBrowseModelsBanner } from "metabase/home/selectors";
+import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
