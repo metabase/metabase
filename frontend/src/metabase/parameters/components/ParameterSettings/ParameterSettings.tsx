@@ -13,7 +13,7 @@ import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-sour
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
-import { RequiredParamToggle } from "../RequiredParamToggle/RequiredParamToggle";
+import { RequiredParamToggle } from "../RequiredParamToggle";
 import {
   SettingLabel,
   SettingLabelError,

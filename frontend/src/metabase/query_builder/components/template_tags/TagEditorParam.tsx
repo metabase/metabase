@@ -30,7 +30,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle/RequiredParamToggle";
+import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
