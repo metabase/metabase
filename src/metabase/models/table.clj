@@ -1,7 +1,6 @@
 (ns metabase.models.table
   (:require
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
@@ -73,19 +72,15 @@
       ;; Data access permissions
       (if (= (:db_id table) config/audit-db-id)
         ;; Tables in audit DB should start out with no-self-service in all groups
-        (doseq [group non-admin-groups]
-         (data-perms/set-table-permission! group table :perms/data-access :no-self-service))
+        (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service)
         (do
-          (data-perms/set-table-permission! all-users-group table :perms/data-access :unrestricted)
-          (doseq [group non-magic-groups]
-            (data-perms/set-table-permission! group table :perms/data-access :no-self-service))))
+          (data-perms/set-new-table-permissions! [all-users-group] table :perms/data-access :unrestricted)
+          (data-perms/set-new-table-permissions! non-magic-groups table :perms/data-access :no-self-service)))
       ;; Download permissions
-      (data-perms/set-table-permission! all-users-group table :perms/download-results :one-million-rows)
-      (doseq [group non-magic-groups]
-        (data-perms/set-table-permission! group table :perms/download-results :no))
+      (data-perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
+      (data-perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
       ;; Table metadata management
-      (doseq [group non-admin-groups]
-        (data-perms/set-table-permission! group table :perms/manage-table-metadata :no)))))
+      (data-perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -239,13 +234,6 @@
   "Return the `Database` associated with this `Table`."
   [table]
   (t2/select-one Database :id (:db_id table)))
-
-(def ^{:arglists '([table-id])} table-id->database-id
-  "Retrieve the `Database` ID for the given table-id."
-  (mdb.connection/memoize-for-application-db
-   (fn [table-id]
-     {:pre [(integer? table-id)]}
-     (t2/select-one-fn :db_id Table, :id table-id))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/dependencies "Table" [table]

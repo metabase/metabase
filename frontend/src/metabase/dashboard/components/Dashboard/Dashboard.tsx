@@ -151,6 +151,8 @@ interface DashboardProps {
   setParameterIndex: (id: ParameterId, index: number) => void;
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
+  setParameterValueToDefault: (id: ParameterId) => void;
+  setParameterRequired: (id: ParameterId, value: boolean) => void;
   setEditingParameter: (id: ParameterId) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
@@ -216,6 +218,7 @@ function DashboardInner(props: DashboardProps) {
     setErrorPage,
     setParameterIndex,
     setParameterValue,
+    setParameterValueToDefault,
     setSharing,
     toggleSidebar,
   } = props;
@@ -229,25 +232,41 @@ function DashboardInner(props: DashboardProps) {
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
 
-  const visibleParameters = useMemo(
-    () => getVisibleParameters(parameters),
-    [parameters],
-  );
-
-  const tabHasCards = useMemo(() => {
+  const currentTabDashcards = useMemo(() => {
     if (!Array.isArray(dashboard?.dashcards)) {
-      return false;
+      return [];
     }
     if (!selectedTabId) {
-      return dashboard.dashcards.length > 0;
+      return dashboard.dashcards;
     }
-    const tabDashCards = dashboard.dashcards.filter(
+    return dashboard.dashcards.filter(
       dc => dc.dashboard_tab_id === selectedTabId,
     );
-    return tabDashCards.length > 0;
   }, [dashboard, selectedTabId]);
 
+  const hiddenParameterSlugs = useMemo(() => {
+    if (isEditing) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const currentTabParameterIds = currentTabDashcards.flatMap(
+      dc => dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
+    );
+    const hiddenParameters = parameters.filter(
+      parameter => !currentTabParameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(p => p.slug).join(",");
+  }, [parameters, currentTabDashcards, isEditing]);
+
+  const visibleParameters = useMemo(
+    () => getVisibleParameters(parameters, hiddenParameterSlugs),
+    [parameters, hiddenParameterSlugs],
+  );
+
   const canWrite = Boolean(dashboard?.can_write);
+  const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard?.dashcards.length > 0;
   const hasVisibleParameters = visibleParameters.length > 0;
 
@@ -439,6 +458,7 @@ function DashboardInner(props: DashboardProps) {
         isAutoApplyFilters ? parameterValues : draftParameterValues,
       )}
       editingParameter={editingParameter}
+      hideParameters={hiddenParameterSlugs}
       dashboard={dashboard}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
@@ -446,6 +466,8 @@ function DashboardInner(props: DashboardProps) {
       setParameterValue={setParameterValue}
       setParameterIndex={setParameterIndex}
       setEditingParameter={setEditingParameter}
+      setParameterValueToDefault={setParameterValueToDefault}
+      enableParameterRequiredBehavior
     />
   );
 

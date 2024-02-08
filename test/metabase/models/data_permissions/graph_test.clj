@@ -11,16 +11,19 @@
 (deftest update-db-level-data-access-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                  :model/Database         {database-id-1 :id}   {}
-                 :model/Table            {table-id-1 :id}      {:db_id database-id-1 :schema "PUBLIC"}
-                 :model/Table            {table-id-2 :id}      {:db_id database-id-1 :schema "PUBLIC"}
-                 :model/Table            {table-id-3 :id}      {:db_id database-id-1 :schema nil}]
+                 :model/Table            {table-id-1 :id}      {:db_id database-id-1
+                                                                :schema "PUBLIC"}
+                 :model/Table            {table-id-2 :id}      {:db_id database-id-1
+                                                                :schema "PUBLIC"}
+                 :model/Table            {table-id-3 :id}      {:db_id database-id-1
+                                                                :schema nil}]
     ;; Clear default perms for the group
     (db/delete! :model/DataPermissions :group_id group-id-1)
     (testing "data-access permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
                                      (data-perms.graph/update-data-perms-graph! api-graph)
-                                     (data-perms/data-permissions-graph :group-id group-id-1 :audit? false)))
+                                     (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular data access permissions
         {group-id-1
          {database-id-1
@@ -39,6 +42,7 @@
                                 table-id-2 :no-self-service}
                                ""
                                {table-id-3 :unrestricted}}}}}
+
         ;; Restoring full data access and native query permissions
         {group-id-1
          {database-id-1
@@ -49,6 +53,7 @@
          {database-id-1
           {:perms/native-query-editing :yes
            :perms/data-access :unrestricted}}}
+
         ;; Setting data access permissions at the schema-level
         {group-id-1
          {database-id-1
@@ -64,6 +69,7 @@
                                 table-id-2 :unrestricted}
                                ""
                                {table-id-3 :no-self-service}}}}}
+
         ;; Setting block permissions for the database
         {group-id-1
          {database-id-1
@@ -71,16 +77,19 @@
            {:native :none
             :schemas :block}}}}
         {group-id-1
-         {database-id-1
-          {:perms/native-query-editing :no
-           :perms/data-access :block}}}))))
+          {database-id-1
+           {:perms/native-query-editing :no
+            :perms/data-access :block}}}))))
 
 (deftest update-db-level-download-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                  :model/Database         {database-id-1 :id}   {}
-                 :model/Table            {table-id-1 :id}      {:db_id database-id-1 :schema "PUBLIC"}
-                 :model/Table            {table-id-2 :id}      {:db_id database-id-1 :schema "PUBLIC"}
-                 :model/Table            {table-id-3 :id}      {:db_id database-id-1 :schema nil}]
+                 :model/Table            {table-id-1 :id}      {:db_id database-id-1
+                                                                :schema "PUBLIC"}
+                 :model/Table            {table-id-2 :id}      {:db_id database-id-1
+                                                                :schema "PUBLIC"}
+                 :model/Table            {table-id-3 :id}      {:db_id database-id-1
+                                                                :schema nil}]
     ;; Clear default perms for the group
     (db/delete! :model/DataPermissions :group_id group-id-1)
     (testing "download permissions can be updated via API-style graph"
@@ -140,9 +149,12 @@
 (deftest update-db-level-metadata-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                  :model/Database         {database-id-1 :id}   {}
-                 :model/Table            {table-id-1 :id}      {:db_id database-id-1 :schema "PUBLIC"}
-                 :model/Table            {table-id-2 :id}      {:db_id database-id-1 :schema "PUBLIC"}
-                 :model/Table            {table-id-3 :id}      {:db_id database-id-1 :schema nil}]
+                 :model/Table            {table-id-1 :id}      {:db_id database-id-1
+                                                                :schema "PUBLIC"}
+                 :model/Table            {table-id-2 :id}      {:db_id database-id-1
+                                                                :schema "PUBLIC"}
+                 :model/Table            {table-id-3 :id}      {:db_id database-id-1
+                                                                :schema nil}]
     ;; Clear default perms for the group
     (db/delete! :model/DataPermissions :group_id group-id-1)
     (testing "data model editing permissions can be updated via API-style graph"

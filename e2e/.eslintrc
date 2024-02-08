@@ -4,11 +4,20 @@
     "import/no-commonjs": 0,
     "no-color-literals": 0,
     "no-console": 0,
-    "@typescript-eslint/no-namespace": "off"
+    "@typescript-eslint/no-namespace": "off",
+    "cypress/no-async-tests": "error"
   },
   "env": {
     "cypress/globals": true,
     "node": true
   },
-  "plugins": ["cypress"]
+  "plugins": ["cypress"],
+  "overrides": [
+    {
+      "files": ["*.cy.spec.*"],
+      "rules": {
+        "no-console": "error"
+      }
+    }
+  ]
 }

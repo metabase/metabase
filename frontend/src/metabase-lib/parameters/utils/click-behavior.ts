@@ -6,7 +6,7 @@ import type {
   ClickBehaviorSource,
   ClickBehaviorTarget,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardId,
   DatasetColumn,
   DatetimeUnit,
@@ -149,7 +149,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
   return visibleColumns.map(targetColumn => {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
-      Lib.legacyRef(targetColumn),
+      Lib.legacyRef(query, stageIndex, targetColumn),
     ];
     const id = JSON.stringify(dimension);
     const target: ClickBehaviorTarget = { type: "dimension", id, dimension };
@@ -255,7 +255,7 @@ function getTargetsForVariables(legacyQuery: NativeQuery): Target[] {
 
 export function getTargetsForDashboard(
   dashboard: Dashboard,
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
 ): Target[] {
   if (!dashboard.parameters) {
     return [];

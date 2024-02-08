@@ -1,6 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.common-test
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.api.database :as api.database]
@@ -10,7 +9,6 @@
     :refer [Dashboard DashboardCard Database Field FieldValues Table]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :as database]
-   [metabase.models.field :as field]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -31,11 +29,11 @@
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
     (mt/with-additional-premium-features #{:advanced-permissions}
-      (memoize/memo-clear! @#'field/cached-perms-object-set)
       (perms.test-util/with-restored-perms!
-        (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
-        (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
-        (f)))))
+        (perms.test-util/with-restored-data-perms!
+          (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
+          (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
+          (f))))))
 
 (defmacro ^:private with-all-users-data-perms!
   "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
@@ -706,36 +704,38 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
     (testing "Uploads should be blocked without data access"
       (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          ;; Create not_public schema
-          (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
-        (sync/sync-database! (mt/db))
-        (let [db-id    (u/the-id (mt/db))
-              table-id (t2/select-one-pk :model/Table :db_id db-id)
-              upload-csv! (fn []
-                            (upload-test/upload-example-csv! {:grant-permission? false
-                                                              :schema-name       "not_public"
-                                                              :table-prefix      "uploaded_magic_"}))]
-          (doseq [[schema-perms can-upload?] {:all            true
-                                              :none           false
-                                              {table-id :all} false}]
-            (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {"public"     :all
-                                                                                "not_public" schema-perms}}}}
-              (if can-upload?
-                (is (some? (upload-csv!)))
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"You don't have permissions to do that\."
-                     (upload-csv!)))))
-            (with-all-users-data-perms! {db-id {:data {:native :write, :schemas {"not_public" :all}}}}
-              (is (some? (upload-csv!))))))))))
+        (let [table-name (mt/random-name)]
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (doseq [stmt ["CREATE SCHEMA IF NOT EXISTS \"not_public\";"
+                          (format "CREATE TABLE \"not_public\".\"%s\" (id INTEGER);" table-name)]]
+              (jdbc/execute! conn-spec stmt)))
+          (upload-test/sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name "not_public")
+          (let [db-id    (u/the-id (mt/db))
+                table-id (t2/select-one-pk :model/Table :db_id db-id :name table-name)
+                upload-csv! (fn []
+                              (upload-test/upload-example-csv! {:grant-permission? false
+                                                                :schema-name       "not_public"
+                                                                :table-prefix      "uploaded_magic_"}))]
+            (doseq [[schema-perms can-upload?] {:all            true
+                                                :none           false
+                                                {table-id :all} false}]
+              (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {"public"     :all
+                                                                                  "not_public" schema-perms}}}}
+                (if can-upload?
+                  (is (some? (upload-csv!)))
+                  (is (thrown-with-msg?
+                        clojure.lang.ExceptionInfo
+                        #"You don't have permissions to do that\."
+                        (upload-csv!)))))
+              (with-all-users-data-perms! {db-id {:data {:native :write, :schemas {"not_public" :all}}}}
+                (is (some? (upload-csv!)))))))))))
 
 (deftest append-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (if (driver/database-supports? driver/*driver* :schemas (mt/db))
       (testing "CSV appends should be blocked without data access to the schema"
         (mt/with-empty-db
-          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) "CREATE SCHEMA \"not_public\";")
+          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) "CREATE SCHEMA IF NOT EXISTS \"not_public\";")
           (let [db-id       (u/the-id (mt/db))
                 table-a     (upload-test/create-upload-table! :schema-name "not_public")
                 table-b     (upload-test/create-upload-table! :schema-name "not_public")
@@ -804,29 +804,32 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (jdbc/execute! conn-spec "CREATE SCHEMA IF NOT EXISTS \"not_public\"; CREATE TABLE IF NOT EXISTS \"not_public\".\"table_name\" (id INTEGER);"))
-        (sync/sync-database! (mt/db))
-        (let [db-id     (u/the-id (mt/db))
-              table-id (t2/select-one-pk :model/Table :db_id db-id)]
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  "not_public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (doseq [[schema-perms can-upload?] {:all            true
-                                                :none           false
-                                                {table-id :all} false}]
-              (testing (format "can_upload should be %s if the user has %s access to the upload schema"
-                               can-upload? schema-perms)
-                (with-all-users-data-perms! {db-id {:data {:native :none
-                                                           :schemas {"public"     :all
-                                                                     "not_public" schema-perms}}}}
-                  (testing "GET /api/database"
-                    (let [result (->> (mt/user-http-request :rasta :get 200 "database")
-                                      :data
-                                      (filter #(= (:id %) db-id))
-                                      first)]
-                      (is (= can-upload? (:can_upload result)))))
-                  (testing "GET /api/database/:id"
-                    (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-                      (is (= can-upload? (:can_upload result))))))))))))))
+        (let [table-name (mt/random-name)]
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (doseq [stmt ["CREATE SCHEMA IF NOT EXISTS \"not_public\";"
+                          (format "CREATE TABLE \"not_public\".\"%s\" (id INTEGER);" table-name)]]
+              (jdbc/execute! conn-spec stmt)))
+          (sync/sync-database! (mt/db))
+          (let [db-id     (u/the-id (mt/db))
+                table-id (t2/select-one-pk :model/Table :db_id db-id)]
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "not_public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (doseq [[schema-perms can-upload?] {:all            true
+                                                  :none           false
+                                                  {table-id :all} false}]
+                (testing (format "can_upload should be %s if the user has %s access to the upload schema"
+                                 can-upload? schema-perms)
+                  (with-all-users-data-perms! {db-id {:data {:native :none
+                                                             :schemas {"public"     :all
+                                                                       "not_public" schema-perms}}}}
+                    (testing "GET /api/database"
+                      (let [result (->> (mt/user-http-request :rasta :get 200 "database")
+                                        :data
+                                        (filter #(= (:id %) db-id))
+                                        first)]
+                        (is (= can-upload? (:can_upload result)))))
+                    (testing "GET /api/database/:id"
+                      (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+                        (is (= can-upload? (:can_upload result)))))))))))))))

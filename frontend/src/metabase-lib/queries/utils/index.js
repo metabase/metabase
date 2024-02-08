@@ -9,10 +9,6 @@ export * from "./field-ref";
 // need to communicate or use that, use this constant
 export const HARD_ROW_LIMIT = 2000;
 
-export function isStructured(dataset_query) {
-  return dataset_query && dataset_query.type === "query";
-}
-
 export function cleanQuery(query) {
   if (!query) {
     return query;

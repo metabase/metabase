@@ -10,7 +10,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const questionDetails = {
   name: "29517",
-  dataset: true,
+  type: "model",
   native: {
     query:
       'Select Orders."ID" AS "ID",\nOrders."CREATED_AT" AS "CREATED_AT"\nFrom Orders',
@@ -96,9 +96,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
   });
 
   it("click behavior to custom destination should work (metabase#29517-2)", () => {
-    cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-    });
+    visitDashboard("@dashboardId");
 
     cy
       .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)

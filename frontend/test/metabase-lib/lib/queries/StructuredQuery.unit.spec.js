@@ -294,9 +294,6 @@ describe("StructuredQuery", () => {
       it("Expect a reset query to not have a selected database", () => {
         expect(query.reset()._database()).toBe(null);
       });
-      it("Expect a reset query to not be runnable", () => {
-        expect(query.reset().canRun()).toBe(false);
-      });
     });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
@@ -314,14 +311,6 @@ describe("StructuredQuery", () => {
     describe("_sourceTableId", () => {
       it("Return the right table id", () => {
         expect(query._sourceTableId()).toBe(ORDERS_ID);
-      });
-    });
-  });
-
-  describe("QUERY STATUS METHODS", () => {
-    describe("canRun", () => {
-      it("runs a valid query", () => {
-        expect(query.canRun()).toBe(true);
       });
     });
   });
@@ -585,15 +574,6 @@ describe("StructuredQuery", () => {
         expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(
           30,
         );
-      });
-    });
-    describe("hasValidBreakout", () => {
-      it("should return false if there are no breakouts", () => {
-        expect(query.hasValidBreakout()).toBe(false);
-      });
-      it("should return true if there is at least one breakout", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        expect(query.breakout(ordersProductId).hasValidBreakout()).toBe(true);
       });
     });
 

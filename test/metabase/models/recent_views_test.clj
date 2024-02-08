@@ -1,7 +1,7 @@
 (ns metabase.models.recent-views-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.recent-views :as recent-views]
    [metabase.test :as mt]
    [toucan2.core :as t2]

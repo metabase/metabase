@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
@@ -108,15 +109,19 @@
       (if (:is_audit database)
         (doseq [group non-admin-groups]
           (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
-          (data-perms/set-database-permission! group database :perms/native-query-editing :no))
+          (data-perms/set-database-permission! group database :perms/native-query-editing :no)
+          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows))
         (do
           (data-perms/set-database-permission! all-users-group database :perms/data-access :unrestricted)
-          (doseq [group non-magic-groups]
-            (data-perms/set-database-permission! group database :perms/data-access :no-self-service))
           (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
+          (data-perms/set-database-permission! all-users-group database :perms/download-results :one-million-rows)
           (doseq [group non-magic-groups]
+            (data-perms/set-database-permission! group database :perms/download-results :no)
+            (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
             (data-perms/set-database-permission! group database :perms/native-query-editing :no))))
+
       (doseq [group non-admin-groups]
+        (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
         (data-perms/set-database-permission! group database :perms/manage-database :no)))))
 
 (t2/define-after-insert :model/Database
@@ -421,3 +426,10 @@
 (defmethod audit-log/model-details Database
   [database _event-type]
   (select-keys database [:id :name :engine]))
+
+(def ^{:arglists '([table-id])} table-id->database-id
+  "Retrieve the `Database` ID for the given table-id."
+  (mdb.connection/memoize-for-application-db
+   (fn [table-id]
+     {:pre [(integer? table-id)]}
+     (t2/select-one-fn :db_id :model/Table, :id table-id))))

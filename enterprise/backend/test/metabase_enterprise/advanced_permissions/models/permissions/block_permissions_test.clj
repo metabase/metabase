@@ -4,8 +4,7 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
    [metabase.api.common :as api]
-   [metabase.models :refer [Card Collection Database Permissions
-                            PermissionsGroup PermissionsGroupMembership User]]
+   [metabase.models :refer [Card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms]

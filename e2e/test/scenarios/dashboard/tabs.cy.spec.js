@@ -32,14 +32,57 @@ import {
   popover,
 } from "e2e/support/helpers";
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
+
+const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
+
+const DASHBOARD_DATE_FILTER = {
+  id: "1",
+  name: "Date filter",
+  slug: "filter-date",
+  type: "date/month-year",
+};
+
+const DASHBOARD_NUMBER_FILTER = {
+  id: "2",
+  name: "Number filter",
+  slug: "filter-number",
+  type: "number/=",
+};
+
+const DASHBOARD_TEXT_FILTER = {
+  id: "3",
+  name: "Text filter",
+  slug: "filter-text",
+  type: "string/contains",
+};
+
+const DASHBOARD_LOCATION_FILTER = {
+  id: "4",
+  name: "Location filter",
+  slug: "filter-location",
+  type: "string/=",
+};
+
+const TAB_1 = {
+  id: 1,
+  name: "Tab 1",
+};
+
+const TAB_2 = {
+  id: 2,
+  name: "Tab 2",
+};
 
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
@@ -75,6 +118,64 @@ describe("scenarios > dashboard > tabs", () => {
     dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
     });
+  });
+
+  it("should only display filters mapped to cards on the selected tab", () => {
+    createDashboardWithTabs({
+      tabs: [TAB_1, TAB_2],
+      parameters: [
+        DASHBOARD_DATE_FILTER,
+        { ...DASHBOARD_NUMBER_FILTER, default: 20 },
+        { ...DASHBOARD_TEXT_FILTER, default: "fa" },
+        DASHBOARD_LOCATION_FILTER,
+      ],
+      dashcards: [
+        createMockDashboardCard({
+          id: -1,
+          card_id: ORDERS_QUESTION_ID,
+          dashboard_tab_id: TAB_1.id,
+          parameter_mappings: [
+            createDateFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+            createTextFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
+          ],
+        }),
+        createMockDashboardCard({
+          id: -2,
+          card_id: ORDERS_BY_YEAR_QUESTION_ID,
+          dashboard_tab_id: TAB_2.id,
+          parameter_mappings: [
+            createDateFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
+            createNumberFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
+          ],
+        }),
+      ],
+    }).then(dashboard => visitDashboard(dashboard.id));
+
+    assertFiltersVisibility({
+      visible: [DASHBOARD_DATE_FILTER, DASHBOARD_TEXT_FILTER],
+      hidden: [DASHBOARD_NUMBER_FILTER, DASHBOARD_LOCATION_FILTER],
+    });
+
+    assertFilterValues([
+      [DASHBOARD_DATE_FILTER, undefined],
+      [DASHBOARD_TEXT_FILTER, "fa"],
+      [DASHBOARD_NUMBER_FILTER, 20],
+      [DASHBOARD_LOCATION_FILTER, undefined],
+    ]);
+
+    goToTab(TAB_2.name);
+
+    assertFiltersVisibility({
+      visible: [DASHBOARD_DATE_FILTER, DASHBOARD_NUMBER_FILTER],
+      hidden: [DASHBOARD_TEXT_FILTER, DASHBOARD_LOCATION_FILTER],
+    });
+
+    assertFilterValues([
+      [DASHBOARD_DATE_FILTER, undefined],
+      [DASHBOARD_TEXT_FILTER, "fa"],
+      [DASHBOARD_NUMBER_FILTER, 20],
+      [DASHBOARD_LOCATION_FILTER, undefined],
+    ]);
   });
 
   it("should allow undoing a tab deletion", () => {
@@ -543,4 +644,80 @@ function delayResponse(delayMs) {
       res.setDelay(delayMs);
     });
   };
+}
+
+function createDashboardWithTabs({ dashcards, tabs, ...dashboardDetails }) {
+  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+      dashcards,
+      tabs,
+    }).then(({ body: dashboard }) => cy.wrap(dashboard));
+  });
+}
+
+const createTextFilterMapping = ({ card_id }) => {
+  const fieldRef = [
+    "field",
+    PEOPLE.NAME,
+    {
+      "base-type": "type/Text",
+      "source-field": ORDERS.USER_ID,
+    },
+  ];
+
+  return {
+    card_id,
+    parameter_id: DASHBOARD_TEXT_FILTER.id,
+    target: ["dimension", fieldRef],
+  };
+};
+
+const createDateFilterMapping = ({ card_id }) => {
+  const fieldRef = [
+    "field",
+    ORDERS.CREATED_AT,
+    { "base-type": "type/DateTime" },
+  ];
+
+  return {
+    card_id,
+    parameter_id: DASHBOARD_DATE_FILTER.id,
+    target: ["dimension", fieldRef],
+  };
+};
+
+const createNumberFilterMapping = ({ card_id }) => {
+  const fieldRef = ["field", ORDERS.QUANTITY, { "base-type": "type/Number" }];
+
+  return {
+    card_id,
+    parameter_id: DASHBOARD_NUMBER_FILTER.id,
+    target: ["dimension", fieldRef],
+  };
+};
+
+function assertFiltersVisibility({ visible = [], hidden = [] }) {
+  cy.findByTestId("dashboard-parameters-widget-container", () => {
+    visible.forEach(filter => cy.findByText(filter.name).should("exist"));
+    hidden.forEach(filter => cy.findByText(filter.name).should("not.exist"));
+  });
+
+  // Ensure all filters are visible in edit mode
+  editDashboard();
+  cy.findByTestId("edit-dashboard-parameters-widget-container", () => {
+    [...visible, ...hidden].forEach(filter =>
+      cy.findByText(filter.name).should("exist"),
+    );
+  });
+
+  cy.findByTestId("edit-bar").button("Cancel").click();
+}
+
+function assertFilterValues(filterValues) {
+  filterValues.forEach(([filter, value]) => {
+    const displayValue = value === undefined ? "" : value.toString();
+    const filterQueryParameter = `${filter.slug}=${displayValue}`;
+    cy.location("search").should("contain", filterQueryParameter);
+  });
 }

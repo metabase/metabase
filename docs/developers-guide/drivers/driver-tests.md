@@ -6,10 +6,10 @@ title: Submitting a PR for a new driver
 
 If you want to submit a PR to add a driver plugin to the [Metabase repo](https://github.com/metabase/metabase) (as opposed to keeping it in a separate repo), you'll need to:
 
-- Be able to run your database locally with Docker. 
+- Be able to run your database locally with Docker.
 - Make sure your driver passes Metabase's core test suite.
 
-## Testing your driver 
+## Testing your driver
 
 To test your driver, you'll need to:
 
@@ -157,10 +157,10 @@ Let's take a look at what's going on here.
 
 ### Connection context
 
-`tx/dbdef->connection-details` is called in two different contexts: 
+`tx/dbdef->connection-details` is called in two different contexts:
 
 - When creating a database,
-- And when loading data into one and syncing. 
+- And when loading data into one and syncing.
 
 Most databases won't let you connect to a database that hasn't been created yet, meaning something like a `CREATE DATABASE "test-data";` statement would have to be ran _without_ specifying `test-data` as part of the connection. Thus, the `context` parameter. `context` is either `:server`, meaning "give me details for connecting to the DBMS server, but not to a specific database", or `:db`, meaning "give me details for connecting to a specific database". In MySQL's case, it adds the `:db` connection property whenever context is `:db`.
 
@@ -228,7 +228,7 @@ be-tests-postgres-latest-ee:
         POSTGRES_DB: circle_test
         POSTGRES_HOST_AUTH_METHOD: trust
   steps:
-  - uses: actions/checkout@v3
+  - uses: actions/checkout@v4
   - name: Test Postgres driver (latest)
     uses: ./.github/actions/test-driver
     with:

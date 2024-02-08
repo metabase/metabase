@@ -44,21 +44,76 @@
       (doseq [export-format (qp.streaming/export-formats)]
         (testing (u/colorize :yellow export-format)
           (case export-format
-            ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
             :csv (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                         ["1" "Red Medicine" "4" "10.06" "-165.37" "3"]
-                         ["2" "Stout Burgers & Beers" "11" "34.1" "-118.33" "2"]
-                         ["3" "The Apple Pan" "11" "34.04" "-118.43" "2"]
-                         ["4" "Wurstküche" "29" "34" "-118.47" "2"]
-                         ["5" "Brite Spot Family Restaurant" "20" "34.08" "-118.26" "2"]]
+                         ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
+                         ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]
+                         ["3" "The Apple Pan" "11" "34.04060000° N" "118.42800000° W" "2"]
+                         ["4" "Wurstküche" "29" "33.99970000° N" "118.46500000° W" "2"]
+                         ["5" "Brite Spot Family Restaurant" "20" "34.07780000° N" "118.26100000° W" "2"]]
                         (basic-actual-results* export-format query)))
             ;; Consistent formatting with CSVs and the UI
-            :json (is (= [{"ID" "1" "Name" "Red Medicine" "Category ID" "4" "Latitude" "10.06" "Longitude" "-165.37" "Price" "3"}
-                          {"ID" "2" "Name" "Stout Burgers & Beers" "Category ID" "11" "Latitude" "34.1" "Longitude" "-118.33" "Price" "2"}
-                          {"ID" "3" "Name" "The Apple Pan" "Category ID" "11" "Latitude" "34.04" "Longitude" "-118.43" "Price" "2"}
-                          {"ID" "4" "Name" "Wurstküche" "Category ID" "29" "Latitude" "34" "Longitude" "-118.47" "Price" "2"}
-                          {"ID" "5" "Name" "Brite Spot Family Restaurant" "Category ID" "20" "Latitude" "34.08" "Longitude" "-118.26" "Price" "2"}]
+            :json (is (= [{"ID" "1",
+                           "Name" "Red Medicine",
+                           "Category ID" "4",
+                           "Latitude" "10.06460000° N",
+                           "Longitude" "165.37400000° W",
+                           "Price" "3"}
+                          {"ID" "2",
+                           "Name" "Stout Burgers & Beers",
+                           "Category ID" "11",
+                           "Latitude" "34.09960000° N",
+                           "Longitude" "118.32900000° W",
+                           "Price" "2"}
+                          {"ID" "3",
+                           "Name" "The Apple Pan",
+                           "Category ID" "11",
+                           "Latitude" "34.04060000° N",
+                           "Longitude" "118.42800000° W",
+                           "Price" "2"}
+                          {"ID" "4",
+                           "Name" "Wurstküche",
+                           "Category ID" "29",
+                           "Latitude" "33.99970000° N",
+                           "Longitude" "118.46500000° W",
+                           "Price" "2"}
+                          {"ID" "5",
+                           "Name" "Brite Spot Family Restaurant",
+                           "Category ID" "20",
+                           "Latitude" "34.07780000° N",
+                           "Longitude" "118.26100000° W",
+                           "Price" "2"}]
                          (map #(update-keys % name) (basic-actual-results* export-format query))))
+            :xlsx (is (= [{"ID" 1.0,
+                           "Name" "Red Medicine",
+                           "Category ID" 4.0,
+                           "Latitude" "10.06460000° N",
+                           "Longitude" "165.37400000° W",
+                           "Price" 3.0}
+                          {"ID" 2.0,
+                           "Name" "Stout Burgers & Beers",
+                           "Category ID" 11.0,
+                           "Latitude" "34.09960000° N",
+                           "Longitude" "118.32900000° W",
+                           "Price" 2.0}
+                          {"ID" 3.0,
+                           "Name" "The Apple Pan",
+                           "Category ID" 11.0,
+                           "Latitude" "34.04060000° N",
+                           "Longitude" "118.42800000° W",
+                           "Price" 2.0}
+                          {"ID" 4.0,
+                           "Name" "Wurstküche",
+                           "Category ID" 29.0,
+                           "Latitude" "33.99970000° N",
+                           "Longitude" "118.46500000° W",
+                           "Price" 2.0}
+                          {"ID" 5.0,
+                           "Name" "Brite Spot Family Restaurant",
+                           "Category ID" 20.0,
+                           "Latitude" "34.07780000° N",
+                           "Longitude" "118.26100000° W",
+                           "Price" 2.0}]
+                         (basic-actual-results* export-format query)))
             (is (= (expected-results* export-format query)
                    (basic-actual-results* export-format query)))))))))
 
@@ -68,15 +123,12 @@
 (defn- compare-results [export-format query]
   (is (= (expected-results* export-format query)
          (cond-> (actual-results* export-format query)
-           (= export-format :api) (dissoc :cached)))))
+           (= export-format :api)
+           (dissoc :cached)))))
 
 (deftest streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."
-    ;; CSV and JSON exports round decimals to 2 digits to conform to the Metabase UI
-    ;; so are not identical to results from expected-results*
-    (doseq [export-format (disj (qp.streaming/export-formats) :csv :json)]
-      (testing (u/colorize :yellow export-format)
-        (compare-results export-format (mt/mbql-query venues {:limit 5}))))))
+    (compare-results :api (mt/mbql-query venues {:limit 5}))))
 
 (deftest utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
@@ -322,30 +374,30 @@
 
 (deftest basic-export-test
   (do-test!
-   "A simple export of a table succeeds"
-   {:query      {:database (mt/id)
-                 :type     :query
-                 :query    {:source-table (mt/id :venues)
-                            :limit 2}}
+    "A simple export of a table succeeds"
+    {:query      {:database (mt/id)
+                  :type     :query
+                  :query    {:source-table (mt/id :venues)
+                             :limit        2}}
 
-    :assertions {:csv (fn [results]
-                        ;; CSVs round decimals to 2 digits without viz-settings
-                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                ["1" "Red Medicine" "4" "10.06" "-165.37" "3"]
-                                ["2" "Stout Burgers & Beers" "11" "34.1" "-118.33" "2"]]
-                               (csv/read-csv results))))
+     :assertions {:csv  (fn [results]
+                          ;; CSVs round decimals to 2 digits without viz-settings
+                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                  ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
+                                  ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
+                                 (csv/read-csv results))))
 
-                 :json (fn [results]
-                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                 ["1" "Red Medicine" "4" "10.06" "-165.37" "3"]
-                                 ["2" "Stout Burgers & Beers" "11" "34.1" "-118.33" "2"]]
-                                (parse-json-results results))))
+                  :json (fn [results]
+                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                  ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
+                                  ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
+                                 (parse-json-results results))))
 
-                 :xlsx (fn [results]
-                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                [1.0 "Red Medicine" 4.0 10.0646 -165.374 3.0]
-                                [2.0 "Stout Burgers & Beers" 11.0 34.0996 -118.329 2.0]]
-                               (xlsx-test/parse-xlsx-results results))))}}))
+                  :xlsx (fn [results]
+                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                  [1.0 "Red Medicine" 4.0 "10.06460000° N" "165.37400000° W" 3.0]
+                                  [2.0 "Stout Burgers & Beers" 11.0 "34.09960000° N" "118.32900000° W" 2.0]]
+                                 (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest reordered-columns-test
   (do-test!
@@ -385,43 +437,42 @@
                              :internal "Category ID [internal remap]"
                              :external "Category ID [external remap]")]
               (do-test!
-               "Remapped values are used in exports"
-               {:query {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)
-                                   :limit        1}}
+                "Remapped values are used in exports"
+                {:query      {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (mt/id :venues)
+                                         :limit        1}}
 
-                :assertions {:csv (fn [results]
-                                    ;; CSVs round decimals to 2 digits without viz-settings
-                                    (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
-                                            ["1" "Red Medicine" "Asian" "10.06" "-165.37" "3"]]
-                                           (csv/read-csv results))))
+                 :assertions {:csv  (fn [results]
+                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                              ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
+                                             (csv/read-csv results))))
 
-                             :json (fn [results]
-                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
-                                             ["1" "Red Medicine" "Asian" "10.06" "-165.37" "3"]]
-                                            (parse-json-results results))))
+                              :json (fn [results]
+                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                              ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
+                                             (parse-json-results results))))
 
-                             :xlsx (fn [results]
-                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
-                                             [1.0 "Red Medicine" "Asian" 10.0646 -165.374 3.0]]
-                                            (xlsx-test/parse-xlsx-results results))))}})))]
+                              :xlsx (fn [results]
+                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                              [1.0 "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" 3.0]]
+                                             (xlsx-test/parse-xlsx-results results))))}})))]
     (mt/with-column-remappings [venues.category_id categories.name]
-      (testfn :external))
+                               (testfn :external))
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-      (testfn :internal))))
+                               (testfn :internal))))
 
 (deftest join-export-test
   (do-test!
-   "A query with a join can be exported succesfully"
-   {:query {:database (mt/id)
-            :query
-            {:source-table (mt/id :venues)
-             :joins
-             [{:fields "all",
-               :source-table (mt/id :categories)
-               :condition ["="
-                           ["field" (mt/id :venues :category_id) nil]
+    "A query with a join can be exported succesfully"
+    {:query       {:database (mt/id)
+                   :query
+                   {:source-table (mt/id :venues)
+                    :joins
+                    [{:fields       "all",
+                      :source-table (mt/id :categories)
+                      :condition    ["="
+                                     ["field" (mt/id :venues :category_id) nil]
                            ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
                :alias "Categories"}]
              :limit 1}

@@ -42,8 +42,12 @@ export const DashboardControls = ComposedComponent =>
         this.loadDashboardParams();
       }
 
-      componentDidUpdate() {
-        this.updateDashboardParams();
+      componentDidUpdate(prevProps) {
+        if (prevProps.location !== this.props.location) {
+          this.syncUrlHashToState();
+        } else {
+          this.syncStateToUrlHash();
+        }
         this._showNav(!this.state.isFullscreen);
       }
 
@@ -72,7 +76,16 @@ export const DashboardControls = ComposedComponent =>
         this.setHideParameters(options.hide_parameters);
       };
 
-      updateDashboardParams = () => {
+      syncUrlHashToState() {
+        const { location } = this.props;
+
+        const { refresh, fullscreen, theme } = parseHashOptions(location.hash);
+        this.setRefreshPeriod(refresh);
+        this.setFullscreen(fullscreen);
+        this.setTheme(theme);
+      }
+
+      syncStateToUrlHash = () => {
         const { location, replace } = this.props;
 
         const options = parseHashOptions(location.hash);
@@ -224,7 +237,6 @@ export const DashboardControls = ComposedComponent =>
             hasNightModeToggle={this.state.theme !== "transparent"}
             setRefreshElapsedHook={this.setRefreshElapsedHook}
             loadDashboardParams={this.loadDashboardParams}
-            updateDashboardParams={this.updateDashboardParams}
             onNightModeChange={this.setNightMode}
             onFullscreenChange={this.setFullscreen}
             onRefreshPeriodChange={this.setRefreshPeriod}

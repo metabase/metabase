@@ -43,6 +43,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -209,6 +210,7 @@
    :points_of_interest      nil
    :cache_ttl               nil
    :position                nil
+   :width                   "fixed"
    :public_uuid             nil
    :auto_apply_filters      true
    :show_in_getting_started false
@@ -580,29 +582,30 @@
 (deftest param-values-test
   (testing "Don't return `param_values` for Fields for which the current User has no data perms."
     (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-      (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :venues)))
-      (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
-                     Card          {card-id :id}      {:name "Dashboard Test Card"}
-                     DashboardCard {_ :id}            {:dashboard_id       dashboard-id
-                                                       :card_id            card-id
-                                                       :parameter_mappings [{:card_id      card-id
-                                                                             :parameter_id "foo"
-                                                                             :target       [:dimension
-                                                                                            [:field (mt/id :venues :name) nil]]}
-                                                                            {:card_id      card-id
-                                                                             :parameter_id "bar"
-                                                                             :target       [:dimension
-                                                                                            [:field (mt/id :categories :name) nil]]}]}]
+      (perms.test-util/with-no-data-perms-for-all-users!
+        (perms.test-util/with-perm-for-group-and-table!
+            (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted
+          (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
+                         Card          {card-id :id}      {:name "Dashboard Test Card"}
+                         DashboardCard {_ :id}            {:dashboard_id       dashboard-id
+                                                           :card_id            card-id
+                                                           :parameter_mappings [{:card_id      card-id
+                                                                                 :parameter_id "foo"
+                                                                                 :target       [:dimension
+                                                                                                [:field (mt/id :venues :name) nil]]}
+                                                                                {:card_id      card-id
+                                                                                 :parameter_id "bar"
+                                                                                 :target       [:dimension
+                                                                                                [:field (mt/id :categories :name) nil]]}]}]
 
-        (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
-                                                               "25°"
-                                                               "33 Taps"]
-                                       :field_id              (mt/id :venues :name)
-                                       :human_readable_values []}}
-               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                 (into {} (for [[field-id m] response]
-                            [field-id (update m :values (partial take 3))])))))))))
+            (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
+                                                                   "25°"
+                                                                   "33 Taps"]
+                                           :field_id              (mt/id :venues :name)
+                                           :human_readable_values []}}
+                   (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
+                     (into {} (for [[field-id m] response]
+                                [field-id (update m :values (partial take 3))])))))))))))
 
 (deftest fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
@@ -797,6 +800,27 @@
             (is (=? {:message "You do not have curate permissions for this Collection."}
                     (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
                                           {:collection_id (u/the-id new-collection)})))))))))
+
+(deftest update-dashboard-width-setting-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "We can change the dashboard's width between 'fixed' and 'full' settings."
+      (t2.with-temp/with-temp [Dashboard dashboard {}]
+        (with-dashboards-in-writeable-collection [dashboard]
+          (testing "the default dashboard width value is 'fixed'."
+            (is (= "fixed"
+                   (t2/select-one-fn :width Dashboard :id (u/the-id dashboard)))))
+
+          (testing "changing the width setting to 'full' works."
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:width "full"})
+            (is (= "full"
+                   (t2/select-one-fn :width Dashboard :id (u/the-id dashboard)))))
+
+          (testing "values that are not 'fixed' or 'full' error."
+            (is (= "should be either fixed or full, received: 1200"
+                   (-> (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})
+                       :specific-errors
+                       :width
+                       first)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD CARD IN DASHCARD                                         |
@@ -3314,10 +3338,10 @@
                    (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name]))))))
       (testing "should check perms for the Fields in question"
         (mt/with-temp-copy-of-db
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (is (= "You don't have permissions to do that."
+          (perms.test-util/with-no-data-perms-for-all-users!
+            (is (= "You don't have permissions to do that."
                (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
-                         :filtered [%venues.price] :filtering [%categories.name])))))))))
+                         :filtered [%venues.price] :filtering [%categories.name]))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
