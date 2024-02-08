@@ -198,13 +198,11 @@
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
   []
-  (reduce
-   (fn [acc file]
-     (+ acc (hash (slurp file))))
-   0
-   (->> (io/file analytics-dir-resource)
-        file-seq
-        (remove fs/directory?))))
+  (->> (io/file analytics-dir-resource)
+       file-seq
+       (remove fs/directory?)
+       (pmap #(hash (slurp %)))
+       (reduce + 0)))
 
 (defn- should-load-audit? [current-checksum last-checksum]
   (not= current-checksum last-checksum))
