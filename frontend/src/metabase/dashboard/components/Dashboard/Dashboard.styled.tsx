@@ -155,12 +155,15 @@ export const FIXED_WIDTH = "1048px";
 export const FixedWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
   width: 100%;
-  margin: 0 auto;
 
   ${({ isFixedWidth }) =>
     isFixedWidth &&
     css`
+      margin: 0 auto;
       max-width: ${FIXED_WIDTH};
     `}
 `;

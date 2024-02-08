@@ -160,7 +160,6 @@ function EmbedFrame({
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   <SyncedParametersList
-                    className="mt1"
                     question={question}
                     dashboard={dashboard}
                     parameters={getValuePopulatedParameters(
