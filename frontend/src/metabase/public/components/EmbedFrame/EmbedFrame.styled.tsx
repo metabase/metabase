@@ -45,14 +45,17 @@ export const ContentContainer = styled.div<{ hasScroll: boolean }>`
 export const Header = styled.header`
   display: flex;
   flex-direction: column;
-  padding: 0.5rem;
+`;
+
+export const TitleAndDescriptionContainer = styled.div`
+  padding: 0.5rem 0.5rem 0 0.5rem;
 
   ${breakpointMinSmall} {
-    padding: 1rem;
+    padding: 1rem 1rem 0 1rem;
   }
 
   ${breakpointMinLarge} {
-    padding: 1.5rem;
+    padding: 1.5rem 1.5rem 0 1.5rem;
   }
 `;
 
@@ -89,6 +92,16 @@ const footerVariantStyles = {
 export const ParametersWidgetContainer = styled.div`
   display: flex;
   align-items: flex-start;
+
+  padding: 0 0.5rem 0.5rem 0.5rem;
+
+  ${breakpointMinSmall} {
+    padding: 0 1rem 1rem 1rem;
+  }
+
+  ${breakpointMinLarge} {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+  }
 `;
 
 export const Footer = styled.footer<{ variant: FooterVariant }>`

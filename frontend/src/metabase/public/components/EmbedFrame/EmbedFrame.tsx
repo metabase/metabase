@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { isValidElement, useEffect, useState } from "react";
 
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
@@ -41,6 +41,7 @@ import {
   ParametersWidgetContainer,
   Footer,
   ActionButtonsContainer,
+  TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
 
@@ -60,6 +61,9 @@ interface OwnProps {
   hiddenParameterSlugs?: string;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: ReactNode;
+
+  // Used to render public dashboard's tabs between title and filters
+  header?: ReactNode;
 }
 
 interface StateProps {
@@ -88,6 +92,7 @@ function mapStateToProps(state: State) {
 function EmbedFrame({
   className,
   children,
+  header,
   name,
   description,
   question,
@@ -147,12 +152,15 @@ function EmbedFrame({
         {hasHeader && (
           <Header className="EmbedFrame-header">
             {finalName && (
-              <TitleAndDescription
-                title={finalName}
-                description={description}
-                className="my2"
-              />
+              <TitleAndDescriptionContainer>
+                <TitleAndDescription
+                  title={finalName}
+                  description={description}
+                  className="my2"
+                />
+              </TitleAndDescriptionContainer>
             )}
+            {isValidElement(header) ? header : null}
             {hasParameters && (
               <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
                 <FixedWidthContainer
