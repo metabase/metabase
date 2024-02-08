@@ -84,7 +84,7 @@ class Join extends MBQLObjectClause {
   /**
    * @deprecated use metabase-lib v2 to manage joins
    */
-  joinedTable() {
+  private joinedTable() {
     return this?.joinedQuery?.().table?.();
   }
 
