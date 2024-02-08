@@ -154,8 +154,13 @@ const Questions = createEntity({
 
 export function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
-    return { name: "model" };
+    if (question.authority_level === "official") {
+      return { name: "model_with_badge", color: "saturated-yellow" };
+    } else {
+      return { name: "model" };
+    }
   }
+
   const visualization = require("metabase/visualizations").default.get(
     question.display,
   );
