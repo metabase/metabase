@@ -702,10 +702,13 @@
     (testing "Uploads should be blocked without data access"
       (mt/with-model-cleanup [:model/Table]
         (let [table-name (mt/random-name)
-              schema-name (or (sql.tx/session-schema driver/*driver*) "not_public")
+              schema-name (or (sql.tx/session-schema driver/*driver*) "public")
               conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (doseq [stmt [(format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name);"
-                        (format "CREATE TABLE \"%s\".\"%s\" (id INTEGER);" schema-name table-name)]]
+          (doseq [stmt [(format "CREATE SCHEMA IF NOT EXISTS %s"
+                                (sql.tx/qualify-and-quote driver/*driver* schema-name));"
+                        (format "CREATE TABLE %s.%s (id INTEGER);"
+                                (sql.tx/qualify-and-quote driver/*driver* schema-name)
+                                (sql.tx/qualify-and-quote driver/*driver* table-name))]]
             (jdbc/execute! conn-spec stmt))
           (try (upload-test/sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)
                (let [db-id    (u/the-id (mt/db))
@@ -717,8 +720,8 @@
                  (doseq [[schema-perms can-upload?] {:all            true
                                                      :none           false
                                                      {table-id :all} false}]
-                   (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {"public"    :all
-                                                                                       schema-name schema-perms}}}}
+                   (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {"some_schema" :all
+                                                                                       schema-name   schema-perms}}}}
                      (if can-upload?
                        (is (some? (upload-csv!)))
                        (is (thrown-with-msg?
@@ -728,15 +731,18 @@
                    (with-all-users-data-perms! {db-id {:data {:native :write, :schemas [schema-name]}}}
                      (is (some? (upload-csv!))))))
                (finally
-                 (jdbc/execute! conn-spec (format "DROP TABLE \"%s\".\"%s\";" schema-name table-name)))))))))
+                 (jdbc/execute! conn-spec (format "DROP TABLE %s.%s;"
+                                                  (sql.tx/qualify-and-quote driver/*driver* schema-name)
+                                                  (sql.tx/qualify-and-quote driver/*driver* table-name))))))))))
 
 (deftest append-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (if (driver/database-supports? driver/*driver* :schemas (mt/db))
       (testing "CSV appends should be blocked without data access to the schema"
-        (let [schema-name (or (sql.tx/session-schema driver/*driver*) "not_public")
+        (let [schema-name (or (sql.tx/session-schema driver/*driver*) "public")
               conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (jdbc/execute! conn-spec (format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema-name))
+          (jdbc/execute! conn-spec (format "CREATE SCHEMA IF NOT EXISTS %s;"
+                                           (sql.tx/qualify-and-quote driver/*driver* schema-name)))
           (upload-test/with-upload-table!
             [table-a (upload-test/create-upload-table! :schema-name schema-name)]
             (upload-test/with-upload-table!
@@ -751,8 +757,7 @@
                          [{(:id table-a) :all} true        "Data permissions on table should succeed"]
                          [{(:id table-b) :all} false       "Data permissions only on another table in the same schema should fail"]]]
                   (testing test-string
-                    (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {"public"    :all
-                                                                                        schema-name schema-perms}}}}
+                    (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {schema-name schema-perms}}}}
                       (if can-append?
                         (is (some? (append-csv!)))
                         (is (thrown-with-msg?
@@ -808,13 +813,16 @@
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-model-cleanup [:model/Table]
         (let [table-name (mt/random-name)
-              schema-name (or (sql.tx/session-schema driver/*driver*) "not_public")]
+              schema-name (or (sql.tx/session-schema driver/*driver*) "public")]
           (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-            (doseq [stmt [(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema-name)
-                          (format "CREATE TABLE \"%s\".\"%s\" (id INTEGER);" schema-name table-name)]]
+            (doseq [stmt [(format "CREATE SCHEMA IF NOT EXISTS %s"
+                                  (sql.tx/qualify-and-quote driver/*driver* schema-name));"
+                          (format "CREATE TABLE %s.%s (id INTEGER);"
+                                  (sql.tx/qualify-and-quote driver/*driver* schema-name)
+                                  (sql.tx/qualify-and-quote driver/*driver* table-name))]]
               (jdbc/execute! conn-spec stmt))
             (try (upload-test/sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)
-                 (let [db-id     (u/the-id (mt/db))
+                 (let [db-id    (u/the-id (mt/db))
                        table-id (t2/select-one-pk :model/Table :db_id db-id)]
                    (mt/with-temporary-setting-values [uploads-enabled      true
                                                       uploads-database-id  db-id
@@ -826,8 +834,8 @@
                        (testing (format "can_upload should be %s if the user has %s access to the upload schema"
                                         can-upload? schema-perms)
                          (with-all-users-data-perms! {db-id {:data {:native :none
-                                                                    :schemas {"public"     :all
-                                                                              schema-name schema-perms}}}}
+                                                                    :schemas {"some_schema" :all
+                                                                              schema-name   schema-perms}}}}
                            (testing "GET /api/database"
                              (let [result (->> (mt/user-http-request :rasta :get 200 "database")
                                                :data
@@ -838,4 +846,6 @@
                              (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
                                (is (= can-upload? (:can_upload result))))))))))
                  (finally
-                   (jdbc/execute! conn-spec (format "DROP TABLE \"%s\".\"%s\";" schema-name table-name))))))))))
+                   (jdbc/execute! conn-spec (format "DROP TABLE %s.%s;"
+                                                    (sql.tx/qualify-and-quote driver/*driver* schema-name)
+                                                    (sql.tx/qualify-and-quote driver/*driver* table-name)))))))))))

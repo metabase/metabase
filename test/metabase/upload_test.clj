@@ -449,11 +449,12 @@
             schema-name       (if (contains? args :schema-name)
                                 (:schema-name args)
                                 (when (driver/database-supports? driver/*driver* :schemas db)
-                                  (or (sql.tx/session-schema driver/*driver*) "not_public")))
+                                  (or (sql.tx/session-schema driver/*driver*) "public")))
             ;; make sure the schema exists
             _ (when schema-name
                 (let [spec (sql-jdbc.conn/connection-details->spec driver/*driver* (:details db))]
-                  (jdbc/execute! spec (format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema-name))))
+                  (jdbc/execute! spec (format "CREATE SCHEMA IF NOT EXISTS %s;"
+                                              (sql.tx/qualify-and-quote driver/*driver* schema-name)))))
             file              (csv-file-with
                                ["id, name"
                                 "1, Luke Skywalker"
@@ -1035,7 +1036,7 @@
           db-id                (u/the-id db)
           original-sync-values (select-keys db [:is_on_demand :is_full_sync])
           in-future?           (atom false)
-          schema-name          (or (sql.tx/session-schema driver/*driver*) "not_public")
+          schema-name          (or (sql.tx/session-schema driver/*driver*) "public")
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
@@ -1044,9 +1045,9 @@
                                     (swap! in-future? (constantly true))
                                     (thunk))]
           (testing "Happy path with schema, and without table-prefix"
-            ;; create schema in the db
+            ;; make sure the schema exists
             (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* (:details db))
-                           (format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema-name))
+                           (format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.tx/qualify-and-quote driver/*driver* schema-name)))
             (with-upload-table!
               [new-table (card->table (upload-example-csv! :schema-name schema-name :sync-synchronously? false))]
               (is (=? {:display          :table
