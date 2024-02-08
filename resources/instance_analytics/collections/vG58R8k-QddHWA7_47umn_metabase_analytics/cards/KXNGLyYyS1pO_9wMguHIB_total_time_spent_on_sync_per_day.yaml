@@ -94,3 +94,4 @@ serdes/meta:
   label: total_time_spent_on_sync_per_day
   model: Card
 metabase_version: vUNKNOWN (a98530f)
+type: question

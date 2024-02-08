@@ -38,3 +38,4 @@ serdes/meta:
 - id: is_on_demand
   model: Field
 database_indexed: null
+database_partitioned: null
