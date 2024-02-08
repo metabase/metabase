@@ -367,6 +367,13 @@ describe("scenarios > setup", () => {
       .findByText("Get started with Embedding Metabase in your app")
       .should("exist");
 
+    main().findByRole("link", { name: "Learn more" }).should(
+      "have.attr",
+      "href",
+      // eslint-disable-next-line no-unconditional-metabase-links-render -- this is a test file
+      "https://www.metabase.com/docs/latest/embedding/start.html?utm_media=embed-minimal-homepage",
+    );
+
     cy.icon("close").click();
 
     main()
@@ -396,18 +403,35 @@ describeWithSnowplow("scenarios > setup", () => {
     // 2 - pageview
     cy.visit(`/setup`);
 
-    // 3 - setup/step_seen
+    // 3 - setup/step_seen "welcome"
     cy.findByTestId("welcome-page").within(() => {
       cy.findByText("Welcome to Metabase");
       cy.findByTextEnsureVisible("Let's get started").click();
     });
 
-    // 4 - setup/step_seen
-    cy.findByTestId("setup-forms").findByText(
-      "What's your preferred language?",
-    );
+    cy.findByTestId("setup-forms").within(() => {
+      // 4 - setup/step_seen  "language"
+      cy.findByText("What's your preferred language?");
+      cy.findByText("Next").click();
 
-    expectGoodSnowplowEvents(4);
+      // 5 - setup/step_seen "user_info"
+      cy.findByText("What should we call you?");
+      cy.findByLabelText("Email").type(admin.email);
+      cy.findByLabelText("Company or team name").type("Epic Team");
+      cy.findByLabelText("Create a password").type(admin.password);
+      cy.findByLabelText("Confirm your password").type(admin.password);
+      cy.button("Next").click();
+
+      cy.findByText("What will you use Metabase for?").should("exist");
+      // 6 - setup/step_seen "usage_question"
+
+      cy.button("Next").click();
+
+      // 7 setup/usage_reason_selected
+      // 8 setup/step_seen "database"
+    });
+
+    expectGoodSnowplowEvents(8);
   });
 
   it("should ignore snowplow failures and work as normal", () => {

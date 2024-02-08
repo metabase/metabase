@@ -12,10 +12,8 @@ import {
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
-  trackDatabaseStepCompleted,
   trackTrackingChanged,
-  trackUserStepCompleted,
-  trackWelcomeStepCompleted,
+  trackUsageReasonSelected,
 } from "./analytics";
 import {
   getAvailableLocales,
@@ -72,11 +70,6 @@ export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
 export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
 export const selectStep = createAction<SetupStep>(SELECT_STEP);
 
-export const SUBMIT_WELCOME = "metabase/setup/SUBMIT_WELCOME_STEP";
-export const submitWelcome = createAsyncThunk(SUBMIT_WELCOME, () => {
-  trackWelcomeStepCompleted();
-});
-
 export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
 export const updateLocale = createAsyncThunk(
   UPDATE_LOCALE,
@@ -90,15 +83,13 @@ export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
 export const submitUser = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_INFO",
-  (_: UserInfo) => {
-    trackUserStepCompleted();
-  },
+  (_: UserInfo) => undefined,
 );
 
 export const submitUsageReason = createAsyncThunk(
   "metabase/setup/SUBMIT_USAGE_REASON",
-  (_: UsageReason) => {
-    // TODO: add tracking
+  (usageReason: UsageReason) => {
+    trackUsageReasonSelected(usageReason);
   },
 );
 
@@ -139,12 +130,10 @@ export const submitDatabase = createAsyncThunk<
 
     try {
       await validateDatabase(token, sslDatabase);
-      trackDatabaseStepCompleted(database.engine);
       return sslDatabase;
     } catch (error1) {
       try {
         await validateDatabase(token, nonSslDatabase);
-        trackDatabaseStepCompleted(database.engine);
         return nonSslDatabase;
       } catch (error2) {
         return rejectWithValue(error2);
@@ -156,16 +145,13 @@ export const submitDatabase = createAsyncThunk<
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
-  (_: InviteInfo) => {
-    trackDatabaseStepCompleted();
-  },
+  (_: InviteInfo) => undefined,
 );
 
 export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
 export const skipDatabase = createAsyncThunk(
   SKIP_DATABASE,
   (engine?: string) => {
-    trackDatabaseStepCompleted();
     trackAddDataLaterClicked(engine);
   },
 );

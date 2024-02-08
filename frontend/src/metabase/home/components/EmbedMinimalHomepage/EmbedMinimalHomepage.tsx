@@ -14,7 +14,7 @@ type EmbedMinimalHomepageProps = {
 export const EmbedMinimalHomepage = ({
   onDismiss,
 }: EmbedMinimalHomepageProps) => {
-  const learnMoreUrl = useSelector(state =>
+  const learnMoreBaseUrl = useSelector(state =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/start" }),
   );
@@ -64,7 +64,7 @@ export const EmbedMinimalHomepage = ({
 
             <Text>{jt`${(
               <ExternalLink
-                href={learnMoreUrl}
+                href={learnMoreBaseUrl + "?utm_media=embed-minimal-homepage"}
                 key="link"
               >{t`Learn more`}</ExternalLink>
             )} about embedding`}</Text>
