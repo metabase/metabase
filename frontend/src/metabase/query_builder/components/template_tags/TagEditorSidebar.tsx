@@ -162,9 +162,11 @@ const SettingsPane = ({
           tag={tag}
           key={tag.name}
           parameter={parametersById[tag.id]}
-          embeddedParameterVisibility={getEmbeddedParameterVisibility(
-            parametersById[tag.id].slug,
-          )}
+          embeddedParameterVisibility={
+            parametersById[tag.id]
+              ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
+              : null
+          }
           databaseFields={databaseFields}
           database={database}
           databases={databases}

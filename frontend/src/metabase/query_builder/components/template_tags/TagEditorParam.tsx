@@ -55,7 +55,7 @@ import {
 interface Props {
   tag: TemplateTag;
   parameter: Parameter;
-  embeddedParameterVisibility?: EmbeddingParameterVisibility;
+  embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
   databaseFields?: Field[];
