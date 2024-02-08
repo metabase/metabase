@@ -41,7 +41,6 @@ const setup = ({
         </button>
         <ParameterSidebar
           parameter={parameter}
-          embeddingParameters={{}}
           otherParameters={otherParameters}
           onChangeName={onChangeName}
           onChangeDefaultValue={jest.fn()}
@@ -54,6 +53,7 @@ const setup = ({
           onShowAddParameterPopover={jest.fn()}
           onClose={jest.fn()}
           onChangeRequired={jest.fn()}
+          getEmbeddedParameterVisibility={() => null}
         />
       </div>
     );

@@ -138,7 +138,7 @@ export const ParameterSettings = ({
         />
 
         <SettingRequiredContainer
-          // This forces re-rendering when switching between parameters,
+          // This forces the toggle to be a new instance when the parameter changes,
           // so that toggles don't slide, which is confusing.
           key={`parameter-setting-required_${parameter.id}`}
         >

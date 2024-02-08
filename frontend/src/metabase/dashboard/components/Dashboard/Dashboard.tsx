@@ -38,7 +38,7 @@ import type {
   StoreDashcard,
 } from "metabase-types/store";
 
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Database from "metabase-lib/metadata/Database";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -89,7 +89,6 @@ interface DashboardProps {
   editingParameter?: Parameter | null;
   parameters: UiParameter[];
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  embeddingParameters: EmbeddingParameters;
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
   metadata: Metadata;
   loadingStartTime: number | null;
@@ -183,6 +182,9 @@ interface DashboardProps {
     columnKey: string,
     settings?: Record<string, unknown> | null,
   ) => void;
+  getEmbeddedParameterVisibility: (
+    slug: string,
+  ) => EmbeddingParameterVisibility | null;
 }
 
 function DashboardInner(props: DashboardProps) {
