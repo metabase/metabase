@@ -63,7 +63,6 @@ export const PublicLinkCopyPanel = ({
                 c="error"
                 fw={700}
                 onClick={onRemoveLink}
-                data-testid="remove-link-button"
               >
                 {removeButtonLabel}
               </RemoveLinkAnchor>

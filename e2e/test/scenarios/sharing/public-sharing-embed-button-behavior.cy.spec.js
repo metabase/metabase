@@ -330,7 +330,7 @@ describe("embed modal display", () => {
           });
 
           openPublicLinkPopoverFromMenu();
-          cy.findByTestId("remove-link-button").click();
+          mantinePopover().button("Remove public link").click();
           expectGoodSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,
