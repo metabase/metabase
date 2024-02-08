@@ -1,26 +1,28 @@
 import { useAsync } from "react-use";
 
-import * as Lib from "metabase-lib";
+import type { TUseLLMIndicator } from "metabase/plugins/types";
 import { useSelector } from "metabase/lib/redux";
-import { Group } from "metabase/ui";
-import { canonicalCollectionId } from "metabase/collections/utils";
 import { getSetting } from "metabase/selectors/settings";
+import { Indicator, Tooltip } from "@mantine/core";
+import { POST } from "metabase/lib/api";
+
+import "./loading.css";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   getIsResultDirty,
   getResultsMetadata,
   getTransformedSeries,
 } from "metabase/query_builder/selectors";
 import { getQuestionWithDefaultVisualizationSettings } from "metabase/query_builder/actions/core/utils";
-import { POST } from "metabase/lib/api";
-import type { TUseLLMQuestionNameDescription } from "metabase/plugins/types";
-
-import "./loading.css";
+import * as Lib from "metabase-lib";
+import { useState } from "react";
 
 const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 
-export const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
+export const useLLMIndicator: TUseLLMIndicator = ({
   initialValues,
   question,
+  defaultWrapper = null,
 }) => {
   const state = useSelector(state => state);
 
@@ -66,27 +68,53 @@ export const useLLMQuestionNameDescription: TUseLLMQuestionNameDescription = ({
     };
   });
 
+  const [clicked, setClicked] = useState(false);
+
+  const handleClick = () => {
+    setClicked(true);
+  };
+
+  const generatedName =
+    clicked && result?.generatedName ? result.generatedName : "";
+  const generatedDescription =
+    clicked && result?.generatedDescription ? result.generatedDescription : "";
+
   return {
-    generatedName: result?.generatedName ?? "",
-    generatedDescription: result?.generatedDescription ?? "",
+    generatedName: generatedName,
+    generatedDescription: generatedDescription,
     loading,
-    LLMLoadingIndicator: () => {
-      if (!loading) {
-        return null;
+    LLMLoadingBadge: ({ children }) => {
+      if (loading) {
+        return (
+          <span>
+            <Tooltip label="Descriptions being generated." position="top-end">
+              <Indicator
+                processing
+                size={16}
+                color="#0000f0"
+                label="AI" />
+            </Tooltip>
+            {children}
+          </span>
+        );
+      } else if (clicked) {
+        return <>{children}</>;
+      } else {
+        return (
+          <span>
+            <Tooltip label="Description generated. Click to auto-fill."
+              position="top-end">
+              <Indicator
+                onClick={handleClick}
+                size={24}
+                color="#0000f0"
+                style={{ verticalAlign: "middle", cursor: "pointer" }}
+                label="💡" />
+            </Tooltip>
+            {children}
+          </span>
+        );
       }
-      return (
-        <Group position="right">
-          <div>
-            <span className="suggestionLoading3">✨</span>
-            <span className="suggestionLoading2">✨</span>
-            <span className="suggestionLoading">✨</span>
-            Generating question title and description
-            <span className="suggestionLoading"> ✨</span>
-            <span className="suggestionLoading2">✨</span>
-            <span className="suggestionLoading3">✨</span>
-          </div>
-        </Group>
-      );
     },
   };
 };

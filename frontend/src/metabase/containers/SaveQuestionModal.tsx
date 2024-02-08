@@ -30,7 +30,6 @@ import { useSelector } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
 
 import "./SaveQuestionModal.css";
-import { Indicator } from "@mantine/core";
 
 const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {
@@ -128,10 +127,13 @@ export const SaveQuestionModal = ({
     ],
   );
 
-  const { generatedName, generatedDescription, loading, LLMLoadingIndicator } =
-    PLUGIN_LLM_AUTODESCRIPTION.useLLMQuestionNameDescription({
+  const { generatedName, generatedDescription, loading, LLMLoadingBadge } =
+    PLUGIN_LLM_AUTODESCRIPTION.useLLMIndicator({
       initialValues,
       question,
+      defaultWrapper: ({ children }) => {
+        return <>{children}</>;
+      },
     });
 
   const handleOverwrite = useCallback(
@@ -251,31 +253,24 @@ export const SaveQuestionModal = ({
                         exit: 500,
                       }}
                     >
-                      <Indicator
-                        processing
-                        size={16}
-                        color="#0000f0"
-                        label="AI">
+                      <LLMLoadingBadge>
                         <div className="saveQuestionModalFields">
-                        {/*<LLMLoadingIndicator />*/}
                           <FormInput
-                            loading={loading}
                             name="name"
                             title={t`Name`}
                             placeholder={nameInputPlaceholder}
                           />
-                        <FormTextArea
-                          name="description"
-                          loading={loading}
-                          title={t`Description`}
-                          placeholder={t`It's optional but oh, so helpful`}
-                        />
-                        <FormCollectionPicker
-                          name="collection_id"
-                          title={t`Which collection should this go in?`}
-                        />
-                      </div>
-                      </Indicator>
+                          <FormTextArea
+                            name="description"
+                            title={t`Description`}
+                            placeholder={t`It's optional but oh, so helpful`}
+                          />
+                          <FormCollectionPicker
+                            name="collection_id"
+                            title={t`Which collection should this go in?`}
+                          />
+                        </div>
+                      </LLMLoadingBadge>
                     </CSSTransition>
                   )}
                 </TransitionGroup>

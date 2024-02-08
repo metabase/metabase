@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { DashboardId, Member, User } from "metabase-types/api";
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
 import type { FormValues } from "metabase/containers/SaveQuestionModal";
@@ -77,7 +77,27 @@ export type TUseLLMDashboardDescription = ({
   SuggestDescriptionButton: () => JSX.Element | null;
 };
 
+export type TUseLLMIndicator = ({
+  initialValues,
+  question,
+  defaultWrapper,
+}: {
+  initialValues: FormValues;
+  question: Question;
+  defaultWrapper: ({ children }: { children: ReactNode }) => JSX.Element | null;
+}) => {
+  generatedName: string;
+  generatedDescription: string;
+  loading: boolean;
+  LLMLoadingBadge: ({
+    children,
+  }: {
+    children: ReactNode;
+  }) => JSX.Element | null;
+};
+
 export type PluginLLMAutoDescription = {
   useLLMQuestionNameDescription: TUseLLMQuestionNameDescription;
   useLLMDashboardDescription: TUseLLMDashboardDescription;
+  useLLMIndicator: TUseLLMIndicator;
 };
