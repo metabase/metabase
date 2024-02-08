@@ -53,7 +53,15 @@ import {
 } from "./DashCardCardParameterMapper.styled";
 import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
 
-function formatSelected(query, mappingOption) {
+function formatSelectedVirtual({ name, sectionName }) {
+  if (sectionName == null) {
+    // for native question variables or field literals we just display the name
+    return name;
+  }
+  return `${sectionName}.${name}`;
+}
+
+function formatSelectedColumn(query, mappingOption) {
   const columnInfo = Lib.displayInfo(query, -1, mappingOption);
   const [group] = Lib.groupColumns([mappingOption]);
   const groupInfo = Lib.displayInfo(query, -1, group);
@@ -105,14 +113,6 @@ export function DashCardCardParameterMapper({
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const columns = Lib.visibleColumns(question.query(), -1);
-  const [index] = target
-    ? Lib.findColumnIndexesFromLegacyRefs(question.query(), -1, columns, [
-        normalize(target[1]),
-      ])
-    : [-1];
-
-  const selectedColumn = index >= 0 ? columns[index] : undefined;
 
   const handleChangeTarget = useCallback(
     target => {
@@ -124,6 +124,22 @@ export function DashCardCardParameterMapper({
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isNativeDashCard(dashcard);
+
+  let selectedMappingOption;
+  if (isVirtual) {
+    selectedMappingOption = _.find(mappingOptions, option =>
+      _.isEqual(normalize(option.target), normalize(target)),
+    );
+  } else {
+    const columns = Lib.visibleColumns(question.query(), -1);
+    const [index] = target
+      ? Lib.findColumnIndexesFromLegacyRefs(question.query(), -1, columns, [
+          normalize(target[1]),
+        ])
+      : [-1];
+
+    selectedMappingOption = index >= 0 ? columns[index] : undefined;
+  }
 
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {
@@ -154,11 +170,30 @@ export function DashCardCardParameterMapper({
           buttonText: t`No valid fields`,
           buttonIcon: null,
         };
-      } else if (selectedColumn) {
+      } else if (selectedMappingOption && isVirtual) {
         return {
           buttonVariant: "mapped",
           buttonTooltip: null,
-          buttonText: formatSelected(question.query(), selectedColumn),
+          buttonText: formatSelectedVirtual(selectedMappingOption),
+          buttonIcon: (
+            <CloseIconButton
+              role="button"
+              aria-label={t`Disconnect`}
+              onClick={e => {
+                handleChangeTarget(null);
+                e.stopPropagation();
+              }}
+            />
+          ),
+        };
+      } else if (selectedMappingOption && !isVirtual) {
+        return {
+          buttonVariant: "mapped",
+          buttonTooltip: null,
+          buttonText: formatSelectedColumn(
+            question.query(),
+            selectedMappingOption,
+          ),
           buttonIcon: (
             <CloseIconButton
               role="button"
@@ -195,10 +230,10 @@ export function DashCardCardParameterMapper({
       hasPermissionsToMap,
       isDisabled,
       isVirtual,
-      selectedColumn,
+      selectedMappingOption,
       target,
-      question,
       handleChangeTarget,
+      question,
     ]);
 
   const headerContent = useMemo(() => {
