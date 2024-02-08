@@ -11,6 +11,7 @@ import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Search from "metabase/entities/search";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
@@ -220,6 +221,11 @@ const CollectionHeader = ({
   id: string;
   fixPaddingUnderBanner: boolean;
 }) => {
+  const dispatch = useDispatch();
+  const wrappable = { ...collection, model: "collection" };
+  const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
+  const icon = wrappedCollection.getIcon();
+
   return (
     <CollectionHeaderContainer
       id={id}
@@ -231,7 +237,7 @@ const CollectionHeader = ({
       <CollectionHeaderGroup grow noWrap>
         <CollectionHeaderLink to={Urls.collection(collection)}>
           <Group spacing=".25rem">
-            <Icon name="folder" color="text-dark" size={16} />
+            <Icon {...icon} />
             <Text weight="bold" color="text-medium">
               {getCollectionName(collection)}
             </Text>
