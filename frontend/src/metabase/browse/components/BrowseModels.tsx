@@ -21,7 +21,6 @@ import NoResults from "assets/img/no_results.svg";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 
-import { color } from "metabase/lib/colors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
@@ -177,8 +176,10 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const lastEditorFullName =
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
-  Search.wrapEntity
-  const icon =
+
+  const dispatch = useDispatch();
+  const wrappedModel = Search.wrapEntity(model, dispatch);
+  const icon = wrappedModel.getIcon();
 
   return (
     <Link
