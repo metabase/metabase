@@ -333,7 +333,7 @@ async function handleQBInit(
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
 
   if (question.isSaved()) {
-    if (!question.isDataset()) {
+    if (question.type() === "question") {
       question = question.lockDisplay();
     }
 
