@@ -223,4 +223,28 @@ describe("scenarios > public > dashboard", () => {
       cy.findByText(unusedFilter.name).should("not.exist");
     });
   });
+
+  it("should respect dashboard width setting in a public dashboard", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id);
+    });
+
+    // new dashboards should default to 'fixed' width
+    cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
+
+    // toggle full-width
+    cy.get("@dashboardId").then(id => {
+      cy.signInAsAdmin();
+      cy.request("PUT", `/api/dashboard/${id}`, {
+        width: "full",
+      });
+      visitPublicDashboard(id);
+    });
+
+    cy.findByTestId("dashboard-grid").should(
+      "not.have.css",
+      "max-width",
+      "1048px",
+    );
+  });
 });
