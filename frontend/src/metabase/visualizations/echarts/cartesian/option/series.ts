@@ -222,7 +222,10 @@ const buildEChartsLineAreaSeries = (
         show: settings["graph.show_values"] && !hasMultipleSeries,
       },
       itemStyle: {
-        opacity: isSymbolVisible ? 1 : 0,
+        opacity: isSymbolVisible ? 0.3 : 0,
+      },
+      lineStyle: {
+        opacity: 0.3,
       },
     },
     zlevel: CHART_STYLE.series.zIndex,
