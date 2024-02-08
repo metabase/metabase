@@ -4,7 +4,6 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
 import {
   columnFilterForParameter,
   dimensionFilterForParameter,
@@ -29,7 +28,7 @@ function buildStructuredQuerySectionOptions(query, stageIndex, group) {
       sectionName: getColumnGroupName(groupInfo),
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
-      target: buildColumnTarget(column),
+      target: buildColumnTarget(query, stageIndex, column),
       isForeign: columnInfo.isFromJoin || columnInfo.isImplicitlyJoinable,
     };
   });
@@ -67,11 +66,11 @@ function buildTextTagOption(tagName) {
  * @param {import("metabase-lib/metadata/Metadata").default} metadata
  * @param {import("metabase-types/api").Parameter|null} parameter
  * @param {import("metabase-types/api").Card} card
- * @param {import("metabase-types/store").DashboardCard|null} [dashcard]
+ * @param {import("metabase-types/store").StoreDashcard|null} [dashcard]
  * @returns {*}
  */
 export function getParameterMappingOptions(
-  metadata,
+  question,
   parameter = null,
   card,
   dashcard = null,
@@ -96,10 +95,9 @@ export function getParameterMappingOptions(
     return [];
   }
 
-  const question = new Question(card, metadata);
-  const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
+  const { isNative } = Lib.queryDisplayInfo(question.query());
   const options = [];
-  if (isStructured || question.isDataset()) {
+  if (!isNative || question.isDataset()) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
     const query = question.isDataset()

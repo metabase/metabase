@@ -31,6 +31,9 @@ export const trackPageView = url => {
   }
 };
 
+/**
+ * @deprecated This uses GA which is not setup. We should use `trackSchemaEvent`.
+ */
 export const trackStructEvent = (category, action, label, value) => {
   if (!category || !label || !Settings.trackingEnabled()) {
     return;

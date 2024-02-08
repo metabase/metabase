@@ -16,6 +16,7 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 
+import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
@@ -71,9 +72,9 @@ export function DashCardActionsPanel({
     disableClickBehavior,
   } = getVisualizationRaw(series) ?? {};
 
-  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
-
   const buttons = [];
+
+  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
 
   if (dashcard) {
     buttons.push(
@@ -141,6 +142,20 @@ export function DashCardActionsPanel({
         onClick={onReplaceCard}
       >
         <Icon name="refresh_downstream" />
+      </DashCardActionButton>,
+    );
+  }
+
+  const duplicateDashcard = useDuplicateDashCard({ dashboard, dashcard });
+  if (!isLoading && dashcard) {
+    buttons.push(
+      <DashCardActionButton
+        key="duplicate-question"
+        aria-label={t`Duplicate`}
+        tooltip={t`Duplicate`}
+        onClick={duplicateDashcard}
+      >
+        <Icon name="copy" />
       </DashCardActionButton>,
     );
   }

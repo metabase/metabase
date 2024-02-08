@@ -1,5 +1,6 @@
 import type {
   Card,
+  DatasetColumn,
   DatasetData,
   RawSeries,
   Series,
@@ -10,6 +11,8 @@ import type { ClickObject } from "metabase/visualizations/types";
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
+
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type Query from "metabase-lib/queries/Query";
 
 import type { HoveredObject } from "./hover";
@@ -46,6 +49,7 @@ export interface VisualizationProps {
   series: Series;
   card: Card;
   data: DatasetData;
+  metadata: Metadata;
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   headerIcon: IconProps;
@@ -87,6 +91,24 @@ export interface VisualizationProps {
   onRemoveSeries?: any;
   onUpdateWarnings?: any;
 }
+
+export type ColumnSettingDefinition<TValue, TProps = unknown> = {
+  title?: string;
+  hint?: string;
+  widget?: string | React.ComponentType<any>;
+  default?: TValue;
+  props?: TProps;
+  inline?: boolean;
+  readDependencies?: string[];
+  getDefault?: (col: DatasetColumn) => TValue;
+  getHidden?: (col: DatasetColumn, settings: OptionsType) => boolean;
+  getProps?: (
+    col: DatasetColumn,
+    settings: OptionsType,
+    onChange: (value: TValue) => void,
+    extra: { series: Series },
+  ) => TProps;
+};
 
 export type VisualizationSettingDefinition<TValue, TProps = void> = {
   section?: string;

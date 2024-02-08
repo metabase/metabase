@@ -35,6 +35,33 @@
 
 (jobs/defjob AbandonmentEmail [_] :default)
 
+(defn- table-default [table]
+  (case table
+    :core_user         {:first_name  (mt/random-name)
+                        :last_name   (mt/random-name)
+                        :email       (mt/random-email)
+                        :password    "superstrong"
+                        :date_joined :%now}
+    :metabase_database {:name       (mt/random-name)
+                        :engine     "h2"
+                        :details    "{}"
+                        :created_at :%now
+                        :updated_at :%now}
+    :report_card       {:name                   (mt/random-name)
+                        :dataset_query          "{}"
+                        :display                "table"
+                        :visualization_settings "{}"
+                        :created_at             :%now
+                        :updated_at             :%now}
+    :revision          {:timestamp :%now}
+    {}))
+
+(defn- new-instance-with-default
+  ([table]
+   (new-instance-with-default table {}))
+  ([table properties]
+   (t2/insert-returning-instance! table (merge (table-default table) properties))))
+
 (deftest delete-abandonment-email-task-test
   (testing "Migration v46.00-086: Delete the abandonment email task"
     (impl/test-migrations ["v46.00-086"] [migrate!]
@@ -1326,13 +1353,15 @@
                                                                    :updated_at :%now
                                                                    :details    "{}"})
                 [card-id]      (t2/insert-returning-pks!
-                                :model/Card
+                                :report_card
                                 {:visualization_settings card-vis
                                  :display                "table"
                                  :dataset_query          "{}"
                                  :creator_id             user-id
                                  :database_id            database-id
-                                 :name                   "My Card"})
+                                 :name                   "My Card"
+                                 :created_at             :%now
+                                 :updated_at             :%now})
                 [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
                                                                            :creator_id user-id
                                                                            :parameters []})
@@ -1511,3 +1540,42 @@
             (testing "created_at shouldn't change if there is an update"
               (is (= (:created_at session)
                      (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
+
+(deftest card-revision-add-type-test
+  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
+    (let [user-id          (:id (new-instance-with-default :core_user))
+          db-id            (:id (new-instance-with-default :metabase_database))
+          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+          model            (new-instance-with-default :report_card {:dataset true :creator_id user-id :database_id db-id})
+          card-revision-id (:id (new-instance-with-default :revision
+                                                           {:object    (json/generate-string (dissoc card :type))
+                                                            :model     "Card"
+                                                            :model_id  (:id card)
+                                                            :user_id   user-id}))
+          model-revision-id (:id (new-instance-with-default :revision
+                                                            {:object    (json/generate-string (dissoc model :type))
+                                                             :model     "Card"
+                                                             :model_id  (:id card)
+                                                             :user_id   user-id}))]
+      (testing "sanity check revision object"
+        (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+          (testing "doesn't have type"
+            (is (not (contains? card-revision-object "type"))))
+          (testing "has dataset"
+            (is (contains? card-revision-object "dataset")))))
+
+      (testing "after migration card revisions should have type"
+        (migrate!)
+        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision model-revision-id)]
+          (is (= "question" (get card-revision-object "type")))
+          (is (= "model" (get model-revision-object "type")))))
+
+      (testing "rollback should remove type and keep dataset"
+        (migrate! :down 48)
+        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision model-revision-id)]
+          (is (contains? card-revision-object "dataset"))
+          (is (contains? model-revision-object "dataset"))
+          (is (not (contains? card-revision-object "type")))
+          (is (not (contains? model-revision-object "type"))))))))

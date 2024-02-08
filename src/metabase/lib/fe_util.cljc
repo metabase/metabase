@@ -112,6 +112,14 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
+(defn- foreign-key-items
+  [columns]
+  (for [column columns
+        :let [fk-target (:fk-target-field-id column)]
+        :when (and (integer? fk-target)
+                   (lib.types.isa/foreign-key? column))]
+    {:type :field, :id fk-target}))
+
 (defn- query-dependents
   [metadata-providerable query-or-join]
   (let [base-stage (first (:stages query-or-join))
@@ -130,17 +138,16 @@
      ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
        (let [card-metadata (lib.metadata/card metadata-providerable card-id)]
-         (cond-> (for [column (:result-metadata card-metadata)
-                       :let [column (u/normalize-map column)
-                             fk-target (:fk-target-field-id column)]
-                       :when (and (integer? fk-target)
-                                  (lib.types.isa/foreign-key? column))]
-                   {:type :field, :id fk-target})
-           ;; the FE code mentions this, but #36974 doesn't
-           #_#_:always (conj {:type :question, :id card-id})
-           (:dataset card-metadata) (conj {:type :table, :id (str "card__" card-id)}))))
+         (->> (:result-metadata card-metadata)
+              (map u/normalize-map)
+              foreign-key-items
+              ;; the FE code mentions this, but #36974 doesn't
+              #_(cons {:type :question, :id card-id})
+              (cons {:type :table, :id (str "card__" card-id)}))))
      (when-let [table-id (:source-table base-stage)]
-       [{:type :table, :id table-id}])
+       (->> (lib.metadata/fields metadata-providerable table-id)
+            foreign-key-items
+            (cons {:type :table, :id table-id})))
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]

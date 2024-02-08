@@ -94,3 +94,7 @@ export function replaceClause(
 export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }
+
+export function canRun(query: Query): boolean {
+  return ML.can_run(query);
+}

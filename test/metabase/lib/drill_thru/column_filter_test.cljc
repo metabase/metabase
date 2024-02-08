@@ -4,12 +4,22 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel column-filter-availability-test
+  (testing "column-filter is available for any header click, and nothing else"
+    (canned/canned-test
+      :drill-thru/column-filter
+      (fn [_test-case context {:keys [click]}]
+        (and (= click :header)
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel returns-column-filter-test-1
   (lib.drill-thru.tu/test-returns-drill

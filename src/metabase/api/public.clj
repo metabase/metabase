@@ -231,7 +231,7 @@
   [& conditions]
   {:pre [(even? (count conditions))]}
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters :auto_apply_filters], :archived false, conditions))
+    (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters :auto_apply_filters :width], :archived false, conditions))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_values :param_fields)
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]

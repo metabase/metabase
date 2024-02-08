@@ -46,8 +46,8 @@ type SetupOpts = {
 
 function patchQuestion(question: Question) {
   const query = question.query();
-  const isStructured = !Lib.queryDisplayInfo(question.query()).isNative;
-  if (isStructured) {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+  if (!isNative) {
     const [sampleColumn] = Lib.orderableColumns(query, 0);
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
     return question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
