@@ -4,7 +4,8 @@ DROP VIEW IF EXISTS v_users;
 CREATE OR REPLACE VIEW v_users AS
 SELECT id AS user_id,
        'user_' || id AS entity_qualified_id,
-       email,
+       type,
+       CASE WHEN type = 'api-key' THEN null ELSE email END as email,
        first_name,
        last_name,
        first_name || ' ' || last_name AS full_name,
@@ -19,10 +20,11 @@ FROM core_user
 UNION
 SELECT 0 AS user_id,
        'user_0' AS entity_qualified_id,
+       'anonymous' as type,
        NULL AS email,
-       'External' AS first_name,
+       'Anonymous' AS first_name,
        'User' AS last_name,
-       'External User' AS full_name,
+       'Anonymous User' AS full_name,
        NULL AS date_joined,
        NULL AS last_login,
        NULL AS updated_at,

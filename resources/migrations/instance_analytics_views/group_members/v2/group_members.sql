@@ -10,4 +10,4 @@ LEFT JOIN permissions_group ON permissions_group_membership.group_id = permissio
 UNION
 SELECT 0 AS user_id,
        0 AS group_id,
-       'External users' AS group_name ;
+       'Anonymous users' AS group_name ;

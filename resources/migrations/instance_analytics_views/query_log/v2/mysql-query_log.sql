@@ -19,5 +19,7 @@ SELECT id AS entity_id,
        concat('database_', database_id) AS database_qualified_id,
        cache_hit,
        action_id,
-       concat('action_', action_id) AS action_qualified_id
-FROM query_execution;
+       concat('action_', action_id) AS action_qualified_id,
+       query
+FROM query_execution
+    LEFT JOIN query ON query_execution.hash = query.query_hash;
