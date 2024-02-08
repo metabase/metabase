@@ -99,7 +99,7 @@
           user        (fetch-or-create-user! first-name last-name email login-attrs)
           session     (api.session/create-session! :sso user (request.u/device-info request))]
       (sync-groups! user jwt-data)
-      {:session session, :redirect-url redirect-url})))
+      {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-enabled)
@@ -115,14 +115,16 @@
              :redirect redirect
              :token    token})
   (when jwt
-    (let [{:keys [session redirect-url]} (login-jwt-user jwt request)]
+    (let [{:keys [session redirect-url jwt-data]} (login-jwt-user jwt request)]
       (log/info {:jwt          jwt
                  :session      session
                  :redirect-url redirect-url})
       (if token
         (do
           (log/info "Setting JWT session token as " session)
-          (response/response {:token session}))
+          (response/response {:id  (:id session)
+                              :exp (:exp jwt-data)
+                              :iat (:iat jwt-data)}))
         (do 
           (log/info "Setting JWT session cookies")
           (set-jwt-session-cookies request session redirect-url)
