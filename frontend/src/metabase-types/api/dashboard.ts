@@ -7,6 +7,7 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { ActionDisplayType, WritebackAction } from "./actions";
 import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
@@ -43,8 +44,8 @@ export interface Dashboard {
   auto_apply_filters: boolean;
   archived: boolean;
   public_uuid: string | null;
-  embedding_params?: Record<string, string> | null;
   width: "full" | "fixed";
+  embedding_params?: EmbeddingParameters | null;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;

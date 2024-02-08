@@ -50,18 +50,6 @@ describe("scenarios > embedding > native questions", () => {
       setParameter("State", "Editable");
       setParameter("Product ID", "Editable");
 
-      // We must enter a value for a locked parameter
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Previewing locked parameters")
-        .parent()
-        .within(() => {
-          cy.findByText("Total").click();
-        });
-
-      // Total is greater than or equal to 0
-      cy.findByPlaceholderText("Enter a number").type("0").blur();
-      cy.button("Add filter").click();
-
       publishChanges(({ request }) => {
         const actual = request.body.embedding_params;
 

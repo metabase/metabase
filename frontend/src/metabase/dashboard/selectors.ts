@@ -26,7 +26,9 @@ import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
   State,
+  StoreDashboard,
 } from "metabase-types/store";
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import Question from "metabase-lib/Question";
 import { isQuestionDashCard } from "./utils";
 
@@ -382,6 +384,26 @@ export const getDashcardParameterMappingOptions = createCachedSelector(
 )((state, props) => {
   return props.card.id ?? props.dashcard.id;
 });
+
+export const getDashboardEmbeddingParams = createSelector(
+  [getDashboard],
+  (dashboard: StoreDashboard | undefined): EmbeddingParameters => {
+    if (!dashboard?.enable_embedding) {
+      return {};
+    }
+
+    return dashboard.embedding_params ?? {};
+  },
+);
+
+export const getEmbeddingDisabledRequiredParameters = createSelector(
+  [getParameters, getDashboardEmbeddingParams],
+  (parameters, embeddingParameters) => {
+    return parameters.filter(
+      param => param.required && embeddingParameters[param.slug] === "disabled",
+    );
+  },
+);
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],

@@ -39,6 +39,7 @@ DashboardSidebars.propTypes = {
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
+  embeddingParameters: PropTypes.object,
   sidebar: PropTypes.shape({
     name: PropTypes.string,
     props: PropTypes.object,
@@ -75,6 +76,7 @@ export function DashboardSidebars({
   closeSidebar,
   setDashboardAttribute,
   selectedTabId,
+  embeddingParameters,
 }) {
   const handleAddCard = useCallback(
     cardId => {
@@ -138,6 +140,7 @@ export function DashboardSidebars({
         <ParameterSidebar
           parameter={parameter}
           otherParameters={otherParameters}
+          embeddingParameters={embeddingParameters}
           onChangeName={setParameterName}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}

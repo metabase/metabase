@@ -7,8 +7,9 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { TextInput } from "metabase/ui";
+import { Icon, TextInput, Tooltip } from "metabase/ui";
 import Toggle from "metabase/core/components/Toggle";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
@@ -33,9 +34,10 @@ export interface ParameterSettingsProps {
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onChangeRequired: (value: boolean) => void;
+  embeddedParameterVisibility?: EmbeddingParameterVisibility;
 }
 
-const ParameterSettings = ({
+export const ParameterSettings = ({
   parameter,
   isParameterSlugUsed,
   onChangeName,
@@ -45,6 +47,7 @@ const ParameterSettings = ({
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeRequired,
+  embeddedParameterVisibility,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
 
@@ -77,6 +80,8 @@ const ParameterSettings = ({
     },
     [onChangeSourceType, onChangeSourceConfig],
   );
+
+  const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
 
   return (
     <SettingsRoot>
@@ -132,8 +137,13 @@ const ParameterSettings = ({
           setValue={onChangeDefaultValue}
         />
 
-        <SettingRequiredContainer>
+        <SettingRequiredContainer
+          // This forces re-rendering when switching between parameters,
+          // so that toggles don't slide, which is confusing.
+          key={`parameter-setting-required_${parameter.id}`}
+        >
           <Toggle
+            disabled={isEmbeddedDisabled}
             id={`parameter-setting-required_${parameter.id}`}
             value={parameter.required}
             onChange={onChangeRequired}
@@ -143,7 +153,20 @@ const ParameterSettings = ({
               htmlFor={`parameter-setting-required_${parameter.id}`}
             >
               {t`Always require a value`}
+              {isEmbeddedDisabled && (
+                <Tooltip
+                  width={200}
+                  multiline
+                  withArrow
+                  label={
+                    'This filter visiblity is set to "disabled" in the embedded dashboard, so you can\'t make it required'
+                  }
+                >
+                  <Icon name="warning" />
+                </Tooltip>
+              )}
             </SettingRequiredLabel>
+
             <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
           </div>
         </SettingRequiredContainer>
@@ -170,5 +193,3 @@ function getLabelError({
   }
   return null;
 }
-
-export { ParameterSettings };

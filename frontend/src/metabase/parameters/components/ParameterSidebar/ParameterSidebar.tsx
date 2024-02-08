@@ -10,6 +10,7 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import { slugify } from "metabase/lib/formatting";
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import { ParameterSettings } from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
@@ -18,6 +19,7 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
+  embeddingParameters: EmbeddingParameters;
   onChangeName: (parameterId: ParameterId, name: string) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
@@ -49,6 +51,7 @@ export interface ParameterSidebarProps {
 export const ParameterSidebar = ({
   parameter,
   otherParameters,
+  embeddingParameters: embedParams,
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
@@ -142,6 +145,7 @@ export const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
+            embeddedParameterVisibility={embedParams[parameter.slug]}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}

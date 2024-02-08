@@ -19,6 +19,7 @@ import {
 } from "metabase/public/lib/embed";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 
+import { getParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import { DEFAULT_DISPLAY_OPTIONS } from "./config";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
@@ -322,7 +323,11 @@ function getPreviewParamsBySlug({
   return Object.fromEntries(
     lockedParameters.map(parameter => [
       parameter.slug,
-      parameterValues[parameter.id] ?? null,
+      getParameterValue({
+        parameter,
+        values: parameterValues,
+        defaultRequired: true,
+      }) ?? null,
     ]),
   );
 }
