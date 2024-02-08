@@ -485,7 +485,7 @@
 (defmacro with-uploads-allowed [& body]
   `(do-with-uploads-allowed (fn [] ~@body)))
 
-(defn- do-with-upload-table! [table thunk]
+(defn do-with-upload-table! [table thunk]
   (try (thunk table)
        (finally
          (driver/drop-table! driver/*driver*
@@ -498,7 +498,7 @@
 (defn- card->table [card]
   (t2/select-one :model/Table (:table_id card)))
 
-(defmacro ^:private with-upload-table!
+(defmacro with-upload-table!
   "Execute `body` with a table created by evaluating the expression `create-table-expr`. `create-table-expr` must evaluate
   to a toucan Table instance. The instance is bound to `table-sym` in `body`. The table is cleaned up from both the test
   and app DB after the body executes.
