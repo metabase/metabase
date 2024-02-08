@@ -7,6 +7,7 @@ import { ExpressionWidgetHeader } from "metabase/query_builder/components/expres
 
 import * as Lib from "metabase-lib";
 
+import { DelayGroup } from "metabase/ui";
 import { FilterColumnPicker } from "./FilterColumnPicker";
 import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
@@ -95,27 +96,31 @@ export function FilterPicker({
 
   if (!column) {
     return (
-      <FilterColumnPicker
-        query={query}
-        stageIndex={stageIndex}
-        checkItemIsSelected={checkItemIsSelected}
-        onColumnSelect={handleColumnSelect}
-        onSegmentSelect={handleChange}
-        onExpressionSelect={openExpressionEditor}
-      />
+      <DelayGroup>
+        <FilterColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          checkItemIsSelected={checkItemIsSelected}
+          onColumnSelect={handleColumnSelect}
+          onSegmentSelect={handleChange}
+          onExpressionSelect={openExpressionEditor}
+        />
+      </DelayGroup>
     );
   }
 
   return (
-    <FilterPickerBody
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isNew={isNewFilter}
-      onChange={handleChange}
-      onBack={() => setColumn(undefined)}
-    />
+    <DelayGroup>
+      <FilterPickerBody
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        isNew={isNewFilter}
+        onChange={handleChange}
+        onBack={() => setColumn(undefined)}
+      />
+    </DelayGroup>
   );
 }
 

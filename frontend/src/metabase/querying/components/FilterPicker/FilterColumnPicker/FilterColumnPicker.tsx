@@ -9,11 +9,15 @@ import {
 
 import { Icon } from "metabase/ui";
 import type { IconName } from "metabase/ui";
+import { FieldInfoPopoverMLv2 } from "metabase/components/MetadataInfo/FieldInfoPopover";
 
 import * as Lib from "metabase-lib";
 
 import type { ColumnListItem, SegmentListItem } from "../types";
-import { StyledAccordionList } from "./FilterColumnPicker.styled";
+import {
+  StyledAccordionList,
+  PopoverTarget,
+} from "./FilterColumnPicker.styled";
 
 export interface FilterColumnPickerProps {
   query: Lib.Query;
@@ -65,6 +69,8 @@ export function FilterColumnPicker({
 
       const columnItems = Lib.getColumnsFromColumnGroup(group).map(column => ({
         ...Lib.displayInfo(query, stageIndex, column),
+        query,
+        stageIndex,
         column,
       }));
 
@@ -110,6 +116,7 @@ export function FilterColumnPicker({
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
+      renderItemExtra={renderItemExtra}
       // disable scrollbars inside the list
       style={{ overflow: "visible" }}
       maxHeight={Infinity}
@@ -136,4 +143,23 @@ function renderItemIcon(item: ColumnListItem | SegmentListItem) {
   if (item.column) {
     return <Icon name={getColumnIcon(item.column)} size={18} />;
   }
+}
+
+function renderItemExtra(item: ColumnListItem | SegmentListItem) {
+  if (isSegmentListItem(item)) {
+    return null;
+  }
+
+  const { query, stageIndex, column } = item;
+  return (
+    <FieldInfoPopoverMLv2
+      query={query}
+      stage={stageIndex}
+      column={column}
+      delay={[0, 200]}
+      position="top-start"
+    >
+      <PopoverTarget name="info_filled" />
+    </FieldInfoPopoverMLv2>
+  );
 }

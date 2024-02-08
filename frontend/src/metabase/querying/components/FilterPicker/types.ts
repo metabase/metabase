@@ -19,6 +19,8 @@ export interface PickerOperatorOption<Operator> {
 }
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
+  query: Lib.Query;
+  stageIndex: number;
   column: Lib.ColumnMetadata;
 };
 
