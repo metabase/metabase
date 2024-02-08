@@ -122,6 +122,7 @@
               [schema table]))
        set))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- have-select-privilege-fn
   "Returns a function that take a map with 3 keys [:schema, :name, :type], return true if we can do a select query on the table.
 
@@ -180,7 +181,7 @@
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
 
 (defn- db-or-id-or-spec->database [db-or-id-or-spec]
-  (cond (mi/instance-of? Database db-or-id-or-spec)
+  (cond (mi/instance-of? :model/Database db-or-id-or-spec)
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
