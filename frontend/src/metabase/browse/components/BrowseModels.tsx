@@ -22,6 +22,7 @@ import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
+import Search from "metabase/entities/search";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
@@ -233,8 +234,10 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const lastEditorFullName =
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
-  Search.wrapEntity
-  const icon =
+
+  const dispatch = useDispatch();
+  const wrappedModel = Search.wrapEntity(model, dispatch);
+  const icon = wrappedModel.getIcon();
 
   return (
     <Link
