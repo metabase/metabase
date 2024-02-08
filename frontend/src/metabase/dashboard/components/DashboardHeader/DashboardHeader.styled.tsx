@@ -35,7 +35,7 @@ export const DashboardHeaderButton = styled(Button)<{
   &:hover {
     color: ${color("brand")};
     background: ${({ hasBackground }) =>
-      hasBackground ? color("bg-light") : "transparent"};
+      hasBackground ? color("bg-medium") : "transparent"};
   }
 
   svg {
