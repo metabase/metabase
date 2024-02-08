@@ -284,7 +284,8 @@
 (methodical/defmethod mb.hawk.hooks/after-run ::run-drivers-after-run
   "Run [[metabase.test.data.interface/after-run]] methods for drivers."
   [_options]
-  (doseq [driver (tx.env/test-drivers)]
+  (doseq [driver (tx.env/test-drivers)
+          :when  (isa? driver/hierarchy driver ::test-extensions)]
     (log/infof "Running after-run hooks for %s..." driver)
     (after-run driver)))
 
