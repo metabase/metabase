@@ -14,6 +14,7 @@
       "type": "string",
       "enum": [
         "step_seen",
+        "usage_reason_selected",
         "database_selected",
         "add_data_later_clicked"
       ],
@@ -59,6 +60,20 @@
       ],
       "minimum": 0,
       "maximum": 1024
+    },
+    "usage_reason": {
+      "description": "Answer to the usage reason question",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "self-service-analytics",
+        "embedding",
+        "both",
+        "not-sure"
+      ],
+      "maxLength": 1024
     },
     "database": {
       "description": "String with the database type that the user selected",

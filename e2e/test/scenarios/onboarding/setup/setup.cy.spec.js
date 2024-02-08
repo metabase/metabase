@@ -417,9 +417,14 @@ describeWithSnowplow("scenarios > setup", () => {
 
       cy.findByText("What will you use Metabase for?").should("exist");
       // 6 - setup/step_seen "usage_question"
+
+      cy.button("Next").click();
+
+      // 7 setup/usage_reason_selected
+      // 8 setup/step_seen "database"
     });
 
-    expectGoodSnowplowEvents(6);
+    expectGoodSnowplowEvents(8);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
