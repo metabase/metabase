@@ -495,17 +495,6 @@ function DashboardInner(props: DashboardProps) {
                 parametersWidget={parametersWidget}
                 onSharingClick={handleToggleSharing}
               />
-
-              {shouldRenderParametersWidgetInEditMode && (
-                <ParametersWidgetContainer
-                  data-testid="edit-dashboard-parameters-widget-container"
-                  isEditing={!!isEditing}
-                  hasScroll={false}
-                  isSticky={false}
-                >
-                  {parametersWidget}
-                </ParametersWidgetContainer>
-              )}
             </DashboardHeaderContainer>
           )}
 
@@ -516,6 +505,21 @@ function DashboardInner(props: DashboardProps) {
                 !isFullscreen && (isEditing || isSharing)
               }
             >
+              {shouldRenderParametersWidgetInEditMode && (
+                <ParametersWidgetContainer
+                  data-testid="edit-dashboard-parameters-widget-container"
+                  isEditing={true}
+                  hasScroll={true}
+                  isSticky={true}
+                >
+                  <FixedWidthContainer
+                    isFixedWidth={dashboard?.width === "fixed"}
+                    data-testid="fixed-width-filters"
+                  >
+                    {parametersWidget}
+                  </FixedWidthContainer>
+                </ParametersWidgetContainer>
+              )}
               {shouldRenderParametersWidgetInViewMode && (
                 <ParametersWidgetContainer
                   data-testid="dashboard-parameters-widget-container"
