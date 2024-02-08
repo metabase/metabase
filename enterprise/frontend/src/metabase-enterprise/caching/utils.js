@@ -57,7 +57,7 @@ export function normalizeCacheTTL(value) {
 
 export function hasQuestionCacheSection(question) {
   return (
-    !question.isDataset() &&
+    question.type() === "question" &&
     question.metadata().setting("enable-query-caching") &&
     (question.canWrite() || question.lastQueryStart() != null)
   );
