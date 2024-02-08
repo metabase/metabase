@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { assoc, getIn } from "icepick";
+import { getIn } from "icepick";
 
 import Dashboards from "metabase/entities/dashboards";
 
@@ -11,8 +11,6 @@ import {
   getShallowMetrics as getMetrics,
   getShallowSegments as getSegments,
 } from "metabase/selectors/metadata";
-
-import Question from "metabase-lib/Question";
 
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";
 
@@ -123,14 +121,6 @@ export const getMetricRevisions = createSelector(
 export const getSegmentRevisions = createSelector(
   [getSegmentId, getRevisions],
   (segmentId, revisions) => getIn(revisions, ["segment", segmentId]) || {},
-);
-
-export const getSegmentQuestions = createSelector(
-  [getSegmentId, getQuestions],
-  (segmentId, questions) =>
-    Object.values(questions)
-      .filter(question => new Question(question).usesSegment(segmentId))
-      .reduce((map, question) => assoc(map, question.id, question), {}),
 );
 
 export const getTableQuestions = createSelector(

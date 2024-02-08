@@ -1,8 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
@@ -21,7 +19,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 
-import { getQuestionUrl } from "../utils";
+import { getQuestionUrl, getDescription } from "../utils";
 
 import { getTable, getMetric } from "../selectors";
 
@@ -49,12 +47,6 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-const getDescription = question => {
-  const timestamp = moment(question.getCreatedAt()).fromNow();
-  const author = question.getCreator().common_name;
-  return t`Created ${timestamp} by ${author}`;
-};
-
 export const MetricQuestions = ({ style, table, metric, metadata }) => {
   const {
     data = [],
@@ -62,7 +54,6 @@ export const MetricQuestions = ({ style, table, metric, metadata }) => {
     error,
   } = useQuestionListQuery({
     query: { f: "using_metric", model_id: metric.id },
-    enabled: true,
   });
 
   return (
