@@ -150,7 +150,7 @@ describe("DashCardParameterMapper", () => {
       dashcard: createMockDashboardCard({
         card,
       }),
-      mappingOptions: [["dimension", ["field", 1]]],
+      mappingOptions: [{ target: ["dimension", ["field", 1]] }],
       target: ["dimension", ["field", 2]],
       isMobile: true,
     });
