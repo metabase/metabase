@@ -658,7 +658,11 @@
     (is (= {:type  :roles
             :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
-    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
+    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (is (nil? (#'mysql/parse-grant "REVOKE INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE
+                                    TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE,
+                                    ALTER ROUTINE, EVENT, TRIGGER ON \"metrics_user_telegraf\".* FROM \"doadmin\"@\"%\"")))
+    (is (nil? (#'mysql/parse-grant "BEWILDER WITH BLEEDING EDGE GRANT STATEMENT FORMAT")))))
 
 (deftest table-name->privileges-test
   (testing "table-names->privileges should work correctly"

@@ -789,6 +789,9 @@
     :roles #{'example_role_1'@'%' 'example_role_2'@'%'}}"
   [grant]
   (condp re-find grant
+    ;; Typically these statements are used to revoke mutation rights, and for now we ignore them.
+    #"^REVOKE "
+    nil
     #"^GRANT PROXY ON "
     nil
     #"^GRANT (.+) ON FUNCTION "
@@ -823,7 +826,10 @@
     :>>
     (fn [[_ roles]]
       {:type  :roles
-       :roles (set (map u/lower-case-en (str/split roles #",")))})))
+       :roles (set (map u/lower-case-en (str/split roles #",")))})
+
+    (do (log/warnf "Ignoring grant with unrecognised pattern: %s" grant)
+        nil)))
 
 (defn- privilege-grants-for-user
   "Returns a list of parsed privilege grants for a user, taking into account the roles that the user has.
