@@ -1,13 +1,12 @@
 import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { BillingInfoLineItem, BillingInfo } from "metabase-types/api";
+import { Text } from "metabase/ui";
 import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
 import { StillNeedHelp } from "../StillNeedHelp";
 import {
   BillingInfoCard,
   BillingInfoRowContainer,
-  BillingInfoKey,
-  BillingInfoTextValue,
   BillingInternalLink,
   BillingExternalLink,
   BillingExternalLinkIcon,
@@ -30,7 +29,9 @@ const BillingInfoValue = ({
 
   if (lineItem.display === "value") {
     return (
-      <BillingInfoTextValue {...props}>{formattedValue}</BillingInfoTextValue>
+      <Text fw="bold" color="currentColor" {...props}>
+        {formattedValue}
+      </Text>
     );
   }
 
@@ -41,7 +42,9 @@ const BillingInfoValue = ({
         data-testid="test-link"
         {...props}
       >
-        <BillingInfoTextValue>{formattedValue}</BillingInfoTextValue>
+        <Text fw="bold" color="currentColor">
+          {formattedValue}
+        </Text>
       </BillingInternalLink>
     );
   }
@@ -49,7 +52,9 @@ const BillingInfoValue = ({
   if (lineItem.display === "external-link") {
     return (
       <BillingExternalLink href={lineItem.link} {...props}>
-        <BillingInfoTextValue>{formattedValue}</BillingInfoTextValue>
+        <Text fw="bold" color="currentColor">
+          {formattedValue}
+        </Text>
         <BillingExternalLinkIcon size="16" name="external" />
       </BillingExternalLink>
     );
@@ -86,9 +91,13 @@ function BillingInfoRow({
   return (
     <ErrorBoundary errorComponent={() => null}>
       <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
-        <BillingInfoKey data-testid={`billing-info-key-${id}`}>
+        <Text
+          color="text-md"
+          maw="15rem"
+          data-testid={`billing-info-key-${id}`}
+        >
           {lineItem.name}
-        </BillingInfoKey>
+        </Text>
         <BillingInfoValue
           lineItem={lineItem}
           data-testid={`billing-info-value-${id}`}

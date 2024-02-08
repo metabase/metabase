@@ -3,18 +3,8 @@ import { css } from "@emotion/react";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import Card from "metabase/components/Card";
-import { Text, Icon } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import Link from "metabase/core/components/Link";
-
-export const BillingErrorContainer = styled.div`
-  margin-top: 0.5rem;
-  white-space: nowrap;
-  color: ${color("error")};
-`;
-
-export const BillingErrorMessage = styled.div`
-  margin-top: 1rem;
-`;
 
 export const BillingInfoCard = styled(Card)`
   margin-top: 1rem;
@@ -29,16 +19,6 @@ export const BillingInfoRowContainer = styled.div<{ extraPadding?: boolean }>`
   &:not(:last-child) {
     border-bottom: 1px solid ${color("bg-medium")};
   }
-`;
-
-export const BillingInfoKey = styled(Text)`
-  max-width: 15rem;
-  color: ${color("text-md")};
-`;
-
-export const BillingInfoTextValue = styled(Text)`
-  font-weight: bold;
-  color: currentColor;
 `;
 
 const linkStyles = css`
