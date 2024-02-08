@@ -96,6 +96,7 @@ export const QuestionActions = ({
   const isSaved = question.isSaved();
   const database = question.database();
   const canAppend = canUpload && canWrite && !!question._card.based_on_upload;
+  const type = question.type();
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -192,7 +193,7 @@ export const QuestionActions = ({
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
-    if (!isDataset) {
+    if (type === "question") {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",
