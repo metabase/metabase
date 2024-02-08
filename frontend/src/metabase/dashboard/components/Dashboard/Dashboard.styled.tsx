@@ -102,7 +102,6 @@ export const ParametersAndCardsContainer = styled.div<{
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
-  isEditing: boolean;
   isSticky: boolean;
   hasScroll: boolean;
 }>`
@@ -114,12 +113,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   z-index: 3;
   top: 0;
   left: 0;
-
-  ${({ isEditing }) =>
-    isEditing &&
-    css`
-      border-top: 1px solid ${color("border")};
-    `}
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
   ${({ isSticky, hasScroll }) =>

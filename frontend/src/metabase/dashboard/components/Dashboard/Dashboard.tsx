@@ -508,7 +508,6 @@ function DashboardInner(props: DashboardProps) {
               {shouldRenderParametersWidgetInEditMode && (
                 <ParametersWidgetContainer
                   data-testid="edit-dashboard-parameters-widget-container"
-                  isEditing={true}
                   hasScroll={true}
                   isSticky={true}
                 >
@@ -523,7 +522,6 @@ function DashboardInner(props: DashboardProps) {
               {shouldRenderParametersWidgetInViewMode && (
                 <ParametersWidgetContainer
                   data-testid="dashboard-parameters-widget-container"
-                  isEditing={false}
                   hasScroll={hasScroll}
                   isSticky={isParametersWidgetContainersSticky(
                     visibleParameters.length,
