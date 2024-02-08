@@ -224,6 +224,7 @@ function SavedQuestionLeftSide(props) {
 
   const hasLastEditInfo = question.lastEditInfo() != null;
   const isDataset = question.isDataset();
+  const type = question.type();
 
   const onHeaderChange = useCallback(
     name => {
@@ -256,11 +257,11 @@ function SavedQuestionLeftSide(props) {
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
             parts={[
-              ...(isAdditionalInfoVisible && isDataset
+              ...(isAdditionalInfoVisible && type !== "question"
                 ? [
                     <DatasetCollectionBadge
                       key="collection"
-                      dataset={question}
+                      entity={question}
                     />,
                   ]
                 : []),
@@ -353,13 +354,14 @@ function AhHocQuestionLeftSide(props) {
 }
 
 DatasetCollectionBadge.propTypes = {
-  dataset: PropTypes.object.isRequired,
+  entity: PropTypes.object.isRequired,
 };
 
-function DatasetCollectionBadge({ dataset }) {
-  const { collection } = dataset.card();
+function DatasetCollectionBadge({ entity }) {
+  const { collection } = entity.card();
+  const icon = entity.type();
   return (
-    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="model">
+    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon={icon}>
       {collection?.name || t`Our analytics`}
     </HeadBreadcrumbs.Badge>
   );
