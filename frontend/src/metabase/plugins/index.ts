@@ -130,6 +130,7 @@ export const PLUGIN_SELECTORS = {
   getIsWhiteLabeling: (_state: State) => false,
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
+  getDashboardOverviewId: (_state: State) => undefined
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
@@ -251,10 +252,12 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
+  auditInfo: any
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
+  auditInfo: () => null
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -325,6 +328,5 @@ export const PLUGIN_CONTENT_VERIFICATION = {
 };
 
 export const PLUGIN_INSTANCE_ANALYTICS = {
-  dashboardAuditLink: (_dashboard?: any, _push?: any) => [],
-  questionAuditLink: (_question?: any, _push?: any) => [],
+  loadAuditInfo: () => {console.log("weeeeiner")}
 };

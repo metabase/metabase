@@ -5,12 +5,13 @@ import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_INSTANCE_ANALYTICS,
+  PLUGIN_REDUCERS,
+  PLUGIN_SELECTORS,
 } from "metabase/plugins";
 import { GET } from "metabase/lib/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import getAuditRoutes, { getUserMenuRotes } from "./routes";
-
-const getAuditInfo = GET("/api/ee/audit-app/user/audit-info");
+import { auditInfo, dashboardOverviewId, loadInfo } from "./reducer";
 
 if (hasPremiumFeature("audit_app")) {
   PLUGIN_ADMIN_NAV_ITEMS.push({
@@ -29,41 +30,45 @@ if (hasPremiumFeature("audit_app")) {
 
   PLUGIN_ADMIN_USER_MENU_ROUTES.push(getUserMenuRotes);
 
-  getAuditInfo().then(data => {
-    const { question_overview, dashboard_overview } = data;
+  PLUGIN_REDUCERS.auditInfo = auditInfo;
+  PLUGIN_SELECTORS.dashboardOverviewId = dashboardOverviewId;
+  PLUGIN_INSTANCE_ANALYTICS.loadAuditInfo = loadInfo;
 
-    if (dashboard_overview !== undefined) {
-      PLUGIN_INSTANCE_ANALYTICS.dashboardAuditLink = (dashboard, push) => [
-        {
-          title: t`Usage insights`,
-          icon: "audit",
-          action: () => {
-            push({
-              pathname: `/dashboard/${dashboard_overview}`,
-              query: {
-                dashboard_id: dashboard.id.toString(),
-              },
-            });
-          },
-        },
-      ];
-    }
+  // getAuditInfo().then(data => {
+  //   const { question_overview, dashboard_overview } = data;
 
-    if (question_overview !== undefined) {
-      PLUGIN_INSTANCE_ANALYTICS.questionAuditLink = (question, push) => [
-        {
-          title: t`Usage insights`,
-          icon: "audit",
-          action: () => {
-            push({
-              pathname: `/dashboard/${question_overview}`,
-              query: {
-                question_id: question.id(),
-              },
-            });
-          },
-        },
-      ];
-    }
-  });
+  //   if (dashboard_overview !== undefined) {
+  //     PLUGIN_INSTANCE_ANALYTICS.dashboardAuditLink = (dashboard, push) => [
+  //       {
+  //         title: t`Usage insights`,
+  //         icon: "audit",
+  //         action: () => {
+  //           push({
+  //             pathname: `/dashboard/${dashboard_overview}`,
+  //             query: {
+  //               dashboard_id: dashboard.id.toString(),
+  //             },
+  //           });
+  //         },
+  //       },
+  //     ];
+  //   }
+
+  //   if (question_overview !== undefined) {
+  //     PLUGIN_INSTANCE_ANALYTICS.questionAuditLink = (question, push) => [
+  //       {
+  //         title: t`Usage insights`,
+  //         icon: "audit",
+  //         action: () => {
+  //           push({
+  //             pathname: `/dashboard/${question_overview}`,
+  //             query: {
+  //               question_id: question.id(),
+  //             },
+  //           });
+  //         },
+  //       },
+  //     ];
+  //   }
+  // });
 }
