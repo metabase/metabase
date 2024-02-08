@@ -61,7 +61,8 @@ describe("issue 38245", () => {
       cy.findByText("Product ID").should("exist");
       cy.findByText(/(Problem|Error)/i).should("not.exist");
     });
-    cy.get("@cardQuery.all").should("have.length", 1);
+
+    cy.get("@cardQuery.all").should("have.length", 2);
     cy.get("@cardQuery").should(({ response }) => {
       expect(response.statusCode).not.to.eq(500);
     });
