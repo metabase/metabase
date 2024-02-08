@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Stack, Tabs } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -73,14 +73,29 @@ export const StaticEmbedSetupPane = ({
     DEFAULT_DISPLAY_OPTIONS,
   );
 
+  /**
+   * This is a hack to prevent `getParameter` return value from
+   * causing the preview embed to rerender unnecessarily in tests.
+   *
+   * This will likely be safe to removed once (metabase#38502)
+   * is implemented.
+   */
+  const [memoizedResourceParameters, setMemoizedResourceParameters] =
+    useState(resourceParameters);
+  useEffect(() => {
+    if (!_.isEqual(memoizedResourceParameters, resourceParameters)) {
+      setMemoizedResourceParameters(resourceParameters);
+    }
+  }, [memoizedResourceParameters, resourceParameters]);
+
   const previewParametersBySlug = useMemo(
     () =>
       getPreviewParamsBySlug({
-        resourceParameters,
+        resourceParameters: memoizedResourceParameters,
         embeddingParams,
         parameterValues,
       }),
-    [embeddingParams, parameterValues, resourceParameters],
+    [embeddingParams, memoizedResourceParameters, parameterValues],
   );
   const initialPreviewParameters = getPreviewParamsBySlug({
     resourceParameters,
