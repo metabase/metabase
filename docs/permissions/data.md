@@ -71,7 +71,7 @@ When you connect Metabase to a database, Metabase uses the database user account
 
 If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query.
 
-Connection impersonation does not apply to users in the Metabase admins group, as their more permissive privileges take precedence.
+Connection impersonation does not apply to people in the Metabase admins group, as their more permissive privileges take precedence.
 
 ### Setting up connection impersonation
 
@@ -85,7 +85,7 @@ For exactly how to create a new role in your database and grant that role privil
 **In your Metabase:**
 
 - Create a [new group](../people-and-groups/managing.md#groups), or select an existing group.
-- Assign a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to people in that group. You'll use this user attribute to associate people in that group with a role that you created in your database. For example, if you created a role named `sales` in your database with access to a subset of tables relevant to the sales team, you would add a user attribute called `db_role` (or whatever you want to call it) and assign the value `sales` to the person's `db_role`. The value of the attribute (`sales` in this case) should match the name of the role in your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute's value and the database's role match exactly.
+- Assign a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to people in that group. You'll use this user attribute to associate people in that group with a role that you created in your database. For example, if you created a role named `sales` in your database with access to a subset of tables relevant to the sales team, you would add a user attribute called `db_role` (or whatever you want to call the attribute) and assign the value `sales` to the person's `db_role`. The value of the attribute (`sales` in this case) should match the name of the role in your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute's value and the database's role match exactly.
 - Next, you'll need to apply the impersonation access to that group. Go to **Admin settings** > **Permissions** > **Data**.
 - Select the database you want to set permissions on.
 - Find the group that you want to associate with the database role you created. Under **Data access** for that group, select **Impersonation**.
