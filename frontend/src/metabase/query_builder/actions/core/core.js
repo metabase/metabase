@@ -253,7 +253,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    const resultsMetadata = getResultsMetadata(getState());
+    // TODO: This can be undefined, so I've added "|| {}" for now.
+    const resultsMetadata = getResultsMetadata(getState()) || {};
+
     const isResultDirty = getIsResultDirty(getState());
 
     if (question.isDataset()) {
