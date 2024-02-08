@@ -20,7 +20,7 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-["dashboard", "card"].forEach(resource => {
+["dashboard", "question"].forEach(resource => {
   describe(`embed modal behavior for ${resource}s`, () => {
     beforeEach(() => {
       restore();
@@ -638,16 +638,12 @@ describe("embed modal display", () => {
             .click();
 
           cy.then(function () {
-            this.timeAfterInitialPublication = Date.now();
             expectGoodSnowplowEvent({
               event: "static_embed_published",
               artifact: resource,
               new_embed: true,
               time_since_creation: closeTo(
-                toSecond(
-                  this.timeAfterInitialPublication -
-                    this.timeAfterResourceCreation,
-                ),
+                toSecond(Date.now() - this.timeAfterResourceCreation),
                 1,
               ),
               time_since_initial_publication: null,
@@ -673,7 +669,7 @@ describe("embed modal display", () => {
 
           cy.then(function () {
             const HOUR = 60 * 60 * 1000;
-            const timeAfterPublication = this.timeAfterResourceCreation + HOUR;
+            const timeAfterPublication = Date.now() + HOUR;
             cy.log("Mocks the clock to 1 hour later");
             cy.clock(new Date(timeAfterPublication));
             cy.findByTestId("embed-modal-content-status-bar")
@@ -730,7 +726,7 @@ function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
 }
 
 function createResource(resource) {
-  if (resource === "card" || resource === "question") {
+  if (resource === "question") {
     return cy.createNativeQuestion({
       name: "Question",
       native: {
@@ -796,7 +792,7 @@ function createResource(resource) {
 }
 
 function createPublicResourceLink(resource, id) {
-  if (resource === "card") {
+  if (resource === "question") {
     return createPublicQuestionLink(id);
   }
   if (resource === "dashboard") {
@@ -805,7 +801,7 @@ function createPublicResourceLink(resource, id) {
 }
 
 function visitResource(resource, id) {
-  if (resource === "card" || resource === "question") {
+  if (resource === "question") {
     visitQuestion(id);
   }
 
