@@ -88,8 +88,7 @@
       "enum": [
         "code_overview",
         "code_params",
-        "code_appearance",
-        null
+        "code_appearance"
       ],
       "description": "The location in the code where the event is triggered."
     },
@@ -100,8 +99,7 @@
       ],
       "enum": [
         "backend",
-        "view",
-        null
+        "view"
       ],
       "description": "Type of the language of the artifact where the event is triggered."
     },
@@ -169,8 +167,7 @@
       ],
       "enum": [
         "public-embed",
-        "public-share",
-        null
+        "public-share"
       ],
       "description": "Location where the public link is copied from"
     },
