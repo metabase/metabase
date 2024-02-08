@@ -368,8 +368,10 @@ function DashboardInner(props: DashboardProps) {
       return;
     }
     if (previousTabId !== selectedTabId) {
-      fetchDashboardCardData();
-      fetchDashboardCardMetadata();
+      if (!isEditing) {
+        fetchDashboardCardData();
+        fetchDashboardCardMetadata();
+      }
       return;
     }
     const didDashboardLoad = !previousDashboard && dashboard;
@@ -383,6 +385,7 @@ function DashboardInner(props: DashboardProps) {
   }, [
     dashboard,
     dashboardId,
+    isEditing,
     fetchDashboardCardData,
     fetchDashboardCardMetadata,
     handleLoadDashboard,
