@@ -13,7 +13,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
+import { Box, Flex, Group, Icon, Paper, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
@@ -25,7 +25,6 @@ import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
-  Banner,
   BannerCloseButton,
   BannerModelIcon,
   CollectionHeaderContainer,
@@ -68,27 +67,39 @@ export const BrowseModels = ({
     return (
       <>
         {shouldShowBanner && (
-          <Banner role="complementary">
-            <BannerModelIcon>
-              <Icon name="model" />
-            </BannerModelIcon>
-            <Text size="md" lh="1rem" mr="1rem">
-              Models help curate data to make it easier to find answers to
-              questions all in one place.
-            </Text>
-            <BannerCloseButton
-              onClick={() => {
-                dispatch(
-                  updateSetting({
-                    key: "dismissed-browse-models-banner",
-                    value: true,
-                  }),
-                );
-              }}
-            >
-              <Icon name="close" />
-            </BannerCloseButton>
-          </Banner>
+          <Paper
+            mt="1rem"
+            p="1rem"
+            color="text-dark"
+            bg="brand-lighter"
+            shadow="0"
+            radius="0.25rem"
+            role="complementary"
+          >
+            <Flex>
+              <BannerModelIcon>
+                <Icon name="model" />
+              </BannerModelIcon>
+              <Group grow>
+                <Text size="md" lh="1rem" mr="1rem">
+                  Models help curate data to make it easier to find answers to
+                  questions all in one place.
+                </Text>
+              </Group>
+              <BannerCloseButton
+                onClick={() => {
+                  dispatch(
+                    updateSetting({
+                      key: "dismissed-browse-models-banner",
+                      value: true,
+                    }),
+                  );
+                }}
+              >
+                <Icon name="close" />
+              </BannerCloseButton>
+            </Flex>
+          </Paper>
         )}
         <GridContainer role="grid">
           {groupsOfModels.map(groupOfModels => (

@@ -86,16 +86,6 @@ export const CollectionHeaderGroup = styled(Group)`
   top: 0.5rem;
 `;
 
-export const Banner = styled.div`
-  display: flex;
-  padding: 1rem;
-  align-self: stretch;
-  border-radius: 0.25rem;
-  background: ${color("brand-lighter")};
-  color: ${color("text-dark")};
-  margin-top: 1rem;
-`;
-
 export const BannerModelIcon = styled(IconButtonWrapper)`
   color: ${color("text-dark")};
   margin-right: 0.5rem;
@@ -103,5 +93,4 @@ export const BannerModelIcon = styled(IconButtonWrapper)`
 
 export const BannerCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
-  margin-left: auto;
 `;
