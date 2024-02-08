@@ -12,6 +12,7 @@ import type {
   CardId,
   Dashboard,
   DashboardCard,
+  DashboardCardLayoutAttrs,
   QuestionDashboardCard,
   Database,
   Dataset,
@@ -336,8 +337,9 @@ type NewDashboardCard = Omit<
 
 type MandatoryDashboardCardAttrs = Pick<
   DashboardCard,
-  "dashboard_id" | "card" | "col" | "row" | "size_x" | "size_y"
->;
+  "dashboard_id" | "card"
+> &
+  DashboardCardLayoutAttrs;
 
 export function createDashCard(
   attrs: Partial<NewDashboardCard> & MandatoryDashboardCardAttrs,
