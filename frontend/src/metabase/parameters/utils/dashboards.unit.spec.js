@@ -14,6 +14,7 @@ import {
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import Field from "metabase-lib/metadata/Field";
+import Question from "metabase-lib/Question";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -675,7 +676,20 @@ describe("metabase/parameters/utils/dashboards", () => {
     };
 
     it("should return a list of UiParameter objects from the given dashboard", () => {
-      expect(getDashboardUiParameters(dashboard, metadata)).toEqual([
+      const questions = Object.fromEntries(
+        dashboard.dashcards.map(dashcard => {
+          return [dashcard.id, new Question(dashcard.card, metadata)];
+        }),
+      );
+
+      expect(
+        getDashboardUiParameters(
+          dashboard.dashcards,
+          dashboard.parameters,
+          metadata,
+          questions,
+        ),
+      ).toEqual([
         {
           id: "a",
           slug: "slug-a",

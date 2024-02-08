@@ -1,4 +1,7 @@
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { INITIAL_DASHBOARD_STATE } from "metabase/dashboard/constants";
 import type { DashboardState } from "metabase-types/store";
@@ -14,29 +17,6 @@ const TEST_CARD = createMockCard({
     },
   },
 });
-
-function createMockDashCard({
-  dashCardId,
-  tabId,
-}: {
-  dashCardId: number;
-  tabId: number | undefined;
-}) {
-  return {
-    id: dashCardId,
-    dashboard_id: 1,
-    dashboard_tab_id: tabId,
-    card_id: 1,
-    size_x: 4,
-    size_y: 4,
-    col: 0,
-    row: 0,
-    entity_id: "",
-    created_at: "",
-    updated_at: "",
-    card: TEST_CARD,
-  };
-}
 
 export const TEST_DASHBOARD_STATE: DashboardState = {
   ...INITIAL_DASHBOARD_STATE,
@@ -72,8 +52,20 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
     },
   },
   dashcards: {
-    1: createMockDashCard({ dashCardId: 1, tabId: 1 }),
-    2: createMockDashCard({ dashCardId: 2, tabId: 2 }),
+    1: createMockDashboardCard({
+      id: 1,
+      dashboard_id: 1,
+      dashboard_tab_id: 1,
+      card_id: TEST_CARD.id,
+      card: TEST_CARD,
+    }),
+    2: createMockDashboardCard({
+      id: 2,
+      dashboard_id: 1,
+      dashboard_tab_id: 2,
+      card_id: TEST_CARD.id,
+      card: TEST_CARD,
+    }),
   },
   dashcardData: {
     1: { 1: null },

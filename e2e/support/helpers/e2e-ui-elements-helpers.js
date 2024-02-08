@@ -12,6 +12,13 @@ export function mantinePopover() {
   return cy.get(MANTINE_POPOVER).should("be.visible");
 }
 
+const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']";
+
+export function hovercard() {
+  cy.get(HOVERCARD_ELEMENT).should("be.visible");
+  return cy.get(HOVERCARD_ELEMENT);
+}
+
 export function main() {
   return cy.get("main");
 }
