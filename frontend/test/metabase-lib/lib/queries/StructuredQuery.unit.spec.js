@@ -1,3 +1,4 @@
+import { chain } from "icepick";
 import { createMockMetadata } from "__support__/metadata";
 import {
   createMockDatabase,
@@ -277,9 +278,15 @@ describe("StructuredQuery", () => {
 
       describe("when the query is missing a database", () => {
         it("should not include db schemas in dependent  metadata", () => {
-          const dependentMetadata = query
-            .setDatabaseId(null)
-            .dependentMetadata();
+          const queryWithoutDatabase = new StructuredQuery(
+            query._originalQuestion,
+            chain(query.datasetQuery())
+              .assoc("database", null)
+              .assoc("query", {})
+              .value(),
+          );
+
+          const dependentMetadata = queryWithoutDatabase.dependentMetadata();
 
           expect(dependentMetadata.some(({ type }) => type === "schema")).toBe(
             false,
@@ -300,12 +307,6 @@ describe("StructuredQuery", () => {
         expect(
           query.legacyQuery({ useStructuredQuery: true })["source-table"],
         ).toBe(ORDERS_ID);
-      });
-    });
-    describe("setDatabase", () => {
-      it("allows you to set a new database", () => {
-        const db = metadata.database(ANOTHER_DB_ID);
-        expect(query.setDatabase(db)._database().id).toBe(db.id);
       });
     });
     describe("_sourceTableId", () => {
