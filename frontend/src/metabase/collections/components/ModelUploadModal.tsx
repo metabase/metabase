@@ -13,7 +13,10 @@ import {
 import { useSearchListQuery } from "metabase/common/hooks";
 import type { CollectionId, TableId, CardId } from "metabase-types/api";
 
-type UploadMode = "append" | "create";
+enum UploadMode {
+  append = "append",
+  create = "create",
+}
 
 type CollectionOrTableIdProps =
   | { collectionId: CollectionId; tableId?: never }
@@ -30,7 +33,7 @@ export function ModelUploadModal({
   onUpload: ({ collectionId, tableId }: CollectionOrTableIdProps) => void;
   collectionId: CollectionId;
 }) {
-  const [uploadMode, setUploadMode] = useState<UploadMode>("create");
+  const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.create);
   const [tableId, setTableId] = useState<TableId | null>(null);
   const models = useSearchListQuery({
     query: {
@@ -71,7 +74,7 @@ export function ModelUploadModal({
     return null;
   }
 
-  const isFormValid = uploadMode === "create" || !!tableId;
+  const isFormValid = uploadMode === UploadMode.create || !!tableId;
 
   return (
     <Modal
@@ -88,14 +91,18 @@ export function ModelUploadModal({
           value={uploadMode}
           onChange={(val: UploadMode) => setUploadMode(val)}
         >
-          <Radio label={t`Create a new model`} value="create" />
-          <Radio mt="md" label={t`Append to a model`} value="append" />
+          <Radio label={t`Create a new model`} value={UploadMode.create} />
+          <Radio
+            mt="md"
+            label={t`Append to a model`}
+            value={UploadMode.append}
+          />
         </Radio.Group>
-        {uploadMode === "append" && (
+        {uploadMode === UploadMode.append && (
           <Select
             icon={<Icon name="model" />}
             placeholder="Select a model"
-            value={String(tableId) ?? ""}
+            value={tableId ? String(tableId) : ""}
             data={
               uploadableModels.map(model => ({
                 value: String(model.based_on_upload),
@@ -110,7 +117,7 @@ export function ModelUploadModal({
       <Flex justify="flex-end" gap="sm">
         <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleUpload} variant="filled" disabled={!isFormValid}>
-          {uploadMode === "append" ? t`Append` : t`Create`}
+          {uploadMode === UploadMode.append ? t`Append` : t`Create`}
         </Button>
       </Flex>
     </Modal>
