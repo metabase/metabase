@@ -315,50 +315,12 @@ class StructuredQuery extends AtomicQuery {
     return !!this.table();
   }
 
-  hasAnyClauses() {
-    // this list should be kept in sync with BE in `metabase.models.card/model-supports-implicit-actions?`
-
-    const query = this.getMLv2Query();
-    const stageIndex = this.getQueryStageIndex();
-
-    const hasJoins = Lib.joins(query, stageIndex).length > 0;
-
-    return (
-      hasJoins ||
-      this.hasExpressions() ||
-      this.hasFilters() ||
-      this.hasAggregations() ||
-      this.hasBreakouts() ||
-      this._hasSorts() ||
-      this.hasLimit() ||
-      this._hasFields()
-    );
-  }
-
-  hasExpressions() {
-    return Object.keys(this.expressions()).length > 0;
-  }
-
-  hasFilters() {
-    return this.filters().length > 0;
-  }
-
   hasAggregations() {
     return this.aggregations().length > 0;
   }
 
   hasBreakouts() {
     return this.breakouts().length > 0;
-  }
-
-  _hasSorts() {
-    const query = this.getMLv2Query();
-    return Lib.orderBys(query).length > 0;
-  }
-
-  hasLimit(stageIndex = this.queries().length - 1) {
-    const query = this.getMLv2Query();
-    return Lib.hasLimit(query, stageIndex);
   }
 
   _hasFields() {
@@ -813,10 +775,6 @@ class StructuredQuery extends AtomicQuery {
     }
 
     return query;
-  }
-
-  _indexOfField(fieldRef) {
-    return this.fields().findIndex(f => _.isEqual(f, fieldRef));
   }
 
   // FIELDS
