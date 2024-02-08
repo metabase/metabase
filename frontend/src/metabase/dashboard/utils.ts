@@ -11,6 +11,7 @@ import type {
   Card,
   CardId,
   Dashboard,
+  DashboardCard,
   QuestionDashboardCard,
   Database,
   Dataset,
@@ -23,6 +24,7 @@ import type {
   DashCardDataMap,
   VirtualCard,
   VirtualDashboardCard,
+  VirtualCardDisplay,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import {
@@ -320,3 +322,42 @@ export const getActionIsEnabledInDatabase = (
  */
 export const calculateDashCardRowAfterUndo = (originalRow: number) =>
   originalRow - 0.1;
+
+let tempId = -1;
+
+export function generateTemporaryDashcardId() {
+  return tempId--;
+}
+
+type NewDashboardCard = Omit<
+  DashboardCard,
+  "entity_id" | "created_at" | "updated_at"
+>;
+
+type MandatoryDashboardCardAttrs = Pick<
+  DashboardCard,
+  "dashboard_id" | "card" | "col" | "row" | "size_x" | "size_y"
+>;
+
+export function createDashCard(
+  attrs: Partial<NewDashboardCard> & MandatoryDashboardCardAttrs,
+): NewDashboardCard {
+  return {
+    id: generateTemporaryDashcardId(),
+    dashboard_tab_id: null,
+    card_id: null,
+    parameter_mappings: [],
+    visualization_settings: {},
+    ...attrs,
+  };
+}
+
+export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
+  return {
+    name: null,
+    dataset_query: {},
+    display,
+    visualization_settings: {},
+    archived: false,
+  };
+}
