@@ -80,10 +80,13 @@ export function ModelUploadModal({
     <Modal
       opened={opened}
       title={t`Select upload destination`}
-      styles={{ header: { padding: "1.5rem 2rem" } }}
+      styles={{
+        header: { padding: "2.5rem 2.5rem 1.5rem 2.5rem" },
+        body: { padding: "0 2.5rem 2.5rem 2.5rem" },
+      }}
       onClose={onClose}
     >
-      <Stack px="md" mb="lg">
+      <Stack mb="lg">
         <Text>
           {t`If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new model.`}
         </Text>
