@@ -71,6 +71,8 @@ export function ModelUploadModal({
     return null;
   }
 
+  const isFormValid = uploadMode === "create" || !!tableId;
+
   return (
     <Modal
       opened={opened}
@@ -107,7 +109,7 @@ export function ModelUploadModal({
 
       <Flex justify="flex-end" gap="sm">
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleUpload} variant="filled">
+        <Button onClick={handleUpload} variant="filled" disabled={!isFormValid}>
           {uploadMode === "append" ? t`Append` : t`Create`}
         </Button>
       </Flex>
