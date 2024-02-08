@@ -55,7 +55,6 @@ export const updateSetting = createThunkAction(
   function (setting) {
     return async function (dispatch) {
       try {
-        console.log("updating setting", setting);
         await SettingsApi.put(setting);
       } catch (error) {
         console.error("error updating setting", setting, error);
