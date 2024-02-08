@@ -112,7 +112,7 @@ function getSidebar(
   },
 ) {
   const {
-    question: dataset,
+    question,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
     isShowingSnippetSidebar,
@@ -132,10 +132,10 @@ function getSidebar(
       return <div />;
     }
     const isLastField =
-      focusedFieldIndex === dataset.getResultMetadata().length - 1;
+      focusedFieldIndex === question.getResultMetadata().length - 1;
     return (
       <DatasetFieldMetadataSidebar
-        dataset={dataset}
+        dataset={question}
         field={focusedField}
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
@@ -145,7 +145,7 @@ function getSidebar(
     );
   }
 
-  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   if (!isNative) {
     return null;
@@ -155,7 +155,7 @@ function getSidebar(
     return (
       <TagEditorSidebar
         {...props}
-        query={dataset.legacyQuery()}
+        query={question.legacyQuery()}
         onClose={toggleTemplateTagsEditor}
       />
     );
