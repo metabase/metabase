@@ -34,7 +34,7 @@ export interface ParameterSettingsProps {
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onChangeRequired: (value: boolean) => void;
-  embeddedParameterVisibility?: EmbeddingParameterVisibility;
+  embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
 export const ParameterSettings = ({

@@ -39,7 +39,6 @@ DashboardSidebars.propTypes = {
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
-  embeddingParameters: PropTypes.object,
   sidebar: PropTypes.shape({
     name: PropTypes.string,
     props: PropTypes.object,
@@ -47,6 +46,7 @@ DashboardSidebars.propTypes = {
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
   selectedTabId: PropTypes.number,
+  getEmbeddedParameterVisibility: PropTypes.func.isRequired,
 };
 
 export function DashboardSidebars({
@@ -76,7 +76,7 @@ export function DashboardSidebars({
   closeSidebar,
   setDashboardAttribute,
   selectedTabId,
-  embeddingParameters,
+  getEmbeddedParameterVisibility,
 }) {
   const handleAddCard = useCallback(
     cardId => {
@@ -138,9 +138,9 @@ export function DashboardSidebars({
       );
       return (
         <ParameterSidebar
+          getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
           parameter={parameter}
           otherParameters={otherParameters}
-          embeddingParameters={embeddingParameters}
           onChangeName={setParameterName}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}

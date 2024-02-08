@@ -10,7 +10,7 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import { slugify } from "metabase/lib/formatting";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import { ParameterSettings } from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
@@ -19,7 +19,6 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
-  embeddingParameters: EmbeddingParameters;
   onChangeName: (parameterId: ParameterId, name: string) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
@@ -46,12 +45,14 @@ export interface ParameterSidebarProps {
   onRemoveParameter: (parameterId: ParameterId) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
+  getEmbeddedParameterVisibility: (
+    slug: string,
+  ) => EmbeddingParameterVisibility | null;
 }
 
 export const ParameterSidebar = ({
   parameter,
   otherParameters,
-  embeddingParameters,
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
@@ -63,6 +64,7 @@ export const ParameterSidebar = ({
   onRemoveParameter,
   onShowAddParameterPopover,
   onClose,
+  getEmbeddedParameterVisibility,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -145,7 +147,9 @@ export const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
-            embeddedParameterVisibility={embeddingParameters[parameter.slug]}
+            embeddedParameterVisibility={getEmbeddedParameterVisibility(
+              parameter.slug,
+            )}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
