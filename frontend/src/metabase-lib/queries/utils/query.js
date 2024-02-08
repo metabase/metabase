@@ -88,8 +88,6 @@ export { getFilterClause } from "./filter";
 export const getJoins = query => J.getJoins(query.joins);
 export const addJoin = (query, join) =>
   setJoinClause(query, J.addJoin(query.joins, join));
-export const updateJoin = (query, index, join) =>
-  setJoinClause(query, J.updateJoin(query.joins, index, join));
 
 // ORDER_BY
 
