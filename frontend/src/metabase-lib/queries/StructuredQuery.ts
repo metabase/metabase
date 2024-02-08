@@ -257,64 +257,6 @@ class StructuredQuery extends AtomicQuery {
     return getStructuredQueryTable(this.question(), this);
   });
 
-  isValid() {
-    if (!this.hasData()) {
-      return false;
-    }
-
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery && !sourceQuery.isValid()) {
-      return false;
-    }
-
-    if (
-      !this._isValidClauseList("joins") ||
-      !this._isValidClauseList("filters") ||
-      !this._isValidClauseList("aggregations") ||
-      !this._isValidClauseList("breakouts")
-    ) {
-      return false;
-    }
-
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which requires an aggregation
-    if (table.entity_type === "entity/GoogleAnalyticsTable") {
-      if (!this.hasAggregations()) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  _isValidClauseList(listName) {
-    for (const clause of this[listName]()) {
-      if (!this._validateClause(clause)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  _validateClause(clause) {
-    try {
-      return clause.isValid();
-    } catch (e) {
-      console.warn("Error thrown while validating clause", clause, e);
-      return false;
-    }
-  }
-
-  /**
-   * @deprecated use MLv2
-   */
-  hasData() {
-    return !!this.table();
-  }
-
   hasAggregations() {
     return this.aggregations().length > 0;
   }
