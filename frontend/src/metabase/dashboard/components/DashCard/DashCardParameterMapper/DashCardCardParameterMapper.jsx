@@ -184,7 +184,7 @@ export function DashCardCardParameterMapper({
           buttonText: t`No valid fields`,
           buttonIcon: null,
         };
-      } else if (selectedMappingOption && (isVirtual || isAction)) {
+      } else if (selectedMappingOption && (isVirtual || isAction || isNative)) {
         return {
           buttonVariant: "mapped",
           buttonTooltip: null,
@@ -251,6 +251,7 @@ export function DashCardCardParameterMapper({
       isVirtual,
       selectedMappingOption,
       isAction,
+      isNative,
       target,
       handleChangeTarget,
       question,
