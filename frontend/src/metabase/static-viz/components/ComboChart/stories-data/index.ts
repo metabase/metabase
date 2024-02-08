@@ -6,6 +6,9 @@ import lineShowDotsOff from "./line-show-dots-off.json";
 import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
+import barHistogramMultiSeries from "./bar-histogram-multi-series.json";
+import barHistogramStacked from "./bar-histogram-stacked.json";
+import barHistogramStackedNormalized from "./bar-histogram-stacked-normalized.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
@@ -43,6 +46,9 @@ export const data = {
   lineCustomYAxisRangeEqualsExtents,
   barLinearXScale,
   barHistogramXScale,
+  barHistogramMultiSeries,
+  barHistogramStacked,
+  barHistogramStackedNormalized,
   barOrdinalXScale,
   barTwoAxesStackedWithNegativeValues,
   barBreakoutWithLineSeriesStackedRightAxisOnly,
