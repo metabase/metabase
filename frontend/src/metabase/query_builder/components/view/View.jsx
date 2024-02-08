@@ -350,7 +350,10 @@ class View extends Component {
       );
     }
 
-    if (question.isDataset() && queryBuilderMode === "dataset") {
+    const isModelOrMetric =
+      question.type() === "model" || question.type() === "metric";
+
+    if (isModelOrMetric && queryBuilderMode === "dataset") {
       return (
         <>
           <DatasetEditor {...this.props} />
