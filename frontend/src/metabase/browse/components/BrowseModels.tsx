@@ -51,6 +51,7 @@ export const BrowseModels = ({
   const groupsOfModels = groupModels(modelsFiltered, localeCode);
   const forceUpdate = useForceUpdate();
   const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
+  console.log('hasDismissedBanner', hasDismissedBanner);
 
   const shouldShowBanner = !hasDismissedBanner;
 
