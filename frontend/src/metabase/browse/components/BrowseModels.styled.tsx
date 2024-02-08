@@ -8,6 +8,7 @@ import Card from "metabase/components/Card";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { Group } from "metabase/ui";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
@@ -83,4 +84,24 @@ export const CollectionHeaderLink = styled(Link)`
 export const CollectionHeaderGroup = styled(Group)`
   position: relative;
   top: 0.5rem;
+`;
+
+export const Banner = styled.div`
+  display: flex;
+  padding: 1rem;
+  align-self: stretch;
+  border-radius: 0.25rem;
+  background: ${color("brand-lighter")};
+  color: ${color("text-dark")};
+  margin-top: 1rem;
+`;
+
+export const BannerModelIcon = styled(IconButtonWrapper)`
+  color: ${color("text-dark")};
+  margin-right: 0.5rem;
+`;
+
+export const BannerCloseButton = styled(IconButtonWrapper)`
+  color: ${color("text-light")};
+  margin-left: auto;
 `;

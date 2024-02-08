@@ -38,7 +38,10 @@ import {
 } from "metabase/pulse/selectors";
 
 // lib
-import MetabaseCookies from "metabase/lib/cookies";
+import {
+  hasSplashAlertBeenSeen,
+  rememberThatSplashAlertWasSeen,
+} from "metabase/lib/cookies";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
@@ -70,7 +73,7 @@ class CreateAlertModalContentInner extends Component {
     const { question, user, visualizationSettings } = props;
 
     this.state = {
-      hasSeenEducationalScreen: MetabaseCookies.getHasSeenAlertSplash(),
+      hasSeenEducationalScreen: hasSplashAlertBeenSeen(),
       alert: getDefaultAlert(question, user, visualizationSettings),
     };
   }
@@ -113,7 +116,7 @@ class CreateAlertModalContentInner extends Component {
   };
 
   proceedFromEducationalScreen = () => {
-    MetabaseCookies.setHasSeenAlertSplash(true);
+    rememberThatSplashAlertWasSeen();
     this.setState({ hasSeenEducationalScreen: true });
   };
 

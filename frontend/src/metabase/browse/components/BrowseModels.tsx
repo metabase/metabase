@@ -19,9 +19,15 @@ import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { updateSetting } from "metabase/admin/settings/settings";
+import { getHasDismissedBrowseModelsBanner } from "metabase/home/selectors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
+  Banner,
+  BannerCloseButton,
+  BannerModelIcon,
   CollectionHeaderContainer,
   CollectionHeaderGroup,
   CollectionHeaderLink,
@@ -43,6 +49,9 @@ export const BrowseModels = ({
     model => !isInstanceAnalyticsCollection(model.collection),
   );
   const groupsOfModels = groupModels(modelsFiltered, localeCode);
+  const forceUpdate = useForceUpdate();
+  const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
+  const shouldShowBanner = !hasDismissedBanner;
 
   if (error || isLoading) {
     return (
@@ -56,15 +65,36 @@ export const BrowseModels = ({
 
   if (modelsFiltered.length) {
     return (
-      <GridContainer role="grid">
-        {groupsOfModels.map(groupOfModels => (
-          <ModelGroup
-            models={groupOfModels}
-            key={`modelgroup-${groupOfModels[0].collection.id}`}
-            localeCode={localeCode}
-          />
-        ))}
-      </GridContainer>
+      <>
+        {shouldShowBanner && (
+          <Banner>
+            <BannerModelIcon>
+              <Icon name="model" />
+            </BannerModelIcon>
+            <Text size="md" lh="1rem" mr="1rem">
+              Models help curate data to make it easier to find answers to
+              questions all in one place.
+            </Text>
+            <BannerCloseButton
+              onClick={() => {
+                updateSetting({ key: "dismissed-model-banner", value: true });
+                forceUpdate();
+              }}
+            >
+              <Icon name="close" />
+            </BannerCloseButton>
+          </Banner>
+        )}
+        <GridContainer role="grid">
+          {groupsOfModels.map(groupOfModels => (
+            <ModelGroup
+              models={groupOfModels}
+              key={`modelgroup-${groupOfModels[0].collection.id}`}
+              localeCode={localeCode}
+            />
+          ))}
+        </GridContainer>
+      </>
     );
   }
 
