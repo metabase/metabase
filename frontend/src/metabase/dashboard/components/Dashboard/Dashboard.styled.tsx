@@ -106,21 +106,14 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   isSticky: boolean;
   hasScroll: boolean;
 }>`
-  align-items: flex-start;
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
-  display: flex;
-  flex-direction: row;
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   /* z-index should be higher than in dashcards */
   z-index: 3;
   top: 0;
   left: 0;
-
-  ${breakpointMaxSmall} {
-    flex-direction: column;
-  }
 
   ${({ isEditing }) =>
     isEditing &&
@@ -159,6 +152,10 @@ export const FixedWidthContainer = styled.div<{
   flex-direction: row;
   align-items: flex-start;
   width: 100%;
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+  }
 
   ${({ isFixedWidth }) =>
     isFixedWidth &&
