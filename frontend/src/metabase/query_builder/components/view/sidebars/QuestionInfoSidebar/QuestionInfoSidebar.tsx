@@ -49,7 +49,7 @@ export const QuestionInfoSidebar = ({
       <ContentSection>
         <HeaderContainer>
           <h3>{t`About`}</h3>
-          {question.type() === "metric" && (
+          {question.type() === "model" && (
             <Link
               variant="brand"
               to={Urls.modelDetail(question.card())}
