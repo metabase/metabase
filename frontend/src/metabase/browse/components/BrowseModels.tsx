@@ -51,6 +51,7 @@ export const BrowseModels = ({
   const groupsOfModels = groupModels(modelsFiltered, localeCode);
   const forceUpdate = useForceUpdate();
   const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
+
   const shouldShowBanner = !hasDismissedBanner;
 
   if (error || isLoading) {
@@ -77,7 +78,10 @@ export const BrowseModels = ({
             </Text>
             <BannerCloseButton
               onClick={() => {
-                updateSetting({ key: "dismissed-model-banner", value: true });
+                updateSetting({
+                  key: "dismissed-browse-models-banner",
+                  value: true,
+                });
                 forceUpdate();
               }}
             >
