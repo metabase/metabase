@@ -7,6 +7,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import cx from "classnames";
 import { Grid, ScrollSync } from "react-virtualized";
+import * as Lib from "metabase-lib";
 
 import "./TableInteractive.css";
 
@@ -30,7 +31,7 @@ import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";
+import { FieldInfoPopoverMLv2 } from "metabase/components/MetadataInfo/FieldInfoPopover";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass } from "metabase-lib/utils";
@@ -102,6 +103,7 @@ class TableInteractive extends Component {
   static propTypes = {
     data: PropTypes.object.isRequired,
     isPivoted: PropTypes.bool.isRequired,
+    query: PropTypes.object,
     sort: PropTypes.array,
   };
 
@@ -782,9 +784,10 @@ class TableInteractive extends Component {
               : undefined
           }
         >
-          <FieldInfoPopover
+          <FieldInfoPopoverMLv2
             placement="bottom-start"
-            field={column}
+            query={this.props.query}
+            column={Lib.fromLegacyColumn(this.props.query, -1, column)}
             timezone={data.results_timezone}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
             showFingerprintInfo
@@ -812,7 +815,7 @@ class TableInteractive extends Component {
               column,
               columnIndex,
             )}
-          </FieldInfoPopover>
+          </FieldInfoPopoverMLv2>
           <TableDraggable
             enableUserSelectHack={false}
             enableCustomUserSelectHack={!isVirtual}
