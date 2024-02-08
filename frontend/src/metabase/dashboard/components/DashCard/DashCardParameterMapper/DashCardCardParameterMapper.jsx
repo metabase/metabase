@@ -113,6 +113,7 @@ export function DashCardCardParameterMapper({
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
+  const isAction = isActionDashCard(dashcard);
 
   const handleChangeTarget = useCallback(
     target => {
@@ -126,10 +127,23 @@ export function DashCardCardParameterMapper({
   const isNative = isNativeDashCard(dashcard);
 
   let selectedMappingOption;
-  if (isVirtual) {
-    selectedMappingOption = _.find(mappingOptions, option =>
-      _.isEqual(normalize(option.target), normalize(target)),
-    );
+  if (isVirtual || isAction || isNative) {
+    selectedMappingOption = target
+      ? _.find(mappingOptions, option => {
+          const normalizedTarget = normalize(target);
+          const normalizedOptionTarget = normalize(option.target);
+
+          // This trick is needed because MLv2 has `base-type` in target[1]
+          // but response from BE doesn't provide `base-type`, so isEqual fails
+          return (
+            normalizedTarget[0] === normalizedOptionTarget[0] &&
+            _.isEqual(
+              normalizedTarget[1].slice(0, -1),
+              normalizedOptionTarget[1].slice(0, -1),
+            )
+          );
+        })
+      : undefined;
   } else {
     const columns = Lib.visibleColumns(question.query(), -1);
     const [index] = target
@@ -170,7 +184,7 @@ export function DashCardCardParameterMapper({
           buttonText: t`No valid fields`,
           buttonIcon: null,
         };
-      } else if (selectedMappingOption && isVirtual) {
+      } else if (selectedMappingOption && (isVirtual || isAction)) {
         return {
           buttonVariant: "mapped",
           buttonTooltip: null,
@@ -186,7 +200,12 @@ export function DashCardCardParameterMapper({
             />
           ),
         };
-      } else if (selectedMappingOption && !isVirtual) {
+      } else if (
+        selectedMappingOption &&
+        !isVirtual &&
+        !isAction &&
+        !isNative
+      ) {
         return {
           buttonVariant: "mapped",
           buttonTooltip: null,
@@ -231,6 +250,7 @@ export function DashCardCardParameterMapper({
       isDisabled,
       isVirtual,
       selectedMappingOption,
+      isAction,
       target,
       handleChangeTarget,
       question,
