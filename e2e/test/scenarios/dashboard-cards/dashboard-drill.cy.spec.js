@@ -645,6 +645,41 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
+  it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
+    cy.log("Create a question");
+
+    cy.createQuestion({
+      name: "38307",
+      query: {
+        "source-table": REVIEWS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "bar",
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log("Add question to the dashboard");
+        addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+        });
+
+        visitDashboard(DASHBOARD_ID);
+
+        // click the first bar on the card's graph
+        cy.get(".bar").eq(0).click({ force: true });
+
+        // intercept the POST to question's query via api dataset
+        cy.intercept("POST", `/api/dataset`).as("dataset");
+        cy.findByText("See this month by week").click();
+        cy.wait("@dataset");
+
+        // check that the display is still a bar chart by checking that a .bar element exists
+        cy.get(".bar").should("exist");
+      });
+    });
+  });
+
   it("should not hide custom formatting when click behavior is enabled (metabase#14597)", () => {
     const columnKey = JSON.stringify(["name", "MY_NUMBER"]);
     const questionSettings = {
