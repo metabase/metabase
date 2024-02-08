@@ -1135,29 +1135,30 @@
 (deftest create-csv-upload!-failure-test
   ;; Just test with postgres because failure should be independent of the driver
   (mt/test-driver :postgres
-    (testing "Uploads must be enabled"
-      (doseq [uploads-enabled-value [false nil]]
+    (mt/with-empty-db
+      (testing "Uploads must be enabled"
+        (doseq [uploads-enabled-value [false nil]]
+          (is (thrown-with-msg?
+                java.lang.Exception
+                #"^Uploads are not enabled\.$"
+                (upload-example-csv! :uploads-enabled uploads-enabled-value :schema-name "public", :table-prefix "uploaded_magic_")))))
+      (testing "Database ID must be valid"
         (is (thrown-with-msg?
               java.lang.Exception
-              #"^Uploads are not enabled\.$"
-              (upload-example-csv! :uploads-enabled uploads-enabled-value :schema-name "public", :table-prefix "uploaded_magic_")))))
-    (testing "Database ID must be valid"
-      (is (thrown-with-msg?
-            java.lang.Exception
-            #"^The uploads database does not exist\.$"
-            (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
-    (testing "Uploads must be supported"
-      (with-redefs [driver/database-supports? (constantly false)]
-        (is (thrown-with-msg?
-              java.lang.Exception
-              #"^Uploads are not supported on Postgres databases\."
-              (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_")))))
-    (testing "User must have write permissions on the collection"
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (is (thrown-with-msg?
-              java.lang.Exception
-              #"^You do not have curate permissions for this Collection\.$"
-              (upload-example-csv! :user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_")))))))
+              #"^The uploads database does not exist\.$"
+              (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
+      (testing "Uploads must be supported"
+        (with-redefs [driver/database-supports? (constantly false)]
+          (is (thrown-with-msg?
+                java.lang.Exception
+                #"^Uploads are not supported on Postgres databases\."
+                (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_")))))
+      (testing "User must have write permissions on the collection"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (is (thrown-with-msg?
+                java.lang.Exception
+                #"^You do not have curate permissions for this Collection\.$"
+                (upload-example-csv! :user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
