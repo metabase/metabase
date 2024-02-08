@@ -84,8 +84,8 @@ export const OverviewSettings = ({
 
           <ClientEmbedCodePane
             clientCodeOptions={clientCodeOptions}
-            selectedClientCodeOptionName={selectedClientCodeOptionId}
-            setSelectedClientCodeOptionName={setSelectedClientCodeOptionId}
+            selectedClientCodeOptionId={selectedClientCodeOptionId}
+            setSelectedClientCodeOptionId={setSelectedClientCodeOptionId}
             onCopy={() => onClientCodeCopy(selectedClientCodeOptionId)}
           />
 
