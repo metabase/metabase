@@ -116,7 +116,7 @@
                (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
 
 ;; TODO: re-enable these tests once they're no longer flaky
-(defn- install-audit-db-if-needed!
+(defn install-audit-db-if-needed!
   "Checks if there's an audit-db. if not, it will create it and serialize audit content, including the
   `default-audit-collection`. If the audit-db is there, this does nothing."
   []
