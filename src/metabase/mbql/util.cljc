@@ -172,7 +172,7 @@
   [m unit]
   (mbql.match/replace m
     [:field id-or-name opts] [:field id-or-name (assoc opts :temporal-unit unit)]
-    [:expression expression-name] [:expression expression-name]))
+    [:expression expression-name opts] [:expression expression-name (assoc opts :temporal-unit unit)]))
 
 (defn desugar-time-interval
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
