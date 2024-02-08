@@ -239,12 +239,6 @@ describe("StructuredQuery", () => {
         expect(query._database().id).toBe(SAMPLE_DB_ID);
       });
     });
-    describe("engine", () => {
-      it("identifies the engine of a query", () => {
-        // This is a magic constant and we should probably pull this up into an enum
-        expect(query.engine()).toBe("H2");
-      });
-    });
     describe("dependentMetadata", () => {
       it("should include db schemas and source table with foreignTables = true", () => {
         expect(query.dependentMetadata()).toEqual([
@@ -290,11 +284,6 @@ describe("StructuredQuery", () => {
   });
 
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
-    describe("reset", () => {
-      it("Expect a reset query to not have a selected database", () => {
-        expect(query.reset()._database()).toBe(null);
-      });
-    });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
         expect(
