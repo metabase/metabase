@@ -36,7 +36,7 @@ describe("scenarios > dashboard cards > sections", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
   });
 
-  it("should do the thing", () => {
+  it("should add sections and select a question for an empty card", () => {
     editDashboard();
 
     getDashboardCards().should("have.length", 1);
@@ -44,7 +44,6 @@ describe("scenarios > dashboard cards > sections", () => {
     getDashboardCards().should("have.length", 7);
 
     cy.findByPlaceholderText("Heading").type("This is a heading");
-    dashboardGrid().findAllByText("Select question").first().click();
     selectQuestion("Orders, Count");
 
     createNewTab();
@@ -52,7 +51,6 @@ describe("scenarios > dashboard cards > sections", () => {
     addSection("KPI grid");
     getDashboardCards().should("have.length", 5);
 
-    dashboardGrid().findAllByText("Select question").first().click();
     selectQuestion("Orders, Count, Grouped by Created At (year)");
 
     mapDashCardToFilter(getDashboardCard(1), "Category");
@@ -104,6 +102,10 @@ function addSection(name) {
 }
 
 function selectQuestion(question) {
+  dashboardGrid()
+    .findAllByText("Select question")
+    .first()
+    .click({ force: true });
   modal().findByText(question).click();
   cy.wait("@cardQuery");
   dashboardGrid().findByText(question).should("exist");
