@@ -1,6 +1,7 @@
+import { useUpdate } from "react-use";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   useDatabaseListQuery,
@@ -13,10 +14,13 @@ import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 import { getIsXrayEnabled } from "../../selectors";
-import { isWithinWeeks } from "../../utils";
+import { isWithinWeeks, shouldShowEmbedHomepage } from "../../utils";
+import { EmbedMinimalHomepage } from "../EmbedMinimalHomepage";
 
 export const HomeContent = (): JSX.Element | null => {
+  const update = useUpdate();
   const user = useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases } = useDatabaseListQuery();
   const { data: recentItems } = useRecentItemListQuery({ reload: true });
@@ -24,6 +28,10 @@ export const HomeContent = (): JSX.Element | null => {
 
   if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (isAdmin && shouldShowEmbedHomepage()) {
+    return <EmbedMinimalHomepage onDismiss={update} />;
   }
 
   if (isPopularSection(user, recentItems, popularItems)) {
