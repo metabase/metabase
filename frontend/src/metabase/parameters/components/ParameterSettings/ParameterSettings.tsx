@@ -7,18 +7,16 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { Icon, TextInput, Text, HoverCard, Stack } from "metabase/ui";
-import Toggle from "metabase/core/components/Toggle";
+import { Text, TextInput } from "metabase/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
+import { RequiredParamToggle } from "../RequiredParamToggle/RequiredParamToggle";
 import {
   SettingLabel,
   SettingLabelError,
-  SettingRequiredContainer,
-  SettingRequiredLabel,
   SettingSection,
   SettingsRoot,
   SettingValueWidget,
@@ -137,52 +135,34 @@ export const ParameterSettings = ({
           setValue={onChangeDefaultValue}
         />
 
-        <SettingRequiredContainer
+        <RequiredParamToggle
           // This forces the toggle to be a new instance when the parameter changes,
           // so that toggles don't slide, which is confusing.
-          key={`parameter-setting-required_${parameter.id}`}
-        >
-          <Toggle
-            disabled={isEmbeddedDisabled}
-            id={`parameter-setting-required_${parameter.id}`}
-            value={parameter.required}
-            onChange={onChangeRequired}
-          />
-          <div>
-            <SettingRequiredLabel
-              htmlFor={`parameter-setting-required_${parameter.id}`}
-            >
-              {t`Always require a value`}
-              {isEmbeddedDisabled && (
-                <HoverCard position="top-end" shadow="xs">
-                  <HoverCard.Target>
-                    <Icon name="info_filled" />
-                  </HoverCard.Target>
-                  <HoverCard.Dropdown w={"300px"}>
-                    <Stack p="md" spacing="sm">
-                      <Text lh={1.4}>
-                        {t`This filter is set to disabled in an embedded dashboard.`}
-                      </Text>
-                      <Text lh={1.4}>
-                        {t`To always require a value, first visit embedding settings,
-                      make this filter editable or locked, re-publish the
-                      dashboard, then return to this page.`}
-                      </Text>
-                      <Text size="sm">
-                        {t`Note`}:{" "}
-                        {t`making it locked, will require updating the
-                      embedding code before proceeding, otherwise the embed will
-                      break.`}
-                      </Text>
-                    </Stack>
-                  </HoverCard.Dropdown>
-                </HoverCard>
-              )}
-            </SettingRequiredLabel>
-
-            <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
-          </div>
-        </SettingRequiredContainer>
+          key={`required_param_toggle_${parameter.id}`}
+          uniqueId={parameter.id}
+          disabled={isEmbeddedDisabled}
+          value={parameter.required ?? false}
+          onChange={onChangeRequired}
+          disabledTooltip={
+            <>
+              <Text lh={1.4}>
+                {t`This filter is set to disabled in an embedded dashboard.`}
+              </Text>
+              <Text lh={1.4}>
+                {t`To always require a value, first visit embedding settings,
+                    make this filter editable or locked, re-publish the
+                    dashboard, then return to this page.`}
+              </Text>
+              <Text size="sm">
+                {t`Note`}:{" "}
+                {t`making it locked, will require updating the
+                    embedding code before proceeding, otherwise the embed will
+                    break.`}
+              </Text>
+            </>
+          }
+          description={t`When enabled, people can change the value or reset it, but can't clear it entirely.`}
+        ></RequiredParamToggle>
       </SettingSection>
     </SettingsRoot>
   );
