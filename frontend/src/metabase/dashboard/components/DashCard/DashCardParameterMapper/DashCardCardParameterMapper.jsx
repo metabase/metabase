@@ -26,6 +26,7 @@ import {
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import * as Lib from "metabase-lib";
+import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
@@ -52,7 +53,13 @@ import {
 } from "./DashCardCardParameterMapper.styled";
 import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
 
-function formatSelected({ name, sectionName }) {
+function formatSelected(query, mappingOption) {
+  const columnInfo = Lib.displayInfo(query, -1, mappingOption);
+  const [group] = Lib.groupColumns([mappingOption]);
+  const groupInfo = Lib.displayInfo(query, -1, group);
+  const sectionName = getColumnGroupName(groupInfo);
+  const name = columnInfo.displayName;
+
   if (sectionName == null) {
     // for native question variables or field literals we just display the name
     return name;
@@ -98,18 +105,14 @@ export function DashCardCardParameterMapper({
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const selectedMappingOption =
-    !!target &&
-    _.find(mappingOptions, option => {
-      const [type1, legacyRef1] = normalize(option.target);
-      const [type2, legacyRef2] = normalize(target);
+  const columns = Lib.visibleColumns(question.query(), -1);
+  const [index] = target
+    ? Lib.findColumnIndexesFromLegacyRefs(question.query(), -1, columns, [
+        normalize(target[1]),
+      ])
+    : [-1];
 
-      return (
-        type1 === type2 &&
-        // base-type is not presented in MLv1
-        _.isEqual(legacyRef1.slice(0, -1), legacyRef2.slice(0, -1))
-      );
-    });
+  const selectedColumn = index >= 0 ? columns[index] : undefined;
 
   const handleChangeTarget = useCallback(
     target => {
@@ -151,11 +154,11 @@ export function DashCardCardParameterMapper({
           buttonText: t`No valid fields`,
           buttonIcon: null,
         };
-      } else if (selectedMappingOption) {
+      } else if (selectedColumn) {
         return {
           buttonVariant: "mapped",
           buttonTooltip: null,
-          buttonText: formatSelected(selectedMappingOption),
+          buttonText: formatSelected(question.query(), selectedColumn),
           buttonIcon: (
             <CloseIconButton
               role="button"
@@ -191,10 +194,11 @@ export function DashCardCardParameterMapper({
     }, [
       hasPermissionsToMap,
       isDisabled,
-      selectedMappingOption,
-      target,
-      handleChangeTarget,
       isVirtual,
+      selectedColumn,
+      target,
+      question,
+      handleChangeTarget,
     ]);
 
   const headerContent = useMemo(() => {
