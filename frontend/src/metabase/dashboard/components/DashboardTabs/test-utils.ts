@@ -49,6 +49,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       public_uuid: null,
       enable_embedding: false,
       initially_published_at: null,
+      width: "fixed",
     },
   },
   dashcards: {

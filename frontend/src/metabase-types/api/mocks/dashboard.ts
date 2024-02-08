@@ -30,6 +30,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   enable_embedding: false,
   embedding_params: null,
   initially_published_at: null,
+  width: "fixed",
   ...opts,
 });
 
