@@ -126,7 +126,7 @@ function ModelDetailPage({
 
   useMount(() => {
     const card = model.card();
-    const isModel = model.isDataset();
+    const isModel = model.type() === "model";
     if (isModel) {
       if (model.database()) {
         loadMetadataForCard(card);
