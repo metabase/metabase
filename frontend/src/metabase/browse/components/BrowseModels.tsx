@@ -82,8 +82,7 @@ export const BrowseModels = ({
               </BannerModelIcon>
               <Group grow>
                 <Text size="md" lh="1rem" mr="1rem">
-                  Models help curate data to make it easier to find answers to
-                  questions all in one place.
+                  {t`Models help curate data to make it easier to find answers to questions all in one place.`}
                 </Text>
               </Group>
               <BannerCloseButton
