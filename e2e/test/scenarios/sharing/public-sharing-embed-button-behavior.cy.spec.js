@@ -282,7 +282,7 @@ describe("embed modal display", () => {
           });
 
           openPublicLinkPopoverFromMenu();
-          cy.findByTestId("copy-button").click();
+          cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
             expectGoodSnowplowEvent({
               event: "public_link_copied",
@@ -299,7 +299,7 @@ describe("embed modal display", () => {
             });
 
             mantinePopover().findByText("csv").click();
-            cy.findByTestId("copy-button").click();
+            cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
@@ -307,7 +307,7 @@ describe("embed modal display", () => {
             });
 
             mantinePopover().findByText("xlsx").click();
-            cy.findByTestId("copy-button").click();
+            cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
@@ -315,7 +315,7 @@ describe("embed modal display", () => {
             });
 
             mantinePopover().findByText("json").click();
-            cy.findByTestId("copy-button").click();
+            cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
@@ -348,7 +348,7 @@ describe("embed modal display", () => {
           openEmbedModalFromMenu();
           cy.findByTestId("sharing-pane-public-embed-button").within(() => {
             cy.findByText("Get an embed link").click();
-            cy.findByTestId("copy-button").click();
+            cy.findByTestId("copy-button").realClick();
           });
           expectGoodSnowplowEvent({
             event: "public_embed_code_copied",
@@ -383,7 +383,9 @@ describe("embed modal display", () => {
           openStaticEmbeddingModal();
 
           cy.log("Assert copying codes in Overview tab");
-          cy.findByTestId("embed-backend").findByTestId("copy-button").click();
+          cy.findByTestId("embed-backend")
+            .findByTestId("copy-button")
+            .realClick();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
@@ -399,7 +401,9 @@ describe("embed modal display", () => {
             },
           });
 
-          cy.findByTestId("embed-frontend").findByTestId("copy-button").click();
+          cy.findByTestId("embed-frontend")
+            .findByTestId("copy-button")
+            .realClick();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
@@ -422,7 +426,9 @@ describe("embed modal display", () => {
             cy.findByText("Node.js").click();
           });
           popover().findByText("Ruby").click();
-          cy.findByTestId("embed-backend").findByTestId("copy-button").click();
+          cy.findByTestId("embed-backend")
+            .findByTestId("copy-button")
+            .realClick();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
@@ -458,7 +464,9 @@ describe("embed modal display", () => {
             cy.findByLabelText("Border").click({ force: true });
           });
 
-          cy.findByTestId("embed-backend").findByTestId("copy-button").click();
+          cy.findByTestId("embed-backend")
+            .findByTestId("copy-button")
+            .realClick();
           expectGoodSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
