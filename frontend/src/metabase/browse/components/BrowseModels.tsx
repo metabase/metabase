@@ -18,6 +18,7 @@ import NoResults from "assets/img/no_results.svg";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { color } from "metabase/lib/colors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
@@ -139,9 +140,6 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
-  // const noDescription = c(
-  //   "Indicates that a model has no description associated with it",
-  // ).t`No description.`;
   return (
     <Link
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
@@ -150,9 +148,9 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     >
       <ModelCard>
         <Box mb="auto">
-          <Icon name="model" size={20} className="text-brand" />
+          <Icon name="model" size={20} className={color("brand")} />
         </Box>
-        <Title className="text-wrap" lh="1rem" mb=".25rem" size="1rem">
+        <Title lh="1rem" mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
           </MultilineEllipsified>
