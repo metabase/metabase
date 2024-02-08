@@ -224,6 +224,7 @@ export const getRoutes = store => {
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path="query" component={QueryBuilder} />
+            <Route path=":slug" component={QueryBuilder} />
           </Route>
 
           <Route path="browse">
