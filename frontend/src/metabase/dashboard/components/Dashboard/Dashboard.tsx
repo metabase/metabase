@@ -367,18 +367,23 @@ function DashboardInner(props: DashboardProps) {
       });
       return;
     }
+
+    if (isEditing) {
+      return; // no refetching in edit mode
+    }
+
     if (previousTabId !== selectedTabId) {
-      if (!isEditing) {
-        fetchDashboardCardData();
-        fetchDashboardCardMetadata();
-      }
+      fetchDashboardCardData();
+      fetchDashboardCardMetadata();
       return;
     }
+
     const didDashboardLoad = !previousDashboard && dashboard;
     const didParameterValuesChange = !_.isEqual(
       previousParameterValues,
       parameterValues,
     );
+
     if (didDashboardLoad || didParameterValuesChange) {
       fetchDashboardCardData({ reload: false, clearCache: true });
     }
