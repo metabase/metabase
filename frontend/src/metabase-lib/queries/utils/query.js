@@ -90,8 +90,6 @@ export const addJoin = (query, join) =>
   setJoinClause(query, J.addJoin(query.joins, join));
 export const updateJoin = (query, index, join) =>
   setJoinClause(query, J.updateJoin(query.joins, index, join));
-export const removeJoin = (query, index) =>
-  setJoinClause(query, J.removeJoin(query.joins, index));
 
 // ORDER_BY
 
