@@ -61,6 +61,7 @@ function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
       <SearchInput
         fullWidth
         autoFocus
+        data-autofocus
         placeholder={t`Search…`}
         value={searchText}
         icon={<Icon name="search" size={16} />}

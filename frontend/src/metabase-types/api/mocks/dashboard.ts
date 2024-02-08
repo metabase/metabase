@@ -27,6 +27,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   public_uuid: null,
   enable_embedding: false,
   embedding_params: null,
+  width: "fixed",
   ...opts,
 });
 
@@ -35,6 +36,7 @@ export const createMockDashboardCard = (
 ): QuestionDashboardCard => ({
   id: 1,
   dashboard_id: 1,
+  dashboard_tab_id: null,
   col: 0,
   row: 0,
   card_id: 1,
@@ -93,6 +95,7 @@ export const createMockVirtualDashCard = (
   return {
     id: 1,
     dashboard_id: 1,
+    dashboard_tab_id: null,
     col: 0,
     row: 0,
     size_x: 1,

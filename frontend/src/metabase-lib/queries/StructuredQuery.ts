@@ -257,69 +257,6 @@ class StructuredQuery extends AtomicQuery {
     return getStructuredQueryTable(this.question(), this);
   });
 
-  /**
-   * Removes invalid clauses from the query (and source-query, recursively)
-   */
-  clean({ skipFilters = false } = {}): StructuredQuery {
-    if (!this.hasMetadata()) {
-      console.warn("Warning: can't clean query without metadata!");
-      return this;
-    }
-
-    let query = this;
-    // first clean the sourceQuery, if any, recursively
-    const sourceQuery = query.sourceQuery();
-
-    if (sourceQuery) {
-      query = query.setSourceQuery(sourceQuery.clean({ skipFilters }));
-    }
-
-    return query.cleanJoins().cleanExpressions().cleanFields().cleanEmpty();
-  }
-
-  /**
-   * Removes empty/useless layers of nesting (recursively)
-   */
-  cleanNesting(): StructuredQuery {
-    // first clean the sourceQuery, if any, recursively
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery) {
-      return this.setSourceQuery(sourceQuery.cleanNesting()).cleanEmpty();
-    } else {
-      return this;
-    }
-  }
-
-  private cleanJoins(): StructuredQuery {
-    return this._cleanClauseList("joins");
-  }
-
-  cleanExpressions(): StructuredQuery {
-    return this; // TODO
-  }
-
-  cleanFilters(): StructuredQuery {
-    return this._cleanClauseList("filters");
-  }
-
-  cleanFields(): StructuredQuery {
-    return this; // TODO
-  }
-
-  /**
-   * If this query is empty and there's a source-query, strip off this query, returning the source-query
-   */
-  cleanEmpty(): StructuredQuery {
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery && !this.hasAnyClauses()) {
-      return sourceQuery;
-    } else {
-      return this;
-    }
-  }
-
   isValid() {
     if (!this.hasData()) {
       return false;
@@ -350,23 +287,6 @@ class StructuredQuery extends AtomicQuery {
     }
 
     return true;
-  }
-
-  _cleanClauseList(listName) {
-    let query = this;
-
-    for (let index = 0; index < query[listName]().length; index++) {
-      const clause = query[listName]()[index];
-
-      if (!this._validateClause(clause)) {
-        console.warn("Removing invalid MBQL clause", clause);
-        query = clause.remove();
-        // since we're removing them in order we need to decrement index when we remove one
-        index -= 1;
-      }
-    }
-
-    return query;
   }
 
   _isValidClauseList(listName) {

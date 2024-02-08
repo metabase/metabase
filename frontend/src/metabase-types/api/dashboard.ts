@@ -44,6 +44,7 @@ export interface Dashboard {
   archived: boolean;
   public_uuid: string | null;
   embedding_params?: Record<string, string> | null;
+  width: "full" | "fixed";
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
@@ -54,7 +55,7 @@ export type DashCardId = number;
 export type BaseDashboardCard = {
   id: DashCardId;
   dashboard_id: DashboardId;
-  dashboard_tab_id?: DashboardTabId;
+  dashboard_tab_id: DashboardTabId | null;
   card_id: CardId | null;
   card: Card | VirtualCard;
   collection_authority_level?: CollectionAuthorityLevel;
