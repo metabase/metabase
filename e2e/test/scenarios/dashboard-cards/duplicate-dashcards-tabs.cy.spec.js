@@ -118,6 +118,11 @@ describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
 
     duplicateTab("Tab 1");
     expectGoodSnowplowEvent(EVENTS.duplicateTab);
+    getDashboardCard().within(() => {
+      cy.findByText("Products").should("exist");
+      cy.findByText("Category").should("exist");
+      cy.findByText(/(Problem|Error)/i).should("not.exist");
+    });
     saveDashboard();
     expectGoodSnowplowEvent(EVENTS.saveDashboard);
 

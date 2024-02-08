@@ -23,8 +23,10 @@ export const InactiveStep = ({
 }: InactiveStepProps): JSX.Element => {
   return (
     <StepRoot
+      role="listitem"
       isCompleted={isStepCompleted}
       onClick={isStepCompleted && !isSetupCompleted ? onStepSelect : undefined}
+      aria-label={title}
     >
       <StepTitle isCompleted={isStepCompleted}>{title}</StepTitle>
       <StepLabel isCompleted={isStepCompleted}>
