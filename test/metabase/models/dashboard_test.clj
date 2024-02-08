@@ -352,19 +352,19 @@
                                          :id      (= dashcard-id id)
                                          :card_id (= card-id card_id)
                                          :series  (= [series-id-1 series-id-2] series))])
-          empty-dashboard      {:name                   "Revert Test"
-                                :description            "something"
-                                :auto_apply_filters     true
-                                :collection_id          nil
-                                :cache_ttl              nil
-                                :cards                  []
-                                :tabs                   []
-                                :archived               false
-                                :collection_position    nil
-                                :enable_embedding       false
-                                :embedding_params       nil
-                                :parameters             []
-                                :width                  "fixed"}
+          empty-dashboard      {:name                "Revert Test"
+                                :description         "something"
+                                :auto_apply_filters  true
+                                :collection_id       nil
+                                :cache_ttl           nil
+                                :cards               []
+                                :tabs                []
+                                :archived            false
+                                :collection_position nil
+                                :enable_embedding    false
+                                :embedding_params    nil
+                                :parameters          []
+                                :width               "fixed"}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name                "Test Dashboard"
@@ -404,30 +404,30 @@
                    (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
       (testing "now do the reversion; state should return to original"
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
-        (is (= {:name                   "Test Dashboard"
-                :description            nil
-                :cache_ttl              nil
-                :auto_apply_filters     true
-                :collection_id          nil
-                :cards                  [{:size_x                 4
-                                          :size_y                 4
-                                          :row                    0
-                                          :col                    0
-                                          :id                     false
-                                          :card_id                true
-                                          :series                 true
-                                          :dashboard_tab_id       nil
-                                          :action_id              nil
-                                          :parameter_mappings     []
-                                          :visualization_settings {}
-                                          :dashboard_id           dashboard-id}]
-                :tabs                   []
-                :archived               false
-                :collection_position    nil
-                :enable_embedding       false
-                :embedding_params       nil
-                :parameters             []
-                :width                  "fixed"}
+        (is (= {:name                "Test Dashboard"
+                :description         nil
+                :cache_ttl           nil
+                :auto_apply_filters  true
+                :collection_id       nil
+                :cards               [{:size_x                 4
+                                       :size_y                 4
+                                       :row                    0
+                                       :col                    0
+                                       :id                     false
+                                       :card_id                true
+                                       :series                 true
+                                       :dashboard_tab_id       nil
+                                       :action_id              nil
+                                       :parameter_mappings     []
+                                       :visualization_settings {}
+                                       :dashboard_id           dashboard-id}]
+                :tabs                []
+                :archived            false
+                :collection_position nil
+                :enable_embedding    false
+                :embedding_params    nil
+                :parameters          []
+                :width               "fixed"}
                (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"
