@@ -130,7 +130,8 @@
             e       (ex-info message
                              {:driver             driver
                               :database-name      database-name
-                              :connection-details connection-details}
+                              :connection-details connection-details
+                              :ex e}
                              e)]
         (log/error e message)
         (t2/delete! Database :id (u/the-id db))
