@@ -7,7 +7,7 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { Icon, TextInput, Tooltip } from "metabase/ui";
+import { Icon, TextInput, Text, HoverCard, Stack } from "metabase/ui";
 import Toggle from "metabase/core/components/Toggle";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
@@ -154,16 +154,29 @@ export const ParameterSettings = ({
             >
               {t`Always require a value`}
               {isEmbeddedDisabled && (
-                <Tooltip
-                  width={200}
-                  multiline
-                  withArrow
-                  label={
-                    'This filter visiblity is set to "disabled" in the embedded dashboard, so you can\'t make it required'
-                  }
-                >
-                  <Icon name="warning" />
-                </Tooltip>
+                <HoverCard position="top-end" shadow="xs">
+                  <HoverCard.Target>
+                    <Icon name="info_filled" />
+                  </HoverCard.Target>
+                  <HoverCard.Dropdown w={"300px"}>
+                    <Stack p="md" spacing="sm">
+                      <Text lh={1.4}>
+                        {t`This filter is set to disabled in an embedded dashboard.`}
+                      </Text>
+                      <Text lh={1.4}>
+                        {t`To always require a value, first visit embedding settings,
+                      make this filter editable or locked, re-publish the
+                      dashboard, then return to this page.`}
+                      </Text>
+                      <Text size="sm">
+                        {t`Note`}:{" "}
+                        {t`making it locked, will require updating the
+                      embedding code before proceeding, otherwise the embed will
+                      break.`}
+                      </Text>
+                    </Stack>
+                  </HoverCard.Dropdown>
+                </HoverCard>
               )}
             </SettingRequiredLabel>
 
