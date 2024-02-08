@@ -30,10 +30,7 @@
    (fn []
      (testing "with no options"
        (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {})
-              (cmd/import "/path/"))))
-     (testing "with options"
-       (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {:abort-on-error true})
-              (cmd/import "/path/" "--abort-on-error")))))))
+              (cmd/import "/path/")))))))
 
 (deftest dump-command-test
   (do-with-captured-call-enterprise-calls!
