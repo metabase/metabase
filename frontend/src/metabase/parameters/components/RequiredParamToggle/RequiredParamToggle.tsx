@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import type { ReactNode } from "react";
-import { Icon, HoverCard, Stack, Flex } from "metabase/ui";
+import { Icon, HoverCard, Stack, Flex, Text } from "metabase/ui";
 import Toggle from "metabase/core/components/Toggle";
 import { SettingRequiredLabel } from "./RequierParamToggle.styled";
 
@@ -36,7 +36,10 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
           )}
         </SettingRequiredLabel>
 
-        <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
+        <Text
+          mt="sm"
+          lh={1.2}
+        >{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</Text>
       </div>
     </Flex>
   );
