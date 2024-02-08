@@ -148,7 +148,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     >
       <ModelCard>
         <Box mb="auto">
-          <Icon name="model" size={20} className={color("brand")} />
+          <Icon name="model" size={20} color={color("brand")} />
         </Box>
         <Title lh="1rem" mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
