@@ -302,7 +302,7 @@ export const loadMetadataForDependentItems =
     );
     const promises = uniqueDependentItems.flatMap(({ type, id }) => {
       if (type === "table") {
-        return [Tables.actions.fetchMetadataAndForeignTables({ id }, options)];
+        return [Tables.actions.fetchMetadata({ id }, options)];
       }
 
       if (type === "field") {
