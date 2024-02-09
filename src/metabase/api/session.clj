@@ -213,7 +213,7 @@
 ;; There's also no need to salt the token because it's already random <3
 
 (def ^:private forgot-password-throttlers
-  {:email      (throttle/make-throttler :email :attempts-threshold 3 :initial-delay-ms 1000)
+  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms 1000)
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
 (defn- forgot-password-impl
