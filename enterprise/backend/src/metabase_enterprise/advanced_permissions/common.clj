@@ -22,6 +22,23 @@
                (database/table-id->database-id (:table_id instance)))
            (:table_id instance))))
 
+(defenterprise current-user-can-read-schema?
+  "Enterprise version. Returns a boolean whether the current user can read the given schema"
+  :feature :advanced-permissions
+  [db-id schema-name]
+  (= :yes (data-perms/schema-permission-for-user api/*current-user-id*
+                                                 :perms/manage-table-metadata
+                                                 db-id
+                                                 schema-name)))
+
+(defenterprise current-user-can-write-db?
+  "Enterprise version. Returns a boolean whether the current user can write the given db"
+  :feature :advanced-permissions
+  [db-id]
+  (= :yes (data-perms/database-permission-for-user api/*current-user-id*
+                                                   :perms/manage-database
+                                                   db-id)))
+
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
   This function is meant to be used for GET /api/user/current "
