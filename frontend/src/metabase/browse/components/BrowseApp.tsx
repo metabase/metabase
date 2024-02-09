@@ -51,18 +51,7 @@ export const BrowseApp = ({
         <BrowseDataHeader>
           <BrowseSectionContainer>
             <h2>{t`Browse data`}</h2>
-            {tab === "databases" && (
-              <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
-                <Link to="reference">
-                  <BrowseHeaderIconContainer>
-                    <Icon size={14} name="reference" />
-                    <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
-                      {t`Learn about our data`}
-                    </Text>
-                  </BrowseHeaderIconContainer>
-                </Link>
-              </Flex>
-            )}
+            {tab === "databases" && <LearnAboutDataLink />}
           </BrowseSectionContainer>
         </BrowseDataHeader>
         <BrowseTabs
@@ -119,3 +108,15 @@ const BrowseTabContent = ({
     return <BrowseDatabases databasesResult={databasesResult} />;
   }
 };
+const LearnAboutDataLink = () => (
+  <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
+    <Link to="reference">
+      <BrowseHeaderIconContainer>
+        <Icon size={14} name="reference" />
+        <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
+          {t`Learn about our data`}
+        </Text>
+      </BrowseHeaderIconContainer>
+    </Link>
+  </Flex>
+);
