@@ -1,25 +1,25 @@
 import { t } from "ttag";
 import { push } from "react-router-redux";
-import { Flex, Icon, Text } from "metabase/ui";
+import { Flex, Icon, Switch, Text } from "metabase/ui";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import type { SearchResult } from "metabase-types/api";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
+import { updateSetting } from "metabase/admin/settings/settings";
 import { isValidBrowseTab, type BrowseTabId } from "../utils";
+import { getVerifiedModelsFilterForBrowseModels } from "../selectors";
 import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseModels } from "./BrowseModels";
 import {
   BrowseAppRoot,
   BrowseContainer,
   BrowseDataHeader,
-  BrowseSectionContainer,
   BrowseTab,
   BrowseTabs,
-  BrowseTabsContainer,
   BrowseTabsList,
   BrowseTabsPanel,
 } from "./BrowseApp.styled";
@@ -41,6 +41,10 @@ export const BrowseApp = ({
   });
   const databasesResult = useDatabaseListQuery();
 
+  const onlyShowVerifiedModels = useSelector(
+    getVerifiedModelsFilterForBrowseModels,
+  );
+
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;
   }
@@ -48,7 +52,12 @@ export const BrowseApp = ({
   // If no children specified, use the tab id to determine what to show inside the tab
   if (!children) {
     if (tab === "models") {
-      children = <BrowseModels modelsResult={modelsResult} />;
+      children = (
+        <BrowseModels
+          modelsResult={modelsResult}
+          onlyShowVerifiedModels={onlyShowVerifiedModels}
+        />
+      );
     }
     if (tab === "databases") {
       children = <BrowseDatabases databasesResult={databasesResult} />;
@@ -59,7 +68,7 @@ export const BrowseApp = ({
     <BrowseAppRoot data-testid="browse-app">
       <BrowseContainer>
         <BrowseDataHeader>
-          <BrowseSectionContainer>
+          <Flex maw="1014px" m="0 auto" w="100%" align="center">
             <h2>{t`Browse data`}</h2>
             {tab === "databases" && (
               <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
@@ -73,7 +82,7 @@ export const BrowseApp = ({
                 </Link>
               </Flex>
             )}
-          </BrowseSectionContainer>
+          </Flex>
         </BrowseDataHeader>
         <BrowseTabs
           value={tab}
@@ -84,17 +93,43 @@ export const BrowseApp = ({
           }}
         >
           <BrowseTabsList>
-            <BrowseSectionContainer>
+            <Flex maw="1014px" m="0 auto" w="100%" align="center">
               <BrowseTab key={"models"} value={"models"}>
                 {t`Models`}
               </BrowseTab>
               <BrowseTab key={"databases"} value={"databases"}>
                 {t`Databases`}
               </BrowseTab>
-            </BrowseSectionContainer>
+              {tab === "models" && (
+                <Switch
+                  ml="auto"
+                  size="xs"
+                  labelPosition="left"
+                  checked={onlyShowVerifiedModels}
+                  label={<strong>{t`Only show verified models`}</strong>}
+                  onChange={() => {
+                    dispatch(
+                      updateSetting({
+                        key: "only-show-verified-models-in-browse-data",
+                        value: !onlyShowVerifiedModels,
+                      }),
+                    );
+                  }}
+                />
+              )}
+            </Flex>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
-            <BrowseTabsContainer>{children}</BrowseTabsContainer>
+            <Flex
+              maw="1014px"
+              m="0 auto"
+              w="100%"
+              align="center"
+              direction="column"
+              justify="flex-start"
+            >
+              {children}
+            </Flex>
           </BrowseTabsPanel>
         </BrowseTabs>
       </BrowseContainer>

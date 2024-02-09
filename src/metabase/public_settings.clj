@@ -122,13 +122,13 @@
   :default    nil
   :audit      :never)
 
-(defsetting filters-for-browse-models
-  (deferred-tru "A JSON string describing filters used to limit the models shown in the Browse Data page.")
+(defsetting only-show-verified-models-in-browse-data
+  (deferred-tru "Whether only verified models should be shown on the Browse Models page.")
   :user-local :only
   :visibility :authenticated
-  :type       :string
+  :type       :boolean
   :export?    true
-  :default    "{}"
+  :default    true
   :audit      :never)
 
 (defsetting dismissed-custom-dashboard-toast
