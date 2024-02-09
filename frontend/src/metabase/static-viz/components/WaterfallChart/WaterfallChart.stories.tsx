@@ -16,7 +16,7 @@ export default {
 const Template: ComponentStory<typeof WaterfallChart> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <WaterfallChart {...args} />
+      <WaterfallChart {...args} isStorybook />
     </div>
   );
 };
