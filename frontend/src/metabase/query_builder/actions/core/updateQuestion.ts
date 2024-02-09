@@ -140,7 +140,11 @@ export const updateQuestion = (
     // This scenario happens because the DatasetQueryEditor converts the model/metric question into a normal question
     // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
     // this `updateQuestion` action, so they end up triggering the action with the altered question.
-    if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
+    if (
+      queryBuilderMode === "dataset" &&
+      newQuestion.type() !== "model" &&
+      newQuestion.type() !== "metric"
+    ) {
       const routing = getRouting(getState());
       const type = getCardTypeFromLocation(routing.locationBeforeTransitions);
       newQuestion = newQuestion.setType(type);
