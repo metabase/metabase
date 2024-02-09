@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 
+import { useCallback, useState } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -13,15 +14,19 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
+import { Box, Flex, Group, Icon, Paper, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
+import { updateSetting } from "metabase/admin/settings/settings";
+import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
+  BannerCloseButton,
+  BannerModelIcon,
   CollectionHeaderContainer,
   CollectionHeaderGroup,
   CollectionHeaderLink,
@@ -43,6 +48,20 @@ export const BrowseModels = ({
     model => !isInstanceAnalyticsCollection(model.collection),
   );
   const groupsOfModels = groupModels(modelsFiltered, localeCode);
+  const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
+  const dispatch = useDispatch();
+
+  const [shouldShowBanner, setShouldShowBanner] = useState(!hasDismissedBanner);
+
+  const dismissBanner = useCallback(() => {
+    setShouldShowBanner(false);
+    dispatch(
+      updateSetting({
+        key: "dismissed-browse-models-banner",
+        value: true,
+      }),
+    );
+  }, [dispatch]);
 
   if (error || isLoading) {
     return (
@@ -56,15 +75,43 @@ export const BrowseModels = ({
 
   if (modelsFiltered.length) {
     return (
-      <GridContainer role="grid">
-        {groupsOfModels.map(groupOfModels => (
-          <ModelGroup
-            models={groupOfModels}
-            key={`modelgroup-${groupOfModels[0].collection.id}`}
-            localeCode={localeCode}
-          />
-        ))}
-      </GridContainer>
+      <>
+        {shouldShowBanner && (
+          <Paper
+            mt="1rem"
+            p="1rem"
+            color="text-dark"
+            bg="brand-lighter"
+            shadow="0"
+            radius="0.25rem"
+            role="complementary"
+          >
+            <Flex>
+              <BannerModelIcon name="model" />
+              <Text size="md" lh="1rem" mr="1rem">
+                {t`Models help curate data to make it easier to find answers to questions all in one place.`}
+              </Text>
+              <BannerCloseButton
+                onClick={() => {
+                  dismissBanner();
+                }}
+              >
+                <Icon name="close" />
+              </BannerCloseButton>
+            </Flex>
+          </Paper>
+        )}
+        <GridContainer role="grid" mt={shouldShowBanner ? "1rem" : "0"}>
+          {groupsOfModels.map((groupOfModels, index) => (
+            <ModelGroup
+              models={groupOfModels}
+              key={`modelgroup-${groupOfModels[0].collection.id}`}
+              localeCode={localeCode}
+              fixPaddingUnderBanner={index === 0 && shouldShowBanner}
+            />
+          ))}
+        </GridContainer>
+      </>
     );
   }
 
@@ -86,9 +133,11 @@ export const BrowseModels = ({
 const ModelGroup = ({
   models,
   localeCode,
+  fixPaddingUnderBanner,
 }: {
   models: SearchResult[];
   localeCode: string | undefined;
+  fixPaddingUnderBanner: boolean;
 }) => {
   const sortedModels = models.sort((a, b) => {
     if (!a.name && b.name) {
@@ -116,6 +165,7 @@ const ModelGroup = ({
         collection={collection}
         key={collectionHtmlId}
         id={collectionHtmlId}
+        fixPaddingUnderBanner={fixPaddingUnderBanner}
       />
       {sortedModels.map(model => (
         <ModelCell
@@ -164,12 +214,20 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
 const CollectionHeader = ({
   collection,
   id,
+  fixPaddingUnderBanner,
 }: {
   collection: CollectionEssentials;
   id: string;
+  fixPaddingUnderBanner: boolean;
 }) => {
   return (
-    <CollectionHeaderContainer id={id} role="heading">
+    <CollectionHeaderContainer
+      id={id}
+      role="heading"
+      pt={fixPaddingUnderBanner ? "0" : "1rem"}
+      mr="1rem"
+      align="center"
+    >
       <CollectionHeaderGroup grow noWrap>
         <CollectionHeaderLink to={Urls.collection(collection)}>
           <Group spacing=".25rem">
