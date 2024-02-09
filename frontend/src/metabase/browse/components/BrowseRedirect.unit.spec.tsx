@@ -1,7 +1,7 @@
 import { replace } from "react-router-redux";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
+import { setupSearchEndpoints } from "__support__/server-mocks";
 import { createMockModelResult } from "metabase-types/api/mocks";
 import { BrowseRedirect } from "./BrowseRedirect";
 
@@ -49,7 +49,6 @@ describe("BrowseRedirect", () => {
       expect(mockDispatch).toHaveBeenCalledWith(replace("/browse/models"));
     });
   });
-
   it("redirects to /browse/models if the user's defaultBrowseTab setting is 'models'", async () => {
     const { store, rerender } = setup({
       models: [],
@@ -70,6 +69,17 @@ describe("BrowseRedirect", () => {
     rerender(<BrowseRedirect />);
     await waitFor(() => {
       expect(mockDispatch).toHaveBeenCalledWith(replace("/browse/databases"));
+    });
+  });
+  it("redirects to /browse/models if the user has an invalid defaultBrowseTab setting, and some models exist", async () => {
+    const { store, rerender } = setup({
+      models: mockModels,
+      defaultTab: "this is an invalid value",
+    });
+    const mockDispatch = jest.spyOn(store, "dispatch");
+    rerender(<BrowseRedirect />);
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalledWith(replace("/browse/models"));
     });
   });
 });
