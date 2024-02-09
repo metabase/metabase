@@ -21,7 +21,7 @@ const getProps = (
   isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
-  onUpload: jest.fn(),
+  saveFile: jest.fn(),
   onDeleteBookmark: jest.fn(),
   ...opts,
 });

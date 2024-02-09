@@ -24,6 +24,8 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
   dashboards: {
     1: {
       id: 1,
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
       collection_id: 1,
       name: "",
       description: "",
@@ -46,6 +48,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       ],
       public_uuid: null,
       enable_embedding: false,
+      initially_published_at: null,
       width: "fixed",
     },
   },

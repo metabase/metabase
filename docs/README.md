@@ -107,6 +107,7 @@ Metabase's reference documentation.
 - [Table metadata admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
+- [Working with JSON](./data-modeling/json-unfolding.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
 
 ### Actions
