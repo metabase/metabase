@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
+import { createSelectorCreator, lruMemoize } from "reselect";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -27,6 +28,7 @@ import type {
   EditParameterSidebarState,
   State,
 } from "metabase-types/store";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import Question from "metabase-lib/Question";
 import { isQuestionDashCard } from "./utils";
 
@@ -43,6 +45,8 @@ function isEditParameterSidebar(
 ): sidebar is EditParameterSidebarState {
   return sidebar.name === SIDEBAR_NAME.editParameter;
 }
+
+const createDeepEqualSelector = createSelectorCreator(lruMemoize, _.isEqual);
 
 export const getDashboardBeforeEditing = (state: State) =>
   state.dashboard.isEditing;
@@ -336,8 +340,17 @@ export const getQuestions = (state: State) => {
   return questionsById;
 };
 
+// getQuestions selector returns an array with stable references to the questions
+// but array itself is always new, so it may cause troubles in re-renderings
+const getQuestionsMemoized = createDeepEqualSelector(
+  [getQuestions],
+  questions => {
+    return questions;
+  },
+);
+
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestions],
+  [getDashboardComplete, getMetadata, getQuestionsMemoized],
   (dashboard, metadata, questions) => {
     if (!dashboard || !metadata) {
       return [];
@@ -363,7 +376,7 @@ export const getMissingRequiredParameters = createSelector(
 );
 
 /**
- * It's a memoized version, it uses LRU cache per dashboard identified by id
+ * It's a memoized version, it uses LRU cache per card identified by id
  */
 export const getQuestionByCard = createCachedSelector(
   [(_state: State, props: { card: Card }) => props.card, getMetadata],
@@ -382,6 +395,22 @@ export const getDashcardParameterMappingOptions = createCachedSelector(
 )((state, props) => {
   return props.card.id ?? props.dashcard.id;
 });
+
+// Embeddings might be published without passing embedding_params to the server,
+// in which case it's an empty object. We should treat such situations with
+// caution, assuming that an absent parameter is "disabled".
+export function getEmbeddedParameterVisibility(
+  state: State,
+  slug: string,
+): EmbeddingParameterVisibility | null {
+  const dashboard = getDashboard(state);
+  if (!dashboard?.enable_embedding) {
+    return null;
+  }
+
+  const embeddingParams = dashboard.embedding_params ?? {};
+  return embeddingParams[slug] ?? "disabled";
+}
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],

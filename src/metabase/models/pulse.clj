@@ -173,15 +173,23 @@
   "Schema for valid values of `:alert_condition` for Alerts."
   [:enum "rows" "goal"])
 
+(def CardBase
+  "Schema for the map we use to internally represent the base elements of a Card used for Notifications. id is not
+  required since the card may be a placeholder."
+  (mu/with-api-error-message
+    [:map
+     [:include_csv                        ms/BooleanValue]
+     [:include_xls                        ms/BooleanValue]
+     [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
+    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
+
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
   (mu/with-api-error-message
-    [:map
-     [:id                                 ms/PositiveInt]
-     [:include_csv                        ms/BooleanValue]
-     [:include_xls                        ms/BooleanValue]
-     [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
+    [:merge CardBase
+     [:map
+      [:id ms/PositiveInt]]]
     (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
 (def HybridPulseCard
@@ -202,8 +210,8 @@
                         "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
-  "Schema for functions accepting either a `HybridPulseCard` or `CardRef`."
-  [:or HybridPulseCard CardRef])
+  "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
+  [:or HybridPulseCard CardRef CardBase])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

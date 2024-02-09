@@ -16,9 +16,19 @@ import {
   setTokenFeatures,
   dashboardParametersContainer,
   goToTab,
+  editDashboard,
+  toggleRequiredParameter,
+  sidebar,
+  saveDashboard,
+  getRequiredToggle,
+  closeStaticEmbeddingModal,
+  publishChanges,
+  setEmbeddingParameter,
+  assertEmbeddingParameter,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 import {
   questionDetails,
   questionDetailsWithDefaults,
@@ -103,7 +113,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       // publish the embedded dashboard so that we can directly navigate to its url
-      publishChanges(({ request }) => {
+      publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           id: "locked",
           name: "enabled",
@@ -149,7 +159,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.get("@allParameters").findByText("Editable").click();
       popover().contains("Disabled").click();
 
-      publishChanges(({ request }) => {
+      publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           name: "disabled",
           id: "disabled",
@@ -204,6 +214,70 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.findByText("User").should("not.exist");
         cy.findByText("Not Used Filter").should("not.exist");
       });
+    });
+
+    it("should handle required parameters", () => {
+      visitDashboard("@dashboardId");
+      editDashboard();
+
+      // Make one parameter required
+      getDashboardFilter("Name").click();
+      toggleRequiredParameter();
+      sidebar().findByText("Default value").next().click();
+      addWidgetStringFilter("Ferne Rosenbaum");
+      saveDashboard();
+
+      // Check that parameter visibility is correct
+      openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
+      assertEmbeddingParameter("Id", "Disabled");
+      assertEmbeddingParameter("Name", "Editable");
+      assertEmbeddingParameter("Source", "Disabled");
+      assertEmbeddingParameter("User", "Disabled");
+      assertEmbeddingParameter("Not Used Filter", "Disabled");
+
+      // We only expect name to be "enabled" because the rest
+      // weren't touched and therefore aren't changed, whereas
+      // "enabled" must be set by default for required params.
+      publishChanges("dashboard", ({ request }) => {
+        assert.deepEqual(request.body.embedding_params, {
+          name: "enabled",
+        });
+      });
+
+      visitIframe();
+
+      // Filter widget must be visible
+      filterWidget().contains("Name");
+      // Its default value must be in the URL
+      cy.location("search").should("contain", "name=Ferne%20Rosenbaum");
+      // And the default should be applied giving us only 1 result
+      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+    });
+
+    it("should (dis)allow setting parameters as required for a published embedding", () => {
+      visitDashboard("@dashboardId");
+
+      // Set an "editable" and "locked" parameters and leave the rest "disabled"
+      openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
+      setEmbeddingParameter("Name", "Editable");
+      setEmbeddingParameter("Source", "Locked");
+      publishChanges("dashboard", ({ request }) => {
+        assert.deepEqual(request.body.embedding_params, {
+          name: "enabled",
+          source: "locked",
+        });
+      });
+
+      closeStaticEmbeddingModal();
+      editDashboard();
+
+      // Check each parameter's required state
+      assertRequiredEnabledForName({ name: "Name", enabled: true });
+      assertRequiredEnabledForName({ name: "Source", enabled: true });
+      // The rest must be disabled
+      assertRequiredEnabledForName({ name: "Id", enabled: false });
+      assertRequiredEnabledForName({ name: "User", enabled: false });
+      assertRequiredEnabledForName({ name: "Not Used Filter", enabled: false });
     });
   });
 
@@ -450,9 +524,9 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     openStaticEmbeddingModal({ activeTab: "parameters" });
 
     // ID param is disabled by default
-    setParameter("Name", "Editable");
-    setParameter("Source", "Locked");
-    publishChanges(({ request }) => {
+    setEmbeddingParameter("Name", "Editable");
+    setEmbeddingParameter("Source", "Locked");
+    publishChanges("dashboard", ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
         source: "locked",
         name: "enabled",
@@ -578,27 +652,13 @@ function openFilterOptions(name) {
   filterWidget().contains(name).click();
 }
 
-function publishChanges(callback) {
-  cy.intercept("PUT", "/api/dashboard/*").as("publishChanges");
-
-  cy.button(/^(Publish|Publish changes)$/).click();
-
-  cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
-    // Unfortunately, the order of requests is not always the same.
-    // Therefore, we must first get the one that has the `embedding_params` and then assert on it.
-    const targetXhr = xhrs.find(({ request }) =>
-      Object.keys(request.body).includes("embedding_params"),
-    );
-    callback && callback(targetXhr);
-  });
+function getDashboardFilter(name) {
+  return cy
+    .findByTestId("edit-dashboard-parameters-widget-container")
+    .findByText(name);
 }
 
-function setParameter(name, filter) {
-  cy.findByLabelText("Configuring parameters")
-    .parent()
-    .findByText(name)
-    .siblings("a")
-    .click();
-
-  popover().contains(filter).click();
+function assertRequiredEnabledForName({ name, enabled }) {
+  getDashboardFilter(name).click();
+  getRequiredToggle().should(enabled ? "be.enabled" : "not.be.enabled");
 }

@@ -447,26 +447,29 @@ export const fetchCardData = createThunkAction(
           dashcardBeforeEditing &&
           dashcardBeforeEditing.card_id !== dashcard.card_id;
 
-        // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
-        const endpoint =
+        const shouldUseCardQueryEndpoint =
           isNewDashcard(dashcard) ||
           isNewAdditionalSeriesCard(card, dashcard) ||
-          hasReplacedCard
-            ? CardApi.query
-            : DashboardApi.cardQuery;
+          hasReplacedCard;
 
-        result = await fetchDataOrError(
-          maybeUsePivotEndpoint(endpoint, card)(
-            {
+        // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
+        const endpoint = shouldUseCardQueryEndpoint
+          ? CardApi.query
+          : DashboardApi.cardQuery;
+
+        const requestBody = shouldUseCardQueryEndpoint
+          ? { cardId: card.id, ignore_cache: ignoreCache }
+          : {
               dashboardId: dashcard.dashboard_id,
               dashcardId: dashcard.id,
               cardId: card.id,
               parameters: datasetQuery.parameters,
               ignore_cache: ignoreCache,
               dashboard_id: dashcard.dashboard_id,
-            },
-            queryOptions,
-          ),
+            };
+
+        result = await fetchDataOrError(
+          maybeUsePivotEndpoint(endpoint, card)(requestBody, queryOptions),
         );
       }
 

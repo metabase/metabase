@@ -18,9 +18,17 @@ See [Backing up Metabase application data](backing-up-metabase-application-data.
 
 Steps differ depending on whether you're running the JAR or a Docker image.
 
-- [Upgrading a JAR running locally](#upgrading-a-jar-running-locally)
-- [Upgrading a JAR running in production as a service](#upgrading-a-jar-running-in-production-as-a-service)
-- [Upgrading the Docker image](#upgrading-the-docker-image)
+- [Upgrading Metabase](#upgrading-metabase)
+  - [Backing up your application database](#backing-up-your-application-database)
+  - [Swapping in the new Metabase version](#swapping-in-the-new-metabase-version)
+    - [Upgrading a JAR running locally](#upgrading-a-jar-running-locally)
+    - [Upgrading a JAR running in production as a service](#upgrading-a-jar-running-in-production-as-a-service)
+    - [Upgrading the Docker image](#upgrading-the-docker-image)
+  - [Upgrading from older versions of Metabase](#upgrading-from-older-versions-of-metabase)
+  - [Upgrading Metabase Cloud](#upgrading-metabase-cloud)
+  - [Upgrading Metabase on other platforms](#upgrading-metabase-on-other-platforms)
+  - [Rolling back an upgrade](#rolling-back-an-upgrade)
+    - [Using the migrate down command](#using-the-migrate-down-command)
 
 ### Upgrading a JAR running locally
 
@@ -121,7 +129,7 @@ For example, if you're running Metabase 1.38, your upgrade path would look like:
 - 1.38.X
 - 1.39.X
 - 1.40.X
-- Latest 
+- Latest
 
 With X being the latest version available for each release.
 
@@ -157,7 +165,9 @@ java -jar metabase.jar migrate down
 If you're running Docker, the command would be:
 
 ```
-docker run --rm metabase/metabase migrate down
+docker run --rm metabase/metabase "migrate down"
 ```
+
+Note the quotes around `"migrate down"` for the Docker command.
 
 Once the migration process completes, start up Metabase using the JAR or Docker image for the version you want to run.

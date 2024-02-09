@@ -7,9 +7,9 @@ import { getSetting } from "metabase/selectors/settings";
 import { checkNotNull } from "metabase/lib/types";
 import type {
   EmbeddingDisplayOptions,
-  EmbeddingParametersOptions,
-  EmbeddingParametersSettings,
+  EmbeddingParameters,
   EmbeddingParametersValues,
+  EmbeddingParameterVisibility,
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
@@ -19,7 +19,6 @@ import {
   optionsToHashParams,
 } from "metabase/public/lib/embed";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
-
 import {
   trackStaticEmbedCodeCopied,
   trackStaticEmbedDiscarded,
@@ -27,6 +26,7 @@ import {
   trackStaticEmbedUnpublished,
 } from "metabase/public/lib/analytics";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { getParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import { getDefaultDisplayOptions } from "./config";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
@@ -39,16 +39,14 @@ import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { PreviewModeSelector } from "./PreviewModeSelector";
 import { PreviewPane } from "./PreviewPane";
 
-const countEmbeddingParameterOptions = (
-  embeddingParams: EmbeddingParametersSettings,
-) =>
+const countEmbeddingParameterOptions = (embeddingParams: EmbeddingParameters) =>
   Object.values(embeddingParams).reduce(
     (acc, value) => {
       acc[value] += 1;
       return acc;
     },
     { disabled: 0, locked: 0, enabled: 0 } as Record<
-      EmbeddingParametersOptions,
+      EmbeddingParameterVisibility,
       number
     >,
   );
@@ -60,7 +58,7 @@ export interface StaticEmbedSetupPaneProps {
 
   onUpdateEnableEmbedding: (enableEmbedding: boolean) => void | Promise<void>;
   onUpdateEmbeddingParams: (
-    embeddingParams: EmbeddingParametersSettings,
+    embeddingParams: EmbeddingParameters,
   ) => void | Promise<void>;
 }
 
@@ -81,8 +79,9 @@ export const StaticEmbedSetupPane = ({
     resource,
     resourceParameters,
   );
-  const [embeddingParams, setEmbeddingParams] =
-    useState<EmbeddingParametersSettings>(initialEmbeddingParams);
+  const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
+    initialEmbeddingParams,
+  );
   const [parameterValues, setParameterValues] =
     useState<EmbeddingParametersValues>({});
 
@@ -364,20 +363,25 @@ export const StaticEmbedSetupPane = ({
 function getDefaultEmbeddingParams(
   resource: EmbedResource,
   resourceParameters: EmbedResourceParameter[],
-): EmbeddingParametersSettings {
-  return filterValidResourceParameters(
-    resourceParameters,
-    resource.embedding_params || {},
+): EmbeddingParameters {
+  const validSlugs = resourceParameters.map(param => param.slug);
+  // We first pick only dashboard parameters with valid slugs
+  const defaultParams = _.pick(resource.embedding_params || {}, validSlugs);
+  // Then pick valid required dashboard parameters
+  const validRequiredParams = resourceParameters.filter(
+    param => param.slug && param.required,
   );
-}
 
-function filterValidResourceParameters(
-  resourceParameters: EmbedResourceParameter[],
-  embeddingParams: EmbeddingParametersSettings,
-) {
-  const validParameters = resourceParameters.map(parameter => parameter.slug);
-
-  return _.pick(embeddingParams, validParameters);
+  // And for each required parameter set its value to "enabled"
+  // (Editable) because this is the default for a required parameter.
+  // This is needed to save embedding_params when a user clicks
+  // "Publish" without changing parameter visibility.
+  return validRequiredParams.reduce((acc, param) => {
+    if (!acc[param.slug] || acc[param.slug] === "disabled") {
+      acc[param.slug] = "enabled";
+    }
+    return acc;
+  }, defaultParams);
 }
 
 function getPreviewParamsBySlug({
@@ -386,7 +390,7 @@ function getPreviewParamsBySlug({
   parameterValues,
 }: {
   resourceParameters: EmbedResourceParameter[];
-  embeddingParams: EmbeddingParametersSettings;
+  embeddingParams: EmbeddingParameters;
   parameterValues: EmbeddingParametersValues;
 }) {
   const lockedParameters = getLockedPreviewParameters(
@@ -397,14 +401,18 @@ function getPreviewParamsBySlug({
   return Object.fromEntries(
     lockedParameters.map(parameter => [
       parameter.slug,
-      parameterValues[parameter.id] ?? null,
+      getParameterValue({
+        parameter,
+        values: parameterValues,
+        defaultRequired: true,
+      }),
     ]),
   );
 }
 
 function getLockedPreviewParameters(
   resourceParameters: EmbedResourceParameter[],
-  embeddingParams: EmbeddingParametersSettings,
+  embeddingParams: EmbeddingParameters,
 ) {
   return resourceParameters.filter(
     parameter => embeddingParams[parameter.slug] === "locked",
@@ -415,8 +423,8 @@ function getHasSettingsChanges({
   initialEmbeddingParams,
   embeddingParams,
 }: {
-  initialEmbeddingParams: EmbeddingParametersSettings;
-  embeddingParams: EmbeddingParametersSettings;
+  initialEmbeddingParams: EmbeddingParameters;
+  embeddingParams: EmbeddingParameters;
 }): boolean {
   const nonDisabledInitialEmbeddingParams = getNonDisabledEmbeddingParams(
     initialEmbeddingParams,
@@ -431,21 +439,21 @@ function getHasSettingsChanges({
 }
 
 function getNonDisabledEmbeddingParams(
-  embeddingParams: EmbeddingParametersSettings,
-): EmbeddingParametersSettings {
+  embeddingParams: EmbeddingParameters,
+): EmbeddingParameters {
   return Object.keys(embeddingParams).reduce((result, key) => {
     if (embeddingParams[key] !== "disabled") {
       result[key] = embeddingParams[key];
     }
 
     return result;
-  }, {} as EmbeddingParametersSettings);
+  }, {} as EmbeddingParameters);
 }
 
 function convertResourceParametersToEmbeddingParams(
   resourceParameters: EmbedResourceParameter[],
 ) {
-  const embeddingParams: EmbeddingParametersSettings = {};
+  const embeddingParams: EmbeddingParameters = {};
   for (const parameter of resourceParameters) {
     embeddingParams[parameter.slug] = "disabled";
   }

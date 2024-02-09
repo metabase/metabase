@@ -20,9 +20,9 @@ json_unfolding: false
 parent_id: null
 coercion_strategy: null
 preview_display: true
-position: 11
+position: 12
 custom_position: 0
-database_position: 11
+database_position: 12
 has_field_values: list
 settings: null
 caveats: null
@@ -38,3 +38,4 @@ serdes/meta:
 - id: sso_source
   model: Field
 database_indexed: null
+database_partitioned: null

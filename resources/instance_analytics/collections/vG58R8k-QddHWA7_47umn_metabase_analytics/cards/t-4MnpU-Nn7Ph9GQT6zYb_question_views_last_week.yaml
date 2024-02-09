@@ -88,3 +88,4 @@ serdes/meta:
   label: question_views_last_week
   model: Card
 metabase_version: null
+type: question
