@@ -162,10 +162,10 @@ class AutomaticDashboardAppInner extends Component {
                 >
                   <SyncedParametersList
                     className="mt1"
-                    parameters={getValuePopulatedParameters(
+                    parameters={getValuePopulatedParameters({
                       parameters,
-                      parameterValues,
-                    )}
+                      values: parameterValues,
+                    })}
                     setParameterValue={setParameterValue}
                   />
                 </FixedWidthContainer>

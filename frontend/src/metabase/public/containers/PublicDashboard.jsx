@@ -158,6 +158,7 @@ class PublicDashboard extends Component {
       draftParameterValues,
       isFullscreen,
       isNightMode,
+      setParameterValueToDefault,
     } = this.props;
 
     const buttons = !isWithinIframe()
@@ -174,6 +175,8 @@ class PublicDashboard extends Component {
         draftParameterValues={draftParameterValues}
         hiddenParameterSlugs={this.getHiddenParameterSlugs()}
         setParameterValue={this.props.setParameterValue}
+        setParameterValueToDefault={setParameterValueToDefault}
+        enableParameterRequiredBehavior
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
         }
