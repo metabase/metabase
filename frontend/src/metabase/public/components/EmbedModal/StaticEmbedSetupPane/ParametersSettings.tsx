@@ -8,6 +8,7 @@ import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/co
 import type {
   EmbeddingParameters,
   EmbeddingParametersValues,
+  EmbeddingParameterVisibility,
   EmbedResourceParameter,
   EmbedResourceType,
 } from "metabase/public/lib/types";
@@ -39,11 +40,16 @@ export const ParametersSettings = ({
 }: ParametersSettingsProps): JSX.Element => {
   const valuePopulatedLockedParameters = useMemo(
     () =>
-      getValuePopulatedParameters(
-        lockedParameters,
-        parameterValues,
-      ) as EmbedResourceParameterWithValue[],
+      getValuePopulatedParameters({
+        parameters: lockedParameters,
+        values: parameterValues,
+        defaultRequired: true,
+      }) as EmbedResourceParameterWithValue[],
     [lockedParameters, parameterValues],
+  );
+
+  const hasRequiredParameters = resourceParameters.some(
+    param => param.required,
   );
 
   return resourceParameters.length > 0 ? (
@@ -57,7 +63,14 @@ export const ParametersSettings = ({
           {resourceParameters.map(parameter => (
             <div key={parameter.id} className="flex align-center">
               <Icon name={getIconForParameter(parameter)} className="mr2" />
-              <h3>{parameter.name}</h3>
+              <h3>
+                {parameter.name}
+                {parameter.required && (
+                  <Text color="error" span>
+                    &nbsp;*
+                  </Text>
+                )}
+              </h3>
               <Select
                 buttonProps={{
                   "aria-label": parameter.name,
@@ -67,16 +80,28 @@ export const ParametersSettings = ({
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   onChangeEmbeddingParameters({
                     ...embeddingParams,
-                    [parameter.slug]: e.target.value,
+                    [parameter.slug]: e.target
+                      .value as EmbeddingParameterVisibility,
                   })
                 }
               >
-                <Option icon="close" value="disabled">{t`Disabled`}</Option>
+                <Option
+                  icon="close"
+                  value="disabled"
+                  disabled={parameter.required}
+                >{t`Disabled`}</Option>
                 <Option icon="pencil" value="enabled">{t`Editable`}</Option>
                 <Option icon="lock" value="locked">{t`Locked`}</Option>
               </Select>
             </div>
           ))}
+
+          {hasRequiredParameters && (
+            <Text size="xm">
+              <strong>{t`Note`}: </strong>
+              {t`Parameters marked with a red asterisk are required and can't be disabled.`}
+            </Text>
+          )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
 
@@ -95,9 +120,16 @@ export const ParametersSettings = ({
                   className="m0"
                   parameter={parameter}
                   parameters={valuePopulatedLockedParameters}
-                  setValue={(value: string) => {
-                    onChangeParameterValue(parameter.id, value);
+                  setValue={(value: string) =>
+                    onChangeParameterValue(parameter.id, value)
+                  }
+                  setParameterValueToDefault={() => {
+                    onChangeParameterValue(
+                      parameter.id,
+                      parameter.default as any,
+                    );
                   }}
+                  enableParameterRequiredBehavior
                 />
               ))}
             </Stack>

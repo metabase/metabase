@@ -135,3 +135,4 @@ serdes/meta:
   label: questions_consuming_most_resources
   model: Card
 metabase_version: vUNKNOWN (901f705)
+type: question

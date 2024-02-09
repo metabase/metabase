@@ -55,7 +55,8 @@ export const ToggleContainer = styled.div`
 `;
 
 export const ToggleLabel = styled.label`
-  display: block;
+  display: flex;
+  gap: 0.5rem;
   margin-top: 0.35rem;
   font-weight: 700;
   color: ${color("text-medium")};
