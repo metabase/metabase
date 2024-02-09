@@ -19,10 +19,13 @@
   (let [custom-reports     (audit-db/default-custom-reports-collection)
         question-overview  (audit-db/entity-id->object :model/Dashboard audit-db/default-question-overview-entity-id)
         dashboard-overview (audit-db/entity-id->object :model/Dashboard audit-db/default-dashboard-overview-entity-id)]
-    (cond-> {}
-      (mi/can-read? (audit-db/default-custom-reports-collection)) (assoc (:slug custom-reports) (:id custom-reports))
-      (mi/can-read? (audit-db/default-audit-collection)) (assoc (u/slugify (:name question-overview)) (:id question-overview)
-                                                                (u/slugify (:name dashboard-overview)) (:id dashboard-overview)))))
+    (merge
+     {}
+     (when (mi/can-read? (audit-db/default-custom-reports-collection))
+       {(:slug custom-reports) (:id custom-reports)})
+     (when (mi/can-read? (audit-db/default-audit-collection))
+       {(u/slugify (:name question-overview)) (:id question-overview)
+        (u/slugify (:name dashboard-overview)) (:id dashboard-overview)}))))
 
 (api/defendpoint DELETE "/:id/subscriptions"
   "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
