@@ -8,6 +8,7 @@ import {
   openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 
+import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 import { questionDetails } from "./shared/embedding-native";
 import { questionDetailsWithDefaults } from "./shared/embedding-dashboard";
 
@@ -18,15 +19,24 @@ describe("scenarios > embedding > native questions", () => {
   });
 
   context("UI", () => {
-    beforeEach(() => {
-      cy.createNativeQuestion(questionDetails, {
+    function createAndVisitQuestion({ requiredTagName, defaultValue } = {}) {
+      const details = structuredClone(questionDetails);
+
+      if (requiredTagName) {
+        details.native["template-tags"][requiredTagName].default = defaultValue;
+        details.native["template-tags"][requiredTagName].required = true;
+      }
+
+      cy.createNativeQuestion(details, {
         visitQuestion: true,
       });
 
       openStaticEmbeddingModal({ activeTab: "parameters" });
-    });
+    }
 
     it("should not display disabled parameters", () => {
+      createAndVisitQuestion();
+
       publishChanges(({ request }) => {
         assert.deepEqual(request.body.embedding_params, {});
       });
@@ -44,6 +54,8 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should display and work with enabled parameters while hiding the locked one", () => {
+      createAndVisitQuestion();
+
       setParameter("Order ID", "Editable");
       setParameter("Created At", "Editable");
       setParameter("Total", "Locked");
@@ -120,6 +132,61 @@ describe("scenarios > embedding > native questions", () => {
         "eq",
         "?id=926&created_at=&state=KS&product_id=10",
       );
+    });
+
+    it("should handle required parameters", () => {
+      createAndVisitQuestion({ requiredTagName: "total", defaultValue: [100] });
+
+      assertParameterValue("Total", "Editable");
+
+      publishChanges(({ request }) => {
+        const actual = request.body.embedding_params;
+
+        // We only expect total to be "enabled" because the rest
+        // weren't touched and therefore aren't changed, whereas
+        // "enabled" must be set by default for required params.
+        const expected = {
+          total: "enabled",
+        };
+
+        assert.deepEqual(actual, expected);
+      });
+
+      visitIframe();
+
+      // Filter widget must be visible
+      filterWidget().contains("Total");
+
+      // And its default value must be in the URL
+      cy.location("search").should("eq", "?total=100");
+    });
+
+    it("should (dis)allow setting parameters as required for a published embedding", () => {
+      createAndVisitQuestion();
+      // Make one parameter editable and one locked
+      setParameter("Order ID", "Editable");
+      setParameter("Total", "Locked");
+
+      publishChanges();
+
+      // Close the embedding modal
+      cy.findByRole("dialog").icon("close").click();
+
+      cy.findByTestId("native-query-editor-container")
+        .findByText("Open Editor")
+        .click();
+
+      // Open variable editor
+      cy.findByTestId("native-query-editor-sidebar").icon("variable").click();
+
+      // Now check that all disabled parameters can't be required and the rest can
+      assertRequiredEnabledForName({ name: "id", enabled: true });
+      assertRequiredEnabledForName({ name: "total", enabled: true });
+      // disabled parameters
+      assertRequiredEnabledForName({ name: "created_at", enabled: false });
+      assertRequiredEnabledForName({ name: "source", enabled: false });
+      assertRequiredEnabledForName({ name: "state", enabled: false });
+      assertRequiredEnabledForName({ name: "product_id", enabled: false });
     });
   });
 
@@ -279,14 +346,32 @@ describe("scenarios > embedding > native questions with default parameters", () 
   });
 });
 
+function getParametersContainer() {
+  return cy.findByLabelText("Configuring parameters").parent();
+}
+
 function setParameter(name, filter) {
-  cy.findByLabelText("Configuring parameters")
-    .parent()
-    .within(() => {
-      cy.findByText(name).siblings("a").click();
-    });
+  getParametersContainer().within(() => {
+    cy.findByText(name).siblings("a").click();
+  });
 
   popover().contains(filter).click();
+}
+
+function assertParameterValue(name, value) {
+  getParametersContainer().within(() => {
+    cy.findByText(name).siblings("a").should("have.text", value);
+  });
+}
+
+function assertRequiredEnabledForName({ name, enabled }) {
+  cy.findByTestId(`tag-editor-variable-${name}`).within(() => {
+    SQLFilter.getRequiredToggle()
+      .invoke("attr", "for")
+      .then(inputId => {
+        cy.get(`#${inputId}`).should(enabled ? "be.enabled" : "not.be.enabled");
+      });
+  });
 }
 
 function publishChanges(callback) {
@@ -301,6 +386,6 @@ function publishChanges(callback) {
       Object.keys(request.body).includes("embedding_params"),
     );
 
-    callback && callback(targetXhr);
+    callback?.(targetXhr);
   });
 }

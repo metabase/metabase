@@ -234,7 +234,7 @@ class TagEditorParamInner extends Component<Props> {
     const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
 
     return (
-      <TagContainer>
+      <TagContainer data-testid={`tag-editor-variable-${tag.name}`}>
         <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
         <TagName>{tag.name}</TagName>
 

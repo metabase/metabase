@@ -76,10 +76,7 @@ export const ParametersSettings = ({
                   "aria-label": parameter.name,
                 }}
                 className="ml-auto bg-white"
-                value={
-                  embeddingParams[parameter.slug] ||
-                  getDefaultParameterSelectValue(parameter)
-                }
+                value={embeddingParams[parameter.slug] || "disabled"}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   onChangeEmbeddingParameters({
                     ...embeddingParams,
@@ -161,7 +158,3 @@ const getIconForParameter = (parameter: EmbedResourceParameter): IconName => {
 
   return "unknown";
 };
-
-function getDefaultParameterSelectValue(parameter: EmbedResourceParameter) {
-  return parameter.required ? "enabled" : "disabled";
-}
