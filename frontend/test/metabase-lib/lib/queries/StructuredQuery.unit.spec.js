@@ -247,22 +247,11 @@ describe("StructuredQuery", () => {
   });
 
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
-    describe("reset", () => {
-      it("Expect a reset query to not have a selected database", () => {
-        expect(query.reset()._database()).toBe(null);
-      });
-    });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
         expect(
           query.legacyQuery({ useStructuredQuery: true })["source-table"],
         ).toBe(ORDERS_ID);
-      });
-    });
-    describe("setDatabase", () => {
-      it("allows you to set a new database", () => {
-        const db = metadata.database(ANOTHER_DB_ID);
-        expect(query.setDatabase(db)._database().id).toBe(db.id);
       });
     });
     describe("_sourceTableId", () => {

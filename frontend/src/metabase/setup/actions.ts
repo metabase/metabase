@@ -2,15 +2,18 @@ import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
-import type { DatabaseData } from "metabase-types/api";
+import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
+
+import {
+  removeShowEmbedHomepageFlag,
+  setShowEmbedHomepageFlag,
+} from "metabase/home/utils";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
-  trackDatabaseStepCompleted,
   trackTrackingChanged,
-  trackUserStepCompleted,
-  trackWelcomeStepCompleted,
+  trackUsageReasonSelected,
 } from "./analytics";
 import {
   getAvailableLocales,
@@ -19,9 +22,11 @@ import {
   getIsTrackingAllowed,
   getLocale,
   getSetupToken,
+  getUsageReason,
   getUser,
 } from "./selectors";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
+import type { SetupStep } from "./types";
 
 interface ThunkConfig {
   state: State;
@@ -63,12 +68,7 @@ export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
 );
 
 export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
-export const selectStep = createAction<number>(SELECT_STEP);
-
-export const SUBMIT_WELCOME = "metabase/setup/SUBMIT_WELCOME_STEP";
-export const submitWelcome = createAsyncThunk(SUBMIT_WELCOME, () => {
-  trackWelcomeStepCompleted();
-});
+export const selectStep = createAction<SetupStep>(SELECT_STEP);
 
 export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
 export const updateLocale = createAsyncThunk(
@@ -83,8 +83,13 @@ export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
 export const submitUser = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_INFO",
-  (_: UserInfo) => {
-    trackUserStepCompleted();
+  (_: UserInfo) => undefined,
+);
+
+export const submitUsageReason = createAsyncThunk(
+  "metabase/setup/SUBMIT_USAGE_REASON",
+  (usageReason: UsageReason) => {
+    trackUsageReasonSelected(usageReason);
   },
 );
 
@@ -125,12 +130,10 @@ export const submitDatabase = createAsyncThunk<
 
     try {
       await validateDatabase(token, sslDatabase);
-      trackDatabaseStepCompleted(database.engine);
       return sslDatabase;
     } catch (error1) {
       try {
         await validateDatabase(token, nonSslDatabase);
-        trackDatabaseStepCompleted(database.engine);
         return nonSslDatabase;
       } catch (error2) {
         return rejectWithValue(error2);
@@ -142,16 +145,13 @@ export const submitDatabase = createAsyncThunk<
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
-  (_: InviteInfo) => {
-    trackDatabaseStepCompleted();
-  },
+  (_: InviteInfo) => undefined,
 );
 
 export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
 export const skipDatabase = createAsyncThunk(
   SKIP_DATABASE,
   (engine?: string) => {
-    trackDatabaseStepCompleted();
     trackAddDataLaterClicked(engine);
   },
 );
@@ -176,6 +176,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     const database = getDatabase(getState());
     const invite = getInvite(getState());
     const isTrackingAllowed = getIsTrackingAllowed(getState());
+    const usageReason = getUsageReason(getState());
 
     try {
       await SetupApi.create({
@@ -189,6 +190,13 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           allow_tracking: isTrackingAllowed.toString(),
         },
       });
+
+      if (usageReason === "embedding" || usageReason === "both") {
+        setShowEmbedHomepageFlag();
+      } else {
+        // make sure that state is clean in case of more than one setup on the same browser
+        removeShowEmbedHomepageFlag();
+      }
 
       MetabaseSettings.set("setup-token", null);
     } catch (error) {

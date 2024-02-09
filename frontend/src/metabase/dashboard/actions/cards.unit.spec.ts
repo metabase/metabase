@@ -249,12 +249,7 @@ describe("dashboard/actions/cards", () => {
       // It's important to ensure the `/card/:id/query` endpoint is called
       // Regular dashcard query endpoint won't work with a new `card_id`
       expect(cardQueryEndpointSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          dashboardId: DASHBOARD.id,
-          dashcardId: TABLE_DASHCARD.id,
-          cardId: ORDERS_LINE_CHART_CARD.id,
-          parameters: [],
-        }),
+        { cardId: ORDERS_LINE_CHART_CARD.id },
         expect.anything(), // abort signal
       );
     });

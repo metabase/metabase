@@ -151,13 +151,6 @@ export default class NativeQuery extends AtomicQuery {
 
   /* Methods unique to this query type */
 
-  /**
-   * @returns a new query with the provided Database set.
-   */
-  setDatabase(database: Database): NativeQuery {
-    return this.setDatabaseId(database.id);
-  }
-
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
     if (databaseId !== this._databaseId()) {
       // TODO: this should reset the rest of the query?
