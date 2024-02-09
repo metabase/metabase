@@ -163,13 +163,13 @@
 (deftest defn-forms-are-not-emitted-for-skippable-ns-in-prod-test
   (testing "omission in macroexpansion"
     (testing "returns a simple fn*"
-      (binding [mu.fn/*skip-ns-decision-fn* (constantly true)]
+      (with-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
                     "Inputs: []\n  Return: :int" (clojure.core/fn [] "foo"))
                  expansion)))))
     (testing "returns an instrumented fn"
-      (binding [mu.fn/*skip-ns-decision-fn* (constantly false)]
+      (with-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
                     "Inputs: []\n  Return: :int"
