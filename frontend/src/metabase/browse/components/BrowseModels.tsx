@@ -1,6 +1,8 @@
 import _ from "underscore";
 import { t } from "ttag";
 
+import { useEffect, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -58,7 +60,6 @@ export const BrowseModels = ({
     modelsWithoutInstanceAnalyticsCollection,
     localeCode,
   );
-
   if (error || isLoading) {
     return (
       <LoadingAndErrorWrapper
