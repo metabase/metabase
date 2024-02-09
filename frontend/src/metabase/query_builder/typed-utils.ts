@@ -31,13 +31,19 @@ export function getCardTypeFromLocation(
   location: LocationDescriptorObject,
 ): CardType {
   const { pathname } = location;
-  if (pathname?.startsWith("/metric")) {
-    return "metric";
+  if (pathname?.startsWith("/question")) {
+    return "question";
   }
 
   if (pathname?.startsWith("/model")) {
     return "model";
   }
 
-  return "question";
+  if (pathname?.startsWith("/metric")) {
+    return "metric";
+  }
+
+  throw new Error(
+    `The current route "${location.pathname}" does not represent question, model or a metric`,
+  );
 }
