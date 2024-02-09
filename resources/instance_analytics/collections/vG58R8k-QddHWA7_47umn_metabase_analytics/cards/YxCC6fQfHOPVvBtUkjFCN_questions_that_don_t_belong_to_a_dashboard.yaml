@@ -151,3 +151,4 @@ serdes/meta:
   label: questions_that_don_t_belong_to_a_dashboard
   model: Card
 metabase_version: vUNKNOWN (901f705)
+type: question

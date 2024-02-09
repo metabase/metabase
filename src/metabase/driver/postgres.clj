@@ -63,8 +63,7 @@
                               :persist-models           true
                               :table-privileges         true
                               :schemas                  true
-                              :connection-impersonation true
-                              :uploads                  true}]
+                              :connection-impersonation true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -74,7 +73,8 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :index-info]]
+                 :index-info
+                 :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))

@@ -162,3 +162,4 @@ serdes/meta:
   label: questions_in_this_dashboard
   model: Card
 metabase_version: null
+type: question

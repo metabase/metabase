@@ -64,3 +64,4 @@ serdes/meta:
   label: list_of_dashboards
   model: Card
 metabase_version: vUNKNOWN (ad99d37)
+type: question

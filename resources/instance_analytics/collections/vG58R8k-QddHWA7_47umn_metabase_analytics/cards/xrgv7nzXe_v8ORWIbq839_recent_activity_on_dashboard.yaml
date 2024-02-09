@@ -169,3 +169,4 @@ serdes/meta:
   label: recent_activity_on_dashboard
   model: Card
 metabase_version: null
+type: question

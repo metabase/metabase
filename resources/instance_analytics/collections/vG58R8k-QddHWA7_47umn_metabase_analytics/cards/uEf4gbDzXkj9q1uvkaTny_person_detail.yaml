@@ -90,3 +90,4 @@ serdes/meta:
   label: person_detail
   model: Card
 metabase_version: vUNKNOWN (ad99d37)
+type: question
