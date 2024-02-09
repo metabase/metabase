@@ -52,7 +52,7 @@ import {
 } from "./DashCardCardParameterMapper.styled";
 import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
 
-function formatSelectedVirtual({ name, sectionName }) {
+function formatSelected({ name, sectionName }) {
   if (sectionName == null) {
     // for native question variables or field literals we just display the name
     return name;
@@ -114,8 +114,8 @@ export function DashCardCardParameterMapper({
   let selectedMappingOption;
   if (isVirtual || isAction || isNative) {
     selectedMappingOption = target
-      ? _.find(mappingOptions, option =>
-          _.isEqual(normalize(target), normalize(option.target)),
+      ? mappingOptions.find(option =>
+          _.isEqual(normalize(option.target), normalize(target)),
         )
       : undefined;
   } else {
@@ -171,7 +171,7 @@ export function DashCardCardParameterMapper({
         return {
           buttonVariant: "mapped",
           buttonTooltip: null,
-          buttonText: formatSelectedVirtual(selectedMappingOption),
+          buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <CloseIconButton
               role="button"
@@ -207,10 +207,10 @@ export function DashCardCardParameterMapper({
     }, [
       hasPermissionsToMap,
       isDisabled,
-      isVirtual,
       selectedMappingOption,
       target,
       handleChangeTarget,
+      isVirtual,
     ]);
 
   const headerContent = useMemo(() => {
