@@ -109,7 +109,7 @@
                                        :tables   [(meta/table-metadata :venues)]})
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"\QFailed to fetch :metadata/table\E"
+           #"Failed to fetch Table \S+: Table does not exist or belongs to a different Database."
            (resolve-joins
             (mt/mbql-query venues
               {:joins [{:source-table (meta/id :categories)
