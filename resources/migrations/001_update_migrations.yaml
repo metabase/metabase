@@ -5490,7 +5490,7 @@ databaseChangeLog:
             dbms: postgresql
             sql: INSERT INTO setting (key, value) VALUES ('enable-public-sharing', 'false');
         - sql:
-            dbms: mysql,maraidb
+            dbms: mysql,mariadb
             sql: INSERT INTO setting (`key`, value) VALUES ('enable-public-sharing', 'false');
         - sql:
             dbms: h2
