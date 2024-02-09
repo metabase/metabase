@@ -1,18 +1,20 @@
-import { t } from "ttag";
+import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
-import { useState } from "react";
-import { Flex, Icon, Switch, Text } from "metabase/ui";
+import { t } from "ttag";
+import type { SearchResult } from "metabase-types/api";
 import {
+  useCollectionListQuery,
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import type { SearchResult } from "metabase-types/api";
 import { useDispatch } from "metabase/lib/redux";
+import { Flex, Icon, Text } from "metabase/ui";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
+import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import type { BrowseFilters } from "../utils";
 import { isValidBrowseTab, type BrowseTabId } from "../utils";
-import { BrowseDatabases } from "./BrowseDatabases";
-import { BrowseModels } from "./BrowseModels";
 import {
   BrowseAppRoot,
   BrowseContainer,
@@ -22,9 +24,9 @@ import {
   BrowseTabsList,
   BrowseTabsPanel,
 } from "./BrowseApp.styled";
+import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
-import {isInstanceAnalyticsCollection} from "metabase/collections/utils";
-import {PLUGIN_SELECTORS} from "metabase/plugins";
+import { BrowseModels } from "./BrowseModels";
 
 export const BrowseApp = ({
   tab,
@@ -40,19 +42,38 @@ export const BrowseApp = ({
       filter_items_in_personal_collection: "exclude",
     },
   });
+  const collectionsResult = useCollectionListQuery();
   const databasesResult = useDatabaseListQuery();
+
+  const initialFilters = PLUGIN_CONTENT_VERIFICATION.browseFilters;
+
+  for (const [filterName, filter] of Object.entries(initialFilters)) {
+    const storedValue = localStorage.getItem(`browseFilters.${filterName}`);
+    if (storedValue !== null) {
+      filter.active = storedValue === "on";
+    }
+  }
+
+  const [filters, setFilters] = useState(initialFilters);
+
+  const setFilter = useCallback(
+    (filterName: string, active: boolean) => {
+      setFilters((previousFilters: BrowseFilters) => {
+        const newFilters = { ...previousFilters };
+        newFilters[filterName].active = active;
+        return newFilters;
+      });
+      localStorage.setItem(
+        `browseFilters.${filterName}`,
+        active ? "on" : "off",
+      );
+    },
+    [setFilters],
+  );
 
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;
   }
-
-  // TODO: Perhaps put possibleFilters and activeFilters into the plugin system
-  const possibleFilters = {
-    'omitInstanceAnalytics': (model: SearchResult) => !isInstanceAnalyticsCollection(model.collection),
-    ...useSelector(PLUGIN_SELECTORS.browseFilters)
-  }
-
-  const [filters, setFilters] = useState(initialFilters);
 
   return (
     <BrowseAppRoot data-testid="browse-app">
@@ -79,7 +100,10 @@ export const BrowseApp = ({
                 {t`Databases`}
               </BrowseTab>
               {tab === "models" ? (
-                <ToggleOnlyShowVerifiedModels />
+                <PLUGIN_CONTENT_VERIFICATION.BrowseFilterControls
+                  filters={filters}
+                  setFilter={setFilter}
+                />
               ) : (
                 <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
                   <Link to="reference">
@@ -106,6 +130,7 @@ export const BrowseApp = ({
               <BrowseTabContent
                 tab={tab}
                 modelsResult={modelsResult}
+                collectionsResult={collectionsResult}
                 databasesResult={databasesResult}
                 filters={filters}
               >
@@ -123,14 +148,16 @@ const BrowseTabContent = ({
   tab,
   children,
   modelsResult,
+  collectionsResult,
   databasesResult,
-  onlyShowVerifiedModels,
+  filters,
 }: {
   tab: BrowseTabId;
   children?: React.ReactNode;
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
+  collectionsResult: ReturnType<typeof useCollectionListQuery>;
   databasesResult: ReturnType<typeof useDatabaseListQuery>;
-  onlyShowVerifiedModels: boolean;
+  filters: BrowseFilters;
 }) => {
   if (children) {
     return <>{children}</>;
@@ -139,37 +166,11 @@ const BrowseTabContent = ({
     return (
       <BrowseModels
         modelsResult={modelsResult}
-        onlyShowVerifiedModels={onlyShowVerifiedModels}
+        collectionsResult={collectionsResult}
+        filters={filters}
       />
     );
   } else {
     return <BrowseDatabases databasesResult={databasesResult} />;
   }
-};
-
-export const ToggleOnlyShowVerifiedModels = () => {
-  const [onlyShowVerifiedModels, setOnlyShowVerifiedModels] = useState(
-    localStorage.getItem("onlyShowVerifiedModelsInBrowseData") !== "false",
-  );
-
-  const changeOnlyShowVerifiedModels = (newValue: boolean) => {
-    localStorage.setItem(
-      "onlyShowVerifiedModelsInBrowseData",
-      newValue ? "true" : "false",
-    );
-    setOnlyShowVerifiedModels(newValue);
-  };
-
-  return (
-    <Switch
-      ml="auto"
-      size="sm"
-      labelPosition="left"
-      checked={onlyShowVerifiedModels}
-      label={<strong>{t`Only show verified models`}</strong>}
-      onChange={e => {
-        changeOnlyShowVerifiedModels(e.target.checked);
-      }}
-    />
-  );
 };
