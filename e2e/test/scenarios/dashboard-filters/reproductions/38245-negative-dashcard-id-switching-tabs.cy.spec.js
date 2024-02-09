@@ -3,8 +3,8 @@ import {
   getDashboardCard,
   goToTab,
   openQuestionsSidebar,
-  popover,
   restore,
+  selectDashboardFilter,
   sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -26,7 +26,7 @@ const DASHBOARD_TEXT_FILTER = {
   type: "string/contains",
 };
 
-describe.skip("issue 38245", () => {
+describe("issue 38245", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     restore();
@@ -47,22 +47,20 @@ describe.skip("issue 38245", () => {
 
     cy.wait("@cardQuery");
 
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText(DASHBOARD_TEXT_FILTER.name)
-      .click();
-
-    getDashboardCard().within(() => {
-      cy.findByText("Column to filter on");
-      cy.findByText("Select…").click();
-    });
-
-    popover().findByText("Source").click();
+    mapDashCardToFilter(
+      getDashboardCard(),
+      DASHBOARD_TEXT_FILTER.name,
+      "Source",
+    );
 
     goToTab(TAB_2.name);
     goToTab(TAB_1.name);
 
-    cy.log("cardQuery with not saved parameters leads to 500 response");
-    cy.wait("@cardQuery");
+    getDashboardCard().within(() => {
+      cy.findByText("Orders").should("exist");
+      cy.findByText("Product ID").should("exist");
+      cy.findByText(/(Problem|Error)/i).should("not.exist");
+    });
 
     cy.get("@cardQuery.all").should("have.length", 2);
     cy.get("@cardQuery").should(({ response }) => {
@@ -79,4 +77,14 @@ function createDashboardWithTabs({ dashcards, tabs, ...dashboardDetails }) {
       tabs,
     }).then(({ body: dashboard }) => cy.wrap(dashboard));
   });
+}
+
+function filterPanel() {
+  return cy.findByTestId("edit-dashboard-parameters-widget-container");
+}
+
+function mapDashCardToFilter(dashcardElement, filterName, columnName) {
+  filterPanel().findByText(filterName).click();
+  selectDashboardFilter(dashcardElement, columnName);
+  sidebar().button("Done").click();
 }

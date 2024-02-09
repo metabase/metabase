@@ -2,10 +2,9 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { UserInfo } from "metabase-types/store";
 import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InvactiveStep";
+import { InactiveStep } from "../InactiveStep";
 import { UserForm } from "../UserForm";
 import { selectStep, submitUser } from "../../actions";
-import { USER_STEP } from "../../constants";
 import {
   getIsHosted,
   getIsSetupCompleted,
@@ -14,20 +13,23 @@ import {
   getUser,
 } from "../../selectors";
 import { validatePassword } from "../../utils";
+import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./UserStep.styled";
 
-export const UserStep = (): JSX.Element => {
+export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
-  const isStepActive = useSelector(state => getIsStepActive(state, USER_STEP));
+  const isStepActive = useSelector(state =>
+    getIsStepActive(state, "user_info"),
+  );
   const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, USER_STEP),
+    getIsStepCompleted(state, "user_info"),
   );
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
   const handleStepSelect = () => {
-    dispatch(selectStep(USER_STEP));
+    dispatch(selectStep("user_info"));
   };
 
   const handleSubmit = (user: UserInfo) => {
@@ -38,7 +40,7 @@ export const UserStep = (): JSX.Element => {
     return (
       <InactiveStep
         title={getStepTitle(user, isStepCompleted)}
-        label={2}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
         onStepSelect={handleStepSelect}
@@ -47,7 +49,7 @@ export const UserStep = (): JSX.Element => {
   }
 
   return (
-    <ActiveStep title={getStepTitle(user, isStepCompleted)} label={2}>
+    <ActiveStep title={getStepTitle(user, isStepCompleted)} label={stepLabel}>
       {isHosted && (
         <StepDescription>
           {t`We know you’ve already created one of these.`}{" "}

@@ -1,7 +1,7 @@
 import _ from "underscore";
 import type {
   CardId,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardId,
   DashboardParameterMapping,
   DashCardId,
@@ -11,11 +11,14 @@ import type {
 import type { DashboardState } from "metabase-types/store";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 export function getAllDashboardCardsWithUnmappedParameters({
   dashboardState,
@@ -27,27 +30,28 @@ export function getAllDashboardCardsWithUnmappedParameters({
   dashboardId: DashboardId;
   parameterId: ParameterId;
   excludeDashcardIds?: DashCardId[];
-}) {
-  const cards = getExistingDashCards(
+}): QuestionDashboardCard[] {
+  const dashCards = getExistingDashCards(
     dashboardState.dashboards,
     dashboardState.dashcards,
     dashboardId,
   );
-  return cards.filter(dashcard => {
-    return (
+  return dashCards.filter(
+    (dashcard): dashcard is QuestionDashboardCard =>
+      isQuestionDashCard(dashcard) &&
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
         mapping => mapping.parameter_id === parameterId,
-      )
-    );
-  });
+      ),
+  );
 }
 
 export function getMatchingParameterOption(
-  targetDashcard: DashboardCard,
+  targetDashcard: QuestionDashboardCard,
   targetDimension: ParameterTarget,
-  sourceDashcard: DashboardCard,
+  sourceDashcard: QuestionDashboardCard,
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): {
   target: ParameterTarget;
 } | null {
@@ -55,12 +59,12 @@ export function getMatchingParameterOption(
     return null;
   }
 
-  const sourceQuestion = new Question(sourceDashcard.card, metadata);
-  const targetQuestion = new Question(targetDashcard.card, metadata);
+  const sourceQuestion = questions[sourceDashcard.card.id];
+  const targetQuestion = questions[targetDashcard.card.id];
 
   return (
     getParameterMappingOptions(
-      metadata,
+      targetQuestion,
       null,
       targetDashcard.card,
       targetDashcard,
@@ -83,11 +87,12 @@ export type DashCardAttribute = {
 };
 
 export function getAutoWiredMappingsForDashcards(
-  sourceDashcard: DashboardCard,
-  targetDashcards: DashboardCard[],
+  sourceDashcard: QuestionDashboardCard,
+  targetDashcards: QuestionDashboardCard[],
   parameter_id: ParameterId,
   target: ParameterTarget,
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): DashCardAttribute[] {
   if (targetDashcards.length === 0) {
     return [];
@@ -103,6 +108,7 @@ export function getAutoWiredMappingsForDashcards(
       target,
       sourceDashcard,
       metadata,
+      questions,
     );
 
     if (selectedMappingOption && targetDashcard.card_id) {
@@ -123,7 +129,7 @@ export function getAutoWiredMappingsForDashcards(
 }
 
 export function getParameterMappings(
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   parameter_id: ParameterId,
   card_id: CardId,
   target: ParameterTarget | null,

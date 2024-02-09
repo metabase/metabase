@@ -153,6 +153,11 @@ export function addTextBox(string, options = {}) {
   addTextBoxWhileEditing(string, options);
 }
 
+export function addLinkWhileEditing(string, options = {}) {
+  cy.findByLabelText("Add link card").click();
+  cy.findByPlaceholderText("https://example.com").type(string, options);
+}
+
 export function addTextBoxWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Text").click();

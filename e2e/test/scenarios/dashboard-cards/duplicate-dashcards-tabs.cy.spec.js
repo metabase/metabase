@@ -91,10 +91,8 @@ describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
 
   it("should allow the user to duplicate a dashcard", () => {
     // 1. Confirm duplication works
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-      cy.findByLabelText("Edit dashboard").click();
-    });
+    visitDashboard("@dashboardId");
+    cy.findByLabelText("Edit dashboard").click();
 
     findDashCardAction(getDashboardCard(0), "Duplicate").click();
     expectGoodSnowplowEvent(EVENTS.duplicateDashcard);
@@ -115,13 +113,16 @@ describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
 
   it("should allow the user to duplicate a tab", () => {
     // 1. Confirm duplication works
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-      cy.findByLabelText("Edit dashboard").click();
-    });
+    visitDashboard("@dashboardId");
+    cy.findByLabelText("Edit dashboard").click();
 
     duplicateTab("Tab 1");
     expectGoodSnowplowEvent(EVENTS.duplicateTab);
+    getDashboardCard().within(() => {
+      cy.findByText("Products").should("exist");
+      cy.findByText("Category").should("exist");
+      cy.findByText(/(Problem|Error)/i).should("not.exist");
+    });
     saveDashboard();
     expectGoodSnowplowEvent(EVENTS.saveDashboard);
 

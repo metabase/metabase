@@ -528,7 +528,6 @@ function DashboardInner(props: DashboardProps) {
                   <FilterApplyButton />
                 </ParametersWidgetContainer>
               )}
-
               <CardsContainer id="Dashboard-Cards-Container">
                 {renderContent()}
               </CardsContainer>

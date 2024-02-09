@@ -52,7 +52,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.button("Done").click();
 
     cy.wait("@savedAlert").then(({ response: { body } }) => {
-      console.log(body);
       expect(body.channels).to.have.length(2);
       expect(body.channels[0].channel_type).to.eq("email");
       expect(body.channels[0].enabled).to.eq(false);

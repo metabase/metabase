@@ -8,7 +8,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
-  DashboardCard,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/parameters/types";
@@ -26,7 +26,7 @@ import {
 } from "./CustomURLPicker.styled";
 
 interface Props {
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   clickBehavior: ArbitraryCustomDestinationClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings: ClickBehavior) => void;

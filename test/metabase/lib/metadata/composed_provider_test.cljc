@@ -25,3 +25,7 @@
               (lib.metadata/field
                metadata-provider
                (meta/id :people :birth-date)))))))
+
+(deftest ^:parallel equality-test
+  (is (= (lib/composed-metadata-provider meta/metadata-provider)
+         (lib/composed-metadata-provider meta/metadata-provider))))

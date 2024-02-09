@@ -73,9 +73,7 @@ Show this help message listing valid Metabase commands.
 
 {% include plans-blockquote.html feature="Serialization" self-hosted-only="true" %}
 
-Load serialized Metabase instance as created by the export command from directory `path`. Options:
-
--e, --abort-on-error Stops import on any errors, default is to continue.
+Load serialized Metabase instance as created by the export command from directory `path`. Has no options.
 
 ## `load path & options`
 
