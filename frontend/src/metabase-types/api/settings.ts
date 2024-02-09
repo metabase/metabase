@@ -205,6 +205,7 @@ export interface Settings {
   "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
   "dismissed-custom-dashboard-toast"?: boolean;
+  "dismissed-browse-models-banner"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string;
   "embedding-secret-key"?: string;
