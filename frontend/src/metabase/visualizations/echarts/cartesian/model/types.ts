@@ -70,8 +70,10 @@ export type SeriesExtents = Record<DataKey, Extent>;
 export type AxisFormatter = (value: RowValue) => string;
 
 export type XAxisModel = {
-  label?: string;
+  extent: Extent;
   formatter: AxisFormatter;
+  minDimensionChange: number;
+  label?: string;
 };
 
 export type YAxisModel = {

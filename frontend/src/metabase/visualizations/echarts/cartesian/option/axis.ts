@@ -5,16 +5,19 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
-  AxisFormatter,
   CartesianChartModel,
   Extent,
+  XAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/option/types";
+import type {
+  ChartMeasurements,
+  XAxisType,
+} from "metabase/visualizations/echarts/cartesian/option/types";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -86,7 +89,9 @@ export const getTicksDefaultOption = ({
   };
 };
 
-export const getXAxisType = (settings: ComputedVisualizationSettings) => {
+export const getXAxisType = (
+  settings: ComputedVisualizationSettings,
+): XAxisType => {
   switch (settings["graph.x_axis.scale"]) {
     case "timeseries":
       return "time";
@@ -112,10 +117,26 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   }
 };
 
+function getXAxisRange(
+  { extent: [minExtent, maxExtent], minDimensionChange }: XAxisModel,
+  axisType: XAxisType,
+) {
+  if (axisType !== "value") {
+    return {};
+  }
+  // ECharts' default bar width is determined by the smallest distance
+  // between bars, so we use that to add the smallest amount of padding
+  // needed as a buffer for the min and max
+  return {
+    min: minExtent - minDimensionChange,
+    max: maxExtent + minDimensionChange,
+  };
+}
+
 export const buildDimensionAxis = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
-  formatter: AxisFormatter,
+  xAxisModel: XAxisModel,
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
@@ -141,6 +162,7 @@ export const buildDimensionAxis = (
         ? settings["graph.x_axis.title_text"]
         : undefined,
     ),
+    ...getXAxisRange(xAxisModel, axisType),
     axisTick: {
       show: false,
     },
@@ -157,7 +179,8 @@ export const buildDimensionAxis = (
       rotate: getRotateAngle(settings),
       ...getTicksDefaultOption(renderingContext),
       // Value is always converted to a string by ECharts
-      formatter: (value: string) => ` ${formatter(valueGetter(value))} `, // spaces force padding between ticks
+      formatter: (value: string) =>
+        ` ${xAxisModel.formatter(valueGetter(value))} `, // spaces force padding between ticks
     },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
@@ -265,7 +288,7 @@ export const buildAxes = (
     xAxis: buildDimensionAxis(
       chartModel,
       settings,
-      chartModel.xAxisModel.formatter,
+      chartModel.xAxisModel,
       chartMeasurements,
       hasTimelineEvents,
       renderingContext,

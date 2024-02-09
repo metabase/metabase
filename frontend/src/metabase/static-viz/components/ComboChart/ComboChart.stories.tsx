@@ -77,6 +77,27 @@ BarLinearXScale.args = {
   renderingContext,
 };
 
+export const BarLinearXScaleUneven = Template.bind({});
+BarLinearXScaleUneven.args = {
+  rawSeries: data.barLinearXScaleUneven as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarLinearXScaleStacked = Template.bind({});
+BarLinearXScaleStacked.args = {
+  rawSeries: data.barLinearXScaleStacked as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarLinearXScaleNormalizedStacked = Template.bind({});
+BarLinearXScaleNormalizedStacked.args = {
+  rawSeries: data.barLinearXScaleNormalizedStacked as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarHistogramXScale = Template.bind({});
 BarHistogramXScale.args = {
   rawSeries: data.barHistogramXScale as any,
@@ -143,6 +164,13 @@ BarBreakoutWithLineSeriesStackedRightAxisOnly.args = {
 export const BarsBreakoutSortedWithNegativeValuesPowerYAxis = Template.bind({});
 BarsBreakoutSortedWithNegativeValuesPowerYAxis.args = {
   rawSeries: data.barsBreakoutSortedWithNegativeValuesPowerYAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ComboLinearXScale = Template.bind({});
+ComboLinearXScale.args = {
+  rawSeries: data.comboLinearXScale as any,
   dashcardSettings: {},
   renderingContext,
 };
