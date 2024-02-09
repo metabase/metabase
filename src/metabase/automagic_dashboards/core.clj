@@ -702,7 +702,8 @@
                   (format "%s#show=all" url))
           :transient_filters query-filter
           :param_fields (filter-referenced-fields root query-filter)
-          :auto_apply_filters true))))
+          :auto_apply_filters true
+          :width "fixed"))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."

@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
 import type { Locale } from "metabase-types/store";
 import { selectStep, updateLocale } from "../../actions";
-import { LANGUAGE_STEP, USER_STEP } from "../../constants";
 import {
   getAvailableLocales,
   getIsSetupCompleted,
@@ -15,7 +14,8 @@ import {
 } from "../../selectors";
 import { getLocales } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InvactiveStep";
+import { InactiveStep } from "../InactiveStep";
+import type { NumberedStepProps } from "../types";
 import {
   LocaleGroup,
   LocaleInput,
@@ -24,14 +24,12 @@ import {
   StepDescription,
 } from "./LanguageStep.styled";
 
-export const LanguageStep = (): JSX.Element => {
+export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const locale = useSelector(getLocale);
   const localeData = useSelector(getAvailableLocales);
-  const isStepActive = useSelector(state =>
-    getIsStepActive(state, LANGUAGE_STEP),
-  );
+  const isStepActive = useSelector(state => getIsStepActive(state, "language"));
   const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, LANGUAGE_STEP),
+    getIsStepCompleted(state, "language"),
   );
   const isSetupCompleted = useSelector(state => getIsSetupCompleted(state));
   const fieldId = useMemo(() => _.uniqueId(), []);
@@ -43,18 +41,18 @@ export const LanguageStep = (): JSX.Element => {
   };
 
   const handleStepSelect = () => {
-    dispatch(selectStep(LANGUAGE_STEP));
+    dispatch(selectStep("language"));
   };
 
   const handleStepSubmit = () => {
-    dispatch(selectStep(USER_STEP));
+    dispatch(selectStep("user_info"));
   };
 
   if (!isStepActive) {
     return (
       <InactiveStep
         title={t`Your language is set to ${locale?.name}`}
-        label={1}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
         onStepSelect={handleStepSelect}
@@ -63,7 +61,7 @@ export const LanguageStep = (): JSX.Element => {
   }
 
   return (
-    <ActiveStep title={t`What's your preferred language?`} label={1}>
+    <ActiveStep title={t`What's your preferred language?`} label={stepLabel}>
       <StepDescription>
         {t`This language will be used throughout Metabase and will be the default for new users.`}
       </StepDescription>

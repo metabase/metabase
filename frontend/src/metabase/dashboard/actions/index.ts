@@ -1,3 +1,4 @@
+export * from "./cards-typed";
 export * from "./cards";
 export * from "./core";
 export * from "./data-fetching";

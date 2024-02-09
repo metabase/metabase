@@ -126,14 +126,6 @@ class StructuredQuery extends AtomicQuery {
 
   /* Query superclass methods */
 
-  /**
-   * @returns true if we have metadata for the root source table loaded
-   */
-  hasMetadata(): boolean {
-    const metadata = this.metadata();
-    return metadata != null && metadata.table(this._sourceTableId()) != null;
-  }
-
   /* AtomicQuery superclass methods */
 
   /**
@@ -162,22 +154,7 @@ class StructuredQuery extends AtomicQuery {
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
-  /**
-   * @returns the database engine object, if a database is selected and loaded.
-   */
-  engine(): string | null | undefined {
-    const database = this._database();
-    return database && database.engine;
-  }
-
   /* Methods unique to this query type */
-
-  /**
-   * @returns a new reset @type {StructuredQuery} with the same parent @type {Question}
-   */
-  reset(): StructuredQuery {
-    return new StructuredQuery(this._originalQuestion);
-  }
 
   /**
    * @returns the underlying MBQL query object
@@ -194,31 +171,6 @@ class StructuredQuery extends AtomicQuery {
     fn: (q: StructuredQueryObject) => StructuredQueryObject,
   ): StructuredQuery {
     return this._updateQuery(fn, []);
-  }
-
-  /**
-   * @returns a new query with the provided Database set.
-   */
-  setDatabase(database: Database): StructuredQuery {
-    return this.setDatabaseId(database.id);
-  }
-
-  /**
-   * @returns a new query with the provided Database ID set.
-   */
-  setDatabaseId(databaseId: DatabaseId): StructuredQuery {
-    if (databaseId !== this._databaseId()) {
-      // TODO: this should reset the rest of the query?
-      return new StructuredQuery(
-        this._originalQuestion,
-        chain(this.datasetQuery())
-          .assoc("database", databaseId)
-          .assoc("query", {})
-          .value(),
-      );
-    } else {
-      return this;
-    }
   }
 
   /**
@@ -257,108 +209,12 @@ class StructuredQuery extends AtomicQuery {
     return getStructuredQueryTable(this.question(), this);
   });
 
-  isValid() {
-    if (!this.hasData()) {
-      return false;
-    }
-
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery && !sourceQuery.isValid()) {
-      return false;
-    }
-
-    if (
-      !this._isValidClauseList("joins") ||
-      !this._isValidClauseList("filters") ||
-      !this._isValidClauseList("aggregations") ||
-      !this._isValidClauseList("breakouts")
-    ) {
-      return false;
-    }
-
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which requires an aggregation
-    if (table.entity_type === "entity/GoogleAnalyticsTable") {
-      if (!this.hasAggregations()) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  _isValidClauseList(listName) {
-    for (const clause of this[listName]()) {
-      if (!this._validateClause(clause)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  _validateClause(clause) {
-    try {
-      return clause.isValid();
-    } catch (e) {
-      console.warn("Error thrown while validating clause", clause, e);
-      return false;
-    }
-  }
-
-  /**
-   * @deprecated use MLv2
-   */
-  hasData() {
-    return !!this.table();
-  }
-
-  hasAnyClauses() {
-    // this list should be kept in sync with BE in `metabase.models.card/model-supports-implicit-actions?`
-
-    const query = this.getMLv2Query();
-    const stageIndex = this.getQueryStageIndex();
-
-    const hasJoins = Lib.joins(query, stageIndex).length > 0;
-
-    return (
-      hasJoins ||
-      this.hasExpressions() ||
-      this.hasFilters() ||
-      this.hasAggregations() ||
-      this.hasBreakouts() ||
-      this._hasSorts() ||
-      this.hasLimit() ||
-      this._hasFields()
-    );
-  }
-
-  hasExpressions() {
-    return Object.keys(this.expressions()).length > 0;
-  }
-
-  hasFilters() {
-    return this.filters().length > 0;
-  }
-
   hasAggregations() {
     return this.aggregations().length > 0;
   }
 
   hasBreakouts() {
     return this.breakouts().length > 0;
-  }
-
-  _hasSorts() {
-    const query = this.getMLv2Query();
-    return Lib.orderBys(query).length > 0;
-  }
-
-  hasLimit(stageIndex = this.queries().length - 1) {
-    const query = this.getMLv2Query();
-    return Lib.hasLimit(query, stageIndex);
   }
 
   _hasFields() {
@@ -644,13 +500,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeBreakout, arguments);
   }
 
-  /**
-   * @returns {StructuredQuery} new query with all breakouts removed.
-   */
-  clearBreakouts() {
-    return this._updateQuery(Q.clearBreakouts, arguments);
-  }
-
   // FILTERS
 
   /**
@@ -815,10 +664,6 @@ class StructuredQuery extends AtomicQuery {
     return query;
   }
 
-  _indexOfField(fieldRef) {
-    return this.fields().findIndex(f => _.isEqual(f, fieldRef));
-  }
-
   // FIELDS
   fields() {
     // FIMXE: implement field functions in query lib
@@ -835,10 +680,6 @@ class StructuredQuery extends AtomicQuery {
 
   removeField(_name) {
     return this._updateQuery(Q.removeField, arguments);
-  }
-
-  clearFields() {
-    return this._updateQuery(Q.clearFields, arguments);
   }
 
   // DIMENSION OPTIONS

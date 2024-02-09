@@ -186,7 +186,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      cy.findByText("101.04").should("be.visible"); // table data
+      cy.findByText("134.91").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });

@@ -24,9 +24,12 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
-import { calculateDashCardRowAfterUndo, isVirtualDashCard } from "../utils";
+import {
+  calculateDashCardRowAfterUndo,
+  generateTemporaryDashcardId,
+  isVirtualDashCard,
+} from "../utils";
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
-import { generateTemporaryDashcardId } from "./cards";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
 type DuplicateTabPayload = {

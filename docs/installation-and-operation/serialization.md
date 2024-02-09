@@ -206,13 +206,7 @@ Which prints out:
 ```
 import path & options
          Load serialized Metabase instance as created by the [[export]] command from directory `path`.
-         Options:
-           -e, --abort-on-error  Stops import on any errors, default is to continue.
 ```
-
-### `--abort-on-error`
-
-The `--abort-on-error` flag (alias `-e`) is an optional flag that allows you to specify how the import process should handle errors. Metabase will ignore errors by default.
 
 ## Avoid using serialization for backups
 

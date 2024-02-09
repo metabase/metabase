@@ -22,7 +22,7 @@ import {
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { getDashCardById } from "metabase/dashboard/selectors";
+import { getDashCardById, getQuestions } from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
@@ -36,6 +36,7 @@ export function autoWireDashcardsWithMatchingParameters(
   return function (dispatch: Dispatch, getState: GetState) {
     const metadata = getMetadata(getState());
     const dashboard_state = getState().dashboard;
+    const questions = getQuestions(getState());
 
     if (!dashboard_state.dashboardId) {
       return;
@@ -54,6 +55,7 @@ export function autoWireDashcardsWithMatchingParameters(
       parameter_id,
       target,
       metadata,
+      questions,
     );
 
     if (dashcardAttributes.length === 0) {
@@ -97,6 +99,8 @@ export function autoWireParametersToNewCard({
       return;
     }
 
+    const questions = getQuestions(getState());
+
     const dashcards = getExistingDashCards(
       dashboardState.dashboards,
       dashboardState.dashcards,
@@ -106,7 +110,9 @@ export function autoWireParametersToNewCard({
     const dashcardWithQuestions: Array<[StoreDashcard, Question]> =
       dashcards.map(dashcard => [
         dashcard,
-        new Question(dashcard.card, metadata),
+        isQuestionDashCard(dashcard)
+          ? questions[dashcard.card.id] ?? new Question(dashcard.card, metadata)
+          : new Question(dashcard.card, metadata),
       ]);
 
     const targetDashcard: StoreDashcard = getDashCardById(
@@ -119,13 +125,16 @@ export function autoWireParametersToNewCard({
     }
 
     const dashcardMappingOptions = getParameterMappingOptions(
-      metadata,
+      questions[targetDashcard.card.id] ??
+        new Question(targetDashcard.card, metadata),
       null,
       targetDashcard.card,
       targetDashcard,
     );
 
-    const targetQuestion = new Question(targetDashcard.card, metadata);
+    const targetQuestion =
+      questions[targetDashcard.card.id] ??
+      new Question(targetDashcard.card, metadata);
 
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
