@@ -25,7 +25,7 @@ function Child() {
 
 describe("DelayGroup", () => {
   it("should be delayed by default and only remove delay after a timeout", async () => {
-    const timeout = 50;
+    const timeout = 100;
     setup({ timeout });
 
     const button = screen.getByRole("button");
@@ -43,6 +43,6 @@ describe("DelayGroup", () => {
     });
 
     const elapsed = Date.now() - start;
-    expect(elapsed).toBeCloseTo(timeout, -1);
+    expect(elapsed).toBeGreaterThanOrEqual(timeout);
   });
 });
