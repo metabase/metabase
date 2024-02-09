@@ -5,7 +5,6 @@ import {
     RouterProvider,
 } from "react-router-dom";
 import "./index.css";
-import {MetabaseProvider} from "metabase-embedding-sdk";
 import {SignIn} from "./SignIn";
 import App from "./App";
 

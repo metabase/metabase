@@ -2,6 +2,7 @@ import type * as React from "react";
 import { memo, useEffect } from "react";
 import { Provider } from "react-redux";
 import styled from "@emotion/styled";
+import {useUnmount} from "react-use";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 import { getStore } from "metabase/store";
 import reducers from "metabase/reducers-main";
@@ -34,9 +35,11 @@ const MetabaseProviderInternal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.font]);
 
-  const { sessionToken, tokenExp } = useSessionToken({
+  const { sessionToken, tokenExp, resetSessionToken } = useSessionToken({
     jwtProviderUri: config.jwtProviderUri,
   });
+
+  useUnmount(resetSessionToken)
 
   const { isLoggedIn, isInitialized } = useInitData({
     apiUrl: config.metabaseInstanceUrl,
@@ -51,6 +54,8 @@ const MetabaseProviderInternal = ({
         apiUrl: config.metabaseInstanceUrl,
         isInitialized,
         isLoggedIn,
+        sessionToken,
+        tokenExp
       }}
     >
       <Provider store={store}>

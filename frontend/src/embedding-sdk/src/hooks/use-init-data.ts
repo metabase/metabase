@@ -30,14 +30,6 @@ export const useInitData = ({
   }, []);
 
   useEffect(() => {
-    console.log("in the init data hook", {
-      apiUrl,
-      sessionToken,
-      tokenExp,
-    });
-  }, [apiUrl, sessionToken, tokenExp]);
-
-  useEffect(() => {
     if (sessionToken && apiUrl) {
       api.basename = apiUrl;
       api.sessionToken = sessionToken;
