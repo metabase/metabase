@@ -117,34 +117,6 @@
           (is (nil?     (data-access-perm-value table-id-2)))
           (is (nil?     (data-access-perm-value table-id-3))))))))
 
-#_(deftest set-simple-table-permission-in-groups!-test
-    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}  {}
-                   :model/PermissionsGroup {group-id-2 :id}  {}
-                   :model/PermissionsGroup {group-id-3 :id}  {}
-                   :model/Database         {database-id :id} {}
-                   :model/Table            {table-id-1 :id}  {:db_id database-id}
-                   :model/Table            {table-id-2 :id}  {:db_id database-id}]
-      (let [data-access-perm-value (fn [table-id group-id]
-                                       (t2/select-one-fn :perm_value :model/DataPermissions
-                                                         :db_id     database-id
-                                                         :group_id  group-id
-                                                         :table_id  table-id
-                                                         :perm_type :perms/data-access))]
-        (testing "A single table can be set to a value in multiple groups"
-          (data-perms/set-simple-table-permission-in-groups!
-           [group-id-1 group-id-2] table-id-1 :perms/data-access :unrestricted)
-          (is (= :unrestricted (data-access-perm-value table-id-1 group-id-1)))
-          (is (= :unrestricted (data-access-perm-value table-id-1 group-id-2)))
-          (is (= :no-self-service (data-access-perm-value table-id-1 group-id-3)))
-          (is (nil? (data-access-perm-value nil group-id-2))))
-
-        (testing "Setting another table to the same value does *not* coalesce the values automatically"
-          (data-perms/set-simple-table-permission-in-groups!
-           [group-id-1] table-id-2 :perms/data-access :unrestricted)
-          (is (= :unrestricted (data-access-perm-value table-id-1 group-id-1)))
-          (is (= :unrestricted (data-access-perm-value table-id-1 group-id-2)))
-          (is (nil? (data-access-perm-value nil group-id-2)))))))
-
 (deftest database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/PermissionsGroup           {group-id-2 :id}    {}
@@ -450,3 +422,44 @@
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/data-access :no-self-service)
           (is (= :block (data-perms/most-permissive-database-permission-for-user
                          user-id-1 :perms/data-access database-id-1))))))))
+
+(deftest set-new-table-permissions!-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                 :model/Database         {db-id :id}      {}
+                 :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC"}
+                 :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC"}
+                 :model/Table            {table-id-3 :id} {:db_id db-id :schema "other-schema"}]
+    (let [perm-value (fn [table-id] (t2/select-one-fn :perm_value
+                                                      :model/DataPermissions
+                                                      :db_id     db-id
+                                                      :group_id  group-id
+                                                      :table_id  table-id
+                                                      :perm_type :perms/data-access))]
+      (mt/with-restored-data-perms-for-group! group-id
+        (testing "New table inherits DB-level permission if set"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/data-access :unrestricted)
+          (data-perms/set-table-permission! group-id table-id-2 :perms/data-access :unrestricted)
+          (data-perms/set-table-permission! group-id table-id-3 :perms/data-access :unrestricted)
+          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+            (is (= :unrestricted (perm-value nil)))
+            (is (nil? (perm-value table-id-4)))))
+
+        (testing "New table inherits uniform permission value from schema"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/data-access :unrestricted)
+          (data-perms/set-table-permission! group-id table-id-2 :perms/data-access :unrestricted)
+          (data-perms/set-table-permission! group-id table-id-3 :perms/data-access :no-self-service)
+          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+            (is (= :unrestricted (perm-value table-id-4))))
+
+          (data-perms/set-table-permission! group-id table-id-1 :perms/data-access :no-self-service)
+          (data-perms/set-table-permission! group-id table-id-2 :perms/data-access :no-self-service)
+          (data-perms/set-table-permission! group-id table-id-3 :perms/data-access :unrestricted)
+          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+            (is (= :no-self-service (perm-value table-id-4)))))
+
+        (testing "New table uses default value when schema permissions are not uniform"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/data-access :unrestricted)
+          (data-perms/set-table-permission! group-id table-id-2 :perms/data-access :no-self-service)
+          (data-perms/set-table-permission! group-id table-id-3 :perms/data-access :no-self-service)
+          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+            (is (= :no-self-service (perm-value table-id-4)))))))))
