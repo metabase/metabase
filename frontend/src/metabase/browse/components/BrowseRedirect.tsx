@@ -10,14 +10,17 @@ export const BrowseRedirect = () => {
 
   const shouldQueryModels = !defaultTab;
 
-  const modelsResult = useSearchListQuery<SearchResult>({
+  const {
+    data: models,
+    error,
+    isLoading,
+  } = useSearchListQuery<SearchResult>({
     query: {
       models: ["dataset"],
       filter_items_in_personal_collection: "exclude",
     },
     enabled: shouldQueryModels,
   });
-  const { data: models, error, isLoading } = modelsResult;
 
   const dispatch = useDispatch();
 

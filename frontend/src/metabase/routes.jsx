@@ -220,7 +220,7 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="browse">
-            <IndexRoute component={BrowseRedirect} />
+            <IndexRoute component={() => <BrowseRedirect />} />
             <Route path="models" component={() => <BrowseApp tab="models" />} />
             <Route
               path="databases"
