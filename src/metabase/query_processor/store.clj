@@ -178,8 +178,23 @@
   [database-id-or-metadata-provider & body]
   `(do-with-metadata-provider ~database-id-or-metadata-provider (^:once fn* [] ~@body)))
 
+(defn- pretty-metadata-error-msg
+  "Pretty error message for eg. [[missing-bulk-metadata-error]]."
+  [metadata-type id]
+  (let [metadata-type-str (pr-str metadata-type)
+        id-str (pr-str id)]
+    (case metadata-type
+      :metadata/card    (tru "Failed to fetch Card {0}." id-str)
+      :metadata/column  (tru "Failed to fetch Field {0}: Field does not exist or belongs to different Database."
+                             id-str)
+      :metadata/metric  (tru "Failed to fetch Metric {0}." id-str)
+      :metadata/segment (tru "Failed to fetch Segment {0}." id-str)
+      :metadata/table   (tru "Failed to fetch Table {0}: Table does not exist or belongs to a different Database."
+                             id-str)
+      (tru "Failed to fetch {0} {1}." metadata-type-str id-str))))
+
 (defn- missing-bulk-metadata-error [metadata-type id]
-  (ex-info (tru "Failed to fetch {0} {1}" (pr-str metadata-type) (pr-str id))
+  (ex-info (pretty-metadata-error-msg metadata-type id)
            {:status-code       400
             :type              qp.error-type/invalid-query
             :metadata-provider (metadata-provider)
@@ -292,8 +307,7 @@
   {:deprecated "0.48.0"}
   [table-id :- ::lib.schema.id/table]
   (-> (or (lib.metadata.protocols/table (metadata-provider) table-id)
-          (throw (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database."
-                               (pr-str table-id))
+          (throw (ex-info (pretty-metadata-error-msg :metadata/table table-id)
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :table-id    table-id})))
@@ -307,8 +321,7 @@
   {:deprecated "0.48.0"}
   [field-id :- ::lib.schema.id/field]
   (-> (or (lib.metadata.protocols/field (metadata-provider) field-id)
-          (throw (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database."
-                               (pr-str field-id))
+          (throw (ex-info (pretty-metadata-error-msg :metadata/column field-id)
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :field-id    field-id})))
