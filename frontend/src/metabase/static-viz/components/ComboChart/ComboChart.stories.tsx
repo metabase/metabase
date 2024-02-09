@@ -15,7 +15,7 @@ export default {
 const Template: ComponentStory<typeof ComboChart> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <ComboChart {...args} />
+      <ComboChart {...args} isStorybook />
     </div>
   );
 };
