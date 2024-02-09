@@ -210,6 +210,8 @@ const buildEChartsLineAreaSeries = (
     chartWidth,
   );
 
+  const blurOpacity = hasMultipleSeries ? 0.3 : 1;
+
   return {
     emphasis: {
       focus: hasMultipleSeries ? "series" : "self",
@@ -222,10 +224,10 @@ const buildEChartsLineAreaSeries = (
         show: settings["graph.show_values"] && !hasMultipleSeries,
       },
       itemStyle: {
-        opacity: isSymbolVisible ? 0.3 : 0,
+        opacity: isSymbolVisible ? blurOpacity : 0,
       },
       lineStyle: {
-        opacity: 0.3,
+        opacity: blurOpacity,
       },
     },
     zlevel: CHART_STYLE.series.zIndex,
