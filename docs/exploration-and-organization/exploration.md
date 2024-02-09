@@ -89,7 +89,7 @@ To bookmark an item, look for the **ribbon** icon in the upper right corner of t
 - Dashboards
 - Collections
 
-When viewing a collection, you can also click on the `...` next to an item to add or remove a bookmark from the item.
+To add or remove a bookmark from an item, click on the three-dot menu (**...**) next to the item in the collection.
 
 Some things to remember with bookmarks:
 
