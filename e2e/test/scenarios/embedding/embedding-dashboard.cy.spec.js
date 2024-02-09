@@ -16,9 +16,15 @@ import {
   setTokenFeatures,
   dashboardParametersContainer,
   goToTab,
+  editDashboard,
+  toggleRequiredParameter,
+  sidebar,
+  saveDashboard,
+  getRequiredToggle,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 import {
   questionDetails,
   questionDetailsWithDefaults,
@@ -204,6 +210,71 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.findByText("User").should("not.exist");
         cy.findByText("Not Used Filter").should("not.exist");
       });
+    });
+
+    it("should handle required parameters", () => {
+      visitDashboard("@dashboardId");
+      editDashboard();
+
+      // Make one parameter required
+      getDashboardFilter("Name").click();
+      toggleRequiredParameter();
+      sidebar().findByText("Default value").next().click();
+      addWidgetStringFilter("Ferne Rosenbaum");
+      saveDashboard();
+
+      // Check that parameter visibility is correct
+      openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
+      assertParameterValue("Id", "Disabled");
+      assertParameterValue("Name", "Editable");
+      assertParameterValue("Source", "Disabled");
+      assertParameterValue("User", "Disabled");
+      assertParameterValue("Not Used Filter", "Disabled");
+
+      // We only expect name to be "enabled" because the rest
+      // weren't touched and therefore aren't changed, whereas
+      // "enabled" must be set by default for required params.
+      publishChanges(({ request }) => {
+        assert.deepEqual(request.body.embedding_params, {
+          name: "enabled",
+        });
+      });
+
+      visitIframe();
+
+      // Filter widget must be visible
+      filterWidget().contains("Name");
+      // Its default value must be in the URL
+      cy.location("search").should("contain", "name=Ferne%20Rosenbaum");
+      // And the default should be applied giving us only 1 result
+      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+    });
+
+    it("should (dis)allow setting parameters as required for a published embedding", () => {
+      visitDashboard("@dashboardId");
+
+      // Set an "editable" and "locked" parameters and leave the rest "disabled"
+      openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
+      setParameter("Name", "Editable");
+      setParameter("Source", "Locked");
+      publishChanges(({ request }) => {
+        assert.deepEqual(request.body.embedding_params, {
+          name: "enabled",
+          source: "locked",
+        });
+      });
+
+      // Close the embedding modal and edit the dashboard
+      cy.findByRole("dialog").icon("close").click();
+      editDashboard();
+
+      // Check each parameter's required state
+      assertRequiredEnabledByName({ name: "Name", enabled: true });
+      assertRequiredEnabledByName({ name: "Source", enabled: true });
+      // The rest must be disabled
+      assertRequiredEnabledByName({ name: "Id", enabled: false });
+      assertRequiredEnabledByName({ name: "User", enabled: false });
+      assertRequiredEnabledByName({ name: "Not Used Filter", enabled: false });
     });
   });
 
@@ -593,12 +664,28 @@ function publishChanges(callback) {
   });
 }
 
-function setParameter(name, filter) {
-  cy.findByLabelText("Configuring parameters")
-    .parent()
-    .findByText(name)
-    .siblings("a")
-    .click();
+function getParametersContainer() {
+  return cy.findByLabelText("Configuring parameters");
+}
 
+function assertParameterValue(name, value) {
+  getParametersContainer().within(() => {
+    cy.findByText(name).siblings("a").should("have.text", value);
+  });
+}
+
+function setParameter(name, filter) {
+  getParametersContainer().parent().findByText(name).siblings("a").click();
   popover().contains(filter).click();
+}
+
+function getDashboardFilter(name) {
+  return cy
+    .findByTestId("edit-dashboard-parameters-widget-container")
+    .findByText(name);
+}
+
+function assertRequiredEnabledByName({ name, enabled }) {
+  getDashboardFilter(name).click();
+  getRequiredToggle().should(enabled ? "be.enabled" : "not.be.enabled");
 }
