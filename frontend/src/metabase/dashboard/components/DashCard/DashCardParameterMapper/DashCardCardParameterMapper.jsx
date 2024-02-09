@@ -131,7 +131,7 @@ export function DashCardCardParameterMapper({
                 columns,
                 [normalize(target[1]), normalize(mappingOption.target[1])],
               )
-            : [-1, -1];
+            : [-1];
 
           return index1 >= 0 && index1 === index2;
         })
