@@ -34,17 +34,6 @@
 
 (defmethod pk-field-name :sql/test-extensions [_] "id")
 
-(defmulti session-schema
-  "Return the unqualified schema name for the current test session, if any. This can be used in test code that needs
-  to use the schema to create tables outside the regular test data setup. Test code that uses this should assume that
-  the schema is already created during initialization, and that the tables inside it will be cleaned up after test
-  runs. Returns nil by default if there is no session schema."
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod session-schema :sql/test-extensions [_] nil)
-
 ;; TODO - WHAT ABOUT SCHEMA NAME???
 (defmulti qualified-name-components
   "Return a vector of String names that can be used to refer to a Database, Table, or Field. This is provided so drivers
@@ -322,3 +311,15 @@
           {:keys [query]} (qp/compile mbql-query)
           query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
       {:query query})))
+
+(defmulti session-schema
+  "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs
+  to use the schema to create tables outside the regular test data setup. Test code that uses this should assume that
+  the schema is already created during initialization, and that the tables inside it will be cleaned up between test
+  runs in CI. Returns nil by default if there is no session schema, or the database doesn't support schemas.
+  For non-cloud drivers, this is typically the default schema that the driver uses when no schema is specified."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod session-schema :sql/test-extensions [_] nil)

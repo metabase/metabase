@@ -448,14 +448,7 @@
       (let [db                (t2/select-one :model/Database db-id)
             schema-name       (if (contains? args :schema-name)
                                 (:schema-name args)
-                                (when (and db ; the db can be nil for testing "db doesn't exist" exceptions
-                                           (driver/database-supports? driver/*driver* :schemas db))
-                                  (or (sql.tx/session-schema driver/*driver*) "public")))
-            ;; make sure the schema exists
-            _ (when schema-name
-                (let [spec (sql-jdbc.conn/connection-details->spec driver/*driver* (:details db))]
-                  (jdbc/execute! spec (format "CREATE SCHEMA IF NOT EXISTS %s;"
-                                              (sql.tx/qualify-and-quote driver/*driver* schema-name)))))
+                                (sql.tx/session-schema driver/*driver*))
             file              (csv-file-with
                                ["id, name"
                                 "1, Luke Skywalker"
@@ -1204,15 +1197,14 @@
   Defaults to a table with an auto-incrementing integer ID column, and a name column."
   [& {:keys [schema-name table-name col->upload-type rows]
       :or {table-name       (mt/random-name)
+           schema-name      (sql.tx/session-schema driver/*driver*)
            col->upload-type (ordered-map/ordered-map
                              upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
                              :name ::upload/varchar-255)
            rows             [["Obi-Wan Kenobi"]]}}]
   (let [driver driver/*driver*
         db-id (mt/id)
-        schema+table-name (if schema-name
-                            (str schema-name "." table-name)
-                            table-name)
+        schema+table-name (upload/table-identifier {:schema schema-name :name table-name})
         insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
         col-definitions (#'upload/column-definitions driver col->upload-type)
         _ (driver/create-table! driver/*driver*
