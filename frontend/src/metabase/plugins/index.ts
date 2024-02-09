@@ -15,6 +15,7 @@ import type {
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
+  Dashboard,
   Dataset,
   Group,
   GroupPermissions,
@@ -130,7 +131,7 @@ export const PLUGIN_SELECTORS = {
   getIsWhiteLabeling: (_state: State) => false,
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
-  getDashboardOverviewId: (_state: State) => undefined
+  getDashboardOverviewId: (_state: State) => undefined,
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
@@ -252,12 +253,12 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
-  auditInfo: any
+  auditInfo: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
-  auditInfo: () => null
+  auditInfo: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -327,6 +328,10 @@ export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
 };
 
-export const PLUGIN_INSTANCE_ANALYTICS = {
-  loadAuditInfo: () => {console.log("weeeeiner")}
+export const PLUGIN_DASHBOARD_HEADER = {
+  extraButtons: (_dashboard: Dashboard) => [],
+};
+
+export const PLUGIN_QUERY_BUILDER_HEADER = {
+  extraButtons: (_question: Question) => [],
 };

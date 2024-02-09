@@ -73,7 +73,7 @@ import type {
   State,
 } from "metabase-types/store";
 
-import { PLUGIN_INSTANCE_ANALYTICS, PLUGIN_SELECTORS } from "metabase/plugins";
+import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
@@ -156,7 +156,6 @@ interface StateProps {
   isShowingDashboardInfoSidebar: boolean;
   isHomepageDashboard: boolean;
   missingRequiredParameters: UiParameter[];
-  dashboardOverviewId: DashboardId | undefined;
 }
 
 interface DispatchProps {
@@ -172,7 +171,6 @@ interface DispatchProps {
     },
   ) => void;
   dismissAllUndo: () => void;
-  loadAuditInfo: () => void;
 }
 
 type DashboardHeaderProps = OwnProps & StateProps & DispatchProps;
@@ -188,7 +186,6 @@ const mapStateToProps = (state: State, props: OwnProps): StateProps => {
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
     missingRequiredParameters: getMissingRequiredParameters(state),
-    dashboardOverviewId: PLUGIN_SELECTORS.getDashboardOverviewId(state),
   };
 };
 
@@ -203,7 +200,6 @@ const mapDispatchToProps = {
   addActionToDashboard,
   addSectionToDashboard,
   dismissAllUndo,
-  loadAuditInfo: () => PLUGIN_INSTANCE_ANALYTICS.loadAuditInfo(),
 };
 
 class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
@@ -213,8 +209,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
   componentDidMount() {
     this.props.fetchPulseFormInput();
-    console.log(this.props.loadAuditInfo());
-    this.props.loadAuditInfo().unwrap();
   }
 
   handleEdit(dashboard: Dashboard) {
@@ -367,8 +361,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       databases,
       collection,
       setDashboardAttribute,
-      onChangeLocation,
-      dashboardOverviewId,
     } = this.props;
 
     const canEdit = dashboard.can_write;
@@ -557,21 +549,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
     }
 
     if (!isFullscreen && !isEditing && !isAnalyticsDashboard) {
-      if (dashboardOverviewId) {
-        extraButtons.push({
-          title: t`Usage insights`,
-          icon: "audit",
-          action: () => {
-            onChangeLocation({
-              pathname: `/dashboard/${dashboardOverviewId}`,
-              query: {
-                dashboard_id: dashboard.id.toString(),
-              },
-            });
-          },
-        });
-      }
-
       extraButtons.push({
         title: t`Enter fullscreen`,
         icon: "expand",
@@ -612,6 +589,8 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
+
+        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
       }
     }
 
