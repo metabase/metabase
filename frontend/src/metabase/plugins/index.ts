@@ -14,6 +14,7 @@ import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionEssentials,
   CollectionInstanceAnaltyicsConfig,
   Dataset,
   Group,
@@ -29,6 +30,10 @@ import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/c
 import type { AdminPathKey, State } from "metabase-types/store";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type { SearchFilterComponent } from "metabase/search/types";
+import type {
+  BrowseFilterControlsProps,
+  BrowseFilters,
+} from "metabase/browse/utils";
 import type Question from "metabase-lib/Question";
 
 import type Database from "metabase-lib/metadata/Database";
@@ -130,7 +135,6 @@ export const PLUGIN_SELECTORS = {
   getIsWhiteLabeling: (_state: State) => false,
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
-  browseFilters: (_state: State) => {},
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
@@ -324,4 +328,10 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
+  browseFilters: {} as BrowseFilters,
+  BrowseFilterControls: {} as ComponentType<BrowseFilterControlsProps>,
+  sortCollectionsForBrowseModels: (
+    _collection1: CollectionEssentials,
+    _collection2: CollectionEssentials,
+  ) => null as number | null,
 };

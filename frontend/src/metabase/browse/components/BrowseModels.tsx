@@ -12,13 +12,18 @@ import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Search from "metabase/entities/search";
 
-import type { useSearchListQuery } from "metabase/common/hooks";
+import type {
+  useCollectionListQuery,
+  useSearchListQuery,
+} from "metabase/common/hooks";
 
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { getCollectionIcon } from "metabase/entities/collections";
+import type { BrowseFilters } from "../utils";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
@@ -31,31 +36,51 @@ import {
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
+import {useEffect} from "react";
 
 export const BrowseModels = ({
   modelsResult,
-  onlyShowVerifiedModels,
+  collectionsResult,
+  filters,
 }: {
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
-  onlyShowVerifiedModels: boolean;
+  collectionsResult: ReturnType<typeof useCollectionListQuery>;
+  filters: BrowseFilters;
 }) => {
-  const { data: models = [], error, isLoading } = modelsResult;
+  const dispatch = useDispatch();
+  const models = modelsResult.data ?? [];
+  const collections = collectionsResult.data ?? [];
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
+  const error = modelsResult.error || collectionsResult.error;
+  const isLoading = modelsResult.isLoading || collectionsResult.isLoading;
 
-  const modelsFiltered = onlyShowVerifiedModels
-    ? models.filter(
-        (model: SearchResult) => model.moderated_status === "verified",
-      )
-    : models;
-  const modelsWithoutInstanceAnalyticsCollection = modelsFiltered.filter(
-    (model: SearchResult) => !isInstanceAnalyticsCollection(model.collection),
+  // Enrich models data with collection data
+  if (collections?.length) {
+    models.forEach((model: SearchResult) => {
+      const collection = collections.find(
+        (collection: CollectionEssentials) =>
+          collection.id === model.collection.id,
+      );
+      if (collection) {
+        model.collection = collection;
+      }
+    });
+  }
+
+  const filteredModels = Object.values(filters).reduce(
+    (acc, filter) => (filter.active ? acc.filter(filter.predicate) : acc),
+    models,
   );
 
-  const groupsOfModels = groupModels(
-    modelsWithoutInstanceAnalyticsCollection,
-    localeCode,
-  );
+  useEffect(() => {
+    if (error || isLoading) {
+      return;
+    }
+    localStorage.setItem("defaultBrowseTab", "models");
+  }, [error, isLoading]);
+
+  const groupsOfModels = groupModels(filteredModels, localeCode);
 
   if (error || isLoading) {
     return (
@@ -67,7 +92,7 @@ export const BrowseModels = ({
     );
   }
 
-  if (modelsFiltered.length) {
+  if (filteredModels.length) {
     return (
       <>
         <ModelExplanationBanner />
@@ -168,6 +193,7 @@ interface ModelCellProps {
   collectionHtmlId: string;
 }
 
+// TODO: Move to separate file
 const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const headingId = `heading-for-model-${model.id}`;
 
@@ -207,11 +233,7 @@ const CollectionHeader = ({
   collection: CollectionEssentials;
   id: string;
 }) => {
-  const dispatch = useDispatch();
-  const wrappable = { ...collection, model: "collection" };
-  const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
-  const icon = wrappedCollection.getIcon();
-
+  const icon = getCollectionIcon(collection);
   return (
     <CollectionHeaderContainer
       id={id}
