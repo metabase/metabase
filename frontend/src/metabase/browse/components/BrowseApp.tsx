@@ -134,8 +134,9 @@ export const BrowseApp = ({
                 modelsResult={modelsResult}
                 databasesResult={databasesResult}
                 onlyShowVerifiedModels={onlyShowVerifiedModels}
-              />
-              {children}
+              >
+                {children}
+              </BrowseTabContent>
             </Flex>
           </BrowseTabsPanel>
         </BrowseTabs>
