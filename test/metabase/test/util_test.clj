@@ -48,7 +48,6 @@
 
 (defn- clump [x y] (str x y))
 
-
 (deftest ^:parallel with-dynamic-redefs-test
   (testing "Three threads can independently redefine a regular var"
     (let [n-threads 3
