@@ -26,7 +26,6 @@ import {
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import * as Lib from "metabase-lib";
-import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
@@ -54,20 +53,6 @@ import {
 import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
 
 function formatSelectedVirtual({ name, sectionName }) {
-  if (sectionName == null) {
-    // for native question variables or field literals we just display the name
-    return name;
-  }
-  return `${sectionName}.${name}`;
-}
-
-function formatSelectedColumn(query, mappingOption) {
-  const columnInfo = Lib.displayInfo(query, -1, mappingOption);
-  const [group] = Lib.groupColumns([mappingOption]);
-  const groupInfo = Lib.displayInfo(query, -1, group);
-  const sectionName = getColumnGroupName(groupInfo);
-  const name = columnInfo.displayName;
-
   if (sectionName == null) {
     // for native question variables or field literals we just display the name
     return name;
@@ -129,30 +114,28 @@ export function DashCardCardParameterMapper({
   let selectedMappingOption;
   if (isVirtual || isAction || isNative) {
     selectedMappingOption = target
-      ? _.find(mappingOptions, option => {
-          const normalizedTarget = normalize(target);
-          const normalizedOptionTarget = normalize(option.target);
-
-          // This trick is needed because MLv2 has `base-type` in target[1]
-          // but response from BE doesn't provide `base-type`, so isEqual fails
-          return (
-            normalizedTarget[0] === normalizedOptionTarget[0] &&
-            _.isEqual(
-              normalizedTarget[1].slice(0, -1),
-              normalizedOptionTarget[1].slice(0, -1),
-            )
-          );
-        })
+      ? _.find(mappingOptions, option =>
+          _.isEqual(normalize(target), normalize(option.target)),
+        )
       : undefined;
   } else {
     const columns = Lib.visibleColumns(question.query(), -1);
-    const [index] = target
-      ? Lib.findColumnIndexesFromLegacyRefs(question.query(), -1, columns, [
-          normalize(target[1]),
-        ])
-      : [-1];
+    const stageIndex = -1;
 
-    selectedMappingOption = index >= 0 ? columns[index] : undefined;
+    selectedMappingOption = target
+      ? mappingOptions.find(mappingOption => {
+          const [index1, index2] = target
+            ? Lib.findColumnIndexesFromLegacyRefs(
+                question.query(),
+                stageIndex,
+                columns,
+                [normalize(target[1]), normalize(mappingOption.target[1])],
+              )
+            : [-1, -1];
+
+          return index1 >= 0 && index1 === index2;
+        })
+      : undefined;
   }
 
   const hasPermissionsToMap = useMemo(() => {
@@ -184,35 +167,11 @@ export function DashCardCardParameterMapper({
           buttonText: t`No valid fields`,
           buttonIcon: null,
         };
-      } else if (selectedMappingOption && (isVirtual || isAction || isNative)) {
+      } else if (selectedMappingOption) {
         return {
           buttonVariant: "mapped",
           buttonTooltip: null,
           buttonText: formatSelectedVirtual(selectedMappingOption),
-          buttonIcon: (
-            <CloseIconButton
-              role="button"
-              aria-label={t`Disconnect`}
-              onClick={e => {
-                handleChangeTarget(null);
-                e.stopPropagation();
-              }}
-            />
-          ),
-        };
-      } else if (
-        selectedMappingOption &&
-        !isVirtual &&
-        !isAction &&
-        !isNative
-      ) {
-        return {
-          buttonVariant: "mapped",
-          buttonTooltip: null,
-          buttonText: formatSelectedColumn(
-            question.query(),
-            selectedMappingOption,
-          ),
           buttonIcon: (
             <CloseIconButton
               role="button"
@@ -250,11 +209,8 @@ export function DashCardCardParameterMapper({
       isDisabled,
       isVirtual,
       selectedMappingOption,
-      isAction,
-      isNative,
       target,
       handleChangeTarget,
-      question,
     ]);
 
   const headerContent = useMemo(() => {
