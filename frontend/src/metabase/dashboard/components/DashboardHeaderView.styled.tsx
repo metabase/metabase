@@ -22,6 +22,7 @@ export const StyledFixedWidthContainer = styled(
 )<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
+  justify-items: apart;
 
   ${breakpointMaxMedium} {
     ${props =>
@@ -134,7 +135,6 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
-  margin-right: -1rem;
 
   ${breakpointMinSmall} {
     margin-left: auto;
