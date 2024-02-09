@@ -18,7 +18,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.jar JarEntry JarFile)))
+   (java.util.jar JarEntry JarFile)
+   (sun.nio.fs UnixPath)))
 
 (set! *warn-on-reflection* true)
 
@@ -169,6 +170,7 @@
     (if (running-from-jar?)
       (let [path-to-jar (get-jar-path)]
         (log/info "The app is running from a jar, starting copy...")
+        (log/info (str "Copying " path-to-jar "::" jar-resource-path " -> " plugins-dir))
         (copy-from-jar! path-to-jar jar-resource-path plugins-dir)
         (log/info "Copying complete."))
       (let [in-path (fs/path analytics-dir-resource)]
@@ -206,45 +208,15 @@
 (defn- should-skip-checksum? [last-checksum]
   (= SKIP_CHECKSUM_FLAG last-checksum))
 
-(defn hash-from-jar
-  "Given a path to a jar (`jar-path`), hashes all non-directory files in a jar subdirectory denoted by `resource-path`.
-
-  This scans through _every file_ in resources, to see which ones are inside of `resource-path`, since there's no
-  way to \"ls\" or list a directory inside of a jar's resources."
-  [jar-path resource-path]
-  (let [jar-file (JarFile. (str jar-path))
-        entries (.entries jar-file)
-        hashes (for [^JarEntry entry (iterator-seq entries)
-                     :let [entry-name (.getName entry)]
-                     :when (str/starts-with? entry-name resource-path)]
-                 (when-not (.isDirectory entry)
-                   (with-open [in (.getInputStream jar-file entry)]
-                     (hash (slurp in)))))
-        total (reduce + 0 hashes)]
-    (log/fatal "hashes: " hashes)
-    (log/fatal "total:  " total)
-    total))
-
-(defn analytics-checksum-from-filesystem
+(defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
   []
-  (->> (io/file analytics-dir-resource)
+  (->> ^UnixPath (instance-analytics-plugin-dir (plugins/plugins-dir))
+       (.toFile)
        file-seq
        (remove fs/directory?)
        (pmap #(hash (slurp %)))
-       (reduce + 0)))
-
-(defn- analytics-checksum-from-jar []
-  (hash-from-jar (get-jar-path) jar-resource-path))
-
-(defn- analytics-checksum []
-  (if (running-from-jar?)
-    (do
-      (log/info "The app is running from a jar, starting hash...")
-      (analytics-checksum-from-jar))
-    (do
-      (log/info "The app is NOT running from a jar, starting hash...")
-      (analytics-checksum-from-filesystem))))
+       (reduce +)))
 
 (defn- should-load-audit?
   "Should we load audit data?"
@@ -264,14 +236,12 @@
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    ;; can't calculate checksum unless there is an analytics-dir resource
+    (ee.internal-user/ensure-internal-user-exists!)
+    (adjust-audit-db-to-source! audit-db)
+    (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
       (when (should-load-audit? (load-analytics-content) last-checksum current-checksum)
         (last-analytics-checksum! current-checksum)
-        (ee.internal-user/ensure-internal-user-exists!)
-        (adjust-audit-db-to-source! audit-db)
-        (log/info "Loading Analytics Content...")
-        (ia-content->plugins (plugins/plugins-dir))
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
@@ -280,9 +250,9 @@
                                                             :token-check? false))]
           (if (not-empty (:errors report))
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-            (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
-        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-          (adjust-audit-db-to-host! audit-db))))))
+            (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))))
+    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+      (adjust-audit-db-to-host! audit-db))))
 
 (defn- maybe-install-audit-db
   []
