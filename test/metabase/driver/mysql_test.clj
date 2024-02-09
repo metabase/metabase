@@ -14,7 +14,6 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
@@ -33,9 +32,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.sql SQLException)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -684,14 +681,6 @@
                                             "test-data"
                                             ["foo" "bar"])))))
 
-(defn- get-db-version [conn-spec]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :mysql
-   conn-spec
-   nil
-   (fn [^java.sql.Connection conn]
-     (#'mysql/db-version (.getMetaData conn)))))
-
 (deftest table-privileges-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
@@ -699,14 +688,12 @@
         (drop-if-exists-and-create-db! "table_privileges_test")
         (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec             (sql-jdbc.conn/connection-details->spec :mysql details)
-              mysql8-or-above? (<= 8 (get-db-version spec))
               get-privileges   (fn []
                                  (let [new-connection-details (cond-> (assoc details
                                                                              :user "table_privileges_test_user",
-                                                                             :password "password")
-                                                                mysql8-or-above?
-                                                                (assoc :ssl true
-                                                                       :additional-options "trustServerCertificate=true"))]
+                                                                             :password "password"
+                                                                             :ssl true
+                                                                             :additional-options "trustServerCertificate=true"))]
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                      [spec [:mysql new-connection-details]]
                                      (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
@@ -733,40 +720,17 @@
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                      (get-privileges))))
-            (when mysql8-or-above?
-              (testing "should return privileges on roles that the user has been granted"
-                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
-                              (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
-                              "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
-                  (jdbc/execute! spec stmt))
-                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
-                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
-                       (get-privileges))))
-              (testing "should return privileges for multiple roles that the user has been granted"
-                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_2'"
-                              (str "GRANT INSERT ON `baz` TO 'table_privileges_test_role_2'")
-                              "GRANT 'table_privileges_test_role_2' TO 'table_privileges_test_user'"]]
-                  (jdbc/execute! spec stmt))
-                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
-                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
-                       (get-privileges))))
-              (testing "should return privileges from recursively granted roles"
-                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_3'"
-                              (str "GRANT DELETE ON `bar` TO 'table_privileges_test_role_3'")
-                              "GRANT 'table_privileges_test_role_3' TO 'table_privileges_test_role'"]]
-                  (try (jdbc/execute! spec stmt)
-                    (catch SQLException e
-                           (log/error "Error executing SQL:")
-                           (log/errorf "Caught SQLException:\n%s\n"
-                                       (with-out-str (jdbc/print-sql-exception-chain e)))
-                           (throw e))))
-                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete true}
-                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
-                       (get-privileges)))))
+            (testing "should return privileges on roles that the user has been granted"
+              (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
+                            (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
+                            "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
+                (jdbc/execute! spec stmt))
+              (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
+                      {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
+                     (get-privileges))))
             (finally
               (jdbc/execute! spec "DROP USER IF EXISTS 'table_privileges_test_user';")
-              (when mysql8-or-above?
-                (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
-                              "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
-                              "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
-                  (jdbc/execute! spec stmt))))))))))
+              (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
+                (jdbc/execute! spec stmt)))))))))

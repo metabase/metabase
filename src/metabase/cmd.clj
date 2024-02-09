@@ -114,7 +114,7 @@
      (when doc
        (doseq [doc-line (str/split doc #"\n\s+")]
          (println "\t" doc-line)))
-     (when arg-spec
+     (when (seq arg-spec)
        (println "\t" "Options:")
        (doseq [opt-line (str/split (:summary (cli/parse-opts [] arg-spec)) #"\n")]
          (println "\t" opt-line)))))
@@ -186,8 +186,7 @@
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load! path (get-parsed-options #'load options)))
 
 (defn ^:command import
-  {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
-   :arg-spec [["-e" "--abort-on-error" "Stops import on any errors, default is to continue."]]}
+  {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."}
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load! path (get-parsed-options #'import options)))
 
