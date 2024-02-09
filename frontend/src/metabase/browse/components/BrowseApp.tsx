@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { Flex, Icon, Text } from "metabase/ui";
@@ -40,6 +41,12 @@ export const BrowseApp = ({
     },
   });
   const databasesResult = useDatabaseListQuery();
+
+  useEffect(() => {
+    if (isValidBrowseTab(tab)) {
+      localStorage.setItem("defaultBrowseTab", tab);
+    }
+  }, [tab]);
 
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;
