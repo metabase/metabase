@@ -5,15 +5,11 @@ import { Icon } from "metabase/ui";
 import { BucketPickerPopover as BaseBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { color, alpha } from "metabase/lib/colors";
 
-const triggerButtonStyle = css`
-  border-color: transparent;
-  visibility: hidden;
-  border-left-width: 1px;
-`;
-
 export const BucketPickerPopover = styled(BaseBucketPickerPopover)`
   ${BaseBucketPickerPopover.TriggerButton} {
-    ${triggerButtonStyle}
+    border-color: transparent;
+    visibility: hidden;
+    border-left-width: 1px;
   }
 `;
 
