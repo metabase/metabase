@@ -41,6 +41,7 @@ import {
   ParametersWidgetContainer,
   Footer,
   ActionButtonsContainer,
+  TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
 
@@ -60,6 +61,7 @@ interface OwnProps {
   hiddenParameterSlugs?: string;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: ReactNode;
+  dashboardTabs?: ReactNode;
 }
 
 interface StateProps {
@@ -93,6 +95,7 @@ function EmbedFrame({
   question,
   dashboard,
   actionButtons,
+  dashboardTabs = null,
   footerVariant = "default",
   location,
   hasEmbedBranding,
@@ -147,12 +150,15 @@ function EmbedFrame({
         {hasHeader && (
           <Header className="EmbedFrame-header">
             {finalName && (
-              <TitleAndDescription
-                title={finalName}
-                description={description}
-                className="my2"
-              />
+              <TitleAndDescriptionContainer>
+                <TitleAndDescription
+                  title={finalName}
+                  description={description}
+                  className="my2"
+                />
+              </TitleAndDescriptionContainer>
             )}
+            {dashboardTabs}
             {hasParameters && (
               <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
                 <FixedWidthContainer
