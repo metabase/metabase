@@ -23,6 +23,8 @@ import {
   BrowseTabsPanel,
 } from "./BrowseApp.styled";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
+import {isInstanceAnalyticsCollection} from "metabase/collections/utils";
+import {PLUGIN_SELECTORS} from "metabase/plugins";
 
 export const BrowseApp = ({
   tab,
@@ -40,21 +42,17 @@ export const BrowseApp = ({
   });
   const databasesResult = useDatabaseListQuery();
 
-  const [onlyShowVerifiedModels, setOnlyShowVerifiedModels] = useState(
-    localStorage.getItem("onlyShowVerifiedModelsInBrowseData") !== "false",
-  );
-
-  const changeOnlyShowVerifiedModels = (newValue: boolean) => {
-    localStorage.setItem(
-      "onlyShowVerifiedModelsInBrowseData",
-      newValue ? "true" : "false",
-    );
-    setOnlyShowVerifiedModels(newValue);
-  };
-
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;
   }
+
+  // TODO: Perhaps put possibleFilters and activeFilters into the plugin system
+  const possibleFilters = {
+    'omitInstanceAnalytics': (model: SearchResult) => !isInstanceAnalyticsCollection(model.collection),
+    ...useSelector(PLUGIN_SELECTORS.browseFilters)
+  }
+
+  const [filters, setFilters] = useState(initialFilters);
 
   return (
     <BrowseAppRoot data-testid="browse-app">
@@ -81,16 +79,7 @@ export const BrowseApp = ({
                 {t`Databases`}
               </BrowseTab>
               {tab === "models" ? (
-                <Switch
-                  ml="auto"
-                  size="sm"
-                  labelPosition="left"
-                  checked={onlyShowVerifiedModels}
-                  label={<strong>{t`Only show verified models`}</strong>}
-                  onChange={e => {
-                    changeOnlyShowVerifiedModels(e.target.checked);
-                  }}
-                />
+                <ToggleOnlyShowVerifiedModels />
               ) : (
                 <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
                   <Link to="reference">
@@ -118,7 +107,7 @@ export const BrowseApp = ({
                 tab={tab}
                 modelsResult={modelsResult}
                 databasesResult={databasesResult}
-                onlyShowVerifiedModels={onlyShowVerifiedModels}
+                filters={filters}
               >
                 {children}
               </BrowseTabContent>
@@ -156,4 +145,31 @@ const BrowseTabContent = ({
   } else {
     return <BrowseDatabases databasesResult={databasesResult} />;
   }
+};
+
+export const ToggleOnlyShowVerifiedModels = () => {
+  const [onlyShowVerifiedModels, setOnlyShowVerifiedModels] = useState(
+    localStorage.getItem("onlyShowVerifiedModelsInBrowseData") !== "false",
+  );
+
+  const changeOnlyShowVerifiedModels = (newValue: boolean) => {
+    localStorage.setItem(
+      "onlyShowVerifiedModelsInBrowseData",
+      newValue ? "true" : "false",
+    );
+    setOnlyShowVerifiedModels(newValue);
+  };
+
+  return (
+    <Switch
+      ml="auto"
+      size="sm"
+      labelPosition="left"
+      checked={onlyShowVerifiedModels}
+      label={<strong>{t`Only show verified models`}</strong>}
+      onChange={e => {
+        changeOnlyShowVerifiedModels(e.target.checked);
+      }}
+    />
+  );
 };
