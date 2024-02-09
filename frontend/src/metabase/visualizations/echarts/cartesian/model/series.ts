@@ -20,6 +20,7 @@ import {
   SERIES_COLORS_SETTING_KEY,
   SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
@@ -96,12 +97,10 @@ const getDefaultSeriesName = (
 export const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
-  datasetIndex: number,
   hasMultipleCards: boolean,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): SeriesModel[] => {
-  const isFirstCard = datasetIndex === 0;
   const cardId = card.id ?? null;
   const hasBreakout = "breakout" in columns;
   // TODO: separate scatter plot and combo charts into separate models
@@ -156,9 +155,12 @@ export const getCardSeriesModels = (
   return breakoutValues.map(breakoutValue => {
     // Unfortunately, breakout series include formatted breakout values in the key
     // which can be different based on a user's locale.
-    const formattedBreakoutValue = renderingContext.formatValue(breakoutValue, {
-      column: breakout.column,
-    });
+    const formattedBreakoutValue =
+      breakoutValue != null
+        ? renderingContext.formatValue(breakoutValue, {
+            column: breakout.column,
+          })
+        : NULL_DISPLAY_VALUE;
 
     const vizSettingsKey = getSeriesVizSettingsKey(
       metric.column,

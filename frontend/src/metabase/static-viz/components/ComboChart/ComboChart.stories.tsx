@@ -70,6 +70,20 @@ LineCustomYAxisRangeEqualsExtents.args = {
   renderingContext,
 };
 
+export const LineFullyNullDimension37902 = Template.bind({});
+LineFullyNullDimension37902.args = {
+  rawSeries: data.lineFullyNullDimension37902 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const AreaFullyNullDimension37902 = Template.bind({});
+AreaFullyNullDimension37902.args = {
+  rawSeries: data.areaFullyNullDimension37902 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarLinearXScale = Template.bind({});
 BarLinearXScale.args = {
   rawSeries: data.barLinearXScale as any,
@@ -143,6 +157,13 @@ BarBreakoutWithLineSeriesStackedRightAxisOnly.args = {
 export const BarsBreakoutSortedWithNegativeValuesPowerYAxis = Template.bind({});
 BarsBreakoutSortedWithNegativeValuesPowerYAxis.args = {
   rawSeries: data.barsBreakoutSortedWithNegativeValuesPowerYAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarFullyNullDimension37902 = Template.bind({});
+BarFullyNullDimension37902.args = {
+  rawSeries: data.barFullyNullDimension37902 as any,
   dashcardSettings: {},
   renderingContext,
 };

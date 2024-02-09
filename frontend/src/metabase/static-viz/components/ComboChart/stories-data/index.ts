@@ -4,6 +4,8 @@ import lineShowDotsAuto from "./line-show-dots-auto.json";
 import lineShowDotsOn from "./line-show-dots-on.json";
 import lineShowDotsOff from "./line-show-dots-off.json";
 import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
+import lineFullyNullDimension37902 from "./line-fully-null-dimension-37902.json";
+import areaFullyNullDimension37902 from "./area-fully-null-dimension-37902.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barHistogramMultiSeries from "./bar-histogram-multi-series.json";
@@ -14,6 +16,7 @@ import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
+import barFullyNullDimension37902 from "./bar-fully-null-dimension-37902.json";
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
 import goalLineOutOfBounds37848 from "./goal-line-out-of-bounds-37848.json";
@@ -44,6 +47,8 @@ export const data = {
   lineShowDotsOn,
   lineShowDotsOff,
   lineCustomYAxisRangeEqualsExtents,
+  lineFullyNullDimension37902,
+  areaFullyNullDimension37902,
   barLinearXScale,
   barHistogramXScale,
   barHistogramMultiSeries,
@@ -55,6 +60,7 @@ export const data = {
   barStackedTotalFormattedValues,
   barStackedNormalizedEmptySpace37880,
   barsBreakoutSortedWithNegativeValuesPowerYAxis,
+  barFullyNullDimension37902,
   autoYSplit,
   messedUpAxis,
   goalLineOutOfBounds37848,
