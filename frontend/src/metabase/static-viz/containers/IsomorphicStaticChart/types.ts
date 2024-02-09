@@ -7,4 +7,5 @@ export interface IsomorphicStaticChartProps {
   renderingContext: RenderingContext;
   width?: number;
   height?: number;
+  isStorybook?: boolean;
 }

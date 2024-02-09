@@ -67,7 +67,14 @@ function removeNamespace(svgString: string) {
     .replace('xmlns:xlink="http://www.w3.org/1999/xlink"', "");
 }
 
-export const sanitizeSvgForBatik = (svgString: string) => {
+export const sanitizeSvgForBatik = (
+  svgString: string,
+  isStorybook: boolean,
+) => {
+  if (isStorybook) {
+    return svgString;
+  }
+
   return [
     transformSvgForOutline,
     patchDominantBaseline,

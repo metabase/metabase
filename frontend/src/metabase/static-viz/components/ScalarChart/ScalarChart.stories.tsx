@@ -15,7 +15,7 @@ export default {
 const Template: ComponentStory<typeof ScalarChart> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <ScalarChart {...args} />
+      <ScalarChart {...args} isStorybook />
     </div>
   );
 };

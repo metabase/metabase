@@ -15,7 +15,7 @@ export default {
 const Template: ComponentStory<typeof FunnelBarChart> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <FunnelBarChart {...args} />
+      <FunnelBarChart {...args} isStorybook />
     </div>
   );
 };
