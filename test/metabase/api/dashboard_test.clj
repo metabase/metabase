@@ -479,10 +479,11 @@
                     (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dashboard))))))
 
             (testing "should return restricted if user doesn't have permission to view the models"
-              (perms/revoke-data-perms! (perms-group/all-users) database-id)
-              (is (= #{{:restricted true} {:url "https://metabase.com"}}
+              (mt/with-no-data-perms-for-all-users!
+                (perms/revoke-data-perms! (perms-group/all-users) database-id)
+                (is (= #{{:restricted true} {:url "https://metabase.com"}}
                      (set (link-card-info-from-resp
-                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))
+                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard)))))))))))))
 
     (testing "fetch a dashboard with a param in it"
       (mt/with-temp [Table         {table-id :id} {}
