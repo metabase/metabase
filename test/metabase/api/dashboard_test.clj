@@ -481,10 +481,11 @@
                     (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dashboard))))))
 
             (testing "should return restricted if user doesn't have permission to view the models"
-              (perms/revoke-data-perms! (perms-group/all-users) database-id)
-              (is (= #{{:restricted true} {:url "https://metabase.com"}}
-                     (set (link-card-info-from-resp
-                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))))
+              (mt/with-no-data-perms-for-all-users!
+                (perms/revoke-data-perms! (perms-group/all-users) database-id)
+                (is (= #{{:restricted true} {:url "https://metabase.com"}}
+                       (set (link-card-info-from-resp
+                             (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard)))))))))))))))
 
 (deftest fetch-dashboard-test-3
   (testing "GET /api/dashboard/:id"
@@ -3352,8 +3353,8 @@
         (mt/with-temp-copy-of-db
           (perms.test-util/with-no-data-perms-for-all-users!
             (is (= "You don't have permissions to do that."
-               (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
-                         :filtered [%venues.price] :filtering [%categories.name]))))))))))
+                 (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
+                           :filtered [%venues.price] :filtering [%categories.name]))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
@@ -4280,8 +4281,8 @@
                                                                           :card_id      card-id
                                                                           :target       [:dimension
                                                                                          [:field (mt/id :people :source)
-                                                                                          {:base-type :type/Text}]]
-                                                                          }]}
+                                                                                          {:base-type :type/Text}]]}]}
+
            :model/Pulse {bad-pulse-id :id} {:name         "Bad Pulse"
                                             :dashboard_id dash-id
                                             :creator_id   (mt/user->id :trashbird)
