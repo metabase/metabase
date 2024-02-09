@@ -212,15 +212,21 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
+(def server-side-relative-datetime-units
+  "Units which, when used with :relative-datetime clause, cause computation server side. Those are
+   [[metabase.util.date-2/add-units]] coarser or equal to day. For more details see
+   [[server-side-relative-datetime-honeysql-form]]."
+  #{:day :week :month :quarter :year})
+
 (defn- use-server-side-relative-datetime?
-  "Server side generated timestamp in :relative-datetime should be used with following units. Units gt or eq to :day."
   [unit]
-  (contains? #{:day :week :month :quarter :year} unit))
+  (contains? server-side-relative-datetime-units unit))
 
 (defn- server-side-relative-datetime-honeysql-form
   "Compute `:relative-datetime` clause value server-side. Value is sql formatted (and not passed as date time) to avoid
    jdbc driver's timezone adjustments. Use of `qp.timezone/now` ensures correct timezone is used for the calculation.
-   For details see the [[metabase.driver.redshift-test/server-side-relative-datetime-truncation-test]]."
+   For details see the [[metabase.driver.redshift-test/server-side-relative-datetime-truncation-test]]. Use of
+   server-side generated values instead of `getdate` Redshift function enables caching."
   [amount unit]
   [:cast
    (-> (qp.timezone/now)

@@ -545,7 +545,8 @@
    :redshift
    (mt/with-metadata-provider (mt/id)
      (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
-       (doseq [unit [:day :week :month :year]
+       ;; Units are [[metabase.driver.redshift/server-side-relative-datetime-units]] in defined order.
+       (doseq [unit [:day :week :month :quarter :year]
                value [-30 0 7]
                :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator unit value)]]
          (test-thunk))))))
