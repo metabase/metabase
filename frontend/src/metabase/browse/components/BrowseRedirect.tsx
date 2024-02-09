@@ -2,12 +2,11 @@ import { replace } from "react-router-redux";
 import { useEffect } from "react";
 import type { SearchResult } from "metabase-types/api";
 import { useSearchListQuery } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { getDefaultBrowseTab } from "../selectors";
 
 export const BrowseRedirect = () => {
-  const defaultTab = useSelector(getDefaultBrowseTab);
+  const defaultTab = localStorage.getItem("defaultBrowseTab");
 
   const shouldQueryModels = !defaultTab;
 
@@ -31,15 +30,18 @@ export const BrowseRedirect = () => {
         dispatch(replace("/browse/databases"));
         break;
       default:
-        if (models) {
+        if (models !== undefined) {
           if (models.length > 0) {
             dispatch(replace("/browse/models"));
           } else {
             dispatch(replace("/browse/databases"));
           }
         }
+        if (!error && !isLoading) {
+          dispatch(replace("/browse/models"));
+        }
     }
-  }, [models, defaultTab, dispatch]);
+  }, [models, defaultTab, dispatch, error, isLoading]);
 
   if (error || isLoading) {
     return (

@@ -129,6 +129,12 @@ export const BrowseApp = ({
               direction="column"
               justify="flex-start"
             >
+              <BrowseTabContent
+                tab={tab}
+                modelsResult={modelsResult}
+                databasesResult={databasesResult}
+                onlyShowVerifiedModels={onlyShowVerifiedModels}
+              />
               {children}
             </Flex>
           </BrowseTabsPanel>
@@ -136,4 +142,32 @@ export const BrowseApp = ({
       </BrowseContainer>
     </BrowseAppRoot>
   );
+};
+
+const BrowseTabContent = ({
+  tab,
+  children,
+  modelsResult,
+  databasesResult,
+  onlyShowVerifiedModels,
+}: {
+  tab: BrowseTabId;
+  children?: React.ReactNode;
+  modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
+  databasesResult: ReturnType<typeof useDatabaseListQuery>;
+  onlyShowVerifiedModels: boolean;
+}) => {
+  if (children) {
+    return <>{children}</>;
+  }
+  if (tab === "models") {
+    return (
+      <BrowseModels
+        modelsResult={modelsResult}
+        onlyShowVerifiedModels={onlyShowVerifiedModels}
+      />
+    );
+  } else {
+    return <BrowseDatabases databasesResult={databasesResult} />;
+  }
 };
