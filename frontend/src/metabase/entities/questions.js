@@ -18,6 +18,8 @@ import {
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions";
 
+import { PLUGIN_MODERATION, PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 import { canonicalCollectionId } from "metabase/collections/utils";
 import forms from "./questions/forms";
 
@@ -153,20 +155,29 @@ const Questions = createEntity({
 });
 
 export function getIcon(question) {
+  const type = PLUGIN_MODERATION.getQuestionIcon(question);
+
+  if (type) {
+    return {
+      name: type.icon,
+      color: type.color ? color(type.color) : undefined,
+      tooltip: type.tooltips?.[tooltip],
+    };
+  }
+
   if (question.dataset || question.model === "dataset") {
-    if (question.moderated_status === "verified") {
-      return { name: "model_with_badge", color: "saturated-yellow" };
-    } else {
-      return { name: "model" };
-    }
+    return { name: "model" };
   }
 
   const visualization = require("metabase/visualizations").default.get(
     question.display,
   );
-  return {
-    name: visualization?.iconName ?? "beaker",
-  };
+  if (visualization) {
+    return {
+      name: visualization?.iconName ?? "beaker",
+    };
+  }
+  return { name: "question" };
 }
 
 export default Questions;
