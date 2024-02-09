@@ -332,7 +332,7 @@ function getPreviewParamsBySlug({
         parameter,
         values: parameterValues,
         defaultRequired: true,
-      }) ?? null,
+      }),
     ]),
   );
 }

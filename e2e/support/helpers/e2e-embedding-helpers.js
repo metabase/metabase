@@ -203,7 +203,7 @@ export function closeStaticEmbeddingModal() {
 
 /**
  * Open Static Embedding setup modal
- * @param apiPath - "card" or "dashboard"
+ * @param {"card" | "dashboard"} apiPath
  * @param callback
  */
 export function publishChanges(apiPath, callback) {
@@ -227,15 +227,12 @@ export function getParametersContainer() {
 }
 
 export function setEmbeddingParameter(name, value) {
-  getParametersContainer().findByText(name).siblings("a").click();
+  getParametersContainer().findByLabelText(name).click();
   popover().contains(value).click();
 }
 
 export function assertEmbeddingParameter(name, value) {
-  getParametersContainer()
-    .findByText(name)
-    .siblings("a")
-    .should("have.text", value);
+  getParametersContainer().findByLabelText(name).should("have.text", value);
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
