@@ -95,7 +95,7 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (u/prog1 dashboard
+  (u/prog1 (maybe-populate-initially-published-at dashboard)
     (params/assert-valid-parameters dashboard)
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
     (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
