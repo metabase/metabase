@@ -301,7 +301,7 @@ function getDefaultEmbeddingParams(
 
   // And for each required parameter set its value to "enabled"
   // (Editable) because this is the default for a required parameter.
-  // This is needed to save embedding_parameters when a user clicks
+  // This is needed to save embedding_params when a user clicks
   // "Publish" without changing parameter visibility.
   return validRequiredParams.reduce((acc, param) => {
     if (!acc[param.slug] || acc[param.slug] === "disabled") {
