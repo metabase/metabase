@@ -113,6 +113,15 @@
   :visibility :public
   :audit      :getter)
 
+(defsetting default-browse-tab
+  (deferred-tru "Which tab is shown by default when this user visits the Browse Data page. Can be 'models', 'databases', or '' (meaning no known preference)")
+  :user-local :only
+  :visibility :authenticated
+  :type       :string
+  :export?    true
+  :default    ""
+  :audit      :never)
+
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only

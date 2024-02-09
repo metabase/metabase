@@ -49,6 +49,7 @@ export const initializeSettings = createThunkAction(
   },
 );
 
+// TODO: This is used for updating not just admin settings but other kinds of settings, so perhaps we should rename the action
 export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
 export const updateSetting = createThunkAction(
   UPDATE_SETTING,
