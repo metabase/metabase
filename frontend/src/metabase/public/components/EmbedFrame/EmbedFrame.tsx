@@ -59,6 +59,8 @@ interface OwnProps {
   hiddenParameterSlugs?: string;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: ReactNode;
+  enableParameterRequiredBehavior?: boolean;
+  setParameterValueToDefault: (id: ParameterId) => void;
 }
 
 interface StateProps {
@@ -100,6 +102,8 @@ function EmbedFrame({
   draftParameterValues,
   hiddenParameterSlugs,
   setParameterValue,
+  setParameterValueToDefault,
+  enableParameterRequiredBehavior,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
@@ -158,14 +162,18 @@ function EmbedFrame({
                   className="mt1"
                   question={question}
                   dashboard={dashboard}
-                  parameters={getValuePopulatedParameters(
+                  parameters={getValuePopulatedParameters({
                     parameters,
-                    _.isEmpty(draftParameterValues)
+                    values: _.isEmpty(draftParameterValues)
                       ? parameterValues
                       : draftParameterValues,
-                  )}
+                  })}
                   setParameterValue={setParameterValue}
                   hideParameters={hideParameters}
+                  setParameterValueToDefault={setParameterValueToDefault}
+                  enableParameterRequiredBehavior={
+                    enableParameterRequiredBehavior
+                  }
                 />
                 {dashboard && <FilterApplyButton />}
               </ParametersWidgetContainer>
