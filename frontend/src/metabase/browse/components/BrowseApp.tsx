@@ -100,24 +100,16 @@ export const BrowseApp = ({
                   }}
                 />
               ) : (
-                <div className="flex flex-align-right">
-                  <Link className="flex flex-align-right" to="reference">
+                <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
+                  <Link to="reference">
                     <BrowseHeaderIconContainer>
-                      <Icon
-                        className="flex align-center"
-                        size={14}
-                        name="reference"
-                      />
-                      <Text
-                        size="md"
-                        lh="1"
-                        className="ml1 flex align-center text-bold"
-                      >
+                      <Icon size={14} name="reference" />
+                      <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
                         {t`Learn about our data`}
                       </Text>
                     </BrowseHeaderIconContainer>
                   </Link>
-                </div>
+                </Flex>
               )}
             </Flex>
           </BrowseTabsList>
