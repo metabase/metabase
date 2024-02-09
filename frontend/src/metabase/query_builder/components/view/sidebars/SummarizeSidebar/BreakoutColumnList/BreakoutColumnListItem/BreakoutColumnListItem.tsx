@@ -81,7 +81,6 @@ export function BreakoutColumnListItem({
       query={query}
       column={item.column}
       stage={STAGE_INDEX}
-      delay={[0, 100]}
       position="top-end"
     />
   );

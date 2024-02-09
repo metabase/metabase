@@ -145,7 +145,6 @@ export const Root = styled.li<{ isSelected: boolean }>`
   ${FieldInfoIcon.HoverTarget} {
     position: absolute;
     right: 0;
-    opacity: 0;
     padding: 0.7em 0.5em;
     padding-right: 0.75em;
   }
