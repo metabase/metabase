@@ -2,6 +2,7 @@ import defaultData from "./default.json";
 import multiMetricSeries from "./multi-metric-series.json";
 import multiDimensionBreakout from "./multi-dimension-breakout.json";
 import bubbleSize from "./bubble-size.json";
+import multiDimensionBreakoutBubbleSize from "./multi-dimension-breakout-bubble-size.json";
 import powerXScale from "./power-x-scale.json";
 import powerXScaleMultiSeries from "./power-x-scale-multi-series.json";
 import logXScale from "./log-x-scale.json";
@@ -17,6 +18,7 @@ export const data = {
   multiMetricSeries,
   multiDimensionBreakout,
   bubbleSize,
+  multiDimensionBreakoutBubbleSize,
   powerXScale,
   powerXScaleMultiSeries,
   logXScale,
