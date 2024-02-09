@@ -39,6 +39,7 @@ const CypressBackend = {
         MB_JETTY_PORT: server.port,
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
+        MB_LAST_ANALYTICS_CHECKSUM: "-1",
       };
 
       /**
