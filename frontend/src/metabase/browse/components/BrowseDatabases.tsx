@@ -12,8 +12,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { useDatabaseListQuery } from "metabase/common/hooks";
 
 import NoResults from "assets/img/no_results.svg";
-import { useDispatch } from "metabase/lib/redux";
-import { updateSetting } from "metabase/admin/settings/settings";
 import {
   DatabaseCard,
   DatabaseGrid,
@@ -26,21 +24,14 @@ export const BrowseDatabases = ({
 }: {
   databasesResult: ReturnType<typeof useDatabaseListQuery>;
 }) => {
-  const dispatch = useDispatch();
-
   const { data: databases = [], error, isLoading } = databasesResult;
 
   useEffect(() => {
     if (error || isLoading) {
       return;
     }
-    dispatch(
-      updateSetting({
-        key: "default-browse-tab",
-        value: "databases",
-      }),
-    );
-  }, [error, isLoading, dispatch]);
+    localStorage.setItem("defaultBrowseTab", "databases");
+  }, [error, isLoading]);
 
   if (error) {
     return <LoadingAndErrorWrapper error />;
