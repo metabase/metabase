@@ -21,6 +21,8 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(use-fixtures :each #(binding [setting/*disable-init* true] (%)))
+
 ;; ## TEST SETTINGS DEFINITIONS
 
 (defsetting test-setting-1
@@ -152,8 +154,9 @@
            (setting/user-facing-value :test-setting-calculated-getter))))
 
   (testing "`user-facing-value` will initialize pending values"
-    (mt/discard-setting-changes [:test-setting-custom-init]
-      (is (some? (setting/user-facing-value :test-setting-custom-init))))))
+    (binding [setting/*disable-init* false]
+      (mt/discard-setting-changes [:test-setting-custom-init]
+        (is (some? (setting/user-facing-value :test-setting-custom-init)))))))
 
 (deftest do-not-define-setter-function-for-setter-none-test
   (testing "Settings with `:setter` `:none` should not have a setter function defined"
@@ -162,12 +165,13 @@
     (is (not (resolve `test-setting-calculated-getter!)))))
 
 (deftest setting-initialization-test
-  (testing "The value will be initialized and saved"
-    (mt/discard-setting-changes [:test-setting-custom-init]
-      (let [val (setting/get :test-setting-custom-init)]
-        (is (some? val))
-        (is (= val (test-setting-custom-init)))
-        (is (= val (#'setting/read-setting :test-setting-custom-init)))))))
+  (binding [setting/*disable-init* false]
+    (testing "The value will be initialized and saved"
+      (mt/discard-setting-changes [:test-setting-custom-init]
+        (let [val (setting/get :test-setting-custom-init)]
+          (is (some? val))
+          (is (= val (test-setting-custom-init)))
+          (is (= val (#'setting/read-setting :test-setting-custom-init))))))))
 
 (deftest validate-without-initialization-test
   (testing "Validation does not initialize the setting"
@@ -175,18 +179,19 @@
     (is (= nil (#'setting/read-setting :test-setting-custom-init)))))
 
 (deftest init-requires-db-test
-  (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
-    (mt/discard-setting-changes [:test-setting-custom-init]
-      (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
-        (is (= false (mdb/db-is-set-up?)))
-        (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Cannot initialize setting before the db is set up"
-              (test-setting-custom-init)))
-        (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Cannot initialize setting before the db is set up"
-              (setting/get :test-setting-custom-init)))))))
+  (binding [setting/*disable-init* false]
+    (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
+      (mt/discard-setting-changes [:test-setting-custom-init]
+        (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
+          (is (= false (mdb/db-is-set-up?)))
+          (is (thrown-with-msg?
+                clojure.lang.ExceptionInfo
+                #"Cannot initialize setting before the db is set up"
+                (test-setting-custom-init)))
+          (is (thrown-with-msg?
+                clojure.lang.ExceptionInfo
+                #"Cannot initialize setting before the db is set up"
+                (setting/get :test-setting-custom-init))))))))
 
 (def ^:private base-options
   {:setter   :none
@@ -362,8 +367,7 @@
              (some (fn [setting]
                      (when (re-find #"^test-setting-2$" (name (:key setting)))
                        setting))
-                   (binding [setting/*disable-init* true]
-                     (setting/writable-settings)))))
+                   (setting/writable-settings))))
 
       (testing "with a custom getter"
         (test-setting-1! nil)
@@ -377,8 +381,7 @@
                (some (fn [setting]
                        (when (re-find #"^test-setting-2$" (name (:key setting)))
                          setting))
-                     (binding [setting/*disable-init* true]
-                       (setting/writable-settings :getter (comp count (partial setting/get-value-of-type :string))))))))
+                     (setting/writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
 
       ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
       (testing "test settings"
@@ -396,10 +399,9 @@
                  :env_name       "MB_TEST_SETTING_2"
                  :description    "Test setting - this only shows up in dev (2)"
                  :default        "[Default Value]"}]
-               (binding [setting/*disable-init* true]
-                 (for [setting (setting/writable-settings)
-                       :when (re-find #"^test-setting-\d$" (name (:key setting)))]
-                   setting))))))))
+               (for [setting (setting/writable-settings)
+                     :when (re-find #"^test-setting-\d$" (name (:key setting)))]
+                 setting)))))))
 
 (defsetting test-i18n-setting
   (deferred-tru "Test setting - with i18n"))
@@ -412,8 +414,7 @@
                   (some (fn [{:keys [key description]}]
                           (when (= :test-i18n-setting key)
                             description))
-                        (binding [setting/*disable-init* true]
-                          (setting/writable-settings))))]
+                        (setting/writable-settings)))]
           (is (= "Test setting - with i18n"
                  (description)))
           (mt/with-user-locale "zz"
@@ -431,8 +432,7 @@
                   (some (fn [{:keys [key description]}]
                           (when (= :test-dynamic-i18n-setting key)
                             description))
-                        (binding [setting/*disable-init* true]
-                          (setting/admin-writable-site-wide-settings))))]
+                        (setting/admin-writable-site-wide-settings)))]
           (test-i18n-setting! "test-setting-value!")
           (is (= "Test setting - with i18n: test-setting-value!"
                  (description)))
@@ -893,14 +893,12 @@
   (mt/with-test-user :crowberto
     (doseq [[fn-name f] {`setting/writable-settings
                          (fn [k]
-                           (binding [setting/*disable-init* true]
-                             (let [m (into {} (map (juxt :key :value)) (setting/writable-settings))]
-                               (get m k ::not-present))))
+                           (let [m (into {} (map (juxt :key :value)) (setting/writable-settings))]
+                             (get m k ::not-present)))
 
                          `setting/user-readable-values-map
                          (fn [k]
-                           (binding [setting/*disable-init* true]
-                             (get (setting/user-readable-values-map #{:authenticated}) k ::not-present)))}]
+                           (get (setting/user-readable-values-map #{:authenticated}) k ::not-present))}]
       (testing fn-name
         (testing "should return Database-local-allowed Settings (site-wide-value only)"
           (mt/with-temporary-setting-values [test-database-local-allowed-setting 2]
