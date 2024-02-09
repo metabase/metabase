@@ -139,7 +139,6 @@ const NewItemMenu = ({
         icon: "metric",
         link: Urls.newQuestion({
           mode: "query",
-          creationType: "custom_question",
           cardType: "metric",
           collectionId,
         }),
