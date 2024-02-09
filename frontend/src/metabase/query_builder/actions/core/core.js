@@ -25,7 +25,6 @@ import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase-lib/queries/utils/card";
-import Query from "metabase-lib/queries/Query";
 import Question from "metabase-lib/Question";
 
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
@@ -46,7 +45,6 @@ import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
-import { updateQuestion } from "./updateQuestion";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
@@ -186,17 +184,6 @@ export const navigateToNewCardInsideQB = createThunkAction(
     };
   },
 );
-
-// DEPRECATED, still used in a couple places
-export const setDatasetQuery =
-  (datasetQuery, options) => (dispatch, getState) => {
-    if (datasetQuery instanceof Query) {
-      datasetQuery = datasetQuery.datasetQuery();
-    }
-
-    const question = getQuestion(getState());
-    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
-  };
 
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = question => {
