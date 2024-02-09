@@ -60,6 +60,7 @@ import {
   DashboardHeaderContainer,
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
+  FixedWidthContainer,
 } from "./Dashboard.styled";
 
 type SuccessfulFetchDashboardResult = { payload: { dashboard: IDashboard } };
@@ -498,17 +499,6 @@ function DashboardInner(props: DashboardProps) {
                 parametersWidget={parametersWidget}
                 onSharingClick={handleToggleSharing}
               />
-
-              {shouldRenderParametersWidgetInEditMode && (
-                <ParametersWidgetContainer
-                  data-testid="edit-dashboard-parameters-widget-container"
-                  isEditing={!!isEditing}
-                  hasScroll={false}
-                  isSticky={false}
-                >
-                  {parametersWidget}
-                </ParametersWidgetContainer>
-              )}
             </DashboardHeaderContainer>
           )}
 
@@ -519,17 +509,35 @@ function DashboardInner(props: DashboardProps) {
                 !isFullscreen && (isEditing || isSharing)
               }
             >
+              {shouldRenderParametersWidgetInEditMode && (
+                <ParametersWidgetContainer
+                  data-testid="edit-dashboard-parameters-widget-container"
+                  hasScroll={true}
+                  isSticky={true}
+                >
+                  <FixedWidthContainer
+                    isFixedWidth={dashboard?.width === "fixed"}
+                    data-testid="fixed-width-filters"
+                  >
+                    {parametersWidget}
+                  </FixedWidthContainer>
+                </ParametersWidgetContainer>
+              )}
               {shouldRenderParametersWidgetInViewMode && (
                 <ParametersWidgetContainer
                   data-testid="dashboard-parameters-widget-container"
-                  isEditing={false}
                   hasScroll={hasScroll}
                   isSticky={isParametersWidgetContainersSticky(
                     visibleParameters.length,
                   )}
                 >
-                  {parametersWidget}
-                  <FilterApplyButton />
+                  <FixedWidthContainer
+                    isFixedWidth={dashboard?.width === "fixed"}
+                    data-testid="fixed-width-filters"
+                  >
+                    {parametersWidget}
+                    <FilterApplyButton />
+                  </FixedWidthContainer>
                 </ParametersWidgetContainer>
               )}
               <CardsContainer id="Dashboard-Cards-Container">
