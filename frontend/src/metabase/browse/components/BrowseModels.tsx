@@ -22,6 +22,7 @@ import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
+import { color } from "metabase/lib/colors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
