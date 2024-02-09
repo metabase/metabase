@@ -1,5 +1,6 @@
 import type {
   Dashboard,
+  DashboardTab,
   QuestionDashboardCard,
   VirtualCard,
   ActionDashboardCard,
@@ -28,6 +29,18 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   enable_embedding: false,
   embedding_params: null,
   width: "fixed",
+  ...opts,
+});
+
+export const createMockDashboardTab = (
+  opts?: Partial<DashboardTab>,
+): DashboardTab => ({
+  id: 1,
+  dashboard_id: 1,
+  name: "Tab 1",
+  entity_id: "abc_123",
+  created_at: "2020-01-01T12:30:30.000000",
+  updated_at: "2020-01-01T12:30:30.000000",
   ...opts,
 });
 
@@ -148,4 +161,13 @@ export const createMockLinkDashboardCard = ({
         url: opts?.url ?? visualization_settings?.link?.url ?? "Link Text",
       },
     },
+  });
+
+export const createMockPlaceholderDashboardCard = ({
+  visualization_settings,
+  ...opts
+}: VirtualDashboardCardOpts = {}): VirtualDashboardCard =>
+  createMockVirtualDashCard({
+    ...opts,
+    card: createMockVirtualCard({ display: "placeholder" }),
   });

@@ -26,7 +26,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -40,9 +39,9 @@
 
   Contrast [[metabase.lib.drill-thru.object-details/object-detail-drill]], which shows the details of the foreign
   object."
-  [query                                :- ::lib.schema/query
-   stage-number                        :- :int
-   {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
+  [query                                           :- ::lib.schema/query
+   stage-number                                    :- :int
+   {:keys [column column-ref value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and column
              (some? value)
              (not= value :null)         ; If the FK is null, don't show this option.
@@ -53,7 +52,7 @@
                      (some->> query lib.util/source-card-id (lib.metadata/card query)))]
       {:lib/type :metabase.lib.drill-thru/drill-thru
        :type     :drill-thru/fk-filter
-       :filter   (lib.options/ensure-uuid [:= {} (lib.ref/ref column) value])
+       :filter   (lib.options/ensure-uuid [:= {} column-ref value])
        :column-name (lib.metadata.calculation/display-name query stage-number column :long)
        :table-name (lib.metadata.calculation/display-name query 0 source)})))
 
