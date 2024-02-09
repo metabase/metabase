@@ -4,10 +4,10 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
+import type { BaseDashboardCard, Card, Parameter } from "metabase-types/api";
 import {
   columnFilterForParameter,
   dimensionFilterForParameter,
-  getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
 import {
@@ -16,8 +16,15 @@ import {
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
 } from "metabase-lib/parameters/utils/targets";
+import type Question from "metabase-lib/Question";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
 
-function buildStructuredQuerySectionOptions(query, stageIndex, group) {
+function buildStructuredQuerySectionOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  group: Lib.ColumnGroup,
+) {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
   const columns = Lib.getColumnsFromColumnGroup(group);
 
@@ -34,7 +41,7 @@ function buildStructuredQuerySectionOptions(query, stageIndex, group) {
   });
 }
 
-function buildNativeQuerySectionOptions(section) {
+function buildNativeQuerySectionOptions(section: DimensionOptionsSection) {
   return section.items.map(({ dimension }) => ({
     name: dimension.displayName(),
     icon: dimension.icon(),
@@ -43,7 +50,7 @@ function buildNativeQuerySectionOptions(section) {
   }));
 }
 
-function buildVariableOption(variable) {
+function buildVariableOption(variable: TemplateTagVariable) {
   return {
     name: variable.displayName(),
     icon: variable.icon(),
@@ -52,7 +59,7 @@ function buildVariableOption(variable) {
   };
 }
 
-function buildTextTagOption(tagName) {
+function buildTextTagOption(tagName: string) {
   return {
     name: tagName,
     icon: "string",
@@ -61,37 +68,28 @@ function buildTextTagOption(tagName) {
   };
 }
 
-/**
- *
- * @param {import("metabase-lib/metadata/Metadata").default} metadata
- * @param {import("metabase-types/api").Parameter|null} parameter
- * @param {import("metabase-types/api").Card} card
- * @param {import("metabase-types/store").StoreDashcard|null} [dashcard]
- * @returns {*}
- */
 export function getParameterMappingOptions(
-  question,
-  parameter = null,
-  card,
-  dashcard = null,
+  question: Question,
+  parameter: Parameter | null | undefined = null,
+  card: Card,
+  dashcard: BaseDashboardCard | null | undefined = null,
 ) {
-  if (dashcard && ["heading", "text"].includes(card.display)) {
+  if (dashcard && isVirtualDashCard(dashcard)) {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
-  if (isActionDashCard(dashcard)) {
+  if (dashcard && isActionDashCard(dashcard)) {
     const actionParams = dashcard?.action?.parameters?.map(param => ({
       icon: "variable",
       isForeign: false,
-      name: param.id,
       ...param,
     }));
 
     return actionParams || [];
   }
 
-  if (!card.dataset_query || isVirtualDashCard(dashcard)) {
+  if (!card.dataset_query || (dashcard && isVirtualDashCard(dashcard))) {
     return [];
   }
 
@@ -125,7 +123,6 @@ export function getParameterMappingOptions(
       ...legacyQuery
         .dimensionOptions(
           parameter ? dimensionFilterForParameter(parameter) : undefined,
-          parameter ? getTagOperatorFilterForParameter(parameter) : undefined,
         )
         .sections()
         .flatMap(section => buildNativeQuerySectionOptions(section)),

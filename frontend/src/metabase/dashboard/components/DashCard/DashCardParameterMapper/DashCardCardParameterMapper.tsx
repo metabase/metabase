@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from "react";
-import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
@@ -21,15 +20,27 @@ import {
   isVirtualDashCard,
   getVirtualCardType,
   showVirtualDashCardInfoText,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import * as Lib from "metabase-lib";
+import type { State } from "metabase-types/store";
+import type {
+  Card,
+  CardId,
+  DashCardId,
+  DashboardCard,
+  Parameter,
+  ParameterId,
+  ParameterTarget,
+} from "metabase-types/api";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 import { normalize } from "metabase-lib/queries/utils/normalize";
+import type Question from "metabase-lib/Question";
 import {
   getEditingParameter,
   getDashcardParameterMappingOptions,
@@ -52,7 +63,13 @@ import {
 } from "./DashCardCardParameterMapper.styled";
 import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
 
-function formatSelected({ name, sectionName }) {
+function formatSelected({
+  name,
+  sectionName,
+}: {
+  name: string;
+  sectionName?: string;
+}) {
   if (sectionName == null) {
     // for native question variables or field literals we just display the name
     return name;
@@ -60,8 +77,11 @@ function formatSelected({ name, sectionName }) {
   return `${sectionName}.${name}`;
 }
 
-const mapStateToProps = (state, props) => ({
-  editingParameter: getEditingParameter(state, props),
+const mapStateToProps = (
+  state: State,
+  props: DashcardCardParameterMapperProps,
+) => ({
+  editingParameter: getEditingParameter(state),
   target: getParameterTarget(state, props),
   metadata: getMetadata(state),
   question: getQuestionByCard(state, props),
@@ -72,17 +92,22 @@ const mapDispatchToProps = {
   setParameterMapping,
 };
 
-DashCardCardParameterMapper.propTypes = {
-  card: PropTypes.object.isRequired,
-  dashcard: PropTypes.object.isRequired,
-  editingParameter: PropTypes.object.isRequired,
-  target: PropTypes.array,
-  mappingOptions: PropTypes.array.isRequired,
-  metadata: PropTypes.object.isRequired,
-  setParameterMapping: PropTypes.func.isRequired,
-  isMobile: PropTypes.bool,
-  question: PropTypes.object,
-};
+interface DashcardCardParameterMapperProps {
+  card: Card;
+  dashcard: DashboardCard;
+  editingParameter: Parameter | null | undefined;
+  target: ParameterTarget | null | undefined;
+  setParameterMapping: (
+    parameterId: ParameterId,
+    dashcardId: DashCardId,
+    cardId: CardId,
+    target: ParameterTarget | null,
+  ) => void;
+  isMobile: boolean;
+  // virtual cards will not have question
+  question?: Question;
+  mappingOptions: any[];
+}
 
 export function DashCardCardParameterMapper({
   card,
@@ -93,10 +118,13 @@ export function DashCardCardParameterMapper({
   isMobile,
   question,
   mappingOptions,
-}) {
+}: DashcardCardParameterMapperProps) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
-  const hasSeries = dashcard.series && dashcard.series.length > 0;
+  const hasSeries =
+    isQuestionDashCard(dashcard) &&
+    dashcard.series &&
+    dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
   const selectedMappingOption = _.find(mappingOptions, option =>
     _.isEqual(normalize(option.target), normalize(target)),
@@ -104,17 +132,24 @@ export function DashCardCardParameterMapper({
 
   const handleChangeTarget = useCallback(
     target => {
-      setParameterMapping(editingParameter.id, dashcard.id, card.id, target);
+      if (editingParameter) {
+        setParameterMapping(editingParameter.id, dashcard.id, card.id, target);
+      }
     },
-    [card.id, dashcard.id, editingParameter.id, setParameterMapping],
+    [card.id, dashcard.id, editingParameter, setParameterMapping],
   );
 
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
-  const isNative = isNativeDashCard(dashcard);
+  const isNative = isQuestionDashCard(dashcard) && isNativeDashCard(dashcard);
 
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {
+      return true;
+    }
+
+    // virtual or action dashcard
+    if (!question) {
       return true;
     }
 
@@ -133,7 +168,7 @@ export function DashCardCardParameterMapper({
           buttonVariant: "unauthed",
           buttonTooltip: t`You don’t have permission to see this question’s columns.`,
           buttonText: null,
-          buttonIcon: <KeyIcon />,
+          buttonIcon: <KeyIcon name="key" />,
         };
       } else if (isDisabled && !isVirtual) {
         return {
@@ -176,7 +211,7 @@ export function DashCardCardParameterMapper({
           buttonVariant: "default",
           buttonTooltip: null,
           buttonText: t`Select…`,
-          buttonIcon: <ChevrondownIcon />,
+          buttonIcon: <ChevrondownIcon name="chevrondown" />,
         };
       }
     }, [
@@ -205,12 +240,15 @@ export function DashCardCardParameterMapper({
   }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
   const mappingInfoText =
-    {
-      heading: t`You can connect widgets to {{variables}} in heading cards.`,
-      text: t`You can connect widgets to {{variables}} in text cards.`,
-      link: t`You cannot connect variables to link cards.`,
-      action: t`Open this card's action settings to connect variables`,
-    }[virtualCardType] ?? "";
+    (virtualCardType &&
+      {
+        heading: t`You can connect widgets to {{variables}} in heading cards.`,
+        text: t`You can connect widgets to {{variables}} in text cards.`,
+        link: t`You cannot connect variables to link cards.`,
+        action: t`Open this card's action settings to connect variables`,
+        placeholder: "",
+      }[virtualCardType]) ??
+    "";
 
   return (
     <Container isSmall={!isMobile && dashcard.size_y < 2}>
@@ -231,7 +269,7 @@ export function DashCardCardParameterMapper({
             />
           </TextCardDefault>
         )
-      ) : isNative && isDisabled ? (
+      ) : isNative && isDisabled && editingParameter ? (
         <DisabledNativeCardHelpText parameter={editingParameter} />
       ) : (
         <>
@@ -247,7 +285,7 @@ export function DashCardCardParameterMapper({
               placement="bottom-start"
               content={
                 <ParameterTargetList
-                  onChange={target => {
+                  onChange={(target: ParameterTarget) => {
                     handleChangeTarget(target);
                     setIsDropdownVisible(false);
                   }}
@@ -258,7 +296,7 @@ export function DashCardCardParameterMapper({
             >
               <TargetButton
                 variant={buttonVariant}
-                aria-label={buttonTooltip}
+                aria-label={buttonTooltip ?? undefined}
                 aria-haspopup="listbox"
                 aria-expanded={isDropdownVisible}
                 aria-disabled={isDisabled || !hasPermissionsToMap}
@@ -282,9 +320,9 @@ export function DashCardCardParameterMapper({
           </Tooltip>
         </>
       )}
-      {isVariableTarget(target) && (
+      {target && isVariableTarget(target) && (
         <Warning>
-          {isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+          {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
             ? t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
             : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
         </Warning>
