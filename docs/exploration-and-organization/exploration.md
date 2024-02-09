@@ -82,12 +82,12 @@ Searches take into account items’ titles, descriptions, and other metadata —
 
 **Bookmarks** are a way to quickly get back to things you visit frequently (or have been working on recently). Bookmarked items show up in the main navigation sidebar above [collections][collections].
 
-To bookmark an item, look for the **ribbon** icon - it's usually in the upper right corner of the page for that item. You can bookmark:
+To bookmark an item, look for the **ribbon** icon in the upper right corner of the item's page. You can bookmark:
 
-- Questions 
-- Models 
-- Dashboards 
-- Collections 
+- Questions
+- Models
+- Dashboards
+- Collections
 
 When viewing a collection, you can also click on the `...` next to an item to add or remove a bookmark from the item.
 
