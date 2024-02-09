@@ -29,11 +29,12 @@
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
     (mt/with-additional-premium-features #{:advanced-permissions}
-      (perms.test-util/with-restored-perms!
-        (perms.test-util/with-restored-data-perms!
-          (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
-          (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
-          (f))))))
+      (perms.test-util/with-no-data-perms-for-all-users!
+        (perms.test-util/with-restored-perms!
+          (perms.test-util/with-restored-data-perms!
+            (u/ignore-exceptions (@#'perms/update-group-permissions! all-users-group-id graph))
+            (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
+            (f)))))))
 
 (defmacro ^:private with-all-users-data-perms!
   "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
@@ -804,32 +805,46 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-empty-db
-        (let [table-name (mt/random-name)]
-          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-            (doseq [stmt ["CREATE SCHEMA IF NOT EXISTS \"not_public\";"
-                          (format "CREATE TABLE \"not_public\".\"%s\" (id INTEGER);" table-name)]]
-              (jdbc/execute! conn-spec stmt)))
-          (sync/sync-database! (mt/db))
-          (let [db-id     (u/the-id (mt/db))
-                table-id (t2/select-one-pk :model/Table :db_id db-id)]
-            (mt/with-temporary-setting-values [uploads-enabled      true
-                                               uploads-database-id  db-id
-                                               uploads-schema-name  "not_public"
-                                               uploads-table-prefix "uploaded_magic_"]
-              (doseq [[schema-perms can-upload?] {:all            true
-                                                  :none           false
-                                                  {table-id :all} false}]
-                (testing (format "can_upload should be %s if the user has %s access to the upload schema"
-                                 can-upload? schema-perms)
-                  (with-all-users-data-perms! {db-id {:data {:native :none
-                                                             :schemas {"public"     :all
-                                                                       "not_public" schema-perms}}}}
-                    (testing "GET /api/database"
-                      (let [result (->> (mt/user-http-request :rasta :get 200 "database")
-                                        :data
-                                        (filter #(= (:id %) db-id))
-                                        first)]
-                        (is (= can-upload? (:can_upload result)))))
-                    (testing "GET /api/database/:id"
-                      (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-                        (is (= can-upload? (:can_upload result)))))))))))))))
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+          (doseq [stmt ["CREATE SCHEMA IF NOT EXISTS \"not_public\";"
+                        "CREATE SCHEMA IF NOT EXISTS \"public\";"
+                        ;; create three tables:
+                        ;;
+                        ;; first, two tables in the `not_public` schema. one will be our table of interest. However, if there was
+                        ;; only one table in the schema, having `unrestricted` data access to the table is equivalent to having
+                        ;; `unrestricted` data access to the entire schema. Therefore, we'll create *two* tables, one of which we
+                        ;; won't have data access for.
+                        (format "CREATE TABLE \"not_public\".\"%s\" (id INTEGER);" (mt/random-name))
+                        (format "CREATE TABLE \"not_public\".\"%s\" (id INTEGER);" (mt/random-name))
+                        ;; then, a public table
+                        (format "CREATE TABLE \"public\".\"%s\" (id INTEGER);" (mt/random-name))]]
+            (jdbc/execute! conn-spec stmt)))
+        (sync/sync-database! (mt/db))
+        (let [db-id    (u/the-id (mt/db))
+              [table-id table-id-2] (t2/select-pks-vec :model/Table :db_id db-id :schema "not_public")]
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  "not_public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (doseq [[schema-perms can-upload?] {:all              true
+                                                :none             false
+                                                ;; only permissions for one table
+                                                {table-id :all}   false
+                                                ;; permissions for *all* tables in a schema is equivalent to having
+                                                ;; permissions for the schema itself
+                                                {table-id   :all
+                                                 table-id-2 :all} true}]
+              (testing (format "can_upload should be %s if the user has %s access to the upload schema"
+                               can-upload? schema-perms)
+                (with-all-users-data-perms! {db-id {:data {:native  :none
+                                                           :schemas {"public"     :all
+                                                                     "not_public" schema-perms}}}}
+                  (testing "GET /api/database"
+                    (let [result (->> (mt/user-http-request :rasta :get 200 "database")
+                                      :data
+                                      (filter #(= (:id %) db-id))
+                                      first)]
+                      (is (= can-upload? (:can_upload result)))))
+                  (testing "GET /api/database/:id"
+                    (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+                      (is (= can-upload? (:can_upload result))))))))))))))
