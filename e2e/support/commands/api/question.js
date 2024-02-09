@@ -30,12 +30,12 @@ Cypress.Commands.add(
 
 /**
  *
- * @param {("query"|"native")} type
+ * @param {("query"|"native")} queryType
  *
  * @param {object} questionDetails
  * @param {string} [questionDetails.name="test question"]
  * @param {string} questionDetails.description
- * @param {boolean} questionDetails.dataset - Is this a Model or no? (model = dataset)
+ * @param {("question"|"model")} questionDetails.type Entity type
  * @param {object} questionDetails.native
  * @param {object} questionDetails.query
  * @param {number} [questionDetails.database=1]
@@ -52,11 +52,11 @@ Cypress.Commands.add(
  * @param {string} customOptions.interceptAlias - We need distinctive endpoint aliases for cases where we have multiple questions or nested questions.
  */
 function question(
-  type,
+  queryType,
   {
     name = "test question",
     description,
-    dataset = false,
+    type = "question",
     native,
     query,
     database = SAMPLE_DB_ID,
@@ -81,8 +81,8 @@ function question(
       name,
       description,
       dataset_query: {
-        type,
-        [type]: type === "native" ? native : query,
+        type: queryType,
+        [queryType]: queryType === "native" ? native : query,
         database,
       },
       display,
@@ -104,27 +104,27 @@ function question(
         cy.wrap(body.id).as(idAlias);
       }
 
-      if (dataset || enable_embedding) {
+      if (type === "model" || enable_embedding) {
         cy.request("PUT", `/api/card/${body.id}`, {
-          dataset,
+          type,
           enable_embedding,
           embedding_params,
         });
       }
 
       if (loadMetadata || visitQuestion) {
-        dataset
-          ? cy.intercept("POST", `/api/dataset`).as("dataset")
-          : // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
-            cy
-              .intercept("POST", `/api/card/**/${body.id}/query`)
-              .as(interceptAlias);
-
-        const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
-        cy.visit(url);
-
-        // Wait for `result_metadata` to load
-        dataset ? cy.wait("@dataset") : cy.wait("@" + interceptAlias);
+        if (type === "model") {
+          cy.intercept("POST", `/api/dataset`).as("dataset");
+          cy.visit(`/model/${body.id}`);
+          cy.wait("@dataset"); // Wait for `result_metadata` to load
+        } else {
+          // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+          cy.intercept("POST", `/api/card/**/${body.id}/query`).as(
+            interceptAlias,
+          );
+          cy.visit(`/question/${body.id}`);
+          cy.wait("@" + interceptAlias); // Wait for `result_metadata` to load
+        }
       }
     });
 }

@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 
 import type {
   ClickBehaviorType,
-  DashboardCard,
+  QuestionDashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
 import type { IconName } from "metabase/ui";
@@ -20,7 +20,7 @@ export const clickBehaviorOptions: ClickBehaviorOption[] = [
 ];
 
 export function getClickBehaviorForColumn(
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   column: DatasetColumn,
 ) {
   return getIn(dashcard, [

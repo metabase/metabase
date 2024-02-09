@@ -42,7 +42,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
       {
         id: question.id(),
       },
-      question.setDataset(true).setPinned(true).setDisplay("table").card(),
+      question.setType("model").setPinned(true).setDisplay("table").card(),
     ),
   );
 
@@ -69,7 +69,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 
 export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   const dataset = getQuestion(getState());
-  const question = dataset.setDataset(false);
+  const question = dataset.setType("question");
   await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
 
   dispatch(

@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { t } from "ttag";
 
@@ -7,7 +7,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { isEmpty } from "metabase/lib/validate";
 import type {
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   ParameterValueOrArray,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -24,7 +24,7 @@ import {
 interface HeadingProps {
   isEditing: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   settings: VisualizationSettings;
   dashboard: Dashboard;
   parameterValues: { [id: string]: ParameterValueOrArray };
@@ -44,10 +44,14 @@ export function Heading({
     useToggle(justAdded);
   const isPreviewing = !isFocused;
 
-  const handleTextChange = (text: string) =>
-    onUpdateVisualizationSettings({ text });
+  const [textValue, setTextValue] = useState(settings.text);
   const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
     e.stopPropagation();
+
+  // handles a case when settings are updated externally
+  useEffect(() => {
+    setTextValue(settings.text);
+  }, [settings.text]);
 
   const content = useMemo(
     () =>
@@ -84,11 +88,17 @@ export function Heading({
             name="heading"
             data-testid="editing-dashboard-heading-input"
             placeholder={placeholder}
-            value={settings.text}
+            value={textValue}
             autoFocus={justAdded || isFocused}
-            onChange={e => handleTextChange(e.target.value)}
+            onChange={e => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
-            onBlur={toggleFocusOff}
+            onBlur={() => {
+              toggleFocusOff();
+
+              if (settings.text !== textValue) {
+                onUpdateVisualizationSettings({ text: textValue });
+              }
+            }}
           />
         )}
       </InputContainer>

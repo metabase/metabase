@@ -11,6 +11,11 @@ import {
   downloadAndAssert,
   assertSheetRowsCount,
   modal,
+  getIframeBody,
+  describeEE,
+  setTokenFeatures,
+  dashboardParametersContainer,
+  goToTab,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -21,7 +26,7 @@ import {
   mapParameters,
 } from "./shared/embedding-dashboard";
 
-const { ORDERS, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > dashboard parameters", () => {
   beforeEach(() => {
@@ -50,9 +55,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
   context("UI", () => {
     it("should be disabled by default but able to be set to editable and/or locked (metabase#20357)", () => {
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+      visitDashboard("@dashboardId");
 
       openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
 
@@ -60,7 +63,10 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.get("@allParameters").within(() => {
         // verify that all the parameters on the dashboard are defaulted to disabled
-        cy.findAllByText("Disabled").should("have.length", 4);
+        cy.findAllByText("Disabled").should(
+          "have.length",
+          dashboardDetails.parameters.length,
+        );
 
         // select the dropdown next to the Name parameter so that we can set it to editable
         cy.findByText("Name")
@@ -133,9 +139,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       );
       cy.signInAsAdmin();
 
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+      visitDashboard("@dashboardId");
 
       openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
 
@@ -157,6 +161,49 @@ describe("scenarios > embedding > dashboard parameters", () => {
       filterWidget().should("not.exist");
 
       cy.get(".ScalarValue").invoke("text").should("eq", "2,500");
+    });
+
+    it("should only display filters mapped to cards on the selected tab", () => {
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          embedding_params: {
+            id: "enabled",
+            name: "enabled",
+            source: "enabled",
+            user_id: "enabled",
+          },
+          enable_embedding: true,
+        });
+
+        const payload = {
+          resource: { dashboard: dashboardId },
+          params: {},
+        };
+
+        visitEmbeddedPage(payload);
+
+        // wait for the results to load
+        cy.contains("Test Dashboard");
+        cy.contains("2,500");
+      });
+
+      dashboardParametersContainer().within(() => {
+        cy.findByText("Id").should("be.visible");
+        cy.findByText("Name").should("be.visible");
+        cy.findByText("Source").should("be.visible");
+        cy.findByText("User").should("be.visible");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
+
+      goToTab("Tab 2");
+
+      dashboardParametersContainer().within(() => {
+        cy.findByText("Id").should("not.exist");
+        cy.findByText("Name").should("not.exist");
+        cy.findByText("Source").should("not.exist");
+        cy.findByText("User").should("not.exist");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
     });
   });
 
@@ -396,9 +443,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       mapParameters({ id, card_id, dashboard_id });
     });
 
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-    });
+    visitDashboard("@dashboardId");
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
@@ -420,6 +465,112 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     // The Source default ('Facebook') should not apply because the param is locked but the value is unset
     // If either the Name or Source default applied the result would be 0.
     cy.get(".ScalarValue").invoke("text").should("eq", "2");
+  });
+});
+
+describeEE("scenarios > embedding > dashboard appearance", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
+    const textFilter = {
+      id: "3",
+      name: "Text filter",
+      slug: "filter-text",
+      type: "string/contains",
+    };
+
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+      embedding_params: {
+        /**
+         * Make sure the parameter is shown in embed preview, because it previously
+         * caused the iframe to rerender even when only the hash part of the embed
+         * preview URL is changed.
+         *
+         * @see useSyncedQueryString in frontend/src/metabase/hooks/use-synced-query-string.ts
+         */
+        [textFilter.slug]: "enabled",
+      },
+      parameters: [textFilter],
+    };
+
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+
+    cy.intercept(
+      "GET",
+      "api/preview_embed/dashboard/*",
+      cy.spy().as("previewEmbedSpy"),
+    ).as("previewEmbed");
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+      // EE users don't have to accept terms
+      acceptTerms: false,
+    });
+
+    cy.wait("@previewEmbed");
+
+    modal().within(() => {
+      cy.findByRole("tab", { name: "Appearance" }).click();
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard theme");
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("not.have.class", "Theme--transparent");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Transparent").click({ force: true });
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.class", "Theme--transparent");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard title");
+      getIframeBody().findByText(dashboardDetails.name).should("exist");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Dashboard title").click({ force: true });
+      getIframeBody().findByText(dashboardDetails.name).should("not.exist");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard border");
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.css", "border-top-width", "1px");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Border").click({ force: true });
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.css", "border-top-width", "0px");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert font");
+      getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+      cy.findByLabelText("Font").click();
+    });
+
+    // Since the select popover is rendered outside of the modal, we need to exit the modal context first.
+    popover().findByText("Oswald").click();
+    modal().within(() => {
+      getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+    });
   });
 });
 

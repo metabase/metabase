@@ -124,7 +124,7 @@ function CollectionContent({
 
   const onDrop = useCallback(
     acceptedFiles => {
-      uploadFile(acceptedFiles[0], collectionId);
+      uploadFile({ file: acceptedFiles[0], collectionId });
     },
     [collectionId, uploadFile],
   );
