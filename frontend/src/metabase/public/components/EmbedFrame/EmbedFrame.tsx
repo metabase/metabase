@@ -27,7 +27,10 @@ import type { State } from "metabase-types/store";
 
 import { useDispatch } from "metabase/lib/redux";
 import { setOptions } from "metabase/redux/embed";
-import { StyledFixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import {
+  FixedWidthContainer,
+  StyledFixedWidthContainer,
+} from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import type Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -42,6 +45,7 @@ import {
   Footer,
   ActionButtonsContainer,
   TitleAndDescriptionContainer,
+  Separator,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
 
@@ -155,14 +159,27 @@ function EmbedFrame({
           <Header className="EmbedFrame-header">
             {finalName && (
               <TitleAndDescriptionContainer>
-                <TitleAndDescription
-                  title={finalName}
-                  description={description}
-                  className="my2"
-                />
+                <FixedWidthContainer
+                  data-testid="fixed-width-dashboard-title"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <TitleAndDescription
+                    title={finalName}
+                    description={description}
+                    className="my2"
+                  />
+                </FixedWidthContainer>
               </TitleAndDescriptionContainer>
             )}
-            {dashboardTabs}
+            {
+              <FixedWidthContainer
+                data-testid="fixed-width-dashboard-tabs"
+                isFixedWidth={dashboard?.width === "fixed"}
+              >
+                {dashboardTabs}
+              </FixedWidthContainer>
+            }
+            <Separator />
             {hasParameters && (
               <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
                 <StyledFixedWidthContainer

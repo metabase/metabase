@@ -61,6 +61,10 @@ export const TitleAndDescriptionContainer = styled.div`
   }
 `;
 
+export const Separator = styled.div`
+  border-bottom: 1px solid ${color("border")};
+`;
+
 export const Body = styled.main`
   display: flex;
   flex-direction: column;
