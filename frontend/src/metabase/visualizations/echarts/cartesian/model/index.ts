@@ -57,7 +57,6 @@ export const getCardsSeriesModels = (
     return getCardSeriesModels(
       cardDataset,
       cardColumns,
-      index,
       hasMultipleCards,
       settings,
       renderingContext,
