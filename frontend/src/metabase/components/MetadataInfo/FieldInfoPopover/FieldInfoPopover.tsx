@@ -63,7 +63,7 @@ function FieldInfoPopover({
   );
 }
 
-type PropsMLv2 = {
+export type FieldInfoPopoverMLv2Props = {
   query: Lib.Query;
   column: Lib.ColumnMetadata;
   timezone?: string;
@@ -82,7 +82,7 @@ export function FieldInfoPopoverMLv2({
   delay = POPOVER_DELAY,
   showFingerprintInfo,
   children,
-}: PropsMLv2) {
+}: FieldInfoPopoverMLv2Props) {
   const group = useDelayGroup();
 
   return (
