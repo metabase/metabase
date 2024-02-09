@@ -23,6 +23,8 @@ const PERMISSIONS = {
 describe("revision history", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/revision/revert").as("revert");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     restore();
   });
@@ -77,7 +79,9 @@ describe("revision history", () => {
               openQuestionsSidebar();
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders, Count").click();
+              cy.wait("@cardQuery");
               saveDashboard();
+              cy.wait("@saveDashboard");
               openRevisionHistory();
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText(/added a card/)
