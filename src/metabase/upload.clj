@@ -18,9 +18,9 @@
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.table :as table]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -479,8 +479,10 @@
              (driver/database-supports? (driver.u/database->driver db) :schemas db))
         (ex-info (tru "A schema has not been set.")
                  {:status-code 422})
-        (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                              (perms/data-perms-path (u/the-id db) schema-name)))
+        (not= :unrestricted (data-perms/schema-permission-for-user api/*current-user-id*
+                                                                   :perms/data-access
+                                                                   (u/the-id db)
+                                                                   schema-name))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)

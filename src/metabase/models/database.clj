@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -15,7 +16,9 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -47,8 +50,6 @@
 
 (doto :model/Database
   (derive :metabase/model)
-  (derive ::mi/read-policy.partial-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?))
 
 (defn- should-read-audit-db?
@@ -58,21 +59,27 @@
 
 (defmethod mi/can-read? Database
   ([instance]
-   (if (should-read-audit-db? (:id instance))
-     false
-     (mi/current-user-has-partial-permissions? :read instance)))
-  ([model pk]
+   (mi/can-read? :model/Database (u/the-id instance)))
+  ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (mi/current-user-has-partial-permissions? :read model pk))))
+     (= :unrestricted (data-perms/most-permissive-database-permission-for-user
+                       api/*current-user-id*
+                       :perms/data-access
+                       pk)))))
+
+(defenterprise current-user-can-write-db?
+  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id]
+  (mi/superuser?))
 
 (defmethod mi/can-write? :model/Database
   ([instance]
-   (and (not= (u/the-id instance) perms/audit-db-id)
-        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) instance)))
-  ([model pk]
+   (mi/can-write? :model/Database (u/the-id instance)))
+  ([_model pk]
    (and (not= pk perms/audit-db-id)
-        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) model pk))))
+        (current-user-can-write-db? pk))))
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
