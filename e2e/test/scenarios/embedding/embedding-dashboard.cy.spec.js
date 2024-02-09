@@ -21,6 +21,10 @@ import {
   sidebar,
   saveDashboard,
   getRequiredToggle,
+  closeStaticEmbeddingModal,
+  publishChanges,
+  setEmbeddingParameter,
+  assertEmbeddingParameter,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -109,7 +113,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       // publish the embedded dashboard so that we can directly navigate to its url
-      publishChanges(({ request }) => {
+      publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           id: "locked",
           name: "enabled",
@@ -155,7 +159,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.get("@allParameters").findByText("Editable").click();
       popover().contains("Disabled").click();
 
-      publishChanges(({ request }) => {
+      publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           name: "disabled",
           id: "disabled",
@@ -225,16 +229,16 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       // Check that parameter visibility is correct
       openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
-      assertParameterValue("Id", "Disabled");
-      assertParameterValue("Name", "Editable");
-      assertParameterValue("Source", "Disabled");
-      assertParameterValue("User", "Disabled");
-      assertParameterValue("Not Used Filter", "Disabled");
+      assertEmbeddingParameter("Id", "Disabled");
+      assertEmbeddingParameter("Name", "Editable");
+      assertEmbeddingParameter("Source", "Disabled");
+      assertEmbeddingParameter("User", "Disabled");
+      assertEmbeddingParameter("Not Used Filter", "Disabled");
 
       // We only expect name to be "enabled" because the rest
       // weren't touched and therefore aren't changed, whereas
       // "enabled" must be set by default for required params.
-      publishChanges(({ request }) => {
+      publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           name: "enabled",
         });
@@ -255,26 +259,25 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       // Set an "editable" and "locked" parameters and leave the rest "disabled"
       openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
-      setParameter("Name", "Editable");
-      setParameter("Source", "Locked");
-      publishChanges(({ request }) => {
+      setEmbeddingParameter("Name", "Editable");
+      setEmbeddingParameter("Source", "Locked");
+      publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           name: "enabled",
           source: "locked",
         });
       });
 
-      // Close the embedding modal and edit the dashboard
-      cy.findByRole("dialog").icon("close").click();
+      closeStaticEmbeddingModal();
       editDashboard();
 
       // Check each parameter's required state
-      assertRequiredEnabledByName({ name: "Name", enabled: true });
-      assertRequiredEnabledByName({ name: "Source", enabled: true });
+      assertRequiredEnabledForName({ name: "Name", enabled: true });
+      assertRequiredEnabledForName({ name: "Source", enabled: true });
       // The rest must be disabled
-      assertRequiredEnabledByName({ name: "Id", enabled: false });
-      assertRequiredEnabledByName({ name: "User", enabled: false });
-      assertRequiredEnabledByName({ name: "Not Used Filter", enabled: false });
+      assertRequiredEnabledForName({ name: "Id", enabled: false });
+      assertRequiredEnabledForName({ name: "User", enabled: false });
+      assertRequiredEnabledForName({ name: "Not Used Filter", enabled: false });
     });
   });
 
@@ -521,9 +524,9 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     openStaticEmbeddingModal({ activeTab: "parameters" });
 
     // ID param is disabled by default
-    setParameter("Name", "Editable");
-    setParameter("Source", "Locked");
-    publishChanges(({ request }) => {
+    setEmbeddingParameter("Name", "Editable");
+    setEmbeddingParameter("Source", "Locked");
+    publishChanges("dashboard", ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
         source: "locked",
         name: "enabled",
@@ -649,43 +652,13 @@ function openFilterOptions(name) {
   filterWidget().contains(name).click();
 }
 
-function publishChanges(callback) {
-  cy.intercept("PUT", "/api/dashboard/*").as("publishChanges");
-
-  cy.button(/^(Publish|Publish changes)$/).click();
-
-  cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
-    // Unfortunately, the order of requests is not always the same.
-    // Therefore, we must first get the one that has the `embedding_params` and then assert on it.
-    const targetXhr = xhrs.find(({ request }) =>
-      Object.keys(request.body).includes("embedding_params"),
-    );
-    callback && callback(targetXhr);
-  });
-}
-
-function getParametersContainer() {
-  return cy.findByLabelText("Configuring parameters");
-}
-
-function assertParameterValue(name, value) {
-  getParametersContainer().within(() => {
-    cy.findByText(name).siblings("a").should("have.text", value);
-  });
-}
-
-function setParameter(name, filter) {
-  getParametersContainer().parent().findByText(name).siblings("a").click();
-  popover().contains(filter).click();
-}
-
 function getDashboardFilter(name) {
   return cy
     .findByTestId("edit-dashboard-parameters-widget-container")
     .findByText(name);
 }
 
-function assertRequiredEnabledByName({ name, enabled }) {
+function assertRequiredEnabledForName({ name, enabled }) {
   getDashboardFilter(name).click();
   getRequiredToggle().should(enabled ? "be.enabled" : "not.be.enabled");
 }

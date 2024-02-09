@@ -6,6 +6,10 @@ import {
   visitEmbeddedPage,
   visitIframe,
   openStaticEmbeddingModal,
+  closeStaticEmbeddingModal,
+  publishChanges,
+  setEmbeddingParameter,
+  assertEmbeddingParameter,
 } from "e2e/support/helpers";
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -37,7 +41,7 @@ describe("scenarios > embedding > native questions", () => {
     it("should not display disabled parameters", () => {
       createAndVisitQuestion();
 
-      publishChanges(({ request }) => {
+      publishChanges("card", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {});
       });
 
@@ -56,13 +60,13 @@ describe("scenarios > embedding > native questions", () => {
     it("should display and work with enabled parameters while hiding the locked one", () => {
       createAndVisitQuestion();
 
-      setParameter("Order ID", "Editable");
-      setParameter("Created At", "Editable");
-      setParameter("Total", "Locked");
-      setParameter("State", "Editable");
-      setParameter("Product ID", "Editable");
+      setEmbeddingParameter("Order ID", "Editable");
+      setEmbeddingParameter("Created At", "Editable");
+      setEmbeddingParameter("Total", "Locked");
+      setEmbeddingParameter("State", "Editable");
+      setEmbeddingParameter("Product ID", "Editable");
 
-      publishChanges(({ request }) => {
+      publishChanges("card", ({ request }) => {
         const actual = request.body.embedding_params;
 
         const expected = {
@@ -137,9 +141,9 @@ describe("scenarios > embedding > native questions", () => {
     it("should handle required parameters", () => {
       createAndVisitQuestion({ requiredTagName: "total", defaultValue: [100] });
 
-      assertParameterValue("Total", "Editable");
+      assertEmbeddingParameter("Total", "Editable");
 
-      publishChanges(({ request }) => {
+      publishChanges("card", ({ request }) => {
         const actual = request.body.embedding_params;
 
         // We only expect total to be "enabled" because the rest
@@ -164,13 +168,11 @@ describe("scenarios > embedding > native questions", () => {
     it("should (dis)allow setting parameters as required for a published embedding", () => {
       createAndVisitQuestion();
       // Make one parameter editable and one locked
-      setParameter("Order ID", "Editable");
-      setParameter("Total", "Locked");
+      setEmbeddingParameter("Order ID", "Editable");
+      setEmbeddingParameter("Total", "Locked");
 
-      publishChanges();
-
-      // Close the embedding modal
-      cy.findByRole("dialog").icon("close").click();
+      publishChanges("card");
+      closeStaticEmbeddingModal();
 
       cy.findByTestId("native-query-editor-container")
         .findByText("Open Editor")
@@ -325,9 +327,9 @@ describe("scenarios > embedding > native questions with default parameters", () 
     openStaticEmbeddingModal({ activeTab: "parameters" });
 
     // Note: ID is disabled
-    setParameter("Source", "Locked");
-    setParameter("Name", "Editable");
-    publishChanges(({ request }) => {
+    setEmbeddingParameter("Source", "Locked");
+    setEmbeddingParameter("Name", "Editable");
+    publishChanges("card", ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
         source: "locked",
         name: "enabled",
@@ -346,46 +348,10 @@ describe("scenarios > embedding > native questions with default parameters", () 
   });
 });
 
-function getParametersContainer() {
-  return cy.findByLabelText("Configuring parameters").parent();
-}
-
-function setParameter(name, filter) {
-  getParametersContainer().within(() => {
-    cy.findByText(name).siblings("a").click();
-  });
-
-  popover().contains(filter).click();
-}
-
-function assertParameterValue(name, value) {
-  getParametersContainer().within(() => {
-    cy.findByText(name).siblings("a").should("have.text", value);
-  });
-}
-
 function assertRequiredEnabledForName({ name, enabled }) {
   cy.findByTestId(`tag-editor-variable-${name}`).within(() => {
-    SQLFilter.getRequiredToggle()
-      .invoke("attr", "for")
-      .then(inputId => {
-        cy.get(`#${inputId}`).should(enabled ? "be.enabled" : "not.be.enabled");
-      });
-  });
-}
-
-function publishChanges(callback) {
-  cy.intercept("PUT", "/api/card/*").as("publishChanges");
-
-  cy.button(/^(Publish|Publish changes)$/).click();
-
-  cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
-    // Unfortunately, the order of requests is not always the same.
-    // Therefore, we must first get the one that has the `embedding_params` and then assert on it.
-    const targetXhr = xhrs.find(({ request }) =>
-      Object.keys(request.body).includes("embedding_params"),
+    SQLFilter.getRequiredInput().should(
+      enabled ? "be.enabled" : "not.be.enabled",
     );
-
-    callback?.(targetXhr);
   });
 }

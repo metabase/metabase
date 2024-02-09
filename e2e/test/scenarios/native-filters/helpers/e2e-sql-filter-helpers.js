@@ -62,6 +62,10 @@ export function getRequiredToggle() {
   return cy.findByText("Always require a value");
 }
 
+export function getRequiredInput() {
+  return cy.findByLabelText("Always require a value");
+}
+
 /**
  * Toggle the required SQL filter on or off. It is off by default.
  */
