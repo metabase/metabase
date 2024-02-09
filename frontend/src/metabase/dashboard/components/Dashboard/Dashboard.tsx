@@ -61,6 +61,7 @@ import {
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
   FixedWidthContainer,
+  StyledFixedWidthContainer,
 } from "./Dashboard.styled";
 
 type SuccessfulFetchDashboardResult = { payload: { dashboard: IDashboard } };
@@ -531,13 +532,13 @@ function DashboardInner(props: DashboardProps) {
                     visibleParameters.length,
                   )}
                 >
-                  <FixedWidthContainer
+                  <StyledFixedWidthContainer
                     isFixedWidth={dashboard?.width === "fixed"}
                     data-testid="fixed-width-filters"
                   >
                     {parametersWidget}
                     <FilterApplyButton />
-                  </FixedWidthContainer>
+                  </StyledFixedWidthContainer>
                 </ParametersWidgetContainer>
               )}
               <CardsContainer id="Dashboard-Cards-Container">

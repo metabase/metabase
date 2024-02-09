@@ -141,14 +141,7 @@ export const FIXED_WIDTH = "1048px";
 export const FixedWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
   width: 100%;
-
-  ${breakpointMaxSmall} {
-    flex-direction: column;
-  }
 
   ${({ isFixedWidth }) =>
     isFixedWidth &&
@@ -156,4 +149,14 @@ export const FixedWidthContainer = styled.div<{
       margin: 0 auto;
       max-width: ${FIXED_WIDTH};
     `}
+`;
+
+export const StyledFixedWidthContainer = styled(FixedWidthContainer)`
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+  }
 `;

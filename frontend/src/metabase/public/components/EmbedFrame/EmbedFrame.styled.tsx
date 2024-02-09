@@ -90,9 +90,6 @@ const footerVariantStyles = {
 };
 
 export const ParametersWidgetContainer = styled.div`
-  display: flex;
-  align-items: flex-start;
-
   padding: 0.5rem;
 
   ${breakpointMinSmall} {
