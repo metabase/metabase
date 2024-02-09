@@ -121,9 +121,7 @@ describe("scenarios > public > dashboard", () => {
   });
 
   it("should allow users to create public dashboards", () => {
-    cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-    });
+    visitDashboard("@dashboardId");
 
     openNewPublicLinkDropdown("dashboard");
 
@@ -144,9 +142,7 @@ describe("scenarios > public > dashboard", () => {
     });
 
     cy.signInAsNormalUser().then(() => {
-      cy.get("@dashboardId").then(id => {
-        visitDashboard(id);
-      });
+      visitDashboard("@dashboardId");
 
       cy.icon("share").click();
 
@@ -226,5 +222,29 @@ describe("scenarios > public > dashboard", () => {
       cy.findByText(textFilter.name).should("not.exist");
       cy.findByText(unusedFilter.name).should("not.exist");
     });
+  });
+
+  it("should respect dashboard width setting in a public dashboard", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id);
+    });
+
+    // new dashboards should default to 'fixed' width
+    cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
+
+    // toggle full-width
+    cy.get("@dashboardId").then(id => {
+      cy.signInAsAdmin();
+      cy.request("PUT", `/api/dashboard/${id}`, {
+        width: "full",
+      });
+      visitPublicDashboard(id);
+    });
+
+    cy.findByTestId("dashboard-grid").should(
+      "not.have.css",
+      "max-width",
+      "1048px",
+    );
   });
 });

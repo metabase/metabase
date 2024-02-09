@@ -272,6 +272,8 @@
   can-run
   query
   stage-count
+  uses-metric?
+  uses-segment?
   with-different-table]
  [lib.ref
   ref]

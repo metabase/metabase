@@ -1195,3 +1195,31 @@
       (testing "The extraneous keys do not interfere with loading"
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))
+
+(deftest tx-test
+  (mt/with-empty-h2-app-db
+    (let [coll       (ts/create! Collection :name "coll")
+          card       (ts/create! Card :name "card" :collection_id (:id coll))
+          serialized (atom {})]
+      (reset! serialized (->> (serdes.extract/extract {:no-settings   true
+                                                       :no-data-model true
+                                                       :targets       [["Collection" (:id coll)]]})
+                              vec))
+      (testing "Load completes successfully"
+        (t2/update! Card {:id (:id card)} {:name (str "qwe_" (:name card))})
+        (is (serdes.load/load-metabase! (ingestion-in-memory @serialized)))
+        (is (= (:name card)
+               (t2/select-one-fn :name Card :id (:id card)))))
+
+      (testing "Partial load does not change the database"
+        (t2/update! Collection {:id (:id coll)} {:name (str "qwe_" (:name coll))})
+        (let [load-update! serdes/load-update!]
+          (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                              ;; Collection is loaded first
+                                              (if (= model "Card")
+                                                (throw (ex-info "oops, error" {}))
+                                                (load-update! model adjusted local)))]
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
+            (is (= (str "qwe_" (:name coll))
+                   (t2/select-one-fn :name Collection :id (:id card))))))))))

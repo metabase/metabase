@@ -16,15 +16,18 @@ import {
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
 
-import type { DashboardCard, LinkCardSettings } from "metabase-types/api";
+import type {
+  VirtualDashboardCard,
+  LinkCardSettings,
+} from "metabase-types/api";
 import {
-  createMockDashboardCardWithVirtualCard,
   createMockCollectionItem,
   createMockCollection,
   createMockRecentItem,
   createMockTable,
   createMockDashboard,
   createMockUser,
+  createMockLinkDashboardCard,
 } from "metabase-types/api/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
@@ -32,33 +35,17 @@ import { LinkViz } from "./LinkViz";
 
 registerVisualizations();
 
-type LinkCardVizSettings = DashboardCard["visualization_settings"] & {
+type LinkCardVizSettings = VirtualDashboardCard["visualization_settings"] & {
   link: LinkCardSettings;
 };
 
-const linkDashcard = createMockDashboardCardWithVirtualCard({
-  visualization_settings: {
-    link: {
-      url: "https://example23.com",
-    },
-    virtual_card: {
-      display: "link",
-    },
-  },
+const linkDashcard = createMockLinkDashboardCard({
+  url: "https://example23.com",
 });
 
-const emptyLinkDashcard = createMockDashboardCardWithVirtualCard({
-  visualization_settings: {
-    link: {
-      url: "",
-    },
-    virtual_card: {
-      display: "link",
-    },
-  },
-});
+const emptyLinkDashcard = createMockLinkDashboardCard({ url: "" });
 
-const questionLinkDashcard = createMockDashboardCardWithVirtualCard({
+const questionLinkDashcard = createMockLinkDashboardCard({
   visualization_settings: {
     link: {
       entity: {
@@ -68,26 +55,20 @@ const questionLinkDashcard = createMockDashboardCardWithVirtualCard({
         display: "pie",
       },
     },
-    virtual_card: {
-      display: "link",
-    },
   },
 });
 
-const restrictedLinkDashcard = createMockDashboardCardWithVirtualCard({
+const restrictedLinkDashcard = createMockLinkDashboardCard({
   visualization_settings: {
     link: {
       entity: {
         restricted: true,
       },
     },
-    virtual_card: {
-      display: "link",
-    },
   },
 });
 
-const tableLinkDashcard = createMockDashboardCardWithVirtualCard({
+const tableLinkDashcard = createMockLinkDashboardCard({
   visualization_settings: {
     link: {
       entity: {
@@ -97,22 +78,10 @@ const tableLinkDashcard = createMockDashboardCardWithVirtualCard({
         model: "table",
       },
     },
-    virtual_card: {
-      display: "link",
-    },
   },
 });
 
-const searchingDashcard = createMockDashboardCardWithVirtualCard({
-  visualization_settings: {
-    link: {
-      url: "question",
-    },
-    virtual_card: {
-      display: "link",
-    },
-  },
-});
+const searchingDashcard = createMockLinkDashboardCard({ url: "question" });
 
 const searchCardCollection = createMockCollection();
 const searchCardItem = createMockCollectionItem({
