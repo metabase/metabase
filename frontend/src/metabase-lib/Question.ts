@@ -616,7 +616,6 @@ class Question {
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
         findColumnSettingIndexForColumn(query, vizSettings, col) >= 0;
-      console.log({ hasVizSettings });
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {

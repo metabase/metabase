@@ -69,11 +69,12 @@ export function findColumnSettingIndexForColumn(
   }, []);
 
   // first try to find by fieldRef
+  const stageIndex = -1;
   const itemIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
-    -1,
+    stageIndex,
     [column],
-    items.map(({ fieldRef }) => fieldRef),
+    items.map(({ fieldRef }) => normalizeFieldRef(fieldRef) as FieldReference),
   );
 
   const itemIndex = itemIndexes.find(index => index >= 0);
