@@ -1,13 +1,12 @@
 (ns metabase-enterprise.sandbox.api.table
   (:require
-   [clojure.set :as set]
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -32,10 +31,17 @@
   we wouldn't want to apply this segment filtering."
   [table :- (mi/InstanceOf Table)]
   (and
-   (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                         (perms/table-query-path table)))
-   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                    (perms/table-sandboxed-query-path table))))
+   (not= :unrestricted (data-perms/table-permission-for-user api/*current-user-id*
+                                                             :perms/data-access
+                                                             (:db_id table)
+                                                             (:id table)))
+   (t2/exists? :model/GroupTableAccessPolicy
+               {:from [[:sandboxes :s]]
+                :join [[:metabase_table :t] [:= :s.table_id :t.id]
+                       [:permissions_group_membership :pgm] [:= :s.group_id :pgm.group_id]]
+                :where [:and
+                        [:= :s.table_id (:id table)]
+                        [:= :pgm.user_id api/*current-user-id*]]})))
 
 (mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
   [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]
@@ -63,21 +69,18 @@
   (let [table            (api/check-404 (t2/select-one Table :id id))
         sandboxed-perms? (only-sandboxed-perms? table)
         thunk            (fn []
-                           (maybe-filter-fields
+                           (api.table/fetch-query-metadata
                             table
-                            (api.table/fetch-query-metadata
-                             table
-                             {:include-sensitive-fields?    include_sensitive_fields
-                              :include-hidden-fields?       include_hidden_fields
-                              :include-editable-data-model? include_editable_data_model})))]
+                            {:include-sensitive-fields?    include_sensitive_fields
+                             :include-hidden-fields?       include_hidden_fields
+                             :include-editable-data-model? include_editable_data_model}))]
     ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can see the
     ;; metadata
     (if sandboxed-perms?
-      (binding [api/*current-user-permissions-set* (atom
-                                                    (set/union
-                                                     @api/*current-user-permissions-set*
-                                                     (mi/can-read? table)))]
-        (thunk))
+      (maybe-filter-fields
+       table
+       (data-perms/with-additional-table-permission :perms/data-access (:db_id table) (u/the-id table) :unrestricted
+         (thunk)))
       (thunk))))
 
 (api/define-routes)

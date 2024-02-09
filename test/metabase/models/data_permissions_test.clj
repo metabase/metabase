@@ -463,3 +463,28 @@
           (data-perms/set-table-permission! group-id table-id-3 :perms/data-access :no-self-service)
           (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
             (is (= :no-self-service (perm-value table-id-4)))))))))
+
+(deftest additional-table-permissions-works
+  (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                 :model/Database                   {db-id :id}    {}
+                 :model/User                       {user-id :id}  {}
+                 :model/PermissionsGroupMembership {}             {:user_id  user-id
+                                                                   :group_id group-id}
+                 :model/Table                      {table-id :id} {:db_id db-id
+                                                                   :schema "PUBLIC"}]
+    (mt/with-no-data-perms-for-all-users!
+      (testing "we can override the existing permission, using normal coalesce logic"
+        (mt/with-restored-data-perms-for-group! group-id
+          (data-perms/set-database-permission! group-id db-id :perms/data-access :no-self-service)
+          (data-perms/with-additional-table-permission :perms/data-access db-id table-id :unrestricted
+            (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id))))))
+      (testing "normal coalesce logic applies, so e.g. `:block` will override `:no-self-service`"
+        (mt/with-restored-data-perms-for-group! group-id
+          (is (= :block (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id)))
+          (data-perms/with-additional-table-permission :perms/data-access db-id table-id :no-self-service
+            (is (= :block (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id))))))
+      (testing "... but WILL NOT override `:unrestricted`"
+        (mt/with-restored-data-perms-for-group! group-id
+          (is (= :block (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id)))
+          (data-perms/with-additional-table-permission :perms/data-access db-id table-id :unrestricted
+            (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id)))))))))

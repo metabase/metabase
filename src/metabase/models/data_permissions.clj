@@ -149,6 +149,27 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
+(def ^:dynamic *additional-table-permissions*
+  "See the `with-additional-table-permission` macro below."
+  {})
+
+(defmacro with-additional-table-permission
+  "Sometimes, for sandboxing, we need to run something in a context with additional permissions - for example, so that a
+  user can read a table to which they have only sandboxed access.
+
+  I intentionally did *not* build this as a general-purpose 'add an additional context' macro, because supporting it
+  for every function in the DataPermission API will be challenging, and the API is still in flux. Instead, for now,
+  this is a very tightly constrained macro that only adds an additional *table* level permission, and only affects the
+  output of `table-permission-for-user`."
+  [perm-type database-id table-id perm-value & form]
+  `(binding [*additional-table-permissions* (assoc-in *additional-table-permissions*
+                                                      [~database-id ~table-id ~perm-type]
+                                                      ~perm-value)]
+     ~@form))
+
+(defn- get-additional-table-permission! [{:keys [db-id table-id]} perm-type]
+  (get-in *additional-table-permissions* [db-id table-id perm-type]))
+
 (mu/defn table-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
@@ -171,7 +192,8 @@
                                                  [:or
                                                   [:= :table_id table-id]
                                                   [:= :table_id nil]]]})]
-      (or (coalesce perm-type perm-values)
+      (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
+                                                                            perm-type)))
           (least-permissive-value perm-type)))))
 
 (defn- most-restrictive-per-group
