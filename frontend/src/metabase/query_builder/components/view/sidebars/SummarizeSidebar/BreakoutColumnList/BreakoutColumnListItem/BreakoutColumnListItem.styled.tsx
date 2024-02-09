@@ -3,6 +3,7 @@ import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/ui";
 import { BucketPickerPopover as BaseBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
 import { color, alpha } from "metabase/lib/colors";
 
 export const BucketPickerPopover = styled(BaseBucketPickerPopover)`
@@ -77,14 +78,6 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
-export const InfoIcon = styled(Icon)`
-  position: absolute;
-  right: 0;
-  opacity: 0;
-  padding: 0.7em 0.5em;
-  padding-right: 0.75em;
-`;
-
 const selectedStyle = css`
   ${Content},
   ${ColumnTypeIcon} {
@@ -104,13 +97,13 @@ const selectedStyle = css`
     border-left-width: 1px;
   }
 
-  ${InfoIcon} {
+  ${FieldInfoIcon.HoverTarget} {
     color: ${color("white")};
   }
 `;
 
 const unselectedStyle = css`
-  ${InfoIcon} {
+  ${FieldInfoIcon.HoverTarget} {
     color: ${color("text-light")};
   }
 
@@ -149,10 +142,15 @@ export const Root = styled.li<{ isSelected: boolean }>`
 
   ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
 
-  &:hover ${InfoIcon} {
+  ${FieldInfoIcon.HoverTarget} {
+    position: absolute;
+    right: 0;
+    opacity: 0;
+    padding: 0.7em 0.5em;
+    padding-right: 0.75em;
+  }
+
+  &:hover ${FieldInfoIcon.HoverTarget} {
     opacity: 0.5;
-    &:hover {
-      opacity: 1;
-    }
   }
 `;

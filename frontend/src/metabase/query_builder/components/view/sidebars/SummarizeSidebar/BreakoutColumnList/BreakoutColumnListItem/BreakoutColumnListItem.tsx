@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import Tooltip from "metabase/core/components/Tooltip";
-import { FieldInfoPopoverMLv2 } from "metabase/components/MetadataInfo/FieldInfoPopover";
+import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
 import * as Lib from "metabase-lib";
 import {
   AddButton,
@@ -14,7 +14,6 @@ import {
   TitleContainer,
   RemoveButton,
   Root,
-  InfoIcon,
 } from "./BreakoutColumnListItem.styled";
 
 const STAGE_INDEX = -1;
@@ -78,15 +77,13 @@ export function BreakoutColumnListItem({
 
   const displayName = isPinned ? item.longDisplayName : item.displayName;
   const info = (
-    <FieldInfoPopoverMLv2
+    <FieldInfoIcon
       query={query}
       column={item.column}
       stage={STAGE_INDEX}
       delay={[0, 100]}
       position="top-end"
-    >
-      <InfoIcon name="info_filled" />
-    </FieldInfoPopoverMLv2>
+    />
   );
 
   return (
