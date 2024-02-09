@@ -11,6 +11,7 @@ import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Search from "metabase/entities/search";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
@@ -21,7 +22,6 @@ import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
-import Search from "metabase/entities/search";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
