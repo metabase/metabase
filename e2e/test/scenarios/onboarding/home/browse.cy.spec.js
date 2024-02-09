@@ -32,6 +32,7 @@ describe("scenarios > browse data", () => {
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
+    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
     cy.go("back");
