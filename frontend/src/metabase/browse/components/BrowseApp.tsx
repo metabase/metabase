@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { push } from "react-router-redux";
-import { Icon, Text } from "metabase/ui";
+import { Flex, Icon, Text } from "metabase/ui";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
@@ -55,27 +55,18 @@ export const BrowseApp = ({
         <BrowseDataHeader>
           <BrowseSectionContainer>
             <h2>{t`Browse data`}</h2>
-            <div
-              className="flex flex-align-right"
-              style={{ flexBasis: "40.0%" }}
-            >
-              <Link className="flex flex-align-right" to="reference">
-                <BrowseHeaderIconContainer>
-                  <Icon
-                    className="flex align-center"
-                    size={14}
-                    name="reference"
-                  />
-                  <Text
-                    size="md"
-                    lh="1"
-                    className="ml1 flex align-center text-bold"
-                  >
-                    {t`Learn about our data`}
-                  </Text>
-                </BrowseHeaderIconContainer>
-              </Link>
-            </div>
+            {tab === "databases" && (
+              <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
+                <Link to="reference">
+                  <BrowseHeaderIconContainer>
+                    <Icon size={14} name="reference" />
+                    <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
+                      {t`Learn about our data`}
+                    </Text>
+                  </BrowseHeaderIconContainer>
+                </Link>
+              </Flex>
+            )}
           </BrowseSectionContainer>
         </BrowseDataHeader>
         <BrowseTabs
