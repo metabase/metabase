@@ -318,7 +318,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByText("There was an error uploading the file"),
+      await screen.findByText("Error uploading your file"),
     ).toBeInTheDocument();
 
     userEvent.click(await screen.findByText("Show error details"));
