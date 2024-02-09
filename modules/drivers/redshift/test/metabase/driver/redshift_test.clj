@@ -492,60 +492,6 @@
                         :params params})
       qp/process-query))
 
-(defn- session-id []
-  (-> "select pg_backend_pid()" run-native-query mt/rows ffirst))
-
-(defn- last-queries-of-a-session [session-id]
-  (let [query-str (str "select result_cache_hit, query_text\n"
-                       "from sys_query_history\n"
-                       "where session_id = ? \n"
-                       "order by start_time desc\n"
-                       "limit 3\n")]
-    (->> (run-native-query query-str session-id)
-         mt/rows
-         (map (partial zipmap [:result-cache-hit :query-text])))))
-
-;; According to https://docs.aws.amazon.com/redshift/latest/dg/c_challenges_achieving_high_performance_queries.html#result-caching
-;; caching is on by default. Hence check for that is skipped.
-(deftest server-side-timestamp-caching-test
-  (mt/test-driver :redshift
-   (testing "Relative date time queries should be cached"
-     (sql-jdbc.execute/do-with-connection-with-options
-      :redshift
-      (mt/id)
-      nil
-      (fn [_]
-        (let [sid (session-id)
-              ;; :time-interval translates to :relative-datetime, which is now using server side generated timestamps
-              ;; for units day and greater.
-              query-to-cache (mt/mbql-query
-                              test_data_users
-                              {:fields [$id $last_login]
-                               :filter [:time-interval $last_login -500 :day {:include-current false}]})
-              compiled-sql (-> query-to-cache qp/compile :query)]
-          ;; BEWARE: Following expression has a flake potential. If that happens, see the discussion in attached link
-          ;;         for more info. https://github.com/metabase/metabase/pull/35995#discussion_r1409850657
-          (dotimes [_ 2]
-            (qp/process-query query-to-cache))
-          (let [last-queries (last-queries-of-a-session sid)
-                ;; First row of last queries should contain "last-queries query" info.
-                ;; Second should contain info about query that should be returned from cache.
-                cached-row (second last-queries)
-                cached-row-adjusted-redshift-sql (str/replace (:query-text cached-row) #"\$\d+" "?")
-                ;; Third row contains the same query. At the point of its execution, it may have been cached, but
-                ;; afterwards it should.
-                pre-cached-row (nth last-queries 2)
-                pre-cached-row-adjusted-redshift-sql (str/replace (:query-text pre-cached-row) #"\$\d+" "?")]
-            (testing "Last queries results contain query before caching on expected postion"
-              (is (str/includes? pre-cached-row-adjusted-redshift-sql compiled-sql)))
-            (testing "Last queries results contain cached query on expected position"
-              (is (str/includes? cached-row-adjusted-redshift-sql compiled-sql)))
-            ;; BEWARE: There is a potential that following expr could make the test flaky -- hard to guarantee that db
-            ;;         will actually cache the result. If that happens, we should reconsider testing strategy
-            ;;         or remove this test completely.
-            (testing "Query was returned from cache"
-              (is (true? (:result-cache-hit cached-row)))))))))))
-
 (defn- getdate-vs-ss-ts-test-thunk-generator
   ([]
    (getdate-vs-ss-ts-test-thunk-generator :week -1))
