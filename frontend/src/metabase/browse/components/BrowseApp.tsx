@@ -77,18 +77,6 @@ export const BrowseApp = ({
         <BrowseDataHeader>
           <Flex maw="1014px" m="0 auto" w="100%" align="center">
             <h2>{t`Browse data`}</h2>
-            {tab === "databases" && (
-              <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
-                <Link to="reference">
-                  <BrowseHeaderIconContainer>
-                    <Icon size={14} name="reference" />
-                    <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
-                      {t`Learn about our data`}
-                    </Text>
-                  </BrowseHeaderIconContainer>
-                </Link>
-              </Flex>
-            )}
           </Flex>
         </BrowseDataHeader>
         <BrowseTabs

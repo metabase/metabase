@@ -11,7 +11,6 @@ import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Search from "metabase/entities/search";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
