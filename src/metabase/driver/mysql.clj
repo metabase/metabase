@@ -87,8 +87,10 @@
   (-> database :dbms_version :flavor (= "MariaDB")))
 
 (defmethod driver/database-supports? [:mysql :table-privileges]
-  [driver _feat db]
-  (and (= driver :mysql) (not (mariadb? db))))
+  [_driver _feat _db]
+  ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
+  false
+  #_(and (= driver :mysql) (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
