@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 
-import { useEffect, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -74,18 +74,6 @@ export const BrowseModels = ({
       }),
     );
   }, [dispatch]);
-
-  useEffect(() => {
-    if (error || isLoading) {
-      return;
-    }
-    dispatch(
-      updateSetting({
-        key: "default-browse-tab",
-        value: "models",
-      }),
-    );
-  }, [error, isLoading, dispatch]);
 
   if (error || isLoading) {
     return (
