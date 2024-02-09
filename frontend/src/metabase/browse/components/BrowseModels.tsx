@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 
+import { useCallback } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -19,7 +20,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
 import { getCollectionName, groupModels } from "../utils";
@@ -53,6 +53,15 @@ export const BrowseModels = ({
 
   const shouldShowBanner = !hasDismissedBanner;
 
+  const dismissBanner = useCallback(() => {
+    dispatch(
+      updateSetting({
+        key: "dismissed-browse-models-banner",
+        value: true,
+      }),
+    );
+  }, [dispatch]);
+
   if (error || isLoading) {
     return (
       <LoadingAndErrorWrapper
@@ -80,19 +89,12 @@ export const BrowseModels = ({
               <BannerModelIcon>
                 <Icon name="model" />
               </BannerModelIcon>
-              <Group grow>
-                <Text size="md" lh="1rem" mr="1rem">
-                  {t`Models help curate data to make it easier to find answers to questions all in one place.`}
-                </Text>
-              </Group>
+              <Text size="md" lh="1rem" mr="1rem">
+                {t`Models help curate data to make it easier to find answers to questions all in one place.`}
+              </Text>
               <BannerCloseButton
                 onClick={() => {
-                  dispatch(
-                    updateSetting({
-                      key: "dismissed-browse-models-banner",
-                      value: true,
-                    }),
-                  );
+                  dismissBanner();
                 }}
               >
                 <Icon name="close" />

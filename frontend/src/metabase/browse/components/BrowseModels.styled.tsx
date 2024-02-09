@@ -93,4 +93,5 @@ export const BannerModelIcon = styled(IconButtonWrapper)`
 
 export const BannerCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
+  margin-left: auto;
 `;
