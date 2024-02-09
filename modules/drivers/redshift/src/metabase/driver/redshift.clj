@@ -212,15 +212,11 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
-(def server-side-relative-datetime-units
-  "Units which, when used with :relative-datetime clause, cause computation server side. Those are
-   [[metabase.util.date-2/add-units]] coarser or equal to day. For more details see
-   [[server-side-relative-datetime-honeysql-form]]."
-  #{:day :week :month :quarter :year})
-
 (defn- use-server-side-relative-datetime?
+  "Check whether server side :relative-datetime clause should be computed server side.
+   Units are [[metabase.util.date-2/add-units]] greater or equal to day."
   [unit]
-  (contains? server-side-relative-datetime-units unit))
+  (contains? #{:day :week :month :quarter :year} unit))
 
 (defn- server-side-relative-datetime-honeysql-form
   "Compute `:relative-datetime` clause value server-side. Value is sql formatted (and not passed as date time) to avoid
