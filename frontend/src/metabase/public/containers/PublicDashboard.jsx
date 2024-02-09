@@ -177,7 +177,7 @@ class PublicDashboard extends Component {
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
         }
-        header={<StyledDashboardTabs location={this.props.location} />}
+        dashboardTabs={<StyledDashboardTabs location={this.props.location} />}
       >
         <LoadingAndErrorWrapper
           className={cx({
