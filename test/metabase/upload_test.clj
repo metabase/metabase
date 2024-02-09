@@ -1204,7 +1204,7 @@
            rows             [["Obi-Wan Kenobi"]]}}]
   (let [driver driver/*driver*
         db-id (mt/id)
-        schema+table-name (upload/table-identifier {:schema schema-name :name table-name})
+        schema+table-name (#'upload/table-identifier {:schema schema-name :name table-name})
         insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
         col-definitions (#'upload/column-definitions driver col->upload-type)
         _ (driver/create-table! driver/*driver*
