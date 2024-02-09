@@ -212,6 +212,11 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
       <ModelCard>
         <Box mb="auto">
           <Icon name="model" size={20} color={color("brand")} />
+          {model.moderated_status === "verified" ? (
+            <></>
+          ) : (
+            <Icon name="model" size={20} className="text-brand" />
+          )}
         </Box>
         <Title mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
