@@ -5455,6 +5455,48 @@ databaseChangeLog:
             path: instance_analytics_views/users/v1/h2-users.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v49.2024-02-09T13:55:26
+      author: noahmoss
+      comment: Set default value for enable-public-sharing to `false` for existing instances with users, if not already set
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - or:
+                - and:
+                    - dbms:
+                        type: postgresql
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE key = 'enable-public-sharing';
+                - and:
+                    - dbms:
+                        type: h2
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-public-sharing';
+                - and:
+                    - dbms:
+                        type: mysql,mariadb
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE `key` = 'enable-public-sharing';
+            - sqlCheck:
+                expectedResult: 1
+                sql: >
+                  SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM core_user;
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: INSERT INTO setting (key, value) VALUES ('enable-public-sharing', 'false');
+        - sql:
+            dbms: mysql,maraidb
+            sql: INSERT INTO setting (`key`, value) VALUES ('enable-public-sharing', 'false');
+        - sql:
+            dbms: h2
+            sql: INSERT INTO setting ("KEY", "VALUE") VALUES ('enable-public-sharing', 'false');
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
