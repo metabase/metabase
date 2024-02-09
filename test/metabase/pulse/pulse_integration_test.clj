@@ -814,3 +814,20 @@
                      ["4" "89.67790222° W" "39.84410095° N"]
                      ["5" "54.65110016° E" "24.43300056° N"]]]
                    (run-pulse-and-return-data-tables pulse)))))))))
+
+(deftest empty-dashboard-test
+  (testing "A completely empty dashboard should still send an email"
+    (mt/dataset test-data
+      (mt/with-temp [Dashboard {dash-id :id} {:name "Completely empty dashboard"}
+                     Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                     :dashboard_id dash-id}
+                     PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                          :pulse_id     pulse-id
+                                                          :enabled      true}
+                     PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                              :user_id          (mt/user->id :rasta)}]
+        (mt/with-fake-inbox
+          (with-redefs [email/bcc-enabled? (constantly false)]
+            (mt/with-test-user nil
+              (metabase.pulse/send-pulse! pulse)))
+          (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content]))))))))
