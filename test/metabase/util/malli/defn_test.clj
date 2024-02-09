@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [malli.experimental :as mx]
+   [metabase.test :as mt]
    [metabase.util.malli :as mu]
    [metabase.util.malli.defn :as mu.defn]
    [metabase.util.malli.fn :as mu.fn]))
@@ -161,16 +162,16 @@
   (is (= 'Integer
          (-> #'add-ints meta :arglists first meta :tag))))
 
-(deftest defn-forms-are-not-emitted-for-skippable-ns-in-prod-test
+(deftest ^:parallel defn-forms-are-not-emitted-for-skippable-ns-in-prod-test
   (testing "omission in macroexpansion"
     (testing "returns a simple fn*"
-      (with-redefs [mu.fn/instrument-ns? (constantly false)]
+      (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
                     "Inputs: []\n  Return: :int" (clojure.core/fn [] "foo"))
                  expansion)))))
     (testing "returns an instrumented fn"
-      (with-redefs [mu.fn/instrument-ns? (constantly true)]
+      (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
                     "Inputs: []\n  Return: :int"
