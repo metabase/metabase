@@ -5318,6 +5318,38 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v49.2024-02-02T11:27:49
+      author: oisincoveney
+      comment: >-
+        Add report_card.initially_published_at
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: initially_published_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+                  remarks: The timestamp when the card was first published in a static embed
+
+  - changeSet:
+        id: v49.2024-02-02T11:28:36
+        author: oisincoveney
+        comment: >-
+          Add report_dashboard.initially_published_at
+        changes:
+          - addColumn:
+              tableName: report_dashboard
+              columns:
+                - column:
+                    name: initially_published_at
+                    type: ${timestamp_type}
+                    constraints:
+                      nullable: true
+                    remarks: The timestamp when the dashboard was first published in a static embed
+
+  - changeSet:
       id: v49.2024-02-07T21:52:01
       author: noahmoss
       comment: Added 0.49.0 - updated view v_view_log
