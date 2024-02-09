@@ -9,20 +9,20 @@
   {})
 
 (defn- get-local-definition
-  "Ge, or return the unpatched "
+  "Get the version of this function that is in scope. It is the unpatched version if there is no override."
   [a-var]
   (get *local-redefs* a-var
        (get (meta a-var) ::original)))
 
 (defn- var->proxy
-  "Build the proxy function which intercepts the given var. This proxy will call the local definition instead."
+  "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call."
   [a-var]
   (fn [& args]
     (let [current-f (get-local-definition a-var)]
       (apply current-f args))))
 
 (defn patch-vars!
-  "Make sure the given vars have been patched, and then call the given thunk."
+  "Rebind the given vars with proxies that wrap the original functions."
   [vars]
   (let [unpatched-vars (remove #(::patched? (meta %)) vars)]
     (doseq [^Var a-var unpatched-vars]
