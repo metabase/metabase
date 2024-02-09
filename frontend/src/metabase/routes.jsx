@@ -83,6 +83,7 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
+import { BrowseRedirect } from "./browse/components/BrowseRedirect";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -219,7 +220,7 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="browse">
-            <IndexRedirect to="/browse/models" />
+            <IndexRoute component={BrowseRedirect} />
             <Route path="models" component={() => <BrowseApp tab="models" />} />
             <Route
               path="databases"

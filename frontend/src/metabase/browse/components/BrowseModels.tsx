@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 
-import { useCallback, useState } from "react";
+import { useEffect ,useCallback, useState } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -41,6 +41,7 @@ export const BrowseModels = ({
 }: {
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
 }) => {
+  const dispatch = useDispatch();
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
@@ -49,7 +50,6 @@ export const BrowseModels = ({
   );
   const groupsOfModels = groupModels(modelsFiltered, localeCode);
   const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
-  const dispatch = useDispatch();
 
   const [shouldShowBanner, setShouldShowBanner] = useState(!hasDismissedBanner);
 
@@ -62,6 +62,18 @@ export const BrowseModels = ({
       }),
     );
   }, [dispatch]);
+
+  useEffect(() => {
+    if (error || isLoading) {
+      return;
+    }
+    dispatch(
+      updateSetting({
+        key: "default-browse-tab",
+        value: "models",
+      }),
+    );
+  }, [error, isLoading, dispatch]);
 
   if (error || isLoading) {
     return (

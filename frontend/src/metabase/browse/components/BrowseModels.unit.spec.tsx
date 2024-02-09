@@ -3,7 +3,7 @@ import type { SearchResult } from "metabase-types/api";
 import { createMockSetupState } from "metabase-types/store/mocks";
 import {
   createMockCollection,
-  createMockSearchResult,
+  createMockModelResult,
 } from "metabase-types/api/mocks";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import { groupModels } from "../utils";
@@ -195,7 +195,7 @@ const mockModels: SearchResult[] = [
     last_editor_common_name: "Bobby",
     last_edited_at: "2000-01-01T00:00:00.000Z",
   },
-].map(model => createMockSearchResult(model));
+].map(model => createMockModelResult(model));
 
 describe("BrowseModels", () => {
   it("displays models", async () => {
