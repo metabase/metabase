@@ -30,7 +30,7 @@ export const BrowseRedirect = () => {
         dispatch(replace("/browse/databases"));
         break;
       default:
-        if (models) {
+        if (models !== undefined) {
           if (models.length > 0) {
             dispatch(replace("/browse/models"));
           } else {
