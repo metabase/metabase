@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -24,6 +25,8 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { useDispatch } from "metabase/lib/redux";
+import { setOptions } from "metabase/redux/embed";
 import type Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -53,8 +56,11 @@ interface OwnProps {
   parameters?: Parameter[];
   parameterValues?: ParameterValues;
   draftParameterValues?: ParameterValues;
+  hiddenParameterSlugs?: string;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: ReactNode;
+  enableParameterRequiredBehavior?: boolean;
+  setParameterValueToDefault: (id: ParameterId) => void;
 }
 
 interface StateProps {
@@ -94,13 +100,21 @@ function EmbedFrame({
   parameters,
   parameterValues,
   draftParameterValues,
+  hiddenParameterSlugs,
   setParameterValue,
+  setParameterValueToDefault,
+  enableParameterRequiredBehavior,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
   useMount(() => {
     initializeIframeResizer(() => setInnerScroll(false));
   });
+
+  const dispatch = useDispatch();
+  useEffect(() => {
+    dispatch(setOptions(location));
+  }, [dispatch, location]);
 
   const {
     bordered = isWithinIframe(),
@@ -109,6 +123,10 @@ function EmbedFrame({
     hide_parameters,
     hide_download_button,
   } = parseHashOptions(location.hash) as HashOptions;
+
+  const hideParameters = [hide_parameters, hiddenParameterSlugs]
+    .filter(Boolean)
+    .join(",");
 
   const showFooter =
     hasEmbedBranding || (!hide_download_button && actionButtons);
@@ -144,14 +162,18 @@ function EmbedFrame({
                   className="mt1"
                   question={question}
                   dashboard={dashboard}
-                  parameters={getValuePopulatedParameters(
+                  parameters={getValuePopulatedParameters({
                     parameters,
-                    _.isEmpty(draftParameterValues)
+                    values: _.isEmpty(draftParameterValues)
                       ? parameterValues
                       : draftParameterValues,
-                  )}
+                  })}
                   setParameterValue={setParameterValue}
-                  hideParameters={hide_parameters}
+                  hideParameters={hideParameters}
+                  setParameterValueToDefault={setParameterValueToDefault}
+                  enableParameterRequiredBehavior={
+                    enableParameterRequiredBehavior
+                  }
                 />
                 {dashboard && <FilterApplyButton />}
               </ParametersWidgetContainer>

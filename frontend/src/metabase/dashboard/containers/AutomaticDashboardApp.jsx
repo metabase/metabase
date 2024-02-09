@@ -157,10 +157,10 @@ class AutomaticDashboardAppInner extends Component {
               <div className="px1 pt1">
                 <SyncedParametersList
                   className="mt1"
-                  parameters={getValuePopulatedParameters(
+                  parameters={getValuePopulatedParameters({
                     parameters,
-                    parameterValues,
-                  )}
+                    values: parameterValues,
+                  })}
                   setParameterValue={setParameterValue}
                 />
               </div>

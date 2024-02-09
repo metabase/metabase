@@ -13,9 +13,13 @@ export type EmbedResourceParameter = {
   name: string;
   slug: string;
   type: string;
+  required?: boolean;
+  default?: unknown;
 };
 
-export type EmbeddingParameters = Record<string, string>;
+export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
+
+export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
 
 export type EmbeddingParametersValues = Record<string, string>;
 

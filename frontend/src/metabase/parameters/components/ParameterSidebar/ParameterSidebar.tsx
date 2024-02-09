@@ -10,6 +10,7 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import { slugify } from "metabase/lib/formatting";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import { ParameterSettings } from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
@@ -40,9 +41,13 @@ export interface ParameterSidebarProps {
     parameterId: ParameterId,
     filteringParameters: string[],
   ) => void;
+  onChangeRequired: (parameterId: ParameterId, value: boolean) => void;
   onRemoveParameter: (parameterId: ParameterId) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
+  getEmbeddedParameterVisibility: (
+    slug: string,
+  ) => EmbeddingParameterVisibility | null;
 }
 
 export const ParameterSidebar = ({
@@ -55,9 +60,11 @@ export const ParameterSidebar = ({
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeFilteringParameters,
+  onChangeRequired,
   onRemoveParameter,
   onShowAddParameterPopover,
   onClose,
+  getEmbeddedParameterVisibility,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -123,6 +130,9 @@ export const ParameterSidebar = ({
     [otherParameters],
   );
 
+  const handleChangeRequired = (value: boolean) =>
+    onChangeRequired(parameterId, value);
+
   return (
     <Sidebar onClose={onClose} onRemove={handleRemove}>
       <SidebarHeader>
@@ -137,6 +147,9 @@ export const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
+            embeddedParameterVisibility={getEmbeddedParameterVisibility(
+              parameter.slug,
+            )}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
@@ -144,6 +157,7 @@ export const ParameterSidebar = ({
             onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
+            onChangeRequired={handleChangeRequired}
           />
         ) : (
           <ParameterLinkedFilters

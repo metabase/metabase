@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -1096,7 +1096,9 @@
             :id           id
             :user-id      user-id
             :is-creation? true
-            :object       {:id id}}))
+            :object       (merge {:id id}
+                                 (when (= model :model/Card)
+                                   {:type "question"}))}))
 
         (testing "Able to filter by last editor"
           (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id)]
@@ -1233,7 +1235,9 @@
           :id           id
           :user-id      (mt/user->id :rasta)
           :is-creation? true
-          :object       {:id id}}))
+          :object       (merge {:id id}
+                               (when (= model :model/Card)
+                                 {:type "question"}))}))
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
           (is (= #{[action-id "action"]
@@ -1258,7 +1262,9 @@
             :id           id
             :user-id      (mt/user->id :rasta)
             :is-creation? true
-            :object       {:id id}}))
+            :object       (merge {:id id}
+                                 (when (= model :model/Card)
+                                   {:type "question"}))}))
         (is (= #{"dashboard" "dataset" "metric" "card"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta))
                    :available_models
@@ -1513,14 +1519,14 @@
         :id           card-id-1
         :user-id      user-id-1
         :is-creation? true
-        :object       {:id card-id-1}})
+        :object       {:id card-id-1 :type "question"}})
 
       (revision/push-revision!
        {:entity       :model/Card
         :id           card-id-2
         :user-id      user-id-2
         :is-creation? true
-        :object       {:id card-id-2}})
+        :object       {:id card-id-2 :type "question"}})
 
       (testing "search result should returns creator_common_name and last_editor_common_name"
         (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]

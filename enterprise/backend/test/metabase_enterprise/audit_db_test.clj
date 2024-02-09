@@ -136,6 +136,8 @@
 (deftest should-load-audit?-test
   (testing "load-analytics-content + checksums dont match => load"
     (is (= (#'audit-db/should-load-audit? true 1 3) true)))
+  (testing "load-analytics-content + last-checksum is -1 => load (even if current-checksum is also -1)"
+    (is (= (#'audit-db/should-load-audit? true -1 -1) true)))
   (testing "checksums are the same => do not load"
     (is (= (#'audit-db/should-load-audit? true 3 3) false)))
   (testing "load-analytics-content false => do not load"

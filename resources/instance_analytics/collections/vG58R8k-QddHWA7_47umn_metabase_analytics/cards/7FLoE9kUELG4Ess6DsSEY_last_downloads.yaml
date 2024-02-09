@@ -386,3 +386,4 @@ serdes/meta:
   label: last_downloads
   model: Card
 metabase_version: vUNKNOWN (a98530f)
+type: question

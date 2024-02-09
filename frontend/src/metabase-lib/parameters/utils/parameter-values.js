@@ -9,12 +9,39 @@ import {
 export const PULSE_PARAM_EMPTY = null;
 export const PULSE_PARAM_USE_DEFAULT = undefined;
 
-export function getValuePopulatedParameters(parameters, parameterValues) {
+/**
+ * In some cases, we need to use default parameter value in place of an absent one.
+ * Please use this function when dealing with the required parameters.
+ */
+export function getParameterValue({
+  parameter,
+  values = {},
+  defaultRequired = false,
+}) {
+  const value = values?.[parameter.id];
+  const useDefault = defaultRequired && parameter.required;
+  return value ?? (useDefault ? parameter.default : null);
+}
+
+/**
+ * In some cases, we need to use default parameter value in place of an absent one.
+ * Please use this function when dealing with the required parameters.
+ */
+export function getValuePopulatedParameters({
+  parameters,
+  values = {},
+  defaultRequired = false,
+}) {
   return parameters.map(parameter => ({
     ...parameter,
-    value: parameterValues?.[parameter.id] ?? null,
+    value: getParameterValue({
+      parameter,
+      values,
+      defaultRequired,
+    }),
   }));
 }
+
 export function getDefaultValuePopulatedParameters(
   parameters,
   parameterValues,
@@ -26,6 +53,15 @@ export function getDefaultValuePopulatedParameters(
       value: value === PULSE_PARAM_USE_DEFAULT ? parameter.default : value,
     };
   });
+}
+
+// Needed because parameter values might be arrays
+// in which case order of elements isn't guaranteed
+export function areParameterValuesIdentical(a, b) {
+  return _.isEqual(
+    Array.isArray(a) ? a.slice().sort() : a,
+    Array.isArray(b) ? b.slice().sort() : b,
+  );
 }
 
 export function normalizeParameter(parameter) {

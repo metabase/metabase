@@ -95,3 +95,4 @@ serdes/meta:
   label: total_time_looking_for_field_values_per_day
   model: Card
 metabase_version: vUNKNOWN (a98530f)
+type: question

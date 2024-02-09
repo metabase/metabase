@@ -1,5 +1,7 @@
 import { assoc } from "icepick";
-
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone";
+import { t } from "ttag";
 import { titleize, humanize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
@@ -136,3 +138,9 @@ export const getQuestionUrl = getQuestionArgs =>
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states
 export const has = entity => entity && entity.length > 0;
+
+export const getDescription = question => {
+  const timestamp = moment(question.getCreatedAt()).fromNow();
+  const author = question.getCreator().common_name;
+  return t`Created ${timestamp} by ${author}`;
+};

@@ -5,14 +5,14 @@ import { ClickMappingsConnected } from "metabase/dashboard/components/ClickMappi
 import type {
   ClickBehavior,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 import { Heading, SidebarContent } from "./ClickBehaviorSidebar.styled";
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   clickBehavior: ClickBehavior;
   updateSettings: (settings: ClickBehavior) => void;
 }

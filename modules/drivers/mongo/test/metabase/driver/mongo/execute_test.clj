@@ -3,12 +3,13 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.async.streaming-response :as streaming-response]
+   [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.test :as mt])
   (:import
-   (com.mongodb BasicDBObject)
+   #_(com.mongodb BasicDBObject)
    (java.util NoSuchElementException)))
 
 (set! *warn-on-reflection* true)
@@ -20,7 +21,7 @@
       (next [_] (let [i @counter]
                   (vswap! counter inc)
                   (if (< i (count rows))
-                    (BasicDBObject. ^java.util.Map (get rows i))
+                    (mongo.conversion/to-document (get rows i))
                     (throw (NoSuchElementException. (str "no element at " i))))))
       (close [_]))))
 

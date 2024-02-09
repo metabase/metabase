@@ -4,7 +4,6 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
 import {
   columnFilterForParameter,
   dimensionFilterForParameter,
@@ -67,11 +66,11 @@ function buildTextTagOption(tagName) {
  * @param {import("metabase-lib/metadata/Metadata").default} metadata
  * @param {import("metabase-types/api").Parameter|null} parameter
  * @param {import("metabase-types/api").Card} card
- * @param {import("metabase-types/store").DashboardCard|null} [dashcard]
+ * @param {import("metabase-types/store").StoreDashcard|null} [dashcard]
  * @returns {*}
  */
 export function getParameterMappingOptions(
-  metadata,
+  question,
   parameter = null,
   card,
   dashcard = null,
@@ -96,7 +95,6 @@ export function getParameterMappingOptions(
     return [];
   }
 
-  const question = new Question(card, metadata);
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const options = [];
   if (!isNative || question.isDataset()) {

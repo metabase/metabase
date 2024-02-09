@@ -19,6 +19,10 @@ export function getDashboardCard(index = 0) {
   return getDashboardCards().eq(index);
 }
 
+export function ensureDashboardCardHasText(text, index = 0) {
+  cy.get(".Card").eq(index).should("contain", text);
+}
+
 function getDashboardApiUrl(dashId) {
   return `/api/dashboard/${dashId}`;
 }
@@ -67,6 +71,19 @@ export function getDashboardCardMenu(index = 0) {
 
 export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
+}
+
+/**
+ * Given a dashcard HTML element, will return the element for the action icon
+ * with the given label text (e.g. "Click behavior", "Replace", "Duplicate", etc)
+ *
+ * @param {Cypress.Chainable<JQuery<HTMLElement>>} dashcardElement
+ * @param {string} labelText
+ *
+ * @returns {Cypress.Chainable<JQuery<HTMLElement>>}
+ */
+export function findDashCardAction(dashcardElement, labelText) {
+  return dashcardElement.realHover().findByLabelText(labelText);
 }
 
 export function removeDashboardCard(index = 0) {
@@ -121,6 +138,14 @@ export function setFilter(type, subType) {
   });
 }
 
+export function getRequiredToggle() {
+  return cy.findByLabelText("Always require a value");
+}
+
+export function toggleRequiredParameter() {
+  getRequiredToggle().click();
+}
+
 export function createEmptyTextBox() {
   cy.findByLabelText("Edit dashboard").click();
   cy.findByLabelText("Add a heading or text box").click();
@@ -130,6 +155,11 @@ export function createEmptyTextBox() {
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
   addTextBoxWhileEditing(string, options);
+}
+
+export function addLinkWhileEditing(string, options = {}) {
+  cy.findByLabelText("Add link card").click();
+  cy.findByPlaceholderText("https://example.com").type(string, options);
 }
 
 export function addTextBoxWhileEditing(string, options = {}) {
@@ -169,6 +199,13 @@ export function deleteTab(tabName) {
   cy.findByRole("tab", { name: tabName }).findByRole("button").click();
   popover().within(() => {
     cy.findByText("Delete").click();
+  });
+}
+
+export function duplicateTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Duplicate").click();
   });
 }
 
@@ -218,6 +255,10 @@ export const dashboardHeader = () => {
 export const dashboardGrid = () => {
   return cy.findByTestId("dashboard-grid");
 };
+
+export function dashboardSaveButton() {
+  return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
+}
 
 /**
  * @param {Object=} option

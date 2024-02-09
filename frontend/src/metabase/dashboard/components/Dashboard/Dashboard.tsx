@@ -38,6 +38,7 @@ import type {
   StoreDashcard,
 } from "metabase-types/store";
 
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Database from "metabase-lib/metadata/Database";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -151,6 +152,8 @@ interface DashboardProps {
   setParameterIndex: (id: ParameterId, index: number) => void;
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
+  setParameterValueToDefault: (id: ParameterId) => void;
+  setParameterRequired: (id: ParameterId, value: boolean) => void;
   setEditingParameter: (id: ParameterId) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
@@ -179,6 +182,9 @@ interface DashboardProps {
     columnKey: string,
     settings?: Record<string, unknown> | null,
   ) => void;
+  getEmbeddedParameterVisibility: (
+    slug: string,
+  ) => EmbeddingParameterVisibility | null;
 }
 
 function DashboardInner(props: DashboardProps) {
@@ -216,6 +222,7 @@ function DashboardInner(props: DashboardProps) {
     setErrorPage,
     setParameterIndex,
     setParameterValue,
+    setParameterValueToDefault,
     setSharing,
     toggleSidebar,
   } = props;
@@ -450,10 +457,10 @@ function DashboardInner(props: DashboardProps) {
 
   const parametersWidget = (
     <SyncedParametersList
-      parameters={getValuePopulatedParameters(
+      parameters={getValuePopulatedParameters({
         parameters,
-        isAutoApplyFilters ? parameterValues : draftParameterValues,
-      )}
+        values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+      })}
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}
       dashboard={dashboard}
@@ -463,6 +470,8 @@ function DashboardInner(props: DashboardProps) {
       setParameterValue={setParameterValue}
       setParameterIndex={setParameterIndex}
       setEditingParameter={setEditingParameter}
+      setParameterValueToDefault={setParameterValueToDefault}
+      enableParameterRequiredBehavior
     />
   );
 
@@ -523,7 +532,6 @@ function DashboardInner(props: DashboardProps) {
                   <FilterApplyButton />
                 </ParametersWidgetContainer>
               )}
-
               <CardsContainer id="Dashboard-Cards-Container">
                 {renderContent()}
               </CardsContainer>

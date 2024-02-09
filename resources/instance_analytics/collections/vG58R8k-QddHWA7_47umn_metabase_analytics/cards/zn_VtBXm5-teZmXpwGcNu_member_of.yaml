@@ -89,3 +89,4 @@ serdes/meta:
   label: member_of
   model: Card
 metabase_version: null
+type: question

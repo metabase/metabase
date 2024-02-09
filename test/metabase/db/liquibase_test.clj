@@ -12,19 +12,9 @@
    [metabase.test :as mt]
    [metabase.util.yaml :as u.yaml]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2])
-  (:import
-   (java.io StringWriter)
-   (liquibase Liquibase)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- sql-for-init-liquibase
-  [^Liquibase liquibase]
-  (let [writer (StringWriter.)]
-    ;; run 0 updates, just to get the needed SQL to initiate liquibase like creating the DBchangelog table
-    (.update liquibase 1 ""  writer)
-    (.toString writer)))
 
 (defn- split-migrations-sqls
   "Splits a sql migration string to multiple lines."
@@ -50,15 +40,6 @@
        (liquibase/with-liquibase [liquibase (->> (mt/dbdef->connection-details :mysql :db {:database-name "liquibase_test"})
                                                  (sql-jdbc.conn/connection-details->spec :mysql)
                                                  mdb.test-util/->ClojureJDBCSpecDataSource)]
-         (testing "Make sure the first line actually matches the shape we're testing against"
-           (is (= (str "CREATE TABLE liquibase_test.DATABASECHANGELOGLOCK ("
-                       "ID INT NOT NULL, "
-                       "`LOCKED` TINYINT NOT NULL, "
-                       "LOCKGRANTED datetime NULL, "
-                       "LOCKEDBY VARCHAR(255) NULL, "
-                       "CONSTRAINT PK_DATABASECHANGELOGLOCK PRIMARY KEY (ID)"
-                       ") ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-                  (first (split-migrations-sqls (sql-for-init-liquibase liquibase))))))
          (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
            (doseq [line  (split-migrations-sqls (liquibase/migrations-sql liquibase))
                    :when (str/starts-with? line "CREATE TABLE")]

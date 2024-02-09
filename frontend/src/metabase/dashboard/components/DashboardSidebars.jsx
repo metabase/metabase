@@ -32,6 +32,7 @@ DashboardSidebars.propTypes = {
   setParameterSourceType: PropTypes.func.isRequired,
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
+  setParameterRequired: PropTypes.func.isRequired,
   dashcardData: PropTypes.object,
   isSharing: PropTypes.bool.isRequired,
   isEditing: PropTypes.bool.isRequired,
@@ -45,6 +46,7 @@ DashboardSidebars.propTypes = {
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
   selectedTabId: PropTypes.number,
+  getEmbeddedParameterVisibility: PropTypes.func.isRequired,
 };
 
 export function DashboardSidebars({
@@ -65,6 +67,7 @@ export function DashboardSidebars({
   setParameterSourceType,
   setParameterSourceConfig,
   setParameterFilteringParameters,
+  setParameterRequired,
   dashcardData,
   isFullscreen,
   onCancel,
@@ -73,6 +76,7 @@ export function DashboardSidebars({
   closeSidebar,
   setDashboardAttribute,
   selectedTabId,
+  getEmbeddedParameterVisibility,
 }) {
   const handleAddCard = useCallback(
     cardId => {
@@ -134,6 +138,7 @@ export function DashboardSidebars({
       );
       return (
         <ParameterSidebar
+          getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={setParameterName}
@@ -146,6 +151,7 @@ export function DashboardSidebars({
           onRemoveParameter={removeParameter}
           onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
+          onChangeRequired={setParameterRequired}
         />
       );
     }

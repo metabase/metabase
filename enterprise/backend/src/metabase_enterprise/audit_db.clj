@@ -186,8 +186,14 @@
   :audit      :never
   :doc        false)
 
+(def ^:constant SKIP_CHECKSUM_FLAG
+  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
+  analytics data."
+  -1)
+
 (defsetting last-analytics-checksum
-  "A place to save the analytics-checksum, to check between app startups."
+  "A place to save the analytics-checksum, to check between app startups. If set to -1, skips the checksum process
+  entirely to avoid calculating checksums in environments (e2e tests) where we don't care."
   :type       :integer
   :default    0
   :visibility :internal
@@ -195,28 +201,39 @@
   :doc        false
   :export?    false)
 
+(defn- should-skip-checksum? [last-checksum]
+  (= SKIP_CHECKSUM_FLAG last-checksum))
+
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
   []
-  (reduce
-   (fn [acc file]
-     (+ acc (hash (slurp file))))
-   0
-   (->> (io/file analytics-dir-resource)
-        file-seq
-        (remove fs/directory?))))
+  (->> (io/file analytics-dir-resource)
+       file-seq
+       (remove fs/directory?)
+       (pmap #(hash (slurp %)))
+       (reduce + 0)))
 
-(defn- should-load-audit? [load-analytics-content? current-checksum last-checksum]
-  (boolean (and load-analytics-content?
-                (not= current-checksum last-checksum))))
+(defn- should-load-audit?
+  "Should we load audit data?"
+  [load-analytics-content? last-checksum current-checksum]
+  (and load-analytics-content?
+       (or (should-skip-checksum? last-checksum)
+           (not= last-checksum current-checksum))))
+
+(defn- get-last-and-current-checksum
+  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums entirely."
+  []
+  (let [last-checksum (last-analytics-checksum)]
+    (if (should-skip-checksum? last-checksum)
+      [SKIP_CHECKSUM_FLAG SKIP_CHECKSUM_FLAG]
+      [last-checksum (analytics-checksum)])))
 
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    ;; can'c calculate checksum unless there is an analytics-dir resource
-    (let [current-checksum (analytics-checksum)
-          last-checksum (last-analytics-checksum)]
-      (when (should-load-audit? (load-analytics-content) current-checksum last-checksum)
+    ;; can't calculate checksum unless there is an analytics-dir resource
+    (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
+      (when (should-load-audit? (load-analytics-content) last-checksum current-checksum)
         (last-analytics-checksum! current-checksum)
         (ee.internal-user/ensure-internal-user-exists!)
         (adjust-audit-db-to-source! audit-db)

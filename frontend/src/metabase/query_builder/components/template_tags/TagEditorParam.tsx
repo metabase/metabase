@@ -5,11 +5,10 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import Schemas from "metabase/entities/schemas";
-import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
-
+import { Text } from "metabase/ui";
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
 
 import { fetchField } from "metabase/redux/metadata";
@@ -30,6 +29,8 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
@@ -49,13 +50,12 @@ import {
   InputContainer,
   TagContainer,
   TagName,
-  ToggleContainer,
-  ToggleLabel,
 } from "./TagEditorParam.styled";
 
 interface Props {
   tag: TemplateTag;
   parameter: Parameter;
+  embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
   databaseFields?: Field[];
@@ -202,7 +202,14 @@ class TagEditorParamInner extends Component<Props> {
   };
 
   render() {
-    const { tag, database, databases, metadata, parameter } = this.props;
+    const {
+      tag,
+      database,
+      databases,
+      metadata,
+      parameter,
+      embeddedParameterVisibility,
+    } = this.props;
     let widgetOptions: { name?: string; type: string }[] = [];
     let field: Field | null = null;
     let table: Table | null | undefined = null;
@@ -224,9 +231,10 @@ class TagEditorParamInner extends Component<Props> {
       tag["widget-type"] === "none" || !tag["widget-type"];
     const hasNoWidgetLabel = !tag["display-name"];
     const hasNoDefaultValue = !tag.default;
+    const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
 
     return (
-      <TagContainer>
+      <TagContainer data-testid={`tag-editor-variable-${tag.name}`}>
         <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
         <TagName>{tag.name}</TagName>
 
@@ -358,7 +366,7 @@ class TagEditorParamInner extends Component<Props> {
           <ContainerLabel>
             {t`Default filter widget value`}
             {hasNoDefaultValue && tag.required && (
-              <ErrorSpan>{t`(required)`}</ErrorSpan>
+              <ErrorSpan>({t`required`})</ErrorSpan>
             )}
           </ContainerLabel>
           <DefaultParameterValueWidget
@@ -386,19 +394,30 @@ class TagEditorParamInner extends Component<Props> {
             commitImmediately
           />
 
-          <ToggleContainer>
-            <Toggle
-              id={`tag-editor-required_${tag.id}`}
-              value={tag.required}
-              onChange={this.setRequired}
-            />
-            <div>
-              <ToggleLabel htmlFor={`tag-editor-required_${tag.id}`}>
-                {t`Always require a value`}
-              </ToggleLabel>
-              <p>{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</p>
-            </div>
-          </ToggleContainer>
+          <RequiredParamToggle
+            uniqueId={tag.id}
+            disabled={isEmbeddedDisabled}
+            value={tag.required ?? false}
+            onChange={this.setRequired}
+            disabledTooltip={
+              <>
+                <Text lh={1.4}>
+                  {t`This filter is set to disabled in an embedded question.`}
+                </Text>
+                <Text lh={1.4}>
+                  {t`To always require a value, first visit embedding settings,
+                    make this filter editable or locked, re-publish the
+                    question, then return to this page.`}
+                </Text>
+                <Text size="sm">
+                  {t`Note`}:{" "}
+                  {t`making it locked, will require updating the
+                    embedding code before proceeding, otherwise the embed will
+                    break.`}
+                </Text>
+              </>
+            }
+          />
         </div>
       </TagContainer>
     );
