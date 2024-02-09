@@ -530,6 +530,8 @@ export const buildTableColumnSettings = ({
 
       let query;
 
+      // before we fully migrate from Audit v1
+      // it's possible to have internal query here, which throws
       try {
         query = question.query();
       } catch (e) {
