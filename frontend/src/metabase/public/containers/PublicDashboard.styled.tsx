@@ -38,5 +38,5 @@ export const DashboardContainer = styled.div`
 `;
 
 export const DashboardGridContainer = styled.div`
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 `;
