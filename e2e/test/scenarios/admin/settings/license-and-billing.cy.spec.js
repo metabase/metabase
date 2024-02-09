@@ -40,7 +40,7 @@ describe("scenarios > admin > license and billing", () => {
         email: "ci-admins@metabase.com",
         first_name: "CI",
         last_name: "Admins",
-        password: "d4YaINVhIZliV3",
+        password: "test-password-123",
       };
 
       // create an admin user who is also connected to our test harbormaster account
