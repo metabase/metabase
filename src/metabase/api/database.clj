@@ -19,6 +19,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database
     :as database
     :refer [Database protected-password]]
@@ -31,7 +32,9 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync.analyze :as analyze]
@@ -1079,15 +1082,22 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
+(defenterprise current-user-can-read-schema?
+  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id _schema-name]
+  (mi/superuser?))
+
 (defn- can-read-schema?
   "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
   at least some of its tables?)"
   [database-id schema-name]
   (or
-   (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-                                       (perms/data-perms-path database-id schema-name))
-   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                    (perms/data-model-write-perms-path database-id schema-name))))
+   (= :unrestricted (data-perms/schema-permission-for-user api/*current-user-id*
+                                                           :perms/data-access
+                                                           database-id
+                                                           schema-name))
+   (current-user-can-read-schema? database-id schema-name)))
 
 (api/defendpoint GET "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
