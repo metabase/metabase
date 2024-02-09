@@ -238,7 +238,7 @@ const CollectionHeader = ({
         <CollectionHeaderLink to={Urls.collection(collection)}>
           <Group spacing=".25rem">
             <Icon {...icon} />
-            <Text weight="bold" color="text-medium">
+            <Text weight="bold" color="text-dark">
               {getCollectionName(collection)}
             </Text>
           </Group>
