@@ -5495,6 +5495,7 @@ databaseChangeLog:
         - sql:
             dbms: h2
             sql: INSERT INTO setting ("KEY", "VALUE") VALUES ('enable-public-sharing', 'false');
+      rollback: # not needed
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
