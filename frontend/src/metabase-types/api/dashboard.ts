@@ -48,7 +48,7 @@ export interface Dashboard {
   public_uuid: string | null;
   width: "full" | "fixed";
   embedding_params?: EmbeddingParameters | null;
-
+  initially_published_at: string | null;
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
 }

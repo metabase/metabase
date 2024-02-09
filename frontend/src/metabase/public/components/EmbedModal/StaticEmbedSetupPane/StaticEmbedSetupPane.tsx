@@ -27,8 +27,8 @@ import {
   trackStaticEmbedUnpublished,
 } from "metabase/public/lib/analytics";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { getDefaultDisplayOptions } from "./config";
 import { getParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import { getDefaultDisplayOptions } from "./config";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { ParametersSettings } from "./ParametersSettings";

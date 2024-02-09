@@ -1,6 +1,6 @@
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import type {
-  EmbeddingParametersSettings,
+  EmbeddingParametersValues,
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
@@ -19,9 +19,7 @@ export interface EmbedModalContentProps {
   resourceParameters: EmbedResourceParameter[];
 
   onUpdateEnableEmbedding: (enableEmbedding: boolean) => void;
-  onUpdateEmbeddingParams: (
-    embeddingParams: EmbeddingParametersSettings,
-  ) => void;
+  onUpdateEmbeddingParams: (embeddingParams: EmbeddingParametersValues) => void;
 
   onCreatePublicLink: () => void;
   onDeletePublicLink: () => void;
