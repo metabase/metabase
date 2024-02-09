@@ -1,7 +1,9 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
+import { getCardTypeFromLocation } from "metabase/query_builder/typed-utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { getRouting } from "metabase/selectors/routing";
 
 import type { Series } from "metabase-types/api";
 import type {
@@ -135,11 +137,13 @@ export const updateQuestion = (
       }
     }
 
-    // This scenario happens because the DatasetQueryEditor converts the dataset/model question into a normal question
+    // This scenario happens because the DatasetQueryEditor converts the model/metric question into a normal question
     // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
     // this `updateQuestion` action, so they end up triggering the action with the altered question.
     if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
-      newQuestion = newQuestion.setType("model");
+      const routing = getRouting(getState());
+      const type = getCardTypeFromLocation(routing.locationBeforeTransitions);
+      newQuestion = newQuestion.setType(type);
     }
 
     const queryResult = getFirstQueryResult(getState());

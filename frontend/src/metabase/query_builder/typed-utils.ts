@@ -1,4 +1,5 @@
 import type { LocationDescriptorObject } from "history";
+import type { CardType } from "metabase-types/api";
 import type { QueryBuilderMode, DatasetEditorTab } from "metabase-types/store";
 
 type LocationQBModeResult = {
@@ -24,4 +25,19 @@ export function getQueryBuilderModeFromLocation(
   return {
     queryBuilderMode: "view",
   };
+}
+
+export function getCardTypeFromLocation(
+  location: LocationDescriptorObject,
+): CardType {
+  const { pathname } = location;
+  if (pathname?.startsWith("/metric")) {
+    return "metric";
+  }
+
+  if (pathname?.startsWith("/model")) {
+    return "model";
+  }
+
+  return "question";
 }
