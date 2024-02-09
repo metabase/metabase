@@ -130,6 +130,7 @@ export const PLUGIN_SELECTORS = {
   getIsWhiteLabeling: (_state: State) => false,
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
+  browseFilters: (_state: State) => {},
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
