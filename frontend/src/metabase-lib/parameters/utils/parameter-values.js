@@ -18,7 +18,7 @@ export function getParameterValue({
   values = {},
   defaultRequired = false,
 }) {
-  const value = values[parameter.id];
+  const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
   return value ?? (useDefault ? parameter.default : null);
 }
