@@ -16,6 +16,7 @@ export const ColumnItem = styled.li`
   &:first-child {
     margin-top: 0.5em;
   }
+
   &:last-child {
     margin-bottom: 0.5em;
   }
