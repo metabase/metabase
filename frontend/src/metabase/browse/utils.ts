@@ -33,15 +33,10 @@ export const groupModels = (
     const collection1 = a[0].collection;
     const collection2 = b[0].collection;
 
-    const collection1AL = collection1.authority_level;
-    const collection2AL = collection2.authority_level;
+    const collection1AL = collection1.authority_level ?? "z";
+    const collection2AL = collection2.authority_level ?? "z";
     if (collection1AL !== collection2AL) {
-      if (!collection1AL) {
-        return 1;
-      }
-      if (!collection2AL) {
-        return -1;
-      }
+      return collection1AL.localeCompare(collection2AL, locale);
     }
 
     const name1 = getCollectionName(collection1);
