@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [metabase.config :as config]
-   [metabase.models.interface :refer [now]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
