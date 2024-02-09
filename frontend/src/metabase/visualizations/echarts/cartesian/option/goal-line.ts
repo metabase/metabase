@@ -62,6 +62,14 @@ export function getGoalLineSeriesOption(
         type: [5, 5],
         width: 2,
       },
+      blur: {
+        lineStyle: {
+          opacity: 1,
+        },
+        label: {
+          opacity: 1,
+        },
+      },
     },
   };
 }
