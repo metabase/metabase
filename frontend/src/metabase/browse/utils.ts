@@ -32,6 +32,18 @@ export const groupModels = (
   const sortFunction = (a: SearchResult[], b: SearchResult[]) => {
     const collection1 = a[0].collection;
     const collection2 = b[0].collection;
+
+    const collection1AL = collection1.authority_level;
+    const collection2AL = collection2.authority_level;
+    if (collection1AL !== collection2AL) {
+      if (!collection1AL) {
+        return 1;
+      }
+      if (!collection2AL) {
+        return -1;
+      }
+    }
+
     const name1 = getCollectionName(collection1);
     const name2 = getCollectionName(collection2);
     return name1.localeCompare(name2, locale);
