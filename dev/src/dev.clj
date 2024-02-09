@@ -43,7 +43,7 @@
    [dev.model-tracking :as model-tracking]
    [hashp.core :as hashp]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
    [metabase.config :as config]
