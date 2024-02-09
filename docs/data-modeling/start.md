@@ -22,7 +22,7 @@ Field types dictate how Metabase displays its data, as well as the column’s sp
 
 Define formatting and display defaults for numbers, currencies, datetimes, and more.
 
-## [JSON unfolding](./json-unfolding.md)
+## [Working with JSON](./json-unfolding.md)
 
 Metabase can unfold JSON columns into their component fields, which you can then filter on using the query builder.
 

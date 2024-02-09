@@ -102,7 +102,7 @@ While data types themselves can't be edited in Metabase, admins can manually [ca
 
 ### JSON unfolding
 
-See [JSON unfolding](./json-unfolding.md).
+See [Working with JSON](./json-unfolding.md).
 
 ## Further Reading
 

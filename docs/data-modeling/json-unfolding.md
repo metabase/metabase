@@ -2,7 +2,7 @@
 title: Working with JSON
 ---
 
-# Working with JSON fields
+# Working with JSON
 
 With [some databases](#databases-that-support-json-unfolding), Metabase can unfold JSON columns into their component fields, which you can then filter on using the query builder.
 
