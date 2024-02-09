@@ -7,13 +7,13 @@ import type {
   XAxisScale,
 } from "metabase-types/api";
 import type {
-  CartesianChartModel,
   DataKey,
   Extent,
   ChartDataset,
   SeriesExtents,
   SeriesModel,
   Datum,
+  BaseCartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -367,7 +367,7 @@ const sortByDimension = (
 };
 
 export function getDimensionDisplayValueGetter(
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
 ) {
   const axisType = getXAxisType(settings);
@@ -448,19 +448,19 @@ type ReplacerFn = (dataKey: DataKey, value: RowValue) => RowValue;
 /**
  * Creates a new dataset with the values replaced according to the provided replacer function.
  *
- * @param {Record<DataKey, RowValue>[]} dataset - The original dataset.
+ * @param {ChartDataset} dataset - The original dataset.
  * @param {ReplacerFn} replacer - The function that will be used to replace values.
- * @returns {Record<DataKey, RowValue>[]} A new dataset with the replaced values.
+ * @returns {ChartDataset} A new dataset with the replaced values.
  */
 export const replaceValues = (
-  dataset: Record<DataKey, RowValue>[],
+  dataset: ChartDataset,
   replacer: ReplacerFn,
-) => {
+): ChartDataset => {
   return dataset.map(datum => {
     return getObjectKeys(datum).reduce((updatedRow, dataKey) => {
       updatedRow[dataKey] = replacer(dataKey, datum[dataKey]);
       return updatedRow;
-    }, {} as Record<DataKey, RowValue>);
+    }, {} as Datum);
   });
 };
 

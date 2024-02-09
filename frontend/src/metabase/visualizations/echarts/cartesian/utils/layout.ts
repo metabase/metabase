@@ -1,6 +1,6 @@
 import type {
   AxisFormatter,
-  CartesianChartModel,
+  BaseCartesianChartModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
@@ -62,7 +62,7 @@ const getYAxisTicksWidth = (
 };
 
 const getXAxisTicksHeight = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   formatter: AxisFormatter,
   renderingContext: RenderingContext,
@@ -100,7 +100,7 @@ const getXAxisTicksHeight = (
 };
 
 export const getTicksDimensions = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
@@ -143,7 +143,7 @@ export const getTicksDimensions = (
 };
 
 export const getChartPadding = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
 ): Padding => {
   const padding: Padding = {
@@ -180,7 +180,7 @@ export const getChartPadding = (
 };
 
 export const getChartMeasurements = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,

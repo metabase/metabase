@@ -73,7 +73,7 @@ export const getCartesianChartModel = (
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);
   const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
-  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+  const dimensionModel = getDimensionModel(cardsColumns);
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,

@@ -21,7 +21,11 @@ export type SeriesDataKey =
 export type StackTotalDataKey =
   | typeof POSITIVE_STACK_TOTAL_DATA_KEY
   | typeof NEGATIVE_STACK_TOTAL_DATA_KEY;
-export type DataKey = SeriesDataKey | StackTotalDataKey | string;
+export type DataKey =
+  | SeriesDataKey
+  | StackTotalDataKey
+  | string
+  | typeof X_AXIS_DATA_KEY;
 
 export type VizSettingsKey = string;
 
@@ -101,19 +105,20 @@ export type YAxisModel = {
   formatter: AxisFormatter;
 };
 
-export type CartesianChartModel = {
+export type BaseCartesianChartModel<TSeriesModel = RegularSeriesModel> = {
   dimensionModel: DimensionModel;
-  seriesModels: SeriesModel[];
-  columnByDataKey: Record<DataKey, DatasetColumn>;
+  seriesModels: TSeriesModel[];
   dataset: ChartDataset;
-  transformedDataset: ChartDataset;
 
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
-
   xAxisModel: XAxisModel;
 
-  insights: Insight[];
+  columnByDataKey: Record<DataKey, DatasetColumn>;
+};
 
+export type CartesianChartModel = BaseCartesianChartModel<SeriesModel> & {
+  transformedDataset: ChartDataset;
+  insights: Insight[];
   bubbleSizeDomain: Extent | null;
 };

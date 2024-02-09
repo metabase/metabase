@@ -1,6 +1,6 @@
 import _ from "underscore";
 import type {
-  CartesianChartModel,
+  BaseCartesianChartModel,
   DataKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
@@ -56,7 +56,7 @@ export const parseDataKey = (dataKey: DataKey) => {
 };
 
 export const getEventDimensionsData = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   seriesIndex: number,
   dataIndex: number,
 ) => {
@@ -86,7 +86,7 @@ export const getEventDimensionsData = (
 };
 
 export const getEventColumnsData = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   seriesIndex: number,
   dataIndex: number,
 ) => {
@@ -124,7 +124,7 @@ export const getEventColumnsData = (
 };
 
 export const getStackedTooltipModel = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   seriesIndex: number,
   dataIndex: number,
@@ -196,7 +196,7 @@ export const canBrush = (
 };
 
 export const getSeriesHoverData = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
 ) => {
@@ -277,7 +277,7 @@ export const getTimelineEventsHoverData = (
 };
 
 export const getSeriesClickData = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
 ) => {
@@ -309,7 +309,7 @@ export const getSeriesClickData = (
 
 export const getBrushData = (
   rawSeries: RawSeries,
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
 ) => {
   const range = event.areas[0].coordRange;

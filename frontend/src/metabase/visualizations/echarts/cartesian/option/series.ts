@@ -62,6 +62,7 @@ export const getBarLabelLayout =
 export function getDataLabelFormatter(
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
+  labelDataKey: DataKey,
   renderingContext: RenderingContext,
 ) {
   const valueFormatter = (value: unknown) =>
@@ -73,15 +74,13 @@ export function getDataLabelFormatter(
 
   const valueGetter = getMetricDisplayValueGetter(settings);
 
-  return (datum: CallbackDataParams) => {
-    const dimensionIndex = datum?.encode?.y[0];
-    const dimensionName =
-      dimensionIndex != null ? datum?.dimensionNames?.[dimensionIndex] : null;
-    if (dimensionName == null) {
+  return (params: CallbackDataParams) => {
+    const value = params.data[labelDataKey];
+
+    if (typeof value === undefined) {
       return " ";
     }
-    const value = valueGetter((datum?.value as any)?.[dimensionName]);
-    return valueFormatter(value);
+    return valueFormatter(valueGetter(value));
   };
 }
 
@@ -102,7 +101,12 @@ export const buildEChartsLabelOptions = (
     color: renderingContext.getColor("text-dark"),
     textBorderColor: renderingContext.getColor("white"),
     textBorderWidth: 3,
-    formatter: getDataLabelFormatter(seriesModel, settings, renderingContext),
+    formatter: getDataLabelFormatter(
+      seriesModel,
+      settings,
+      seriesModel.dataKey,
+      renderingContext,
+    ),
   };
 };
 
@@ -446,7 +450,6 @@ export const buildEChartsSeries = (
             seriesModel,
             chartModel.transformedDataset,
             settings,
-            chartModel.dimensionModel.dataKey,
             yAxisIndex,
             chartModel.xAxisModel,
             renderingContext,

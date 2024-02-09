@@ -5,9 +5,9 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
-  AxisFormatter,
-  CartesianChartModel,
+  BaseCartesianChartModel,
   Extent,
+  XAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
@@ -15,6 +15,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/option/types";
+import { getTimeSeriesMinInterval } from "metabase/visualizations/echarts/cartesian/utils/time-series";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -113,9 +114,9 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
 };
 
 export const buildDimensionAxis = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
-  formatter: AxisFormatter,
+  xAxisModel: XAxisModel,
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
@@ -157,7 +158,8 @@ export const buildDimensionAxis = (
       rotate: getRotateAngle(settings),
       ...getTicksDefaultOption(renderingContext),
       // Value is always converted to a string by ECharts
-      formatter: (value: string) => ` ${formatter(valueGetter(value))} `, // spaces force padding between ticks
+      formatter: (value: string) =>
+        ` ${xAxisModel.formatter(valueGetter(value))} `, // spaces force padding between ticks
     },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
@@ -165,6 +167,10 @@ export const buildDimensionAxis = (
         color: getColor("border"),
       },
     },
+    minInterval:
+      xAxisModel.timeSeriesInterval != null
+        ? getTimeSeriesMinInterval(xAxisModel.timeSeriesInterval)
+        : undefined,
   };
 };
 
@@ -217,7 +223,7 @@ export const buildMetricAxis = (
 };
 
 const buildMetricsAxes = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
@@ -255,7 +261,7 @@ const buildMetricsAxes = (
 };
 
 export const buildAxes = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
@@ -265,7 +271,7 @@ export const buildAxes = (
     xAxis: buildDimensionAxis(
       chartModel,
       settings,
-      chartModel.xAxisModel.formatter,
+      chartModel.xAxisModel,
       chartMeasurements,
       hasTimelineEvents,
       renderingContext,

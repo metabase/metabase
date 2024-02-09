@@ -2,7 +2,6 @@ import type {
   SingleSeries,
   DatasetData,
   RowValue,
-  RawSeries,
   DatasetColumn,
 } from "metabase-types/api";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
@@ -206,14 +205,9 @@ export const getCardSeriesModels = (
 };
 
 export const getDimensionModel = (
-  rawSeries: RawSeries,
   cardColumns: CartesianChartColumns[],
 ): DimensionModel => {
   return {
-    dataKey: getDatasetKey(
-      cardColumns[0].dimension.column,
-      rawSeries[0].card.id,
-    ),
     column: cardColumns[0].dimension.column,
     columnIndex: cardColumns[0].dimension.index,
     columns: cardColumns.map(({ dimension }) => dimension.column),
