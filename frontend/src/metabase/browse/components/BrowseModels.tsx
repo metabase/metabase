@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -51,9 +51,10 @@ export const BrowseModels = ({
   const hasDismissedBanner = useSelector(getHasDismissedBrowseModelsBanner);
   const dispatch = useDispatch();
 
-  const shouldShowBanner = !hasDismissedBanner;
+  const [shouldShowBanner, setShouldShowBanner] = useState(!hasDismissedBanner);
 
   const dismissBanner = useCallback(() => {
+    setShouldShowBanner(false);
     dispatch(
       updateSetting({
         key: "dismissed-browse-models-banner",
