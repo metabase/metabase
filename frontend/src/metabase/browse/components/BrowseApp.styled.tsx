@@ -55,19 +55,6 @@ export const BrowseDataHeader = styled.header`
   background-color: ${color("white")};
 `;
 
-export const BrowseSectionContainer = styled.div`
-  max-width: 1014px;
-  margin: 0 auto;
-  flex: 1;
-  display: flex;
-  width: 100%;
-`;
-
-export const BrowseTabsContainer = styled(BrowseSectionContainer)`
-  flex-flow: column nowrap;
-  justify-content: flex-start;
-`;
-
 export const CenteredEmptyState = styled(EmptyState)`
   display: flex;
   flex: 1;

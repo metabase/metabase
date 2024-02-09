@@ -198,6 +198,7 @@ export interface Settings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "only-show-verified-models-in-browse-data": boolean;
   "bcc-enabled?": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
@@ -220,7 +221,6 @@ export interface Settings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   engines: Record<string, Engine>;
-  "filters-for-browse-models": string | null;
   "ga-enabled": boolean;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-client-id": string | null;

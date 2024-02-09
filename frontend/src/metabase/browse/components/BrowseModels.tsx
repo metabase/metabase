@@ -23,7 +23,6 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 
 import { color } from "metabase/lib/colors";
 import { getCollectionName, groupModels } from "../utils";
-import { getFiltersForBrowseModels } from "../selectors";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
@@ -36,74 +35,30 @@ import {
 import { LastEdited } from "./LastEdited";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 
-type Filter = {
-  filterFunction: (model: SearchResult) => boolean;
-};
-
-/** Filters that may or may not currently be applied */
-const filters: Record<string, Filter> = {
-  onlyShowVerifiedModels: {
-    filterFunction: (model: SearchResult) =>
-      model.moderated_status === "verified",
-  },
-  hideCSVModels: {
-    // TODO: Find a way to filter out csv uploads
-    filterFunction: (_model: SearchResult) => model.uploaded_via_csv === false,
-  },
-  removeInstanceAnalyticsCollection: {
-    filterFunction: (model: SearchResult) =>
-      !isInstanceAnalyticsCollection(model.collection),
-  },
-};
-
-// TODO: Make this work
-type Filters = {
-  [K in keyof typeof filters]: boolean;
-};
-
-const defaultFilters: Filters = {
-  onlyShowVerifiedModels: true,
-  hideCSVModels: true,
-  removeInstanceAnalyticsCollection: true,
-};
-
 export const BrowseModels = ({
   modelsResult,
+  onlyShowVerifiedModels,
 }: {
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
+  onlyShowVerifiedModels: boolean;
 }) => {
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
-  const filtersJSON = useSelector(getFiltersForBrowseModels);
 
-  const setFiltersForBrowseModels = (filters: Record<string, boolean>) => {
-    dispatch(
-      updateSetting({
-        key: "browse-models-filters",
-        value: JSON.stringify(filters),
-      }),
-    );
-  };
-
-  let filtersFromAPI = {};
-  try {
-    filtersFromAPI = JSON.parse(filtersJSON || "{}");
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      setFiltersForBrowseModels(defaultFilters);
-    }
-  }
-
-  const activeFilters = { ...defaultFilters, ...filtersFromAPI };
-  const modelsFiltered = _.reduce(
-    activeFilters,
-    (acc, apply, filterName) => {
-      return apply ? acc.filter(filters[filterName].filterFunction) : acc;
-    },
-    models,
+  const modelsFiltered = onlyShowVerifiedModels
+    ? models.filter(
+        (model: SearchResult) => model.moderated_status === "verified",
+      )
+    : models;
+  const modelsWithoutInstanceAnalyticsCollection = modelsFiltered.filter(
+    (model: SearchResult) => !isInstanceAnalyticsCollection(model.collection),
   );
-  const groupsOfModels = groupModels(modelsFiltered, localeCode);
+
+  const groupsOfModels = groupModels(
+    modelsWithoutInstanceAnalyticsCollection,
+    localeCode,
+  );
 
   if (error || isLoading) {
     return (
