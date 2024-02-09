@@ -9,15 +9,12 @@ import {
 
 import { Icon } from "metabase/ui";
 import type { IconName } from "metabase/ui";
-import { FieldInfoPopoverMLv2 } from "metabase/components/MetadataInfo/FieldInfoPopover";
+import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
 
 import * as Lib from "metabase-lib";
 
 import type { ColumnListItem, SegmentListItem } from "../types";
-import {
-  StyledAccordionList,
-  PopoverTarget,
-} from "./FilterColumnPicker.styled";
+import { StyledAccordionList } from "./FilterColumnPicker.styled";
 
 export interface FilterColumnPickerProps {
   query: Lib.Query;
@@ -152,14 +149,11 @@ function renderItemExtra(item: ColumnListItem | SegmentListItem) {
 
   const { query, stageIndex, column } = item;
   return (
-    <FieldInfoPopoverMLv2
+    <FieldInfoIcon
       query={query}
       stage={stageIndex}
       column={column}
-      delay={[0, 200]}
-      position="top-start"
-    >
-      <PopoverTarget name="info_filled" />
-    </FieldInfoPopoverMLv2>
+      position="right"
+    />
   );
 }
