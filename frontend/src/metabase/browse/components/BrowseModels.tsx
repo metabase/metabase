@@ -20,7 +20,6 @@ import NoResults from "assets/img/no_results.svg";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { color } from "metabase/lib/colors";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { getHasDismissedBrowseModelsBanner } from "metabase/browse/selectors";
 import { getCollectionName, groupModels } from "../utils";
@@ -86,6 +85,7 @@ export const BrowseModels = ({
             shadow="0"
             radius="0.25rem"
             role="complementary"
+            w="100%"
           >
             <Flex>
               <BannerModelIcon name="model" />
