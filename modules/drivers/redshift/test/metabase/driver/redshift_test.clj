@@ -493,28 +493,26 @@
       qp/process-query))
 
 (defn- getdate-vs-ss-ts-test-thunk-generator
-  ([]
-   (getdate-vs-ss-ts-test-thunk-generator :week -1))
-  ([unit value]
-   (fn []
-     ;; `with-redefs` forces use of `gettime()` in :relative-datetime transformation even for units gte or eq to :day.
-     ;; This was standard before PR #35995, now server side timestamps are used for that. This test confirms that
-     ;; server side generated timestamp (ie. new code path) results are equal to old code path results, that were not
-     ;; cacheable.
-     (let [honey {:select [[(with-redefs [redshift/use-server-side-relative-datetime? (constantly false)]
-                              (sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
-                           [(sql.qp/->honeysql :redshift [:relative-datetime value unit])]]}
-           sql (sql/format honey)
-           result (apply run-native-query sql)
-           [db-generated ss-generated] (-> result mt/rows first)]
-       (is (= db-generated ss-generated))))))
+  [unit value]
+  (fn []
+    ;; `with-redefs` forces use of `gettime()` in :relative-datetime transformation even for units gte or eq to :day.
+    ;; This was standard before PR #38604, now server side timestamps are used for that. This test confirms that
+    ;; server side generated timestamp (ie. new code path) results are equal to old code path results, that were not
+    ;; cacheable.
+    (let [honey {:select [[(with-redefs [redshift/use-server-side-relative-datetime? (constantly false)]
+                             (sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
+                          [(sql.qp/->honeysql :redshift [:relative-datetime value unit])]]}
+          sql (sql/format honey)
+          result (apply run-native-query sql)
+          [db-generated ss-generated] (-> result mt/rows first)]
+      (is (= db-generated ss-generated)))))
 
 (deftest server-side-relative-datetime-test
   (mt/test-driver
    :redshift
    (testing "Values of getdate() and server side generated timestamp are equal"
      (mt/with-metadata-provider (mt/id)
-       (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
+       (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :week -1)]
          (doseq [tz-setter [qp.test-util/do-with-report-timezone-id
                             test.tz/do-with-system-timezone-id
                             qp.test-util/do-with-database-timezone-id
@@ -537,7 +535,7 @@
          (mt/with-database-timezone-id "America/Los_Angeles"
            (mt/with-report-timezone-id "America/Los_Angeles"
              (mt/with-system-timezone-id "Europe/Prague"
-               (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
+               (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :week -1)]
                  (test-thunk))))))))))
 
 (deftest server-side-relative-datetime-various-units-test
