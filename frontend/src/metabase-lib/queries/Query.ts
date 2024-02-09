@@ -37,13 +37,6 @@ class Query {
   });
 
   /**
-   * Returns a "clean" version of this query with invalid parts removed
-   */
-  clean() {
-    return this;
-  }
-
-  /**
    * Convenience method for accessing the global metadata
    */
   metadata() {

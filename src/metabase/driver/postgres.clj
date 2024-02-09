@@ -74,7 +74,6 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
@@ -779,12 +778,16 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigserial :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigserial]
     ::upload/float                    [:float]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
+
+(defmethod driver/create-auto-pk-with-append-csv? :postgres
+  [driver]
+  (= driver :postgres))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]

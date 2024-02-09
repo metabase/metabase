@@ -30,7 +30,6 @@ export const AreaSeries = ({
       <AreaSeriesStacked
         series={multipleSeries}
         // Stacked charts work only for a single dataset with one dimension and left Y-axis
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         yScale={yScaleLeft!}
         xAccessor={xAccessor as unknown as StackedDatumAccessor}
       />

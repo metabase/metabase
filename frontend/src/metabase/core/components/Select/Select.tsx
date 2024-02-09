@@ -167,17 +167,14 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 
   itemIsSelected = (option: TOption) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const optionValue = this.props.optionValueFn!(option);
     return this._getValuesSet().has(optionValue);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   itemIsClickable = (option: TOption) => !this.props.optionDisabledFn!(option);
 
   handleChange = (option: TOption) => {
     const { name, multiple, onChange } = this.props;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const optionValue = this.props.optionValueFn!(option);
     let value: any;
     if (multiple) {
@@ -201,7 +198,6 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
       return null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const icon = this.props.optionIconFn!(item);
     if (icon) {
       return (

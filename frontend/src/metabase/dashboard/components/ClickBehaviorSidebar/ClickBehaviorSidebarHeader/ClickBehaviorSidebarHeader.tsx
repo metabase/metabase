@@ -3,7 +3,7 @@ import { t, jt } from "ttag";
 
 import { Icon } from "metabase/ui";
 
-import type { DashboardCard, DatasetColumn } from "metabase-types/api";
+import type { QuestionDashboardCard, DatasetColumn } from "metabase-types/api";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
@@ -22,7 +22,7 @@ function DefaultHeader({ children }: { children: React.ReactNode }) {
 }
 
 interface Props {
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   selectedColumn?: DatasetColumn | null;
   onUnsetColumn: () => void;
 }

@@ -2,7 +2,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import type { Location } from "history";
 
@@ -14,8 +14,7 @@ import ActionButton from "metabase/components/ActionButton";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/ui";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Icon, Menu, Tooltip } from "metabase/ui";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
@@ -32,12 +31,20 @@ import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
+  getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
+import type {
+  AddSectionOpts,
+  NewDashCardOpts,
+} from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
+  addSectionToDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
+import type { SectionLayout } from "metabase/dashboard/sections";
+import { layoutOptions } from "metabase/dashboard/sections";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
@@ -66,17 +73,16 @@ import type {
   State,
 } from "metabase-types/store";
 
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
+import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
+import { SectionLayoutPreview } from "./SectionLayoutPreview";
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
 } from "./DashboardHeader.styled";
-
-type NewDashCardOpts = {
-  dashId: DashboardId;
-  tabId: DashboardTabId | null;
-};
 
 interface OwnProps {
   dashboardId: DashboardId;
@@ -107,6 +113,7 @@ interface OwnProps {
   addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addSectionToDashboard: (opts: AddSectionOpts) => void;
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
@@ -147,6 +154,7 @@ interface StateProps {
   isNavBarOpen: boolean;
   isShowingDashboardInfoSidebar: boolean;
   isHomepageDashboard: boolean;
+  missingRequiredParameters: UiParameter[];
 }
 
 interface DispatchProps {
@@ -176,6 +184,7 @@ const mapStateToProps = (state: State, props: OwnProps): StateProps => {
     isHomepageDashboard:
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
+    missingRequiredParameters: getMissingRequiredParameters(state),
   };
 };
 
@@ -188,6 +197,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
   toggleSidebar,
   addActionToDashboard,
+  addSectionToDashboard,
   dismissAllUndo,
 };
 
@@ -226,6 +236,14 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
     this.props.addLinkDashCardToDashboard({
       dashId: this.props.dashboard.id,
       tabId: this.props.selectedTabId,
+    });
+  }
+
+  onAddSection(sectionLayout: SectionLayout) {
+    this.props.addSectionToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+      sectionLayout,
     });
   }
 
@@ -291,6 +309,12 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
   }
 
   getEditingButtons() {
+    const { missingRequiredParameters } = this.props;
+    const disabledSaveTooltip = getDisabledSaveButtonTooltip(
+      missingRequiredParameters,
+    );
+    const isSaveDisabled = missingRequiredParameters.length > 0;
+
     return [
       <Button
         key="cancel"
@@ -299,15 +323,21 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       >
         {t`Cancel`}
       </Button>,
-      <ActionButton
+      <DashboardButtonTooltip
+        disabled={!isSaveDisabled}
+        label={disabledSaveTooltip}
         key="save"
-        actionFn={() => this.onSave()}
-        className="Button Button--primary Button--small"
-        normalText={t`Save`}
-        activeText={t`Saving…`}
-        failedText={t`Save failed`}
-        successText={t`Saved`}
-      />,
+      >
+        <ActionButton
+          actionFn={() => this.onSave()}
+          className="Button Button--primary Button--small"
+          normalText={t`Save`}
+          activeText={t`Saving…`}
+          failedText={t`Save failed`}
+          successText={t`Saved`}
+          disabled={isSaveDisabled}
+        />
+      </DashboardButtonTooltip>,
     ];
   }
 
@@ -329,6 +359,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       closeSidebar,
       databases,
       collection,
+      setDashboardAttribute,
     } = this.props;
 
     const canEdit = dashboard.can_write;
@@ -353,36 +384,71 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           : t`Add questions`;
 
       buttons.push(
-        <Tooltip key="add-question-element" tooltip={addQuestionButtonHint}>
+        <DashboardButtonTooltip
+          key="add-question-element"
+          label={addQuestionButtonHint}
+        >
           <DashboardHeaderButton
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             aria-label={t`Add questions`}
           />
-        </Tooltip>,
+        </DashboardButtonTooltip>,
       );
 
       // Text/Headers
       buttons.push(
-        <Tooltip
+        <DashboardButtonTooltip
           key="dashboard-add-heading-or-text-button"
-          tooltip={t`Add a heading or text`}
+          label={t`Add a heading or text`}
         >
           <TextOptionsButton
             onAddMarkdown={() => this.onAddMarkdownBox()}
             onAddHeading={() => this.onAddHeading()}
           />
-        </Tooltip>,
+        </DashboardButtonTooltip>,
       );
 
       // Add link card button
       buttons.push(
-        <Tooltip key="add-link-card" tooltip={t`Add link card`}>
+        <DashboardButtonTooltip key="add-link-card" label={t`Add link card`}>
           <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
-        </Tooltip>,
+        </DashboardButtonTooltip>,
+      );
+
+      buttons.push(
+        <Menu key="add-section" position="bottom-end">
+          <Menu.Target>
+            <span>
+              <DashboardButtonTooltip label={t`Add section`}>
+                <DashboardHeaderButton aria-label={t`Add section`}>
+                  <Icon name="table_spaced" size={18} />
+                </DashboardHeaderButton>
+              </DashboardButtonTooltip>
+            </span>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {layoutOptions.map(layout => (
+              <Tooltip
+                key={layout.id}
+                label={<SectionLayoutPreview layout={layout} />}
+                position="left"
+              >
+                <span>
+                  <Menu.Item
+                    onClick={() => this.onAddSection(layout)}
+                    fw="bold"
+                  >
+                    {layout.label}
+                  </Menu.Item>
+                </span>
+              </Tooltip>
+            ))}
+          </Menu.Dropdown>
+        </Menu>,
       );
 
       const {
@@ -407,7 +473,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             }
           >
             <div>
-              <Tooltip tooltip={t`Add a filter`}>
+              <DashboardButtonTooltip label={t`Add a filter`}>
                 <DashboardHeaderButton
                   key="parameters"
                   onClick={showAddParameterPopover}
@@ -415,7 +481,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
                 >
                   <Icon name="filter" />
                 </DashboardHeaderButton>
-              </Tooltip>
+              </DashboardButtonTooltip>
             </div>
           </TippyPopover>
         </span>,
@@ -425,17 +491,29 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         buttons.push(
           <Fragment key="add-action-element">
             <DashboardHeaderActionDivider />
-            <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+            <DashboardButtonTooltip
+              key="add-action-button"
+              label={t`Add action button`}
+            >
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
                 aria-label={t`Add action`}
               >
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>
-            </Tooltip>
+            </DashboardButtonTooltip>
           </Fragment>,
         );
       }
+
+      // Extra Buttons Menu
+      buttons.push(
+        <ExtraEditButtonsMenu
+          key="extra-options-button"
+          setDashboardAttribute={setDashboardAttribute}
+          dashboard={dashboard}
+        />,
+      );
 
       extraButtons.push({
         title: t`Revision history`,
@@ -457,7 +535,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
-        <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
+        <DashboardButtonTooltip key="edit-dashboard" label={t`Edit dashboard`}>
           <DashboardHeaderButton
             visibleOnSmallScreen={false}
             key="edit"
@@ -465,7 +543,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             icon="pencil"
             onClick={() => this.handleEdit(dashboard)}
           />
-        </Tooltip>,
+        </DashboardButtonTooltip>,
       );
     }
 
@@ -526,7 +604,10 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
+          <DashboardButtonTooltip
+            key="dashboard-info-button"
+            label={t`More info`}
+          >
             <DashboardHeaderButton
               icon="info"
               isActive={isShowingDashboardInfoSidebar}
@@ -536,7 +617,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
                   : setSidebar({ name: SIDEBAR_NAME.info })
               }
             />
-          </Tooltip>,
+          </DashboardButtonTooltip>,
         ].filter(Boolean),
       );
 
@@ -626,6 +707,24 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       </>
     );
   }
+}
+
+function getDisabledSaveButtonTooltip(
+  missingRequiredParams: UiParameter[],
+): string {
+  if (!missingRequiredParams.length) {
+    return "";
+  }
+
+  const names = missingRequiredParams
+    .map(param => `"${param.name}"`)
+    .join(", ");
+
+  return ngettext(
+    msgid`The ${names} parameter requires a default value but none was provided.`,
+    `The ${names} parameters require default values but none were provided.`,
+    missingRequiredParams.length,
+  );
 }
 
 export const DashboardHeader = _.compose(

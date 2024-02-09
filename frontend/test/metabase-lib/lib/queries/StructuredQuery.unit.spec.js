@@ -533,15 +533,6 @@ describe("StructuredQuery", () => {
         );
       });
     });
-    describe("hasValidBreakout", () => {
-      it("should return false if there are no breakouts", () => {
-        expect(query.hasValidBreakout()).toBe(false);
-      });
-      it("should return true if there is at least one breakout", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        expect(query.breakout(ordersProductId).hasValidBreakout()).toBe(true);
-      });
-    });
 
     it("excludes breakout that has the same base dimension as what is already used", () => {
       const breakout = [

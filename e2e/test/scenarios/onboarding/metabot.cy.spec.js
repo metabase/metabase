@@ -27,7 +27,7 @@ const MODEL_DETAILS = {
   query: {
     "source-table": PRODUCTS_ID,
   },
-  dataset: true,
+  type: "model",
 };
 
 const PROMPT_RESPONSE = {

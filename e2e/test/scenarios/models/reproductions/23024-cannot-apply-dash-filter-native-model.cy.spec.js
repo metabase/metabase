@@ -25,7 +25,7 @@ describe("issue 23024", () => {
           query: `select *
                   from products limit 5`,
         },
-        dataset: true,
+        type: "model",
       },
       { wrapId: true, idAlias: "modelId" },
     );
