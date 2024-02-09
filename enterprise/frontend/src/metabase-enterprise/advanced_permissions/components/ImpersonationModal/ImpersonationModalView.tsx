@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import * as Yup from "yup";
 import FormSelect from "metabase/core/components/FormSelect";
 import { Form, FormProvider } from "metabase/forms";
@@ -8,6 +8,7 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Errors from "metabase/lib/errors";
 import type { UserAttribute } from "metabase-types/api";
+import { BoldCode } from "metabase/components/Code";
 import Alert from "metabase/core/components/Alert";
 import FormFooter from "metabase/core/components/FormFooter";
 import Button from "metabase/core/components/Button";
@@ -81,6 +82,34 @@ export const ImpersonationModalView = ({
     ? t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
     : t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
+  const modalExplanation = impersonationUsesUsers
+    ? jt`For example, you can add a user attribute called ${(
+        <BoldCode key="1" size={13}>
+          db_user
+        </BoldCode>
+      )} to people in this group. Whatever value you assign to this attribute (manually or via SSO) would be the database user Metabase would impersonate whenever that person queried your database. If the person's ${(
+        <BoldCode key="2" size={13}>
+          db_user
+        </BoldCode>
+      )} was set to ${(
+        <BoldCode key="3" size={13}>{t`Sales`}</BoldCode>
+      )}, Metabase would query the data as if it had the same privileges as the database user called ${(
+        <BoldCode key="4" size={13}>{t`Sales`}</BoldCode>
+      )}.`
+    : jt`For example, you can add a user attribute called ${(
+        <BoldCode key="1" size={13}>
+          db_role
+        </BoldCode>
+      )} to people in this group. Whatever value you assign to this attribute (manually or via SSO) would be the database user Metabase would impersonate whenever that person queried your database. If the person's ${(
+        <BoldCode key="2" size={13}>
+          db_role
+        </BoldCode>
+      )} was set to ${(
+        <BoldCode key="3" size={13}>{t`Sales`}</BoldCode>
+      )}, Metabase would query the data as if it had the same privileges as the database role called ${(
+        <BoldCode key="4" size={13}>{t`Sales`}</BoldCode>
+      )}.`;
+
   return (
     <ImpersonationModalViewRoot>
       <h2>{modalTitle}</h2>
@@ -92,7 +121,7 @@ export const ImpersonationModalView = ({
           href={MetabaseSettings.docsUrl("permissions/data")}
         >{t`Learn More`}</ExternalLink>
       </ImpersonationDescription>
-
+      <ImpersonationDescription>{modalExplanation}</ImpersonationDescription>
       {roleRequired ? (
         <>
           <Alert icon="warning" variant="warning">
