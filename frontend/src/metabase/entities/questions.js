@@ -18,7 +18,7 @@ import {
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions";
 
-import { PLUGIN_MODERATION, PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import forms from "./questions/forms";
@@ -161,7 +161,6 @@ export function getIcon(question) {
     return {
       name: type.icon,
       color: type.color ? color(type.color) : undefined,
-      tooltip: type.tooltips?.[tooltip],
     };
   }
 
@@ -172,12 +171,9 @@ export function getIcon(question) {
   const visualization = require("metabase/visualizations").default.get(
     question.display,
   );
-  if (visualization) {
-    return {
-      name: visualization?.iconName ?? "beaker",
-    };
-  }
-  return { name: "question" };
+  return {
+    name: visualization?.iconName ?? "beaker",
+  };
 }
 
 export default Questions;
