@@ -42,3 +42,4 @@ serdes/meta:
   label: last_login_date
   model: Card
 metabase_version: null
+type: question

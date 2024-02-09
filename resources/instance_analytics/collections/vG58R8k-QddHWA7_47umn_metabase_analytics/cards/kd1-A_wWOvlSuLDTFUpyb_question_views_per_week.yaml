@@ -86,3 +86,4 @@ serdes/meta:
   label: question_views_per_week
   model: Card
 metabase_version: null
+type: question
