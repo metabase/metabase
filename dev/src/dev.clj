@@ -329,6 +329,10 @@
   [form]
   (hashp/p* form))
 
+(defn- tests-in-var-ns [test-var]
+  (->> test-var meta :ns ns-interns vals
+       (filter (comp :test meta))))
+
 (defn find-root-test-failure!
   "Sometimes tests fail due to another test not cleaning up after itself properly (e.g. leaving permissions in a dirty
   state). This is a common cause of tests failing in CI, or when run via `find-and-run-tests`, but not when run alone.
@@ -339,13 +343,16 @@
   When the passed test starts failing, it throws an exception notifying you of the test that caused it to start
   failing. At that point, you can start investigating what pleasant surprises that test is leaving behind in the
   database."
-  [failing-test-var]
+  [failing-test-var & {:keys [scope] :or {scope :same-ns}}]
   (let [failed? (fn []
                   (not= [0 0] ((juxt :fail :error) (clojure.test/run-test-var failing-test-var))))]
     (when (failed?)
       (throw (ex-info "Test is already failing! Better go fix it." {:failed-test failing-test-var})))
-    (doseq [test (metabase.test-runner/find-tests)]
-      (clojure.test/run-test-var test)
-      (when (failed?)
-        (throw (ex-info (format "Test failed after running: `%s`" test)
-                        {:test test}))))))
+    (let [tests (case scope
+                  :same-ns (tests-in-var-ns failing-test-var)
+                  :full-suite (metabase.test-runner/find-tests))]
+      (doseq [test tests]
+        (clojure.test/run-test-var test)
+        (when (failed?)
+          (throw (ex-info (format "Test failed after running: `%s`" test)
+                          {:test test})))))))
