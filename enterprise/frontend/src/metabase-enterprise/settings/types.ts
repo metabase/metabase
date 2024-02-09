@@ -13,7 +13,6 @@ export interface EnterpriseSettings extends Settings {
   "application-colors"?: Record<string, string>;
   "application-logo-url"?: string;
   "landing-page"?: string;
-  "only-show-verified-models-in-browse-data": boolean;
   /**
    * @deprecated
    */
