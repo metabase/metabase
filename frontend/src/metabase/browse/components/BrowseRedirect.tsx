@@ -37,8 +37,11 @@ export const BrowseRedirect = () => {
             dispatch(replace("/browse/databases"));
           }
         }
+        if (!error && !isLoading) {
+          dispatch(replace("/browse/models"));
+        }
     }
-  }, [models, defaultTab, dispatch]);
+  }, [models, defaultTab, dispatch, error, isLoading]);
 
   if (error || isLoading) {
     return (

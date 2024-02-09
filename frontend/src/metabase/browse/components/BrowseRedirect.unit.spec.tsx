@@ -1,18 +1,9 @@
 import { replace } from "react-router-redux";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import {
-  setupPropertiesEndpoints,
-  setupSearchEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
-import type { SearchResult, Settings } from "metabase-types/api";
-import {
-  createMockModelResult,
-  createMockSettingDefinition,
-  createMockSettings,
-} from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
-import { mockSettings } from "__support__/settings";
+import { setupSearchEndpoints } from "__support__/server-mocks";
+import type { SearchResult } from "metabase-types/api";
+import { createMockModelResult } from "metabase-types/api/mocks";
+import { mockLocalStorageGlobally } from "__support__/utils";
 import { BrowseRedirect } from "./BrowseRedirect";
 
 const mockModels: SearchResult[] = [
@@ -30,24 +21,29 @@ const mockModels: SearchResult[] = [
 
 const setup = ({
   models,
-  defaultTab,
+  defaultTab = null,
 }: {
   models: SearchResult[];
-  defaultTab: Settings["default-browse-tab"];
+  defaultTab: string | null;
 }) => {
   setupSearchEndpoints(models);
-  setupPropertiesEndpoints(createMockSettings());
-  setupSettingsEndpoints([createMockSettingDefinition()]);
-  return renderWithProviders(<BrowseRedirect />, {
-    storeInitialState: createMockState({
-      settings: mockSettings({
-        "default-browse-tab": defaultTab,
-      }),
-    }),
-  });
+  if (defaultTab === null) {
+    localStorage.removeItem("defaultBrowseTab");
+  } else {
+    localStorage.setItem("defaultBrowseTab", defaultTab);
+  }
+  return renderWithProviders(<BrowseRedirect />);
 };
 
 describe("BrowseRedirect", () => {
+  let realLocalStorage: Storage;
+  beforeEach(() => {
+    realLocalStorage = mockLocalStorageGlobally().realLocalStorage;
+  });
+  afterEach(() => {
+    global.localStorage = realLocalStorage;
+  });
+
   it("redirects to /browse/databases if there are no models and no saved setting", async () => {
     const { store } = setup({ models: [], defaultTab: null });
     const mockDispatch = jest.spyOn(store, "dispatch");
@@ -63,7 +59,7 @@ describe("BrowseRedirect", () => {
     });
   });
 
-  it("redirects to /browse/models if the user's default-browse-tab setting is 'models'", async () => {
+  it("redirects to /browse/models if the user's defaultBrowseTab setting is 'models'", async () => {
     const { store, rerender } = setup({
       models: [],
       defaultTab: "models",
@@ -74,7 +70,7 @@ describe("BrowseRedirect", () => {
       expect(mockDispatch).toHaveBeenCalledWith(replace("/browse/models"));
     });
   });
-  it("redirects to /browse/databases if the user's default-browse-tab setting is 'databases'", async () => {
+  it("redirects to /browse/databases if the user's defaultBrowseBab setting is 'databases'", async () => {
     const { store, rerender } = setup({
       models: mockModels,
       defaultTab: "databases",
@@ -85,7 +81,7 @@ describe("BrowseRedirect", () => {
       expect(mockDispatch).toHaveBeenCalledWith(replace("/browse/databases"));
     });
   });
-  it("redirects to /browse/models if the user has an invalid default-browse-tab setting, and some models exist", async () => {
+  it("redirects to /browse/models if the user has an invalid defaultBrowseTab setting, and some models exist", async () => {
     const { store, rerender } = setup({
       models: mockModels,
       defaultTab: "this is an invalid value",
