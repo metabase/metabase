@@ -87,9 +87,7 @@ export const BrowseModels = ({
             role="complementary"
           >
             <Flex>
-              <BannerModelIcon>
-                <Icon name="model" />
-              </BannerModelIcon>
+              <BannerModelIcon name="model" />
               <Text size="md" lh="1rem" mr="1rem">
                 {t`Models help curate data to make it easier to find answers to questions all in one place.`}
               </Text>
@@ -103,12 +101,13 @@ export const BrowseModels = ({
             </Flex>
           </Paper>
         )}
-        <GridContainer role="grid">
-          {groupsOfModels.map(groupOfModels => (
+        <GridContainer role="grid" mt={shouldShowBanner ? "1rem" : "0"}>
+          {groupsOfModels.map((groupOfModels, index) => (
             <ModelGroup
               models={groupOfModels}
               key={`modelgroup-${groupOfModels[0].collection.id}`}
               localeCode={localeCode}
+              fixPaddingUnderBanner={index === 0 && shouldShowBanner}
             />
           ))}
         </GridContainer>
@@ -134,9 +133,11 @@ export const BrowseModels = ({
 const ModelGroup = ({
   models,
   localeCode,
+  fixPaddingUnderBanner,
 }: {
   models: SearchResult[];
   localeCode: string | undefined;
+  fixPaddingUnderBanner: boolean;
 }) => {
   const sortedModels = models.sort((a, b) => {
     if (!a.name && b.name) {
@@ -164,6 +165,7 @@ const ModelGroup = ({
         collection={collection}
         key={collectionHtmlId}
         id={collectionHtmlId}
+        fixPaddingUnderBanner={fixPaddingUnderBanner}
       />
       {sortedModels.map(model => (
         <ModelCell
@@ -212,12 +214,20 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
 const CollectionHeader = ({
   collection,
   id,
+  fixPaddingUnderBanner,
 }: {
   collection: CollectionEssentials;
   id: string;
+  fixPaddingUnderBanner: boolean;
 }) => {
   return (
-    <CollectionHeaderContainer id={id} role="heading">
+    <CollectionHeaderContainer
+      id={id}
+      role="heading"
+      pt={fixPaddingUnderBanner ? "0" : "1rem"}
+      mr="1rem"
+      align="center"
+    >
       <CollectionHeaderGroup grow noWrap>
         <CollectionHeaderLink to={Urls.collection(collection)}>
           <Group spacing=".25rem">
