@@ -302,17 +302,17 @@
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
     (mt/with-temp-copy-of-db
       ;; TODO: re-evaluate this test; the error is being thrown at the API-layer and not in the QP
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-      (mt/with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-        (mt/with-temp [Collection collection {}
-                       Card       card {:collection_id (u/the-id collection)
-                                        :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]
-          ;; Since the collection derives from the root collection this grant shouldn't really be needed, but better to
-          ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
-          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :post 403 "dataset" (assoc (mt/mbql-query venues {:limit 1})
-                                                                         :info {:card-id (u/the-id card)})))))))))
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
+          (mt/with-temp [Collection collection {}
+                         Card       card {:collection_id (u/the-id collection)
+                                          :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]
+            ;; Since the collection derives from the root collection this grant shouldn't really be needed, but better to
+            ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "dataset" (assoc (mt/mbql-query venues {:limit 1})
+                                                                           :info {:card-id (u/the-id card)}))))))))))
 
 (deftest e2e-ignore-user-supplied-perms-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/perms` in the query"
