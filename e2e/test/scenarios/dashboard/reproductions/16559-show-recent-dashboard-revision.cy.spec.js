@@ -17,6 +17,11 @@ const dashboardDetails = {
 
 describe("issue 16559", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/revision*").as("revisionHistory");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+
     restore();
     cy.signInAsAdmin();
 
@@ -28,6 +33,8 @@ describe("issue 16559", () => {
   });
 
   it("should always show the most recent revision (metabase#16559)", () => {
+    cy.wait("@getDashboard");
+
     toggleDashboardInfoSidebar();
 
     cy.log("Dashboard creation");
@@ -39,10 +46,18 @@ describe("issue 16559", () => {
 
     cy.log("Edit dashboard");
     editDashboard();
+    cy.wait("@revisionHistory");
+
     openQuestionsSidebar();
     sidebar().findByText("Orders, Count").click();
+    cy.wait("@cardQuery");
+
     cy.button("Save").click();
+    cy.wait(["@saveDashboard", "@getDashboard"]);
+
     toggleDashboardInfoSidebar();
+    cy.wait("@revisionHistory");
+
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
@@ -51,6 +66,10 @@ describe("issue 16559", () => {
 
     cy.log("Change dashboard name");
     cy.findByTestId("dashboard-name-heading").click().type(" modified").blur();
+    cy.wait(["@saveDashboard", "@getDashboard"]);
+
+    toggleDashboardInfoSidebar();
+    cy.wait("@revisionHistory");
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
@@ -64,6 +83,9 @@ describe("issue 16559", () => {
       .click()
       .type("16559 description")
       .blur();
+    cy.wait(["@saveDashboard", "@getDashboard"]);
+
+    cy.wait("@revisionHistory");
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
@@ -72,6 +94,9 @@ describe("issue 16559", () => {
 
     cy.log("Toggle auto-apply filters");
     rightSidebar().findByText("Auto-apply filters").click();
+    cy.wait(["@saveDashboard", "@getDashboard"]);
+
+    cy.wait("@revisionHistory");
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
@@ -85,6 +110,9 @@ describe("issue 16559", () => {
       cy.findByText("First collection").click();
       cy.button("Move").click();
     });
+    cy.wait(["@saveDashboard", "@getDashboard"]);
+
+    cy.wait("@revisionHistory");
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
