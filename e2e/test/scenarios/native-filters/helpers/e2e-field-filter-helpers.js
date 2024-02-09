@@ -207,3 +207,8 @@ export function clearDefaultFilterValue() {
     .find(".Icon-close")
     .click();
 }
+
+export function selectDefaultValueFromPopover(value) {
+  cy.findByText("Default value").next().click();
+  selectFilterValueFromList(value);
+}

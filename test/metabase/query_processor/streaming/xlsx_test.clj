@@ -616,6 +616,23 @@
     (is (= [:DIV0]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[##-Inf]]))))))
 
+(deftest geographic-coordinates-test
+  (testing "Geograpic coordinates are correctly transformed"
+    (is (= ["12.34560000° E"
+            "12.34560000° W"
+            "12.34560000° N"
+            "12.34560000° S"
+            "0.00000000° E"
+            "0.00000000° N"]
+           (second (xlsx-export [{:name "Lon+" :semantic_type :type/Longitude}
+                                 {:name "Lon-" :semantic_type :type/Longitude}
+                                 {:name "Lat+" :semantic_type :type/Latitude}
+                                 {:name "Lat-" :semantic_type :type/Latitude}
+                                 {:name "Lon0" :semantic_type :type/Longitude}
+                                 {:name "Lat0" :semantic_type :type/Latitude}]
+                                {}
+                                [[12.3456 -12.3456 12.3456 -12.3456 0 0]]))))))
+
 (defrecord ^:private SampleNastyClass [^String v])
 
 (json.generate/add-encoder

@@ -87,8 +87,10 @@
   (-> database :dbms_version :flavor (= "MariaDB")))
 
 (defmethod driver/database-supports? [:mysql :table-privileges]
-  [driver _feat db]
-  (and (= driver :mysql) (not (mariadb? db))))
+  [_driver _feat _db]
+  ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
+  false
+  #_(and (= driver :mysql) (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -644,12 +646,14 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
     ::upload/float                    [:double]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:datetime]
     ::upload/offset-datetime          [:timestamp]))
+
+(defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
 (defmethod driver/table-name-length-limit :mysql
   [_driver]

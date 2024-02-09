@@ -28,7 +28,7 @@ describe("scenarios > model indexes", () => {
       {
         name: "Products Model",
         query: { "source-table": PRODUCTS_ID },
-        dataset: true,
+        type: "model",
       },
       { wrapId: true, idAlias: "modelId" },
     );
@@ -161,7 +161,7 @@ describe("scenarios > model indexes", () => {
       {
         name: "People Model",
         query: { "source-table": PEOPLE_ID },
-        dataset: true,
+        type: "model",
       },
       {
         wrapId: true,

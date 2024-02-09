@@ -338,7 +338,11 @@
    collection_id       [:maybe ms/PositiveInt]
    collection_position [:maybe ms/PositiveInt]
    dashboard_id        [:maybe ms/PositiveInt]}
-  (check-card-read-permissions cards)
+  ;; Check permissions on cards that exist. Placeholders don't matter.
+  (check-card-read-permissions
+    (remove (fn [{:keys [id display]}]
+              (and (nil? id)
+                   (= "placeholder" display))) cards))
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
