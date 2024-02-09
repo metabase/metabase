@@ -23,10 +23,10 @@ export interface State {
   embed: EmbedState;
   entities: EntitiesState;
   metabot: MetabotState;
-  qb: QueryBuilderState;
   parameters: ParametersState;
-  settings: SettingsState;
+  qb: QueryBuilderState;
   routing: RouterState;
+  settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
 }
