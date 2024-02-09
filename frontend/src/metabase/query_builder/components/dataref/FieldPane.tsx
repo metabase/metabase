@@ -22,6 +22,7 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
           field={field}
           timezone={field.table?.database?.timezone}
           showAllFieldValues
+          showFingerprintInfo
         />
       </PaneContent>
     </SidebarContent>
