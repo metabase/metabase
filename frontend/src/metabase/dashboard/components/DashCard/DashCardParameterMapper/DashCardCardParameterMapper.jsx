@@ -119,8 +119,8 @@ export function DashCardCardParameterMapper({
         )
       : undefined;
   } else {
-    const columns = Lib.visibleColumns(question.query(), -1);
     const stageIndex = -1;
+    const columns = Lib.visibleColumns(question.query(), stageIndex);
 
     selectedMappingOption = target
       ? mappingOptions.find(mappingOption => {
