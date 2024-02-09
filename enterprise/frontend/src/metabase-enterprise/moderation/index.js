@@ -31,7 +31,7 @@ if (hasPremiumFeature("content_verification")) {
     getQuestionIcon: question => {
       return (question.model === "dataset" || question.dataset) &&
         question.moderated_status === "verified"
-        ? { name: "model_with_badge" }
+        ? { icon: "model_with_badge" }
         : null;
     },
     getModerationTimelineEvents,

@@ -114,13 +114,16 @@ export const BrowseApp = ({
             </Flex>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
-            <BrowseTabContent
-              tab={tab}
-              modelsResult={modelsResult}
-              databasesResult={databasesResult}
-            >
-              {children}
-            </BrowseTabContent>
+            <Flex>
+              <BrowseTabContent
+                tab={tab}
+                modelsResult={modelsResult}
+                databasesResult={databasesResult}
+                onlyShowVerifiedModels={onlyShowVerifiedModels}
+              >
+                {children}
+              </BrowseTabContent>
+            </Flex>
           </BrowseTabsPanel>
         </BrowseTabs>
       </BrowseContainer>
