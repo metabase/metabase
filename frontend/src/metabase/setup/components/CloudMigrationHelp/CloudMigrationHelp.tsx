@@ -2,14 +2,13 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import HelpCard from "metabase/components/HelpCard";
-import { COMPLETED_STEP } from "../../constants";
 import { getIsHosted, getIsStepActive } from "../../selectors";
 import { SetupCardContainer } from "../SetupCardContainer";
 
 export const CloudMigrationHelp = () => {
   const isHosted = useSelector(getIsHosted);
   const isStepActive = useSelector(state =>
-    getIsStepActive(state, COMPLETED_STEP),
+    getIsStepActive(state, "completed"),
   );
   const isVisible = isHosted && isStepActive;
 
