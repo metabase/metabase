@@ -10,6 +10,7 @@ export const BucketPickerPopover = styled(BaseBucketPickerPopover)`
     border-color: transparent;
     visibility: hidden;
     border-left-width: 1px;
+    font-size: 0.8em;
   }
 `;
 
@@ -26,9 +27,8 @@ export const TitleContainer = styled.div`
   display: flex;
   align-items: center;
   margin-left: 0.5rem;
-  padding: 0.5rem 0;
+  padding: 0;
   flex-grow: 1;
-
   position: relative;
 `;
 
@@ -38,6 +38,7 @@ export const RemoveButton = styled(Button)`
 
   opacity: 0.6;
   transition: all 100ms;
+  margin-left: 0.75em;
 
   &:hover {
     color: ${color("white")};
@@ -76,6 +77,14 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
+export const InfoIcon = styled(Icon)`
+  position: absolute;
+  right: 0;
+  opacity: 0;
+  padding: 0.7em 0.5em;
+  padding-right: 0.75em;
+`;
+
 const selectedStyle = css`
   ${Content},
   ${ColumnTypeIcon} {
@@ -94,9 +103,17 @@ const selectedStyle = css`
     color: ${color("white")};
     border-left-width: 1px;
   }
+
+  ${InfoIcon} {
+    color: ${color("white")};
+  }
 `;
 
 const unselectedStyle = css`
+  ${InfoIcon} {
+    color: ${color("text-light")};
+  }
+
   &:hover {
     ${Content},
     ${ColumnTypeIcon},
@@ -131,15 +148,11 @@ export const Root = styled.li<{ isSelected: boolean }>`
   min-height: 34px;
 
   ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
-`;
 
-export const InfoIcon = styled(Icon)`
-  position: absolute;
-  right: 0;
-  opacity: 0;
-  padding: 0.7em 0.5em;
-
-  ${Root}:hover & {
-    opacity: 1;
+  &:hover ${InfoIcon} {
+    opacity: 0.5;
+    &:hover {
+      opacity: 1;
+    }
   }
 `;

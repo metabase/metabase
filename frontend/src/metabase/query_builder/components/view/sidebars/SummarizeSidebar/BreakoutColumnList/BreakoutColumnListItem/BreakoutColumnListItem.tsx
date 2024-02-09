@@ -77,6 +77,17 @@ export function BreakoutColumnListItem({
   );
 
   const displayName = isPinned ? item.longDisplayName : item.displayName;
+  const info = (
+    <FieldInfoPopoverMLv2
+      query={query}
+      column={item.column}
+      stage={STAGE_INDEX}
+      delay={[0, 100]}
+      position="top-end"
+    >
+      <InfoIcon name="info_filled" />
+    </FieldInfoPopoverMLv2>
+  );
 
   return (
     <Root
@@ -89,17 +100,11 @@ export function BreakoutColumnListItem({
         <TitleContainer>
           <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
-          <FieldInfoPopoverMLv2
-            query={query}
-            column={item.column}
-            state={STAGE_INDEX}
-            delay={[0, 100]}
-            position="top-end"
-          >
-            <InfoIcon name="info_filled" />
-          </FieldInfoPopoverMLv2>
+          {renderBucketPicker()}
+
+          {info}
         </TitleContainer>
-        {renderBucketPicker()}
+
         {isSelected && (
           <RemoveButton
             onClick={handleRemoveColumn}
