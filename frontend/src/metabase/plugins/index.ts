@@ -222,6 +222,7 @@ export const PLUGIN_MODERATION = {
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
+  getQuestionIcon: PluginPlaceholder,
   getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
     undefined,
   getModerationTimelineEvents: (
