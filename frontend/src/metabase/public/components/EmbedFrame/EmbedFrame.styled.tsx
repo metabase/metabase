@@ -5,7 +5,9 @@ import {
   breakpointMinSmall,
   breakpointMinLarge,
   breakpointMinMedium,
+  space,
 } from "metabase/styled-components/theme";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 export const Root = styled.div<{
   hasScroll: boolean;
@@ -89,16 +91,9 @@ const footerVariantStyles = {
   `,
 };
 
-export const ParametersWidgetContainer = styled.div`
-  padding: 0.5rem;
-
-  ${breakpointMinSmall} {
-    padding: 0.5rem 1rem 1rem 1rem;
-  }
-
-  ${breakpointMinLarge} {
-    padding: 0.5rem 1.5rem 1.5rem 1.5rem;
-  }
+export const ParametersWidgetContainer = styled(FullWidthContainer)`
+  padding-top: ${space(1)};
+  padding-bottom: ${space(1)};
 `;
 
 export const Footer = styled.footer<{ variant: FooterVariant }>`

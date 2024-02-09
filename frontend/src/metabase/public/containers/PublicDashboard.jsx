@@ -38,7 +38,6 @@ import EmbedFrame from "../components/EmbedFrame";
 
 import {
   DashboardContainer,
-  DashboardGridContainer,
   StyledDashboardTabs,
 } from "./PublicDashboard.styled";
 
@@ -191,16 +190,14 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardGridContainer>
-                <DashboardGridConnected
-                  {...this.props}
-                  isPublic
-                  className="spread"
-                  mode={PublicMode}
-                  metadata={this.props.metadata}
-                  navigateToNewCardFromDashboard={() => {}}
-                />
-              </DashboardGridContainer>
+              <DashboardGridConnected
+                {...this.props}
+                isPublic
+                className="spread"
+                mode={PublicMode}
+                metadata={this.props.metadata}
+                navigateToNewCardFromDashboard={() => {}}
+              />
             </DashboardContainer>
           )}
         </LoadingAndErrorWrapper>
