@@ -22,6 +22,7 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
+  StyledFixedWidthContainer,
 } from "../../components/DashboardHeaderView.styled";
 import { DashboardTabs } from "../../components/DashboardTabs/DashboardTabs";
 
@@ -112,52 +113,63 @@ export function DashboardHeaderComponent({
       )}
       <div>
         <HeaderRow
-          isNavBarOpen={isNavBarOpen}
           className={cx("QueryBuilder-section", headerClassName)}
           data-testid="dashboard-header"
           ref={header}
         >
-          <HeaderContent
-            role="heading"
-            hasSubHeader
-            showSubHeader={showSubHeader}
+          <StyledFixedWidthContainer
+            data-testid="fixed-width-dashboard-header"
+            isNavBarOpen={isNavBarOpen}
+            isFixedWidth={dashboard?.width === "fixed"}
           >
-            <HeaderCaptionContainer>
-              <HeaderCaption
-                key={dashboard.name}
-                initialValue={dashboard.name}
-                placeholder={t`Add title`}
-                isDisabled={!dashboard.can_write}
-                data-testid="dashboard-name-heading"
-                onChange={handleUpdateCaption}
-              />
-              <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                color={color("brand")}
-                collection={collection}
-                entity="dashboard"
-              />
-            </HeaderCaptionContainer>
-            <HeaderBadges>
-              {isLastEditInfoVisible && (
-                <HeaderLastEditInfoLabel
-                  item={dashboard}
-                  onClick={onLastEditInfoClick}
-                  className=""
+            <HeaderContent
+              role="heading"
+              hasSubHeader
+              showSubHeader={showSubHeader}
+            >
+              <HeaderCaptionContainer>
+                <HeaderCaption
+                  key={dashboard.name}
+                  initialValue={dashboard.name}
+                  placeholder={t`Add title`}
+                  isDisabled={!dashboard.can_write}
+                  data-testid="dashboard-name-heading"
+                  onChange={handleUpdateCaption}
                 />
-              )}
-            </HeaderBadges>
-          </HeaderContent>
+                <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                  color={color("brand")}
+                  collection={collection}
+                  entity="dashboard"
+                />
+              </HeaderCaptionContainer>
+              <HeaderBadges>
+                {isLastEditInfoVisible && (
+                  <HeaderLastEditInfoLabel
+                    item={dashboard}
+                    onClick={onLastEditInfoClick}
+                    className=""
+                  />
+                )}
+              </HeaderBadges>
+            </HeaderContent>
 
-          <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
-            {_headerButtons}
-          </HeaderButtonsContainer>
+            <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
+              {_headerButtons}
+            </HeaderButtonsContainer>
+          </StyledFixedWidthContainer>
         </HeaderRow>
-        <HeaderRow isNavBarOpen={isNavBarOpen}>
-          <DashboardTabs
-            dashboardId={dashboard.id}
-            location={location}
-            isEditing={isEditing}
-          />
+        <HeaderRow>
+          <StyledFixedWidthContainer
+            data-testid="fixed-width-dashboard-tabs"
+            isNavBarOpen={isNavBarOpen}
+            isFixedWidth={dashboard?.width === "fixed"}
+          >
+            <DashboardTabs
+              dashboardId={dashboard.id}
+              location={location}
+              isEditing={isEditing}
+            />
+          </StyledFixedWidthContainer>
         </HeaderRow>
       </div>
     </div>

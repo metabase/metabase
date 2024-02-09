@@ -11,13 +11,14 @@ import {
 } from "metabase/styled-components/theme";
 import EditableText from "metabase/core/components/EditableText";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
 }
 
-export const HeaderRow = styled(
-  FullWidthContainer,
+export const StyledFixedWidthContainer = styled(
+  FixedWidthContainer,
 )<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
@@ -34,6 +35,11 @@ export const HeaderRow = styled(
   ${breakpointMaxSmall} {
     flex-direction: column;
     align-items: baseline;
+  }
+`;
+
+export const HeaderRow = styled(FullWidthContainer)`
+  ${breakpointMaxSmall} {
     padding-left: 0;
     padding-right: 0;
   }
