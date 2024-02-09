@@ -523,10 +523,9 @@ describe("scenarios > dashboard", () => {
       },
     );
 
-    it("(in edit mode) should allow the creator to change the dashboard width to 'fixed' or 'full'", () => {
+    it("should allow the creator to change the dashboard width to 'fixed' or 'full'", () => {
       cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
         const cards = [
-          // the bottom card intentionally goes first to have unsorted cards coming from the BE
           getTextCardDetails({
             row: 1,
             size_x: 24,
@@ -547,17 +546,53 @@ describe("scenarios > dashboard", () => {
       });
 
       // new dashboards should default to 'fixed' width
+      cy.findByTestId("fixed-width-dashboard-header").should(
+        "have.css",
+        "max-width",
+        "1048px",
+      );
+      cy.findByTestId("fixed-width-dashboard-tabs").should(
+        "have.css",
+        "max-width",
+        "1048px",
+      );
+      cy.findByTestId("fixed-width-filters").should(
+        "have.css",
+        "max-width",
+        "1048px",
+      );
       cy.findByTestId("dashboard-grid").should(
         "have.css",
         "max-width",
         "1048px",
       );
 
-      // toggle full-width
       editDashboard();
+      cy.findByTestId("fixed-width-filters-edit-mode").should(
+        "have.css",
+        "max-width",
+        "1048px",
+      );
+
+      // toggle full-width
       cy.findByLabelText("Toggle width").click();
       popover().findByText("Full width").click();
 
+      cy.findByTestId("fixed-width-dashboard-header").should(
+        "not.have.css",
+        "max-width",
+        "1048px",
+      );
+      cy.findByTestId("fixed-width-dashboard-tabs").should(
+        "not.have.css",
+        "max-width",
+        "1048px",
+      );
+      cy.findByTestId("fixed-width-filters-edit-mode").should(
+        "not.have.css",
+        "max-width",
+        "1048px",
+      );
       cy.findByTestId("dashboard-grid").should(
         "not.have.css",
         "max-width",
@@ -568,6 +603,21 @@ describe("scenarios > dashboard", () => {
       saveDashboard();
       cy.reload();
 
+      cy.findByTestId("fixed-width-dashboard-header").should(
+        "not.have.css",
+        "max-width",
+        "1048px",
+      );
+      cy.findByTestId("fixed-width-dashboard-tabs").should(
+        "not.have.css",
+        "max-width",
+        "1048px",
+      );
+      cy.findByTestId("fixed-width-filters").should(
+        "not.have.css",
+        "max-width",
+        "1048px",
+      );
       cy.findByTestId("dashboard-grid").should(
         "not.have.css",
         "max-width",

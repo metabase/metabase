@@ -518,7 +518,7 @@ function DashboardInner(props: DashboardProps) {
                 >
                   <FixedWidthContainer
                     isFixedWidth={dashboard?.width === "fixed"}
-                    data-testid="fixed-width-filters"
+                    data-testid="fixed-width-filters-edit-mode"
                   >
                     {parametersWidget}
                   </FixedWidthContainer>
