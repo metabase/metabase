@@ -3,7 +3,6 @@ import { renderWithProviders, waitFor } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
 import { createMockModelResult } from "metabase-types/api/mocks";
-import { mockLocalStorageGlobally } from "__support__/utils";
 import { BrowseRedirect } from "./BrowseRedirect";
 
 const mockModels: SearchResult[] = [
@@ -36,14 +35,6 @@ const setup = ({
 };
 
 describe("BrowseRedirect", () => {
-  let realLocalStorage: Storage;
-  beforeEach(() => {
-    realLocalStorage = mockLocalStorageGlobally().realLocalStorage;
-  });
-  afterEach(() => {
-    global.localStorage = realLocalStorage;
-  });
-
   it("redirects to /browse/databases if there are no models and no saved setting", async () => {
     const { store } = setup({ models: [], defaultTab: null });
     const mockDispatch = jest.spyOn(store, "dispatch");
