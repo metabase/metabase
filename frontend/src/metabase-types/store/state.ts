@@ -1,3 +1,5 @@
+import type { RouterState } from "react-router-redux";
+
 import type { User } from "metabase-types/api";
 import type { AdminState } from "./admin";
 import type { AppState } from "./app";
@@ -24,6 +26,7 @@ export interface State {
   qb: QueryBuilderState;
   parameters: ParametersState;
   settings: SettingsState;
+  routing: RouterState;
   setup: SetupState;
   upload: FileUploadState;
 }
