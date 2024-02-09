@@ -56,21 +56,6 @@ export const BrowseApp = ({
     return <LoadingAndErrorWrapper error />;
   }
 
-  // If no children specified, use the tab id to determine what to show inside the tab
-  if (!children) {
-    if (tab === "models") {
-      children = (
-        <BrowseModels
-          modelsResult={modelsResult}
-          onlyShowVerifiedModels={onlyShowVerifiedModels}
-        />
-      );
-    }
-    if (tab === "databases") {
-      children = <BrowseDatabases databasesResult={databasesResult} />;
-    }
-  }
-
   return (
     <BrowseAppRoot data-testid="browse-app">
       <BrowseContainer>
