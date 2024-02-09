@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: Prepare JDK ${{ inputs.java-version }}
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
@@ -29,7 +29,7 @@ runs:
       run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
       shell: bash
     - name: Get M2 cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: |

@@ -1,1 +1,2 @@
-export { default } from "./AdminLayout";
+export * from "./AdminLayout.styled";
+export * from "./AdminLayout";

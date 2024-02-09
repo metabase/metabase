@@ -150,7 +150,9 @@
 (defn- validate [error-context schema value error-type]
   (when *enforce*
     (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)
+      (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
+                                                  [{:keys [value message]}]
+                                                  (str message ", got: " (pr-str value)))})
             details   (merge
                         {:type      error-type
                          :error     error
@@ -298,31 +300,11 @@
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
 (defn instrument-ns?
-  "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
+  "Returns true if mu.fn/fn and mu/defn in a namespace should be instrumented with malli schema validation."
   [namespace]
-  (let [lib-and-middleware [#"^metabase\.lib\..*"
-                            #"^metabase\.query-processor\.middleware\..*"]
-        matches?           (core/fn [namespace regexes]
-                             (let [n (-> namespace ns-name str)]
-                               (some #(re-matches % n) regexes)))
-        ;; empty but placeholder for any namespaces we want to never instrument (in prod)
-        ad-hoc             #{}
-        m                  (meta namespace)]
-    (cond (:instrument/always m)                  true
-          (:instrument/never m)                   false
-          (matches? namespace lib-and-middleware) false
-          (contains? ad-hoc (ns-name namespace))  false
-          :else                                   true)))
-
-(def ^:private ^:dynamic *skip-ns-decision-fn*
-  "Returns true to skip the emission of malli schema validation code in mu.fn/fn and mu/defn."
-  (core/fn skip-ns-decision-fn
-    [namespace]
-    (and config/is-prod?
-         (let [instrument? (instrument-ns? namespace)]
-           (when-not instrument?
-             (log/info "skipping instrumentation of var in " (ns-name namespace)))
-           (not instrument?)))))
+  (or (true? (:instrument/always (meta namespace)))
+      config/is-dev?
+      config/is-test?))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]].
@@ -378,8 +360,8 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
-        skip? (*skip-ns-decision-fn* *ns*)]
-    (if skip?
+        instrument? (instrument-ns? *ns*)]
+    (if-not instrument?
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))
                             ;; We want the quoted symbol of first fn-tail:

@@ -1,5 +1,6 @@
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "./test-helpers";
+import { checkNotNull } from "metabase/lib/types";
+import { createQuery, columnFinder, findTemporalBucket } from "./test-helpers";
 
 describe("breakout", () => {
   describe("add breakout", () => {
@@ -48,6 +49,48 @@ describe("breakout", () => {
       expect(
         Lib.displayInfo(roundtripQuery, 0, roundtripTaxColumn).breakoutPosition,
       ).toBe(0);
+    });
+
+    it("should note whether the temporal unit is for extraction in the displayInfo", () => {
+      const userBirthDate = findBreakoutableColumn("PEOPLE", "BIRTH_DATE");
+
+      // "month-of-year" is a temporal extraction, it returns an integer.
+      const monthOfYear = findTemporalBucket(
+        query,
+        userBirthDate,
+        "Month of year",
+      );
+      expect(monthOfYear).toBeTruthy();
+      const monthOfYearInfo = Lib.displayInfo(
+        query,
+        0,
+        checkNotNull(monthOfYear),
+      );
+      expect(monthOfYearInfo.isTemporalExtraction).toBe(true);
+
+      const userBirthDateByMonthOfYear = Lib.withTemporalBucket(
+        userBirthDate,
+        monthOfYear,
+      );
+      const byMonthOfYear = Lib.breakout(query, 0, userBirthDateByMonthOfYear);
+      const [breakoutByMonthOfYear] = Lib.breakouts(byMonthOfYear, 0);
+      expect(
+        Lib.displayInfo(byMonthOfYear, 0, breakoutByMonthOfYear)
+          .isTemporalExtraction,
+      ).toBe(true);
+
+      // "month" is a regular temporal bucket, which returns rounded datetimes.
+      const month = findTemporalBucket(query, userBirthDate, "Month");
+      expect(month).toBeTruthy();
+      const monthInfo = Lib.displayInfo(query, 0, checkNotNull(month));
+      expect(monthInfo.isTemporalExtraction).toBe(false);
+
+      const userBirthDateByMonth = Lib.withTemporalBucket(userBirthDate, month);
+      const byMonth = Lib.breakout(query, 0, userBirthDateByMonth);
+      const [breakoutByMonth] = Lib.breakouts(byMonth, 0);
+      expect(
+        Lib.displayInfo(byMonth, 0, breakoutByMonth).isTemporalExtraction,
+      ).toBe(false);
     });
   });
 

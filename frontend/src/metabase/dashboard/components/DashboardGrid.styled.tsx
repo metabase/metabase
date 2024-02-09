@@ -6,7 +6,7 @@ interface DashboardCardProps {
   isAnimationDisabled?: boolean;
 }
 
-export const DashboardCard = styled.div<DashboardCardProps>`
+export const DashboardCardContainer = styled.div<DashboardCardProps>`
   position: relative;
   z-index: 1;
 
@@ -62,4 +62,21 @@ export const DashboardCard = styled.div<DashboardCardProps>`
   .leaflet-container:hover .leaflet-control-container {
     opacity: 1;
   }
+`;
+
+export const FIXED_WIDTH = "1048px";
+export const FixedWidthContainer = styled.div<{
+  isFixedWidth: boolean;
+}>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 0 auto;
+
+  ${({ isFixedWidth }) =>
+    isFixedWidth &&
+    css`
+      max-width: ${FIXED_WIDTH};
+    `}
 `;

@@ -31,6 +31,7 @@
               :sso_source       :jwt
               :login_attributes user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user)
+        (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
 
 (def ^:private ^{:arglists '([])} jwt-attribute-email     (comp keyword sso-settings/jwt-attribute-email))

@@ -37,7 +37,7 @@
              (embed.settings/embedding-app-origin! "https://metabase.com")))
 
         (testing "even if env is set, return the default value"
-          (mt/with-temp-env-var-value [mb-embedding-app-origin "https://metabase.com"]
+          (mt/with-temp-env-var-value! [mb-embedding-app-origin "https://metabase.com"]
             (is (nil? (embed.settings/embedding-app-origin)))))))
 
     (testing "can change embedding-app-origin if :embedding is enabled"
@@ -47,6 +47,6 @@
                (embed.settings/embedding-app-origin)))
 
         (testing "it works with env too"
-          (mt/with-temp-env-var-value [mb-embedding-app-origin "ssh://metabase.com"]
+          (mt/with-temp-env-var-value! [mb-embedding-app-origin "ssh://metabase.com"]
             (is (= "ssh://metabase.com"
                    (embed.settings/embedding-app-origin)))))))))

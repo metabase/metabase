@@ -38,6 +38,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
         noHeader: true,
         widget: SamlAuthCard,
         getHidden: () => !hasPremiumFeature("sso_saml"),
+        forceRenderWidget: true,
       },
       {
         key: "jwt-enabled",
@@ -45,6 +46,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
         noHeader: true,
         widget: JwtAuthCard,
         getHidden: () => !hasPremiumFeature("sso_jwt"),
+        forceRenderWidget: true,
       },
       ...apiKeySettings,
       {

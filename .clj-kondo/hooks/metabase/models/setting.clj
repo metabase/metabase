@@ -62,6 +62,7 @@
      jwt-group-mappings
      jwt-group-sync
      jwt-identity-provider-uri
+     jwt-user-provisioning-enabled?
      jwt-shared-secret
      last-acknowledged-version
      ldap-attribute-email
@@ -77,6 +78,7 @@
      ldap-host
      ldap-password
      ldap-port
+     ldap-user-provisioning-enabled?
      ldap-security
      ldap-sync-user-attributes
      ldap-sync-user-attributes-blacklist
@@ -128,6 +130,7 @@
      saml-keystore-alias
      saml-keystore-password
      saml-keystore-path
+     saml-user-provisioning-enabled?
      send-email-on-first-login-from-new-device
      send-new-sso-user-admin-email?
      session-cookie-samesite

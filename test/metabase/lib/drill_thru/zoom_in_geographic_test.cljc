@@ -397,3 +397,35 @@
                                                   [:< {}
                                                    [:field {} (meta/id :people :longitude)]
                                                    60]]}]}}))))
+
+(deftest ^:parallel zoom-in-on-legend-state-test
+  (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (meta/table-metadata :people))
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (meta/field-metadata :people :state))
+                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                         (lib/with-temporal-bucket :month))))
+        columns    (lib/returned-columns query)
+        state-col  (m/find-first #(= (:name %) "STATE") columns)
+        context    {:column     nil
+                    :column-ref nil
+                    :value      nil
+                    :dimensions [{:column     state-col
+                                  :column-ref (lib/ref state-col)
+                                  :value      "MN"}]}
+        drills     (lib/available-drill-thrus query -1 context)
+        zoom-in    (m/find-first #(= (:type %) :drill-thru/zoom-in.geographic) drills)]
+    (is (=? {:lib/type  :metabase.lib.drill-thru/drill-thru
+             :type      :drill-thru/zoom-in.geographic
+             :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+             :column    state-col
+             :latitude  {:column    (meta/field-metadata :people :latitude)
+                         :bin-width 1}
+             :longitude {:column    (meta/field-metadata :people :longitude)
+                         :bin-width 1}}
+            zoom-in))
+    (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :people :state)] "MN"]]
+                       :breakout [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :latitude)]
+                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :longitude)]]}]}
+            (lib/drill-thru query -1 zoom-in)))))

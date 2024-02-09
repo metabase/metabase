@@ -10,9 +10,10 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import type {
   Card,
   CardId,
-  DashCardId,
   Dashboard,
   DashboardCard,
+  DashboardCardLayoutAttrs,
+  QuestionDashboardCard,
   Database,
   Dataset,
   NativeDatasetQuery,
@@ -20,9 +21,13 @@ import type {
   StructuredDatasetQuery,
   ActionDashboardCard,
   EmbedDataset,
+  BaseDashboardCard,
+  DashCardDataMap,
+  VirtualCard,
+  VirtualDashboardCard,
+  VirtualCardDisplay,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
-import Question from "metabase-lib/Question";
 import {
   isDateParameter,
   isNumberParameter,
@@ -68,7 +73,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
   };
 }
 
-export function expandInlineCard(card?: Card) {
+export function expandInlineCard(card?: Card | VirtualCard) {
   return {
     name: "",
     visualization_settings: {},
@@ -77,26 +82,48 @@ export function expandInlineCard(card?: Card) {
   };
 }
 
-export function isVirtualDashCard(dashcard: DashboardCard) {
+export function isQuestionDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is QuestionDashboardCard {
+  return (
+    "card_id" in dashcard &&
+    "card" in dashcard &&
+    !isVirtualDashCard(dashcard) &&
+    !isActionDashCard(dashcard)
+  );
+}
+
+export function isActionDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is ActionDashboardCard {
+  return "action" in dashcard;
+}
+
+export function isVirtualDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
-export function getVirtualCardType(dashcard: DashboardCard) {
+export function getVirtualCardType(dashcard: BaseDashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
 
-export function isLinkDashCard(dashcard: DashboardCard) {
+export function isLinkDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
   return getVirtualCardType(dashcard) === "link";
 }
 
-export function isNativeDashCard(dashcard: DashboardCard) {
-  return dashcard.card && new Question(dashcard.card).isNative();
+export function isNativeDashCard(dashcard: QuestionDashboardCard) {
+  // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
+  return dashcard.card.dataset_query?.type === "native";
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   isMobile: boolean,
 ) {
   if (isVirtualDashCard(dashcard)) {
@@ -176,8 +203,8 @@ export function getDatasetQueryParams(
 }
 
 export function isDashcardLoading(
-  dashcard: DashboardCard,
-  dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
+  dashcard: BaseDashboardCard,
+  dashcardsData: DashCardDataMap,
 ) {
   if (isVirtualDashCard(dashcard)) {
     return false;
@@ -221,7 +248,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
 }
 
 const isDashcardDataLoaded = (
-  data?: Record<CardId, Dataset | null>,
+  data?: Record<CardId, Dataset | null | undefined>,
 ): data is Record<CardId, Dataset> => {
   return data != null && Object.values(data).every(result => result != null);
 };
@@ -240,8 +267,8 @@ const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
 };
 
 const shouldHideCard = (
-  dashcard: DashboardCard,
-  dashcardData: Record<CardId, Dataset | null>,
+  dashcard: BaseDashboardCard,
+  dashcardData: Record<CardId, Dataset | null | undefined>,
   wasVisible: boolean,
 ) => {
   const shouldHideEmpty = dashcard.visualization_settings?.["card.hide_empty"];
@@ -263,8 +290,8 @@ const shouldHideCard = (
 };
 
 export const getVisibleCardIds = (
-  cards: DashboardCard[],
-  dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
+  cards: BaseDashboardCard[],
+  dashcardsData: DashCardDataMap,
   prevVisibleCardIds = new Set<number>(),
 ) => {
   return new Set(
@@ -296,3 +323,43 @@ export const getActionIsEnabledInDatabase = (
  */
 export const calculateDashCardRowAfterUndo = (originalRow: number) =>
   originalRow - 0.1;
+
+let tempId = -1;
+
+export function generateTemporaryDashcardId() {
+  return tempId--;
+}
+
+type NewDashboardCard = Omit<
+  DashboardCard,
+  "entity_id" | "created_at" | "updated_at"
+>;
+
+type MandatoryDashboardCardAttrs = Pick<
+  DashboardCard,
+  "dashboard_id" | "card"
+> &
+  DashboardCardLayoutAttrs;
+
+export function createDashCard(
+  attrs: Partial<NewDashboardCard> & MandatoryDashboardCardAttrs,
+): NewDashboardCard {
+  return {
+    id: generateTemporaryDashcardId(),
+    dashboard_tab_id: null,
+    card_id: null,
+    parameter_mappings: [],
+    visualization_settings: {},
+    ...attrs,
+  };
+}
+
+export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
+  return {
+    name: null,
+    dataset_query: {},
+    display,
+    visualization_settings: {},
+    archived: false,
+  };
+}

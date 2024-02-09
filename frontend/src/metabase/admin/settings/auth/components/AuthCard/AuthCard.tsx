@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { Link } from "react-router";
-import { Button } from "metabase/ui";
+import { Button, Anchor, Text } from "metabase/ui";
 import { isNotNull } from "metabase/lib/types";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
+import type { SettingDefinition } from "metabase-types/api";
+import { getEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import {
   CardBadge,
   CardDescription,
@@ -15,9 +17,9 @@ import {
   CardTitle,
 } from "./AuthCard.styled";
 
-export interface AuthSetting {
+export type AuthSetting = Omit<SettingDefinition, "value"> & {
   value: boolean | null;
-}
+};
 
 export interface AuthCardProps {
   setting: AuthSetting;
@@ -41,6 +43,8 @@ const AuthCard = ({
   onDeactivate,
 }: AuthCardProps) => {
   const isEnabled = setting.value ?? false;
+  const isEnvSetting = setting.is_env_setting;
+
   const [isOpened, setIsOpened] = useState(false);
 
   const handleOpen = useCallback(() => {
@@ -56,15 +60,26 @@ const AuthCard = ({
     handleClose();
   }, [onDeactivate, handleClose]);
 
+  const footer = isEnvSetting ? (
+    <Text>
+      Set with env var{" "}
+      <Anchor
+        href={getEnvVarDocsUrl(setting.env_name)}
+        target="_blank"
+      >{`$${setting.env_name}`}</Anchor>
+    </Text>
+  ) : null;
+
   return (
     <AuthCardBody
       type={type}
       title={title}
       description={description}
       isEnabled={isEnabled}
-      isConfigured={isConfigured}
+      isConfigured={isConfigured && !isEnvSetting}
+      footer={footer}
     >
-      {isConfigured && (
+      {isConfigured && !isEnvSetting && (
         <AuthCardMenu
           isEnabled={isEnabled}
           onChange={onChange}
@@ -90,6 +105,8 @@ interface AuthCardBodyProps {
   isConfigured: boolean;
   badgeText?: string;
   buttonText?: string;
+  buttonEnabled?: boolean;
+  footer?: ReactNode;
   children?: ReactNode;
 }
 
@@ -101,6 +118,7 @@ export const AuthCardBody = ({
   isConfigured,
   badgeText,
   buttonText,
+  footer,
   children,
 }: AuthCardBodyProps) => {
   const badgeContent = badgeText ?? (isEnabled ? t`Active` : t`Paused`);
@@ -118,9 +136,13 @@ export const AuthCardBody = ({
         {children}
       </CardHeader>
       <CardDescription>{description}</CardDescription>
-      <Link to={`/admin/settings/authentication/${type}`}>
-        <Button>{buttonLabel}</Button>
-      </Link>
+      {footer ? (
+        footer
+      ) : (
+        <Link to={`/admin/settings/authentication/${type}`}>
+          <Button>{buttonLabel}</Button>
+        </Link>
+      )}
     </CardRoot>
   );
 };

@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import type { ReactNode } from "react";
-import { color } from "metabase/lib/colors";
 import { Text } from "metabase/ui";
 
 const ContentWrapper = styled.div`
@@ -15,14 +14,18 @@ const SettingsAsideBlock = styled.div`
   flex-shrink: 0;
   width: 21.6rem;
   padding: 2rem;
-  border-right: 1px solid ${color("border")};
-  background-color: ${color("white")};
+  border-right: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
+  background-color: ${({ theme }) => theme.fn.themeColor("white")};
+
+  height: 45.125rem;
+  overflow-y: auto;
 `;
 
 const PreviewAreaBlock = styled.div`
   width: 100%;
   min-width: 50rem;
 
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -31,7 +34,7 @@ const PreviewAreaBlock = styled.div`
   gap: 1rem;
 
   padding: 1rem 1.5rem 2rem 1rem;
-  background-color: ${color("bg-light")};
+  background-color: ${({ theme }) => theme.fn.themeColor("bg-light")};
 `;
 
 export const SettingsTabLayout = ({

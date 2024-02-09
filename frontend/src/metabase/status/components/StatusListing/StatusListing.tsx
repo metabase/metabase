@@ -26,7 +26,7 @@ const StatusListing = () => {
   }
 
   return (
-    <StatusListingRoot>
+    <StatusListingRoot data-testid="status-root-container">
       {isAdmin && <DatabaseStatus />}
       <FileUploadStatus />
     </StatusListingRoot>

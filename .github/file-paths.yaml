@@ -130,3 +130,9 @@ visualizations:
   - "frontend/src/metabase/visualizations/**"
   - "frontend/src/metabase/static-viz/**"
   - "src/metabase/pulse/**"
+
+cljs:
+  - *shared_sources
+  - *shared_specs
+  - ".github/workflows/cljs.yml"
+  - "shadow-cljs.edn"

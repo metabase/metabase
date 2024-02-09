@@ -257,6 +257,8 @@ import recents_component from "./recents.svg?component";
 import recents_source from "./recents.svg?source";
 import revert_component from "./revert.svg?component";
 import revert_source from "./revert.svg?source";
+import section_component from "./section.svg?component";
+import section_source from "./section.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import sql_component from "./sql.svg?component";
@@ -943,6 +945,10 @@ export const Icons = {
     component: search_component,
     source: search_source,
   },
+  section: {
+    component: section_component,
+    source: section_source,
+  },
   segment: {
     component: segment_component,
     source: segment_source,
@@ -1093,3 +1099,6 @@ export const Icons = {
 export type IconName = keyof typeof Icons;
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];
+
+export const isValidIconName = (name: unknown): name is IconName =>
+  iconNames.includes(name as IconName);

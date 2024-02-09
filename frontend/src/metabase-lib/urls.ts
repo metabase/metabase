@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import * as Urls from "metabase/lib/urls";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import type { ParameterId, ParameterValue } from "metabase-types/api";
@@ -52,11 +53,14 @@ export function getUrlWithParameters(
   { objectId, clean }: { objectId?: string | number; clean?: boolean } = {},
 ): string {
   const includeDisplayIsLocked = true;
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
 
-  if (question.isStructured()) {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
+  if (!isNative) {
     let questionWithParameters = question.setParameters(parameters);
 
-    if (question.isQueryEditable()) {
+    if (isEditable) {
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();

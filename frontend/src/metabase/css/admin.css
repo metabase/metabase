@@ -65,6 +65,7 @@
   border: var(--border-size) var(--border-style) var(--color-border);
   border-radius: var(--default-border-radius);
   width: 266px;
+  min-height: 300px;
   box-shadow: inset -1px -1px 3px var(--color-shadow);
   padding-bottom: 0.75em;
 }

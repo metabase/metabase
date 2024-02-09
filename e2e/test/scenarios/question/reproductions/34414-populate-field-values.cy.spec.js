@@ -13,7 +13,7 @@ const { INVOICES_ID } = SAMPLE_DATABASE;
 const INVOICE_MODEL_DETAILS = {
   name: "Invoices Model",
   query: { "source-table": INVOICES_ID },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 34414", () => {

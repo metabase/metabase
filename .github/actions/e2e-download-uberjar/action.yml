@@ -9,7 +9,7 @@ runs:
   using: "composite"
   steps:
     - name: Download previously stored uberjar
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         script: | # js
           const fs = require('fs');

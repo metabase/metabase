@@ -5,7 +5,6 @@ import {
   openNewCollectionItemFlowFor,
   appBar,
   navigationSidebar,
-  closeNavigationSidebar,
   getCollectionActions,
   popover,
   openCollectionMenu,
@@ -291,7 +290,6 @@ function assertSearchResultBadge(itemName, opts) {
 }
 
 const assertHasCollectionBadgeInNavbar = (expectBadge = true) => {
-  closeNavigationSidebar();
   cy.get("header")
     .findByText(COLLECTION_NAME)
     .parent()

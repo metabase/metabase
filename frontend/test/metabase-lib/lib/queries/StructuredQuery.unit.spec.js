@@ -1,3 +1,4 @@
+import { chain } from "icepick";
 import { createMockMetadata } from "__support__/metadata";
 import {
   createMockDatabase,
@@ -239,12 +240,6 @@ describe("StructuredQuery", () => {
         expect(query._database().id).toBe(SAMPLE_DB_ID);
       });
     });
-    describe("engine", () => {
-      it("identifies the engine of a query", () => {
-        // This is a magic constant and we should probably pull this up into an enum
-        expect(query.engine()).toBe("H2");
-      });
-    });
     describe("dependentMetadata", () => {
       it("should include db schemas and source table with foreignTables = true", () => {
         expect(query.dependentMetadata()).toEqual([
@@ -277,9 +272,15 @@ describe("StructuredQuery", () => {
 
       describe("when the query is missing a database", () => {
         it("should not include db schemas in dependent  metadata", () => {
-          const dependentMetadata = query
-            .setDatabaseId(null)
-            .dependentMetadata();
+          const queryWithoutDatabase = new StructuredQuery(
+            query._originalQuestion,
+            chain(query.datasetQuery())
+              .assoc("database", null)
+              .assoc("query", {})
+              .value(),
+          );
+
+          const dependentMetadata = queryWithoutDatabase.dependentMetadata();
 
           expect(dependentMetadata.some(({ type }) => type === "schema")).toBe(
             false,
@@ -290,14 +291,6 @@ describe("StructuredQuery", () => {
   });
 
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
-    describe("reset", () => {
-      it("Expect a reset query to not have a selected database", () => {
-        expect(query.reset()._database()).toBe(null);
-      });
-      it("Expect a reset query to not be runnable", () => {
-        expect(query.reset().canRun()).toBe(false);
-      });
-    });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
         expect(
@@ -305,34 +298,9 @@ describe("StructuredQuery", () => {
         ).toBe(ORDERS_ID);
       });
     });
-    describe("setDatabase", () => {
-      it("allows you to set a new database", () => {
-        const db = metadata.database(ANOTHER_DB_ID);
-        expect(query.setDatabase(db)._database().id).toBe(db.id);
-      });
-    });
     describe("_sourceTableId", () => {
       it("Return the right table id", () => {
         expect(query._sourceTableId()).toBe(ORDERS_ID);
-      });
-    });
-  });
-
-  describe("QUERY STATUS METHODS", () => {
-    describe("canRun", () => {
-      it("runs a valid query", () => {
-        expect(query.canRun()).toBe(true);
-      });
-    });
-    describe("isEditable", () => {
-      it("A valid query should be editable", () => {
-        expect(query.isEditable()).toBe(true);
-      });
-
-      it("should be not editable when database object is missing", () => {
-        const q = makeQuery();
-        q._database = () => null;
-        expect(q.isEditable()).toBe(false);
       });
     });
   });
@@ -596,15 +564,6 @@ describe("StructuredQuery", () => {
         expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(
           30,
         );
-      });
-    });
-    describe("hasValidBreakout", () => {
-      it("should return false if there are no breakouts", () => {
-        expect(query.hasValidBreakout()).toBe(false);
-      });
-      it("should return true if there is at least one breakout", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        expect(query.breakout(ordersProductId).hasValidBreakout()).toBe(true);
       });
     });
 

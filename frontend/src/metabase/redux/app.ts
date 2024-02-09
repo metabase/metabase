@@ -12,6 +12,19 @@ import {
 
 import type { Dispatch } from "metabase-types/store";
 
+interface LocationChangeAction {
+  type: string; // "@@router/LOCATION_CHANGE"
+  payload: {
+    pathname: string;
+    search: string;
+    hash: string;
+    action: string;
+    key: string;
+    state?: any;
+    query?: any;
+  };
+}
+
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
   console.error("Error:", error);
@@ -39,25 +52,19 @@ export const openUrl =
 
 const errorPage = handleActions(
   {
-    [SET_ERROR_PAGE]: (state, { payload }) => payload,
+    [SET_ERROR_PAGE]: (_, { payload }) => payload,
     [LOCATION_CHANGE]: () => null,
   },
   null,
 );
 
-const PATHS_WITH_COLLAPSED_NAVBAR = [
-  /\/model.*/,
-  /\/question.*/,
-  /\/dashboard.*/,
-  /\/metabot.*/,
-];
+// regexr.com/7r89i
+// A word boundary is added to /model so it doesn't match /browse/models
+const PATH_WITH_COLLAPSED_NAVBAR = /\/(model\b|question|dashboard|metabot).*/;
 
-function checkIsSidebarInitiallyOpen() {
+export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
   return (
-    !isSmallScreen() &&
-    !PATHS_WITH_COLLAPSED_NAVBAR.some(pattern =>
-      pattern.test(window.location.pathname),
-    )
+    !isSmallScreen() && !PATH_WITH_COLLAPSED_NAVBAR.test(pathname) && prevState
   );
 }
 
@@ -74,8 +81,18 @@ const isNavbarOpen = handleActions(
     [OPEN_NAVBAR]: () => true,
     [TOGGLE_NAVBAR]: isOpen => !isOpen,
     [CLOSE_NAVBAR]: () => false,
+    [LOCATION_CHANGE]: (
+      prevState: boolean,
+      { payload }: LocationChangeAction,
+    ) => {
+      if (payload.state?.preserveNavbarState) {
+        return prevState;
+      }
+
+      return isNavbarOpenForPathname(payload.pathname, prevState);
+    },
   },
-  checkIsSidebarInitiallyOpen(),
+  true,
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

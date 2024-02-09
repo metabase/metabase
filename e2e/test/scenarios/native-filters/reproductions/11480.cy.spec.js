@@ -32,11 +32,9 @@ describe("issue 11480", () => {
     SQLFilter.chooseType("Number");
     cy.location("search").should("eq", "?x=");
 
-    // When we run it again, the default has been cleared out so we get the right error.
-    SQLFilter.runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(
-      "You'll need to pick a value for 'X' before this query can run.",
-    );
+    // We cannot run the query unless the default value for a required parameter is set.
+    cy.findByTestId("native-query-editor-sidebar")
+      .button("Get Answer")
+      .should("be.disabled");
   });
 });

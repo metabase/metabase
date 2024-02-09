@@ -65,7 +65,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :details]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -394,7 +394,12 @@
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id)))
+    (list `->UncachedApplicationDatabaseMetadataProvider database-id))
+
+  Object
+  (equals [_this another]
+    (and (instance? UncachedApplicationDatabaseMetadataProvider another)
+         (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
 (mu/defn application-database-metadata-provider :- lib.metadata/MetadataProvider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

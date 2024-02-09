@@ -18,6 +18,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 
+import Question from "metabase-lib/Question";
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 
 const QUESTION_ID = 1;
@@ -32,12 +33,14 @@ const state = createMockState({
 const metadata = getMetadata(state); // metabase-lib Metadata instance
 
 const setup = options => {
+  const card = options.card ?? createMockCard();
+
   renderWithProviders(
     <DashCardCardParameterMapper
-      card={createMockCard()}
-      dashcard={createMockDashboardCard()}
-      editingParameter={{}}
-      target={null}
+      card={card}
+      dashcard={createMockDashboardCard({ card })}
+      question={new Question(card, metadata)}
+      editingParameter={createMockParameter()}
       mappingOptions={[]}
       metadata={metadata}
       setParameterMapping={jest.fn()}
@@ -123,11 +126,13 @@ describe("DashCardParameterMapper", () => {
         card: textCard,
         size_y: 3,
         visualization_settings: {
+          text: "{{foo}} {{bar}}",
           virtual_card: textCard,
         },
       }),
       mappingOptions: ["foo", "bar"],
     });
+
     expect(screen.getByText(/Variable to map to/i)).toBeInTheDocument();
   });
 

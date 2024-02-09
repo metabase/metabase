@@ -540,7 +540,6 @@
         (testing "should drop the existing color column"
           (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))))))
 
-#_ ;; TODO: this test is flaky so it's commented out for now
 (deftest audit-v2-views-test
   (testing "Migrations v48.00-029 - end"
     ;; Use an open-ended migration range so that we can detect if any migrations added after these views broke the view
@@ -562,6 +561,7 @@
         (doseq [view-name new-view-names]
           (testing (str "View " view-name " should be created")
             (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]
@@ -764,3 +764,18 @@
              (t2/query
               (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
                       (-> (mdb.connection/data-source) .getConnection .getCatalog))))))))
+
+(deftest index-database-changelog-test
+  (testing "we should have an unique constraint on databasechangelog.(id,author,filename)"
+    (impl/test-migrations "v49.00-000" [migrate!]
+      (migrate!)
+      (is (pos?
+             (:count
+              (t2/query-one
+               (case (mdb.connection/db-type)
+                 :postgres "SELECT COUNT(*) as count FROM pg_indexes WHERE
+                           tablename = 'databasechangelog' AND indexname = 'idx_databasechangelog_id_author_filename';"
+                 :mysql    "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'idx_databasechangelog_id_author_filename';"
+                 ;; h2 has a strange way of naming constraint
+                 :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
+                           WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))

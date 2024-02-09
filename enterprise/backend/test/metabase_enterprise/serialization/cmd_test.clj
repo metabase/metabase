@@ -5,8 +5,11 @@
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.cmd :as cmd]
-   [metabase.models :refer [Card Dashboard DashboardCard Database User]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Database User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -80,9 +83,9 @@
     (mt/with-premium-features #{:serialization}
       (ts/with-random-dump-dir [dump-dir "serialization"]
         (let [dashboard-yaml-filename (str dump-dir "/collections/root/dashboards/Dashboard.yaml")]
-          (ts/with-source-and-dest-dbs
+          (ts/with-dbs [source-db dest-db]
             (testing "create 2 questions in the source and add them to a dashboard"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (let [{db-id :id, :as db} (ts/create! Database :name "My_Database")]
                   (mt/with-db db
                     (let [{user-id :id}      (ts/create! User, :is_superuser true)
@@ -108,7 +111,7 @@
                                                  {:card_id "/collections/root/cards/Card_2"}]}
                               yaml))))
             (testing "load into destination"
-              (ts/with-dest-db
+              (ts/with-db dest-db
                 (testing "Create admin user"
                   (is (some? (ts/create! User, :is_superuser true)))
                   (is (t2/exists? User :is_superuser true)))
@@ -118,12 +121,12 @@
                   (is (= 2 (t2/count Card)) "# Cards")
                   (is (= 2 (t2/count DashboardCard)) "# DashboardCards") >)))
             (testing "remove one of the questions in the source's dashboard"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (t2/delete! Card :name "Card_2")
                 (is (= 1 (t2/count Card)) "# Cards")
                 (is (= 1 (t2/count DashboardCard)) "# DashboardCards")))
             (testing "dump again"
-              (ts/with-source-db
+              (ts/with-db source-db
                 (cmd/dump dump-dir))
               (testing "Verify dump only contains one Card"
                 (is (.exists (io/file dashboard-yaml-filename)))
@@ -131,7 +134,7 @@
                   (is (partial= {:dashboard_cards [{:card_id "/collections/root/cards/Card_1"}]}
                                 yaml)))))
             (testing "load again, with --mode update, destination Dashboard should now only have one question."
-              (ts/with-dest-db
+              (ts/with-db dest-db
                 (is (nil? (cmd/load dump-dir "--mode" "update", "--on-error" "abort")))
                 (is (= 1 (t2/count Dashboard)) "# Dashboards")
                 (testing "Don't delete the Card even tho it was deleted. Just delete the DashboardCard"
@@ -162,3 +165,79 @@
                                            (throw (ex-info "Do not call me!" {})))]
           (is (thrown-with-msg? Exception #"Destination path is not writeable: "
                                 (cmd/export dump-dir))))))))
+
+(deftest snowplow-events-test
+  (testing "Snowplow events are correctly sent"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-empty-h2-app-db
+        (snowplow-test/with-fake-snowplow-collector
+          (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+            (let [coll  (ts/create! Collection :name "coll")
+                  _card (ts/create! Card :name "card" :collection_id (:id coll))]
+              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")
+              (testing "Snowplow export event was sent"
+                (is (=? {"event"           "serialization_export"
+                         "collection"      (str (:id coll))
+                         "all_collections" false
+                         "data_model"      false
+                         "settings"        true
+                         "field_values"    false
+                         "duration_ms"     pos?
+                         "count"           3
+                         "source"          "cli"
+                         "secrets"         false
+                         "success"         true
+                         "error_message"   nil}
+                        (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
+                             (filter #(= "serialization_export" (get % "event")))
+                             first))))
+
+              (cmd/import dump-dir)
+              (testing "Snowplow import event was sent"
+                (is (=? {"event"         "serialization_import"
+                         "duration_ms"   pos?
+                         "source"        "cli"
+                         "models"        "Card,Collection,Setting"
+                         "count"         3
+                         "success"       true
+                         "error_message" nil}
+                        (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
+
+              (with-redefs [v2.storage/store-settings! (fn [_opts _settings]
+                                                         (throw (Exception. "Cannot load settings")))]
+                (is (thrown? Exception
+                             (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
+                (testing "Snowplow export event about error was sent"
+                  (is (=? {"event"           "serialization_export"
+                           "collection"      (str (:id coll))
+                           "all_collections" false
+                           "data_model"      false
+                           "settings"        true
+                           "field_values"    false
+                           "duration_ms"     pos?
+                           "count"           0
+                           "source"          "cli"
+                           "secrets"         false
+                           "success"         false
+                           "error_message"   "java.lang.Exception: Cannot load settings"}
+                          (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
+                               (filter #(= "serialization_export" (get % "event")))
+                               first)))))
+
+              (let [load-one! @#'v2.load/load-one!]
+                (with-redefs [v2.load/load-one! (fn [ctx path]
+                                                  (when (= "Collection" (-> path first :model))
+                                                    (throw (Exception. "Cannot import Collection")))
+                                                  (load-one! ctx path))]
+                  (is (thrown? Exception
+                               (cmd/import dump-dir)))
+                  (testing "Snowplow import event about error was sent"
+                    (is (=? {"event"         "serialization_import"
+                             "duration_ms"   pos?
+                             "source"        "cli"
+                             "models"        ""
+                             "count"         0
+                             "success"       false
+                             ;; t2/with-transactions re-wraps errors with data about toucan connections
+                             "error_message" #".*Cannot import Collection.*"}
+                            (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))

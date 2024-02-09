@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMockCard } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
 import {
@@ -79,6 +80,18 @@ describe("AppBar", () => {
         expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
         expect(screen.queryByTestId("sidebar-toggle")).not.toBeInTheDocument();
       });
+
+      it("should take you home when clicking the logo", async () => {
+        const { history } = setup({});
+
+        if (!history) {
+          throw new Error("history should be available from test setup");
+        }
+
+        expect(history.getCurrentLocation().pathname).toBe("/question/1");
+        userEvent.click(screen.getByTestId("main-logo"));
+        expect(history.getCurrentLocation().pathname).toBe("/");
+      });
     });
 
     describe("small screens", () => {
@@ -92,7 +105,6 @@ describe("AppBar", () => {
         });
 
         expect(await screen.findByText(/Our analytics/)).toBeVisible();
-        expect(screen.getByTestId("main-logo")).toBeVisible();
 
         screen.getByTestId("sidebar-toggle").click();
         expect(screen.queryByText(/Our analytics/)).not.toBeInTheDocument();
@@ -135,6 +147,18 @@ describe("AppBar", () => {
         expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
         expect(screen.queryByTestId("sidebar-toggle")).not.toBeInTheDocument();
       });
+
+      it("should take you home when clicking the logo", async () => {
+        const { history } = setup({});
+
+        if (!history) {
+          throw new Error("history should be available from test setup");
+        }
+
+        expect(history.getCurrentLocation().pathname).toBe("/question/1");
+        userEvent.click(screen.getByTestId("main-logo"));
+        expect(history.getCurrentLocation().pathname).toBe("/");
+      });
     });
   });
 });
@@ -142,7 +166,7 @@ describe("AppBar", () => {
 function setup(embedOptions: Partial<EmbedOptions>) {
   setupCollectionsEndpoints({ collections: [] });
 
-  renderWithProviders(<Route path="/question/:slug" component={AppBar} />, {
+  return renderWithProviders(<Route path="*" component={AppBar} />, {
     withRouter: true,
     initialRoute: "/question/1",
     storeInitialState: {

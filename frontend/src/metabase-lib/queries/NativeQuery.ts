@@ -102,6 +102,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   /* Query superclass methods */
+
+  /**
+   * @deprecated use MLv2
+   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -118,16 +122,6 @@ export default class NativeQuery extends AtomicQuery {
 
   isEmpty() {
     return this._databaseId() == null || this.queryText().length === 0;
-  }
-
-  clean() {
-    return this.setDatasetQuery(
-      updateIn(
-        this.datasetQuery(),
-        ["native", "template-tags"],
-        tt => tt || {},
-      ),
-    );
   }
 
   /* AtomicQuery superclass methods */
@@ -157,21 +151,7 @@ export default class NativeQuery extends AtomicQuery {
     return database && database.engine;
   }
 
-  // Whether the user can modify and run this query
-  // Determined based on availability of database metadata and native database permissions
-  isEditable(): boolean {
-    const database = this._database();
-    return database != null && database.native_permissions === "write";
-  }
-
   /* Methods unique to this query type */
-
-  /**
-   * @returns a new query with the provided Database set.
-   */
-  setDatabase(database: Database): NativeQuery {
-    return this.setDatabaseId(database.id);
-  }
 
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
     if (databaseId !== this._databaseId()) {
@@ -314,6 +294,11 @@ export default class NativeQuery extends AtomicQuery {
         );
         if (!dimension) {
           return new ValidationError(t`Invalid template tag: ${tag.name}`);
+        }
+        if (tag.required && !tag.default) {
+          return new ValidationError(
+            t`Missing default value for a required template tag: ${tag.name}`,
+          );
         }
 
         return dimension.validateTemplateTag();

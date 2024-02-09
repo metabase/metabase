@@ -52,9 +52,9 @@
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
           eid1       "0123456789abcdef_0123"]
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "extraction succeeds"
-          (ts/with-source-db
+          (ts/with-db source-db
             (ts/create! Collection :name "Basic Collection" :entity_id eid1)
             (reset! serialized (into [] (serdes.extract/extract {})))
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
@@ -62,7 +62,7 @@
                       @serialized))))
 
         (testing "loading into an empty database succeeds"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
@@ -70,7 +70,7 @@
               (is (= eid1               (:entity_id (first colls)))))))
 
         (testing "loading again into the same database does not duplicate"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
@@ -83,9 +83,9 @@
           parent     (atom nil)
           child      (atom nil)
           grandchild (atom nil)]
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "serialization of the three collections"
-          (ts/with-source-db
+          (ts/with-db source-db
             (reset! parent     (ts/create! Collection :name "Parent Collection" :location "/"))
             (reset! child      (ts/create! Collection
                                            :name "Child Collection"
@@ -96,7 +96,7 @@
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "deserialization into a database that already has the parent, but with a different ID"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             (ts/create! Collection :name "Unrelated Collection")
             (ts/create! Collection :name "Parent Collection" :location "/" :entity_id (:entity_id @parent))
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
@@ -126,9 +126,9 @@
           t2s        (atom nil)
           f1s        (atom nil)
           f2s        (atom nil)]
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "serializing the two databases"
-          (ts/with-source-db
+          (ts/with-db source-db
             (reset! db1s (ts/create! Database :name "db1"))
             (reset! t1s  (ts/create! Table    :name "posts" :db_id (:id @db1s)))
             (reset! db2s (ts/create! Database :name "db2"))
@@ -157,7 +157,7 @@
                       first))))
 
         (testing "deserialization works properly, keeping the same-named tables apart"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (reset! db1d (t2/select-one Database :name (:name @db1s)))
             (reset! db2d (t2/select-one Database :name (:name @db2s)))
@@ -193,9 +193,9 @@
           table2d    (atom nil)
           field2d    (atom nil)]
 
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
-          (ts/with-source-db
+          (ts/with-db source-db
             (reset! coll1s  (ts/create! Collection :name "pop! minis"))
             (reset! db1s    (ts/create! Database :name "my-db"))
             (reset! table1s (ts/create! Table :name "customers" :db_id (:id @db1s)))
@@ -227,7 +227,7 @@
                       :dataset_query))))
 
         (testing "deserializing adjusts the IDs properly"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
             (reset! db2d    (ts/create! Database :name "other-db"))
             (reset! table2d (ts/create! Table    :name "orders" :db_id (:id @db2d)))
@@ -281,9 +281,9 @@
           field2d    (atom nil)]
 
 
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
-          (ts/with-source-db
+          (ts/with-db source-db
             (reset! coll1s  (ts/create! Collection :name "pop! minis"))
             (reset! db1s    (ts/create! Database :name "my-db"))
             (reset! table1s (ts/create! Table :name "customers" :db_id (:id @db1s)))
@@ -306,7 +306,7 @@
                      :definition))))
 
         (testing "deserializing adjusts the IDs properly"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
             (reset! db2d    (ts/create! Database :name "other-db"))
             (reset! table2d (ts/create! Table    :name "orders" :db_id (:id @db2d)))
@@ -358,9 +358,9 @@
           field2d    (atom nil)]
 
 
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
-          (ts/with-source-db
+          (ts/with-db source-db
             (reset! coll1s   (ts/create! Collection :name "pop! minis"))
             (reset! db1s     (ts/create! Database :name "my-db"))
             (reset! table1s  (ts/create! Table :name "orders" :db_id (:id @db1s)))
@@ -381,7 +381,7 @@
                      :definition))))
 
         (testing "deserializing adjusts the IDs properly"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
             (reset! db2d    (ts/create! Database :name "other-db"))
             (reset! table2d (ts/create! Table    :name "customers" :db_id (:id @db2d)))
@@ -442,9 +442,9 @@
           field3d    (atom nil)]
 
 
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
-          (ts/with-source-db
+          (ts/with-db source-db
             (reset! coll1s   (ts/create! Collection :name "pop! minis"))
             (reset! db1s     (ts/create! Database :name "my-db"))
             (reset! table1s  (ts/create! Table :name "orders" :db_id (:id @db1s)))
@@ -586,7 +586,7 @@
 
 
         (testing "deserializing adjusts the IDs properly"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
             (reset! db2d    (ts/create! Database :name "other-db"))
             (reset! table2d (ts/create! Table    :name "customers" :db_id (:id @db2d)))
@@ -645,9 +645,9 @@
           eventsT1   (atom nil)
           eventsT2   (atom nil)]
 
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "serialize correctly"
-          (ts/with-source-db
+          (ts/with-db source-db
             (reset! coll1s     (ts/create! Collection :name "col1"))
             (reset! user1s     (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! timeline1s (ts/create! Timeline :name "Some events" :creator_id (:id @user1s)
@@ -704,7 +704,7 @@
                 (is (= 1 (-> timeline2 :events count)))))))
 
         (testing "deserializing merges events properly"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             ;; The collection, timeline 1 and event 2 already exist. Event 1, plus timeline 2 and its event 3, are new.
             (reset! user1d     (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! coll1d     (ts/create! Collection :name "col1" :entity_id (:entity_id @coll1s)))
@@ -753,9 +753,9 @@
           metric1d   (atom nil)
           metric2d   (atom nil)]
 
-      (ts/with-source-and-dest-dbs
+      (ts/with-dbs [source-db dest-db]
         (testing "serializing the original entities"
-          (ts/with-source-db
+          (ts/with-db source-db
             (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
             (reset! metric1s  (ts/create! Metric
@@ -778,7 +778,7 @@
                      :creator_id))))
 
         (testing "deserializing finds the matching user and synthesizes the missing one"
-          (ts/with-dest-db
+          (ts/with-db dest-db
             ;; Create another random user to change the user IDs.
             (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
             ;; Likewise, create some other metrics.
@@ -1033,9 +1033,9 @@
 (deftest load-action-test
   (let [serialized (atom nil)
         eid (u/generate-nano-id)]
-    (ts/with-source-and-dest-dbs
+    (ts/with-dbs [source-db dest-db]
       (testing "extraction succeeds"
-        (ts/with-source-db
+        (ts/with-db source-db
           (let [db       (ts/create! Database :name "my-db")
                 card     (ts/create! Card
                                      :name "the query"
@@ -1059,7 +1059,7 @@
               (testing ":type should be a string"
                 (is (string? (:type action-serialized))))))))
       (testing "loading succeeds"
-        (ts/with-dest-db
+        (ts/with-db dest-db
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
           (let [action (t2/select-one Action :entity_id eid)]
             (is (some? action))
@@ -1074,9 +1074,9 @@
         dashcard2d (atom nil)
         tab1s      (atom nil)
         tab2d      (atom nil)]
-    (ts/with-source-and-dest-dbs
+    (ts/with-dbs [source-db dest-db]
       (testing "Serializing the original database"
-        (ts/with-source-db
+        (ts/with-db source-db
           (reset! dash1s (ts/create! Dashboard :name "My Dashboard"))
           (reset! tab1s (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id @dash1s)))
           (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s) :dashboard_tab_id (:id tab1s)))
@@ -1084,7 +1084,7 @@
           (reset! serialized (into [] (serdes.extract/extract {})))))
 
       (testing "New dashcard will be removed on load"
-        (ts/with-dest-db
+        (ts/with-db dest-db
           (reset! dash1d (ts/create! Dashboard :name "Weird Name" :entity_id (:entity_id @dash1s)))
           ;; A dashcard to be removed since it does not exist in serialized data
           (reset! dashcard2d (ts/create! DashboardCard :dashboard_id (:id @dash1d)))
@@ -1114,9 +1114,9 @@
                       (:entity_id @tab2d)))))))))
 
 (deftest dashcard-series-test
-  (ts/with-source-and-dest-dbs
+  (ts/with-dbs [source-db dest-db]
     (testing "Dashcard series are updated and deleted correctly"
-     (ts/with-source-db
+     (ts/with-db source-db
        (let [dash1s        (ts/create! :model/Dashboard :name "My Dashboard")
              tab1s         (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id dash1s))
              card1s        (ts/create! Card :name "The Card")
@@ -1128,15 +1128,15 @@
              series2s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card2s) :position 1)
              series3s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card3s) :position 2)
              extract1      (into [] (serdes.extract/extract {}))]
-         (ts/with-dest-db
+         (ts/with-db dest-db
            (serdes.load/load-metabase! (ingestion-in-memory extract1))
-           (ts/with-source-db
+           (ts/with-db source-db
              ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
              (t2/delete! :model/DashboardCardSeries (:id series1s))
              (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
              (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
              (let [extract2 (into [] (serdes.extract/extract {}))]
-               (ts/with-dest-db
+               (ts/with-db dest-db
                  (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
                        series-card3d        (t2/select-one :model/Card :entity_id (:entity_id series-card3s))
                        ;; we deleted the card that corresponds to `series1s`, so a shortcut is to get the one with position=0
@@ -1165,9 +1165,9 @@
 (deftest extraneous-keys-test
   (let [serialized (atom nil)
         eid (u/generate-nano-id)]
-    (ts/with-source-and-dest-dbs
+    (ts/with-dbs [source-db dest-db]
       (testing "Sprinkle the source database with a variety of different models"
-        (ts/with-source-db
+        (ts/with-db source-db
           (let [db         (ts/create! Database :name "my-db")
                 card       (ts/create! Card
                                  :name "the query"
@@ -1193,5 +1193,33 @@
                          (map #(assoc % :my-extraneous-keeeeeey "foobar!!!!"))
                          (into []))))))
       (testing "The extraneous keys do not interfere with loading"
-        (ts/with-dest-db
+        (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))
+
+(deftest tx-test
+  (mt/with-empty-h2-app-db
+    (let [coll       (ts/create! Collection :name "coll")
+          card       (ts/create! Card :name "card" :collection_id (:id coll))
+          serialized (atom {})]
+      (reset! serialized (->> (serdes.extract/extract {:no-settings   true
+                                                       :no-data-model true
+                                                       :targets       [["Collection" (:id coll)]]})
+                              vec))
+      (testing "Load completes successfully"
+        (t2/update! Card {:id (:id card)} {:name (str "qwe_" (:name card))})
+        (is (serdes.load/load-metabase! (ingestion-in-memory @serialized)))
+        (is (= (:name card)
+               (t2/select-one-fn :name Card :id (:id card)))))
+
+      (testing "Partial load does not change the database"
+        (t2/update! Collection {:id (:id coll)} {:name (str "qwe_" (:name coll))})
+        (let [load-update! serdes/load-update!]
+          (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                              ;; Collection is loaded first
+                                              (if (= model "Card")
+                                                (throw (ex-info "oops, error" {}))
+                                                (load-update! model adjusted local)))]
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
+            (is (= (str "qwe_" (:name coll))
+                   (t2/select-one-fn :name Collection :id (:id card))))))))))

@@ -25,15 +25,16 @@ import {
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Question from "metabase-lib/Question";
+import * as Lib from "metabase-lib";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
+  getDashcardParameterMappingOptions,
   getParameterTarget,
-  getParameterMappingOptions,
+  getQuestionByCard,
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
@@ -62,8 +63,9 @@ function formatSelected({ name, sectionName }) {
 const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
-  mappingOptions: getParameterMappingOptions(state, props),
   metadata: getMetadata(state),
+  question: getQuestionByCard(state, props),
+  mappingOptions: getDashcardParameterMappingOptions(state, props),
 });
 
 const mapDispatchToProps = {
@@ -74,11 +76,12 @@ DashCardCardParameterMapper.propTypes = {
   card: PropTypes.object.isRequired,
   dashcard: PropTypes.object.isRequired,
   editingParameter: PropTypes.object.isRequired,
-  target: PropTypes.object,
+  target: PropTypes.array,
   mappingOptions: PropTypes.array.isRequired,
   metadata: PropTypes.object.isRequired,
   setParameterMapping: PropTypes.func.isRequired,
   isMobile: PropTypes.bool,
+  question: PropTypes.object,
 };
 
 export function DashCardCardParameterMapper({
@@ -86,10 +89,10 @@ export function DashCardCardParameterMapper({
   dashcard,
   editingParameter,
   target,
-  mappingOptions,
-  metadata,
   setParameterMapping,
   isMobile,
+  question,
+  mappingOptions,
 }) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
@@ -119,9 +122,9 @@ export function DashCardCardParameterMapper({
       return false;
     }
 
-    const question = new Question(card, metadata);
-    return question.isQueryEditable();
-  }, [card, metadata, isVirtual]);
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return isEditable;
+  }, [isVirtual, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
     useMemo(() => {

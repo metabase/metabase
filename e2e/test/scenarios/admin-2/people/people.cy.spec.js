@@ -381,7 +381,7 @@ describe("scenarios > admin > people", () => {
       generateGroups(51);
 
       cy.visit("/admin/people/groups");
-      cy.get("main").scrollTo("bottom");
+      cy.findByTestId("admin-layout-content").scrollTo("bottom");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("readonly");
     });

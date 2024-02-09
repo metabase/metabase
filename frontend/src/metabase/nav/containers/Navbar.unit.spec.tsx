@@ -1,6 +1,15 @@
+/* eslint-disable jest/expect-expect */
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import type { Store } from "@reduxjs/toolkit";
+import {
+  CLOSE_NAVBAR,
+  OPEN_NAVBAR,
+  isNavbarOpenForPathname,
+} from "metabase/redux/app";
 import * as dom from "metabase/lib/dom";
+
+import type { State } from "metabase-types/store";
 
 import {
   renderWithProviders,
@@ -31,7 +40,7 @@ type SetupOpts = {
 };
 
 async function setup({
-  isOpen = true,
+  isOpen,
   pathname = "/",
   route = pathname,
   user = createMockUser(),
@@ -42,32 +51,40 @@ async function setup({
   fetchMock.get("path:/api/bookmark", []);
 
   const storeInitialState = createMockState({
-    app: createMockAppState({ isNavbarOpen: isOpen }),
+    app: createMockAppState({
+      isNavbarOpen: isOpen ?? isNavbarOpenForPathname(pathname, true),
+    }),
     embed: createMockEmbedState(embedOptions),
     currentUser: user,
   });
 
-  renderWithProviders(<Route path={route} component={Navbar} />, {
-    storeInitialState,
-    initialRoute: pathname,
-    withRouter: true,
-    withDND: true,
-  });
+  const { store } = renderWithProviders(
+    <Route path={route} component={Navbar} />,
+    {
+      storeInitialState,
+      initialRoute: pathname,
+      withRouter: true,
+      withDND: true,
+    },
+  );
+
+  // manually dispatch the location event that would otherwise be done for us with react-router-redux
+  dispatchLocationChange({ store, initialRoute: true, pathname });
 
   await waitForLoaderToBeRemoved();
+
+  return store;
 }
 
 describe("nav > containers > Navbar > Core App", () => {
   it("should be open when isOpen is true", async () => {
     await setup({ isOpen: true });
-    const navbar = screen.getByTestId("main-navbar-root");
-    expect(navbar).toHaveAttribute("aria-hidden", "false");
+    expectNavbarOpen();
   });
 
   it("should be hidden when isOpen is false", async () => {
     await setup({ isOpen: false });
-    const navbar = screen.getByTestId("main-navbar-root");
-    expect(navbar).toHaveAttribute("aria-hidden", "true");
+    expectNavbarClosed();
   });
 
   it("should not render when signed out", async () => {
@@ -78,6 +95,49 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should not render when in the admin app", async () => {
     await setup({ pathname: "/admin/" });
     expect(screen.queryByTestId("main-navbar-root")).not.toBeInTheDocument();
+  });
+
+  ["question", "model", "dashboard"].forEach(pathname => {
+    it(`should be hidden on initial load for a ${pathname}`, async () => {
+      await setup({ pathname: `/${pathname}/1` });
+      expectNavbarClosed();
+    });
+  });
+
+  it("should hide when visiting a question", async () => {
+    const store = await setup({ pathname: "/" });
+    expectNavbarOpen();
+    dispatchLocationChange({ store, pathname: "/question/1" });
+    expectNavbarClosed();
+  });
+
+  it("should hide when visiting a question and stay hidden when returning to collection", async () => {
+    const store = await setup({ pathname: "/collection/1" });
+    expectNavbarOpen();
+    dispatchLocationChange({ store, pathname: "/question/1" });
+    expectNavbarClosed();
+    dispatchLocationChange({ store, pathname: "/collection/1" });
+    expectNavbarClosed();
+  });
+
+  it("should preserve state when navigating collections", async () => {
+    const store = await setup({ pathname: "/collection/1" });
+    expectNavbarOpen();
+    dispatchLocationChange({ store, pathname: "/collection/2" });
+    expectNavbarOpen();
+    dispatchLocationChange({ store, pathname: "/question/1" });
+    expectNavbarClosed();
+    dispatchLocationChange({ store, pathname: "/collection/3" });
+    expectNavbarClosed();
+    dispatchLocationChange({ store, pathname: "/collection/4" });
+    expectNavbarClosed();
+    store.dispatch({ type: OPEN_NAVBAR });
+    expectNavbarOpen();
+    dispatchLocationChange({ store, pathname: "/collection/5" });
+    expectNavbarOpen();
+    store.dispatch({ type: CLOSE_NAVBAR });
+    dispatchLocationChange({ store, pathname: "/collection/6" });
+    expectNavbarClosed();
   });
 
   describe("embedded", () => {
@@ -103,9 +163,7 @@ describe("nav > containers > Navbar > Core App", () => {
           isOpen: false, // this should be ignored and overridden by the embedding params
           embedOptions: { top_nav: false, side_nav: true },
         });
-
-        const navbar = screen.getByTestId("main-navbar-root");
-        expect(navbar).toHaveAttribute("aria-hidden", "false");
+        expectNavbarOpen();
       });
     });
 
@@ -116,9 +174,7 @@ describe("nav > containers > Navbar > Core App", () => {
           isOpen: true,
           embedOptions: { top_nav: true, side_nav: true },
         });
-
-        const navbar = screen.getByTestId("main-navbar-root");
-        expect(navbar).toHaveAttribute("aria-hidden", "false");
+        expectNavbarOpen();
       });
     });
 
@@ -129,9 +185,7 @@ describe("nav > containers > Navbar > Core App", () => {
           isOpen: false,
           embedOptions: { top_nav: true, side_nav: true },
         });
-
-        const navbar = screen.getByTestId("main-navbar-root");
-        expect(navbar).toHaveAttribute("aria-hidden", "true");
+        expectNavbarClosed();
       });
     });
 
@@ -142,9 +196,7 @@ describe("nav > containers > Navbar > Core App", () => {
           isOpen: false,
           embedOptions: { top_nav: true, side_nav: true },
         });
-
-        const navbar = screen.getByTestId("main-navbar-root");
-        expect(navbar).toHaveAttribute("aria-hidden", "true");
+        expectNavbarClosed();
       });
     });
 
@@ -157,10 +209,40 @@ describe("nav > containers > Navbar > Core App", () => {
           isOpen: false,
           embedOptions: { side_nav: false },
         });
-
-        const navbar = screen.getByTestId("main-navbar-root");
-        expect(navbar).toHaveAttribute("aria-hidden", "true");
+        expectNavbarClosed();
       });
     });
   });
 });
+
+function expectNavbarOpen() {
+  const navbar = screen.getByTestId("main-navbar-root");
+  expect(navbar).toBeVisible();
+  expect(navbar).toHaveAttribute("aria-hidden", "false");
+}
+
+function expectNavbarClosed() {
+  const navbar = screen.getByTestId("main-navbar-root");
+  expect(navbar).not.toBeVisible();
+  expect(navbar).toHaveAttribute("aria-hidden", "true");
+}
+
+interface DispatchLocationChangeParams {
+  store: Store<State>;
+  initialRoute?: boolean;
+  pathname: string;
+}
+
+function dispatchLocationChange({
+  store,
+  initialRoute = false,
+  pathname,
+}: DispatchLocationChangeParams) {
+  store.dispatch({
+    type: "@@router/LOCATION_CHANGE",
+    payload: {
+      pathname,
+      action: initialRoute ? "POP" : "PUSH",
+    },
+  });
+}

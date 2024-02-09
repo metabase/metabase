@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 import { replace } from "react-router-redux";
-import { isSmallScreen } from "metabase/lib/dom";
-import { openNavbar } from "metabase/redux/app";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { addUndo } from "metabase/redux/undo";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -34,7 +32,6 @@ export const HomePage = (): JSX.Element => {
     isLoading: isLoadingMetabot,
     error,
   } = useMetabot();
-  useNavbar();
   const { isLoadingDash } = useDashboardPage();
 
   if ((isLoadingMetabot || error) && isMetabotEnabled) {
@@ -50,16 +47,6 @@ export const HomePage = (): JSX.Element => {
       <HomeContent />
     </HomeLayout>
   );
-};
-
-const useNavbar = () => {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (!isSmallScreen()) {
-      dispatch(openNavbar());
-    }
-  }, [dispatch]);
 };
 
 const useMetabot = () => {
@@ -109,7 +96,12 @@ const useDashboardPage = () => {
       !isLoadingDash &&
       !dashboard?.archived
     ) {
-      dispatch(replace(`/dashboard/${dashboardId}`));
+      dispatch(
+        replace({
+          pathname: `/dashboard/${dashboardId}`,
+          state: { preserveNavbarState: true },
+        }),
+      );
 
       if (!hasDismissedToast) {
         dispatch(

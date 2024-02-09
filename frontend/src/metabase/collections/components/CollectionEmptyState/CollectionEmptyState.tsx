@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import NewItemMenu from "metabase/containers/NewItemMenu";
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import type { Collection } from "metabase-types/api";
 import { Text } from "metabase/ui";
 import {
@@ -31,7 +30,6 @@ const CollectionEmptyState = ({
         <NewItemMenu
           trigger={<Button icon="add">{t`Create a new…`}</Button>}
           collectionId={collection?.id}
-          analyticsContext={ANALYTICS_CONTEXT}
         />
       )}
     </EmptyStateRoot>

@@ -26,11 +26,11 @@ import {
 import { DashboardTabs } from "../../components/DashboardTabs/DashboardTabs";
 
 interface DashboardHeaderViewProps {
-  editingTitle: string;
-  editingSubtitle: string;
-  editingButtons: JSX.Element[];
-  editWarning: string;
-  headerButtons: React.ReactNode[];
+  editingTitle?: string;
+  editingSubtitle?: string;
+  editingButtons?: JSX.Element[];
+  editWarning?: string;
+  headerButtons?: React.ReactNode[];
   headerClassName: string;
   location: Location;
   isEditing: boolean;
@@ -40,8 +40,11 @@ interface DashboardHeaderViewProps {
   collection: Collection;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
-  onLastEditInfoClick: () => null;
-  setDashboardAttribute: (prop: string, value: string) => null;
+  onLastEditInfoClick: () => void;
+  setDashboardAttribute: <Key extends keyof Dashboard>(
+    key: Key,
+    value: Dashboard[Key],
+  ) => void;
 }
 
 export function DashboardHeaderComponent({
@@ -114,7 +117,11 @@ export function DashboardHeaderComponent({
           data-testid="dashboard-header"
           ref={header}
         >
-          <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
+          <HeaderContent
+            role="heading"
+            hasSubHeader
+            showSubHeader={showSubHeader}
+          >
             <HeaderCaptionContainer>
               <HeaderCaption
                 key={dashboard.name}
@@ -146,7 +153,11 @@ export function DashboardHeaderComponent({
           </HeaderButtonsContainer>
         </HeaderRow>
         <HeaderRow isNavBarOpen={isNavBarOpen}>
-          <DashboardTabs location={location} isEditing={isEditing} />
+          <DashboardTabs
+            dashboardId={dashboard.id}
+            location={location}
+            isEditing={isEditing}
+          />
         </HeaderRow>
       </div>
     </div>

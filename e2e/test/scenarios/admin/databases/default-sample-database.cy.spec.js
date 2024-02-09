@@ -124,7 +124,7 @@ describe("scenarios > admin > databases > sample database", () => {
     );
     cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     // model
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
     // Create a segment through API
     createSegment({
       name: "Small orders",
@@ -297,6 +297,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Browse data").click();
     });
 
+    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByTestId("database-browser").within(() => {
       cy.findByText("Sample Database").should("exist");
     });

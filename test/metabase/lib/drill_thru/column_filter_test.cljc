@@ -4,12 +4,22 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel column-filter-availability-test
+  (testing "column-filter is available for any header click, and nothing else"
+    (canned/canned-test
+      :drill-thru/column-filter
+      (fn [_test-case context {:keys [click]}]
+        (and (= click :header)
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel returns-column-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -251,3 +261,28 @@
       (is (= "Products" (:source-alias category)))
       (is (= "Products" (-> context :column-ref second :join-alias)))
       (is (some? (:column colfilter))))))
+
+;; TODO: Bring back this test. It doesn't work in CLJ due to the inconsistencies noted in #38558.
+#_(deftest ^:parallel leaky-model-ref-test
+  (testing "input `:column-ref` must be used for the drill, in case a model leaks metadata like `:join-alias` (#38034)"
+    (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :model/products-and-reviews))
+          retcols    (lib/returned-columns query)
+          by-id      (m/index-by :id retcols)
+          reviews-id (by-id (meta/id :reviews :id))
+          _ (is (some? reviews-id))
+          context    {:column reviews-id
+                      :value  nil
+                      :column-ref (-> reviews-id
+                                      lib/ref
+                                      ((fn [r] (prn r) r))
+                                      (lib.options/update-options select-keys [:lib/uuid :base-type]))}
+          drills     (lib/available-drill-thrus query -1 context)]
+      (lib.drill-thru.tu/test-returns-drill
+        {:drill-type   :drill-thru/column-filter
+         :click-type   :header
+         :query-type   :unaggregated
+         :column-name  "ID_2"
+         :custom-query query
+         :expected     {:type       :drill-thru/column-filter
+                        :initial-op {:short :=}
+                        :column     {:lib/type :metadata/column}}}))))

@@ -76,10 +76,10 @@
         {:name   label
          :filter (operator op field-ref value)})
 
-      (lib.types.isa/string? column)
-      (for [[op label] [[:=  "="]
-                        [:!= "≠"]
-                        [:contains "contains"]
+      (and (lib.types.isa/string? column)
+           (or (lib.types.isa/comment? column)
+               (lib.types.isa/description? column)))
+      (for [[op label] [[:contains "contains"]
                         [:does-not-contain "does-not-contain"]]]
         {:name   label
          :filter (operator op field-ref value)})
@@ -100,17 +100,18 @@
 
   Note that this returns a single `::drill-thru` value with 1 or more `:operators`; these are rendered as a set of small
   buttons in a single row of the drop-down."
-  [query                                :- ::lib.schema/query
-   stage-number                         :- :int
-   {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
+  [query                                           :- ::lib.schema/query
+   stage-number                                    :- :int
+   {:keys [column column-ref value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
+             (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/foreign-key? column)))
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
     ;; [[lib.drill-thru.column-filter/filter-drill-adjusted-query]] handles this. (#34346)
-    (let [adjusted (lib.drill-thru.column-filter/filter-drill-adjusted-query query stage-number column)]
+    (let [adjusted (lib.drill-thru.column-filter/filter-drill-adjusted-query query stage-number column column-ref)]
       (merge {:lib/type   :metabase.lib.drill-thru/drill-thru
               :type       :drill-thru/quick-filter
               :operators  (operators-for (:column adjusted) value)

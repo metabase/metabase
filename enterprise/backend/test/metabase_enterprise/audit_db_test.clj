@@ -24,7 +24,7 @@
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
   `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
-     (mt/with-temp-env-var-value [mb-load-analytics-content (not audit-collection-exists?#)]
+     (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
        (mbc/ensure-audit-db-installed!)
        (try
          ~@body
@@ -35,6 +35,8 @@
   (mt/test-drivers #{:postgres :h2 :mysql}
     (testing "Audit DB content is not installed when it is not found"
       (t2/delete! :model/Database :is_audit true)
+      ;; reset checksum
+      (audit-db/last-analytics-checksum! 0)
       (with-redefs [audit-db/analytics-dir-resource nil]
         (is (nil? @#'audit-db/analytics-dir-resource))
         (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
@@ -42,7 +44,8 @@
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
             "No cards created for Audit DB."))
-      (t2/delete! :model/Database :is_audit true))
+      (t2/delete! :model/Database :is_audit true)
+      (audit-db/last-analytics-checksum! 0))
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
@@ -72,7 +75,7 @@
         (t2/update! Database :is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
-  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+  (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
      (let [plugins-dir (plugins/plugins-dir)]
        (fs/create-dirs plugins-dir)
@@ -85,7 +88,7 @@
        (fs/delete-tree (plugins/plugins-dir))))))
 
 (deftest all-instance-analytics-content-is-copied-from-mb-plugins-dir-test
-  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+  (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
       (#'audit-db/ia-content->plugins (plugins/plugins-dir))
       (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
@@ -129,3 +132,15 @@
         (testing "No exception is thrown when db has 'duplicate' entries."
           (is (= :metabase-enterprise.audit-db/no-op
                  (audit-db/ensure-audit-db-installed!))))))))
+
+(deftest should-load-audit?-test
+  (testing "load-analytics-content + checksums dont match => load"
+    (is (= (#'audit-db/should-load-audit? true 1 3) true)))
+  (testing "load-analytics-content + last-checksum is -1 => load (even if current-checksum is also -1)"
+    (is (= (#'audit-db/should-load-audit? true -1 -1) true)))
+  (testing "checksums are the same => do not load"
+    (is (= (#'audit-db/should-load-audit? true 3 3) false)))
+  (testing "load-analytics-content false => do not load"
+    (is (= (#'audit-db/should-load-audit? false 3 5) false)))
+  (testing "load-analytics-content is false + checksums do not match  => do not load"
+    (is (= (#'audit-db/should-load-audit? false 1 3) false))))

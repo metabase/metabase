@@ -5,7 +5,7 @@ import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 
 import type {
-  DashboardCard,
+  QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
 } from "metabase-types/api";
@@ -19,7 +19,7 @@ import { BehaviorOptionIcon } from "./TypeSelector.styled";
 
 interface BehaviorOptionProps {
   value: ClickBehaviorType;
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   icon: IconName;
   hasNextStep: boolean;
   selected: boolean;
@@ -61,7 +61,7 @@ export const BehaviorOption = ({
 };
 
 interface TypeSelectorProps {
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   clickBehavior: ClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings?: ClickBehavior) => void;

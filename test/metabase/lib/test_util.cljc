@@ -55,19 +55,28 @@
            options)
     (meta/id table field)]))
 
+(def ^:private cards
+  {:cards [{:name          "My Card"
+            :id            1
+            :dataset-query {:database (meta/id)
+                            :type     :query
+                            :query    {:source-table (meta/id :checkins)
+                                       :aggregation  [[:count]]
+                                       :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
+            :database-id   (meta/id)}]})
+
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
   (lib/composed-metadata-provider
    meta/metadata-provider
+   (providers.mock/mock-metadata-provider cards)))
+
+(def metadata-provider-with-model
+  "[[meta/metadata-provider]], but with a Card with ID 1."
+  (lib/composed-metadata-provider
+   meta/metadata-provider
    (providers.mock/mock-metadata-provider
-    {:cards [{:name          "My Card"
-              :id            1
-              :dataset-query {:database (meta/id)
-                              :type     :query
-                              :query    {:source-table (meta/id :checkins)
-                                         :aggregation  [[:count]]
-                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
-              :database-id   (meta/id)}]})))
+    (assoc-in cards [:cards 0 :dataset] true))))
 
 (def query-with-source-card
   "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
@@ -94,22 +103,23 @@
                                            :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
               ;; this is copied directly from a QP response. NOT CONVERTED TO KEBAB-CASE YET, BECAUSE THIS IS HOW IT
               ;; LOOKS IN LEGACY QUERIES!
-              :result-metadata [{:description       nil
-                                 :semantic_type     :type/FK
-                                 :table_id          (meta/id :checkins)
-                                 :coercion_strategy nil
-                                 :name              "USER_ID"
-                                 :settings          nil
-                                 :source            :breakout
-                                 :field_ref         [:field (meta/id :checkins :user-id) nil]
-                                 :effective_type    :type/Integer
-                                 :nfc_path          nil
-                                 :parent_id         nil
-                                 :id                (meta/id :checkins :user-id)
-                                 :visibility_type   :normal
-                                 :display_name      "User ID"
-                                 :fingerprint       {:global {:distinct-count 15, :nil% 0.0}}
-                                 :base_type         :type/Integer}
+              :result-metadata [{:description        nil
+                                 :semantic_type      :type/FK
+                                 :table_id           (meta/id :checkins)
+                                 :coercion_strategy  nil
+                                 :name               "USER_ID"
+                                 :settings           nil
+                                 :source             :breakout
+                                 :field_ref          [:field (meta/id :checkins :user-id) nil]
+                                 :effective_type     :type/Integer
+                                 :nfc_path           nil
+                                 :parent_id          nil
+                                 :id                 (meta/id :checkins :user-id)
+                                 :fk_target_field_id (meta/id :users :id)
+                                 :visibility_type    :normal
+                                 :display_name       "User ID"
+                                 :fingerprint        {:global {:distinct-count 15, :nil% 0.0}}
+                                 :base_type          :type/Integer}
                                 {:base_type      :type/Integer
                                  :semantic_type  :type/Quantity
                                  :name           "count"
@@ -219,13 +229,42 @@
                                         (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
         table-key-and-ids))
 
+(defn- make-mock-cards-special-cases
+  [metadata-provider]
+  (let [{products "PRODUCTS"
+         reviews  "REVIEWS"} (m/index-by :name (lib.metadata/tables metadata-provider))
+        {pk "ID"}            (m/index-by :name (lib.metadata/fields metadata-provider (:id products)))
+        {fk "PRODUCT_ID"}    (m/index-by :name (lib.metadata/fields metadata-provider (:id reviews)))]
+    {:model/products-and-reviews
+     {:lib/type      :metadata/card
+      :id            1000
+      :database-id   (:id (lib.metadata/database metadata-provider))
+      :name          "Mock model - Products and Reviews"
+      :dataset       true
+      :dataset-query
+      {:database (:id (lib.metadata/database metadata-provider))
+       :type     :query
+       :query    {:source-table (:id products)
+                  :joins        [{:fields       :all
+                                  :alias        "Reviews"
+                                  :source-table (:id reviews)
+                                  :condition    [:=
+                                                 [:field (:id pk) {:base-type :type/BigInteger}]
+                                                 [:field (:id fk)
+                                                  {:base-type :type/Integer
+                                                   :join-alias "Reviews"}]]}]}}}}))
+
 (def mock-cards
   "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
 
   * `:venues`, a Card WITH `:result-metadata`
   * `:venues/no-metadata`, a Card WITHOUT `:result-metadata`
-  * `:venues/native`, a Card with `:result-metadata` and a NATIVE query."
-  (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables))))
+  * `:venues/native`, a Card with `:result-metadata` and a NATIVE query.
+
+  There are also some specialized mock cards used for corner cases:
+  * `:model/products-and-reviews`, a model joining products to reviews"
+  (merge (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables)))
+         (make-mock-cards-special-cases meta/metadata-provider)))
 
 (defn metadata-provider-with-mock-card [card]
   (lib/composed-metadata-provider

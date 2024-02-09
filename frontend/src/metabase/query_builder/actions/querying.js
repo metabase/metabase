@@ -1,18 +1,16 @@
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 
+import * as Lib from "metabase-lib";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
-
-import Question from "metabase-lib/Question";
 
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
@@ -89,22 +87,20 @@ export const runDirtyQuestionQuery = () => async (dispatch, getState) => {
 };
 
 /**
- * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
+ * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
  */
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
-  overrideWithCard = null,
+  overrideWithQuestion = null,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
-    const questionFromCard = card =>
-      card && new Question(card, getMetadata(getState()));
 
-    const question = overrideWithCard
-      ? questionFromCard(overrideWithCard)
+    const question = overrideWithQuestion
+      ? overrideWithQuestion
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
@@ -136,7 +132,7 @@ export const runQuestionQuery = ({
           MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
-            question.type(),
+            question.datasetQuery().type,
             duration,
           ),
         );
@@ -178,12 +174,13 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
-    const isDirty =
-      question.isQueryEditable() &&
-      question.isDirtyComparedTo(originalQuestion);
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      if (question.isNative()) {
+      const { isNative } = Lib.queryDisplayInfo(question.query());
+
+      if (isNative) {
         question = question.syncColumnsAndSettings(
           originalQuestion,
           queryResults[0],

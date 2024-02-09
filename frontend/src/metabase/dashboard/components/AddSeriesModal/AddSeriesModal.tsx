@@ -4,10 +4,9 @@ import { t } from "ttag";
 
 import type {
   Card,
-  CardId,
+  DashCardDataMap,
   DashCardId,
-  DashboardCard,
-  Dataset,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
@@ -23,11 +22,11 @@ import { QuestionList } from "./QuestionList";
 const CAN_REMOVE_SERIES = (seriesIndex: number) => seriesIndex > 0;
 
 export interface Props {
-  dashcard: DashboardCard;
-  dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
+  dashcard: QuestionDashboardCard;
+  dashcardData: DashCardDataMap;
   fetchCardData: (
     card: Card,
-    dashcard: DashboardCard,
+    dashcard: QuestionDashboardCard,
     options: {
       clearCache?: boolean;
       ignoreCache?: boolean;
@@ -36,7 +35,7 @@ export interface Props {
   ) => Promise<unknown>;
   setDashCardAttributes: (options: {
     id: DashCardId;
-    attributes: Partial<DashboardCard>;
+    attributes: Partial<QuestionDashboardCard>;
   }) => void;
   onClose: () => void;
 }
@@ -44,7 +43,7 @@ export interface Props {
 interface State {
   error: unknown;
   isLoading: boolean;
-  series: NonNullable<DashboardCard["series"]>;
+  series: NonNullable<QuestionDashboardCard["series"]>;
 }
 
 export class AddSeriesModal extends Component<Props, State> {
@@ -173,11 +172,7 @@ export class AddSeriesModal extends Component<Props, State> {
             >
               {t`Done`}
             </button>
-            <button
-              data-metabase-event="Dashboard;Edit Series Modal;cancel"
-              className="Button ml2"
-              onClick={this.props.onClose}
-            >
+            <button className="Button ml2" onClick={this.props.onClose}>
               {t`Cancel`}
             </button>
           </div>

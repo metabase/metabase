@@ -37,24 +37,10 @@ class Query {
   });
 
   /**
-   * Returns a "clean" version of this query with invalid parts removed
-   */
-  clean() {
-    return this;
-  }
-
-  /**
    * Convenience method for accessing the global metadata
    */
   metadata() {
     return this._metadata;
-  }
-
-  /**
-   * Does this query have the sufficient metadata for editing it?
-   */
-  isEditable(): boolean {
-    return true;
   }
 
   /**

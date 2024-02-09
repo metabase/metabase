@@ -8,7 +8,7 @@ import {
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import Fields from "metabase/entities/fields";
 
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
 import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 
@@ -59,7 +59,7 @@ async function setup({
   renderWithProviders(
     <FieldValuesWidget
       value={[]}
-      fields={fields.filter(checkNotNull)}
+      fields={fields.filter(isNotNull)}
       onChange={jest.fn()}
       prefix={prefix}
       {...props}

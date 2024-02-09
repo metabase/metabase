@@ -1,13 +1,13 @@
 import type {
   Dashboard,
   DashboardId,
-  DashboardCard,
   DashCardId,
   DashCardDataMap,
   ParameterId,
   ParameterValueOrArray,
   DashboardTab,
   DashboardTabId,
+  DashboardCard,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -20,7 +20,9 @@ export type DashboardSidebarName =
 
 interface BaseSidebarState {
   name?: DashboardSidebarName;
-  props: Record<string, unknown>;
+  props: Record<string, unknown> & {
+    dashcardId?: DashCardId;
+  };
 }
 
 type ClickBehaviorSidebarProps = {
@@ -33,6 +35,7 @@ export interface ClickBehaviorSidebarState extends BaseSidebarState {
 }
 
 type EditParameterSidebarProps = {
+  dashcardId?: DashCardId;
   parameterId: ParameterId;
 };
 
@@ -40,6 +43,11 @@ export interface EditParameterSidebarState extends BaseSidebarState {
   name: "editParameter";
   props: EditParameterSidebarProps;
 }
+
+export type DashboardSidebarState =
+  | BaseSidebarState
+  | ClickBehaviorSidebarState
+  | EditParameterSidebarState;
 
 export type StoreDashboardTab = DashboardTab & {
   isRemoved?: boolean;
@@ -95,7 +103,7 @@ export interface DashboardState {
 
   slowCards: Record<DashCardId, unknown>;
 
-  sidebar: ClickBehaviorSidebarState | BaseSidebarState;
+  sidebar: DashboardSidebarState;
 
   missingActionParameters: unknown;
 

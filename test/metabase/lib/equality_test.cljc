@@ -459,10 +459,33 @@
   (let [query (-> lib.tu/venues-query
                   (lib/aggregate (lib/count)))
         [ag]  (lib/aggregations query)]
-    (is (=? {:display-name "Count", :lib/source :source/aggregations}
-            (lib.equality/find-matching-column
-             [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
-             (lib/returned-columns query))))))
+    (testing "without passing query"
+      (testing "matches with UUID"
+        (is (=? {:display-name "Count", :lib/source :source/aggregations}
+                (lib.equality/find-matching-column
+                  [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
+                  (lib/returned-columns query)))))
+      (testing "fails with bad UUID but good source-name"
+        (is (nil? (lib.equality/find-matching-column
+                    [:aggregation {:lib/uuid        (str (random-uuid))
+                                   :lib/source-name "count"}
+                     "this is a bad UUID"]
+                    (lib/returned-columns query))))))
+    (testing "when passing query"
+      (testing "matches with UUID"
+        (is (=? {:display-name "Count", :lib/source :source/aggregations}
+                (lib.equality/find-matching-column
+                  query -1
+                  [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
+                  (lib/returned-columns query)))))
+      (testing "matches with bad UUID but good source-name"
+        (is (=? {:display-name "Count", :lib/source :source/aggregations}
+                (lib.equality/find-matching-column
+                  query -1
+                  [:aggregation {:lib/uuid        (str (random-uuid))
+                                 :lib/source-name "count"}
+                   "this is a bad UUID"]
+                  (lib/returned-columns query))))))))
 
 (deftest ^:parallel find-matching-column-expression-test
   (is (=? {:name "expr", :lib/source :source/expressions}

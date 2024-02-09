@@ -3,16 +3,16 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
 import { setupErrorSetupEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { PREFERENCES_STEP, USER_STEP } from "../../constants";
 import { PreferencesStep } from "./PreferencesStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
 }
 
-const setup = ({ step = PREFERENCES_STEP }: SetupOpts = {}) => {
+const setup = ({ step = "data_usage" }: SetupOpts = {}) => {
   const state = createMockState({
     setup: createMockSetupState({
       step,
@@ -20,18 +20,20 @@ const setup = ({ step = PREFERENCES_STEP }: SetupOpts = {}) => {
   });
 
   setupErrorSetupEndpoints();
-  renderWithProviders(<PreferencesStep />, { storeInitialState: state });
+  renderWithProviders(<PreferencesStep stepLabel={0} />, {
+    storeInitialState: state,
+  });
 };
 
 describe("PreferencesStep", () => {
   it("should render in inactive state", () => {
-    setup({ step: USER_STEP });
+    setup({ step: "user_info" });
 
     expect(screen.getByText("Usage data preferences")).toBeInTheDocument();
   });
 
   it("should allow toggling tracking permissions", () => {
-    setup({ step: PREFERENCES_STEP });
+    setup({ step: "data_usage" });
 
     const toggle = screen.getByRole("switch", { name: /Allow Metabase/ });
     userEvent.click(toggle);
@@ -40,7 +42,7 @@ describe("PreferencesStep", () => {
   });
 
   it("should show an error message on submit", async () => {
-    setup({ step: PREFERENCES_STEP });
+    setup({ step: "data_usage" });
 
     userEvent.click(screen.getByText("Finish"));
 

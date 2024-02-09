@@ -10,6 +10,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
@@ -34,6 +35,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.util :as lib.util]
    [metabase.shared.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
@@ -42,6 +44,7 @@
          lib.card/keep-me
          lib.column-group/keep-me
          lib.common/keep-me
+         lib.convert/keep-me
          lib.database/keep-me
          lib.drill-thru/keep-me
          lib.drill-thru.pivot/keep-me
@@ -63,12 +66,14 @@
          lib.segment/keep-me
          lib.stage/keep-me
          lib.table/keep-me
-         lib.temporal-bucket/keep-me)
+         lib.temporal-bucket/keep-me
+         lib.util/keep-me)
 
 (shared.ns/import-fns
  [lib.aggregation
   aggregate
   aggregation-clause
+  aggregation-column
   aggregation-ref
   aggregation-operator-columns
   aggregations
@@ -96,6 +101,7 @@
   with-binning]
  [lib.breakout
   breakout
+  breakout-column
   breakoutable-columns
   breakouts
   breakouts-metadata]
@@ -104,6 +110,8 @@
   group-columns]
  [lib.common
   external-op]
+ [lib.convert
+  ->pMBQL]
  [lib.database
   database-id]
  [lib.drill-thru
@@ -163,6 +171,7 @@
   upper
   lower]
  [lib.fe-util
+  dependent-metadata
   expression-clause
   expression-parts
   filter-args-display-name]
@@ -263,6 +272,8 @@
   can-run
   query
   stage-count
+  uses-metric?
+  uses-segment?
   with-different-table]
  [lib.ref
   ref]
@@ -285,4 +296,6 @@
   describe-relative-datetime
   available-temporal-buckets
   temporal-bucket
-  with-temporal-bucket])
+  with-temporal-bucket]
+ [lib.util
+  source-table-id])
