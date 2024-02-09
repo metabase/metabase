@@ -78,8 +78,9 @@ export const BrowseApp = ({
                 tab={tab}
                 modelsResult={modelsResult}
                 databasesResult={databasesResult}
-              />
-              {children}
+              >
+                {children}
+              </BrowseTabContent>
             </BrowseTabsContainer>
           </BrowseTabsPanel>
         </BrowseTabs>
@@ -104,9 +105,9 @@ const BrowseTabContent = ({
   }
   if (tab === "models") {
     return <BrowseModels modelsResult={modelsResult} />;
-  } else {
-    return <BrowseDatabases databasesResult={databasesResult} />;
   }
+
+  return <BrowseDatabases databasesResult={databasesResult} />;
 };
 const LearnAboutDataLink = () => (
   <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
