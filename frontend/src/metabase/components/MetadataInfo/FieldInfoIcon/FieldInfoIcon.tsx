@@ -5,10 +5,10 @@ import { FieldInfoPopoverMLv2 } from "../FieldInfoPopover";
 
 import { PopoverHoverTarget } from "./FieldInfoIcon.styled";
 
-type Props = Omit<FieldInfoPopoverMLv2Props, "delay">;
+export type FieldInfoIconProps = Omit<FieldInfoPopoverMLv2Props, "delay">;
 const LAST_STAGE = -1;
 
-export function FieldInfoIcon(props: Props) {
+export function FieldInfoIcon(props: FieldInfoIconProps) {
   const { query, column, stage = LAST_STAGE } = props;
 
   const { description, semanticType } = Lib.displayInfo(query, stage, column);

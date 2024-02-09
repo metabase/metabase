@@ -10,6 +10,7 @@ import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter"
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FieldInfoIcon } from "../FieldInfoIcon/FieldInfoIcon.styled";
 import type { FilterEditorProps } from "../types";
 
 export function CoordinateFilterEditor({
@@ -74,6 +75,7 @@ export function CoordinateFilterEditor({
     <Grid grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
+          <FieldInfoIcon query={query} stage={stageIndex} column={column} />
           <Icon name={columnIcon} />
           <FilterColumnName
             query={query}

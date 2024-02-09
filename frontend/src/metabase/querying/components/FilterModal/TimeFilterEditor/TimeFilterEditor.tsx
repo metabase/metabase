@@ -9,6 +9,7 @@ import type * as Lib from "metabase-lib";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import type { FilterEditorProps } from "../types";
+import { FieldInfoIcon } from "../FieldInfoIcon/FieldInfoIcon.styled";
 
 export function TimeFilterEditor({
   query,
@@ -67,6 +68,7 @@ export function TimeFilterEditor({
     <Grid grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
+          <FieldInfoIcon query={query} stage={stageIndex} column={column} />
           <Icon name={columnIcon} />
           <FilterColumnName
             query={query}

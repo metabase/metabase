@@ -11,6 +11,7 @@ import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import type { FilterEditorProps } from "../types";
+import { FieldInfoIcon } from "../FieldInfoIcon/FieldInfoIcon.styled";
 
 export function NumberFilterEditor({
   query,
@@ -77,6 +78,7 @@ export function NumberFilterEditor({
     <Grid grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
+          <FieldInfoIcon query={query} stage={stageIndex} column={column} />
           <Icon name={columnIcon} />
           <FilterColumnName
             query={query}

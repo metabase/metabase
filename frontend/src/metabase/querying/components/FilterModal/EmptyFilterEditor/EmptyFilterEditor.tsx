@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Flex, Text, Icon } from "metabase/ui";
-
 import * as Lib from "metabase-lib";
+import { FieldInfoIcon } from "../FieldInfoIcon/FieldInfoIcon.styled";
+
 import type { FilterEditorProps } from "../types";
 
 export function EmptyFilterEditor({
@@ -20,6 +21,7 @@ export function EmptyFilterEditor({
 
   return (
     <Flex direction="row" align="center" gap="sm" py="1rem">
+      <FieldInfoIcon query={query} stage={stageIndex} column={column} />
       <Icon name={columnIcon} />
       <Text color="text-dark" weight="bold">
         {columnInfo.displayName}
