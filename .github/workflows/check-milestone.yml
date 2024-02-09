@@ -16,7 +16,7 @@ jobs:
       pull-requests: write
       issues: read
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         with:
           script: | # js
             const owner = context.repo.owner;

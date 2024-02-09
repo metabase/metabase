@@ -25,7 +25,7 @@ import {
   updateDashboardCards,
   goToTab,
   moveDashCardToTab,
-  addTextBoxWhileEditing,
+  addLinkWhileEditing,
   expectGoodSnowplowEvent,
   selectDashboardFilter,
   filterWidget,
@@ -208,7 +208,7 @@ describe("scenarios > dashboard > tabs", () => {
       goToTab("Tab 1");
 
       cy.log("add second card");
-      addTextBoxWhileEditing("Text card");
+      addLinkWhileEditing("https://www.metabase.com");
 
       cy.log("should stay on the same tab");
       cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
@@ -236,7 +236,7 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.log("should show undo toast with the correct text");
       cy.findByTestId("undo-list").within(() => {
-        cy.findByText("Text card moved").should("be.visible");
+        cy.findByText("Link card moved").should("be.visible");
         cy.findByText("Card moved: Orders").should("be.visible");
       });
 

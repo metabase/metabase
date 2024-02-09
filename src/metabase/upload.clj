@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
@@ -258,6 +259,10 @@
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
   "_mb_row_id")
 
+(def auto-pk-column-keyword
+  "The keyword of the auto-incrementing PK column."
+  (keyword auto-pk-column-name))
+
 (defn- table-id->auto-pk-column [table-id]
   (first (filter (fn [field]
                    (= (normalize-column-name (:name field)) auto-pk-column-name))
@@ -297,22 +302,38 @@
                                  (column-types-from-rows settings column-count)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
-     :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)}))
+     :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::auto-incrementing-int-pk)}))
 
 
 ;;;; +------------------+
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
+(def ^:private last-timestamp (atom (t/local-date-time)))
+
+(set! *warn-on-reflection* true)
+
+(defn strictly-monotonic-now
+  "Return an adjusted version of the current time, that it is guaranteed to never repeat the last second."
+  []
+  (swap! last-timestamp
+         (fn [prev-timestamp]
+           (t/max
+             (t/local-date-time)
+             (-> prev-timestamp
+                 (t/plus (t/seconds 1))
+                 (t/truncate-to :seconds))))))
+
 (defn- unique-table-name
-  "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplised `table-name` if necessary)."
+  "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."
   [driver table-name]
   (let [time-format                 "_yyyyMMddHHmmss"
-        acceptable-length           (min (count table-name)
-                                         (- (driver/table-name-length-limit driver) (count time-format)))
-        truncated-name-without-time (subs (u/slugify table-name) 0 acceptable-length)]
+        slugified-name               (or (u/slugify table-name) "")
+        max-length                  (- (driver/table-name-length-limit driver) (count time-format))
+        acceptable-length           (min (count slugified-name) max-length)
+        truncated-name-without-time (subs slugified-name 0 acceptable-length)]
     (str truncated-name-without-time
-         (t/format time-format (t/local-date-time)))))
+         (t/format time-format (strictly-monotonic-now)))))
 
 (def ^:private max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
 
@@ -326,7 +347,8 @@
                                 max-sample-rows)))
                   rows)))
 
-(defn- upload-type->col-specs
+(defn- column-definitions
+  "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
   [driver col->upload-type]
   (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
@@ -393,11 +415,15 @@
     (let [[header & rows]         (without-auto-pk-columns (csv/read-csv reader))
           {:keys [extant-columns generated-columns]} (detect-schema header (sample-rows rows))
           cols->upload-type       (merge generated-columns extant-columns)
-          col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
+          col-definitions         (column-definitions driver cols->upload-type)
           csv-col-names           (keys extant-columns)
           col-upload-types        (vals extant-columns)
           parsed-rows             (vec (parse-rows col-upload-types rows))]
-      (driver/create-table! driver db-id table-name col-to-create->col-spec)
+      (driver/create-table! driver
+                            db-id
+                            table-name
+                            col-definitions
+                            :primary-key [auto-pk-column-keyword])
       (try
         (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
         {:num-rows          (count rows)
@@ -612,7 +638,9 @@
           normed-name->field (m/index-by (comp normalize-column-name :name)
                                          (t2/select :model/Field :table_id (:id table) :active true))
           normed-header      (map normalize-column-name header)
-          create-auto-pk?    (not (contains? normed-name->field auto-pk-column-name))
+          create-auto-pk?    (and
+                              (driver/create-auto-pk-with-append-csv? driver)
+                              (not (contains? normed-name->field auto-pk-column-name)))
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
           col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
           parsed-rows        (parse-rows col-upload-types rows)]
@@ -625,7 +653,8 @@
         (driver/add-columns! driver
                              (:id database)
                              (table-identifier table)
-                             {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
+                             {auto-pk-column-keyword (conj (driver/upload-type->database-type driver ::auto-incrementing-int-pk))}
+                             :primary-key [auto-pk-column-keyword]))
       (scan-and-sync-table! database table)
       (when create-auto-pk?
         (let [auto-pk-field (table-id->auto-pk-column (:id table))]
@@ -651,7 +680,6 @@
   (when-let [error (can-append-error db table)]
     (throw error)))
 
-;; This will be used in merge 2 of milestone 1 to populate a property on the table for the FE.
 (defn can-upload-to-table?
   "Returns true if the user can upload to the given database and table, and false otherwise."
   [db table]
@@ -662,7 +690,9 @@
 ;;; +--------------------------------------------------
 
 (mu/defn append-csv!
-  "Main entry point for appending to uploaded tables with a CSV file."
+  "Main entry point for appending to uploaded tables with a CSV file.
+  This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
+  before auto-pk columns were introduced by metabase#36249."
   [{:keys [^File file table-id]}
    :- [:map
        [:table-id ms/PositiveInt]
@@ -671,3 +701,64 @@
         database (table/database table)]
     (check-can-append database table)
     (append-csv!* database table file)))
+
+;;; +--------------------------------
+;;; |  hydrate based_on_upload for FE
+;;; +--------------------------------
+
+(defn uploadable-table-ids
+  "Returns the subset of table ids where the user can upload to the table."
+  [table-ids]
+  (set (when (seq table-ids)
+         (->> (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)
+              (filter #(can-upload-to-table? (:db %) %))
+              (map :id)))))
+
+(defn- no-joins?
+  "Returns true if `query` has no joins in it, otherwise false."
+  [query]
+  (let [all-joins (mapcat (fn [stage]
+                            (lib/joins query stage))
+                          (range (lib/stage-count query)))]
+    (empty? all-joins)))
+
+(mu/defn model-hydrate-based-on-upload
+  "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
+  [models :- [:sequential [:map
+                           ;; query_type and dataset_query can be null in tests, so we make them nullable here.
+                           ;; they should never be null in production
+                           [:dataset_query [:maybe ms/Map]]
+                           [:query_type    [:maybe [:or :string :keyword]]]
+                           [:table_id      [:maybe ms/PositiveInt]]
+                           ;; is_upload can be provided for an optional optimization
+                           [:is_upload {:optional true} [:maybe :boolean]]]]]
+  (let [table-ids             (->> models
+                                   ;; as an optimization when listing collection items (GET /api/collection/items),
+                                   ;; we might already know that the table is not an upload if is_upload=false. We
+                                   ;; can skip making more queries if so
+                                   (remove #(false? (:is_upload %)))
+                                   (keep :table_id)
+                                   set)
+        mbql?                 (fn [model] (= "query" (name (:query_type model "query"))))
+        has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
+    (for [model models]
+      (m/assoc-some
+       model
+       :based_on_upload
+       (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)] ; dataset_query can be empty in tests
+         (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
+           (lib/source-table-id query)))))))
+
+(mi/define-batched-hydration-method based-on-upload
+  :based_on_upload
+  "Add based_on_upload=<table-id> to a card if:
+    - the card is a model
+    - the query is a GUI query, and does not have any joins
+    - the base table of the card is based on an upload
+    - the user has permissions to upload to the table
+    - uploads are enabled
+  Otherwise based_on_upload is nil."
+  [cards]
+  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))
+        card->maybe-model (comp id->model :id)]
+    (map #(or (card->maybe-model %) %) cards)))

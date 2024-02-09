@@ -31,7 +31,7 @@ import {
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
 import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
-
+import { areParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
 
@@ -142,9 +142,13 @@ class ParameterValueWidget extends Component {
 
   getRequiredActionIcon() {
     const { required, default: defaultValue } = this.props.parameter;
-    const { value, setParameterValueToDefault } = this.props;
+    const { value, setParameterValueToDefault = () => {} } = this.props;
 
-    if (required && defaultValue && value !== defaultValue) {
+    if (
+      required &&
+      defaultValue &&
+      !areParameterValuesIdentical(value, defaultValue)
+    ) {
       return (
         <WidgetStatusIcon
           name="refresh"
@@ -261,6 +265,16 @@ function Widget({
     ? value
     : [value].filter(v => v != null);
 
+  // TODO this is due to some widgets not supporting focusChanged callback.
+  const setValueOrDefault = value => {
+    const { required, default: defaultValue } = parameter;
+    const shouldUseDefault =
+      enableRequiredBehavior && required && defaultValue && !value?.length;
+
+    setValue(shouldUseDefault ? defaultValue : value);
+    onPopoverClose();
+  };
+
   if (isDateParameter(parameter)) {
     const DateWidget = DATE_WIDGETS[parameter.type];
     return (
@@ -283,10 +297,7 @@ function Widget({
     return (
       <NumberInputWidget
         value={normalizedValue}
-        setValue={value => {
-          setValue(value);
-          onPopoverClose();
-        }}
+        setValue={setValueOrDefault}
         arity={arity}
         infixText={typeof arity === "number" && arity > 1 ? t`and` : undefined}
         autoFocus
@@ -295,16 +306,6 @@ function Widget({
       />
     );
   } else if (isFieldWidget(parameter)) {
-    // TODO this is due to ParameterFieldWidget not supporting focusChanged callback.
-    const setValueOrDefault = value => {
-      const { required, default: defaultValue } = parameter;
-      const shouldUseDefault =
-        enableRequiredBehavior && required && defaultValue && !value?.length;
-
-      setValue(shouldUseDefault ? defaultValue : value);
-      onPopoverClose();
-    };
-
     return (
       <ParameterFieldWidget
         target={target}
@@ -319,22 +320,18 @@ function Widget({
         isEditing={isEditing}
       />
     );
-  } else {
-    return (
-      <StringInputWidget
-        value={normalizedValue}
-        setValue={value => {
-          setValue(value);
-          onPopoverClose();
-        }}
-        className={className}
-        autoFocus
-        placeholder={isEditing ? t`Enter a default value…` : undefined}
-        arity={getStringParameterArity(parameter)}
-        label={getParameterWidgetTitle(parameter)}
-      />
-    );
   }
+  return (
+    <StringInputWidget
+      value={normalizedValue}
+      setValue={setValueOrDefault}
+      className={className}
+      autoFocus
+      placeholder={isEditing ? t`Enter a default value…` : undefined}
+      arity={getStringParameterArity(parameter)}
+      label={getParameterWidgetTitle(parameter)}
+    />
+  );
 }
 
 Widget.propTypes = {

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
+   [metabase.formatter :as formatter]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.query-processor.streaming.common :as common]
@@ -219,6 +220,9 @@
         (isa? col-type :Relation/*)
         "0"
 
+        (isa? semantic-type :type/Coordinate)
+        nil
+
         ;; This logic is a guard against someone setting the semantic type of a non-temporal value like 1.0 to temporal.
         ;; It will not apply formatting to the value in this case.
         (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
@@ -369,6 +373,13 @@
   formatting can be applied. This should be enabled for generation of pulse/dashboard subscription attachments."
   false)
 
+(defn- maybe-parse-coordinate-value [value {:keys [semantic_type]}]
+  (when (isa? semantic_type :type/Coordinate)
+    (try (formatter/format-geographic-coordinates semantic_type value)
+         ;; Fallback to plain string value if it couldn't be parsed
+         (catch Exception _ value
+                            value))))
+
 (defn- maybe-parse-temporal-value
   [value col]
   (when (and *parse-temporal-string-values*
@@ -378,6 +389,7 @@
          ;; Fallback to plain string value if it couldn't be parsed
          (catch Exception _ value
                 value))))
+
 (defn- add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -398,6 +410,7 @@
             ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
             parsed-value (or
                            (maybe-parse-temporal-value value col)
+                           (maybe-parse-coordinate-value value col)
                            scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
     row))

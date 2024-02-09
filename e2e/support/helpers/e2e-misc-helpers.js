@@ -27,12 +27,13 @@ export function openNativeEditor({
   databaseName,
   alias = "editor",
   fromCurrentPage,
+  newMenuItemTitle = "SQL query",
 } = {}) {
   if (!fromCurrentPage) {
     cy.visit("/");
   }
   cy.findByText("New").click();
-  cy.findByText("SQL query").click();
+  cy.findByText(newMenuItemTitle).click();
 
   databaseName && cy.findByText(databaseName).click();
 
@@ -154,9 +155,20 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
 /**
  * Visit a dashboard and wait for the related queries to load.
  *
- * @param {number} dashboard_id
+ * @param {number|string} dashboardIdOrAlias
+ * @param {Object} config
  */
-export function visitDashboard(dashboard_id, { params = {} } = {}) {
+export function visitDashboard(dashboardIdOrAlias, { params = {} } = {}) {
+  if (typeof dashboardIdOrAlias === "number") {
+    visitDashboardById(dashboardIdOrAlias, { params });
+  }
+
+  if (typeof dashboardIdOrAlias === "string") {
+    visitDashboardByAlias(dashboardIdOrAlias, { params });
+  }
+}
+
+function visitDashboardById(dashboard_id, config) {
   // Some users will not have permissions for this request
   cy.request({
     method: "GET",
@@ -173,7 +185,7 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
     let validQuestions = dashboardHasQuestions(dashcards);
 
     // if dashboard has tabs, only expect cards on the first tab
-    if (tabs?.length > 0) {
+    if (tabs?.length > 0 && validQuestions) {
       const firstTab = tabs[0];
       validQuestions = validQuestions.filter(
         card => card.dashboard_tab_id === firstTab.id,
@@ -202,7 +214,7 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
 
       cy.visit({
         url: `/dashboard/${dashboard_id}`,
-        qs: params,
+        qs: config.params,
       });
 
       cy.wait(aliases);
@@ -216,6 +228,14 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
       cy.wait(`@${dashboardAlias}`);
     }
   });
+}
+
+/**
+ * Visit a dashboard by using its previously saved dashboard id alias.
+ * @param {string} alias
+ */
+function visitDashboardByAlias(alias, config) {
+  cy.get(alias).then(id => visitDashboard(id, config));
 }
 
 function hasAccess(statusCode) {

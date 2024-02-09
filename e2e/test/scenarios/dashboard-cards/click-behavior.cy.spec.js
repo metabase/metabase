@@ -41,10 +41,10 @@ const CREATED_AT_COLUMN_SOURCE = {
   name: CREATED_AT_COLUMN_NAME,
 };
 const FILTER_VALUE = "123";
-const POINT_COUNT = 79;
-const POINT_CREATED_AT = "2022-08";
-const POINT_CREATED_AT_FORMATTED = "August 2022";
-const POINT_INDEX = 4;
+const POINT_COUNT = 64;
+const POINT_CREATED_AT = "2022-07";
+const POINT_CREATED_AT_FORMATTED = "July 2022";
+const POINT_INDEX = 3;
 const RESTRICTED_COLLECTION_NAME = "Restricted collection";
 const COLUMN_INDEX = {
   CREATED_AT: 0,
@@ -130,8 +130,8 @@ const QUERY_FILTER_CREATED_AT = [
       "base-type": "type/DateTime",
     },
   ],
-  "2022-08-01",
-  "2022-08-31",
+  "2022-07-01",
+  "2022-07-31",
 ];
 
 const QUERY_FILTER_QUANTITY = [
@@ -715,7 +715,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       clickLineChartPoint();
       cy.findByTestId("qb-filters-panel").should(
         "have.text",
-        "Created At is Aug 1–31, 2022",
+        "Created At is Jul 1–31, 2022",
       );
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
@@ -754,8 +754,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       clickLineChartPoint();
       cy.wait("@dataset");
       cy.findByTestId("qb-filters-panel")
-        .should("contain.text", "Created At is Aug 1–31, 2022")
-        .should("contain.text", "Quantity is equal to 79");
+        .should("contain.text", "Created At is Jul 1–31, 2022")
+        .should("contain.text", "Quantity is equal to 64");
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
         const card = deserializeCardFromUrl(hash);
@@ -1207,8 +1207,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           .click();
         cy.wait("@dataset");
         cy.findByTestId("qb-filters-panel")
-          .should("contain.text", "Created At is Aug 1–31, 2022")
-          .should("contain.text", "Quantity is equal to 79");
+          .should("contain.text", "Created At is Jul 1–31, 2022")
+          .should("contain.text", "Quantity is equal to 64");
         cy.location().should(({ hash, pathname }) => {
           expect(pathname).to.equal("/question");
           const card = deserializeCardFromUrl(hash);
@@ -1430,7 +1430,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(anchor).to.have.attr("target", "_blank");
         });
         getTableCell(COLUMN_INDEX.CREATED_AT)
-          .should("have.text", `Created at: November 2023`)
+          .should("have.text", `Created at: October 2023`)
           .click();
       })();
     });
@@ -1564,12 +1564,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
-      }).then(({ body: card }) => {
+      }).then(({ body: dashCard }) => {
         addOrUpdateDashboardCard({
-          dashboard_id: card.dashboard_id,
-          card_id: card.card_id,
+          dashboard_id: dashCard.dashboard_id,
+          card_id: dashCard.card_id,
           card: {
-            id: card.id,
+            id: dashCard.id,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: dashCard.card_id }),
+            ],
             visualization_settings: {
               click_behavior: {
                 type: "link",
@@ -1581,7 +1584,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
         visitEmbeddedPage({
-          resource: { dashboard: card.dashboard_id },
+          resource: { dashboard: dashCard.dashboard_id },
           params: {},
         });
         cy.wait("@dashboard");
@@ -1590,7 +1593,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
         cy.button("Add filter").click();
       });
       onNextAnchorClick(anchor => {
@@ -1662,12 +1665,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
-      }).then(({ body: card }) => {
+      }).then(({ body: dashCard }) => {
         addOrUpdateDashboardCard({
-          dashboard_id: card.dashboard_id,
-          card_id: card.card_id,
+          dashboard_id: dashCard.dashboard_id,
+          card_id: dashCard.card_id,
           card: {
-            id: card.id,
+            id: dashCard.id,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: dashCard.card_id }),
+              createTimeFilterMapping({ card_id: dashCard.card_id }),
+            ],
             visualization_settings: {
               click_behavior: {
                 type: "crossfilter",
@@ -1689,7 +1696,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
         visitEmbeddedPage({
-          resource: { dashboard: card.dashboard_id },
+          resource: { dashboard: dashCard.dashboard_id },
           params: {},
         });
         cy.wait("@dashboard");

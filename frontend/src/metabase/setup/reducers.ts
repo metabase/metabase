@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import type { SetupState } from "metabase-types/store";
+import type { SetupState, State } from "metabase-types/store";
 import {
   skipDatabase,
   loadLocaleDefaults,
@@ -12,16 +12,12 @@ import {
   updateLocale,
   updateTracking,
   submitSetup,
+  submitUsageReason,
 } from "./actions";
-import {
-  COMPLETED_STEP,
-  DATABASE_STEP,
-  PREFERENCES_STEP,
-  WELCOME_STEP,
-} from "./constants";
+import { getNextStep } from "./selectors";
 
 const initialState: SetupState = {
-  step: WELCOME_STEP,
+  step: "welcome",
   isLocaleLoaded: false,
   isTrackingAllowed: true,
 };
@@ -49,7 +45,12 @@ export const reducer = createReducer(initialState, builder => {
   });
   builder.addCase(submitUser.pending, (state, { meta }) => {
     state.user = meta.arg;
-    state.step = DATABASE_STEP;
+    state.step = getNextStep({ setup: state } as State);
+  });
+  builder.addCase(submitUsageReason.pending, (state, { meta }) => {
+    const usageReason = meta.arg;
+    state.usageReason = usageReason;
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
     state.databaseEngine = meta.arg;
@@ -57,22 +58,22 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(submitDatabase.fulfilled, (state, { payload: database }) => {
     state.database = database;
     state.invite = undefined;
-    state.step = PREFERENCES_STEP;
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(submitUserInvite.pending, (state, { meta }) => {
     state.database = undefined;
     state.invite = meta.arg;
-    state.step = PREFERENCES_STEP;
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(skipDatabase.pending, state => {
     state.database = undefined;
     state.invite = undefined;
-    state.step = PREFERENCES_STEP;
+    state.step = getNextStep({ setup: state } as State);
   });
   builder.addCase(updateTracking.pending, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;
   });
   builder.addCase(submitSetup.fulfilled, state => {
-    state.step = COMPLETED_STEP;
+    state.step = "completed";
   });
 });

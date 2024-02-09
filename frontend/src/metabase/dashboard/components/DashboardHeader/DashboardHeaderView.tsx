@@ -153,7 +153,11 @@ export function DashboardHeaderComponent({
           </HeaderButtonsContainer>
         </HeaderRow>
         <HeaderRow isNavBarOpen={isNavBarOpen}>
-          <DashboardTabs location={location} isEditing={isEditing} />
+          <DashboardTabs
+            dashboardId={dashboard.id}
+            location={location}
+            isEditing={isEditing}
+          />
         </HeaderRow>
       </div>
     </div>

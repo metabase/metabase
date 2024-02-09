@@ -27,7 +27,7 @@
    :collection_preview     true
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)
-   :dataset                false
+   :type                   "question"
    :description            nil
    :display                :table
    :enable_embedding       false
@@ -46,6 +46,7 @@
    :cache_ttl           nil
    :auto_apply_filters  true
    :name                (:name dashboard)
+   :width               (:width dashboard)
    :tabs                []
    :cards               []
    :archived            false
