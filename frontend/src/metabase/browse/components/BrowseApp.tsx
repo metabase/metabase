@@ -88,10 +88,10 @@ export const BrowseApp = ({
               <BrowseTab key={"databases"} value={"databases"}>
                 {t`Databases`}
               </BrowseTab>
-              {tab === "models" && (
+              {tab === "models" ? (
                 <Switch
                   ml="auto"
-                  size="xs"
+                  size="sm"
                   labelPosition="left"
                   checked={onlyShowVerifiedModels}
                   label={<strong>{t`Only show verified models`}</strong>}
@@ -99,6 +99,25 @@ export const BrowseApp = ({
                     changeOnlyShowVerifiedModels(e.target.checked);
                   }}
                 />
+              ) : (
+                <div className="flex flex-align-right">
+                  <Link className="flex flex-align-right" to="reference">
+                    <BrowseHeaderIconContainer>
+                      <Icon
+                        className="flex align-center"
+                        size={14}
+                        name="reference"
+                      />
+                      <Text
+                        size="md"
+                        lh="1"
+                        className="ml1 flex align-center text-bold"
+                      >
+                        {t`Learn about our data`}
+                      </Text>
+                    </BrowseHeaderIconContainer>
+                  </Link>
+                </div>
               )}
             </Flex>
           </BrowseTabsList>
