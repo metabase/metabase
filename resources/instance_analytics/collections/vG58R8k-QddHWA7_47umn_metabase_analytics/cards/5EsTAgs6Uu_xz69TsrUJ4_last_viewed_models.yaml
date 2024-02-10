@@ -188,3 +188,4 @@ serdes/meta:
   label: last_viewed_models
   model: Card
 metabase_version: vUNKNOWN (a98530f)
+type: question

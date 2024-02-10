@@ -11,10 +11,12 @@ import {
 import {
   FETCH_CARD_DATA,
   addDashCardToDashboard,
-  generateTemporaryDashcardId,
 } from "metabase/dashboard/actions";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  generateTemporaryDashcardId,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 
@@ -23,7 +25,7 @@ export function useDuplicateDashCard({
   dashcard,
 }: {
   dashboard: Dashboard;
-  dashcard: DashboardCard | undefined;
+  dashcard?: DashboardCard;
 }) {
   const dispatch = useDispatch();
   const dashboards = useSelector(getDashboards);
@@ -58,7 +60,7 @@ export function useDuplicateDashCard({
     );
 
     // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-    if (!isVirtualDashCard(dashcard) && dashcard.card_id !== null) {
+    if (!isVirtualDashCard(dashcard) && dashcard.card_id != null) {
       dispatch(
         // Manually copying the card data by dispatching the `FETCH_CARD_DATA` action directly,
         // as opposed to using the `fetchCardData` thunk, will send a request to re-fetch the data

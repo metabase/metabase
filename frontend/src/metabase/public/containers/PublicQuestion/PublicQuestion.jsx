@@ -119,6 +119,14 @@ class PublicQuestionInner extends Component {
     );
   };
 
+  setParameterValueToDefault = parameterId => {
+    const parameters = this.getParameters();
+    const parameter = parameters.find(({ id }) => id === parameterId);
+    if (parameter) {
+      this.setParameterValue(parameterId, parameter.default);
+    }
+  };
+
   run = async () => {
     const {
       setErrorPage,
@@ -166,6 +174,22 @@ class PublicQuestionInner extends Component {
     }
   };
 
+  getParameters() {
+    const { metadata } = this.props;
+    const { card, initialized } = this.state;
+
+    if (!initialized || !card) {
+      return [];
+    }
+
+    return getCardUiParameters(
+      card,
+      metadata,
+      {},
+      card.parameters || undefined,
+    );
+  }
+
   render() {
     const {
       params: { uuid, token },
@@ -184,19 +208,17 @@ class PublicQuestionInner extends Component {
       />
     );
 
-    const parameters =
-      card &&
-      getCardUiParameters(card, metadata, {}, card.parameters || undefined);
-
     return (
       <EmbedFrame
         name={card && card.name}
         description={card && card.description}
         actionButtons={actionButtons}
         question={question}
-        parameters={initialized ? parameters : []}
+        parameters={this.getParameters()}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
+        enableParameterRequiredBehavior
+        setParameterValueToDefault={this.setParameterValueToDefault}
       >
         <LoadingAndErrorWrapper
           className="flex-full"

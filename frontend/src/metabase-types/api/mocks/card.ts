@@ -17,6 +17,8 @@ import {
 
 export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-01T00:00:00Z",
   name: "Question",
   description: null,
   display: "table",
@@ -35,6 +37,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   based_on_upload: null,
   archived: false,
   enable_embedding: false,
+  initially_published_at: null,
   ...opts,
 });
 

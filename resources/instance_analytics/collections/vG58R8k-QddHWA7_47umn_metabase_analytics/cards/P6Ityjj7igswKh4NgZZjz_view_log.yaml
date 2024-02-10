@@ -219,3 +219,4 @@ serdes/meta:
   label: view_log
   model: Card
 metabase_version: vUNKNOWN (7c47e04)
+type: model

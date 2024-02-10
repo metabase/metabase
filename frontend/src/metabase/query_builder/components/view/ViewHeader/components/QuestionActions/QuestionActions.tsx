@@ -238,6 +238,7 @@ export const QuestionActions = ({
       uploadFile({
         file,
         tableId: question._card.based_on_upload,
+        reloadQuestionData: true,
       })(dispatch);
 
       // reset the file input so that subsequent uploads of the same file trigger the change handler

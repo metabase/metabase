@@ -49,10 +49,8 @@ const metadata = createMockMetadata({
   questions: [card],
 });
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const databaseWithEnabledActions = metadata.database(ACTIONS_ENABLED_DB_ID)!;
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const databaseWithDisabledActions = metadata.database(ACTIONS_DISABLED_DB_ID)!;
 
 const implicitCreateAction = createMockImplicitQueryAction({

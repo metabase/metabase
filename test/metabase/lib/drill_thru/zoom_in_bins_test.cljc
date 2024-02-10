@@ -198,6 +198,7 @@
                  [:<  {} [:field {} (meta/id :products :rating)] 5.125]]
                 (lib/filters drilled)))))))
 
+;; This actually checks pivot tables too.
 (deftest ^:parallel legend-zoom-binning-latitude-test
   ;; Sum of Subtotal by month and People->Latitude with binning, then click a latitude range to zoom in.
   (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -226,3 +227,31 @@
         (is (=? [[:>= {} [:field {} (meta/id :people :latitude)] 30]
                  [:<  {} [:field {} (meta/id :people :latitude)] 40.0]]
                 (lib/filters drilled)))))))
+
+(deftest ^:parallel nil-aggregation-value-test
+  (testing "nil dimension value for binned column should not return this drill"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (-> (meta/field-metadata :orders :discount)
+                                             (lib/with-binning {:strategy :default})))
+                           #_(lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                               (lib/with-temporal-bucket :month))))
+          count-col    (m/find-first #(= (:name %) "count")
+                                     (lib/returned-columns query))
+          _            (is (some? count-col))
+          discount-col (m/find-first #(= (:name %) "DISCOUNT")
+                                     (lib/returned-columns query))
+          _            (is (some? discount-col))
+          discount-dim {:column     discount-col
+                        :column-ref (lib/ref discount-col)
+                        :value      nil}
+          context      {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value      16845
+                        :row        [discount-dim
+                                     {:column     count-col
+                                      :column-ref (lib/ref count-col)
+                                      :value      16845}]
+                        :dimensions [discount-dim]}
+          drills       (set (map :type (lib/available-drill-thrus query context)))]
+      (is (not (drills :drill-thru/zoom-in.binning))))))

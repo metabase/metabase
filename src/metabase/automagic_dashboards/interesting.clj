@@ -43,7 +43,7 @@
     [clojure.math.combinatorics :as math.combo]
     [clojure.string :as str]
     [clojure.walk :as walk]
-    [java-time :as t]
+    [java-time.api :as t]
     [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.schema :as ads]

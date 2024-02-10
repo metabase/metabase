@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbeddingDisplayOptions,
-  EmbeddingParameters,
+  EmbeddingParametersValues,
   EmbedResource,
   EmbedResourceType,
   ServerCodeSampleConfig,
@@ -14,8 +14,10 @@ import "ace/mode-javascript";
 import "ace/mode-ruby";
 import "ace/mode-python";
 
+import { useSelector } from "metabase/lib/redux";
+import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import type { EmbedCodePaneVariant } from "./types";
-import { DEFAULT_DISPLAY_OPTIONS } from "./config";
+import { getDefaultDisplayOptions } from "./config";
 import { CodeSample } from "./CodeSample";
 
 type EmbedCodePaneProps = {
@@ -24,13 +26,14 @@ type EmbedCodePaneProps = {
   variant: EmbedCodePaneVariant;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
-  params: EmbeddingParameters;
+  params: EmbeddingParametersValues;
   displayOptions: EmbeddingDisplayOptions;
-  initialPreviewParameters: EmbeddingParameters;
+  initialPreviewParameters: EmbeddingParametersValues;
 
   serverCodeOptions: ServerCodeSampleConfig[];
-  selectedServerCodeOptionName: string;
-  setSelectedServerCodeOptionName: (languageName: string) => void;
+  selectedServerCodeOptionId: string;
+  setSelectedServerCodeOptionId: (languageName: string) => void;
+  onCopy: () => void;
 
   className?: string;
 };
@@ -45,14 +48,18 @@ export const ServerEmbedCodePane = ({
   displayOptions,
   initialPreviewParameters,
   serverCodeOptions,
-  selectedServerCodeOptionName,
-  setSelectedServerCodeOptionName,
+  selectedServerCodeOptionId,
+  setSelectedServerCodeOptionId,
+  onCopy,
 
   className,
 }: EmbedCodePaneProps): JSX.Element | null => {
   const selectedServerCodeOption = serverCodeOptions.find(
-    ({ name }) => name === selectedServerCodeOptionName,
+    ({ id }) => id === selectedServerCodeOptionId,
   );
+
+  const canWhitelabel = useSelector(getCanWhitelabel);
+  const shouldShowDownloadData = canWhitelabel && resourceType === "question";
 
   if (!selectedServerCodeOption) {
     return null;
@@ -63,12 +70,13 @@ export const ServerEmbedCodePane = ({
       initialPreviewParameters,
       params,
       selectedServerCodeOption,
-      selectedServerCodeOptionName,
+      selectedServerCodeOptionId,
       siteUrl,
       secretKey,
       resourceType,
       resource,
       displayOptions,
+      shouldShowDownloadData,
     });
 
   const title = getTitle({
@@ -82,12 +90,13 @@ export const ServerEmbedCodePane = ({
       dataTestId="embed-backend"
       className={className}
       title={title}
-      selectedOptionName={selectedServerCodeOptionName}
-      languageOptions={serverCodeOptions.map(({ name }) => name)}
+      selectedOptionId={selectedServerCodeOptionId}
+      languageOptions={serverCodeOptions}
       source={selectedServerCodeOption.source}
       textHighlightMode={selectedServerCodeOption.mode}
       highlightedTexts={highlightedTexts}
-      onChangeOption={setSelectedServerCodeOptionName}
+      onChangeOption={setSelectedServerCodeOptionId}
+      onCopy={onCopy}
     />
   );
 };
@@ -96,23 +105,25 @@ function getHighlightedText({
   initialPreviewParameters,
   params,
   selectedServerCodeOption,
-  selectedServerCodeOptionName,
+  selectedServerCodeOptionId,
   siteUrl,
   secretKey,
   resourceType,
   resource,
   displayOptions,
+  shouldShowDownloadData,
 }: {
   siteUrl: string;
   secretKey: string;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
-  params: EmbeddingParameters;
+  params: EmbeddingParametersValues;
   displayOptions: EmbeddingDisplayOptions;
-  initialPreviewParameters: EmbeddingParameters;
+  initialPreviewParameters: EmbeddingParametersValues;
 
   selectedServerCodeOption: ServerCodeSampleConfig;
-  selectedServerCodeOptionName: string;
+  selectedServerCodeOptionId: string;
+  shouldShowDownloadData: boolean;
 }) {
   const hasParametersCodeDiff =
     !_.isEqual(initialPreviewParameters, params) &&
@@ -124,11 +135,10 @@ function getHighlightedText({
         resourceId: resource.id,
         params: initialPreviewParameters,
         displayOptions,
-      }).find(({ name }) => name === selectedServerCodeOptionName)
-        ?.parametersSource;
+      }).find(({ id }) => id === selectedServerCodeOptionId)?.parametersSource;
 
   const hasAppearanceCodeDiff = !_.isEqual(
-    DEFAULT_DISPLAY_OPTIONS,
+    getDefaultDisplayOptions(shouldShowDownloadData),
     displayOptions,
   );
 

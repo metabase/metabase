@@ -326,7 +326,7 @@ describe("issue 31628", () => {
         const previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
-          cy.contains("34.72%").should("exist");
+          cy.contains("34.7%").should("exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
