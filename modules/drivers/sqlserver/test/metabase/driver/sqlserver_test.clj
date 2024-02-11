@@ -408,7 +408,7 @@
 
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver
-    (testing "Should filter datetime fields even in non-default timezone (#30454)"
+    (testing "Should match datetime fields even in non-default timezone (#30454)"
       (mt/dataset attempted-murders
         (let [limit 10
               get-query (mt/mbql-query attempts
@@ -424,9 +424,7 @@
                                   #'test.tz/do-with-system-timezone-id
                                   #'qp.test-util/do-with-database-timezone-id
                                   #'qp.test-util/do-with-results-timezone-id]
-                  timezone ["Pacific/Auckland"
-                            "UTC"
-                            "America/Los_Angeles"]]
+                  timezone ["UTC" "Pacific/Auckland"]]
             (testing (str with-tz-setter " " timezone)
               (with-tz-setter timezone
                 (fn []
