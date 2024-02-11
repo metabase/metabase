@@ -222,13 +222,6 @@ function SavedQuestionLeftSide(props) {
 
   const [showSubHeader, setShowSubHeader] = useState(true);
 
-  useEffect(() => {
-    const timerId = setTimeout(() => {
-      setShowSubHeader(false);
-    }, 4000);
-    return () => clearTimeout(timerId);
-  }, []);
-
   const hasLastEditInfo = question.lastEditInfo() != null;
   const isDataset = question.isDataset();
 
@@ -240,6 +233,18 @@ function SavedQuestionLeftSide(props) {
     },
     [question, onSave],
   );
+
+  const renderDataSource = QuestionDataSource.shouldRender(props) && !isDataset;
+  const renderLastEdit = hasLastEditInfo && isAdditionalInfoVisible;
+
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      if (isAdditionalInfoVisible && (renderDataSource || renderLastEdit)) {
+        setShowSubHeader(false);
+      }
+    }, 4000);
+    return () => clearTimeout(timerId);
+  }, [isAdditionalInfoVisible, renderDataSource, renderLastEdit]);
 
   return (
     <SavedQuestionLeftSideRoot
