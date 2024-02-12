@@ -36,6 +36,7 @@ import type {
   ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
+import type { ParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
@@ -106,7 +107,7 @@ interface DashcardCardParameterMapperProps {
   isMobile: boolean;
   // virtual cards will not have question
   question?: Question;
-  mappingOptions: any[];
+  mappingOptions: ParameterMappingOptions;
 }
 
 export function DashCardCardParameterMapper({
