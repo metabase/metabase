@@ -3,9 +3,7 @@ import { t } from "ttag";
 import { useEffect } from "react";
 import type {
   Card,
-  Collection,
   CollectionEssentials,
-  CollectionId,
   SearchResult,
 } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
@@ -15,17 +13,13 @@ import Link from "metabase/core/components/Link";
 import Search from "metabase/entities/search";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import type {
-  useCollectionListQuery,
-  useSearchListQuery,
-} from "metabase/common/hooks";
+import type { useSearchListQuery } from "metabase/common/hooks";
 
 import NoResults from "assets/img/no_results.svg";
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
 
 import { getCollectionIcon } from "metabase/entities/collections";
 import { getLocale } from "metabase/setup/selectors";
-import type { BrowseFilters } from "../utils";
 import { getCollectionName, groupModels, sortModels } from "../utils";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";
@@ -42,19 +36,12 @@ import { ModelExplanationBanner } from "./ModelExplanationBanner";
 
 export const BrowseModels = ({
   modelsResult,
-  collectionsResult,
-  filters,
 }: {
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
-  collectionsResult: ReturnType<typeof useCollectionListQuery>;
-  filters: BrowseFilters;
 }) => {
-  const models = modelsResult.data ?? [];
-  const collections = collectionsResult.data ?? [];
+  const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
-  const error = modelsResult.error || collectionsResult.error;
-  const isLoading = modelsResult.isLoading || collectionsResult.isLoading;
 
   useEffect(() => {
     if (error || isLoading) {
@@ -75,7 +62,7 @@ export const BrowseModels = ({
 
   const groupsOfModels = groupModels(models, localeCode);
 
-  if (filteredModels.length) {
+  if (models.length) {
     return (
       <>
         <ModelExplanationBanner />

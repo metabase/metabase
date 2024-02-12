@@ -1,11 +1,11 @@
 import { t } from "ttag";
 import { Switch, Text } from "metabase/ui";
-import type { BrowseFilterControlsProps } from "metabase/browse/utils";
+import type { ModelFilterControlsProps } from "metabase/browse/utils";
 
-export const BrowseFilterControls = ({
+export const ModelFilterControls = ({
   actualModelFilters,
   handleModelFilterChange,
-}: BrowseFilterControlsProps) => {
+}: ModelFilterControlsProps) => {
   return (
     <Switch
       label={
@@ -13,6 +13,7 @@ export const BrowseFilterControls = ({
           align="right"
           weight="bold"
           lh="1rem"
+          pr=".25rem"
         >{t`Only show verified models`}</Text>
       }
       checked={actualModelFilters.onlyShowVerifiedModels}
@@ -24,7 +25,7 @@ export const BrowseFilterControls = ({
       labelPosition="left"
       styles={{
         body: { alignItems: "center" },
-        labelWrapper: { justifyContent: "center" },
+        labelWrapper: { justifyContent: "center", padding: 0 },
         track: { marginTop: "-.5px" },
       }}
     />

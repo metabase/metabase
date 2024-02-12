@@ -83,7 +83,7 @@ export type AvailableModelFilters = Record<
   }
 >;
 
-export type BrowseFilterControlsProps = {
+export type ModelFilterControlsProps = {
   actualModelFilters: ActualModelFilters;
   handleModelFilterChange: (
     filterName: ModelFilterName,

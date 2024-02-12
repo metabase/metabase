@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 import type { SearchResult } from "metabase-types/api";
 import {
-  useCollectionListQuery,
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import type { FlexProps } from "metabase/ui";
 import { Flex, Icon, Text } from "metabase/ui";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -27,7 +28,6 @@ import {
 import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
 import { BrowseModels } from "./BrowseModels";
-import _ from "underscore";
 
 export const BrowseApp = ({
   tab,
@@ -91,7 +91,7 @@ export const BrowseApp = ({
       unfilteredModels,
     );
     setFilteredModels(filteredModels);
-  }, [unfilteredModels, actualModelFilters]);
+  }, [unfilteredModels, actualModelFilters, availableModelFilters]);
 
   const filteredModelsResult = { ...modelsResult, data: filteredModels };
 
@@ -116,9 +116,9 @@ export const BrowseApp = ({
     <BrowseAppRoot data-testid="browse-app">
       <BrowseContainer>
         <BrowseDataHeader>
-          <Flex maw="64rem" m="0 auto" w="100%" align="center">
+          <BrowseSection>
             <h2>{t`Browse data`}</h2>
-          </Flex>
+          </BrowseSection>
         </BrowseDataHeader>
         <BrowseTabs
           value={tab}
@@ -129,7 +129,7 @@ export const BrowseApp = ({
           }}
         >
           <BrowseTabsList>
-            <Flex maw="64rem" m="0 auto" w="100%" align="center">
+            <BrowseSection>
               <BrowseTab key={"models"} value={"models"}>
                 {t`Models`}
               </BrowseTab>
@@ -137,32 +137,24 @@ export const BrowseApp = ({
                 {t`Databases`}
               </BrowseTab>
               {tab === "models" && (
-                <PLUGIN_CONTENT_VERIFICATION.BrowseFilterControls
+                <PLUGIN_CONTENT_VERIFICATION.ModelFilterControls
                   actualModelFilters={actualModelFilters}
                   handleModelFilterChange={handleModelFilterChange}
                 />
               )}
               {tab === "databases" && <LearnAboutDataLink />}
-            </Flex>
+            </BrowseSection>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
-            <Flex
-              maw="64rem"
-              direction="column"
-              m="0 auto"
-              w="100%"
-              align="center"
-            >
+            <BrowseSection direction="column">
               <BrowseTabContent
                 tab={tab}
                 modelsResult={filteredModelsResult}
                 databasesResult={databasesResult}
-                filters={filters}
-                // TODO: Perhaps filter the models up here, to keep BrowseModels dumber
               >
                 {children}
               </BrowseTabContent>
-            </Flex>
+            </BrowseSection>
           </BrowseTabsPanel>
         </BrowseTabs>
       </BrowseContainer>
@@ -174,28 +166,18 @@ const BrowseTabContent = ({
   tab,
   children,
   modelsResult,
-  collectionsResult,
   databasesResult,
-  filters,
 }: {
   tab: BrowseTabId;
   children?: React.ReactNode;
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
-  collectionsResult: ReturnType<typeof useCollectionListQuery>;
   databasesResult: ReturnType<typeof useDatabaseListQuery>;
-  filters: BrowseFilters;
 }) => {
   if (children) {
     return <>{children}</>;
   }
   if (tab === "models") {
-    return (
-      <BrowseModels
-        modelsResult={modelsResult}
-        collectionsResult={collectionsResult}
-        filters={filters}
-      />
-    );
+    return <BrowseModels modelsResult={modelsResult} />;
   } else {
     return <BrowseDatabases databasesResult={databasesResult} />;
   }
@@ -212,4 +194,8 @@ const LearnAboutDataLink = () => (
       </BrowseHeaderIconContainer>
     </Link>
   </Flex>
+);
+
+const BrowseSection = (props: FlexProps) => (
+  <Flex maw="64rem" m="0 auto" w="100%" align="center" {...props} />
 );
