@@ -8,10 +8,19 @@ import * as Urls from "metabase/lib/urls";
 
 import type { Card, CollectionItem } from "metabase-types/api";
 
-type ModelCard = Card & { dataset: true };
+type ModelCard = Card & { dataset: true; type: "model" };
+
+/**
+ * Omitting the "type" attribute is hopefully a temporary workaround
+ * until Metrics v2 are supported in Collections and the ambiguity between
+ * CollectionItem["type"] and Card["type"] disappears.
+ *
+ * @see https://github.com/metabase/metabase/issues/37350#issuecomment-1910284020
+ */
+type ModelCollectionItem = Omit<CollectionItem, "type" | "based_on_upload">;
 
 interface Props extends ButtonProps {
-  model: ModelCard | CollectionItem;
+  model: ModelCard | ModelCollectionItem;
 }
 
 function ModelDetailLink({ model, ...props }: Props) {

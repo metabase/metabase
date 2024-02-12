@@ -6,13 +6,13 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
@@ -20,6 +20,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.upload :as upload]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -33,7 +34,8 @@
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (doseq [[feature supported?] {:test/jvm-timezone-setting false
-                              :nested-field-columns      false}]
+                              :nested-field-columns      false
+                              :connection-impersonation  true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -130,6 +132,9 @@
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
+       (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
+                                                                                               (lib.metadata/database (qp.store/metadata-provider)))
+                                                               (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
@@ -376,25 +381,30 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint [:identity 0 1]]
+    ;; identity(1, 1) defines an auto-increment column starting from 1
+    ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
     ::upload/float                    [:float]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/table-name-length-limit :redshift
+  [_driver]
+  ;; https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
+  127)
+
 (defmethod driver/insert-into! :redshift
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
 
-(defmethod driver/current-user-table-privileges :redshift
-  [_driver database]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
-    ;; result in an operation not supported error
-    (->> (jdbc/query
-          conn-spec
-          (str/join
+(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
+  [_driver conn-spec & {:as _options}]
+  ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
+  ;; result in an operation not supported error
+  (->> (jdbc/query
+         conn-spec
+         (str/join
            "\n"
            ["with table_privileges as ("
             " select"
@@ -416,4 +426,19 @@
             ")"
             "select t.*"
             "from table_privileges t"]))
-         (filter #(or (:select %) (:update %) (:delete %) (:update %))))))
+         (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
+
+
+;;; ----------------------------------------------- Connection Impersonation ------------------------------------------
+
+(defmethod driver.sql/set-role-statement :redshift
+  [_ role]
+  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
+        needs-quote           (re-find special-chars-pattern role)]
+    (if needs-quote
+      (format "SET SESSION AUTHORIZATION \"%s\";" role)
+      (format "SET SESSION AUTHORIZATION %s;" role))))
+
+(defmethod driver.sql/default-database-role :redshift
+  [_ _]
+  "DEFAULT")

@@ -372,3 +372,4 @@ serdes/meta:
   label: alerts
   model: Card
 metabase_version: vUNKNOWN (13e6090)
+type: model

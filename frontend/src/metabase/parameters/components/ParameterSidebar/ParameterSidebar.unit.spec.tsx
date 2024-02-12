@@ -52,6 +52,8 @@ const setup = ({
           onRemoveParameter={jest.fn()}
           onShowAddParameterPopover={jest.fn()}
           onClose={jest.fn()}
+          onChangeRequired={jest.fn()}
+          getEmbeddedParameterVisibility={() => null}
         />
       </div>
     );

@@ -424,7 +424,7 @@ describeOSS(
       cy.createQuestion({
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
-        dataset: true,
+        type: "model",
       });
 
       cy.visit("/question/new");

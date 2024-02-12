@@ -174,6 +174,22 @@
      (delete-old-schemas! conn)
      (create-session-schema! conn))))
 
+(defn- delete-session-schema!
+  "Delete our session schema when the test suite has finished running (CLI only)."
+  [^java.sql.Connection conn]
+  (with-open [stmt (.createStatement conn)]
+    (let [sql (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" (unique-session-schema))]
+      (log/info (u/format-color 'blue "[redshift] %s" sql))
+      (.execute stmt sql))))
+
+(defmethod tx/after-run :redshift
+  [driver]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+   {:write? true}
+   delete-session-schema!))
+
 (defonce ^:private ^{:arglists '([driver connection metadata _ _])}
   original-filtered-syncable-schemas
   (get-method sql-jdbc.sync/filtered-syncable-schemas :redshift))

@@ -49,7 +49,7 @@ describe("ImpersonationWarning", () => {
 
     expect(
       screen.getByText(
-        "metabase_user is the database user Metabase is using to connect to My Database. Make sure that metabase_user has access to everything in My Database that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information.",
+        /that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information./i,
       ),
     ).toBeInTheDocument();
 

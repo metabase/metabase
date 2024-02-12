@@ -75,3 +75,4 @@ serdes/meta:
   label: question_performance
   model: Card
 metabase_version: vUNKNOWN (13e6090)
+type: question

@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [load])
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
@@ -9,6 +10,7 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.db :as mdb]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
@@ -83,7 +85,6 @@
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
    opts :- [:map
-            [:abort-on-error {:optional true} [:maybe :boolean]]
             [:backfill? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?]
@@ -95,7 +96,7 @@
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
-  (log/info (trs "Loading serialized Metabase files from {0}" path))
+  (log/infof "Loading serialized Metabase files from %s" path)
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
@@ -105,9 +106,26 @@
    opts are passed to load-metabase"
   [path :- :string
    opts :- [:map
-            [:abort-on-error {:optional true} [:maybe :boolean]]
             [:backfill? {:optional true} [:maybe :boolean]]]]
-  (v2-load-internal! path opts :token-check? true))
+  (let [start    (System/nanoTime)
+        err      (atom nil)
+        report   (try
+                   (v2-load-internal! path opts :token-check? true)
+                   (catch Exception e
+                     (reset! err e)))
+        imported (into (sorted-set) (map (comp :model last)) (:seen report))]
+    (snowplow/track-event! ::snowplow/serialization-import nil
+                           {:source        "cli"
+                            :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                            :models        (str/join "," imported)
+                            :count         (if (contains? imported "Setting")
+                                             (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                             (count (:seen report)))
+                            :success       (nil? @err)
+                            :error_message (some-> @err str)})
+    (when @err
+      (throw @err))
+    imported))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -215,13 +233,34 @@
     (.mkdirs f)
     (when-not (.canWrite f)
       (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
-  (serdes/with-cache
-    (-> (cond-> opts
-          (seq collection-ids) (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
-        v2.extract/extract
-        (v2.storage/store! path)))
-  (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦"))
-  ::v2-dump-complete)
+  (let [start  (System/nanoTime)
+        err    (atom nil)
+        report (try
+                 (serdes/with-cache
+                   (-> (cond-> opts
+                         (seq collection-ids)
+                         (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
+                       v2.extract/extract
+                       (v2.storage/store! path)))
+                 (catch Exception e
+                   (reset! err e)))]
+    (snowplow/track-event! ::snowplow/serialization-export nil
+                           {:source          "cli"
+                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                            :count           (count (:seen report))
+                            :collection      (str/join "," collection-ids)
+                            :all_collections (and (empty? collection-ids)
+                                                  (not (:no-collections opts)))
+                            :data_model      (not (:no-data-model opts))
+                            :settings        (not (:no-settings opts))
+                            :field_values    (boolean (:include-field-values opts))
+                            :secrets         (boolean (:include-database-secrets opts))
+                            :success         (nil? @err)
+                            :error_message   (some-> @err str)})
+    (when @err
+      (throw @err))
+    (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
+    report))
 
 (defn seed-entity-ids!
   "Add entity IDs for instances of serializable models that don't already have them.

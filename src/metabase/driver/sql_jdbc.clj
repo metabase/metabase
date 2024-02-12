@@ -9,11 +9,11 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Connection)))
 
@@ -117,19 +117,20 @@
   [_driver _semantic_type expr]
   (h2x/->timestamp expr))
 
-(defn- create-table-sql
-  [driver table-name col->type]
+(defn- create-table!-sql
+  [driver table-name column-definitions & {:keys [primary-key]}]
   (first (sql/format {:create-table (keyword table-name)
-                      :with-columns (map (fn [[name type-spec]]
-                                           (vec (cons name type-spec)))
-                                         col->type)}
+                      :with-columns (cond-> (mapv (fn [[name type-spec]]
+                                                    (vec (cons name type-spec)))
+                                                  column-definitions)
+                                      primary-key (conj [(into [:primary-key] primary-key)]))}
                      :quoted true
                      :dialect (sql.qp/quote-style driver))))
 
 (defmethod driver/create-table! :sql-jdbc
-  [driver db-id table-name col->type]
-  (let [sql (create-table-sql driver table-name col->type)]
-    (qp.writeback/execute-write-sql! db-id sql)))
+  [driver database-id table-name column-definitions & {:keys [primary-key]}]
+  (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+    (qp.writeback/execute-write-sql! database-id sql)))
 
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
@@ -162,11 +163,15 @@
         (jdbc/execute! conn sql)))))
 
 (defmethod driver/add-columns! :sql-jdbc
-  [driver db-id table-name col->type]
-  (let [sql (first (sql/format {:alter-table (keyword table-name)
-                                :add-column (map (fn [[name type-spec]]
-                                                   (vec (cons name type-spec)))
-                                                 col->type)}
+  [driver db-id table-name column-definitions & {:keys [primary-key]}]
+  (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
+  (let [primary-key-column (first primary-key)
+        sql (first (sql/format {:alter-table (keyword table-name)
+                                :add-column (map (fn [[name type-and-constraints]]
+                                                   (cond-> (vec (cons name type-and-constraints))
+                                                     (= primary-key-column name)
+                                                     (conj :primary-key)))
+                                                 column-definitions)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
@@ -180,10 +185,17 @@
    (fn [^java.sql.Connection conn]
      (let [[inclusion-patterns
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
-       (into #{} (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
+       (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
 
 (defmethod driver/set-role! :sql-jdbc
   [driver conn role]
   (let [sql (driver.sql/set-role-statement driver role)]
     (with-open [stmt (.createStatement ^Connection conn)]
       (.execute stmt sql))))
+
+(defmethod driver/current-user-table-privileges :sql-jdbc
+  [driver database & {:as args}]
+  (sql-jdbc.sync/current-user-table-privileges
+    driver
+    (sql-jdbc.conn/db->pooled-connection-spec database)
+    args))

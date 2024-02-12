@@ -100,7 +100,7 @@ class Join extends MBQLObjectClause {
       ? new StructuredQuery(
           this.legacyQuery({ useStructuredQuery: true })
             .question()
-            .setDataset(false),
+            .setType("question"),
           {
             type: "query",
             query: {
@@ -112,7 +112,7 @@ class Join extends MBQLObjectClause {
       ? new StructuredQuery(
           this.legacyQuery({ useStructuredQuery: true })
             .question()
-            .setDataset(false),
+            .setType("question"),
           {
             type: "query",
             query: sourceQuery,

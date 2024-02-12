@@ -89,3 +89,4 @@ serdes/meta:
   label: dashboards_created_last_week
   model: Card
 metabase_version: null
+type: question

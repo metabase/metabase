@@ -238,31 +238,14 @@ describe("StructuredQuery", () => {
         expect(query._database().id).toBe(SAMPLE_DB_ID);
       });
     });
-    describe("engine", () => {
-      it("identifies the engine of a query", () => {
-        // This is a magic constant and we should probably pull this up into an enum
-        expect(query.engine()).toBe("H2");
-      });
-    });
   });
 
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
-    describe("reset", () => {
-      it("Expect a reset query to not have a selected database", () => {
-        expect(query.reset()._database()).toBe(null);
-      });
-    });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
         expect(
           query.legacyQuery({ useStructuredQuery: true })["source-table"],
         ).toBe(ORDERS_ID);
-      });
-    });
-    describe("setDatabase", () => {
-      it("allows you to set a new database", () => {
-        const db = metadata.database(ANOTHER_DB_ID);
-        expect(query.setDatabase(db)._database().id).toBe(db.id);
       });
     });
     describe("_sourceTableId", () => {
@@ -531,15 +514,6 @@ describe("StructuredQuery", () => {
         expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(
           30,
         );
-      });
-    });
-    describe("hasValidBreakout", () => {
-      it("should return false if there are no breakouts", () => {
-        expect(query.hasValidBreakout()).toBe(false);
-      });
-      it("should return true if there is at least one breakout", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        expect(query.breakout(ordersProductId).hasValidBreakout()).toBe(true);
       });
     });
 

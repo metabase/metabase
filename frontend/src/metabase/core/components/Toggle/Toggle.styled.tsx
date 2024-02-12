@@ -44,6 +44,12 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   transition: background-color 0.3s;
   flex-shrink: 0;
 
+  &[disabled] {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background-color: ${color("bg-medium")};
+  }
+
   &:after {
     content: "";
     width: ${props => (props.small ? "13px" : "20px")};

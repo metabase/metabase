@@ -203,3 +203,4 @@ serdes/meta:
   label: recent_activity
   model: Card
 metabase_version: vUNKNOWN (ad99d37)
+type: question

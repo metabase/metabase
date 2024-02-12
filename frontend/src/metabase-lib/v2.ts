@@ -21,3 +21,4 @@ export * from "./query";
 export * from "./segments";
 export * from "./temporal_bucket";
 export * from "./types";
+export * from "./viz";

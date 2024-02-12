@@ -52,8 +52,11 @@ interface EditModeProps {
   isMobile: boolean;
 }
 export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
-  pointer-events: auto;
   border-radius: 8px;
+  pointer-events: all;
+  * {
+    pointer-events: all;
+  }
 
   .DashCard:hover &,
   .DashCard:focus-within & {

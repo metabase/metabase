@@ -103,6 +103,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
 
   renderWithProviders(
     <ParameterSettings
+      embeddedParameterVisibility={null}
       parameter={parameter}
       isParameterSlugUsed={jest.fn()}
       onChangeName={onChangeName}
@@ -111,6 +112,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       onChangeQueryType={onChangeQueryType}
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
+      onChangeRequired={jest.fn()}
     />,
   );
 

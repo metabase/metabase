@@ -127,10 +127,10 @@ export const updateQuestion = (
     if (shouldTurnIntoAdHoc) {
       newQuestion = newQuestion.withoutNameAndId();
 
-      // When the dataset query changes, we should loose the dataset flag,
+      // When the dataset query changes, we should change the question type,
       // to start building a new ad-hoc question based on a dataset
       if (newQuestion.isDataset()) {
-        newQuestion = newQuestion.setDataset(false);
+        newQuestion = newQuestion.setType("question");
         dispatch(onCloseQuestionInfo());
       }
     }
@@ -139,7 +139,7 @@ export const updateQuestion = (
     // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
     // this `updateQuestion` action, so they end up triggering the action with the altered question.
     if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
-      newQuestion = newQuestion.setDataset(true);
+      newQuestion = newQuestion.setType("model");
     }
 
     const queryResult = getFirstQueryResult(getState());
