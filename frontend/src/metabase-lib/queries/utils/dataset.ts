@@ -70,7 +70,7 @@ export function findColumnSettingIndexForColumn(
     query,
     stageIndex,
     [column],
-    items.map(({ fieldRef }) => normalizeFieldRef(fieldRef) as FieldReference),
+    items.map(({ fieldRef }) => fieldRef),
   );
 
   const itemIndex = itemIndexes.find(index => index >= 0);
