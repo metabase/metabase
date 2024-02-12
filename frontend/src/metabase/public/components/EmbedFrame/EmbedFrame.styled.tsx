@@ -49,15 +49,15 @@ export const Header = styled.header`
   flex-direction: column;
 `;
 
-export const TitleAndDescriptionContainer = styled.div`
-  padding: 0.5rem 0.5rem 0 0.5rem;
+export const TitleAndDescriptionContainer = styled(FullWidthContainer)`
+  margin-top: 0.5rem;
 
   ${breakpointMinSmall} {
-    padding: 1rem 1rem 0 1rem;
+    margin-top: 1rem;
   }
 
   ${breakpointMinLarge} {
-    padding: 1.5rem 1.5rem 0 1.5rem;
+    margin-top: 1.5rem;
   }
 `;
 
