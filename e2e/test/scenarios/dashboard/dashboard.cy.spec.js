@@ -536,13 +536,14 @@ describe("scenarios > dashboard", () => {
             row: 0,
             size_x: 24,
             size_y: 1,
-            text: "top",
+            text: "top {{Name}}",
           }),
         ];
 
         updateDashboardCards({ dashboard_id, cards });
 
         visitDashboard(dashboard_id);
+        addParameterToDashboard();
       });
 
       // new dashboards should default to 'fixed' width
@@ -1165,4 +1166,28 @@ function assertScrollBarExists() {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
+}
+
+function addParameterToDashboard() {
+  // edit dashboard
+  cy.icon("pencil").click();
+
+  // add Category > Dropdown "Name" filter
+  cy.icon("filter").click();
+  cy.findByText("Text or Category").click();
+  cy.findByText("Is").click();
+
+  cy.findByText("Select…").click();
+  popover().within(() => {
+    cy.findByText("Name").click();
+  });
+
+  // add default value to the above filter
+  cy.findByText("No default").click();
+  popover().find("input").type("Example Name");
+  popover().contains("Add filter").click();
+
+  cy.findByText("Save").click();
+  // wait for dashboard to save
+  cy.contains("You're editing this dashboard.").should("not.exist");
 }
