@@ -29,7 +29,6 @@ import * as Lib from "metabase-lib";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
-import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
   getDashcardParameterMappingOptions,
@@ -38,6 +37,7 @@ import {
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
+import { getMappingOptionByTarget } from "../utils";
 import {
   Container,
   CardLabel,
@@ -98,7 +98,6 @@ export function DashCardCardParameterMapper({
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const isAction = isActionDashCard(dashcard);
 
   const handleChangeTarget = useCallback(
     target => {
@@ -111,32 +110,12 @@ export function DashCardCardParameterMapper({
   const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isNativeDashCard(dashcard);
 
-  let selectedMappingOption;
-  if (isVirtual || isAction || isNative) {
-    selectedMappingOption = target
-      ? mappingOptions.find(option =>
-          _.isEqual(normalize(option.target), normalize(target)),
-        )
-      : undefined;
-  } else {
-    const stageIndex = -1;
-    const columns = Lib.visibleColumns(question.query(), stageIndex);
-
-    selectedMappingOption = target
-      ? mappingOptions.find(mappingOption => {
-          const [index1, index2] = target
-            ? Lib.findColumnIndexesFromLegacyRefs(
-                question.query(),
-                stageIndex,
-                columns,
-                [normalize(target[1]), normalize(mappingOption.target[1])],
-              )
-            : [-1];
-
-          return index1 >= 0 && index1 === index2;
-        })
-      : undefined;
-  }
+  const selectedMappingOption = getMappingOptionByTarget(
+    mappingOptions,
+    dashcard,
+    target,
+    question,
+  );
 
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {
