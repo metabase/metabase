@@ -334,33 +334,27 @@
       (log/error e (trs "Error fetching field values"))
       nil)))
 
-(defn- report-and-fix-duplicates!
-  "This is a workaround for the issue of stale FieldValues rows, see https://github.com/metabase/metabase/issues/668.
-  In order to mitigate the the impact of duplicates, we make sure to always use the most recently updated row and delete
-  its outdated siblings. In order to follow up on whether we have fixed the root cause, and can now add a uniqueness
-  constraint in the database, we publish SnowPlot events whenever duplicates were encountered."
+(defn- delete-duplicates-and-return-latest!
+  "This is a workaround for the issue of stale FieldValues rows (metabase#668)
+  In order to mitigate the impact of duplicates, we return the most recently updated row, and deleted the older rows."
   [rows]
   (if (<= (count rows) 1)
     (first rows)
     (let [[latest & duplicates] (sort-by :updated-at u/reverse-compare rows)]
-      ;; send telemetry to snowplow
       (t2/delete! FieldValues :id [:in (map :id duplicates)])
       latest)))
 
 (defn- get-latest-field-values
   "This returns the FieldValues with the given :type and :hash_key for the given Field.
-  In the case of duplicates we return the most recently updated row, and delete the others.
-  We are working towards preventing duplicates from ever existing, see https://github.com/metabase/metabase/issues/668"
+   This may implictly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id type hash]
-  ;; todo - we could rather put this validation in a toucan select hook
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
-  (report-and-fix-duplicates!
+  (delete-duplicates-and-return-latest!
     (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
 
 (defn- get-latest-full-field-values
-  "This returns the :full FieldValues for the given Field.
-  In the case of duplicates we return the most recently updated row, and delete the others.
-  We are working towards preventing duplicates from ever existing, see https://github.com/metabase/metabase/issues/668"
+  "This returns the full FieldValues for the given Field.
+   This may implictly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id]
   (get-latest-field-values field-id :full nil))
 
@@ -522,7 +516,7 @@
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
-    ;; We only serialize the full values, see [metabase.models.field/with-values]]
+    ;; We only serialize the full values, see [[metabase.models.field/with-values]]
     (get-latest-full-field-values (:id field))))
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
