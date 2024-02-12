@@ -443,5 +443,5 @@ Substituting `YOUR_API_KEY` with your API key.
 ## Further reading
 
 - [Serialization tutorial](https://www.metabase.com/learn/administration/serialization).
-- [Setting up a git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow)
+- [Setting up a git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow).
 - Need help? Contact [support@metabase.com](mailto:support@metabase.com).
