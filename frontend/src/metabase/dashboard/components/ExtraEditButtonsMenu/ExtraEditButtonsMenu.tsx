@@ -3,9 +3,8 @@ import { t } from "ttag";
 
 import type { Dashboard } from "metabase-types/api";
 
-import { Box, Popover, Icon, Stack, Switch } from "metabase/ui";
+import { Box, Popover, Icon, Tooltip, Stack, Switch } from "metabase/ui";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
 
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
 
@@ -27,11 +26,11 @@ export function ExtraEditButtonsMenu({
     <Popover key={key} shadow="sm" position="bottom-end" offset={5}>
       <Popover.Target>
         <Box>
-          <DashboardButtonTooltip label={EXTRA_BUTTONS_DESCRIPTION}>
+          <Tooltip label={EXTRA_BUTTONS_DESCRIPTION}>
             <DashboardHeaderButton aria-label={EXTRA_BUTTONS_DESCRIPTION}>
               <Icon name="ellipsis" size={18} />
             </DashboardHeaderButton>
-          </DashboardButtonTooltip>
+          </Tooltip>
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
