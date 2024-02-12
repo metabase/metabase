@@ -11,6 +11,9 @@ import {
   createMockStructuredDatasetQuery,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockLinkDashboardCard,
+  createMockVirtualCard,
+  createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -77,15 +80,15 @@ describe("DashCardParameterMapper", () => {
 
   describe("Virtual cards", () => {
     it("should render an informative error state for link cards", () => {
-      const linkCard = createMockCard({ dataset_query: {}, display: "link" });
+      const card = createMockVirtualCard({ display: "link" });
+
       setup({
-        card: linkCard,
-        dashcard: createMockDashboardCard({
-          visualization_settings: {
-            virtual_card: linkCard,
-          },
+        card,
+        dashcard: createMockLinkDashboardCard({
+          card,
         }),
       });
+
       expect(getIcon("info")).toBeInTheDocument();
       expect(
         screen.getByLabelText(/cannot connect variables to link cards/i),
@@ -93,7 +96,7 @@ describe("DashCardParameterMapper", () => {
     });
 
     it("should render an informative parameter mapping state for text cards without variables", () => {
-      const textCard = createMockTextDashboardCard({ size_x: 3, size_y: 3 });
+      const textCard = createMockTextDashboardCard({ size_y: 3 });
       setup({
         dashcard: textCard,
       });
@@ -122,16 +125,13 @@ describe("DashCardParameterMapper", () => {
     });
 
     it("should render a different header for virtual cards", () => {
-      const textCard = createMockCard({ dataset_query: {}, display: "text" });
+      const textCard = createMockVirtualCard({ display: "text" });
+
       setup({
         card: textCard,
-        dashcard: createMockDashboardCard({
+        dashcard: createMockVirtualDashCard({
           card: textCard,
           size_y: 3,
-          visualization_settings: {
-            text: "{{foo}} {{bar}}",
-            virtual_card: textCard,
-          },
         }),
         mappingOptions: ["foo", "bar"],
       });
@@ -290,15 +290,13 @@ describe("DashCardParameterMapper", () => {
     });
 
     it("should hide header content when card is less than 3 units high", () => {
-      const textCard = createMockCard({ dataset_query: {}, display: "text" });
+      const textCard = createMockVirtualCard({ display: "text" });
+
       setup({
         card: textCard,
-        dashcard: createMockDashboardCard({
+        dashcard: createMockVirtualCard({
           card: textCard,
           size_y: 3,
-          visualization_settings: {
-            virtual_card: textCard,
-          },
         }),
         mappingOptions: ["foo", "bar"],
         isMobile: true,
