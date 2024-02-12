@@ -295,6 +295,7 @@
    card-id     ms/PositiveInt
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
+  (api/check-not-archived (t2/select-one :model/Card :id card-id))
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
      :dashboard-id  dashboard-id

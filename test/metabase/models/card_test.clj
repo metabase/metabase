@@ -69,15 +69,6 @@
                                Dashboard   _                      {:parameters [(card-params card-id)]}]
         (is (= 3 (hydrated-count card)))))))
 
-(deftest remove-from-dashboards-when-archiving-test
-  (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
-    (t2.with-temp/with-temp [Dashboard     dashboard {}
-                             :model/Card   card      {}
-                             DashboardCard _dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
-      (t2/update! :model/Card (u/the-id card) {:archived true})
-      (is (= 0
-             (t2/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
-
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
