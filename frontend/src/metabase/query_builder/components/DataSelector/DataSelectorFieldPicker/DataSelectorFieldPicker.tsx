@@ -14,7 +14,6 @@ import {
   HeaderContainer,
   HeaderName,
   PopoverHoverTarget,
-  FieldName,
 } from "./DataSelectorFieldPicker.styled";
 
 type DataSelectorFieldPickerProps = {
@@ -91,17 +90,15 @@ const DataSelectorFieldPicker = ({
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={(item: FieldWithName) => item.field}
           renderItemIcon={renderItemIcon}
-          renderItemName={(item: FieldWithName) => (
-            <FieldName>
-              {item.name}
-              <FieldInfoPopover
-                field={item.field}
-                delay={[0, 100]}
-                position="top-end"
-              >
-                <PopoverHoverTarget name="info_filled" />
-              </FieldInfoPopover>
-            </FieldName>
+          renderItemName={(item: FieldWithName) => item.name}
+          renderItemExtra={(item: FieldWithName) => (
+            <FieldInfoPopover
+              field={item.field}
+              delay={[0, 100]}
+              position="top-end"
+            >
+              <PopoverHoverTarget name="info_filled" />
+            </FieldInfoPopover>
           )}
         />
       </DelayGroup>

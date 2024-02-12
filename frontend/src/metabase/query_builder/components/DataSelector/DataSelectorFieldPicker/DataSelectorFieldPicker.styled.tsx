@@ -23,18 +23,9 @@ export const HeaderName = styled.span`
   word-wrap: anywhere;
 `;
 
-export const FieldName = styled.span`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  flex-grow: 1;
-  position: relative;
-`;
-
 export const PopoverHoverTarget = styled(Icon)`
   margin-left: 0.5em;
-  right: -0.5em;
+  right: 0.5em;
   position: absolute;
   padding: 0.7em 0.65em;
   opacity: 0;
