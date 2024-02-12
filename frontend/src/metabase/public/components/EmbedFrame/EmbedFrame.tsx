@@ -172,7 +172,7 @@ function EmbedFrame({
                 </FixedWidthContainer>
               </TitleAndDescriptionContainer>
             )}
-            {
+            {dashboardTabs && (
               <FullWidthContainer>
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-tabs"
@@ -181,7 +181,7 @@ function EmbedFrame({
                   {dashboardTabs}
                 </FixedWidthContainer>
               </FullWidthContainer>
-            }
+            )}
             <Separator />
             {hasParameters && (
               <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
