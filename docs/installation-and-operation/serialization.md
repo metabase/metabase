@@ -298,7 +298,7 @@ Before exporting, you can also run a Metabase command to [drop entity IDs](./com
 
 ## Serializing Metabase via the API
 
-> Just like the CLI serialization commands, these endpoints are only available for [Pro](/product/pro) and [Enterprise](/product/enterprise) plans.
+> Just like the CLI serialization commands, these endpoints are only available for [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 You can initiate imports and exports of serialized Metabase data via the API.
 
