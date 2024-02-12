@@ -198,8 +198,7 @@
   :default    0
   :visibility :internal
   :audit      :never
-  :doc        false
-  :export?    false)
+  :doc        false)
 
 (defn- should-skip-checksum? [last-checksum]
   (= SKIP_CHECKSUM_FLAG last-checksum))
