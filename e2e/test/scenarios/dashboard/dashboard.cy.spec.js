@@ -30,6 +30,8 @@ import {
   getTextCardDetails,
   openDashboardMenu,
   openEmbedModalFromMenu,
+  assertDashboardFixedWidth,
+  assertDashboardNotFixedWidth,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -547,83 +549,21 @@ describe("scenarios > dashboard", () => {
       });
 
       // new dashboards should default to 'fixed' width
-      cy.findByTestId("fixed-width-dashboard-header").should(
-        "have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("fixed-width-dashboard-tabs").should(
-        "have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("fixed-width-filters").should(
-        "have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("dashboard-grid").should(
-        "have.css",
-        "max-width",
-        "1048px",
-      );
+      assertDashboardFixedWidth();
 
       editDashboard();
-      cy.findByTestId("fixed-width-filters-edit-mode").should(
-        "have.css",
-        "max-width",
-        "1048px",
-      );
 
       // toggle full-width
       cy.findByLabelText("Toggle width").click();
       popover().findByText("Full width").click();
 
-      cy.findByTestId("fixed-width-dashboard-header").should(
-        "not.have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("fixed-width-dashboard-tabs").should(
-        "not.have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("fixed-width-filters-edit-mode").should(
-        "not.have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("dashboard-grid").should(
-        "not.have.css",
-        "max-width",
-        "1048px",
-      );
+      assertDashboardNotFixedWidth();
 
       // confirm it saves the state after saving and refreshing
       saveDashboard();
       cy.reload();
 
-      cy.findByTestId("fixed-width-dashboard-header").should(
-        "not.have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("fixed-width-dashboard-tabs").should(
-        "not.have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("fixed-width-filters").should(
-        "not.have.css",
-        "max-width",
-        "1048px",
-      );
-      cy.findByTestId("dashboard-grid").should(
-        "not.have.css",
-        "max-width",
-        "1048px",
-      );
+      assertDashboardNotFixedWidth();
     });
   });
 

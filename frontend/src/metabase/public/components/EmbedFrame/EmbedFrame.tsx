@@ -161,7 +161,7 @@ function EmbedFrame({
             {finalName && (
               <TitleAndDescriptionContainer>
                 <FixedWidthContainer
-                  data-testid="fixed-width-dashboard-title"
+                  data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   <TitleAndDescription
