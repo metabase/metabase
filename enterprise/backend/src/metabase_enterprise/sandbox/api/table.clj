@@ -27,21 +27,15 @@
                            [:= :pgm.user_id (u/the-id user-or-user-id)]]}))
 
 (mu/defn only-sandboxed-perms? :- :boolean
-  "Returns true if the user has only segemented and not full table permissions. If the user has full table permissions
-  we wouldn't want to apply this segment filtering."
+  "Returns true if the user has sandboxed permissions. If a sandbox policy exists, it overrides existing permission on
+  the table."
   [table :- (mi/InstanceOf Table)]
-  (and
-   (not= :unrestricted (data-perms/table-permission-for-user api/*current-user-id*
-                                                             :perms/data-access
-                                                             (:db_id table)
-                                                             (:id table)))
-   (t2/exists? :model/GroupTableAccessPolicy
-               {:from [[:sandboxes :s]]
-                :join [[:metabase_table :t] [:= :s.table_id :t.id]
-                       [:permissions_group_membership :pgm] [:= :s.group_id :pgm.group_id]]
-                :where [:and
-                        [:= :s.table_id (:id table)]
-                        [:= :pgm.user_id api/*current-user-id*]]})))
+  (t2/exists? :model/GroupTableAccessPolicy
+              {:from [[:sandboxes :s]]
+               :join [[:permissions_group_membership :pgm] [:= :s.group_id :pgm.group_id]]
+               :where [:and
+                       [:= :s.table_id (:id table)]
+                       [:= :pgm.user_id api/*current-user-id*]]}))
 
 (mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
   [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]

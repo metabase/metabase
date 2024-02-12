@@ -22,7 +22,7 @@
                                   {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
                                    :query      (mt.tu/restricted-column-query (mt/id))}}
                      :attributes {:cat 50}}
-      (perms.test-util/with-no-data-perms-for-all-users!
+      (mt/with-no-data-perms-for-all-users!
         (perms.test-util/with-perm-for-group-and-table! &group (mt/id :categories) :perms/data-access :unrestricted
           (perms/grant-permissions! &group (perms/table-read-path (mt/id :categories)))
           (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
