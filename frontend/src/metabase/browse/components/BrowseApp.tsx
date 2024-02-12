@@ -1,6 +1,7 @@
+import { useEffect } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
-import { Icon, Text } from "metabase/ui";
+import { Flex, Icon, Text } from "metabase/ui";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
@@ -9,6 +10,7 @@ import type { SearchResult } from "metabase-types/api";
 import { useDispatch } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
+import { isValidBrowseTab, type BrowseTabId } from "../utils";
 import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseModels } from "./BrowseModels";
 import {
@@ -24,16 +26,11 @@ import {
 } from "./BrowseApp.styled";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
 
-export type BrowseTabId = "models" | "databases";
-
-const isValidBrowseTab = (value: unknown): value is BrowseTabId =>
-  value === "models" || value === "databases";
-
 export const BrowseApp = ({
-  tab = "models",
+  tab,
   children,
 }: {
-  tab?: string;
+  tab: BrowseTabId;
   children?: React.ReactNode;
 }) => {
   const dispatch = useDispatch();
@@ -45,37 +42,23 @@ export const BrowseApp = ({
   });
   const databasesResult = useDatabaseListQuery();
 
+  useEffect(() => {
+    if (isValidBrowseTab(tab)) {
+      localStorage.setItem("defaultBrowseTab", tab);
+    }
+  }, [tab]);
+
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;
   }
 
   return (
-    <BrowseAppRoot data-testid="browse-data">
-      <BrowseContainer data-testid="data-browser">
+    <BrowseAppRoot data-testid="browse-app">
+      <BrowseContainer>
         <BrowseDataHeader>
           <BrowseSectionContainer>
             <h2>{t`Browse data`}</h2>
-            <div
-              className="flex flex-align-right"
-              style={{ flexBasis: "40.0%" }}
-            >
-              <Link className="flex flex-align-right" to="reference">
-                <BrowseHeaderIconContainer>
-                  <Icon
-                    className="flex align-center"
-                    size={14}
-                    name="reference"
-                  />
-                  <Text
-                    size="md"
-                    lh="1"
-                    className="ml1 flex align-center text-bold"
-                  >
-                    {t`Learn about our data`}
-                  </Text>
-                </BrowseHeaderIconContainer>
-              </Link>
-            </div>
+            {tab === "databases" && <LearnAboutDataLink />}
           </BrowseSectionContainer>
         </BrowseDataHeader>
         <BrowseTabs
@@ -98,12 +81,13 @@ export const BrowseApp = ({
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
             <BrowseTabsContainer>
-              {children ||
-                (tab === "models" ? (
-                  <BrowseModels modelsResult={modelsResult} />
-                ) : (
-                  <BrowseDatabases databasesResult={databasesResult} />
-                ))}
+              <BrowseTabContent
+                tab={tab}
+                modelsResult={modelsResult}
+                databasesResult={databasesResult}
+              >
+                {children}
+              </BrowseTabContent>
             </BrowseTabsContainer>
           </BrowseTabsPanel>
         </BrowseTabs>
@@ -111,3 +95,36 @@ export const BrowseApp = ({
     </BrowseAppRoot>
   );
 };
+
+const BrowseTabContent = ({
+  tab,
+  children,
+  modelsResult,
+  databasesResult,
+}: {
+  tab: BrowseTabId;
+  children?: React.ReactNode;
+  modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
+  databasesResult: ReturnType<typeof useDatabaseListQuery>;
+}) => {
+  if (children) {
+    return <>{children}</>;
+  }
+  if (tab === "models") {
+    return <BrowseModels modelsResult={modelsResult} />;
+  }
+
+  return <BrowseDatabases databasesResult={databasesResult} />;
+};
+const LearnAboutDataLink = () => (
+  <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
+    <Link to="reference">
+      <BrowseHeaderIconContainer>
+        <Icon size={14} name="reference" />
+        <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
+          {t`Learn about our data`}
+        </Text>
+      </BrowseHeaderIconContainer>
+    </Link>
+  </Flex>
+);

@@ -1,11 +1,18 @@
+import fetchMock from "fetch-mock";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { SearchResult } from "metabase-types/api";
 import { createMockSetupState } from "metabase-types/store/mocks";
 import {
   createMockCollection,
-  createMockSearchResult,
+  createMockModelResult,
+  createMockSettingDefinition,
+  createMockSettings,
 } from "metabase-types/api/mocks";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { groupModels } from "../utils";
 import { BrowseModels } from "./BrowseModels";
 
@@ -195,9 +202,14 @@ const mockModels: SearchResult[] = [
     last_editor_common_name: "Bobby",
     last_edited_at: "2000-01-01T00:00:00.000Z",
   },
-].map(model => createMockSearchResult(model));
+].map(model => createMockModelResult(model));
 
 describe("BrowseModels", () => {
+  beforeEach(() => {
+    setupPropertiesEndpoints(createMockSettings());
+    setupSettingsEndpoints([createMockSettingDefinition()]);
+    fetchMock.put("path:/api/setting/default-browse-tab", 200);
+  });
   it("displays models", async () => {
     renderBrowseModels(10);
     for (let i = 0; i < 10; i++) {

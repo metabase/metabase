@@ -10,14 +10,17 @@ import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Search from "metabase/entities/search";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
-import { useSelector } from "metabase/lib/redux";
+
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+
 import { color } from "metabase/lib/colors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
@@ -30,6 +33,7 @@ import {
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
+import { ModelExplanationBanner } from "./ModelExplanationBanner";
 
 export const BrowseModels = ({
   modelsResult,
@@ -56,15 +60,18 @@ export const BrowseModels = ({
 
   if (modelsFiltered.length) {
     return (
-      <GridContainer role="grid">
-        {groupsOfModels.map(groupOfModels => (
-          <ModelGroup
-            models={groupOfModels}
-            key={`modelgroup-${groupOfModels[0].collection.id}`}
-            localeCode={localeCode}
-          />
-        ))}
-      </GridContainer>
+      <>
+        <ModelExplanationBanner />
+        <GridContainer role="grid">
+          {groupsOfModels.map(groupOfModels => (
+            <ModelGroup
+              models={groupOfModels}
+              key={`modelgroup-${groupOfModels[0].collection.id}`}
+              localeCode={localeCode}
+            />
+          ))}
+        </GridContainer>
+      </>
     );
   }
 
@@ -150,7 +157,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
         <Box mb="auto">
           <Icon name="model" size={20} color={color("brand")} />
         </Box>
-        <Title lh="1rem" mb=".25rem" size="1rem">
+        <Title mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
           </MultilineEllipsified>
@@ -168,13 +175,24 @@ const CollectionHeader = ({
   collection: CollectionEssentials;
   id: string;
 }) => {
+  const dispatch = useDispatch();
+  const wrappable = { ...collection, model: "collection" };
+  const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
+  const icon = wrappedCollection.getIcon();
+
   return (
-    <CollectionHeaderContainer id={id} role="heading">
+    <CollectionHeaderContainer
+      id={id}
+      role="heading"
+      pt={"1rem"}
+      mr="1rem"
+      align="center"
+    >
       <CollectionHeaderGroup grow noWrap>
         <CollectionHeaderLink to={Urls.collection(collection)}>
           <Group spacing=".25rem">
-            <Icon name="folder" color="text-dark" size={16} />
-            <Text weight="bold" color="text-medium">
+            <Icon {...icon} />
+            <Text weight="bold" color="text-dark">
               {getCollectionName(collection)}
             </Text>
           </Group>
