@@ -21,8 +21,6 @@ const renderBrowseModels = (modelCount: number) => {
   return renderWithProviders(
     <BrowseModels
       modelsResult={{ data: models, isLoading: false, error: false }}
-      collectionsResult={{ data: [], isLoading: false, error: false }}
-      filters={{}}
     />,
     {
       storeInitialState: {
