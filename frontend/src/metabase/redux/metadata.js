@@ -301,19 +301,16 @@ export const loadMetadataForDependentItems =
       ({ type, id }) => type + id,
     );
     const promises = uniqueDependentItems.flatMap(({ type, id }) => {
-      if (type === "table") {
-        return [Tables.actions.fetchMetadata({ id }, options)];
+      switch (type) {
+        case "schema":
+          return [Schemas.actions.fetchList({ dbId: id }, options)];
+        case "table":
+          return [Tables.actions.fetchMetadata({ id }, options)];
+        case "field":
+          return [Fields.actions.fetch({ id }, options)];
+        default:
+          return [];
       }
-
-      if (type === "field") {
-        return [Fields.actions.fetch({ id }, options)];
-      }
-
-      if (type === "schema") {
-        return [Schemas.actions.fetchList({ dbId: id }, options)];
-      }
-
-      return [];
     });
 
     return Promise.all(promises.map(dispatch)).catch(e =>
