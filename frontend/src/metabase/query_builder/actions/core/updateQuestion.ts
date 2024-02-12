@@ -144,8 +144,7 @@ export const updateQuestion = (
       newQuestion.type() !== "model" &&
       newQuestion.type() !== "metric"
     ) {
-      const state = getState();
-      const card = getCard(state);
+      const card = getCard(getState());
       newQuestion = newQuestion.setType(card.type);
     }
 

@@ -600,7 +600,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("converts the question into a model if the query builder is in 'dataset' mode", async () => {
           const { result } = await setup({
-            card: getCard(),
+            card: getCard({ dataset: true, type: "model" }),
             queryBuilderMode: "dataset",
           });
 
