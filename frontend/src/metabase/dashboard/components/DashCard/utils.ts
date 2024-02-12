@@ -2,9 +2,9 @@ import _ from "underscore";
 import type {
   BaseDashboardCard,
   DashboardCard,
-  LocalFieldReference,
   ParameterTarget,
   QuestionDashboardCard,
+  StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import {
   getVirtualCardType,
@@ -33,14 +33,12 @@ export function shouldShowParameterMapper({
   );
 }
 
-type ParameterDimensionTarget = ["dimension", LocalFieldReference];
-
 // TODO: @uladzimirdev fix type definition in https://github.com/metabase/metabase/pull/38596
 type MappingOption = {
   name: string;
   icon: string;
   isForeign: boolean;
-  target: ParameterDimensionTarget;
+  target: StructuredParameterDimensionTarget;
 };
 
 export function getMappingOptionByTarget<T extends DashboardCard>(
