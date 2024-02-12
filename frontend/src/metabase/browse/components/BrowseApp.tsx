@@ -112,10 +112,11 @@ const BrowseTabContent = ({
   }
   if (tab === "models") {
     return <BrowseModels modelsResult={modelsResult} />;
+  } else {
+    return <BrowseDatabases databasesResult={databasesResult} />;
   }
-
-  return <BrowseDatabases databasesResult={databasesResult} />;
 };
+
 const LearnAboutDataLink = () => (
   <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
     <Link to="reference">
