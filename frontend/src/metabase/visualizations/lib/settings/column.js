@@ -56,6 +56,7 @@ import {
 } from "metabase-lib/types/utils/isa";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import Question from "metabase-lib/Question";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
@@ -523,12 +524,24 @@ export const buildTableColumnSettings = ({
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }]) => {
+      const question = new Question(card /* metadata */);
       const columns = card.visualization_settings["table.columns"];
       const enabledColumns = columns.filter(column => column.enabled);
+
+      let query;
+
+      // before we fully migrate from Audit v1
+      // it's possible to have internal query here, which throws
+      try {
+        query = question.query();
+      } catch (e) {
+        console.warn(e);
+      }
+
       return _.all(
         enabledColumns,
         columnSetting =>
-          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+          findColumnIndexForColumnSetting(data.cols, columnSetting, query) >= 0,
       );
     },
     getDefault: ([
