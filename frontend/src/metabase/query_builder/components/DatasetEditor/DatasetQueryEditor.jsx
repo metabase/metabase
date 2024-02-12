@@ -18,14 +18,7 @@ const propTypes = {
   height: PropTypes.number.isRequired,
 };
 
-function DatasetQueryEditor({
-  // See below, where we convert the dataset/model question back into a "normal" question
-  // so that we can do question-y things and not dataset-y things within the Notebook editor
-  question,
-  isActive,
-  height,
-  ...props
-}) {
+function DatasetQueryEditor({ question, isActive, height, ...props }) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const [isResizing, setResizing] = useState(false);
