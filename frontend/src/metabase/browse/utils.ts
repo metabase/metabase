@@ -53,16 +53,16 @@ export const groupModels = (
       return -1;
     }
 
-    const sortValueProvidedByPlugin =
+    switch (
       PLUGIN_CONTENT_VERIFICATION.sortCollectionsForBrowseModels(
         collection1,
         collection2,
-      );
-    if (sortValueProvidedByPlugin === 1) {
-      return 1;
-    }
-    if (sortValueProvidedByPlugin === -1) {
-      return -1;
+      )
+    ) {
+      case 1:
+        return 1;
+      case -1:
+        return -1;
     }
 
     const name1 = getCollectionName(collection1);
@@ -98,13 +98,11 @@ export const sortModels = (
   b: SearchResult,
   localeCode?: string,
 ) => {
-  const sortValueProvidedByPlugin =
-    PLUGIN_CONTENT_VERIFICATION.sortModelsByVerification(a, b);
-  if (sortValueProvidedByPlugin === 1) {
-    return 1;
-  }
-  if (sortValueProvidedByPlugin === -1) {
-    return -1;
+  switch (PLUGIN_CONTENT_VERIFICATION.sortModelsByVerification(a, b)) {
+    case 1:
+      return 1;
+    case -1:
+      return -1;
   }
 
   if (a.name && !b.name) {
