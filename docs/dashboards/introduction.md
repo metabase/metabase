@@ -167,11 +167,11 @@ You change the width of a dashboard.
 
 ![Change dashboard width](./images/toggle-width.png)
 
-**Full width**
+**Full width**. The layout and cards will expand to take up the full width of the screen.
 
 ![Dashboard full width](./images/full-width.png)
 
-**Fixed width**
+**Fixed width**. Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
 
 ![Dashboard fixed width](./images/fixed-width.png)
 
