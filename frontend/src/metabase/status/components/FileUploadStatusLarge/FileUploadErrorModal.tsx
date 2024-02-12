@@ -16,7 +16,9 @@ export const FileUploadErrorModal = ({
   return (
     <Modal small>
       <ModalContent title={t`Upload error details`} onClose={onClose}>
-        {fileName && <Text>{t`Errors uploading ${fileName}:`}</Text>}
+        {fileName && (
+          <Text>{t`There were some errors while uploading ${fileName}:`}</Text>
+        )}
         <ErrorBox>{children}</ErrorBox>
       </ModalContent>
     </Modal>

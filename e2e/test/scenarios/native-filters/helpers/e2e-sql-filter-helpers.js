@@ -58,11 +58,19 @@ export function setDefaultValue(value) {
 
 // UI PATTERNS
 
+export function getRequiredToggle() {
+  return cy.findByText("Always require a value");
+}
+
+export function getRequiredInput() {
+  return cy.findByLabelText("Always require a value");
+}
+
 /**
  * Toggle the required SQL filter on or off. It is off by default.
  */
 export function toggleRequired() {
-  cy.findByText("Always require a value").click();
+  getRequiredToggle().click();
 }
 
 // FILTER QUERY

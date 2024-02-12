@@ -138,8 +138,12 @@ export function setFilter(type, subType) {
   });
 }
 
+export function getRequiredToggle() {
+  return cy.findByLabelText("Always require a value");
+}
+
 export function toggleRequiredParameter() {
-  cy.findByLabelText("Always require a value").click();
+  getRequiredToggle().click();
 }
 
 export function createEmptyTextBox() {

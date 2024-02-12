@@ -44,6 +44,7 @@ import type {
   ParameterValueOrArray,
 } from "metabase-types/api";
 import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Database from "metabase-lib/metadata/Database";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -76,6 +77,7 @@ import {
   getSelectedTabId,
   getSidebar,
   getSlowCards,
+  getEmbeddedParameterVisibility,
 } from "../../selectors";
 
 type OwnProps = {
@@ -116,6 +118,9 @@ type StateProps = {
   selectedTabId: SelectedTabId;
   isAutoApplyFilters: boolean;
   isNavigatingBackToDashboard: boolean;
+  getEmbeddedParameterVisibility: (
+    slug: string,
+  ) => EmbeddingParameterVisibility | null;
 };
 
 type DispatchProps = {
@@ -146,6 +151,7 @@ const mapStateToProps = (state: State): StateProps => {
     parameters: getParameters(state),
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
+
     metadata,
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
@@ -160,6 +166,8 @@ const mapStateToProps = (state: State): StateProps => {
     selectedTabId: getSelectedTabId(state),
     isAutoApplyFilters: getIsAutoApplyFilters(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
+    getEmbeddedParameterVisibility: (slug: string) =>
+      getEmbeddedParameterVisibility(state, slug),
   };
 };
 

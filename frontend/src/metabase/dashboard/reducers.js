@@ -153,11 +153,11 @@ const dashboards = handleActions(
     },
     [UPDATE_ENABLE_EMBEDDING]: {
       next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.id, "enable_embedding"],
-          payload.enable_embedding,
-        ),
+        produce(state, draftState => {
+          const dashboard = draftState[payload.id];
+          dashboard.enable_embedding = payload.enable_embedding;
+          dashboard.initially_published_at = payload.initially_published_at;
+        }),
     },
     [Dashboards.actionTypes.UPDATE]: {
       next: (state, { payload }) => {

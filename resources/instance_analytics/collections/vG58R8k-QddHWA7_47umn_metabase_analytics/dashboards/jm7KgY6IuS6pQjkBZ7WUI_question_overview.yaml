@@ -64,6 +64,7 @@ dashcards:
         - v_content
         - name
       - base-type: type/Text
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: jeaMN8dAMxu8cQrKT28nz
@@ -98,6 +99,7 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Entity Qualified
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: ZW-Zh5fCsudRWuc_5-ebV
@@ -132,6 +134,7 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Card Qualified
+  series: []
   visualization_settings:
     column_settings:
       ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
@@ -217,6 +220,7 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Entity Qualified
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: d6fgUU6_hAqWj_ngoJea_
@@ -251,6 +255,7 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Entity Qualified
+  series: []
   visualization_settings:
     column_settings:
       ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
@@ -301,6 +306,7 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Card Qualified
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: 8qi2lYbU4119zouFP9f6M
@@ -341,6 +347,7 @@ dashcards:
         - public
         - v_query_log
         - card_qualified_id
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: e_bl-8XvvXVu7iAA79eCb
@@ -375,6 +382,7 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Card Qualified
+  series: []
   visualization_settings:
     column_settings:
       ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
@@ -539,3 +547,4 @@ dashcards:
       name: user_id
     table.pivot_column: error
 tabs: []
+width: full
