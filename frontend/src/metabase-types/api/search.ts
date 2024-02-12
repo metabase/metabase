@@ -9,14 +9,15 @@ export type EnabledSearchModelType =
   | "collection"
   | "dashboard"
   | "card"
+  | "metric"
+  | "dataset"
   | "database"
   | "table"
-  | "dataset"
   | "action"
   | "indexed-entity";
 
 export type SearchModelType =
-  | ("segment" | "metric" | "pulse" | "snippet")
+  | ("segment" | "pulse" | "snippet")
   | EnabledSearchModelType;
 
 export interface SearchScore {

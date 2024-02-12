@@ -222,12 +222,15 @@ const Questions = createEntity({
   forms,
 });
 
-export function getIcon(question) {
-  if (question.dataset || question.model === "dataset") {
+export function getIcon(card) {
+  if (card.type === "model" || card.model === "dataset") {
     return { name: "model" };
   }
+  if (card.type === "metric" || card.model === "metric") {
+    return { name: "metric" };
+  }
   const visualization = require("metabase/visualizations").default.get(
-    question.display,
+    card.display,
   );
   return {
     name: visualization?.iconName ?? "beaker",

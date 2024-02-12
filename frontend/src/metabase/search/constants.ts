@@ -13,6 +13,7 @@ export const SearchFilterKeys = {
 export const enabledSearchTypes: EnabledSearchModelType[] = [
   "dashboard",
   "card",
+  "metric",
   "dataset",
   "collection",
   "database",

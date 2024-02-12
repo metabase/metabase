@@ -1,6 +1,6 @@
 // backend returns model = "card" instead of "question"
 export const entityTypeForModel = model => {
-  if (model === "card" || model === "dataset") {
+  if (model === "card" || model === "dataset" || model === "metric") {
     return "questions";
   }
   if (model === "indexed-entity") {
