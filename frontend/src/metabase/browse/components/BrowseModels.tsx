@@ -81,7 +81,7 @@ export const BrowseModels = ({
   collections.forEach((collection: Collection) => {
     collectionMap.set(collection.id, collection);
   });
-  const enrichedModels = models.map((model: SearchResult) => {
+  const enrichedModels = filteredModels.map((model: SearchResult) => {
     return {
       ...model,
       collection: collectionMap.get(model.collection.id) ?? model.collection,
