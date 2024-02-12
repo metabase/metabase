@@ -32,6 +32,7 @@ const MODEL_NAME: Record<EnabledSearchModelType, string> = {
 const TEST_TYPES: Array<EnabledSearchModelType> = [
   "dashboard",
   "card",
+  "metric",
   "dataset",
   "collection",
   "database",
