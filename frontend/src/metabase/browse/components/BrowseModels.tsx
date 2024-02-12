@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 
+import { useEffect } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -21,7 +22,6 @@ import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { getCollectionIcon } from "metabase/entities/collections";
 import type { BrowseFilters } from "../utils";
 import { getCollectionName, groupModels } from "../utils";
@@ -36,7 +36,6 @@ import {
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
-import {useEffect} from "react";
 
 export const BrowseModels = ({
   modelsResult,
@@ -47,7 +46,6 @@ export const BrowseModels = ({
   collectionsResult: ReturnType<typeof useCollectionListQuery>;
   filters: BrowseFilters;
 }) => {
-  const dispatch = useDispatch();
   const models = modelsResult.data ?? [];
   const collections = collectionsResult.data ?? [];
   const locale = useSelector(getLocale);

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -25,13 +24,6 @@ export const BrowseDatabases = ({
   databasesResult: ReturnType<typeof useDatabaseListQuery>;
 }) => {
   const { data: databases = [], error, isLoading } = databasesResult;
-
-  useEffect(() => {
-    if (error || isLoading) {
-      return;
-    }
-    localStorage.setItem("defaultBrowseTab", "databases");
-  }, [error, isLoading]);
 
   if (error) {
     return <LoadingAndErrorWrapper error />;
