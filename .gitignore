@@ -108,3 +108,5 @@ modules/drivers/*/.lsp/*
 .clj-kondo/metosin/malli-types-clj
 
 .github/static-viz-sources.yaml
+
+/frontend/src/embedding-sdk/example-nodejs-backend/node_modules/
