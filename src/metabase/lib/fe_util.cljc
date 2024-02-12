@@ -112,7 +112,7 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
-(defn- foreign-key-items
+(defn- foreign-key-target-items
   [metadata-providerable columns]
   (for [column columns
         :let [fk-target (:fk-target-field-id column)]
@@ -142,13 +142,13 @@
        (let [card-metadata (lib.metadata/card metadata-providerable card-id)]
          (->> (:result-metadata card-metadata)
               (map u/normalize-map)
-              (foreign-key-items metadata-providerable)
+              (foreign-key-target-items metadata-providerable)
               ;; the FE code mentions this, but #36974 doesn't
               #_(cons {:type :question, :id card-id})
               (cons {:type :table, :id (str "card__" card-id)}))))
      (when-let [table-id (:source-table base-stage)]
        (->> (lib.metadata/fields metadata-providerable table-id)
-            (foreign-key-items metadata-providerable)
+            (foreign-key-target-items metadata-providerable)
             (cons {:type :table, :id table-id})))
      (for [stage (:stages query-or-join)
            join (:joins stage)
