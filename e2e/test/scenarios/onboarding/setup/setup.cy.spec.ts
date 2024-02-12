@@ -35,10 +35,7 @@ describe("scenarios > setup", () => {
         });
         cy.location("pathname").should("eq", "/setup");
 
-        cy.findByTestId("welcome-page").within(() => {
-          cy.findByText("Welcome to Metabase");
-          cy.findByTextEnsureVisible("Let's get started").click();
-        });
+        skipWelcomePage();
 
         cy.findByTestId("setup-forms").within(() => {
           selectPreferredLanguageAndContinue();
@@ -170,21 +167,14 @@ describe("scenarios > setup", () => {
     cy.visit("/");
 
     cy.location("pathname").should("eq", "/setup");
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+
+    skipWelcomePage();
 
     cy.findByTestId("setup-forms").within(() => {
       selectPreferredLanguageAndContinue();
 
       // User
-      cy.findByText("What should we call you?");
-      cy.findByLabelText("Email").type(admin.email);
-      cy.findByLabelText("Company or team name").type("Epic Team");
-      cy.findByLabelText("Create a password").type(admin.password);
-      cy.findByLabelText("Confirm your password").type(admin.password);
-      cy.button("Next").click();
+      fillUserAndContinue({ firstName: null, lastName: null });
 
       cy.findByText("Hi. Nice to meet you!");
 
@@ -219,10 +209,7 @@ describe("scenarios > setup", () => {
   it("should allow pre-filling user details", () => {
     cy.visit(`/setup#123456`);
 
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+    skipWelcomePage();
 
     selectPreferredLanguageAndContinue();
 
@@ -245,10 +232,7 @@ describe("scenarios > setup", () => {
 
     cy.visit(`/setup#123456`);
 
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+    skipWelcomePage();
 
     selectPreferredLanguageAndContinue();
 
@@ -301,21 +285,14 @@ describe("scenarios > setup", () => {
     cy.visit("/setup");
 
     cy.location("pathname").should("eq", "/setup");
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+
+    skipWelcomePage();
 
     selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
       // User
-      cy.findByText("What should we call you?");
-      cy.findByLabelText("Email").type(admin.email);
-      cy.findByLabelText("Company or team name").type("Epic Team");
-      cy.findByLabelText("Create a password").type(admin.password);
-      cy.findByLabelText("Confirm your password").type(admin.password);
-      cy.button("Next").click();
+      fillUserAndContinue({ firstName: null, lastName: null });
 
       cy.findByText("Hi. Nice to meet you!");
 
@@ -389,22 +366,13 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit(`/setup`);
 
     // 3 - setup/step_seen "welcome"
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
-
+    skipWelcomePage();
     // 4 - setup/step_seen  "language"
     selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
       // 5 - setup/step_seen "user_info"
-      cy.findByText("What should we call you?");
-      cy.findByLabelText("Email").type(admin.email);
-      cy.findByLabelText("Company or team name").type("Epic Team");
-      cy.findByLabelText("Create a password").type(admin.password);
-      cy.findByLabelText("Confirm your password").type(admin.password);
-      cy.button("Next").click();
+      fillUserAndContinue({ firstName: null, lastName: null });
 
       cy.findByText("What will you use Metabase for?").should("exist");
       // 6 - setup/step_seen "usage_question"
@@ -421,17 +389,57 @@ describeWithSnowplow("scenarios > setup", () => {
   it("should ignore snowplow failures and work as normal", () => {
     blockSnowplow();
     cy.visit(`/setup`);
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+    skipWelcomePage();
 
     expectGoodSnowplowEvents(1);
   });
 });
 
+const skipWelcomePage = () => {
+  cy.findByTestId("welcome-page").within(() => {
+    cy.findByText("Welcome to Metabase");
+    cy.findByTextEnsureVisible("Let's get started").click();
+  });
+};
+
 const selectPreferredLanguageAndContinue = () => {
   cy.findByText("What's your preferred language?");
   cy.findByLabelText("English");
   cy.findByText("Next").click();
+};
+
+const fillUserAndContinue = ({
+  email = admin.email,
+  firstName = admin.first_name,
+  lastName = admin.last_name,
+  password = admin.password,
+  companyName = "Epic team",
+}: {
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  password?: string | null;
+  companyName?: string | null;
+} = {}) => {
+  cy.findByText("What should we call you?");
+
+  if (firstName !== null) {
+    cy.findByLabelText("First name").type(firstName);
+  }
+  if (lastName !== null) {
+    cy.findByLabelText("Last name").type(lastName);
+  }
+  if (email !== null) {
+    cy.findByLabelText("Email").type(email);
+  }
+  if (companyName !== null) {
+    cy.findByLabelText("Company or team name").type(companyName);
+  }
+  if (password !== null) {
+    cy.findByLabelText("Create a password").type(password);
+  }
+  if (password !== null) {
+    cy.findByLabelText("Confirm your password").type(password);
+  }
+  cy.button("Next").click();
 };
