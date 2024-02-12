@@ -9,8 +9,9 @@ import type { Collection, Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateDashboard } from "metabase/dashboard/actions";
+import { getIsSidebarOpen } from "metabase/dashboard/selectors";
 
 import {
   EditWarning,
@@ -23,6 +24,7 @@ import {
   HeaderCaption,
   HeaderCaptionContainer,
   HeaderFixedWidthContainer,
+  HeaderContainer,
 } from "../../components/DashboardHeaderView.styled";
 import { DashboardTabs } from "../../components/DashboardTabs/DashboardTabs";
 
@@ -67,6 +69,8 @@ export function DashboardHeaderComponent({
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
+
+  const isSidebarOpen = useSelector(getIsSidebarOpen);
 
   const _headerButtons = useMemo(
     () => (
@@ -113,7 +117,7 @@ export function DashboardHeaderComponent({
           <span>{editWarning}</span>
         </EditWarning>
       )}
-      <div>
+      <HeaderContainer isSidebarOpen={isSidebarOpen}>
         <HeaderRow
           className={cx("QueryBuilder-section", headerClassName)}
           data-testid="dashboard-header"
@@ -173,7 +177,7 @@ export function DashboardHeaderComponent({
             />
           </HeaderFixedWidthContainer>
         </HeaderRow>
-      </div>
+      </HeaderContainer>
     </div>
   );
 }

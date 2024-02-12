@@ -12,6 +12,7 @@ import {
 import EditableText from "metabase/core/components/EditableText";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";
+import { SIDEBAR_WIDTH } from "./Sidebar";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
@@ -36,6 +37,18 @@ export const HeaderFixedWidthContainer = styled(
   ${breakpointMaxSmall} {
     flex-direction: column;
     align-items: baseline;
+  }
+`;
+
+export const HeaderContainer = styled.div<{ isSidebarOpen: boolean }>`
+  ${props =>
+    props.isSidebarOpen &&
+    css`
+      margin-right: ${SIDEBAR_WIDTH}px;
+    `}
+
+  ${breakpointMaxMedium} {
+    margin-right: 0;
   }
 `;
 
