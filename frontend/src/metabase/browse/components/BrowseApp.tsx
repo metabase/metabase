@@ -106,27 +106,22 @@ export const BrowseApp = ({
               <BrowseTab key={"databases"} value={"databases"}>
                 {t`Databases`}
               </BrowseTab>
-              {tab === "models" ? (
+              {tab === "models" && (
                 <PLUGIN_CONTENT_VERIFICATION.BrowseFilterControls
                   filters={filters}
                   setFilter={setFilter}
                 />
-              ) : (
-                <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
-                  <Link to="reference">
-                    <BrowseHeaderIconContainer>
-                      <Icon size={14} name="reference" />
-                      <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
-                        {t`Learn about our data`}
-                      </Text>
-                    </BrowseHeaderIconContainer>
-                  </Link>
-                </Flex>
               )}
             </Flex>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
-            <Flex>
+            <Flex
+              maw="1014px"
+              direction="column"
+              m="0 auto"
+              w="100%"
+              align="center"
+            >
               <BrowseTabContent
                 tab={tab}
                 modelsResult={modelsResult}
