@@ -4,6 +4,7 @@
    [mb.hawk.parallel]
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.models.card :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :refer [Table]]
@@ -34,7 +35,7 @@
   [test-user-name-or-user-id attributes-map & body]
   `(do-with-user-attributes ~test-user-name-or-user-id ~attributes-map (fn [] ~@body)))
 
-(defn- do-with-gtap-defs
+(defn- do-with-gtap-defs!
   {:style/indent 2}
   [group [[table-kw {:keys [query remappings]} :as gtap-def] & more] f]
   (if-not gtap-def
@@ -51,7 +52,8 @@
                                                                 :card_id              card-id
                                                                 :attribute_remappings remappings}]
            (perms/grant-permissions! group (perms/table-sandboxed-query-path (t2/select-one Table :id (data/id table-kw))))
-           (do-with-gtap-defs group more f)))))))
+           (data-perms/set-table-permission! group (data/id table-kw) :perms/data-access :unrestricted)
+           (do-with-gtap-defs! group more f)))))))
 
 (def ^:private WithGTAPsArgs
   "Schema for valid arguments to `with-gtaps!`."
@@ -76,7 +78,7 @@
                   (with-user-attributes test-user-name-or-user-id attributes
                     (mt/with-additional-premium-features #{:sandboxes}
                       ;; create Cards/GTAPs from defs
-                      (do-with-gtap-defs group gtaps
+                      (do-with-gtap-defs! group gtaps
                         (fn []
                           ;; bind user as current user, then run f
                           (if (keyword? test-user-name-or-user-id)
