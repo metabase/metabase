@@ -4,7 +4,7 @@ import type { BrowseFilterControlsProps } from "metabase/browse/utils";
 
 export const BrowseFilterControls = ({
   filters,
-  setFilter,
+  toggleFilter,
 }: BrowseFilterControlsProps) => {
   return (
     <Switch
@@ -17,7 +17,7 @@ export const BrowseFilterControls = ({
       }
       checked={filters.onlyShowVerifiedModels.active}
       onChange={e => {
-        setFilter("onlyShowVerifiedModels", e.target.checked);
+        toggleFilter("onlyShowVerifiedModels", e.target.checked);
       }}
       ml="auto"
       size="sm"

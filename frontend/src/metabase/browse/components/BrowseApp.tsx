@@ -62,7 +62,7 @@ export const BrowseApp = ({
 
   const [filters, setFilters] = useState(initialFilters);
 
-  const setFilter = useCallback(
+  const toggleFilter = useCallback(
     (filterName: string, active: boolean) => {
       setFilters((previousFilters: BrowseFilters) => {
         const newFilters = { ...previousFilters };
@@ -99,7 +99,7 @@ export const BrowseApp = ({
           }}
         >
           <BrowseTabsList>
-            <Flex maw="1014px" m="0 auto" w="100%" align="center">
+            <Flex maw="64rem" m="0 auto" w="100%" align="center">
               <BrowseTab key={"models"} value={"models"}>
                 {t`Models`}
               </BrowseTab>
@@ -109,14 +109,14 @@ export const BrowseApp = ({
               {tab === "models" && (
                 <PLUGIN_CONTENT_VERIFICATION.BrowseFilterControls
                   filters={filters}
-                  setFilter={setFilter}
+                  toggleFilter={toggleFilter}
                 />
               )}
             </Flex>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
             <Flex
-              maw="1014px"
+              maw="64rem"
               direction="column"
               m="0 auto"
               w="100%"

@@ -90,5 +90,5 @@ export type BrowseFilters = Record<
 
 export type BrowseFilterControlsProps = {
   filters: BrowseFilters;
-  setFilter: (filterName: string, active: boolean) => void;
+  toggleFilter: (filterName: string, active: boolean) => void;
 };
