@@ -545,18 +545,6 @@
                                          (get field 2))]
       ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause))))
 
-(defmethod driver/db-default-timezone :sqlserver
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver database nil
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn "SELECT sysdatetimeoffset();")
-                 rset (.executeQuery stmt)]
-       (when (.next rset)
-         (when-let [offset-date-time (.getObject rset 1 java.time.OffsetDateTime)]
-           (let [zone-id (str (t/zone-offset offset-date-time))]
-             (if (= zone-id "Z") "UTC" zone-id))))))))
-
 (defmethod sql.qp/current-datetime-honeysql-form :sqlserver
   [_]
   (hx/with-database-type-info :%getdate "datetime"))
