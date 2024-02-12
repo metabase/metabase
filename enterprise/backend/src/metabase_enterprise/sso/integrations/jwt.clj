@@ -8,6 +8,7 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings.premium-features :as premium-features]
@@ -109,6 +110,7 @@
   [{{:keys [jwt redirect token]
      :or   {token false}} :params
     :as                                             request}]
+  (validation/check-embedding-enabled)
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (log/info {:jwt      jwt
