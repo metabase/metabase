@@ -122,3 +122,8 @@ export function createPublicQuestionLink(questionId) {
 export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }
+
+export function openStaticEmbeddingModal() {
+  cy.icon("share").click();
+  cy.get(".Modal--full").findByText("Embed in your application").click();
+}
