@@ -59,14 +59,10 @@ export function findColumnSettingIndexForColumn(
   column: DatasetColumn,
 ) {
   // ignore settings without fieldRef but preserve indexes
-  const items = columnSettings.reduce<
-    { fieldRef: FieldReference; settingIndex: number }[]
-  >((items, { fieldRef }, settingIndex) => {
-    if (fieldRef != null) {
-      items.push({ fieldRef, settingIndex });
-    }
-    return items;
-  }, []);
+  const items = columnSettings.flatMap((item, settingIndex) => {
+    const fieldRef = item.fieldRef ? normalizeFieldRef(item.fieldRef) : null;
+    return fieldRef ? [{ fieldRef, settingIndex }] : [];
+  });
 
   // first try to find by fieldRef
   const stageIndex = -1;
