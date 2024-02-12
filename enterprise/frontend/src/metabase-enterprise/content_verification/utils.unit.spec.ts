@@ -1,6 +1,6 @@
 import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 import { createMockModelResult } from "metabase-types/api/mocks";
-import { browseFilters, sortCollectionsByVerification } from "./utils";
+import { availableModelFilters, sortCollectionsByVerification } from "./utils";
 
 describe("Utilities related to content verification", () => {
   it("include a function that sorts verified collections before unverified collections", () => {
@@ -34,7 +34,7 @@ describe("Utilities related to content verification", () => {
       }),
     ];
     const filteredModels = models.filter(
-      browseFilters.onlyShowVerifiedModels.predicate,
+      availableModelFilters.onlyShowVerifiedModels.predicate,
     );
     expect(filteredModels.length).toBe(1);
     expect(filteredModels[0].name).toBe("A verified model");
