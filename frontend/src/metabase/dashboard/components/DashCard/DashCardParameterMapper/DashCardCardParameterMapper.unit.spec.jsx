@@ -118,6 +118,30 @@ describe("DashCardParameterMapper", () => {
     ).toBeInTheDocument();
   });
 
+  it("should render mapping for a non-native, non-virtual, non-action card", () => {
+    const card = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({
+        query: {
+          "source-table": 1,
+        },
+      }),
+    });
+
+    setup({
+      card,
+      mappingOptions: [
+        {
+          target: ["dimension", ["field", 1]],
+          sectionName: "Section",
+          name: "Name",
+        },
+      ],
+      target: ["dimension", ["field", 1]],
+    });
+
+    expect(screen.getByText("Section.Name")).toBeInTheDocument();
+  });
+
   it("should render a different header for virtual cards", () => {
     const textCard = createMockCard({ dataset_query: {}, display: "text" });
     setup({
