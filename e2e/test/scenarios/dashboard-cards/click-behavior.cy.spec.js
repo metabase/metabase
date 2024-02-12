@@ -1436,7 +1436,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 
-  describe("full app embedding", () => {
+  describe("interactive embedding", () => {
     const questionDetails = QUESTION_LINE_CHART;
 
     beforeEach(() => {
