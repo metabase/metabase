@@ -6,6 +6,7 @@ export const ModelFilterControls = ({
   actualModelFilters,
   handleModelFilterChange,
 }: ModelFilterControlsProps) => {
+  const checked = actualModelFilters.onlyShowVerifiedModels;
   return (
     <Switch
       label={
@@ -16,7 +17,9 @@ export const ModelFilterControls = ({
           pr=".25rem"
         >{t`Only show verified models`}</Text>
       }
-      checked={actualModelFilters.onlyShowVerifiedModels}
+      role="switch"
+      checked={checked}
+      aria-checked={checked}
       onChange={e => {
         handleModelFilterChange("onlyShowVerifiedModels", e.target.checked);
       }}

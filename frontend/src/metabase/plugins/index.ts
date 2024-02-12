@@ -334,7 +334,7 @@ export const PLUGIN_EMBEDDING = {
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
   availableModelFilters: {} as AvailableModelFilters,
-  ModelFilterControls: {} as ComponentType<ModelFilterControlsProps>,
+  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
   sortModelsByVerification: (_a: SearchResult, _b: SearchResult) => 0,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,
