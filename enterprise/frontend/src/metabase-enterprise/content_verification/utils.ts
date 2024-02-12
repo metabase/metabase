@@ -13,7 +13,22 @@ export const sortCollectionsForBrowseModels = (
   if (isCollection2Official && !isCollection1Official) {
     return 1;
   }
-  return null;
+  return 0;
+};
+
+const isModelVerified = (model: SearchResult) =>
+  model.moderated_status === "verified";
+
+export const sortModelsByVerification = (a: SearchResult, b: SearchResult) => {
+  const aVerified = isModelVerified(a);
+  const bVerified = isModelVerified(b);
+  if (aVerified && !bVerified) {
+    return -1;
+  }
+  if (!aVerified && bVerified) {
+    return 1;
+  }
+  return 0;
 };
 
 export const browseFilters: BrowseFilters = {

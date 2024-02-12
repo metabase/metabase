@@ -92,3 +92,37 @@ export type BrowseFilterControlsProps = {
   filters: BrowseFilters;
   toggleFilter: (filterName: string, active: boolean) => void;
 };
+
+export const sortModels = (
+  a: SearchResult,
+  b: SearchResult,
+  localeCode?: string,
+) => {
+  const sortValueProvidedByPlugin =
+    PLUGIN_CONTENT_VERIFICATION.sortModelsByVerification(a, b);
+  if (sortValueProvidedByPlugin === 1) {
+    return 1;
+  }
+  if (sortValueProvidedByPlugin === -1) {
+    return -1;
+  }
+
+  if (a.name && !b.name) {
+    return -1;
+  }
+  if (!a.name && !b.name) {
+    return 0;
+  }
+  if (!a.name && b.name) {
+    return 1;
+  }
+  if (a.name && !b.name) {
+    return -1;
+  }
+  if (!a.name && !b.name) {
+    return 0;
+  }
+  const nameA = a.name.toLowerCase();
+  const nameB = b.name.toLowerCase();
+  return nameA.localeCompare(nameB, localeCode);
+};

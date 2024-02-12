@@ -21,6 +21,7 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   Revision,
+  SearchResult,
   User,
   UserListResult,
 } from "metabase-types/api";
@@ -333,5 +334,7 @@ export const PLUGIN_CONTENT_VERIFICATION = {
   sortCollectionsForBrowseModels: (
     _collection1: CollectionEssentials,
     _collection2: CollectionEssentials,
-  ) => null as number | null,
+  ) => 0 as number,
+  sortModelsByVerification: (_model1: SearchResult, _model2: SearchResult) =>
+    0 as number,
 };

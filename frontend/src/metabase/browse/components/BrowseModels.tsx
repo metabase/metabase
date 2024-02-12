@@ -26,7 +26,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import { getCollectionIcon } from "metabase/entities/collections";
 import type { BrowseFilters } from "../utils";
-import { getCollectionName, groupModels } from "../utils";
+import { getCollectionName, groupModels, sortModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
@@ -121,9 +121,6 @@ export const BrowseModels = ({
   );
 };
 
-const isVerified = (model: SearchResult) =>
-  model.moderated_status === "verified";
-
 const ModelGroup = ({
   models,
   localeCode,
@@ -131,37 +128,7 @@ const ModelGroup = ({
   models: SearchResult[];
   localeCode: string | undefined;
 }) => {
-  const sortedModels = models.sort((a, b) => {
-    const aVerified = isVerified(a);
-    const bVerified = isVerified(b);
-
-    // Sort verified models first
-    if (aVerified && !bVerified) {
-      return -1;
-    }
-    if (!aVerified && bVerified) {
-      return 1;
-    }
-
-    if (a.name && !b.name) {
-      return -1;
-    }
-    if (!a.name && !b.name) {
-      return 0;
-    }
-    if (!a.name && b.name) {
-      return 1;
-    }
-    if (a.name && !b.name) {
-      return -1;
-    }
-    if (!a.name && !b.name) {
-      return 0;
-    }
-    const nameA = a.name.toLowerCase();
-    const nameB = b.name.toLowerCase();
-    return nameA.localeCompare(nameB, localeCode);
-  });
+  const sortedModels = models.sort((a, b) => sortModels(a, b, localeCode));
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
