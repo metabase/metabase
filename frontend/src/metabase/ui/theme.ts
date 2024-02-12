@@ -39,7 +39,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   primaryColor: "brand",
   primaryShade: 0,
   shadows: {
-    sm: "0px 4px 4px 0px rgba(0, 0, 0, 0.08)",
+    sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
   },
   spacing: {

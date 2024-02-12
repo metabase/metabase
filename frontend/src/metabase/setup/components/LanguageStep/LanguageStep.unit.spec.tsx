@@ -6,16 +6,16 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
 import { renderWithProviders, screen } from "__support__/ui";
-import { LANGUAGE_STEP, USER_STEP } from "../../constants";
 import { LanguageStep } from "./LanguageStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
   locale?: Locale;
 }
 
-const setup = ({ step = LANGUAGE_STEP, locale }: SetupOpts = {}) => {
+const setup = ({ step = "language", locale }: SetupOpts = {}) => {
   const state = createMockState({
     setup: createMockSetupState({
       step,
@@ -26,13 +26,15 @@ const setup = ({ step = LANGUAGE_STEP, locale }: SetupOpts = {}) => {
     }),
   });
 
-  renderWithProviders(<LanguageStep />, { storeInitialState: state });
+  renderWithProviders(<LanguageStep stepLabel={0} />, {
+    storeInitialState: state,
+  });
 };
 
 describe("LanguageStep", () => {
   it("should render in inactive state", () => {
     setup({
-      step: USER_STEP,
+      step: "user_info",
       locale: createMockLocale({ name: "English" }),
     });
 
@@ -41,7 +43,7 @@ describe("LanguageStep", () => {
 
   it("should allow language selection", () => {
     setup({
-      step: LANGUAGE_STEP,
+      step: "language",
     });
 
     const option = screen.getByRole("radio", { name: "English" });

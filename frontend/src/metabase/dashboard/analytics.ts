@@ -19,7 +19,10 @@ export const trackExportDashboardToPDF = (dashboardId: DashboardId) => {
 
 type CardTypes = "text" | "heading" | "link" | "action";
 
-export const trackCardCreated = (type: CardTypes, dashboard_id: number) => {
+export const trackCardCreated = (
+  type: CardTypes,
+  dashboard_id: DashboardId,
+) => {
   if (!type) {
     return;
   }

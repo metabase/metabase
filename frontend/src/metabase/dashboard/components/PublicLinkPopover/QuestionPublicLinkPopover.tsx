@@ -1,4 +1,8 @@
 import { useState } from "react";
+import {
+  trackPublicLinkCopied,
+  trackPublicLinkRemoved,
+} from "metabase/public/lib/analytics";
 import { useDispatch } from "metabase/lib/redux";
 import {
   exportFormats,
@@ -40,7 +44,18 @@ export const QuestionPublicLinkPopover = ({
     await dispatch(createPublicLink(question.card()));
   };
   const deletePublicQuestionLink = async () => {
+    trackPublicLinkRemoved({
+      artifact: "question",
+      source: "public-share",
+    });
     await dispatch(deletePublicLink(question.card()));
+  };
+
+  const onCopyLink = () => {
+    trackPublicLinkCopied({
+      artifact: "question",
+      format: extension ?? "html",
+    });
   };
 
   return (
@@ -54,6 +69,7 @@ export const QuestionPublicLinkPopover = ({
       extensions={exportFormats}
       selectedExtension={extension}
       setSelectedExtension={setExtension}
+      onCopyLink={onCopyLink}
     />
   );
 };

@@ -49,7 +49,10 @@ import type {
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-import { DashboardCardContainer } from "./DashboardGrid.styled";
+import {
+  DashboardCardContainer,
+  DashboardGridContainer,
+} from "./DashboardGrid.styled";
 
 import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
 import { GridLayout } from "./grid/GridLayout";
@@ -611,13 +614,16 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   render() {
-    const { width } = this.props;
+    const { dashboard, width } = this.props;
     return (
-      <div className="flex layout-centered" data-testid="dashboard-grid">
+      <DashboardGridContainer
+        data-testid="dashboard-grid"
+        isFixedWidth={dashboard?.width === "fixed"}
+      >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
         {this.renderReplaceCardModal()}
-      </div>
+      </DashboardGridContainer>
     );
   }
 }
