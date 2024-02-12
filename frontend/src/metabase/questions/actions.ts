@@ -11,16 +11,19 @@ export interface LoadMetadataOptions {
 }
 
 export const loadMetadataForCard =
+  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
+    await dispatch(loadMetadata(card, options));
+    // load entities referenced by previously loaded metadata without reloading
+    await dispatch(loadMetadata(card));
+  };
+
+const loadMetadata =
   (card: Card, options?: LoadMetadataOptions) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const metadata = getMetadata(getState());
-    const question = new Question(card, metadata);
-    const questions = question.isDataset()
-      ? [question, question.composeDataset()]
-      : [question];
+    const question = new Question(card, getMetadata(getState()));
     const dependencies = [
       ...question.dependentMetadata(),
-      ...questions.flatMap(question => Lib.dependentMetadata(question.query())),
+      ...Lib.dependentMetadata(question.query()),
     ];
     return dispatch(loadMetadataForDependentItems(dependencies, options));
   };
