@@ -26,6 +26,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/waterfall/constants";
 
 type WaterfallSeriesOptions =
+  | RegisteredSeriesOption["line"]
   | RegisteredSeriesOption["bar"]
   | RegisteredSeriesOption["candlestick"];
 
@@ -86,18 +87,14 @@ export const buildEChartsWaterfallSeries = (
     },
     {
       id: "waterfall_bar_label",
-      type: "bar",
+      type: "line",
       zlevel: CHART_STYLE.series.zIndex + 10,
       silent: true,
-      stack: "waterfall",
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
       itemStyle: {
         color: "transparent",
       },
-      emphasis: {
-        itemStyle: undefined,
-      },
-      barWidth,
+      symbolSize: 0,
       labelLayout: params => {
         const { dataIndex, rect } = params;
         if (dataIndex == null) {
@@ -134,7 +131,6 @@ export const buildEChartsWaterfallSeries = (
     series.push({
       id: "waterfall_total_label",
       type: "bar",
-      stack: "waterfall",
       barWidth,
       zlevel: CHART_STYLE.series.zIndex + 10,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_TOTAL_KEY],

@@ -1,3 +1,4 @@
+import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 import type { Insight } from "metabase-types/api/insight";
 
 import type {
@@ -91,6 +92,8 @@ export type TimeSeriesInterval = {
 export type XAxisModel = {
   label?: string;
   formatter: AxisFormatter;
+  axisType: OptionAxisType;
+  canBrush?: boolean;
   numericInterval?: number;
   timeSeriesInterval?: TimeSeriesInterval;
 };

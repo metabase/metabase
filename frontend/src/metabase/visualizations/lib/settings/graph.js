@@ -42,6 +42,7 @@ import {
   isMetric,
   isNumeric,
   isAny,
+  isDate,
 } from "metabase-lib/types/utils/isa";
 
 export function getDefaultDimensionLabel(multipleSeries) {
@@ -421,14 +422,23 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.x_axis._is_numeric": {
     readDependencies: ["graph.dimensions"],
-    getDefault: ([{ data }], vizSettings) =>
-      dimensionIsNumeric(
-        data,
-        _.findIndex(
-          data.cols,
-          c => c.name === vizSettings["graph.dimensions"].filter(d => d)[0],
-        ),
-      ),
+    getDefault: ([{ data }], vizSettings) => {
+      const columnIndex = _.findIndex(
+        data.cols,
+        c => c.name === vizSettings["graph.dimensions"].filter(d => d)[0],
+      );
+      const column = data.cols[columnIndex];
+
+      return (
+        dimensionIsNumeric(
+          data,
+          _.findIndex(
+            data.cols,
+            c => c.name === vizSettings["graph.dimensions"].filter(d => d)[0],
+          ),
+        ) && !isDate(column)
+      );
+    },
   },
   "graph.x_axis._is_histogram": {
     getDefault: (

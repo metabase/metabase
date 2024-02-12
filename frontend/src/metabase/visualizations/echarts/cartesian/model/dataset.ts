@@ -381,7 +381,8 @@ export function getDimensionDisplayValueGetter(
       return dayjs(value).format("YYYY-MM-DDTHH:mm:ss");
     }
     if (isNumeric(chartModel.dimensionModel.column)) {
-      return parseInt(value, 10);
+      const parsedNumber = parseInt(value, 10);
+      return isNaN(parsedNumber) ? value : parsedNumber;
     }
     return value;
   };

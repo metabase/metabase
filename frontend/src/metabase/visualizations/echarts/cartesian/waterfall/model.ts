@@ -68,8 +68,7 @@ const getWaterfallDataset = (
     const rawValue = datum[series.dataKey];
     const value = isNumber(rawValue) ? rawValue : 0;
 
-    // Number.MIN_VALUE for log scale
-    const start = prevDatum == null ? Number.MIN_VALUE : prevDatum.end;
+    const start = prevDatum == null ? 0 : prevDatum.end;
     const end = prevDatum == null ? value : (prevDatum?.end ?? 0) + value;
 
     const waterfallDatum: WaterfallDatum = {
@@ -104,6 +103,8 @@ const getWaterfallDataset = (
 
     transformedDataset.push({
       [X_AXIS_DATA_KEY]: totalXValue,
+      [WATERFALL_END_KEY]: 0,
+      [WATERFALL_START_KEY]: 0,
       [WATERFALL_TOTAL_KEY]: lastDatum.end,
     });
   }
@@ -123,6 +124,35 @@ const getWaterfallDataset = (
           ? applySquareRootScaling(value)
           : value,
     );
+  } else if (settings["graph.y_axis.scale"] === "log") {
+    let minValue = Infinity;
+    let maxValue = -Infinity;
+
+    transformedDataset.forEach(datum => {
+      minValue = Math.min(
+        minValue,
+        datum[WATERFALL_START_KEY],
+        datum[WATERFALL_END_KEY],
+      );
+      maxValue = Math.max(
+        maxValue,
+        datum[WATERFALL_START_KEY],
+        datum[WATERFALL_END_KEY],
+      );
+    });
+
+    if (minValue < 0) {
+      throw "X-axis must not cross 0 when using log scale.";
+    } else if (minValue === 0) {
+      const extent = maxValue - minValue;
+      const zeroReplacementValue = extent >= 10 ? 1 : extent / 10000;
+
+      transformedDataset = replaceValues(
+        transformedDataset,
+        (_dataKey: DataKey, value: RowValue) =>
+          value === 0 ? zeroReplacementValue : value,
+      );
+    }
   }
 
   return transformedDataset;

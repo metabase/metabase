@@ -27,9 +27,9 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import { getObjectValues } from "metabase/lib/objects";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { buildEChartsWaterfallSeries } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import { buildEChartsScatterSeries } from "../scatter/series";
 import { getSeriesYAxisIndex } from "./utils";
-import { buildEChartsWaterfallSeries } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 
 export const getBarLabelLayout =
   (
@@ -77,7 +77,7 @@ export function getDataLabelFormatter(
   return (params: CallbackDataParams) => {
     const value = params.data[labelDataKey];
 
-    if (typeof value === undefined) {
+    if (value == null) {
       return " ";
     }
     return valueFormatter(valueGetter(value));
