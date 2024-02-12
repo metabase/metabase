@@ -161,6 +161,20 @@ Sections include:
 
 ![KPIs with large chart below](./images/kpis-with-large-chart-below.png)
 
+### Dashboard width
+
+You change the width of a dashboard.
+
+![Change dashboard width](./images/toggle-width.png)
+
+**Full width**
+
+![Dashboard full width](./images/full-width.png)
+
+**Fixed width**
+
+![Dashboard fixed width](./images/fixed-width.png)
+
 ## Changing a card's visualization settings
 
 You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
