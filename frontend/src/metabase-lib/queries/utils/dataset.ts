@@ -82,4 +82,6 @@ export function findColumnSettingIndexForColumn(
   if (itemIndex != null) {
     return items[itemIndex].settingIndex;
   }
+
+  return -1;
 }
