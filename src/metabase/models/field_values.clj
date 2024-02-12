@@ -522,6 +522,7 @@
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
+    ;; We only serialize the full values, see [metabase.models.field/with-values]]
     (get-latest-full-field-values (:id field))))
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
