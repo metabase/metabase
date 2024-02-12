@@ -93,6 +93,9 @@ export function FieldInfoPopoverMLv2({
       closeDelay={group.shouldDelay ? delay[1] : 0}
       onOpen={group.onOpen}
       onClose={group.onClose}
+      transitionProps={{
+        duration: group.shouldDelay ? POPOVER_TRANSITION_DURATION : 0,
+      }}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
       <HoverCard.Dropdown>
