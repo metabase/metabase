@@ -92,10 +92,12 @@ export function DashboardHeaderComponent({
 
   useEffect(() => {
     const timerId = setTimeout(() => {
-      setShowSubHeader(false);
+      if (isLastEditInfoVisible) {
+        setShowSubHeader(false);
+      }
     }, 4000);
     return () => clearTimeout(timerId);
-  }, []);
+  }, [isLastEditInfoVisible]);
 
   return (
     <div>

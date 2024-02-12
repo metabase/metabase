@@ -76,24 +76,33 @@
   "Default custom reports entity id."
   "okNLSZKdSxaoG58JSQY54")
 
-(defn collection-entity-id->collection
-  "Returns the collection from entity id for collections. Memoizes from entity id."
-  [entity-id]
+(def default-question-overview-entity-id
+  "Default Question Overview (this is a dashboard) entity id."
+  "jm7KgY6IuS6pQjkBZ7WUI")
+
+(def default-dashboard-overview-entity-id
+  "Default Dashboard Overview (this is a dashboard) entity id."
+  "bJEYb0o5CXlfWFcIztDwJ")
+
+(defn entity-id->object
+  "Returns the object from entity id and model. Memoizes from entity id.
+  Should only be used for audit/pre-loaded objects."
+  [model entity-id]
   ((mdb.connection/memoize-for-application-db
     (fn [entity-id]
-      (t2/select-one :model/Collection :entity_id entity-id))) entity-id))
+      (t2/select-one model :entity_id entity-id))) entity-id))
 
 (defenterprise default-custom-reports-collection
   "Default custom reports collection."
   :feature :none
   []
-  (collection-entity-id->collection default-custom-reports-entity-id))
+  (entity-id->object :model/Collection default-custom-reports-entity-id))
 
 (defenterprise default-audit-collection
   "Default audit collection (instance analytics) collection."
   :feature :none
   []
-  (collection-entity-id->collection default-audit-collection-entity-id))
+  (entity-id->object :model/Collection default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
