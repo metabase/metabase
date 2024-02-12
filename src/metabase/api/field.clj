@@ -318,7 +318,7 @@
                        :human_readable_values (when human-readable-values?
                                                 (map second value-pairs))}]
       (t2/with-transaction [_conn]
-        (if-let [field-value-id (field-values/get-latest-full-field-values id)]
+        (if-let [field-value-id (:id (field-values/get-latest-full-field-values id))]
           (update-field-values! field-value-id update-map)
           (create-field-values! field update-map)))))
   {:status :success})
