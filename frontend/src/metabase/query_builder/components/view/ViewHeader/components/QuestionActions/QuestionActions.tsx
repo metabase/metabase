@@ -7,7 +7,11 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
-import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import {
+  PLUGIN_MODERATION,
+  PLUGIN_MODEL_PERSISTENCE,
+  PLUGIN_QUERY_BUILDER_HEADER,
+} from "metabase/plugins";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
@@ -224,6 +228,8 @@ export const QuestionActions = ({
     });
   }
 
+  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadClick = () => {
@@ -238,6 +244,7 @@ export const QuestionActions = ({
       uploadFile({
         file,
         tableId: question._card.based_on_upload,
+        reloadQuestionData: true,
       })(dispatch);
 
       // reset the file input so that subsequent uploads of the same file trigger the change handler

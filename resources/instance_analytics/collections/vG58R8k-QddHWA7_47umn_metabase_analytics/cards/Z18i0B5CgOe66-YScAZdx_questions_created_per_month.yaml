@@ -76,3 +76,4 @@ serdes/meta:
   label: questions_created_per_month
   model: Card
 metabase_version: null
+type: question

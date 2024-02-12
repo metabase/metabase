@@ -21,6 +21,7 @@
   Question transformation:
   - None"
   (:require
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -28,6 +29,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -65,12 +67,16 @@
    stage-number :- :int
    drill-thru   :- ::lib.schema.drill-thru/drill-thru.fk-filter
    & _args]
-  ;; if the stage in question is an MBQL stage, we can simply add a `=` filter to it. If it's a native stage, we have
-  ;; to apply the drill to the stage after that stage, which will be an MBQL stage, adding it if needed (native stages
-  ;; are currently only allowed to be the first stage.)
+  ;; If the stage in question is an MBQL stage, we can simply add a `=` filter to it.
+  ;; If it's a native stage, we have to apply the drill to the stage after that stage, which will be an MBQL stage,
+  ;; adding it if needed (native stages are currently only allowed to be the first stage.)
+  ;; Similarly if the query contains aggregations we will have to add a new stage to do the filtering.
   (let [[query stage-number] (if (lib.drill-thru.common/mbql-stage? query stage-number)
-                               [query stage-number]
-                               ;; native stage
+                               ;; MBQL stage - append a stage if there are aggregations
+                               (if (seq (lib.aggregation/aggregations query stage-number))
+                                 (lib.stage/ensure-extra-stage query stage-number)
+                                 [query stage-number])
+                               ;; native stage - append an MBQL stage
                                (let [;; convert the stage number e.g. `-1` to the canonical non-relative stage number
                                      stage-number      (lib.util/canonical-stage-index query stage-number)
                                      ;; make sure the query has at least one MBQL stage after the native stage, which we
