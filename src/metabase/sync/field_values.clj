@@ -25,7 +25,7 @@
 (mu/defn ^:private update-field-values-for-field!
   [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
-  (let [field-values (t2/select-one FieldValues :field_id (u/the-id field) :type :full)]
+  (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
     (if (field-values/inactive? field-values)
       (log/debugf "Field %s has not been used since %s. Skipping..."
                   (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))

@@ -340,21 +340,21 @@
   [rows]
   (if (<= (count rows) 1)
     (first rows)
-    (let [[latest & duplicates] (sort-by :updated-at u/reverse-compare rows)]
+    (let [[latest & duplicates] (sort-by :updated_at u/reverse-compare rows)]
       (t2/delete! FieldValues :id [:in (map :id duplicates)])
       latest)))
 
-(defn- get-latest-field-values
+(defn get-latest-field-values
   "This returns the FieldValues with the given :type and :hash_key for the given Field.
-   This may implictly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id type hash]
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
   (delete-duplicates-and-return-latest!
     (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
 
-(defn- get-latest-full-field-values
+(defn get-latest-full-field-values
   "This returns the full FieldValues for the given Field.
-   This may implictly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id]
   (get-latest-field-values field-id :full nil))
 
