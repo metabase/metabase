@@ -207,7 +207,7 @@
        vals
        set))
 
-(mu/defn schema-permission-for-user :- PermissionValue
+(mu/defn full-schema-permission-for-user :- PermissionValue
   "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
   schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
   single value. The schema-level permission is the *most* restrictive table-level permission within that schema."
@@ -237,6 +237,34 @@
                                            [:or
                                             [:= :schema_name schema-name]
                                             [:= :table_id nil]]]}))]
+      (or (coalesce perm-type perm-values)
+          (least-permissive-value perm-type)))))
+
+(mu/defn schema-permission-for-user :- PermissionValue
+  "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
+  schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
+  single value. The schema-level permission is the *least* restrictive table-level permission within that schema."
+  [user-id perm-type database-id schema-name]
+  (when (not= :model/Table (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
+                    {perm-type (Permissions perm-type)})))
+  (if (is-superuser? user-id)
+    (most-permissive-value perm-type)
+    ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
+    ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
+    ;; restrictive group permission.
+    (let [perm-values (t2/select-fn-set :value :model/DataPermissions
+                                        {:select [[:p.perm_value :value]]
+                                         :from [[:permissions_group_membership :pgm]]
+                                         :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                                                [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                                         :where [:and
+                                                 [:= :pgm.user_id user-id]
+                                                 [:= :p.perm_type (u/qualified-name perm-type)]
+                                                 [:= :p.db_id database-id]
+                                                 [:or
+                                                  [:= :schema_name schema-name]
+                                                  [:= :table_id nil]]]})]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
