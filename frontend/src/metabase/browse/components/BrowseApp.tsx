@@ -55,7 +55,7 @@ export const BrowseApp = ({
   const availableModelFilters =
     PLUGIN_CONTENT_VERIFICATION.availableModelFilters;
 
-  const getInitialModelFilters = useCallback(() => {
+  const getInitialModelFilters = () => {
     return _.reduce(
       availableModelFilters,
       (acc, filter, filterName) => {
@@ -73,7 +73,7 @@ export const BrowseApp = ({
       },
       {},
     );
-  }, [availableModelFilters]);
+  };
 
   const [actualModelFilters, setActualModelFilters] =
     useState<ActualModelFilters>(getInitialModelFilters);
