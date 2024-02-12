@@ -85,10 +85,7 @@ export type AvailableModelFilters = Record<
 
 export type ModelFilterControlsProps = {
   actualModelFilters: ActualModelFilters;
-  handleModelFilterChange: (
-    filterName: ModelFilterName,
-    active: boolean,
-  ) => void;
+  handleModelFilterChange: (filterName: string, active: boolean) => void;
 };
 
 export const sortModels = (
@@ -122,5 +119,4 @@ export const sortModels = (
   return nameA.localeCompare(nameB, localeCode);
 };
 
-export type ModelFilterName = keyof AvailableModelFilters;
-export type ActualModelFilters = Record<ModelFilterName, boolean>;
+export type ActualModelFilters = Record<string, boolean>;

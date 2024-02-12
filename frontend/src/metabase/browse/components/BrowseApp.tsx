@@ -14,7 +14,7 @@ import { Flex, Text } from "metabase/ui";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import type { ActualModelFilters, ModelFilterName } from "../utils";
+import type { ActualModelFilters } from "../utils";
 import { isValidBrowseTab, type BrowseTabId } from "../utils";
 import {
   BrowseAppRoot,
@@ -96,7 +96,7 @@ export const BrowseApp = ({
   const filteredModelsResult = { ...modelsResult, data: filteredModels };
 
   const handleModelFilterChange = useCallback(
-    (modelFilterName: ModelFilterName, active: boolean) => {
+    (modelFilterName: string, active: boolean) => {
       localStorage.setItem(
         `browseFilters.${modelFilterName}`,
         active ? "on" : "off",
