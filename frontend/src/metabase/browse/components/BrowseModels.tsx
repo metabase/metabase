@@ -157,7 +157,6 @@ interface ModelCellProps {
   collectionHtmlId: string;
 }
 
-// TODO: Move to separate file
 const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const headingId = `heading-for-model-${model.id}`;
 
