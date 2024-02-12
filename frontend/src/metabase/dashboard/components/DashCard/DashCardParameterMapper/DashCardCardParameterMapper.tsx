@@ -107,7 +107,7 @@ interface DashcardCardParameterMapperProps {
   isMobile: boolean;
   // virtual cards will not have question
   question?: Question;
-  mappingOptions: ParameterMappingOptions;
+  mappingOptions: ParameterMappingOptions[];
 }
 
 export function DashCardCardParameterMapper({

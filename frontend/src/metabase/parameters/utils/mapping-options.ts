@@ -7,9 +7,11 @@ import * as Lib from "metabase-lib";
 import type {
   BaseDashboardCard,
   Card,
+  NativeParameterDimensionTarget,
   Parameter,
-  ParameterDimensionTarget,
   ParameterTarget,
+  ParameterVariableTarget,
+  StructuredParameterDimensionTarget,
   WritebackParameter,
 } from "metabase-types/api";
 import {
@@ -27,11 +29,11 @@ import type Question from "metabase-lib/Question";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
 
-type StructuredQuerySectionOptions = {
+export type StructuredQuerySectionOptions = {
   sectionName: string;
   name: string;
   icon: string;
-  target: ParameterDimensionTarget;
+  target: StructuredParameterDimensionTarget;
   isForeign: boolean;
 };
 
@@ -50,31 +52,31 @@ function buildStructuredQuerySectionOptions(
       sectionName: getColumnGroupName(groupInfo),
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
-      target: buildColumnTarget(
-        query,
-        stageIndex,
-        column,
-      ) as ParameterDimensionTarget,
+      target: buildColumnTarget(query, stageIndex, column),
       isForeign: columnInfo.isFromJoin || columnInfo.isImplicitlyJoinable,
     };
   });
 }
 
-function buildNativeQuerySectionOptions(section: DimensionOptionsSection) {
+function buildNativeQuerySectionOptions(
+  section: DimensionOptionsSection,
+): NativeParameterMappingOptions[] {
   return section.items.map(({ dimension }) => ({
     name: dimension.displayName(),
-    icon: dimension.icon(),
+    icon: dimension.icon() ?? "",
     isForeign: false,
-    target: buildDimensionTarget(dimension),
+    target: buildDimensionTarget(dimension) as NativeParameterDimensionTarget,
   }));
 }
 
-function buildVariableOption(variable: TemplateTagVariable) {
+function buildVariableOption(
+  variable: TemplateTagVariable,
+): NativeParameterMappingOptions {
   return {
-    name: variable.displayName(),
-    icon: variable.icon(),
+    name: variable.displayName() ?? "",
+    icon: variable.icon() ?? "",
     isForeign: false,
-    target: buildTemplateTagVariableTarget(variable),
+    target: buildTemplateTagVariableTarget(variable) as ParameterVariableTarget,
   };
 }
 
@@ -102,22 +104,21 @@ type NativeParameterMappingOptions = {
   name: string;
   icon: string;
   isForeign: boolean;
-  target: ParameterTarget;
+  target: NativeParameterDimensionTarget | ParameterVariableTarget;
 };
 
-export type ParameterMappingOptions = (
+export type ParameterMappingOptions =
   | VirtualDashcardParameterMappingOptions
   | ActionDashcardParameterMappingOptions
   | StructuredQuerySectionOptions
-  | NativeParameterMappingOptions
-)[];
+  | NativeParameterMappingOptions;
 
 export function getParameterMappingOptions(
   question: Question,
   parameter: Parameter | null | undefined = null,
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
-): ParameterMappingOptions {
+): ParameterMappingOptions[] {
   if (
     dashcard &&
     isVirtualDashCard(dashcard) &&
@@ -142,10 +143,6 @@ export function getParameterMappingOptions(
   }
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  let options: (
-    | StructuredQuerySectionOptions
-    | NativeParameterMappingOptions
-  )[] = [];
   if (!isNative || question.isDataset()) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
@@ -159,29 +156,29 @@ export function getParameterMappingOptions(
       : availableColumns;
     const columnGroups = Lib.groupColumns(parameterColumns);
 
-    options = columnGroups.flatMap(group =>
+    const options = columnGroups.flatMap(group =>
       buildStructuredQuerySectionOptions(query, stageIndex, group),
     );
-  } else {
-    const legacyQuery = question.legacyQuery();
-    options.push(
-      ...(legacyQuery
-        .variables(
-          parameter ? variableFilterForParameter(parameter) : undefined,
-        )
-        .map(buildVariableOption) as NativeParameterMappingOptions[]),
-    );
-    options.push(
-      ...(legacyQuery
-        .dimensionOptions(
-          parameter ? dimensionFilterForParameter(parameter) : undefined,
-        )
-        .sections()
-        .flatMap(section =>
-          buildNativeQuerySectionOptions(section),
-        ) as NativeParameterMappingOptions[]),
-    );
+
+    return options;
   }
+
+  const legacyQuery = question.legacyQuery();
+  const options: NativeParameterMappingOptions[] = [];
+
+  options.push(
+    ...legacyQuery
+      .variables(parameter ? variableFilterForParameter(parameter) : undefined)
+      .map(buildVariableOption),
+  );
+  options.push(
+    ...legacyQuery
+      .dimensionOptions(
+        parameter ? dimensionFilterForParameter(parameter) : undefined,
+      )
+      .sections()
+      .flatMap(section => buildNativeQuerySectionOptions(section)),
+  );
 
   return options;
 }

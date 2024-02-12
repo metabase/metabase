@@ -4,7 +4,6 @@ import type {
   DashboardCard,
   ParameterTarget,
   QuestionDashboardCard,
-  StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import {
   getVirtualCardType,
@@ -14,6 +13,8 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import * as Lib from "metabase-lib";
+import type { ParameterMappingOptions as ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { isStructuredQuerySectionOption } from "metabase-types/guards";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import type Question from "metabase-lib/Question";
 
@@ -33,20 +34,12 @@ export function shouldShowParameterMapper({
   );
 }
 
-// TODO: @uladzimirdev fix type definition in https://github.com/metabase/metabase/pull/38596
-type MappingOption = {
-  name: string;
-  icon: string;
-  isForeign: boolean;
-  target: StructuredParameterDimensionTarget;
-};
-
 export function getMappingOptionByTarget<T extends DashboardCard>(
-  mappingOptions: MappingOption[],
+  mappingOptions: ParameterMappingOption[],
   dashcard: T,
-  target: ParameterTarget,
-  question: T extends QuestionDashboardCard ? Question : never,
-): MappingOption | undefined {
+  target?: ParameterTarget | null,
+  question?: T extends QuestionDashboardCard ? Question : undefined,
+): ParameterMappingOption | undefined {
   if (!target) {
     return;
   }
@@ -65,12 +58,17 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     );
   }
 
+  if (!question) {
+    return;
+  }
+
   const stageIndex = -1;
-  const columns = Lib.visibleColumns(question.query(), stageIndex);
+  const query = question.query();
+  const columns = Lib.visibleColumns(query, stageIndex);
   const normalizedTarget = normalize(target[1]);
 
   const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
-    question.query(),
+    query,
     stageIndex,
     columns,
     [normalizedTarget],
@@ -82,10 +80,12 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
   }
 
   const mappingColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
-    question.query(),
+    query,
     stageIndex,
     columns,
-    mappingOptions.map(({ target }) => target[1]),
+    mappingOptions
+      .filter(isStructuredQuerySectionOption)
+      .map(({ target }) => target[1]),
   );
 
   const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);
