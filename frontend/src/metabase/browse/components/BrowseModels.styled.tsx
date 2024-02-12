@@ -86,6 +86,8 @@ export const CollectionHeaderGroup = styled(Group)`
 export const BannerModelIcon = styled(Icon)`
   color: ${color("text-dark")};
   margin-right: 0.5rem;
+  min-width: 16px;
+  min-height: 16px;
 `;
 
 export const BannerCloseButton = styled(IconButtonWrapper)`

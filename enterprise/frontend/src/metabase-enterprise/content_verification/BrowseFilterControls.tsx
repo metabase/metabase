@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { Flex, Group, Switch, Text } from "metabase/ui";
+import { Switch, Text } from "metabase/ui";
 import type { BrowseFilterControlsProps } from "metabase/browse/utils";
 
 export const BrowseFilterControls = ({
@@ -9,15 +9,11 @@ export const BrowseFilterControls = ({
   return (
     <Switch
       label={
-        <Group grow>
-          <Flex direction="column" justify="center">
-            <Text
-              align="right"
-              weight="bold"
-              lh="1rem"
-            >{t`Only show verified models`}</Text>
-          </Flex>
-        </Group>
+        <Text
+          align="right"
+          weight="bold"
+          lh="1rem"
+        >{t`Only show verified models`}</Text>
       }
       checked={filters.onlyShowVerifiedModels.active}
       onChange={e => {
@@ -26,6 +22,11 @@ export const BrowseFilterControls = ({
       ml="auto"
       size="sm"
       labelPosition="left"
+      styles={{
+        body: { alignItems: "center" },
+        labelWrapper: { justifyContent: "center" },
+        track: { marginTop: "-.5px" },
+      }}
     />
   );
 };
