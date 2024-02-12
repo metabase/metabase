@@ -231,6 +231,17 @@ function isMetabaseUrl(url) {
     return true;
   }
 
+  const pathNameWithoutSubPath = getPathnameWithoutSubPath(urlPath);
+  const isPublicLink = pathNameWithoutSubPath.startsWith("/public/");
+  const isEmbedding = pathNameWithoutSubPath.startsWith("/embed/");
+  /**
+   * (metabase#38640) We don't want to use client-side navigation for public links or embedding
+   * because public app, or embed app are built using separate routes.
+   **/
+  if (isPublicLink || isEmbedding) {
+    return false;
+  }
+
   return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
 }
 
