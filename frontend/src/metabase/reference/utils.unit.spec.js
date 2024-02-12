@@ -123,6 +123,7 @@ describe("Reference utils.js", () => {
       const card = {
         name: undefined,
         collection_id: undefined,
+        type: "question",
         dataset: undefined,
         display,
         visualization_settings: {},
