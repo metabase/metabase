@@ -1039,7 +1039,7 @@ class Question {
     display = "table",
     visualization_settings = {},
     dataset,
-    cardType = "question",
+    cardType,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
