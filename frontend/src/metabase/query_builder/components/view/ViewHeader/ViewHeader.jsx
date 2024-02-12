@@ -224,7 +224,7 @@ function SavedQuestionLeftSide(props) {
 
   const hasLastEditInfo = question.lastEditInfo() != null;
   const isDataset = question.isDataset();
-  const type = question.type();
+  const type = question.type() || "question";
 
   const onHeaderChange = useCallback(
     name => {
