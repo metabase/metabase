@@ -7,6 +7,7 @@
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
     :as ee.qp.perms]
    [metabase.api.dataset :as api.dataset]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -16,28 +17,30 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn- do-with-download-perms
+(defn- do-with-download-perms!
   [db-or-id graph f]
   (let [all-users-group-id (u/the-id (perms-group/all-users))
         db-id              (u/the-id db-or-id)]
     (mt/with-premium-features #{:advanced-permissions}
       (perms.test-util/with-restored-perms!
-        (ee.perms/update-db-download-permissions! all-users-group-id db-id graph)
-        (f)))))
+        (perms.test-util/with-restored-data-perms!
+          (ee.perms/update-db-download-permissions! all-users-group-id db-id graph)
+          (data-perms.graph/update-data-perms-graph! {all-users-group-id {db-id {:download graph}}})
+          (f))))))
 
-(defmacro ^:private with-download-perms
+(defmacro ^:private with-download-perms!
   "Runs `f` with the download perms for `db-or-id` set to the values in `graph` for the All Users permissions group."
   [db-or-id graph & body]
-  `(do-with-download-perms ~db-or-id ~graph (fn [] ~@body)))
+  `(do-with-download-perms! ~db-or-id ~graph (fn [] ~@body)))
 
-(defn- do-with-download-perms-for-db
+(defn- do-with-download-perms-for-db!
   [db-or-id value f]
-  (do-with-download-perms db-or-id {:native value, :schemas value} f))
+  (do-with-download-perms! db-or-id {:schemas value} f))
 
-(defmacro ^:private with-download-perms-for-db
+(defmacro ^:private with-download-perms-for-db!
   "Runs `body` with the download perms for `db-or-id` set to `value` for the All Users permissions group."
   [db-or-id value & body]
-  `(do-with-download-perms-for-db ~db-or-id ~value (fn [] ~@body)))
+  `(do-with-download-perms-for-db! ~db-or-id ~value (fn [] ~@body)))
 
 (defn- mbql-download-query
   ([]
@@ -63,7 +66,7 @@
 
 (deftest apply-download-limit-test
   (let [limited-download-max-rows @#'ee.qp.perms/max-rows-in-limited-downloads]
-    (with-download-perms-for-db (mt/id) :limited
+    (with-download-perms-for-db! (mt/id) :limited
       (mt/with-current-user (mt/user->id :rasta)
         (testing "A limit is added to MBQL queries if the user has limited download permissions for the DB"
           (is (= limited-download-max-rows
@@ -76,18 +79,18 @@
                                            (dec limited-download-max-rows))))))
 
         (testing "Native queries are unmodified"
-          (is (= (native-download-query) (ee.qp.perms/apply-download-limit (native-download-query)))))))
+          (is (= (native-download-query) (ee.qp.perms/apply-download-limit (native-download-query))))))
 
-    (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues) :limited
-                                                      (mt/id 'checkins) :full}}}
-      (mt/with-current-user (mt/user->id :rasta)
-        (testing "A limit is added to MBQL queries if the user has limited download permissions for a table which
-                 the query references"
-          (is (= limited-download-max-rows
-                 (download-limit (mbql-download-query)))))
+      (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues) :limited
+                                                         (mt/id 'checkins) :full}}}
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing "A limit is added to MBQL queries if the user has limited download permissions for a table which
+                     the query references"
+            (is (= limited-download-max-rows
+                   (download-limit (mbql-download-query)))))
 
-        (testing "If the query does not reference the table, a limit is not added"
-          (is (nil? (download-limit (mbql-download-query 'checkins)))))))))
+          (testing "If the query does not reference the table, a limit is not added"
+            (is (nil? (download-limit (mbql-download-query 'checkins))))))))))
 
 ;; Inspired by the similar middleware wrapper [[metabase.query-processor.middleware.limit-test/limit]]
 (defn- limit-download-result-rows [query]
@@ -97,13 +100,13 @@
 
 (deftest limit-download-result-rows-test
   (let [limited-download-max-rows @#'ee.qp.perms/max-rows-in-limited-downloads]
-    (with-download-perms-for-db (mt/id) :limited
+    (with-download-perms-for-db! (mt/id) :limited
       (mt/with-current-user (mt/user->id :rasta)
         (testing "The number of rows in a native query result is limited if the user has limited download permissions"
           (is (= limited-download-max-rows
                  (-> (native-download-query) limit-download-result-rows mt/rows count))))))
 
-    (with-download-perms-for-db (mt/id) :full
+    (with-download-perms-for-db! (mt/id) :full
       (mt/with-current-user (mt/user->id :rasta)
         (testing "The number of rows in a native query result is not limited if the user has full download permissions"
           (is (= (inc limited-download-max-rows)
@@ -116,7 +119,7 @@
 
 (deftest check-download-permissions-test
   (testing "An exception is thrown if the user does not have download permissions for the DB"
-    (with-download-perms-for-db (mt/id) :none
+    (with-download-perms-for-db! (mt/id) :none
       (mt/with-current-user (mt/user->id :rasta)
         (is (thrown-with-msg?
              ExceptionInfo
@@ -128,12 +131,12 @@
             (is (= query (check-download-permisions query))))))))
 
   (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
-    (with-download-perms-for-db (mt/id) :full
+    (with-download-perms-for-db! (mt/id) :full
       (mt/with-current-user (mt/user->id :rasta)
         (is (= (mbql-download-query)
                (check-download-permisions (mbql-download-query))))))
 
-    (with-download-perms-for-db (mt/id) :limited
+    (with-download-perms-for-db! (mt/id) :limited
       (mt/with-current-user (mt/user->id :rasta)
         (is (= (mbql-download-query)
                (check-download-permisions (mbql-download-query))))))))
@@ -152,7 +155,7 @@
   (testing "Limited download perms work as expected"
     (mt/with-full-data-perms-for-all-users!
       (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
-        (with-download-perms-for-db (mt/id) :limited
+        (with-download-perms-for-db! (mt/id) :limited
           (streaming-test/do-test!
            "A user with limited download perms for a DB has their query results limited"
            {:query      {:database (mt/id)
@@ -172,7 +175,7 @@
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
 
-        (with-download-perms (mt/id) {:schemas {"PUBLIC" :limited}}
+        (with-download-perms! (mt/id) {:schemas {"PUBLIC" :limited}}
           (streaming-test/do-test!
            "A user with limited download perms for a schema has their query results limited for queries on that schema"
            {:query      {:database (mt/id)
@@ -182,14 +185,14 @@
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
 
-        (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'users)      :full
-                                                          (mt/id 'categories) :full
-                                                          (mt/id 'venues)     :limited
-                                                          (mt/id 'checkins)   :full
-                                                          (mt/id 'products)   :limited
-                                                          (mt/id 'people)     :limited
-                                                          (mt/id 'reviews)    :limited
-                                                          (mt/id 'orders)     :limited}}}
+        (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id 'users)      :full
+                                                           (mt/id 'categories) :full
+                                                           (mt/id 'venues)     :limited
+                                                           (mt/id 'checkins)   :full
+                                                           (mt/id 'products)   :limited
+                                                           (mt/id 'people)     :limited
+                                                           (mt/id 'reviews)    :limited
+                                                           (mt/id 'orders)     :limited}}}
           (streaming-test/do-test!
            "A user with limited download perms for a table has their query results limited for queries on that table"
            {:query      {:database (mt/id)
@@ -217,7 +220,7 @@
 (deftest no-download-perms-test
   (testing "Users with no download perms cannot run download queries"
     (mt/with-full-data-perms-for-all-users!
-      (with-download-perms-for-db (mt/id) :none
+      (with-download-perms-for-db! (mt/id) :none
         (streaming-test/do-test!
          "A user with no download perms for a DB receives an error response"
          {:query      {:database (mt/id)
@@ -240,7 +243,7 @@
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
 
-      (with-download-perms (mt/id) {:schemas {"PUBLIC" :none}}
+      (with-download-perms! (mt/id) {:schemas {"PUBLIC" :none}}
         (streaming-test/do-test!
          "A user with no download perms for a schema receives an error response for download queries on that schema"
          {:query      {:database (mt/id)
@@ -253,10 +256,10 @@
                                    {:error "You do not have permissions to download the results of this query."}
                                    results)))}}))
 
-      (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :none
-                                                        (mt/id 'checkins)   :full
-                                                        (mt/id 'users)      :full
-                                                        (mt/id 'categories) :full}}}
+      (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :none
+                                                         (mt/id 'checkins)   :full
+                                                         (mt/id 'users)      :full
+                                                         (mt/id 'categories) :full}}}
         (streaming-test/do-test!
          "A user with no download perms for a table receives an error response for download queries on that table"
          {:query      {:database (mt/id)
@@ -289,10 +292,10 @@
 
 (deftest joins-test
   (mt/with-full-data-perms-for-all-users!
-    (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :full
-                                                      (mt/id 'checkins)   :full
-                                                      (mt/id 'users)      :limited
-                                                      (mt/id 'categories) :none}}}
+    (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :full
+                                                       (mt/id 'checkins)   :full
+                                                       (mt/id 'users)      :limited
+                                                       (mt/id 'categories) :none}}}
       (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
         (streaming-test/do-test!
          "A user can't download the results of a query with a join if they have no permissions for one of the tables"
