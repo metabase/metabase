@@ -7,6 +7,7 @@ export * from "./embed";
 export * from "./metabot";
 export * from "./parameters";
 export * from "./qb";
+export * from "./routing";
 export * from "./settings";
 export * from "./setup";
 export * from "./state";

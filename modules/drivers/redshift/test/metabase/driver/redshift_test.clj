@@ -421,7 +421,7 @@
                                 (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                   [spec [:redshift (assoc (:details (mt/db)) :user username)]]
                                   (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                    (set (driver/current-user-table-privileges driver/*driver* (mt/db))))))]
+                                    (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
            (execute! (format
                       (str

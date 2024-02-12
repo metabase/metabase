@@ -7,7 +7,11 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
-import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import {
+  PLUGIN_MODERATION,
+  PLUGIN_MODEL_PERSISTENCE,
+  PLUGIN_QUERY_BUILDER_HEADER,
+} from "metabase/plugins";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
@@ -223,6 +227,8 @@ export const QuestionActions = ({
       testId: ARCHIVE_TESTID,
     });
   }
+
+  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
