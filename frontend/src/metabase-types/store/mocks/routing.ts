@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import type { RouterState } from "react-router-redux";
 
 export const createMockRoutingState = (
@@ -5,15 +6,21 @@ export const createMockRoutingState = (
 ): RouterState => {
   return {
     ...opts,
-    locationBeforeTransitions: {
-      pathname: "/",
-      search: "",
-      query: {},
-      hash: "",
-      state: undefined,
-      action: "POP",
-      key: "", // can be null but react-router-redux@4.0.8 typings are inaccurate
-      ...opts?.locationBeforeTransitions,
-    },
+    locationBeforeTransitions: createMockLocation(
+      opts?.locationBeforeTransitions,
+    ),
+  };
+};
+
+export const createMockLocation = (opts?: Partial<Location>): Location => {
+  return {
+    pathname: "/",
+    search: "",
+    query: {},
+    hash: "",
+    state: undefined,
+    action: "POP",
+    key: "", // can be null but react-router-redux@4.0.8 typings are inaccurate
+    ...opts,
   };
 };
