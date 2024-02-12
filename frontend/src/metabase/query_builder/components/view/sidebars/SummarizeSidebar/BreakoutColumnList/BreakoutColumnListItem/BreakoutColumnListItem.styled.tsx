@@ -150,6 +150,6 @@ export const Root = styled.li<{ isSelected: boolean }>`
   }
 
   &:hover ${FieldInfoIcon.HoverTarget} {
-    opacity: 0.5;
+    opacity: 1;
   }
 `;

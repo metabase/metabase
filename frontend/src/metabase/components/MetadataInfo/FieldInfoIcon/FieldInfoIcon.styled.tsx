@@ -8,12 +8,20 @@ export const PopoverHoverTarget = styled(Icon)`
   padding: 0.7em 0.65em;
   opacity: 0;
 
+  path {
+    opacity: 0.5;
+  }
+
   &[aria-disabled="true"] {
-    opacity: 0.35;
+    path {
+      opacity: 0.35;
+    }
     pointer-events: none;
   }
 
   &[aria-expanded="true"] {
-    opacity: 1 !important;
+    path {
+      opacity: 1;
+    }
   }
 `;

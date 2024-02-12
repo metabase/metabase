@@ -15,7 +15,8 @@ export const StyledAccordionList = styled(AccordionList)`
     right: 0.65em;
     cursor: pointer;
   }
+
   [role="option"]:hover ${FieldInfoIcon.HoverTarget} {
-    opacity: 0.5;
+    opacity: 1;
   }
 `;
