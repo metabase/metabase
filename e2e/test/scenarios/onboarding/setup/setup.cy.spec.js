@@ -41,12 +41,7 @@ describe("scenarios > setup", () => {
         });
 
         cy.findByTestId("setup-forms").within(() => {
-          // ========
-          // Language
-          // ========
-          cy.findByText("What's your preferred language?");
-          cy.findByLabelText("English");
-          cy.findByText("Next").click();
+          selectPreferredLanguageAndContinue();
 
           // ====
           // User
@@ -181,10 +176,7 @@ describe("scenarios > setup", () => {
     });
 
     cy.findByTestId("setup-forms").within(() => {
-      // Language
-      cy.findByText("What's your preferred language?");
-      cy.findByText("English").click();
-      cy.button("Next").click();
+      selectPreferredLanguageAndContinue();
 
       // User
       cy.findByText("What should we call you?");
@@ -232,12 +224,9 @@ describe("scenarios > setup", () => {
       cy.findByTextEnsureVisible("Let's get started").click();
     });
 
+    selectPreferredLanguageAndContinue();
+
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByText("What's your preferred language?");
-      cy.findByLabelText("English");
-
-      cy.findByText("Next").click();
-
       cy.findByLabelText("First name").should("have.value", "Testy");
       cy.findByLabelText("Last name").should("have.value", "McTestface");
       cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
@@ -261,12 +250,9 @@ describe("scenarios > setup", () => {
       cy.findByTextEnsureVisible("Let's get started").click();
     });
 
+    selectPreferredLanguageAndContinue();
+
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByText("What's your preferred language?");
-      cy.findByLabelText("English");
-
-      cy.findByText("Next").click();
-
       const strongPassword = "QJbHYJN3tPW[";
       cy.findByLabelText(/^Create a password/)
         .clear()
@@ -320,12 +306,9 @@ describe("scenarios > setup", () => {
       cy.findByTextEnsureVisible("Let's get started").click();
     });
 
-    cy.findByTestId("setup-forms").within(() => {
-      // Language
-      cy.findByText("What's your preferred language?");
-      cy.findByText("English").click();
-      cy.button("Next").click();
+    selectPreferredLanguageAndContinue();
 
+    cy.findByTestId("setup-forms").within(() => {
       // User
       cy.findByText("What should we call you?");
       cy.findByLabelText("Email").type(admin.email);
@@ -411,11 +394,10 @@ describeWithSnowplow("scenarios > setup", () => {
       cy.findByTextEnsureVisible("Let's get started").click();
     });
 
-    cy.findByTestId("setup-forms").within(() => {
-      // 4 - setup/step_seen  "language"
-      cy.findByText("What's your preferred language?");
-      cy.findByText("Next").click();
+    // 4 - setup/step_seen  "language"
+    selectPreferredLanguageAndContinue();
 
+    cy.findByTestId("setup-forms").within(() => {
       // 5 - setup/step_seen "user_info"
       cy.findByText("What should we call you?");
       cy.findByLabelText("Email").type(admin.email);
@@ -447,3 +429,9 @@ describeWithSnowplow("scenarios > setup", () => {
     expectGoodSnowplowEvents(1);
   });
 });
+
+const selectPreferredLanguageAndContinue = () => {
+  cy.findByText("What's your preferred language?");
+  cy.findByLabelText("English");
+  cy.findByText("Next").click();
+};
