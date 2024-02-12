@@ -121,8 +121,15 @@
   "Checks if there's an audit-db. if not, it will create it and serialize audit content, including the
   `default-audit-collection`. If the audit-db is there, this does nothing."
   []
-  (when-not (t2/select-one :model/Database :is_audit true)
-    (mbc/ensure-audit-db-installed!)))
+  (let [coll (boolean (perms/default-audit-collection))
+        default-audit-id (:id (perms/default-audit-collection))
+        cards (t2/exists? :model/Card :collection_id default-audit-id)
+        dashboards (t2/exists? :model/Dashboard :collection_id default-audit-id)]
+    (when-not (and coll cards dashboards)
+      ;; Force audit db to load, even if the checksum has not changed. Sometimes analytics bits get removed by tests,
+      ;; but next time we go to load analytics data, we find the existing checksum and don't bother loading it again.
+      (mt/with-temporary-setting-values [last-analytics-checksum -1]
+        (mbc/ensure-audit-db-installed!)))))
 
 (deftest can-write-false-for-audit-card-content-test
   (install-audit-db-if-needed!)
