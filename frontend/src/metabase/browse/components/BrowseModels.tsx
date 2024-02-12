@@ -73,22 +73,7 @@ export const BrowseModels = ({
     );
   }
 
-  const filteredModels = Object.values(filters).reduce(
-    (acc, filter) => (filter.active ? acc.filter(filter.predicate) : acc),
-    models,
-  );
-
-  const collectionMap = new Map<CollectionId, Collection>();
-  collections.forEach((collection: Collection) => {
-    collectionMap.set(collection.id, collection);
-  });
-  const enrichedModels = filteredModels.map((model: SearchResult) => {
-    return {
-      ...model,
-      collection: collectionMap.get(model.collection.id) ?? model.collection,
-    };
-  });
-  const groupsOfModels = groupModels(enrichedModels, localeCode);
+  const groupsOfModels = groupModels(models, localeCode);
 
   if (filteredModels.length) {
     return (

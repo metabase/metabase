@@ -67,6 +67,12 @@ export const BrowseApp = ({
   // Perhaps this should be called actualFilters, to distinguish it from the possible filters that CAN be applied
   const [filters, setFilters] = useState(initialFilters);
 
+  // TODO: I copied this code here, needs to be altered
+  const filteredModels = Object.values(filters).reduce(
+    (acc, filter) => (filter.active ? acc.filter(filter.predicate) : acc),
+    models,
+  );
+
   const handleFilterChange = useCallback(
     // TODO: Use typeof<keyof PLUGIN_CONTENT_VERIFICATION.browseFilters>
     (filterName: string, active: boolean) => {
