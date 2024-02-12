@@ -4,7 +4,7 @@ import { VerifiedFilter } from "./VerifiedFilter";
 import { BrowseFilterControls } from "./BrowseFilterControls";
 import {
   browseFilters,
-  sortCollectionsForBrowseModels,
+  sortCollectionsByVerification,
   sortModelsByVerification,
 } from "./utils";
 
@@ -13,7 +13,7 @@ if (hasPremiumFeature("content_verification")) {
     VerifiedFilter,
     BrowseFilterControls,
     browseFilters,
-    sortCollectionsForBrowseModels,
+    sortCollectionsByVerification,
     sortModelsByVerification,
   });
 }

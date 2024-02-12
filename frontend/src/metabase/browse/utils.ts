@@ -53,16 +53,13 @@ export const groupModels = (
       return -1;
     }
 
-    switch (
-      PLUGIN_CONTENT_VERIFICATION.sortCollectionsForBrowseModels(
+    const sortValueFromPlugin =
+      PLUGIN_CONTENT_VERIFICATION.sortCollectionsByVerification(
         collection1,
         collection2,
-      )
-    ) {
-      case 1:
-        return 1;
-      case -1:
-        return -1;
+      );
+    if (sortValueFromPlugin) {
+      return sortValueFromPlugin;
     }
 
     const name1 = getCollectionName(collection1);
@@ -78,13 +75,12 @@ export type BrowseTabId = "models" | "databases";
 export const isValidBrowseTab = (value: unknown): value is BrowseTabId =>
   value === "models" || value === "databases";
 
-type ArrayFilterPredicate<T> = Parameters<typeof Array.prototype.filter<T>>[0];
-
+/** The filters that can be applied */
 export type BrowseFilters = Record<
   string,
   {
-    predicate: ArrayFilterPredicate<SearchResult>;
-    active: boolean;
+    predicate: (value: SearchResult) => boolean;
+    activeByDefault: boolean;
   }
 >;
 
@@ -98,11 +94,10 @@ export const sortModels = (
   b: SearchResult,
   localeCode?: string,
 ) => {
-  switch (PLUGIN_CONTENT_VERIFICATION.sortModelsByVerification(a, b)) {
-    case 1:
-      return 1;
-    case -1:
-      return -1;
+  const sortValueFromPlugin =
+    PLUGIN_CONTENT_VERIFICATION.sortModelsByVerification(a, b);
+  if (sortValueFromPlugin) {
+    return sortValueFromPlugin;
   }
 
   if (a.name && !b.name) {

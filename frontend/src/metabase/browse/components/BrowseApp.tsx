@@ -42,6 +42,7 @@ export const BrowseApp = ({
       filter_items_in_personal_collection: "exclude",
     },
   });
+  // TODO: Don't use this, just tell the backend to send a little more data. We just need the type "instance-analytics" to be hydrated
   const collectionsResult = useCollectionListQuery();
   const databasesResult = useDatabaseListQuery();
 
@@ -60,15 +61,22 @@ export const BrowseApp = ({
     }
   }
 
+  // Use an anonymous function instead of initialFilters to populate active values from localStorage into initialFilters and then this will happen just on mount
+  // TODO: Consider just putting the active values in state rather than the whole filters object with its predicates, since predicates don't really belong in state
+  // State should be a Record<filterName, boolean>
+  // Perhaps this should be called actualFilters, to distinguish it from the possible filters that CAN be applied
   const [filters, setFilters] = useState(initialFilters);
 
-  const toggleFilter = useCallback(
-    (filterName: string, active: boolean) => {
+  const handleFilterChange = useCallback(
+    (filterName: typeof<keyof PLUGIN_CONTENT_VERIFICATION.browseFilters>, active: boolean) => {
+      // TODO: See if using icepick is worth using
       setFilters((previousFilters: BrowseFilters) => {
         const newFilters = { ...previousFilters };
         newFilters[filterName].active = active;
         return newFilters;
       });
+      // TODO: Maybe filter the models here, which would require putting the models into state
+      // Something like this might be useful: filteredModelsResult = { ...modelsResult, data: modelsResult.data?.filter(filter...)
       localStorage.setItem(
         `browseFilters.${filterName}`,
         active ? "on" : "off",
@@ -85,7 +93,7 @@ export const BrowseApp = ({
     <BrowseAppRoot data-testid="browse-app">
       <BrowseContainer>
         <BrowseDataHeader>
-          <Flex maw="1014px" m="0 auto" w="100%" align="center">
+          <Flex maw="64rem" m="0 auto" w="100%" align="center">
             <h2>{t`Browse data`}</h2>
           </Flex>
         </BrowseDataHeader>
@@ -108,7 +116,7 @@ export const BrowseApp = ({
               {tab === "models" && (
                 <PLUGIN_CONTENT_VERIFICATION.BrowseFilterControls
                   filters={filters}
-                  toggleFilter={toggleFilter}
+                  handleFilterChange={handleFilterChange}
                 />
               )}
               {tab === "databases" && <LearnAboutDataLink />}
@@ -128,6 +136,7 @@ export const BrowseApp = ({
                 collectionsResult={collectionsResult}
                 databasesResult={databasesResult}
                 filters={filters}
+                // TODO: Perhaps filter the models up here, to keep BrowseModels dumber
               >
                 {children}
               </BrowseTabContent>

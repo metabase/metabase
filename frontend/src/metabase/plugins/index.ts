@@ -331,7 +331,7 @@ export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
   browseFilters: {} as BrowseFilters,
   BrowseFilterControls: {} as ComponentType<BrowseFilterControlsProps>,
-  sortCollectionsForBrowseModels: (
+  sortCollectionsByVerification: (
     _a: CollectionEssentials,
     _b: CollectionEssentials,
   ) => 0,
