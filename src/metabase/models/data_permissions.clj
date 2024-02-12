@@ -241,6 +241,32 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
+(mu/defn native-download-permission-for-user :- PermissionValue
+  "Returns the effective download permission value for a given user and database ID, for native queries on the database.
+  For each group, the native download permission for a database is equal to the lowest permission level of any table in
+  the database."
+  [user-id database-id]
+  (if (is-superuser? user-id)
+    (most-permissive-value :perms/download-results)
+    (let [perm-values
+          (t2/select :model/DataPermissions
+                     {:select [[:p.perm_value :value]
+                               [:p.group_id :group_id]]
+                      :from [[:permissions_group_membership :pgm]]
+                      :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                             [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                      :where [:and
+                              [:= :pgm.user_id user-id]
+                              [:= :p.perm_type (u/qualified-name :perms/download-results)]
+                              [:= :p.db_id database-id]]})
+          value-by-group
+          (-> (group-by :group_id perm-values)
+              (update-vals (fn [perms]
+                             (let [values (set (map :value perms))]
+                               (coalesce-most-restrictive :perms/download-results values)))))]
+      (or (coalesce :perms/download-results (vals value-by-group))
+          (least-permissive-value :perms/download-results)))))
+
 (mu/defn user-has-block-perms-for-database? :- :boolean
   "Returns a Boolean indicating whether the given user should have block permissions enforced for the given database.
   This is a standalone function because block perms are only set at the database-level, but :perms/data-access is
@@ -418,7 +444,8 @@
                                           :perm_value value
                                           :db_id      db-id})
       (when (= [:perms/data-access :block] [perm-type value])
-        (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)))))
+        (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)
+        (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified
