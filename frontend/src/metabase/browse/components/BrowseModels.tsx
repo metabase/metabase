@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { t } from "ttag";
 
 import { useEffect } from "react";
@@ -11,22 +10,24 @@ import type {
 } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
-import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Link from "metabase/core/components/Link";
 import Search from "metabase/entities/search";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import type {
   useCollectionListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getLocale } from "metabase/setup/selectors";
+import { Box, Group, Icon, Text, Title } from "metabase/ui";
+
 import { getCollectionIcon } from "metabase/entities/collections";
+import { getLocale } from "metabase/setup/selectors";
 import type { BrowseFilters } from "../utils";
 import { getCollectionName, groupModels, sortModels } from "../utils";
+
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
@@ -197,6 +198,7 @@ const CollectionHeader = ({
   id: string;
 }) => {
   const icon = getCollectionIcon(collection);
+
   return (
     <CollectionHeaderContainer
       id={id}

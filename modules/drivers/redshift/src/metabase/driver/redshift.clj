@@ -12,8 +12,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
@@ -399,14 +398,13 @@
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
 
-(defmethod driver/current-user-table-privileges :redshift
-  [_driver database]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
-    ;; result in an operation not supported error
-    (->> (jdbc/query
-          conn-spec
-          (str/join
+(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
+  [_driver conn-spec & {:as _options}]
+  ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
+  ;; result in an operation not supported error
+  (->> (jdbc/query
+         conn-spec
+         (str/join
            "\n"
            ["with table_privileges as ("
             " select"
@@ -428,7 +426,7 @@
             ")"
             "select t.*"
             "from table_privileges t"]))
-         (filter #(or (:select %) (:update %) (:delete %) (:update %))))))
+         (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 
 ;;; ----------------------------------------------- Connection Impersonation ------------------------------------------

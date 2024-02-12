@@ -1,6 +1,6 @@
-import { t } from "ttag";
-import { useEffect, useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 import type { SearchResult } from "metabase-types/api";
 import {
   useCollectionListQuery,
@@ -68,7 +68,8 @@ export const BrowseApp = ({
   const [filters, setFilters] = useState(initialFilters);
 
   const handleFilterChange = useCallback(
-    (filterName: typeof<keyof PLUGIN_CONTENT_VERIFICATION.browseFilters>, active: boolean) => {
+    // TODO: Use typeof<keyof PLUGIN_CONTENT_VERIFICATION.browseFilters>
+    (filterName: string, active: boolean) => {
       // TODO: See if using icepick is worth using
       setFilters((previousFilters: BrowseFilters) => {
         const newFilters = { ...previousFilters };
