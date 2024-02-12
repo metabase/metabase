@@ -313,6 +313,16 @@ export const loadMetadataForDependentItems =
         return [Schemas.actions.fetchList({ dbId: id }, options)];
       }
 
+      if (type === "database") {
+        // Technically we should be fetching a single database with given id here, like this:
+        //    return [Databases.actions.fetch({ id })];
+        // But frontend already fetches the database list when the app is initialized.
+        // We can take advantage of that and just rely on the cached data that is already
+        // there in the redux store and skip the API request.
+        // The following Databases.actions.fetchList call should effectively be a no-op.
+        return [Databases.actions.fetchList()];
+      }
+
       console.warn(
         `loadMetadataForDependentItems: type ${type} not implemented`,
       );
