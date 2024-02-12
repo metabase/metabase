@@ -24,9 +24,11 @@ export const BrowseDatabases = ({
   databasesResult: ReturnType<typeof useDatabaseListQuery>;
 }) => {
   const { data: databases = [], error, isLoading } = databasesResult;
+
   if (error) {
     return <LoadingAndErrorWrapper error />;
   }
+
   if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
