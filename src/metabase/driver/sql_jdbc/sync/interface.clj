@@ -12,7 +12,6 @@
   functions for more details on the differences."
   {:added "0.37.1"
    :arglists '([driver
-                database
                 ^java.sql.Connection connection
                 ^String schema-inclusion-filters
                 ^String schema-exclusion-filters])}
@@ -101,5 +100,27 @@
   "Return information about the nestable columns in a `table`. Required for drivers that support
   `:nested-field-columns`. Results should match the [[metabase.sync.interface/NestedFCMetadata]] schema."
   {:added "0.43.0", :arglists '([driver database table])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti current-user-table-privileges
+  "Returns the rows of data as arrays needed to populate the table_privileges table
+   with the DB connection's current user privileges.
+   The data contains the privileges that the user has on the given `database`.
+   The privileges include select, insert, update, and delete.
+
+   The rows have the following keys and value types:
+     - role            :- [:maybe :string]
+     - schema          :- [:maybe :string]
+     - table           :- :string
+     - select          :- :boolean
+     - update          :- :boolean
+     - insert          :- :boolean
+     - delete          :- :boolean
+
+   Either:
+   (1) role is null, corresponding to the privileges of the DB connection's current user
+   (2) role is not null, corresponding to the privileges of the role"
+  {:added "0.49.0" :arglists '([driver conn-spec & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

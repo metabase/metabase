@@ -307,6 +307,12 @@
    ;; because the query processor doesn't produce nested display-names.
    {:display-name (lib.metadata.calculation/display-name query stage-number field-metadata)
     :long-display-name (lib.metadata.calculation/display-name query stage-number field-metadata :long)}
+   ;; Include description and fingerprint if they're present on the column. Only proper fields or columns from a model
+   ;; have these, not aggregations or expressions.
+   (when-let [description (:description field-metadata)]
+     {:description description})
+   (when-let [fingerprint (:fingerprint field-metadata)]
+     {:fingerprint fingerprint})
    ;; if this column comes from a source Card (Saved Question/Model/etc.) use the name of the Card as the 'table' name
    ;; rather than the ACTUAL table name.
    (when (= (:lib/source field-metadata) :source/card)

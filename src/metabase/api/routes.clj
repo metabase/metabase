@@ -33,7 +33,7 @@
    [metabase.api.pulse :as api.pulse]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
-    :refer [+static-apikey +auth +message-only-exceptions +public-exceptions]]
+    :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]

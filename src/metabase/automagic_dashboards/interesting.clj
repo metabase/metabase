@@ -43,7 +43,7 @@
     [clojure.math.combinatorics :as math.combo]
     [clojure.string :as str]
     [clojure.walk :as walk]
-    [java-time :as t]
+    [java-time.api :as t]
     [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.schema :as ads]
@@ -93,6 +93,88 @@
            (group-by :semantic_type))
       set)))
 
+(defmulti
+  ^{:doc      "Get a reference for a given model to be injected into a template
+          (either MBQL, native query, or string)."
+    :arglists '([template-type model])}
+  ->reference (fn [template-type model]
+                [template-type (mi/model model)]))
+
+(defn- optimal-datetime-resolution
+  [field]
+  (let [[earliest latest] (some->> field
+                                   :fingerprint
+                                   :type
+                                   :type/DateTime
+                                   ((juxt :earliest :latest))
+                                   (map u.date/parse))]
+    (if (and earliest latest)
+      ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
+      (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
+        (t/hours 3) :minute
+        (t/days 7) :hour
+        (t/months 6) :day
+        (t/years 10) :month
+        :year)
+      :day)))
+
+(defmethod ->reference [:mbql Field]
+  [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
+  (let [reference (mbql.normalize/normalize
+                    (cond
+                      link [:field id {:source-field link}]
+                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
+                      id [:field id nil]
+                      :else [:field name {:base-type base_type}]))]
+    (cond
+      (isa? base_type :type/Temporal)
+      (mbql.u/with-temporal-unit reference (keyword (or aggregation
+                                                        (optimal-datetime-resolution field))))
+
+      (and aggregation
+           (isa? base_type :type/Number))
+      (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
+
+      :else
+      reference)))
+
+(defmethod ->reference [:string Field]
+  [_ {:keys [display_name full-name link]}]
+  (cond
+    full-name full-name
+    link (format "%s → %s"
+                 (-> (t2/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                 display_name)
+    :else display_name))
+
+(defmethod ->reference [:string Table]
+  [_ {:keys [display_name full-name]}]
+  (or full-name display_name))
+
+(defmethod ->reference [:string Metric]
+  [_ {:keys [name full-name]}]
+  (or full-name name))
+
+(defmethod ->reference [:mbql Metric]
+  [_ {:keys [id definition]}]
+  (if id
+    [:metric id]
+    (-> definition :aggregation first)))
+
+(defmethod ->reference [:native Field]
+  [_ field]
+  (field/qualified-name field))
+
+(defmethod ->reference [:native Table]
+  [_ {:keys [name]}]
+  name)
+
+(defmethod ->reference :default
+  [_ form]
+  (or (cond-> form
+        (map? form) ((some-fn :full-name :name) form))
+      form))
+
 (defn transform-metric-aggregate
   "Map a metric aggregate definition from nominal types to semantic types."
   [m decoder]
@@ -118,8 +200,7 @@
          (apply math.combo/cartesian-product)
          (map (partial zipmap named-dimensions))
          (map (fn [nm->field]
-                (let [xform (update-vals nm->field (fn [{field-id :id}]
-                                                     [:field field-id nil]))]
+                (let [xform (update-vals nm->field (partial ->reference :mbql))]
                   {:metric-name           metric-name
                    :metric-title          metric-name
                    :metric-score          metric-score
@@ -308,88 +389,6 @@
                              0 (update a :matches concat (:matches b))
                              -1 b))
               {})))
-
-(defmulti
-  ^{:doc      "Get a reference for a given model to be injected into a template
-          (either MBQL, native query, or string)."
-    :arglists '([template-type model])}
-  ->reference (fn [template-type model]
-                [template-type (mi/model model)]))
-
-(defn- optimal-datetime-resolution
-  [field]
-  (let [[earliest latest] (some->> field
-                                   :fingerprint
-                                   :type
-                                   :type/DateTime
-                                   ((juxt :earliest :latest))
-                                   (map u.date/parse))]
-    (if (and earliest latest)
-      ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
-      (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
-        (t/hours 3) :minute
-        (t/days 7) :hour
-        (t/months 6) :day
-        (t/years 10) :month
-        :year)
-      :day)))
-
-(defmethod ->reference [:mbql Field]
-  [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
-  (let [reference (mbql.normalize/normalize
-                    (cond
-                      link [:field id {:source-field link}]
-                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                      id [:field id nil]
-                      :else [:field name {:base-type base_type}]))]
-    (cond
-      (isa? base_type :type/Temporal)
-      (mbql.u/with-temporal-unit reference (keyword (or aggregation
-                                                        (optimal-datetime-resolution field))))
-
-      (and aggregation
-           (isa? base_type :type/Number))
-      (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
-
-      :else
-      reference)))
-
-(defmethod ->reference [:string Field]
-  [_ {:keys [display_name full-name link]}]
-  (cond
-    full-name full-name
-    link (format "%s → %s"
-                 (-> (t2/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
-                 display_name)
-    :else display_name))
-
-(defmethod ->reference [:string Table]
-  [_ {:keys [display_name full-name]}]
-  (or full-name display_name))
-
-(defmethod ->reference [:string Metric]
-  [_ {:keys [name full-name]}]
-  (or full-name name))
-
-(defmethod ->reference [:mbql Metric]
-  [_ {:keys [id definition]}]
-  (if id
-    [:metric id]
-    (-> definition :aggregation first)))
-
-(defmethod ->reference [:native Field]
-  [_ field]
-  (field/qualified-name field))
-
-(defmethod ->reference [:native Table]
-  [_ {:keys [name]}]
-  name)
-
-(defmethod ->reference :default
-  [_ form]
-  (or (cond-> form
-        (map? form) ((some-fn :full-name :name) form))
-      form))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TODO - Deduplicate from core
