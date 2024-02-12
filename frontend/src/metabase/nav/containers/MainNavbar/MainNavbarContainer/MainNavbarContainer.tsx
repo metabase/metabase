@@ -98,7 +98,6 @@ function MainNavbarContainer({
       collections,
       currentUser.id,
     );
-
     const displayableCollections = collections.filter(collection =>
       nonPersonalOrArchivedCollection(collection),
     );
