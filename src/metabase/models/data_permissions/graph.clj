@@ -3,46 +3,155 @@
   permissions when communicating with the frontend, which has different keys and a slightly different structure
   from the one returned by `metabase.models.permissions-v2/data-permissions-graph`, which is based directly on the
   keys and values stored in the `permissions_v2` table.
-
   Essentially, this is a translation layer between the graph used by the v1 permissions system and the v2 permissions
   system."
   (:require
+   [medley.core :as m]
+   [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-revision :as perms-revision]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util.malli :as mu]
    [toucan2.core :as db]))
 
-#_(def ^:private db->api-keys
-    {:data-access           :data
-     :download-results      :download
-     :manage-table-metadata :data-model
+;; See also: [[data-perms/Permissions]]
+(def ^:private ->api-keys
+  {:perms/data-access           :data
+   :perms/download-results      :download
+   :perms/manage-table-metadata :data-model
 
-     :native-query-editing  :native
-     :manage-database       :details})
+   :perms/native-query-editing  :native
+   :perms/manage-database       :details})
 
-#_(def ^:private db->api-vals
-    {:data-access           {:unrestricted    :all
-                             :no-self-service nil
-                             :block           :block}
-     :download-results      {:one-million-rows  :full
-                             :ten-thousand-rows :limited
-                             :no                 nil}
-     :manage-table-metadata {:yes :all
-                             :no nil}
+(def ^:private ->api-vals
+  {:perms/data-access           {:unrestricted    :all
+                                 :no-self-service nil
+                                 :block           :block}
+   :perms/download-results      {:one-million-rows  :full
+                                 :ten-thousand-rows :limited
+                                 :no                nil}
+   :perms/manage-table-metadata {:yes :all :no nil}
+   :perms/native-query-editing  {:yes :write :no nil}
+   :perms/manage-database       {:yes :yes :no :no}})
 
-     :native-query-editing  {:yes :full
-                             :no nil}
-     :manage-database       {:yes :yes
-                             :no  :no}})
-
-;; TODO
-(defn db-graph->api-graph
-  "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
-  renames permission types and values from the names stored in the database to the ones expected by the frontend."
-  [graph]
-  ;; 1. Convert DB key names to API key names
-  ;; 2. Nest table-level perms under :native and :schemas keys
-  ;; 3. Walk tree and convert values to API values
-  ;; 4. Add sandboxed entries to graph (maybe do this a level up?)
+(defenterprise add-impersonations-to-permissions-graph
+  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
+  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  [graph & [_opts]]
   graph)
+
+(defenterprise add-sandboxes-to-permissions-graph
+  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
+  metabase-enterprise.sandbox.models.group-table-access-policy
+  [graph & [_opts]]
+  graph)
+
+(defn get-dbs-and-groups
+  "Given an api permission graph, this returns the groups and db-ids"
+  [graph]
+  {:group-ids (->> graph :groups keys set)
+   :db-ids (->> graph :groups vals (mapcat keys) set)})
+
+(mu/defn ellide? :- :boolean
+  "If a table has the least permissive value for a perm type, leave it out,
+   Unless it's :data perms, in which case, leave it out only if it's no-self-service"
+  [type :- data-perms/PermissionType
+   value :- data-perms/PermissionValue]
+  (if (= type :perms/data-access)
+    ;; for `:perms/data-access`, `:no-self-service` is the default (block  is a 'negative' permission),  so we should ellide
+    (= value :no-self-service)
+    (= (data-perms/least-permissive-value type) value)))
+
+(defn- rename-or-ellide-kv
+  "Renames a kv pair from the data-permissions-graph to an API-style data permissions graph (which we send to the client)."
+  [[type value]]
+  (when-not (ellide? type value)
+    [(->api-keys type) ((->api-vals type) value)]))
+
+(mu/defn ^:private api-table-perms
+  "Helper to transform a 'leaf' value with table-level schemas in the data permissions graph into an API-style data permissions value."
+  [type :- data-perms/PermissionType
+   schema->table-id->api-val]
+  (update-vals schema->table-id->api-val
+               (fn [table-id->api-val]
+                 (->> table-id->api-val
+                      (keep
+                       (fn [[table-id perm-val]]
+                         (when-not (ellide? type perm-val)
+                           [table-id ((->api-vals type) perm-val)])))
+                      (into {})))))
+
+(defn- granular-perm-rename [perms perm-key legacy-path]
+  (let [perm-value (get perms perm-key)]
+    (when perm-value
+      (cond
+        (map? perm-value)
+        (assoc-in {} legacy-path (api-table-perms perm-key perm-value))
+        (not (ellide? perm-key perm-value))
+        (assoc-in {} legacy-path ((->api-vals perm-key) perm-value))
+        :else {}))))
+
+(defn- rename-perm
+  "Transforms a 'leaf' value with db-level or table-level perms in the data permissions graph into an API-style data permissions value.
+  There's some tricks in here that ellide table-level and table-level permissions values that are the most-permissive setting."
+  [perm-map]
+  (let [granular-keys [:perms/native-query-editing :perms/data-access
+                       :perms/download-results :perms/manage-table-metadata]]
+    (m/deep-merge
+     (into {} (keep rename-or-ellide-kv (apply dissoc perm-map granular-keys)))
+     (granular-perm-rename perm-map :perms/data-access [:data :schemas])
+     (granular-perm-rename perm-map :perms/native-query-editing [:data :native])
+     (granular-perm-rename perm-map :perms/download-results [:download :schemas])
+     (granular-perm-rename perm-map :perms/manage-table-metadata [:data-model :schemas]))))
+
+(defn- rename-perms [graph]
+  (update-vals graph
+               (fn [db-id->perms]
+                 (update-vals db-id->perms rename-perm))))
+
+(def ^:private legacy-admin-perms
+   {:data {:native :write, :schemas :all},
+    :download {:native :full, :schemas :full},
+    :data-model {:schemas :all},
+    :details :yes})
+
+(defn- add-admin-perms-to-permissions-graph
+  "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
+  For every db in the incoming graph, adds on admin permissions."
+  [api-graph {:keys [db-id group-id]}]
+  (cond-> api-graph
+    (= group-id (:id (perms-group/admin)))
+    ((fn [api-graph]
+       (let [{admin-group-id :id} (perms-group/admin)
+             dbs (if db-id
+                   [db-id]
+                   (:db-ids (get-dbs-and-groups api-graph)))]
+         (assoc api-graph
+                admin-group-id
+                (zipmap dbs (repeat legacy-admin-perms))))))))
+
+(mu/defn db-graph->api-graph :- api.permission-graph/StrictData
+  "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
+  renames permission types and values from the names stored in the database to the ones expected by the frontend.
+  - Converts DB key names to API key names
+  - Converts DB value names to API value names
+  - Nesting: see [[rename-perms]] to see which keys in `graph` affect which paths in the api permission-graph
+  - Adds sandboxed entries, and impersonations to graph
+ "
+  [& {:as opts} :- [:map
+                    [:group-id {:optional true} [:maybe pos-int?]]
+                    [:db-id {:optional true} [:maybe pos-int?]]
+                    [:audit? {:optional true} [:maybe :boolean]]
+                    [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
+  (let [graph (data-perms/data-permissions-graph opts)]
+    {:revision (perms-revision/latest-id)
+     :groups (-> graph
+                 rename-perms
+                 (add-sandboxes-to-permissions-graph opts)
+                 (add-impersonations-to-permissions-graph opts)
+                 (add-admin-perms-to-permissions-graph opts))}))
+
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 

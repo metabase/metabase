@@ -1,8 +1,10 @@
 (ns metabase.models.data-permissions.graph-test
   (:require
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
+   [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [toucan2.core :as db]))
 
@@ -235,3 +237,112 @@
         {group-id-1
          {database-id-1
           {:perms/manage-database :no}}}))))
+
+
+;; ------------------------------ API Graph Tests ------------------------------
+
+(deftest ellide?-test
+  (is (#'data-perms.graph/ellide?      :perms/data-access :no-self-service))
+  (is (not (#'data-perms.graph/ellide? :perms/data-access :block))))
+
+(defn- remove-download:native [graph]
+  (walk/postwalk
+   (fn [x]
+     (if (and
+          (instance? clojure.lang.MapEntry x)
+          (= :download (first x)))
+       (update x 1 dissoc :native)
+       x))
+   graph))
+
+(defn replace-empty-map-with-nil [graph]
+  (walk/postwalk
+   (fn [x] (if (= x {}) nil x))
+   graph))
+
+(defn- api-graph=
+  "When checking equality between api perm graphs:
+  - download.native is not used by the client, so we remove it when checking equality:
+  - {} vs nil is also a distinction without a difference:"
+  [a b]
+  (= (remove-download:native (replace-empty-map-with-nil a))
+     (remove-download:native (replace-empty-map-with-nil b))))
+
+(deftest perms-are-renamed-test
+  (is (= (#'data-perms.graph/rename-perm {:perms/data-access :unrestricted})           {:data {:schemas :all}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/data-access :no-self-service})        {}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/data-access :block})                  {:data {:schemas :block}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/download-results :one-million-rows})  {:download {:schemas :full}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/download-results :ten-thousand-rows}) {:download {:schemas :limited}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/download-results :no})                {}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata :yes})          {:data-model {:schemas :all}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata :no})           {}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/native-query-editing :yes})           {:data {:native :write}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/native-query-editing :no})            {}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/manage-database :yes})                {:details :yes}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/manage-database :no})                 {}))
+  ;; with schemas:
+  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :unrestricted}}})    {:data {:schemas {"PUBLIC" {22 :all}}}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :no-self-service}}}) {:data {:schemas {"PUBLIC" {}}}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :block}}})           {:data {:schemas {"PUBLIC" {22 :block}}}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :no}}})         {:download {:schemas {"PUBLIC" {}}}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :yes}}})        {:download {:schemas {"PUBLIC" {22 nil}}}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :no}}})    {:data-model {:schemas {"PUBLIC" {}}}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :yes}}})   {:data-model {:schemas {"PUBLIC" {22 :all}}}}))
+  ;; multiple schemas
+  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
+         {:data {:schemas {"PUBLIC" {22 :all}, "OTHER" {}, "SECRET" {11 :block}}}}))
+
+  (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
+         {:download {:schemas {"PUBLIC" {22 nil}, "OTHER" {7 nil}, "SECRET" {11 nil}}}}))
+
+  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
+         {:data-model {:schemas {"PUBLIC" {22 nil}, "OTHER" {7 nil}, "SECRET" {11 nil}}}})))
+
+(deftest rename-perm-test
+  (is (api-graph=
+       (#'data-perms.graph/rename-perm {:perms/data-access :unrestricted
+                                        :perms/native-query-editing :yes
+                                        :perms/manage-database :no
+                                        :perms/download-results :one-million-rows
+                                        :perms/manage-table-metadata :no})
+       {:data {:native :write, :schemas :all} :download {:native :full, :schemas :full}})))
+
+(defn constrain-graph
+  "Filters out all non `group-id`X`db-id` permissions"
+  [group-id db-id graph]
+  (-> graph
+      (assoc :groups {group-id (get-in graph [:groups group-id])})
+      (assoc-in [:groups group-id] {db-id (get-in graph [:groups group-id db-id])})))
+
+(deftest api-graphs-are-equal
+  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}  {}
+                 :model/Database         {db-id-1 :id}     {}]
+    (testing "legacy perms-graph should be equal to the new one"
+      (let [data-perms (constrain-graph group-id-1 db-id-1
+                                        (data-perms.graph/db-graph->api-graph {:audit? false}))
+            api-perms (constrain-graph group-id-1 db-id-1
+                                       (perms/data-perms-graph))]
+        (is (api-graph=
+             (:groups api-perms)
+             (:groups data-perms)))))))
+
+(comment
+  (clojure.test/run-test-var #'api-graphs-are-equal))
+
+
+(comment
+  #_(require '[clojure.math.combinatorics :as math.combo])
+
+  #_(defn- generate-maps
+      "Given a map like {:a [1 2] :b [2]} returns all combos like: [{:a 1 :b 2} {:a 2 :b 2}]"
+      [m]
+      (let [keys (keys m)
+            values (vals m)
+            combinations (apply math.combo/cartesian-product values)]
+        (mapv #(zipmap keys %) combinations)))
+
+  ;; TODO: eyeball this:
+  #_(defn- all-nongranular-perm-maps []
+      (generate-maps (update-vals @#'data-perms.graph/->api-vals keys)))
+  #_(doseq [in (all-nongranular-perm-maps)] (println "----\n" in "\n" (#'data-perms.graph/rename-perm in))))
