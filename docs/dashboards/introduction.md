@@ -122,7 +122,11 @@ In both cases, duplication only includes the dashboard, its card layout, filters
 
 ## Arranging dashboard cards
 
-To edit dashboard cards and move them around, click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface. Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
+To edit dashboard cards and move them around, click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface.
+
+### Editing cards
+
+Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
 ![Editing dashboard](images/duplicate-card.png)
 
@@ -134,6 +138,28 @@ To edit dashboard cards and move them around, click the **pencil** icon in the t
 - **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card.
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
+
+### Dashboard sections
+
+To speed up card arrangement, you can add **sections** to your dashboards.
+
+![Add section](./images/add-section.png)
+
+Sections are templates with headings and pre-arranged cards. Once you add a section to a dashboard, you can pick questions for each card, and make any other changes you like.
+
+Sections include:
+
+**KPI Grid**
+
+![KPI Grid](./images/kpi-grid.png)
+
+**Large chart with KPIs to the right**
+
+![Large chart with KPIS to the right**](./images/large-chart-with-kpis-to-the-right.png)
+
+**KPIs with large chart below**
+
+![KPIs with large chart below](./images/kpis-with-large-chart-below.png)
 
 ## Changing a card's visualization settings
 
