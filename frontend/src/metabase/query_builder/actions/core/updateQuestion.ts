@@ -15,7 +15,6 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import {
-  getCard,
   getFirstQueryResult,
   getIsShowingTemplateTagsEditor,
   getQueryBuilderMode,
@@ -134,18 +133,6 @@ export const updateQuestion = (
         newQuestion = newQuestion.setType("question");
         dispatch(onCloseQuestionInfo());
       }
-    }
-
-    // This scenario happens because the DatasetQueryEditor converts a model or a metric into a normal question
-    // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
-    // this `updateQuestion` action, so they end up triggering the action with the altered question.
-    if (
-      queryBuilderMode === "dataset" &&
-      newQuestion.type() !== "model" &&
-      newQuestion.type() !== "metric"
-    ) {
-      const card = getCard(getState());
-      newQuestion = newQuestion.setType(card.type);
     }
 
     const queryResult = getFirstQueryResult(getState());
