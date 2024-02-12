@@ -68,7 +68,7 @@
                                ""
                                {table-id-3 :no-self-service}}}}}
 
-        ;; Setting block permissions for the database
+        ;; Setting block permissions for the database also sets :native-query-editing and :downlaod-results to :no
         {group-id-1
          {database-id-1
           {:data
@@ -77,7 +77,8 @@
         {group-id-1
           {database-id-1
            {:perms/native-query-editing :no
-            :perms/data-access :block}}}))))
+            :perms/data-access :block
+            :perms/download-results :no}}}))))
 
 (deftest update-db-level-download-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
