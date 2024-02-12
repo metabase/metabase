@@ -9,7 +9,7 @@ import {
 } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import type { FlexProps } from "metabase/ui";
-import { Flex, Icon, Text } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
@@ -24,6 +24,7 @@ import {
   BrowseTabs,
   BrowseTabsList,
   BrowseTabsPanel,
+  LearnAboutDataIcon,
 } from "./BrowseApp.styled";
 import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
@@ -186,7 +187,7 @@ const LearnAboutDataLink = () => (
   <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
     <Link to="reference">
       <BrowseHeaderIconContainer>
-        <Icon size={14} name="reference" />
+        <LearnAboutDataIcon size={14} name="reference" />
         <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
           {t`Learn about our data`}
         </Text>
