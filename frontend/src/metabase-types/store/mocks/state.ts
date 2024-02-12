@@ -30,5 +30,8 @@ export const createMockState = (
   settings: createMockSettingsState(),
   setup: createMockSetupState(),
   upload: createMockUploadState(),
+  public: {
+    token: null,
+  },
   ...opts,
 });

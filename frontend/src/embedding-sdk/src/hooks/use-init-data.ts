@@ -10,13 +10,11 @@ type InitDataLoaderProps = {
   apiUrl: SDKConfigType["metabaseInstanceUrl"];
   dispatch: ReturnType<typeof useDispatch>;
   sessionToken: string | null | undefined
-  tokenExp: string | null | undefined;
 };
 
 export const useInitData = ({
   apiUrl,
   sessionToken,
-  tokenExp,
   dispatch,
 }: InitDataLoaderProps): {
   isLoggedIn: boolean;

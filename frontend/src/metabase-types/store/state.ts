@@ -26,6 +26,9 @@ export interface State {
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
+  public: {
+    token: string | null;
+  }
 }
 
 export type Dispatch<T = any> = (action: T) => void;

@@ -37,6 +37,7 @@ const MetabaseProviderInternal = ({
 
   const { sessionToken, tokenExp, resetSessionToken } = useSessionToken({
     jwtProviderUri: config.jwtProviderUri,
+    dispatch: store.dispatch
   });
 
   useUnmount(resetSessionToken)
@@ -45,7 +46,6 @@ const MetabaseProviderInternal = ({
     apiUrl: config.metabaseInstanceUrl,
     dispatch: store.dispatch,
     sessionToken,
-    tokenExp,
   });
 
   return (
@@ -61,7 +61,7 @@ const MetabaseProviderInternal = ({
       <Provider store={store}>
         <SdkEmotionCacheProvider>
           <ThemeProvider>
-            <ContentWrapper id={SDK_CONTEXT_CLASS_NAME} font={config.font}>
+            <ContentWrapper id={SDK_CONTEXT_CLASS_NAME} font={config.font ?? "Lato"}>
               {!isInitialized ? <div>Initializing...</div> : children}
             </ContentWrapper>
           </ThemeProvider>
