@@ -93,7 +93,7 @@
   (mt/with-clock #t "2018-07-01T12:30:00.000Z"
     (mt/with-metadata-provider meta/metadata-provider
       (let [field-filter (params/map->FieldFilter
-                          {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :checkins :date))
+                          {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
                            :value {:type :date/all-options, :value "past30minutes"}})
             expected-args [(LocalDateTime/of 2018 7 1 12 00 00)
                            (LocalDateTime/of 2018 7 1 12 29 00)]]

@@ -22,6 +22,7 @@
     :as qp.wrap-value-literals]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -115,9 +116,14 @@
     :day))
 
 (defmethod align-temporal-unit-with-param-type-and-value :default
-  [driver field param-type _value]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (align-temporal-unit-with-param-type driver field param-type))
+  [_driver _field param-type value]
+  (when (params.dates/date-type? param-type)
+    (let [value* (if (params.dates/not-single-date-type? param-type)
+                   (:start (params.dates/date-string->range value))
+                   value)]
+      (if (re-matches shared.ut/local-date-regex value*)
+        :day
+        :minute))))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
