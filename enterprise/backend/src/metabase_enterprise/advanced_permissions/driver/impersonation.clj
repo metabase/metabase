@@ -27,15 +27,15 @@
   [db-or-id impersonations group-ids]
   (let [non-impersonated-group-ids (set/difference (set group-ids)
                                                    (set (map :group_id impersonations)))
-        perms                      (when (seq non-impersonated-group-ids)
-                                     (t2/select :model/DataPermissions {:where
-                                                                        [:and
-                                                                         [:= :db_id (u/the-id db-or-id)]
-                                                                         [:= :table_id nil]
-                                                                         [:= :perm_type (u/qualified-name :perms/data-access)]
-                                                                         [:in :group_id non-impersonated-group-ids]]}))
-        perm-values                (into #{} (map :perm_value perms))]
-
+        perm-values                (when (seq non-impersonated-group-ids)
+                                     (t2/select-fn-set :perm_value
+                                                       :model/DataPermissions
+                                                       {:where
+                                                        [:and
+                                                         [:= :db_id (u/the-id db-or-id)]
+                                                         [:= :table_id nil]
+                                                         [:= :perm_type (u/qualified-name :perms/data-access)]
+                                                         [:in :group_id non-impersonated-group-ids]]}))]
     (not (contains? perm-values :unrestricted))))
 
 (defn- impersonation-enabled-for-db?

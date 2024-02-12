@@ -116,8 +116,8 @@
                                (format "GRANT SELECT ON TABLE %s.table_with_access TO %s;" schema user)]]
               (jdbc/execute! spec statement))
             (mt/with-db database (sync/sync-database! database)
-              (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                          :attributes     {"impersonation_attr" user}}
+              (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                           :attributes     {"impersonation_attr" user}}
                 (is (= []
                        (-> {:query (format "SELECT * FROM %s.table_with_access;" schema)}
                            mt/native-query
