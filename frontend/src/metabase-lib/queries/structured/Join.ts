@@ -1,12 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import type {
-  Join as JoinObject,
-  JoinFields,
-  JoinAlias,
-  JoinCondition,
-  JoinedFieldReference,
-} from "metabase-types/api";
+import type { JoinFields, JoinAlias, JoinCondition } from "metabase-types/api";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import type Dimension from "metabase-lib/Dimension";
 import { FieldDimension } from "metabase-lib/Dimension";
@@ -26,53 +20,8 @@ class Join extends MBQLObjectClause {
   /**
    * @deprecated use metabase-lib v2 to manage joins
    */
-  set(join: any): Join {
-    return super.set(join);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  remove(): StructuredQuery {
-    return this._query.removeJoin(this._index);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  replace(join: Join | JoinObject): StructuredQuery {
-    return this._query.updateJoin(this._index, join);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
   displayName() {
     return this.alias;
-  }
-
-  private setFields(fields: JoinFields) {
-    return this.set({ ...this, fields });
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  addField(field: JoinedFieldReference) {
-    if (Array.isArray(this.fields)) {
-      return this.setFields([...this.fields, field]);
-    } else if (this.fields === "none") {
-      return this.setFields([field]);
-    } else {
-      return this;
-    }
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  clearFields() {
-    return this.setFields("none");
   }
 
   private isSingleConditionJoin() {
@@ -135,7 +84,7 @@ class Join extends MBQLObjectClause {
   /**
    * @deprecated use metabase-lib v2 to manage joins
    */
-  joinedTable() {
+  private joinedTable() {
     return this?.joinedQuery?.().table?.();
   }
 
@@ -212,15 +161,6 @@ class Join extends MBQLObjectClause {
           foreignTables: false,
         })
       : [];
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  isValid() {
-    // MLv2 should ensure there's a valid condition, etc.
-    const parentTable = this.legacyQuery?.().table?.();
-    return !!parentTable && !!this.joinedTable();
   }
 }
 
