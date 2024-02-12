@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Checkbox } from "metabase/ui";
+import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
 import * as Lib from "metabase-lib";
 import {
   ToggleItem,
@@ -86,6 +87,12 @@ export const FieldPicker = ({
             />
             <ItemIcon name={getColumnIcon(item.column)} size={18} />
             <ItemTitle>{item.displayName}</ItemTitle>
+            <FieldInfoIcon
+              query={query}
+              stage={stageIndex}
+              column={item.column}
+              position="right"
+            />
           </label>
         </ColumnItem>
       ))}
