@@ -108,11 +108,11 @@ describe("DashCardParameterMapper", () => {
 
     it("should render an informative parameter mapping state for heading cards without variables", () => {
       const headingCard = createMockHeadingDashboardCard({
-        size_x: 3,
         size_y: 3,
       });
       setup({
         dashcard: headingCard,
+        card: headingCard.card,
       });
       expect(getIcon("info")).toBeInTheDocument();
       expect(
