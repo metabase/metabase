@@ -263,9 +263,7 @@
           (-> (group-by :group_id perm-values)
               (update-vals (fn [perms]
                              (let [values (set (map :value perms))]
-                               (or (values :no)
-                                   (values :ten-thousand-rows)
-                                   (values :one-million-rows))))))]
+                               (coalesce-most-restrictive :perms/download-results values)))))]
       (or (coalesce :perms/download-results (vals value-by-group))
           (least-permissive-value :perms/download-results)))))
 
