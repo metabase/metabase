@@ -80,13 +80,11 @@ describe("DashCardParameterMapper", () => {
 
   describe("Virtual cards", () => {
     it("should render an informative error state for link cards", () => {
-      const card = createMockVirtualCard({ display: "link" });
+      const dashcard = createMockLinkDashboardCard();
 
       setup({
-        card,
-        dashcard: createMockLinkDashboardCard({
-          card,
-        }),
+        card: dashcard.card,
+        dashcard,
       });
 
       expect(getIcon("info")).toBeInTheDocument();
