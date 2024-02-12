@@ -39,6 +39,10 @@
 (def ^:private metric-metadata
   (lib.metadata/metric query-with-metric metric-id))
 
+(deftest ^:parallel uses-metric?-test
+  (is (lib/uses-metric? query-with-metric metric-id))
+  (is (not (lib/uses-metric? lib.tu/venues-query metric-id))))
+
 (deftest ^:parallel query-suggested-name-test
   (is (= "Venues, Sum of Cans"
          (lib/suggested-name query-with-metric))))
@@ -138,6 +142,7 @@
   (testing "query based on a card -- don't return Metrics"
     (doseq [card-key [:venues :venues/native]]
       (let [query (lib/query metadata-provider-with-cards (card-key lib.tu/mock-cards))]
+        (is (not (lib/uses-metric? query metric-id)))
         (is (nil? (lib/available-metrics (lib/append-stage query))))))))
 
 (deftest ^:parallel aggregate-with-metric-test
@@ -151,6 +156,7 @@
                       [:metric {:lib/uuid (str (random-uuid))} 100]]]
         (testing (pr-str (list 'lib/aggregate 'query metric))
           (let [query' (lib/aggregate query metric)]
+            (is (lib/uses-metric? query' metric-id))
             (is (=? {:lib/type :mbql/query
                      :stages   [{:lib/type     :mbql.stage/mbql
                                  :source-table (meta/id :venues)
@@ -169,13 +175,16 @@
 (deftest ^:parallel metric-type-of-test
   (let [query    (-> (lib/query metadata-provider (meta/table-metadata :venues))
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
+    (is (lib/uses-metric? query metric-id))
     (is (= :type/Integer
            (lib/type-of query [:metric {:lib/uuid (str (random-uuid))} 100])))))
 
 (deftest ^:parallel ga-metric-metadata-test
   (testing "Make sure we can calculate metadata for FAKE Google Analytics metric clauses"
-    (let [query (-> lib.tu/venues-query
-                    (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} "ga:totalEvents"]))]
+    (let [metric-name "ga:totalEvents"
+          query (-> lib.tu/venues-query
+                    (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} metric-name]))]
+      (is (lib/uses-metric? query metric-name))
       (is (=? [{:base-type                :type/*
                 :display-name             "[Unknown Metric]"
                 :effective-type           :type/*

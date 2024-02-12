@@ -123,3 +123,4 @@ serdes/meta:
   label: dashboards_without_recent_views
   model: Card
 metabase_version: vUNKNOWN (901f705)
+type: question

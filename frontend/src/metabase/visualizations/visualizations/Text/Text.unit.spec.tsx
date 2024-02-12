@@ -167,6 +167,7 @@ describe("Text", () => {
         userEvent.type(screen.getByRole("textbox"), "foo");
         userEvent.tab();
 
+        expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
         expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledWith({
           text: "textfoo",
         });

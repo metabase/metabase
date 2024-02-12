@@ -1,6 +1,5 @@
 import _ from "underscore";
-import cx from "classnames";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import type {
   Card,
@@ -11,14 +10,18 @@ import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Search from "metabase/entities/search";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
-import { useSelector } from "metabase/lib/redux";
+
 import { getLocale } from "metabase/setup/selectors";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+
+import { color } from "metabase/lib/colors";
 import { getCollectionName, groupModels } from "../utils";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
@@ -30,6 +33,7 @@ import {
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
+import { ModelExplanationBanner } from "./ModelExplanationBanner";
 
 export const BrowseModels = ({
   modelsResult,
@@ -56,15 +60,18 @@ export const BrowseModels = ({
 
   if (modelsFiltered.length) {
     return (
-      <GridContainer role="grid">
-        {groupsOfModels.map(groupOfModels => (
-          <ModelGroup
-            models={groupOfModels}
-            key={`modelgroup-${groupOfModels[0].collection.id}`}
-            localeCode={localeCode}
-          />
-        ))}
-      </GridContainer>
+      <>
+        <ModelExplanationBanner />
+        <GridContainer role="grid">
+          {groupsOfModels.map(groupOfModels => (
+            <ModelGroup
+              models={groupOfModels}
+              key={`modelgroup-${groupOfModels[0].collection.id}`}
+              localeCode={localeCode}
+            />
+          ))}
+        </GridContainer>
+      </>
     );
   }
 
@@ -140,9 +147,6 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
-  const noDescription = c(
-    "Indicates that a model has no description associated with it",
-  ).t`No description.`;
   return (
     <Link
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
@@ -150,19 +154,14 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
       to={Urls.model(model as unknown as Partial<Card>)}
     >
       <ModelCard>
-        <Title order={4} className="text-wrap" lh="1rem" mb=".5rem">
+        <Box mb="auto">
+          <Icon name="model" size={20} color={color("brand")} />
+        </Box>
+        <Title mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
           </MultilineEllipsified>
         </Title>
-        <Text h="2rem" size="xs" mb="auto">
-          <MultilineEllipsified
-            tooltipMaxWidth="20rem"
-            className={cx({ "text-light": !model.description })}
-          >
-            {model.description || noDescription}{" "}
-          </MultilineEllipsified>
-        </Text>
         <LastEdited editorFullName={lastEditorFullName} timestamp={timestamp} />
       </ModelCard>
     </Link>
@@ -176,13 +175,26 @@ const CollectionHeader = ({
   collection: CollectionEssentials;
   id: string;
 }) => {
+  const dispatch = useDispatch();
+  const wrappable = { ...collection, model: "collection" };
+  const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
+  const icon = wrappedCollection.getIcon();
+
   return (
-    <CollectionHeaderContainer id={id} role="heading">
+    <CollectionHeaderContainer
+      id={id}
+      role="heading"
+      pt={"1rem"}
+      mr="1rem"
+      align="center"
+    >
       <CollectionHeaderGroup grow noWrap>
         <CollectionHeaderLink to={Urls.collection(collection)}>
           <Group spacing=".25rem">
-            <Icon name="folder" color="text-dark" size={16} />
-            <Text weight="bold">{getCollectionName(collection)}</Text>
+            <Icon {...icon} />
+            <Text weight="bold" color="text-dark">
+              {getCollectionName(collection)}
+            </Text>
           </Group>
         </CollectionHeaderLink>
       </CollectionHeaderGroup>

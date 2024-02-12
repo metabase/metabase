@@ -18,7 +18,7 @@ export const ActiveStep = ({
   children,
 }: ActiveStepProps): JSX.Element => {
   return (
-    <StepRoot>
+    <StepRoot role="listitem" aria-label={title} aria-current="step">
       <StepTitle>{title}</StepTitle>
       <StepLabel>
         <StepLabelText>{label}</StepLabelText>

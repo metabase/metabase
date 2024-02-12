@@ -161,3 +161,4 @@ serdes/meta:
   label: most_viewed_dashboards
   model: Card
 metabase_version: null
+type: question

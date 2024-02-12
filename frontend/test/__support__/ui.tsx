@@ -53,7 +53,8 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  let initialState = createMockState(storeInitialState);
+  let { routing, ...initialState }: Partial<State> =
+    createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -72,6 +73,7 @@ export function renderWithProviders(
 
   if (withRouter) {
     Object.assign(reducers, { routing: routerReducer });
+    Object.assign(initialState, { routing });
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };

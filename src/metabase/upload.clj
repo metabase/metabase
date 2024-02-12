@@ -709,13 +709,10 @@
 (defn uploadable-table-ids
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
-  (if (empty? table-ids)
-    #{}
-    (let [tables (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)]
-      (set (keep (fn [t]
-                   (when (can-upload-to-table? (:db t) t)
-                     (:id t)))
-                 tables)))))
+  (set (when (seq table-ids)
+         (->> (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)
+              (filter #(can-upload-to-table? (:db %) %))
+              (map :id)))))
 
 (defn- no-joins?
   "Returns true if `query` has no joins in it, otherwise false."
@@ -735,23 +732,22 @@
                            [:table_id      [:maybe ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization
                            [:is_upload {:optional true} [:maybe :boolean]]]]]
-  (let [table-ids            (->> models
-                                  ;; as an optimization when listing collection items (GET /api/collection/items),
-                                  ;; we might already know that the table is not an upload if is_upload=false. We
-                                  ;; can skip making more queries if so
-                                  (remove #(false? (:is_upload %)))
-                                  (keep :table_id)
-                                  set)
-        uploadable-table-ids (set (uploadable-table-ids table-ids))
-        based-on-upload      (fn [model]
-                               (when-let [dataset_query (:dataset_query model)] ; dataset_query is sometimes null in tests
-                                 (let [query (lib/->pMBQL dataset_query)]
-                                   (when (and (some-> model :query_type name (= "query"))
-                                              (contains? uploadable-table-ids (:table_id model))
-                                              (no-joins? query))
-                                     (lib/source-table-id query)))))]
-    (map #(m/assoc-some % :based_on_upload (based-on-upload %))
-         models)))
+  (let [table-ids             (->> models
+                                   ;; as an optimization when listing collection items (GET /api/collection/items),
+                                   ;; we might already know that the table is not an upload if is_upload=false. We
+                                   ;; can skip making more queries if so
+                                   (remove #(false? (:is_upload %)))
+                                   (keep :table_id)
+                                   set)
+        mbql?                 (fn [model] (= "query" (name (:query_type model "query"))))
+        has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
+    (for [model models]
+      (m/assoc-some
+       model
+       :based_on_upload
+       (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)] ; dataset_query can be empty in tests
+         (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
+           (lib/source-table-id query)))))))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
@@ -763,5 +759,6 @@
     - uploads are enabled
   Otherwise based_on_upload is nil."
   [cards]
-  (let [models-by-id (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))]
-    (map #(or (models-by-id (:id %)) %) cards)))
+  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))
+        card->maybe-model (comp id->model :id)]
+    (map #(or (card->maybe-model %) %) cards)))
