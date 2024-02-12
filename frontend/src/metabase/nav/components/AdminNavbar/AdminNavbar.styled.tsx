@@ -87,7 +87,7 @@ export const AdminLogoText = styled.div`
   font-weight: 700;
 
   ${breakpointMaxLarge} {
-    display: none;
+    display: flex;
   }
 `;
 
@@ -95,4 +95,9 @@ export const AdminLogoLink = styled(Link)`
   cursor: pointer;
   display: flex;
   justify-content: center;
+`;
+
+export const FlexColumnContainer = styled.div`
+  display: flex;
+  flex-direction: column;
 `;

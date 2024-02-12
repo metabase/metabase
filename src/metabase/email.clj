@@ -50,9 +50,9 @@
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
-               (if (validate-reply-to-addresses new-value)
-                 (setting/set-value-of-type! :json :email-reply-to new-value)
-                 (throw (ex-info "Invalid reply-to address" {:value new-value})))))
+                (if (validate-reply-to-addresses new-value)
+                  (setting/set-value-of-type! :json :email-reply-to new-value)
+                  (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
@@ -191,11 +191,13 @@
   Upon success, this returns the `:message` that was just sent. (TODO -- confirm this.) This function will catch and
   log any exception, returning a [[SMTPStatus]]."
   [& {:as msg-args}]
-  (try
-    (send-email-retrying! msg-args)
-    (catch Throwable e
-      (log/warn e (trs "Failed to send email"))
-      {::error e})))
+  #_{:clj-kondo/ignore [:missing-else-branch]}
+  (if false?
+    (try
+      (send-email-retrying! msg-args)
+      (catch Throwable e
+        (log/warn e (trs "Failed to send email"))
+        {::error e}))))
 
 (def ^:private SMTPSettings
   [:map {:closed true}

@@ -11,6 +11,7 @@ import Toaster from "metabase/components/Toaster";
 import QueryValidationError from "metabase/query_builder/components/QueryValidationError";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
+import { mixpanel } from "metabase/plugins/mixpanel";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -175,6 +176,7 @@ class View extends Component {
             const datesetQuery = Lib.toLegacyQuery(nextQuery);
             const nextQuestion = question.setDatasetQuery(datesetQuery);
             updateQuestion(nextQuestion.setDefaultDisplay(), { run: true });
+            mixpanel.trackEvent(mixpanel.events.summarize.done);
           }}
           onClose={onCloseSummary}
         />

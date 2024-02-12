@@ -9,6 +9,7 @@ import {
   isInstanceAnalyticsCollection,
   getInstanceAnalyticsCustomCollection,
 } from "metabase/collections/utils";
+import { mixpanel } from "metabase/plugins/mixpanel";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
@@ -189,6 +190,10 @@ export const SaveQuestionModal = ({
     questionType === "question"
       ? t`What is the name of your question?`
       : t`What is the name of your model?`;
+
+  if (initialValues.saveType === "overwrite") {
+    mixpanel.trackEvent(mixpanel.events.card_save);
+  }
   return (
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (

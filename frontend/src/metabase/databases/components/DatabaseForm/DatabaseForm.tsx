@@ -62,12 +62,10 @@ export const DatabaseForm = ({
     );
   }, [initialData, engineKey, validationSchema]);
 
-  const handleSubmit = useCallback(
-    (values: DatabaseData) => {
-      return onSubmit?.(getSubmitValues(engine, values, isAdvanced));
-    },
-    [engine, isAdvanced, onSubmit],
-  );
+  const handleSubmit = useCallback((values: DatabaseData) => {
+    // console.log(values);
+    // return onSubmit?.(getSubmitValues(engine, values, isAdvanced));
+  }, []);
 
   const handleEngineChange = useCallback(
     (engineKey: string | undefined) => {
@@ -132,7 +130,11 @@ const DatabaseFormBody = ({
   }, [dirty, setIsDirty]);
 
   const fields = useMemo(() => {
-    return engine ? getVisibleFields(engine, values, isAdvanced) : [];
+    return engine
+      ? getVisibleFields(engine, values, isAdvanced).filter(
+          m => m.type !== "section",
+        )
+      : [];
   }, [engine, values, isAdvanced]);
 
   return (
@@ -184,14 +186,14 @@ const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <div>
+      <>
         <FormSubmitButton
           disabled={!isDirty}
           title={isNew ? t`Save` : t`Save changes`}
           primary
         />
         <FormErrorMessage />
-      </div>
+      </>
     );
   } else if (values.engine) {
     return (

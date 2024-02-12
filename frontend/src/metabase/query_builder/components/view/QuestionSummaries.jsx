@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
+import { mixpanel } from "metabase/plugins/mixpanel";
+
 import { color } from "metabase/lib/colors";
 
 import ViewButton from "./ViewButton";
@@ -19,8 +21,10 @@ export function QuestionSummarizeWidget({
       labelBreakpoint="sm"
       onClick={async () => {
         if (isShowingSummarySidebar) {
+          mixpanel.trackEvent(mixpanel.events.summarize.close);
           onCloseSummary();
         } else {
+          mixpanel.trackEvent(mixpanel.events.summarize.open);
           onEditSummary();
         }
       }}

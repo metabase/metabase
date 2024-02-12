@@ -37,8 +37,10 @@ class DatabaseList extends Component {
 
     const databases = Object.values(entities)
       .filter(database => {
+        const isSample =
+          database.name === "Sample Database" && database.engine === "h2";
         const exists = Boolean(database?.id && database?.name);
-        return exists && !database.is_saved_questions;
+        return exists && !database.is_saved_questions && !isSample;
       })
       .sort((a, b) => {
         const compared = a.name.localeCompare(b.name);

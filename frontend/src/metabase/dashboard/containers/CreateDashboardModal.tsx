@@ -7,6 +7,8 @@ import { t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import * as Urls from "metabase/lib/urls";
+import { mixpanel } from "metabase/plugins/mixpanel";
+
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -36,6 +38,7 @@ function CreateDashboardModal({
 }: Props) {
   const handleCreate = useCallback(
     (dashboard: Dashboard) => {
+      mixpanel.trackEvent(mixpanel.events.create_dashboard);
       if (typeof onCreate === "function") {
         onCreate(dashboard);
       } else {

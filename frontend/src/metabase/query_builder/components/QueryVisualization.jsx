@@ -4,6 +4,8 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { mixpanel } from "metabase/plugins/mixpanel";
+
 import { copy } from "metabase/lib/utils";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
@@ -24,6 +26,22 @@ export default class QueryVisualization extends Component {
   };
 
   _getStateFromProps(props) {
+    if (
+      props.card?.creationType === "native_question" &&
+      props.card.dataset_query.type === "native" &&
+      !props.location.pathname.includes("model")
+    ) {
+      mixpanel.trackEvent(mixpanel.events.question.native_open);
+    }
+
+    if (
+      props.card?.creationType === "native_question" &&
+      props.card.dataset_query.type === "native" &&
+      props.location.pathname.includes("model")
+    ) {
+      mixpanel.trackEvent(mixpanel.events.model_open);
+    }
+
     return {
       lastRunDatasetQuery: copy(props.question.query().datasetQuery()),
       lastRunParameterValues: copy(props.parameterValues),

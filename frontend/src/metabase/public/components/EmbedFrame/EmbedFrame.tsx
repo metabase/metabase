@@ -159,7 +159,23 @@ function EmbedFrame({
       {showFooter && (
         <Footer className="EmbedFrame-footer" variant={footerVariant}>
           {hasEmbedBranding && (
-            <LogoBadge variant={footerVariant} dark={theme === "night"} />
+            <div className="flex align-center">
+              <LogoBadge variant={footerVariant} dark={theme === "night"} />
+              <ExternalLink
+                href="https://dadosfera.ai"
+                target="_blank"
+                className="h4 flex text-bold align-center no-decoration"
+              >
+                <span className="text-small">
+                  <span className="ml2 md-ml2 text-medium">
+                    / Accelerated By{" "}
+                    <span className={theme ? "text-white" : "text-brand"}>
+                      Dadosfera
+                    </span>
+                  </span>
+                </span>
+              </ExternalLink>
+            </div>
           )}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>

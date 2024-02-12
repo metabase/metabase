@@ -6,6 +6,8 @@ import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import * as Urls from "metabase/lib/urls";
+import { mixpanel } from "metabase/plugins/mixpanel";
+
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -35,6 +37,7 @@ function CreateCollectionModal({
 }: Props) {
   const handleCreate = useCallback(
     (collection: Collection) => {
+      mixpanel.trackEvent(mixpanel.events.create_collection);
       if (typeof onCreate === "function") {
         onCreate(collection);
       } else {

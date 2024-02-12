@@ -13,3 +13,9 @@ export const AdminNavLink = styled(Link)<AdminNavLinkProps>`
   text-decoration: none;
   color: ${props => (props.isSelected ? color("white") : alpha("white", 0.63))};
 `;
+
+export const ExternalNavLink = styled.span`
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  color: ${alpha("white", 0.63)};
+`;

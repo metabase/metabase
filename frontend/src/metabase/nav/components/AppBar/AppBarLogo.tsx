@@ -30,6 +30,10 @@ const AppBarLogo = ({
           data-metabase-event="Navbar;Logo"
         >
           <LogoIcon height={32} />
+          <DadosferaLogo>
+            <span>Accelerated By</span>
+            <img src="app/img/ddf-d.svg"></img>
+          </DadosferaLogo>
         </LogoLink>
       )}
       {isNavBarEnabled && (

@@ -70,16 +70,21 @@ export default class DatabaseList extends Component {
     const { isSyncingModalOpened } = this.state;
 
     const error = deletionError || addSampleDatabaseError;
+    const filteredDatabases =
+      databases?.filter(
+        database =>
+          database.name !== "Sample Database" && database.engine !== "h2",
+      ) || [];
 
     return (
       <div className="wrapper" data-testid="database-list">
         <section className="PageHeader px2 clearfix">
-          {isAdmin && (
+          {/* {isAdmin && (
             <Link
               to="/admin/databases/create"
               className="Button Button--primary float-right"
             >{t`Add database`}</Link>
-          )}
+          )} */}
           <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
         {error && (
@@ -96,9 +101,9 @@ export default class DatabaseList extends Component {
               </tr>
             </thead>
             <tbody>
-              {databases ? (
+              {filteredDatabases ? (
                 [
-                  databases.map(database => {
+                  filteredDatabases.map(database => {
                     const isDeleting =
                       this.props.deletes.indexOf(database.id) !== -1;
                     return (

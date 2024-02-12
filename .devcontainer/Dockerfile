@@ -1,6 +1,8 @@
-FROM mcr.microsoft.com/vscode/devcontainers/java:11
+FROM mcr.microsoft.com/devcontainers/javascript-node:18-bullseye
 
-# Set up nodesource, install node, yarn, fontconfig for static viz, rlwrap for dev ergonomics
+#install java on debian
+RUN apt-get update && \
+  apt-get install -y openjdk-11-jre curl
 
 RUN ( curl -fsSL https://deb.nodesource.com/setup_18.x | bash ) \
   && export DEBIAN_FRONTEND=noninteractive \
@@ -9,3 +11,7 @@ RUN ( curl -fsSL https://deb.nodesource.com/setup_18.x | bash ) \
 
 # install Clojure
 RUN curl https://download.clojure.org/install/linux-install-1.11.1.1262.sh | bash
+
+RUN curl -sLO https://raw.githubusercontent.com/clj-kondo/clj-kondo/master/script/install-clj-kondo && \
+  chmod +x install-clj-kondo && \
+  ./install-clj-kondo

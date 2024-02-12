@@ -13,12 +13,15 @@ import * as Urls from "metabase/lib/urls";
 import { DatabaseCard, DatabaseGridItem } from "./DatabaseBrowser.styled";
 
 function DatabaseBrowser({ databases }) {
+  const filteredDatabases = databases.filter(
+    database => database.name !== "Sample Database" && database.engine !== "h2",
+  );
   return (
     <div data-testid="database-browser">
       <BrowseHeader crumbs={[{ title: t`Our data` }]} />
 
       <Grid>
-        {databases.map(database => (
+        {filteredDatabases.map(database => (
           <DatabaseGridItem key={database.id}>
             <Link
               to={Urls.browseDatabase(database)}
