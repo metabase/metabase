@@ -20,10 +20,11 @@ import { TypeFilterContent } from "./TypeFilterContent";
 const MODEL_NAME: Record<EnabledSearchModelType, string> = {
   action: "Action",
   card: "Question",
+  metric: "Metric",
+  dataset: "Model",
   collection: "Collection",
   dashboard: "Dashboard",
   database: "Database",
-  dataset: "Model",
   table: "Table",
   "indexed-entity": "Indexed record",
 };
