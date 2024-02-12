@@ -16,8 +16,10 @@
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
+   [metabase.test.util.timezone :as test.tz]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -351,3 +353,52 @@
                           qp/process-userland-query
                           mt/rows
                           ffirst))))))))
+
+(deftest filter-by-datetime-fields-test
+  (mt/test-driver :sqlserver
+    (testing "Should match datetime fields even in non-default timezone (#30454)"
+      (mt/dataset attempted-murders
+        (let [limit 10
+              get-query (mt/mbql-query attempts
+                          {:fields [$id $datetime]
+                           :order-by [[:asc $id]]
+                           :limit limit})
+              filter-query (mt/mbql-query attempts
+                             {:fields [$id $datetime]
+                              :filter [:= [:field %attempts.datetime {:base-type :type/DateTime}]]
+                              :order-by [[:asc $id]]
+                              :limit limit})]
+          (doseq [with-tz-setter [#'qp.test-util/do-with-report-timezone-id
+                                  #'test.tz/do-with-system-timezone-id
+                                  #'qp.test-util/do-with-database-timezone-id
+                                  #'qp.test-util/do-with-results-timezone-id]
+                  timezone ["UTC" "Pacific/Auckland"]]
+            (testing (str with-tz-setter " " timezone)
+              (with-tz-setter timezone
+                (fn []
+                  (let [expected-result (-> get-query qp/process-query mt/rows)
+                        filter-query (update-in filter-query [:query :filter] into (map second) expected-result)]
+                    (mt/with-native-query-testing-context filter-query
+                      (is (= expected-result
+                             (-> filter-query qp/process-query mt/rows))))))))))))
+    #_(testing "Demo that filtering datetime fields by localdatetime objects doesn't work"
+        (mt/dataset attempted-murders
+          (let [details (mt/dbdef->connection-details :sqlserver :db {:database-name "attempted-murders"})
+                tricky-datetime "2019-11-02T00:14:14.247Z"
+                datetime-string (-> tricky-datetime
+                                    (str/replace #"T" " ")
+                                    (str/replace #"0*Z$" ""))
+                datetime-localdatetime (-> tricky-datetime
+                                           t/offset-date-time
+                                           t/local-date-time)
+                base-query "SELECT id FROM [attempts] WHERE datetime = ?"]
+            (doseq [param [datetime-string datetime-localdatetime]
+                    :let [query [base-query param]]]
+              (testing (pr-str query)
+                (is (= [{:id 2}]
+                       (sql-jdbc.execute/do-with-connection-with-options
+                        :sqlserver
+                        (sql-jdbc.conn/connection-details->spec :sqlserver details)
+                        {}
+                        (fn [^java.sql.Connection conn]
+                          (next.jdbc/execute! conn query))))))))))))
