@@ -1,6 +1,5 @@
-import type { Location, LocationDescriptorObject } from "history";
-import type { CardType } from "metabase-types/api";
-import type { QueryBuilderMode, DatasetEditorTab } from "metabase-types/store";
+import type { LocationDescriptorObject } from "history";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 type LocationQBModeResult = {
   queryBuilderMode: QueryBuilderMode;
@@ -25,23 +24,4 @@ export function getQueryBuilderModeFromLocation(
   return {
     queryBuilderMode: "view",
   };
-}
-
-export function getCardTypeFromLocation(location: Location): CardType {
-  const { pathname } = location;
-  if (pathname.startsWith("/question")) {
-    return "question";
-  }
-
-  if (pathname.startsWith("/model")) {
-    return "model";
-  }
-
-  if (pathname.startsWith("/metric")) {
-    return "metric";
-  }
-
-  throw new Error(
-    `The current route "${location.pathname}" does not represent question, model or a metric`,
-  );
 }

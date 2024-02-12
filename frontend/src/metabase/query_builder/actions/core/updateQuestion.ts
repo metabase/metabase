@@ -1,9 +1,7 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
-import { getCardTypeFromLocation } from "metabase/query_builder/typed-utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { getRouting } from "metabase/selectors/routing";
 
 import type { Series } from "metabase-types/api";
 import type {
@@ -17,6 +15,7 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import {
+  getCard,
   getFirstQueryResult,
   getIsShowingTemplateTagsEditor,
   getQueryBuilderMode,
@@ -145,9 +144,9 @@ export const updateQuestion = (
       newQuestion.type() !== "model" &&
       newQuestion.type() !== "metric"
     ) {
-      const routing = getRouting(getState());
-      const type = getCardTypeFromLocation(routing.locationBeforeTransitions);
-      newQuestion = newQuestion.setType(type);
+      const state = getState();
+      const card = getCard(state);
+      newQuestion = newQuestion.setType(card.type);
     }
 
     const queryResult = getFirstQueryResult(getState());
