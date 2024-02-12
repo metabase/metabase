@@ -87,7 +87,6 @@ export const BrowseApp = ({
         <BrowseDataHeader>
           <Flex maw="1014px" m="0 auto" w="100%" align="center">
             <h2>{t`Browse data`}</h2>
-            {tab === "databases" && <LearnAboutDataLink />}
           </Flex>
         </BrowseDataHeader>
         <BrowseTabs
@@ -112,6 +111,7 @@ export const BrowseApp = ({
                   toggleFilter={toggleFilter}
                 />
               )}
+              {tab === "databases" && <LearnAboutDataLink />}
             </Flex>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
