@@ -112,7 +112,7 @@ function getSidebar(
   },
 ) {
   const {
-    question: dataset,
+    question,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
     isShowingSnippetSidebar,
@@ -132,10 +132,10 @@ function getSidebar(
       return <div />;
     }
     const isLastField =
-      focusedFieldIndex === dataset.getResultMetadata().length - 1;
+      focusedFieldIndex === question.getResultMetadata().length - 1;
     return (
       <DatasetFieldMetadataSidebar
-        dataset={dataset}
+        dataset={question}
         field={focusedField}
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
@@ -145,7 +145,7 @@ function getSidebar(
     );
   }
 
-  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   if (!isNative) {
     return null;
@@ -155,7 +155,7 @@ function getSidebar(
     return (
       <TagEditorSidebar
         {...props}
-        query={dataset.legacyQuery()}
+        query={question.legacyQuery()}
         onClose={toggleTemplateTagsEditor}
       />
     );
@@ -190,7 +190,7 @@ const FIELDS = [
 
 function DatasetEditor(props) {
   const {
-    question: dataset,
+    question,
     datasetEditorTab,
     result,
     resultsMetadata,
@@ -213,24 +213,24 @@ function DatasetEditor(props) {
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
-    () => getSortedModelFields(dataset, resultsMetadata?.columns),
-    [dataset, resultsMetadata],
+    () => getSortedModelFields(question, resultsMetadata?.columns),
+    [question, resultsMetadata],
   );
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
 
   const initialEditorHeight = useMemo(() => {
-    const { isNative } = Lib.queryDisplayInfo(dataset.query());
+    const { isNative } = Lib.queryDisplayInfo(question.query());
 
     if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: dataset.legacyQuery(),
+      query: question.legacyQuery(),
       viewHeight: height,
     });
-  }, [dataset, height]);
+  }, [question, height]);
 
   const [editorHeight, setEditorHeight] = useState(
     isEditingQuery ? initialEditorHeight : 0,
@@ -324,7 +324,7 @@ function DatasetEditor(props) {
   };
 
   const handleCancelClick = () => {
-    if (dataset.isSaved()) {
+    if (question.isSaved()) {
       if (isDirty) {
         setShowCancelEditWarning(true);
       } else {
@@ -336,20 +336,20 @@ function DatasetEditor(props) {
   };
 
   const handleSave = useCallback(async () => {
-    const canBeDataset = checkCanBeModel(dataset);
-    const isBrandNewDataset = !dataset.id();
+    const canBeDataset = checkCanBeModel(question);
+    const isBrandNewDataset = !question.id();
 
     if (canBeDataset && isBrandNewDataset) {
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(dataset, { rerunQuery: false });
+      await onSave(question, { rerunQuery: false });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
       throw new Error(t`Variables in models aren't supported yet`);
     }
-  }, [dataset, onSave, setQueryBuilderMode, runQuestionQuery, onOpenModal]);
+  }, [question, onSave, setQueryBuilderMode, runQuestionQuery, onOpenModal]);
 
   const handleColumnSelect = useCallback(
     column => {
@@ -416,17 +416,17 @@ function DatasetEditor(props) {
   );
 
   const canSaveChanges = useMemo(() => {
-    const { isNative } = Lib.queryDisplayInfo(dataset.query());
+    const { isNative } = Lib.queryDisplayInfo(question.query());
     const isEmpty = !isNative
-      ? Lib.databaseID(dataset.query()) == null
-      : dataset.legacyQuery().isEmpty();
+      ? Lib.databaseID(question.query()) == null
+      : question.legacyQuery().isEmpty();
 
     if (isEmpty) {
       return false;
     }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);
     return everyFieldHasDisplayName && isDirty;
-  }, [dataset, fields, isDirty]);
+  }, [question, fields, isDirty]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -444,21 +444,26 @@ function DatasetEditor(props) {
     <>
       <DatasetEditBar
         data-testid="dataset-edit-bar"
-        title={dataset.displayName()}
+        title={question.displayName()}
         center={
-          <EditorTabs
-            currentTab={datasetEditorTab}
-            onChange={onChangeEditorTab}
-            options={[
-              { id: "query", name: t`Query`, icon: "notebook" },
-              {
-                id: "metadata",
-                name: t`Metadata`,
-                icon: "label",
-                disabled: !resultsMetadata,
-              },
-            ]}
-          />
+          // Metadata tab is temporarily disabled for metrics.
+          // It should be enabled in #37993
+          // @see https://github.com/metabase/metabase/issues/37993
+          question.type() === "metric" ? null : (
+            <EditorTabs
+              currentTab={datasetEditorTab}
+              onChange={onChangeEditorTab}
+              options={[
+                { id: "query", name: t`Query`, icon: "notebook" },
+                {
+                  id: "metadata",
+                  name: t`Metadata`,
+                  icon: "label",
+                  disabled: !resultsMetadata,
+                },
+              ]}
+            />
+          )
         }
         buttons={[
           <Button
@@ -470,7 +475,7 @@ function DatasetEditor(props) {
             key="save"
             disabled={!canSaveChanges}
             actionFn={handleSave}
-            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
+            normalText={question.isSaved() ? t`Save changes` : t`Save`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
             successText={t`Saved`}

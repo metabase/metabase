@@ -41,6 +41,7 @@ export function DashboardEmptyState({
                 mode: "notebook",
                 creationType: "custom_question",
                 collectionId: dashboard.collection_id ?? undefined,
+                cardType: "question",
               })}
               className="text-bold text-brand"
               onClick={closeNavbar}

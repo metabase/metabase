@@ -79,6 +79,7 @@ const NewItemMenu = ({
           mode: "notebook",
           creationType: "custom_question",
           collectionId,
+          cardType: "question",
         }),
         onClose: onCloseNavbar,
       });
@@ -92,6 +93,7 @@ const NewItemMenu = ({
           type: "native",
           creationType: "native_question",
           collectionId,
+          cardType: "question",
         }),
         onClose: onCloseNavbar,
       });
@@ -136,9 +138,9 @@ const NewItemMenu = ({
         title: t`Metric`,
         icon: "metric",
         link: Urls.newQuestion({
-          mode: "notebook",
-          collectionId,
+          mode: "query",
           cardType: "metric",
+          collectionId,
         }),
         onClose: onCloseNavbar,
       });
