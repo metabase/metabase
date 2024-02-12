@@ -20,9 +20,9 @@ json_unfolding: false
 parent_id: null
 coercion_strategy: null
 preview_display: true
-position: 12
+position: 13
 custom_position: 0
-database_position: 12
+database_position: 13
 has_field_values: list
 settings: null
 caveats: null
@@ -38,3 +38,4 @@ serdes/meta:
 - id: locale
   model: Field
 database_indexed: null
+database_partitioned: null

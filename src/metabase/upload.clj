@@ -259,6 +259,10 @@
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
   "_mb_row_id")
 
+(def auto-pk-column-keyword
+  "The keyword of the auto-incrementing PK column."
+  (keyword auto-pk-column-name))
+
 (defn- table-id->auto-pk-column [table-id]
   (first (filter (fn [field]
                    (= (normalize-column-name (:name field)) auto-pk-column-name))
@@ -298,7 +302,7 @@
                                  (column-types-from-rows settings column-count)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
-     :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)}))
+     :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::auto-incrementing-int-pk)}))
 
 
 ;;;; +------------------+
@@ -343,7 +347,8 @@
                                 max-sample-rows)))
                   rows)))
 
-(defn- upload-type->col-specs
+(defn- column-definitions
+  "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
   [driver col->upload-type]
   (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
@@ -410,11 +415,15 @@
     (let [[header & rows]         (without-auto-pk-columns (csv/read-csv reader))
           {:keys [extant-columns generated-columns]} (detect-schema header (sample-rows rows))
           cols->upload-type       (merge generated-columns extant-columns)
-          col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
+          col-definitions         (column-definitions driver cols->upload-type)
           csv-col-names           (keys extant-columns)
           col-upload-types        (vals extant-columns)
           parsed-rows             (vec (parse-rows col-upload-types rows))]
-      (driver/create-table! driver db-id table-name col-to-create->col-spec)
+      (driver/create-table! driver
+                            db-id
+                            table-name
+                            col-definitions
+                            :primary-key [auto-pk-column-keyword])
       (try
         (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
         {:num-rows          (count rows)
@@ -629,7 +638,9 @@
           normed-name->field (m/index-by (comp normalize-column-name :name)
                                          (t2/select :model/Field :table_id (:id table) :active true))
           normed-header      (map normalize-column-name header)
-          create-auto-pk?    (not (contains? normed-name->field auto-pk-column-name))
+          create-auto-pk?    (and
+                              (driver/create-auto-pk-with-append-csv? driver)
+                              (not (contains? normed-name->field auto-pk-column-name)))
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
           col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
           parsed-rows        (parse-rows col-upload-types rows)]
@@ -642,7 +653,8 @@
         (driver/add-columns! driver
                              (:id database)
                              (table-identifier table)
-                             {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
+                             {auto-pk-column-keyword (conj (driver/upload-type->database-type driver ::auto-incrementing-int-pk))}
+                             :primary-key [auto-pk-column-keyword]))
       (scan-and-sync-table! database table)
       (when create-auto-pk?
         (let [auto-pk-field (table-id->auto-pk-column (:id table))]
@@ -678,7 +690,9 @@
 ;;; +--------------------------------------------------
 
 (mu/defn append-csv!
-  "Main entry point for appending to uploaded tables with a CSV file."
+  "Main entry point for appending to uploaded tables with a CSV file.
+  This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
+  before auto-pk columns were introduced by metabase#36249."
   [{:keys [^File file table-id]}
    :- [:map
        [:table-id ms/PositiveInt]
@@ -695,13 +709,10 @@
 (defn uploadable-table-ids
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
-  (if (empty? table-ids)
-    #{}
-    (let [tables (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)]
-      (set (keep (fn [t]
-                   (when (can-upload-to-table? (:db t) t)
-                     (:id t)))
-                 tables)))))
+  (set (when (seq table-ids)
+         (->> (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)
+              (filter #(can-upload-to-table? (:db %) %))
+              (map :id)))))
 
 (defn- no-joins?
   "Returns true if `query` has no joins in it, otherwise false."
@@ -721,23 +732,22 @@
                            [:table_id      [:maybe ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization
                            [:is_upload {:optional true} [:maybe :boolean]]]]]
-  (let [table-ids            (->> models
-                                  ;; as an optimization when listing collection items (GET /api/collection/items),
-                                  ;; we might already know that the table is not an upload if is_upload=false. We
-                                  ;; can skip making more queries if so
-                                  (remove #(false? (:is_upload %)))
-                                  (keep :table_id)
-                                  set)
-        uploadable-table-ids (set (uploadable-table-ids table-ids))
-        based-on-upload      (fn [model]
-                               (when-let [dataset_query (:dataset_query model)] ; dataset_query is sometimes null in tests
-                                 (let [query (lib/->pMBQL dataset_query)]
-                                   (when (and (some-> model :query_type name (= "query"))
-                                              (contains? uploadable-table-ids (:table_id model))
-                                              (no-joins? query))
-                                     (lib/source-table-id query)))))]
-    (map #(m/assoc-some % :based_on_upload (based-on-upload %))
-         models)))
+  (let [table-ids             (->> models
+                                   ;; as an optimization when listing collection items (GET /api/collection/items),
+                                   ;; we might already know that the table is not an upload if is_upload=false. We
+                                   ;; can skip making more queries if so
+                                   (remove #(false? (:is_upload %)))
+                                   (keep :table_id)
+                                   set)
+        mbql?                 (fn [model] (= "query" (name (:query_type model "query"))))
+        has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
+    (for [model models]
+      (m/assoc-some
+       model
+       :based_on_upload
+       (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)] ; dataset_query can be empty in tests
+         (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
+           (lib/source-table-id query)))))))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
@@ -749,5 +759,6 @@
     - uploads are enabled
   Otherwise based_on_upload is nil."
   [cards]
-  (let [models-by-id (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))]
-    (map #(or (models-by-id (:id %)) %) cards)))
+  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))
+        card->maybe-model (comp id->model :id)]
+    (map #(or (card->maybe-model %) %) cards)))

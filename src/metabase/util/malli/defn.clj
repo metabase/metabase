@@ -75,8 +75,8 @@
                            :schema   (mu.fn/fn-schema parsed)}
                           attr-map)
         docstring        (annotated-docstring parsed)
-        skip?            (#'mu.fn/*skip-ns-decision-fn* *ns*)]
-    (if skip?
+        instrument?      (mu.fn/instrument-ns? *ns*)]
+    (if-not instrument?
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
          ~(mu.fn/deparameterized-fn-form parsed))

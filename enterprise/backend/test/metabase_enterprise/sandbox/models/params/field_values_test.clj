@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.field-values-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.models.params.field-values

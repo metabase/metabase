@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -24,6 +25,9 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { useDispatch } from "metabase/lib/redux";
+import { setOptions } from "metabase/redux/embed";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import type Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -37,6 +41,7 @@ import {
   ParametersWidgetContainer,
   Footer,
   ActionButtonsContainer,
+  TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
 
@@ -54,8 +59,11 @@ interface OwnProps {
   parameterValues?: ParameterValues;
   draftParameterValues?: ParameterValues;
   hiddenParameterSlugs?: string;
+  enableParameterRequiredBehavior?: boolean;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
+  setParameterValueToDefault: (id: ParameterId) => void;
   children: ReactNode;
+  dashboardTabs?: ReactNode;
 }
 
 interface StateProps {
@@ -89,6 +97,7 @@ function EmbedFrame({
   question,
   dashboard,
   actionButtons,
+  dashboardTabs = null,
   footerVariant = "default",
   location,
   hasEmbedBranding,
@@ -97,12 +106,19 @@ function EmbedFrame({
   draftParameterValues,
   hiddenParameterSlugs,
   setParameterValue,
+  setParameterValueToDefault,
+  enableParameterRequiredBehavior,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
   useMount(() => {
     initializeIframeResizer(() => setInnerScroll(false));
   });
+
+  const dispatch = useDispatch();
+  useEffect(() => {
+    dispatch(setOptions(location));
+  }, [dispatch, location]);
 
   const {
     bordered = isWithinIframe(),
@@ -138,28 +154,39 @@ function EmbedFrame({
         {hasHeader && (
           <Header className="EmbedFrame-header">
             {finalName && (
-              <TitleAndDescription
-                title={finalName}
-                description={description}
-                className="my2"
-              />
+              <TitleAndDescriptionContainer>
+                <TitleAndDescription
+                  title={finalName}
+                  description={description}
+                  className="my2"
+                />
+              </TitleAndDescriptionContainer>
             )}
+            {dashboardTabs}
             {hasParameters && (
               <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
-                <SyncedParametersList
-                  className="mt1"
-                  question={question}
-                  dashboard={dashboard}
-                  parameters={getValuePopulatedParameters(
-                    parameters,
-                    _.isEmpty(draftParameterValues)
-                      ? parameterValues
-                      : draftParameterValues,
-                  )}
-                  setParameterValue={setParameterValue}
-                  hideParameters={hideParameters}
-                />
-                {dashboard && <FilterApplyButton />}
+                <FixedWidthContainer
+                  data-testid="fixed-width-filters"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <SyncedParametersList
+                    question={question}
+                    dashboard={dashboard}
+                    parameters={getValuePopulatedParameters({
+                      parameters,
+                      values: _.isEmpty(draftParameterValues)
+                        ? parameterValues
+                        : draftParameterValues,
+                    })}
+                    setParameterValue={setParameterValue}
+                    hideParameters={hideParameters}
+                    setParameterValueToDefault={setParameterValueToDefault}
+                    enableParameterRequiredBehavior={
+                      enableParameterRequiredBehavior
+                    }
+                  />
+                  {dashboard && <FilterApplyButton />}
+                </FixedWidthContainer>
               </ParametersWidgetContainer>
             )}
           </Header>
