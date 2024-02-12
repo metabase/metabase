@@ -6,10 +6,9 @@ redirect_from:
 
 # Field types
 
+While data types indicate to a database how it should interpret the values in a field, **field types** or **semantic types** describe the _meaning_ of a field. For example, a column's data type could be `type/text` but the semantic type may be **Email**. Field types are just one example of metadata—information about data—that [Admins can change](./metadata-editing.md) in Metabase.
 
-While data types indicate to a database how it should interpret the values in a field, __field types__ or __semantic types__ describe the _meaning_ of a field. For example, a column's data type could be ```type/text``` but the semantic type may be __Email__. Field types are just one example of metadata—information about data—that [Admins can change](./metadata-editing.md) in Metabase.
-
-Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any. By marking columns in a table as __Latitude__ and __Longitude__, Metabase can use the columns to create pin and heat maps. Similarly, designating a column as a __URL__ allows users to click on the link to visit that URL.
+Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any. By marking columns in a table as **Latitude** and **Longitude**, Metabase can use the columns to create pin and heat maps. Similarly, designating a column as a **URL** allows users to click on the link to visit that URL.
 
 ## List of Metabase Field Types
 
@@ -18,12 +17,10 @@ Metabase recognizes the following field types:
 ### Overall Row
 
 - **Entity Key**. The field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
-- **Entity Name**. Different from the entity key, the entity name represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
+- **Entity Name**. Different from the entity key, the entity name represents what each row in the table _is_. For example, in a Users table, the User column might be the entity name.
 - **Foreign Key**. The column in this table that (usually) refers to the primary key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
 
 ### Common
-
-Common task
 
 - **Category**
 - **Comment**
@@ -125,6 +122,9 @@ If you're an administrator, you can edit field types using the [Table Metadata p
 
 While data types themselves can't be edited in Metabase, admins can manually [cast data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
+### JSON unfolding
+
+See [Working with JSON](./json-unfolding.md).
 
 ## Further Reading
 

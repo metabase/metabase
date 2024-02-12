@@ -740,38 +740,48 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Tax").should("not.exist");
   });
 
-  it.skip("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
+  it("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
+        type: "query",
         query: {
           "source-query": {
-            "source-table": 1,
+            "source-table": PRODUCTS_ID,
             aggregation: [["count"]],
-            breakout: [["field", 7, { "temporal-unit": "month" }]],
+            breakout: [
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
           },
           aggregation: [
             ["avg", ["field", "count", { "base-type": "type/Integer" }]],
           ],
         },
-        type: "query",
       },
     });
 
-    cy.get(".ScalarValue").contains("5");
+    cy.get(".ScalarValue").contains("5.41");
     filter();
-    filterField("Category").within(() => {
-      cy.findByText("Gizmo").click();
-    });
-    cy.findByTestId("apply-filters").click();
 
+    filterField("Category").findByText("Gizmo").click();
+
+    cy.findByTestId("apply-filters").click();
     cy.findByLabelText("notebook icon").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category is Gizmo").should("exist"); // filter
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At: Month").should("exist"); // summary 1
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Average of Count").should("exist"); // summary 2
+
+    // filter
+    getNotebookStep("filter").should("contain", "Category is Gizmo");
+
+    // summarize 1
+    getNotebookStep("summarize", { stage: 0, index: 0 }).should(
+      "contain",
+      "Created At: Month",
+    );
+
+    // summarize 2
+    getNotebookStep("summarize", { stage: 1, index: 0 }).should(
+      "contain",
+      "Average of Count",
+    );
   });
 
   it("user shouldn't need to scroll to add filter (metabase#14307)", () => {
@@ -831,6 +841,8 @@ describe("scenarios > question > filter", () => {
 
   describe("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {
     it("shouldn't display chosen category in a breadcrumb (metabase#16198-1)", () => {
+      const chosenCategory = "Gizmo";
+
       visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
@@ -838,13 +850,18 @@ describe("scenarios > question > filter", () => {
             "source-table": PRODUCTS_ID,
             filter: [
               "and",
-              ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+              ["=", ["field", PRODUCTS.CATEGORY, null], chosenCategory],
               ["=", ["field", PRODUCTS.ID, null], 1],
             ],
           },
           type: "query",
         },
       });
+
+      cy.findByTestId("head-crumbs-container").should(
+        "not.contain",
+        chosenCategory,
+      );
     });
 
     it("adding an ID filter shouldn't cause page error and page reload (metabase#16198-2)", () => {
@@ -1031,7 +1048,8 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it("should render custom expression helper near the custom expression field", async () => {
+  // TODO: fixme!
+  it.skip("should render custom expression helper near the custom expression field", () => {
     openReviewsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
 

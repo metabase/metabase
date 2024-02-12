@@ -110,7 +110,6 @@ class MetabaseSettings {
    */
   on(key: SettingKey, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this._listeners[key]!.push(callback);
   }
 
@@ -302,6 +301,7 @@ class MetabaseSettings {
    * @deprecated use getLearnUrl
    */
   learnUrl(path = "") {
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of MetabaseSettings.learnUrl()
     return `https://www.metabase.com/learn/${path}`;
   }
 

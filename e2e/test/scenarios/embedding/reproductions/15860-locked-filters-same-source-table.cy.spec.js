@@ -169,7 +169,7 @@ describe.skip("issue 15860", () => {
 });
 
 function setDefaultValueForLockedFilter(filter, value) {
-  cy.findByText("Preview Locked Parameters")
+  cy.findByText("Previewing locked parameters")
     .parent()
     .within(() => {
       cy.findByText(filter).click({ force: true });

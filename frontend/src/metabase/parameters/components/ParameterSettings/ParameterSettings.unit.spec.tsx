@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
-import ParameterSettings from "../ParameterSettings";
+import { ParameterSettings } from "../ParameterSettings";
 
 interface SetupOpts {
   parameter?: UiParameter;
@@ -103,6 +103,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
 
   renderWithProviders(
     <ParameterSettings
+      embeddedParameterVisibility={null}
       parameter={parameter}
       isParameterSlugUsed={jest.fn()}
       onChangeName={onChangeName}
@@ -111,7 +112,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       onChangeQueryType={onChangeQueryType}
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
-      onRemoveParameter={jest.fn()}
+      onChangeRequired={jest.fn()}
     />,
   );
 

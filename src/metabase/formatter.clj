@@ -200,6 +200,18 @@
        (filter (every-pred x-axis-fn y-axis-fn))
        (map coerce-bignum-to-int)))
 
+(defn format-geographic-coordinates
+  "Format longitude/latitude values as 0.00000000° N|S|E|W"
+  [lon-or-lat ^double v]
+  (let [dir        (case lon-or-lat
+                     :type/Latitude (if (neg? v) "S" "N")
+                     :type/Longitude (if (neg? v) "W" "E")
+                     nil)
+        base-value (Math/abs v)]
+    (if dir
+      (format "%.8f° %s" base-value dir)
+      (str v))))
+
 (s/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
   [timezone-id :- (s/maybe s/Str) col visualization-settings]
@@ -208,6 +220,9 @@
     ;; todo: do the same for temporal strings
     (types/temporal-field? col)
     #(datetime/format-temporal-str timezone-id % col visualization-settings)
+
+    (isa? (:semantic_type col) :type/Coordinate)
+    (partial format-geographic-coordinates (:semantic_type col))
 
     ;; todo integer columns with a unit
     (or (isa? (:effective_type col) :type/Number)

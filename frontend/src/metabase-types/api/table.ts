@@ -74,6 +74,7 @@ export interface TableListQuery {
   schemaName?: string;
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
+  remove_inactive?: boolean;
 }
 
 export interface ForeignKey {

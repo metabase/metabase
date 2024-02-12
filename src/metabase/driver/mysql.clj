@@ -86,9 +86,16 @@
   [database]
   (-> database :dbms_version :flavor (= "MariaDB")))
 
+(defn mariadb-connection?
+  "Returns true if the database is MariaDB."
+  [driver conn]
+  (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
+
 (defmethod driver/database-supports? [:mysql :table-privileges]
-  [driver _feat db]
-  (and (= driver :mysql) (not (mariadb? db))))
+  [_driver _feat _db]
+  ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
+  false
+  #_(and (= driver :mysql) (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -131,6 +138,28 @@
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
     (warn-on-unsupported-versions driver details)
     true))
+
+(declare table-names->privileges)
+(declare privilege-grants-for-user)
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :mysql
+  [driver conn & {:as _options}]
+  ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
+  ;; for the mysql database), so we can't query the full privileges of the current user.
+  (when-not (mariadb-connection? driver conn)
+    (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn sql {:as-arrays? true})))
+          db-name     (ffirst (sql->tuples "SELECT DATABASE()"))
+          table-names (map first (sql->tuples "SHOW TABLES"))]
+      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn "CURRENT_USER()")
+                                                             db-name
+                                                             table-names)]
+        {:role   nil
+         :schema nil
+         :table  table-name
+         :select (contains? privileges :select)
+         :update (contains? privileges :update)
+         :insert (contains? privileges :insert)
+         :delete (contains? privileges :delete)}))))
 
 (def default-ssl-cert-details
   "Server SSL certificate chain, in PEM format."
@@ -644,12 +673,14 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
     ::upload/float                    [:double]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:datetime]
     ::upload/offset-datetime          [:timestamp]))
+
+(defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
 (defmethod driver/table-name-length-limit :mysql
   [_driver]
@@ -869,26 +900,3 @@
                   (when-let [privileges (not-empty (set/union all-table-privileges (get table-privileges table-name)))]
                     [table-name privileges])))
           table-names)))
-
-(defmethod driver/current-user-table-privileges :mysql
-  [_driver database]
-  ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
-  ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when-not (mariadb? database)
-    (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-          db-name     (or (get-in database [:details :db])
-                          ;; some tests are stil using dbname
-                          (get-in database [:details :dbname]))
-          table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
-                           (drop 1)
-                           (map first))]
-      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()")
-                                                             db-name
-                                                             table-names)]
-        {:role   nil
-         :schema nil
-         :table  table-name
-         :select (contains? privileges :select)
-         :update (contains? privileges :update)
-         :insert (contains? privileges :insert)
-         :delete (contains? privileges :delete)}))))

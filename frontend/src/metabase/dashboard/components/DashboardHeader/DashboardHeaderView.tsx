@@ -91,10 +91,12 @@ export function DashboardHeaderComponent({
 
   useEffect(() => {
     const timerId = setTimeout(() => {
-      setShowSubHeader(false);
+      if (isLastEditInfoVisible) {
+        setShowSubHeader(false);
+      }
     }, 4000);
     return () => clearTimeout(timerId);
-  }, []);
+  }, [isLastEditInfoVisible]);
 
   return (
     <div>
@@ -117,7 +119,11 @@ export function DashboardHeaderComponent({
           data-testid="dashboard-header"
           ref={header}
         >
-          <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
+          <HeaderContent
+            role="heading"
+            hasSubHeader
+            showSubHeader={showSubHeader}
+          >
             <HeaderCaptionContainer>
               <HeaderCaption
                 key={dashboard.name}
@@ -149,7 +155,11 @@ export function DashboardHeaderComponent({
           </HeaderButtonsContainer>
         </HeaderRow>
         <HeaderRow isNavBarOpen={isNavBarOpen}>
-          <DashboardTabs location={location} isEditing={isEditing} />
+          <DashboardTabs
+            dashboardId={dashboard.id}
+            location={location}
+            isEditing={isEditing}
+          />
         </HeaderRow>
       </div>
     </div>

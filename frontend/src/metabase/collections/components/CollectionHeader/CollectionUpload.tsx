@@ -1,8 +1,8 @@
 import type { ChangeEvent } from "react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { t } from "ttag";
 
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 import Tooltip, {
   TooltipContainer,
@@ -22,14 +22,15 @@ export function CollectionUpload({
   collection,
   uploadsEnabled,
   isAdmin,
-  onUpload,
+  saveFile,
 }: {
   collection: Collection;
   uploadsEnabled: boolean;
   isAdmin: boolean;
-  onUpload: (file: File, collectionId: CollectionId) => void;
+  saveFile: (file: File) => void;
 }) {
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   if (!uploadsEnabled) {
     return (
@@ -55,7 +56,12 @@ export function CollectionUpload({
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file !== undefined) {
-      onUpload(file, collection.id);
+      saveFile(file);
+
+      // reset the input so that the same file can be uploaded again
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = "";
+      }
     }
   };
 
@@ -72,6 +78,7 @@ export function CollectionUpload({
       </label>
       <UploadInput
         id="upload-csv"
+        ref={uploadInputRef}
         type="file"
         accept="text/csv"
         onChange={handleFileUpload}

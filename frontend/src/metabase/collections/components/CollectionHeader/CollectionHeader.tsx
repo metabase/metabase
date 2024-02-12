@@ -1,5 +1,5 @@
 import { withRouter } from "react-router";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 
@@ -20,9 +20,9 @@ export interface CollectionHeaderProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
-  onUpload: (file: File, collectionId: CollectionId) => void;
   canUpload: boolean;
   uploadsEnabled: boolean;
+  saveFile: (file: File) => void;
 }
 
 const CollectionHeader = ({
@@ -33,7 +33,7 @@ const CollectionHeader = ({
   onUpdateCollection,
   onCreateBookmark,
   onDeleteBookmark,
-  onUpload,
+  saveFile,
   canUpload,
   uploadsEnabled,
 }: CollectionHeaderProps): JSX.Element => {
@@ -53,7 +53,7 @@ const CollectionHeader = ({
             collection={collection}
             uploadsEnabled={uploadsEnabled}
             isAdmin={isAdmin}
-            onUpload={onUpload}
+            saveFile={saveFile}
           />
         )}
         {!isInstanceAnalytics && <CollectionTimeline collection={collection} />}

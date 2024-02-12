@@ -407,9 +407,11 @@
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
     (try
-      (let [opts (options->legacy-MBQL opts)]
-        (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
-          opts (conj opts)))
+      (let [opts (options->legacy-MBQL opts)
+            base-agg [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]]
+        (if (seq opts)
+          [:aggregation-options base-agg opts]
+          base-agg))
       (catch #?(:clj Throwable :cljs :default) e
         (throw (ex-info (lib.util/format "Error converting aggregation reference to pMBQL: %s" (ex-message e))
                         {:ref ag}
@@ -503,9 +505,7 @@
           query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                         :native
                         :query)]
-      (merge (-> base
-                 (dissoc :stages :parameters :lib.convert/converted?)
-                 (update-vals ->legacy-MBQL))
+      (merge (dissoc base :stages :parameters :lib.convert/converted?)
              (cond-> {:type query-type query-type inner-query}
                (seq parameters) (assoc :parameters parameters))))
     (catch #?(:clj Throwable :cljs :default) e

@@ -47,3 +47,18 @@ export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
   background-color: ${color("white")};
   border: 2px solid ${color("border")};
 `;
+
+export const ToggleContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+`;
+
+export const ToggleLabel = styled.label`
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-weight: 700;
+  color: ${color("text-medium")};
+  cursor: pointer;
+`;

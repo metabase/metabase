@@ -1,4 +1,5 @@
 import type {
+  ClickBehavior,
   Collection,
   CollectionAuthorityLevel,
   Parameter,
@@ -6,7 +7,8 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 
-import type { ActionDashboardCard } from "./actions";
+import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { ActionDisplayType, WritebackAction } from "./actions";
 import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
@@ -14,14 +16,21 @@ import type { Dataset } from "./dataset";
 // x-ray dashboard have string ids
 export type DashboardId = number | string;
 
+export type DashboardCard =
+  | ActionDashboardCard
+  | QuestionDashboardCard
+  | VirtualDashboardCard;
+
 export interface Dashboard {
   id: DashboardId;
+  created_at: string;
+  updated_at: string;
   collection?: Collection | null;
   collection_id: number | null;
   name: string;
   description: string | null;
   model?: string;
-  dashcards: (DashboardCard | ActionDashboardCard)[];
+  dashcards: DashboardCard[];
   tabs?: DashboardTab[];
   parameters?: Parameter[] | null;
   collection_authority_level?: CollectionAuthorityLevel;
@@ -37,7 +46,9 @@ export interface Dashboard {
   auto_apply_filters: boolean;
   archived: boolean;
   public_uuid: string | null;
-  embedding_params?: Record<string, string> | null;
+  initially_published_at: string | null;
+  embedding_params?: EmbeddingParameters | null;
+  width: "full" | "fixed";
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
@@ -45,37 +56,79 @@ export interface Dashboard {
 
 export type DashCardId = number;
 
-export type BaseDashboardCard = {
-  id: DashCardId;
-  dashboard_id: DashboardId;
-  dashboard_tab_id?: DashboardTabId;
-  collection_authority_level?: CollectionAuthorityLevel;
-  size_x: number;
-  size_y: number;
+export type DashboardCardLayoutAttrs = {
   col: number;
   row: number;
+  size_x: number;
+  size_y: number;
+};
+
+export type BaseDashboardCard = DashboardCardLayoutAttrs & {
+  id: DashCardId;
+  dashboard_id: DashboardId;
+  dashboard_tab_id: DashboardTabId | null;
+  card_id: CardId | null;
+  card: Card | VirtualCard;
+  collection_authority_level?: CollectionAuthorityLevel;
   entity_id: string;
   visualization_settings?: {
     [key: string]: unknown;
     virtual_card?: VirtualCard;
-    link?: LinkCardSettings;
   };
   justAdded?: boolean;
   created_at: string;
   updated_at: string;
 };
 
-export type VirtualCardDisplay = "text" | "action" | "link" | "heading";
+export type VirtualCardDisplay =
+  | "action"
+  | "heading"
+  | "link"
+  | "placeholder"
+  | "text";
 
-export type VirtualCard = Partial<Card> & {
+export type VirtualCard = Partial<
+  Omit<Card, "name" | "dataset_query" | "visualization_settings">
+> & {
+  name: null;
+  dataset_query: Record<string, never>;
   display: VirtualCardDisplay;
+  visualization_settings: Record<string, never>;
 };
 
-export type DashboardCard = BaseDashboardCard & {
-  card_id: CardId | null;
+export type ActionDashboardCard = Omit<
+  BaseDashboardCard,
+  "parameter_mappings"
+> & {
+  action?: WritebackAction;
+  card_id: CardId | null; // model card id for the associated action
+  card: Card;
+
+  parameter_mappings?: ActionParametersMapping[] | null;
+  visualization_settings: {
+    [key: string]: unknown;
+    "button.label"?: string;
+    click_behavior?: ClickBehavior;
+    actionDisplayType?: ActionDisplayType;
+    virtual_card: VirtualCard;
+  };
+};
+
+export type QuestionDashboardCard = BaseDashboardCard & {
+  card_id: CardId | null; // will be null for virtual card
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
+};
+
+export type VirtualDashboardCard = BaseDashboardCard & {
+  card_id: null;
+  card: VirtualCard;
+  parameter_mappings?: VirtualDashCardParameterMapping[] | null;
+  visualization_settings: BaseDashboardCard["visualization_settings"] & {
+    virtual_card: VirtualCard;
+    link?: LinkCardSettings;
+  };
 };
 
 export type DashboardTabId = number;
@@ -92,6 +145,16 @@ export type DashboardTab = {
 
 export type DashboardParameterMapping = {
   card_id: CardId;
+  parameter_id: ParameterId;
+  target: ParameterTarget;
+};
+
+export type ActionParametersMapping = Pick<
+  DashboardParameterMapping,
+  "parameter_id" | "target"
+>;
+
+export type VirtualDashCardParameterMapping = {
   parameter_id: ParameterId;
   target: ParameterTarget;
 };

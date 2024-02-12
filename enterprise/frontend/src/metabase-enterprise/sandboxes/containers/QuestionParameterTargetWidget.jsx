@@ -10,7 +10,7 @@ class QuestionParameterTargetWidget extends Component {
   render() {
     const { question, ...props } = this.props;
     const mappingOptions = question
-      ? getParameterMappingOptions(question.metadata(), null, question.card())
+      ? getParameterMappingOptions(question, null, question.card())
       : [];
     return <ParameterTargetWidget {...props} mappingOptions={mappingOptions} />;
   }

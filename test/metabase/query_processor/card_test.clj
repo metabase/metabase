@@ -115,7 +115,7 @@
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id))))))
 
-(deftest infer-parameter-name-test
+(deftest ^:parallel infer-parameter-name-test
   (is (= "my_param"
          (#'qp.card/infer-parameter-name {:name "my_param", :target [:variable [:template-tag :category]]})))
   (is (= "category"

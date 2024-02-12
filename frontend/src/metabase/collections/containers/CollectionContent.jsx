@@ -3,8 +3,9 @@ import { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { useDropzone } from "react-dropzone";
+import { usePrevious } from "react-use";
 
-import { usePrevious, useMount } from "react-use";
+import { useToggle } from "metabase/hooks/use-toggle";
 import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
@@ -12,7 +13,6 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getIsBookmarked } from "metabase/collections/selectors";
 import { getSetting } from "metabase/selectors/settings";
-import { openNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -29,10 +29,10 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
-import { isSmallScreen } from "metabase/lib/dom";
 import Databases from "metabase/entities/databases";
 
 import UploadOverlay from "../components/UploadOverlay";
+import { ModelUploadModal } from "../components/ModelUploadModal";
 import { getComposedDragProps } from "./utils";
 
 import {
@@ -76,7 +76,6 @@ function mapStateToProps(state, props) {
 }
 
 const mapDispatchToProps = {
-  openNavbar,
   createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
   deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
   uploadFile,
@@ -92,7 +91,6 @@ function CollectionContent({
   deleteBookmark,
   isAdmin,
   isNavbarOpen,
-  openNavbar,
   uploadFile,
   uploadsEnabled,
   canUploadToDb,
@@ -104,17 +102,33 @@ function CollectionContent({
     sort_column: "name",
     sort_direction: "asc",
   });
+
+  const [
+    isModelUploadModalOpen,
+    { turnOn: openModelUploadModal, turnOff: closeModelUploadModal },
+  ] = useToggle(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+
+  const saveFile = file => {
+    setUploadedFile(file);
+    openModelUploadModal();
+  };
+
+  const handleUploadFile = useCallback(
+    ({ collectionId, tableId, modelId }) => {
+      if (uploadedFile && (collectionId || tableId)) {
+        closeModelUploadModal();
+        uploadFile({ file: uploadedFile, collectionId, tableId, modelId });
+      }
+    },
+    [uploadFile, uploadedFile, closeModelUploadModal],
+  );
+
   const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
     usePagination();
   const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
-
-  useMount(() => {
-    if (!isSmallScreen()) {
-      openNavbar();
-    }
-  });
 
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
@@ -132,12 +146,9 @@ function CollectionContent({
     setIsBookmarked(shouldBeBookmarked);
   }, [bookmarks, collectionId]);
 
-  const onDrop = useCallback(
-    acceptedFiles => {
-      uploadFile(acceptedFiles[0], collectionId);
-    },
-    [collectionId, uploadFile],
-  );
+  const onDrop = acceptedFiles => {
+    saveFile(acceptedFiles[0]);
+  };
 
   const { getRootProps, isDragActive } = useDropzone({
     onDrop,
@@ -238,10 +249,18 @@ function CollectionContent({
         return (
           <CollectionRoot {...dropzoneProps}>
             {canUpload && (
-              <UploadOverlay
-                isDragActive={isDragActive}
-                collection={collection}
-              />
+              <>
+                <ModelUploadModal
+                  collectionId={collectionId}
+                  opened={isModelUploadModalOpen}
+                  onClose={closeModelUploadModal}
+                  onUpload={handleUploadFile}
+                />
+                <UploadOverlay
+                  isDragActive={isDragActive}
+                  collection={collection}
+                />
+              </>
             )}
             <CollectionMain>
               <ErrorBoundary>
@@ -257,6 +276,7 @@ function CollectionContent({
                   onDeleteBookmark={handleDeleteBookmark}
                   canUpload={canUpload}
                   uploadsEnabled={uploadsEnabled}
+                  saveFile={saveFile}
                 />
               </ErrorBoundary>
               <ErrorBoundary>

@@ -58,11 +58,19 @@ export function setDefaultValue(value) {
 
 // UI PATTERNS
 
+export function getRequiredToggle() {
+  return cy.findByText("Always require a value");
+}
+
+export function getRequiredInput() {
+  return cy.findByLabelText("Always require a value");
+}
+
 /**
  * Toggle the required SQL filter on or off. It is off by default.
  */
 export function toggleRequired() {
-  cy.findByText("Required?").parent().find("input").click();
+  getRequiredToggle().click();
 }
 
 // FILTER QUERY
@@ -73,7 +81,7 @@ export function toggleRequired() {
  * @param {string} [xhrAlias ="dataset"]
  */
 export function runQuery(xhrAlias = "dataset") {
-  cy.findByTestId("native-query-editor-container").icon("play").click();
+  getRunQueryButton().click();
   cy.wait("@" + xhrAlias);
   cy.icon("play").should("not.exist");
 }
@@ -88,4 +96,12 @@ export function enterParameterizedQuery(query, options = {}) {
     parseSpecialCharSequences: false,
     ...options,
   });
+}
+
+export function getRunQueryButton() {
+  return cy.findByTestId("native-query-editor-sidebar").button("Get Answer");
+}
+
+export function getSaveQueryButton() {
+  return cy.findByRole("button", { name: "Save" });
 }

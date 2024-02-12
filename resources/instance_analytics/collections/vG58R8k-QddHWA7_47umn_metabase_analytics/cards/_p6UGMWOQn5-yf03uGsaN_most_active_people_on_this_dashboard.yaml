@@ -127,3 +127,4 @@ serdes/meta:
   label: most_active_people_on_this_dashboard
   model: Card
 metabase_version: null
+type: question

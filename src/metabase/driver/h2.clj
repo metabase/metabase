@@ -567,12 +567,14 @@
     :metabase.upload/varchar-255              [:varchar]
     :metabase.upload/text                     [:varchar]
     :metabase.upload/int                      [:bigint]
-    :metabase.upload/auto-incrementing-int-pk [:bigint :generated-always :as :identity :primary-key]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :generated-always :as :identity]
     :metabase.upload/float                    [(keyword "DOUBLE PRECISION")]
     :metabase.upload/boolean                  [:boolean]
     :metabase.upload/date                     [:date]
     :metabase.upload/datetime                 [:timestamp]
     :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
+
+(defmethod driver/create-auto-pk-with-append-csv? :h2 [_driver] true)
 
 (defmethod driver/table-name-length-limit :h2
   [_driver]

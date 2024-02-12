@@ -140,7 +140,7 @@ export const LoadingTitle = styled.h2`
 `;
 
 export const PaddedSidebarLink = styled(SidebarLink)`
-  padding-left: ${space(2)};
+  padding-left: 12px;
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`

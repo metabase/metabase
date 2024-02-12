@@ -66,27 +66,29 @@
 
 (def card-defaults
   "The default card params."
-  {:archived            false
-   :collection_id       nil
-   :collection_position nil
-   :collection_preview  true
-   :dataset_query       {}
-   :dataset             false
-   :description         nil
-   :display             "scalar"
-   :enable_embedding    false
-   :entity_id           nil
-   :embedding_params    nil
-   :made_public_by_id   nil
-   :parameters          []
-   :parameter_mappings  []
-   :moderation_reviews  ()
-   :public_uuid         nil
-   :query_type          nil
-   :cache_ttl           nil
-   :average_query_time  nil
-   :last_query_start    nil
-   :result_metadata     nil})
+  {:archived               false
+   :collection_id          nil
+   :collection_position    nil
+   :collection_preview     true
+   :dataset_query          {}
+   :dataset                false
+   :type                   "question"
+   :description            nil
+   :display                "scalar"
+   :enable_embedding       false
+   :initially_published_at nil
+   :entity_id              nil
+   :embedding_params       nil
+   :made_public_by_id      nil
+   :parameters             []
+   :parameter_mappings     []
+   :moderation_reviews     ()
+   :public_uuid            nil
+   :query_type             nil
+   :cache_ttl              nil
+   :average_query_time     nil
+   :last_query_start       nil
+   :result_metadata        nil})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
@@ -258,73 +260,100 @@
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
                  (select-keys card [:name]))))))))
 
-(deftest filter-by-using-model
-  (testing "list cards using a model"
-    (mt/with-temp [:model/Card {model-id :id :as model} {:name "Model", :dataset true
-                                                         :dataset_query {:query {:source-table (mt/id :venues)
-                                                                                 :filter [:= [:field 1 nil] "1"]}}}
-                   ;; matching question
-                   :model/Card card-1 {:name "Card 1"
-                                       :dataset_query {:query {:source-table (str "card__" model-id)}}}
-                   :model/Card {other-card-id :id} {}
-                   ;; source-table doesn't match
-                   :model/Card card-2 {:name "Card 2"
-                                       :dataset_query {:query {:source-table (str "card__" other-card-id)
-                                                               :filter [:= [:field 5 nil] (str "card__" model-id)]}}}
-                   ;; matching join
-                   :model/Card card-3 {:name "Card 3"
-                                       :dataset_query (let [alias (str "Question " model-id)]
-                                                        {:type :query
-                                                         :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
-                                                                          :source-table (str "card__" model-id)
-                                                                          :condition [:=
-                                                                                      [:field 5 nil]
-                                                                                      [:field 33 {:join-alias alias}]]
-                                                                          :alias alias
-                                                                          :strategy :inner-join}]
-                                                                 :fields [[:field 9 nil]]
-                                                                 :source-table (str "card__" other-card-id)}
-                                                         :database (mt/id)})}
-                   ;; matching native query
-                   :model/Card card-4 {:name "Card 4"
-                                       :dataset_query {:type :native
-                                                       :native (let [model-ref (format "#%d-q1" model-id)]
-                                                                 {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                                 model-ref)
-                                                                  :template-tags {model-ref
-                                                                                  {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                                   :name model-ref
-                                                                                   :display-name model-ref
-                                                                                   :type :card
-                                                                                   :card-id model-id}}})
-                                                       :database (mt/id)}}
-                   ;; native query reference doesn't match
-                   :model/Card card-5 {:name "Card 5"
-                                       :dataset_query {:type :native
-                                                       :native (let [model-ref (str "card__" model-id)
-                                                                     card-id other-card-id
-                                                                     card-ref (format "#%d-q1" card-id)]
-                                                                 {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                                 model-ref card-ref)
-                                                                  :template-tags {card-ref
-                                                                                  {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                                   :name card-ref
-                                                                                   :display-name card-ref
-                                                                                   :type :card
-                                                                                   :card-id card-id}}})
-                                                       :database (mt/id)}}
-                   :model/Database {other-database-id :id} {}
-                   ;; database doesn't quite match
-                   :model/Card card-6 {:name "Card 6", :database_id other-database-id
-                                       :dataset_query {:query {:source-table (str "card__" model-id)}}}
-                   ;; same as matching question, but archived
-                   :model/Card card-7 {:name "Card 7"
-                                       :archived true
-                                       :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+(deftest filter-by-using-model-segment-metric
+  (mt/with-temp [:model/Database {database-id :id} {}
+                 :model/Table {table-id :id} {:db_id database-id}
+                 :model/Segment {segment-id :id} {:table_id table-id}
+                 :model/Metric {metric-id :id} {:table_id table-id}
+                 :model/Card {model-id :id :as model} {:name "Model", :dataset true
+                                                       :dataset_query {:query {:source-table (mt/id :venues)
+                                                                               :filter [:= [:field 1 nil] "1"]}}}
+                 ;; matching question
+                 :model/Card card-1 {:name "Card 1"
+                                     :dataset_query {:query {:source-table (str "card__" model-id)
+                                                             :filter [:segment segment-id]}
+                                                     :database (mt/id)
+                                                     :type :query}}
+                 :model/Card {other-card-id :id} {}
+                 ;; source-table doesn't match
+                 :model/Card card-2 {:name "Card 2"
+                                     :dataset_query {:query {:source-table (str "card__" other-card-id)
+                                                             :filter [:= [:field 5 nil] (str "card__" model-id)]
+                                                             :aggregation [[:metric metric-id]]}
+                                                     :database (mt/id)
+                                                     :type :query}}
+                 ;; matching join
+                 :model/Card card-3 {:name "Card 3"
+                                     :dataset_query (let [alias (str "Question " model-id)]
+                                                      {:type :query
+                                                       :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
+                                                                        :source-table (str "card__" model-id)
+                                                                        :condition [:=
+                                                                                    [:field 5 nil]
+                                                                                    [:field 33 {:join-alias alias}]]
+                                                                        :alias alias
+                                                                        :strategy :inner-join}
+                                                                       {:fields       :all
+                                                                        :alias        "__alias__"
+                                                                        :condition    [:=
+                                                                                       [:field 1 nil]
+                                                                                       [:field 2 {:join-alias "__alias__"}]]
+                                                                        :source-query {:source-table 1
+                                                                                       :filter [:or
+                                                                                                [:> [:field 1 nil] 3]
+                                                                                                [:segment segment-id]]
+                                                                                       :aggregation  [[:+ [:metric metric-id] 1]]
+                                                                                       :breakout     [[:field 4 nil]]}}]
+                                                               :fields [[:field 9 nil]]
+                                                               :source-table (str "card__" other-card-id)}
+                                                       :database (mt/id)})}
+                 ;; matching native query
+                 :model/Card card-4 {:name "Card 4"
+                                     :dataset_query {:type :native
+                                                     :native (let [model-ref (format "#%d-q1" model-id)]
+                                                               {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                               model-ref)
+                                                                :template-tags {model-ref
+                                                                                {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                 :name model-ref
+                                                                                 :display-name model-ref
+                                                                                 :type :card
+                                                                                 :card-id model-id}}})
+                                                     :database (mt/id)}}
+                 ;; native query reference doesn't match
+                 :model/Card card-5 {:name "Card 5"
+                                     :dataset_query {:type :native
+                                                     :native (let [model-ref (str "card__" model-id)
+                                                                   card-id other-card-id
+                                                                   card-ref (format "#%d-q1" card-id)]
+                                                               {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                               model-ref card-ref)
+                                                                :template-tags {card-ref
+                                                                                {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                 :name card-ref
+                                                                                 :display-name card-ref
+                                                                                 :type :card
+                                                                                 :card-id card-id}}})
+                                                     :database (mt/id)}}
+                 :model/Database {other-database-id :id} {}
+                 ;; database doesn't quite match
+                 :model/Card card-6 {:name "Card 6", :database_id other-database-id
+                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}
+                 ;; same as matching question, but archived
+                 :model/Card card-7 {:name "Card 7"
+                                     :archived true
+                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+    (testing "list cards using a model"
       (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_model :model_id model-id))))))))
+                                                           :f :using_model :model_id model-id))))
+        (is (= #{"Card 1" "Card 3"}
+               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
+                                                           :f :using_segment :model_id segment-id))))
+        (is (= #{"Card 2" "Card 3"}
+               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
+                                                           :f :using_metric :model_id metric-id))))))))
 
 (deftest get-cards-with-last-edit-info-test
   (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
@@ -977,6 +1006,59 @@
                          [:trace          [:sequential :any]]]
                         (create-card! :rasta 403)))))))))
 
+(deftest create-card-with-type-and-dataset-test
+  (mt/with-model-cleanup [:model/Card]
+    (testing "type and dataset must match"
+      (is (= ":dataset is inconsistent with :type"
+             (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                      :dataset true
+                                                                      :type :question))))
+      (is (= ":dataset is inconsistent with :type"
+             (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                      :dataset false
+                                                                      :type "model")))))
+    (testing "can create a model using dataset"
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                       :dataset true)))))
+
+    (testing "can create a model using type"
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                       :type :model)))))
+
+    (testing "default is a question"
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
+
+(deftest update-card-with-type-and-dataset-test
+  (testing "can toggle model using only type"
+    (mt/with-temp [:model/Card card {:dataset_query {}}]
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))
+
+  (testing "can toggle model using both type and dataset"
+    (mt/with-temp [:model/Card card {:dataset_query {}}]
+      (is (=? {:dataset true
+               :type    "model"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model" :dataset true})))
+
+      (is (=? {:dataset false
+               :type    "question"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question" :dataset false})))
+
+      (testing "but error if type and dataset doesn't match"
+        (is (= ":dataset is inconsistent with :type"
+               (mt/user-http-request :crowberto :put 400 (str "card/" (:id card)) {:type "question" :dataset true})))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1249,6 +1331,16 @@
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
 
+(deftest ^:parallel turn-card-to-model-change-display-test
+  (mt/with-temp [:model/Card card {:display :line}]
+    (is (=? {:display "table"}
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                  {:dataset true}))))
+
+  (mt/with-temp [:model/Card card {:display :line}]
+    (is (=? {:display "table"}
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                  {:type "model"})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Updating the positions of stuff                                         |
@@ -2646,7 +2738,7 @@
                                                :dataset_query (mbql-count-query)}]
       (is (=? {:display "table" :dataset true}
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                    (assoc card :dataset true)))))))
+                                    (assoc card :dataset true :type "model")))))))
 
 (deftest dataset-card-2
   (testing "Cards preserve their edited metadata"
@@ -3250,3 +3342,64 @@
             (is (=?
                   {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
+
+(defn run-based-on-upload-test
+  "Runs tests for based-on-upload `request` is a function that takes a card and returns a map which may have {:based_on_upload <table-id>}]
+  This function exists to deduplicate test logic for all API endpoints that must return `based_on_upload`,
+  including GET /api/collection/:id/items and GET /api/card/:id"
+  [request]
+  (mt/with-driver :h2 ; just test on H2 because failure should be independent of drivers
+    (mt/with-temporary-setting-values [uploads-enabled true]
+      (mt/with-temp [:model/Database   {db-id :id :as db}     {:engine "h2"}
+                     :model/Table      {table-id :id}         {:db_id db-id, :is_upload true}
+                     :model/Collection {collection-id :id}    {}]
+        (let [card-defaults {:collection_id collection-id
+                             :dataset       true
+                             :dataset_query {:type     :query
+                                             :database db-id
+                                             :query    {:source-table table-id}}}]
+          (mt/with-temp [:model/Card {card-id :id :as card} card-defaults]
+            (testing "\nCards based on uploads have based_on_upload=<table-id> if they meet all the criteria"
+              (is (= table-id (:based_on_upload (request card)))))
+            (testing "If one of the criteria for appends is not met, based_on_upload should be nil."
+              (testing "\nIf the card is based on another card, which is based on the table, based_on_upload should be nil"
+                (mt/with-temp [:model/Card card' (assoc card-defaults
+                                                        :dataset_query
+                                                        {:type     :query
+                                                         :database db-id
+                                                         :query    {:source-table (str "card__" card-id)}})]
+                  (is (nil? (:based_on_upload (request card'))))))
+              (testing "\nIf the card has a join in the query (even to itself), based_on_upload should be nil"
+                (mt/with-temp [:model/Card card' (assoc card-defaults
+                                                        :dataset_query
+                                                        {:type     :query
+                                                         :database db-id
+                                                         :query    {:source-table table-id
+                                                                    :joins [{:fields       :all
+                                                                             :source-table table-id
+                                                                             :condition    [:= 1 2] ; field-ids don't matter
+                                                                             :alias        "SomeAlias"}]}})]
+                  (is (nil? (:based_on_upload (request card'))))))
+              (testing "\nIf the table is not based on uploads, based_on_upload should be nil"
+                (t2/update! :model/Table table-id {:is_upload false})
+                (is (nil? (:based_on_upload (request card))))
+                (t2/update! :model/Table table-id {:is_upload true}))
+              (testing "\nIf uploads are disabled, based_on_upload should be nil"
+                (mt/with-temp-copy-of-db
+                  (perms/revoke-data-perms! (perms-group/all-users) db)
+                  (is (nil? (:based_on_upload (mt/user-http-request :rasta :get 200 (str "card/" card-id)))))))
+              (testing "\nIf uploads are disabled, based_on_upload should be nil"
+                (mt/with-temporary-setting-values [uploads-enabled false]
+                  (is (nil? (:based_on_upload (request card))))))
+              (testing "\nIf the card is not a model, based_on_upload should be nil"
+                (mt/with-temp [:model/Card card' (assoc card-defaults :dataset false)]
+                  (is (nil? (:based_on_upload (request card'))))))
+              (testing "\nIf the card is a native query, based_on_upload should be nil"
+                (mt/with-temp [:model/Card card' (assoc card-defaults
+                                                        :dataset_query (mt/native-query {:native "select 1"}))]
+                  (is (nil? (:based_on_upload (request card')))))))))))))
+
+(deftest based-on-upload-test
+  (run-based-on-upload-test
+   (fn [card]
+     (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))

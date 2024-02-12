@@ -7,23 +7,20 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { TextInput } from "metabase/ui";
+import { Text, TextInput } from "metabase/ui";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
+import { RequiredParamToggle } from "../RequiredParamToggle";
 import {
   SettingLabel,
-  SettingRemoveButton,
+  SettingLabelError,
   SettingSection,
   SettingsRoot,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
-
-const MULTI_SELECT_OPTIONS = [
-  { name: t`Multiple values`, value: true },
-  { name: t`A single value`, value: false },
-];
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
@@ -34,10 +31,11 @@ export interface ParameterSettingsProps {
   onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
-  onRemoveParameter: () => void;
+  onChangeRequired: (value: boolean) => void;
+  embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
-const ParameterSettings = ({
+export const ParameterSettings = ({
   parameter,
   isParameterSlugUsed,
   onChangeName,
@@ -46,7 +44,8 @@ const ParameterSettings = ({
   onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
-  onRemoveParameter,
+  onChangeRequired,
+  embeddedParameterVisibility,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
 
@@ -80,6 +79,8 @@ const ParameterSettings = ({
     [onChangeSourceType, onChangeSourceConfig],
   );
 
+  const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
+
   return (
     <SettingsRoot>
       <SettingSection>
@@ -102,8 +103,30 @@ const ParameterSettings = ({
           />
         </SettingSection>
       )}
+
+      {isSingleOrMultiSelectable(parameter) && (
+        <SettingSection>
+          <SettingLabel>{t`People can pick`}</SettingLabel>
+          <Radio
+            value={getIsMultiSelect(parameter)}
+            options={[
+              { name: t`Multiple values`, value: true },
+              { name: t`A single value`, value: false },
+            ]}
+            vertical
+            onChange={onChangeIsMultiSelect}
+          />
+        </SettingSection>
+      )}
+
       <SettingSection>
-        <SettingLabel>{t`Default value`}</SettingLabel>
+        <SettingLabel>
+          {t`Default value`}
+          {parameter.required && !parameter.default && (
+            <SettingLabelError>({t`required`})</SettingLabelError>
+          )}
+        </SettingLabel>
+
         <SettingValueWidget
           parameter={parameter}
           name={parameter.name}
@@ -111,21 +134,35 @@ const ParameterSettings = ({
           placeholder={t`No default`}
           setValue={onChangeDefaultValue}
         />
+
+        <RequiredParamToggle
+          // This forces the toggle to be a new instance when the parameter changes,
+          // so that toggles don't slide, which is confusing.
+          key={`required_param_toggle_${parameter.id}`}
+          uniqueId={parameter.id}
+          disabled={isEmbeddedDisabled}
+          value={parameter.required ?? false}
+          onChange={onChangeRequired}
+          disabledTooltip={
+            <>
+              <Text lh={1.4}>
+                {t`This filter is set to disabled in an embedded dashboard.`}
+              </Text>
+              <Text lh={1.4}>
+                {t`To always require a value, first visit embedding settings,
+                    make this filter editable or locked, re-publish the
+                    dashboard, then return to this page.`}
+              </Text>
+              <Text size="sm">
+                {t`Note`}:{" "}
+                {t`making it locked, will require updating the
+                    embedding code before proceeding, otherwise the embed will
+                    break.`}
+              </Text>
+            </>
+          }
+        ></RequiredParamToggle>
       </SettingSection>
-      {isSingleOrMultiSelectable(parameter) && (
-        <SettingSection>
-          <SettingLabel>{t`People can pick`}</SettingLabel>
-          <Radio
-            value={getIsMultiSelect(parameter)}
-            options={MULTI_SELECT_OPTIONS}
-            vertical
-            onChange={onChangeIsMultiSelect}
-          />
-        </SettingSection>
-      )}
-      <SettingRemoveButton onClick={onRemoveParameter}>
-        {t`Remove`}
-      </SettingRemoveButton>
     </SettingsRoot>
   );
 };
@@ -148,6 +185,3 @@ function getLabelError({
   }
   return null;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ParameterSettings;

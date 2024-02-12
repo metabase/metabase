@@ -188,3 +188,38 @@
    table-id :- [:or ::lib.schema.id/table :string]]
   (let [metadata-provider (lib.metadata/->metadata-provider original-query)]
    (query metadata-provider (lib.metadata/table-or-card metadata-provider table-id))))
+
+(defn- occurs-in-expression?
+  [expression-clause clause-type expression-body]
+  (or (and (lib.util/clause-of-type? expression-clause clause-type)
+           (= (nth expression-clause 2) expression-body))
+      (and (sequential? expression-clause)
+           (boolean
+            (some #(occurs-in-expression? % clause-type expression-body)
+                  (nnext expression-clause))))))
+
+(defn- occurs-in-stage-clause?
+  "Tests whether predicate `pred` is true for an element of clause `clause` of `query-or-join`.
+  The test is transitive over joins."
+  [query-or-join clause pred]
+  (boolean
+   (some (fn [stage]
+           (or (some pred (clause stage))
+               (some #(occurs-in-stage-clause? % clause pred) (:joins stage))))
+         (:stages query-or-join))))
+
+(mu/defn uses-segment? :- :boolean
+  "Tests whether `a-query` uses segment with ID `segment-id`.
+  `segment-id` can be a regular segment ID or a string. The latter is for symmetry
+  with [[uses-metric?]]."
+  [a-query :- ::lib.schema/query
+   segment-id :- [:or ::lib.schema.id/segment :string]]
+  (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
+
+(mu/defn uses-metric? :- :boolean
+  "Tests whether `a-query` uses metric with ID `metric-id`.
+  `metric-id` can be a regular metric ID or a string. The latter is to support
+  some strange use-cases (see [[metabase.lib.metric-test/ga-metric-metadata-test]])."
+  [a-query :- ::lib.schema/query
+   metric-id :- [:or ::lib.schema.id/metric :string]]
+  (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))

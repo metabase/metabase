@@ -1,4 +1,4 @@
-import { filterWidget, popover, restore } from "e2e/support/helpers";
+import { editDashboard, popover, restore, sidebar } from "e2e/support/helpers";
 
 const parameterDetails = {
   name: "Between",
@@ -29,10 +29,14 @@ describe("issue 31662", () => {
       },
     );
     cy.findByTestId("dashboard-empty-state").should("be.visible");
-    filterWidget().findByText("2 selections").click();
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Between")
+      .click();
+    sidebar().findByText("2 selections").click();
     popover().within(() => {
-      cy.findByDisplayValue("10").should("be.visible");
-      cy.findByDisplayValue("20").should("be.visible");
+      cy.findByDisplayValue("3").should("be.visible");
+      cy.findByDisplayValue("5").should("be.visible");
     });
   });
 });

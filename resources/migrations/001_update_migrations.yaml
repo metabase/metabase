@@ -5205,6 +5205,331 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v49.2023-01-24T12:00:00
+      author: piranha
+      comment: >-
+        This significantly speeds up api.database/autocomplete-fields query
+        and is an improvement for issue 30588.
+        H2 does not support this: https://github.com/h2database/h2database/issues/3535
+        Mariadb does not support this.
+        Mysql says it does, but reports an error during migration.
+      dbms: postgresql
+      changes:
+        - createIndex:
+            tableName: metabase_field
+            indexName: idx_field_name_lower
+            columns:
+              - column:
+                  name: lower(name)
+                  computed: true
+      rollback:
+        - dropIndex:
+            tableName: metabase_field
+            indexName: idx_field_name_lower
+
+  - changeSet:
+      id: v49.2024-01-22T11:50:00
+      author: qnkhuat
+      comment: Add `report_card.type`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  remarks: The type of card, could be 'question', 'model', 'metric'
+                  name: type
+                  type: varchar(16)
+                  defaultValue: "question"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v49.2024-01-22T11:51:00
+      author: qnkhuat
+      comment: Backfill `report_card.type`
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET type = 'model'
+              WHERE dataset is true
+      rollback: # no need, the column will be dropped
+
+  - changeSet:
+      id: v49.2024-01-22T11:52:00
+      author: qnkhuat
+      comment: Backfill `report_card.type`
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CardRevisionAddType"
+
+  - changeSet:
+      id: v49.2024-01-29T19:26:40
+      author: adam-james
+      comment: Add width setting to Dashboards
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: width
+                  type: varchar(16)
+                  defaultValue: "fixed"
+                  remarks: "The value of the dashboard's width setting can be fixed or full. New dashboards will be set to fixed"
+
+  - changeSet:
+      id: v49.2024-01-29T19:30:00
+      author: adam-james
+      comment: Update existing report_dashboard width values to full
+      changes:
+        - update:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: width
+                  value: "full"
+      rollback: []
+
+  - changeSet:
+      id: v49.2024-01-29T19:56:40
+      author: adam-james
+      comment: Dashboard width setting must have a value
+      changes:
+        - addNotNullConstraint:
+            tableName: report_dashboard
+            columnName: width
+            columnDatatype: varchar(16)
+            defaultNullvalue: "full"
+            remarks: "If for some reason an existing dashboard has null width value it is set to full"
+
+  - changeSet:
+      id: v49.2024-01-29T19:59:12
+      author: adam-james
+      comment: Add default value to report_dashboard.width for mysql and mariadb
+      changes:
+        - addDefaultValue:
+            defaultValue: "fixed"
+            tableName: report_dashboard
+            columnName: width
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-02-02T11:27:49
+      author: oisincoveney
+      comment: >-
+        Add report_card.initially_published_at
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: initially_published_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+                  remarks: The timestamp when the card was first published in a static embed
+
+  - changeSet:
+        id: v49.2024-02-02T11:28:36
+        author: oisincoveney
+        comment: >-
+          Add report_dashboard.initially_published_at
+        changes:
+          - addColumn:
+              tableName: report_dashboard
+              columns:
+                - column:
+                    name: initially_published_at
+                    type: ${timestamp_type}
+                    constraints:
+                      nullable: true
+                    remarks: The timestamp when the dashboard was first published in a static embed
+
+  - changeSet:
+      id: v49.2024-02-07T21:52:01
+      author: noahmoss
+      comment: Added 0.49.0 - updated view v_view_log
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/view_log/v2/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/view_log/v2/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/view_log/v2/h2-view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/view_log/v1/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/view_log/v1/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/view_log/v1/h2-view_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-02-07T21:52:02
+      author: noahmoss
+      comment: Added 0.49.0 - updated view v_audit_log
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/audit_log/v2/postgres-audit_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/audit_log/v2/mysql-audit_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/audit_log/v2/h2-audit_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/audit_log/v1/postgres-audit_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/audit_log/v1/mysql-audit_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/audit_log/v1/h2-audit_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-02-07T21:52:03
+      author: noahmoss
+      comment: Added 0.49.0 - updated view v_group_members
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/group_members/v2/group_members.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/group_members/v1/group_members.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-02-07T21:52:04
+      author: noahmoss
+      comment: Added 0.49.0 - updated view v_query_log
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/query_log/v2/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/query_log/v2/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/query_log/v2/h2-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/query_log/v1/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/query_log/v1/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/query_log/v1/h2-query_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-02-07T21:52:05
+      author: noahmoss
+      comment: Added 0.49.0 - updated view v_users
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/users/v2/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/users/v2/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/users/v2/h2-users.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/users/v1/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/users/v1/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/users/v1/h2-users.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-02-09T13:55:26
+      author: noahmoss
+      comment: Set default value for enable-public-sharing to `false` for existing instances with users, if not already set
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - or:
+                - and:
+                    - dbms:
+                        type: postgresql
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE key = 'enable-public-sharing';
+                - and:
+                    - dbms:
+                        type: h2
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-public-sharing';
+                - and:
+                    - dbms:
+                        type: mysql,mariadb
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE `key` = 'enable-public-sharing';
+            - sqlCheck:
+                expectedResult: 1
+                sql: >
+                  SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM core_user;
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: INSERT INTO setting (key, value) VALUES ('enable-public-sharing', 'false');
+        - sql:
+            dbms: mysql,mariadb
+            sql: INSERT INTO setting (`key`, value) VALUES ('enable-public-sharing', 'false');
+        - sql:
+            dbms: h2
+            sql: INSERT INTO setting ("KEY", "VALUE") VALUES ('enable-public-sharing', 'false');
+      rollback: # not needed
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

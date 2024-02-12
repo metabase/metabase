@@ -10,8 +10,9 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import { slugify } from "metabase/lib/formatting";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
-import ParameterSettings from "../ParameterSettings";
+import { ParameterSettings } from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
@@ -40,12 +41,16 @@ export interface ParameterSidebarProps {
     parameterId: ParameterId,
     filteringParameters: string[],
   ) => void;
+  onChangeRequired: (parameterId: ParameterId, value: boolean) => void;
   onRemoveParameter: (parameterId: ParameterId) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
+  getEmbeddedParameterVisibility: (
+    slug: string,
+  ) => EmbeddingParameterVisibility | null;
 }
 
-const ParameterSidebar = ({
+export const ParameterSidebar = ({
   parameter,
   otherParameters,
   onChangeName,
@@ -55,9 +60,11 @@ const ParameterSidebar = ({
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeFilteringParameters,
+  onChangeRequired,
   onRemoveParameter,
   onShowAddParameterPopover,
   onClose,
+  getEmbeddedParameterVisibility,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -123,8 +130,11 @@ const ParameterSidebar = ({
     [otherParameters],
   );
 
+  const handleChangeRequired = (value: boolean) =>
+    onChangeRequired(parameterId, value);
+
   return (
-    <Sidebar onClose={onClose}>
+    <Sidebar onClose={onClose} onRemove={handleRemove}>
       <SidebarHeader>
         <Radio
           value={tab}
@@ -137,6 +147,9 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
+            embeddedParameterVisibility={getEmbeddedParameterVisibility(
+              parameter.slug,
+            )}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
@@ -144,7 +157,7 @@ const ParameterSidebar = ({
             onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
-            onRemoveParameter={handleRemove}
+            onChangeRequired={handleChangeRequired}
           />
         ) : (
           <ParameterLinkedFilters
@@ -168,6 +181,3 @@ const getTabs = (parameter: Parameter) => {
 
   return tabs;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ParameterSidebar;

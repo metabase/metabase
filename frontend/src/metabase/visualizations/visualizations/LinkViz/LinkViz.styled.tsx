@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import BaseExternalLink from "metabase/core/components/ExternalLink";
+import Input from "metabase/core/components/Input";
 import { Icon } from "metabase/ui";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 
@@ -84,4 +85,12 @@ export const SearchResultsContainer = styled.div`
 
 export const StyledRecentsList = styled(RecentsList)`
   ${searchResultsStyles}
+`;
+
+export const StyledInput = styled(Input)`
+  pointer-events: all;
+
+  * {
+    pointer-events: all;
+  }
 `;

@@ -32,6 +32,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -75,8 +76,12 @@
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
 
-  For archived, we can either pass in include both (when archived is nil), include only archived is true, or archived is false."
-  [archived exclude-other-user-collections namespace shallow collection-id]
+  For archived, we can either include everthing (when archived is `nil`), only archived (when `archived` is true),
+  or only non-archived (when `archived` is false).
+
+  To select only personal collections, pass in `personal-only` as `true`.
+  This will select only collections where `personal_owner_id` is not `nil`."
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -84,16 +89,18 @@
                          [:= :archived archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
+                       (when personal-only
+                         [:!= :personal_owner_id nil])
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-ids->honeysql-filter-clause
                         :id
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                        (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -103,15 +110,23 @@
   `?archived=true`.
 
   By default, admin users will see all collections. To hide other user's collections pass in
-  `?exclude-other-user-collections=true`."
-  [archived exclude-other-user-collections namespace]
+  `?exclude-other-user-collections=true`.
+
+  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
+  [archived exclude-other-user-collections namespace personal-only]
   {archived                       [:maybe ms/BooleanValue]
    exclude-other-user-collections [:maybe ms/BooleanValue]
-   namespace                      [:maybe ms/NonBlankString]}
+   namespace                      [:maybe ms/NonBlankString]
+   personal-only                  [:maybe ms/BooleanValue]}
   (as->
-   (select-collections archived exclude-other-user-collections namespace false nil) collections
-    ;; include Root Collection at beginning or results if archived isn't `true`
-    (if archived
+   (select-collections {:archived                       archived
+                        :exclude-other-user-collections exclude-other-user-collections
+                        :namespace                      namespace
+                        :shallow                        false
+                        :personal-only                  personal-only
+                        :permissions-set                @api/*current-user-permissions-set*}) collections
+    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
+    (if (or archived personal-only)
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
@@ -173,7 +188,12 @@
    shallow                        [:maybe :boolean]
    collection-id                  [:maybe ms/PositiveInt]}
   (let [archived    (if exclude-archived false nil)
-        collections (select-collections archived exclude-other-user-collections namespace shallow collection-id)]
+        collections (select-collections {:archived                       archived
+                                         :exclude-other-user-collections exclude-other-user-collections
+                                         :namespace                      namespace
+                                         :shallow                        shallow
+                                         :collection-id                  collection-id
+                                         :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
@@ -303,7 +323,7 @@
   (for [row rows]
     (dissoc row
             :description :display :authority_level :moderated_status :icon :personal_owner_id
-            :collection_preview :dataset_query)))
+            :collection_preview :dataset_query :table_id :query_type :is_upload)))
 
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
@@ -332,7 +352,7 @@
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
-            :collection_preview :dataset_query)))
+            :collection_preview :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
@@ -340,7 +360,7 @@
     (dissoc row
             :description :collection_position :display :authority_level
             :moderated_status :icon :personal_owner_id :collection_preview
-            :dataset_query)))
+            :dataset_query :table_id :query_type :is_upload)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
@@ -375,6 +395,9 @@
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
                    [:= :dataset dataset?]]}
+      (cond-> dataset?
+        (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
+            (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
@@ -383,7 +406,13 @@
 
 (defmethod post-process-collection-children :dataset
   [_ rows]
-  (post-process-collection-children :card rows))
+  (let [queries-before (map :dataset_query rows)
+        queries-parsed (map (comp mbql.normalize/normalize json/parse-string) queries-before)]
+    ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
+    (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
+         upload/model-hydrate-based-on-upload
+         (map #(assoc %2 :dataset_query %1) queries-before)
+         (post-process-collection-children :card))))
 
 (defmethod collection-children-query :card
   [_ collection options]
@@ -431,7 +460,7 @@
 
 (defn- post-process-card-row [row]
   (-> row
-      (dissoc :authority_level :icon :personal_owner_id :dataset_query)
+      (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :collection_preview api/bit->boolean)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
@@ -466,7 +495,7 @@
   [_ rows]
   (map #(dissoc %
                 :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
-                :dataset_query)
+                :dataset_query :table_id :query_type :is_upload)
        rows))
 
 (defenterprise snippets-collection-filter-clause
@@ -516,7 +545,7 @@
       (-> row
           (assoc :can_write (mi/can-write? Collection (:id row)))
           (dissoc :collection_position :display :moderated_status :icon
-                  :collection_preview :dataset_query)
+                  :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
@@ -578,7 +607,9 @@
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
-   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]])
+   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
+   ;; for determining whether a model is based on a csv-uploaded table
+   [:table_id :integer] [:is_upload :boolean] :query_type])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."

@@ -1,9 +1,8 @@
-import type { Card, ParameterTarget } from "metabase-types/api";
+import type { ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import * as Lib from "metabase-lib";
 import Dimension from "metabase-lib/Dimension";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
@@ -42,8 +41,12 @@ export function buildDimensionTarget(dimension: Dimension) {
   return ["dimension", dimension.mbql()];
 }
 
-export function buildColumnTarget(column: Lib.ColumnMetadata) {
-  return ["dimension", Lib.legacyRef(column)];
+export function buildColumnTarget(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  return ["dimension", Lib.legacyRef(query, stageIndex, column)];
 }
 
 export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
@@ -52,16 +55,6 @@ export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
 
 export function buildTextTagTarget(tagName: string): ["text-tag", string] {
   return ["text-tag", tagName];
-}
-
-export function getTargetFieldFromCard(
-  target: ParameterTarget,
-  card: Card,
-  metadata: Metadata,
-) {
-  const question = new Question(card, metadata);
-  const field = getParameterTargetField(target, question);
-  return field ?? null;
 }
 
 export function compareMappingOptionTargets(

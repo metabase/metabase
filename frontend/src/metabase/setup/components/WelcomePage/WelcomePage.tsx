@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import LogoIcon from "metabase/components/LogoIcon";
 import { loadDefaults, selectStep } from "../../actions";
-import { LANGUAGE_STEP, LOCALE_TIMEOUT } from "../../constants";
+import { LOCALE_TIMEOUT } from "../../constants";
 import { getIsLocaleLoaded } from "../../selectors";
 import { SetupHelp } from "../SetupHelp";
 import {
@@ -21,7 +21,7 @@ export const WelcomePage = (): JSX.Element | null => {
   const dispatch = useDispatch();
 
   const handleStepSubmit = () => {
-    dispatch(selectStep(LANGUAGE_STEP));
+    dispatch(selectStep("language"));
   };
 
   useEffect(() => {

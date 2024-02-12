@@ -14,7 +14,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import {
-  isDashCardWithQuery,
+  isQuestionDashCard,
   getVisibleCardIds,
 } from "metabase/dashboard/utils";
 
@@ -40,17 +40,19 @@ import type {
   DashCardDataMap,
   DashCardId,
   Dashboard,
-  DashboardCard,
+  QuestionDashboardCard,
   DashboardTabId,
   ParameterId,
   ParameterValueOrArray,
-  SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-import { DashboardCardContainer } from "./DashboardGrid.styled";
+import {
+  DashboardCardContainer,
+  DashboardGridContainer,
+} from "./DashboardGrid.styled";
 
 import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
 import { GridLayout } from "./grid/GridLayout";
@@ -90,14 +92,14 @@ interface DashboardGridProps {
   isXray: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
-  clickBehaviorSidebarDashcard: DashboardCard | null;
+  clickBehaviorSidebarDashcard: QuestionDashboardCard | null;
   width: number;
   mode: Mode;
   metadata: Metadata;
 
   fetchCardData: (
     card: Card,
-    dashcard: DashboardCard,
+    dashcard: QuestionDashboardCard,
     options: {
       clearCache?: boolean;
       ignoreCache?: boolean;
@@ -291,9 +293,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   getLayoutForDashCard = (dashcard: BaseDashboardCard) => {
-    const visualization = getVisualizationRaw([
-      { card: (dashcard as DashboardCard).card } as SingleSeries,
-    ]);
+    const visualization = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization?.minSize || DEFAULT_CARD_SIZE;
 
@@ -371,7 +371,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
     const { addSeriesModalDashCard } = this.state;
     const isOpen =
-      !!addSeriesModalDashCard && isDashCardWithQuery(addSeriesModalDashCard);
+      !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
       <Modal
         className="Modal AddSeriesModal"
@@ -397,7 +397,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     const hasValidDashCard =
       !!replaceCardModalDashCard &&
-      isDashCardWithQuery(replaceCardModalDashCard);
+      isQuestionDashCard(replaceCardModalDashCard);
 
     const handleSelect = (nextCardId: CardId) => {
       if (!hasValidDashCard) {
@@ -442,7 +442,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     this.setState({ isDragging: false });
   };
 
-  onDashCardRemove(dc: DashboardCard) {
+  onDashCardRemove(dc: QuestionDashboardCard) {
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
       cardId: dc.card_id,
@@ -490,7 +490,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   renderDashCard(
-    dc: DashboardCard,
+    dc: QuestionDashboardCard,
     {
       isMobile,
       gridItemWidth,
@@ -556,7 +556,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     gridItemWidth,
     totalNumGridCols,
   }: {
-    item: DashboardCard;
+    item: QuestionDashboardCard;
     breakpoint: GridBreakpoint;
     gridItemWidth: number;
     totalNumGridCols: number;
@@ -614,13 +614,16 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   render() {
-    const { width } = this.props;
+    const { dashboard, width } = this.props;
     return (
-      <div className="flex layout-centered" data-testid="dashboard-grid">
+      <DashboardGridContainer
+        data-testid="dashboard-grid"
+        isFixedWidth={dashboard?.width === "fixed"}
+      >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
         {this.renderReplaceCardModal()}
-      </div>
+      </DashboardGridContainer>
     );
   }
 }

@@ -107,6 +107,7 @@ Metabase's reference documentation.
 - [Table metadata admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
+- [Working with JSON](./data-modeling/json-unfolding.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
 
 ### Actions
@@ -134,6 +135,7 @@ Metabase's reference documentation.
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
 - [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
+- [API keys](./people-and-groups/api-keys.md)
 
 #### Paid SSO options
 

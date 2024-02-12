@@ -3,7 +3,7 @@ import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
-import ParameterSidebar from "./ParameterSidebar";
+import { ParameterSidebar } from "./ParameterSidebar";
 
 interface SetupOpts {
   initialParameter: UiParameter;
@@ -52,6 +52,8 @@ const setup = ({
           onRemoveParameter={jest.fn()}
           onShowAddParameterPopover={jest.fn()}
           onClose={jest.fn()}
+          onChangeRequired={jest.fn()}
+          getEmbeddedParameterVisibility={() => null}
         />
       </div>
     );
