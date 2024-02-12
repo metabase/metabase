@@ -119,9 +119,8 @@
         :when (and (integer? fk-target)
                    (lib.types.isa/foreign-key? column))
         :let [table-id (:table-id (lib.metadata/field metadata-providerable fk-target))]
-        item (cond-> [{:type :field, :id fk-target}]
-               table-id (conj {:type :table, :id table-id}))]
-    item))
+        :when table-id]
+    {:type :table, :id table-id}))
 
 (defn- query-dependents
   [metadata-providerable query-or-join]
