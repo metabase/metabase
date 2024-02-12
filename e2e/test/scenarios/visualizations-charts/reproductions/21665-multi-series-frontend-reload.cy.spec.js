@@ -60,9 +60,7 @@ describe("issue 21665", () => {
       editQ2NativeQuery("select order by --", questionId);
     });
 
-    cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-    });
+    visitDashboard("@dashboardId");
 
     cy.get("@dashboardLoaded").should("have.been.calledThrice");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

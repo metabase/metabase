@@ -2,15 +2,14 @@ import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import Input from "metabase/core/components/Input";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type {
-  DashboardCard,
   LinkCardSettings,
   SearchModelType,
   UnrestrictedLinkEntity,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -31,6 +30,7 @@ import {
   SearchResultsContainer,
   StyledRecentsList,
   ExternalLink,
+  StyledInput,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
@@ -46,12 +46,12 @@ const MODELS_TO_SEARCH: SearchModelType[] = [
 ];
 
 export interface LinkVizProps {
-  dashcard: DashboardCard;
+  dashcard: VirtualDashboardCard;
   isEditing: boolean;
   onUpdateVisualizationSettings: (
-    newSettings: Partial<DashboardCard["visualization_settings"]>,
+    newSettings: Partial<VirtualDashboardCard["visualization_settings"]>,
   ) => void;
-  settings: DashboardCard["visualization_settings"] & {
+  settings: VirtualDashboardCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
   isEditingParameter?: boolean;
@@ -162,7 +162,7 @@ function LinkVizInner({
           }
           placement="bottom"
         >
-          <Input
+          <StyledInput
             fullWidth
             value={url ?? ""}
             autoFocus={autoFocus}

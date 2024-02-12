@@ -116,7 +116,7 @@
                (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
 
 ;; TODO: re-enable these tests once they're no longer flaky
-(defn- install-audit-db-if-needed!
+(defn install-audit-db-if-needed!
   "Checks if there's an audit-db. if not, it will create it and serialize audit content, including the
   `default-audit-collection`. If the audit-db is there, this does nothing."
   []
@@ -125,7 +125,10 @@
         cards (t2/exists? :model/Card :collection_id default-audit-id)
         dashboards (t2/exists? :model/Dashboard :collection_id default-audit-id)]
     (when-not (and coll cards dashboards)
-      (mbc/ensure-audit-db-installed!))))
+      ;; Force audit db to load, even if the checksum has not changed. Sometimes analytics bits get removed by tests,
+      ;; but next time we go to load analytics data, we find the existing checksum and don't bother loading it again.
+      (mt/with-temporary-setting-values [last-analytics-checksum -1]
+        (mbc/ensure-audit-db-installed!)))))
 
 (deftest can-write-false-for-audit-card-content-test
   (install-audit-db-if-needed!)

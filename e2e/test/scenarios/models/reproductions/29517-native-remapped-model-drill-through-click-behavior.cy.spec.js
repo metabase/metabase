@@ -96,9 +96,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
   });
 
   it("click behavior to custom destination should work (metabase#29517-2)", () => {
-    cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-    });
+    visitDashboard("@dashboardId");
 
     cy
       .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)

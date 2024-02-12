@@ -7,6 +7,18 @@ export function popover() {
   return cy.get(POPOVER_ELEMENT);
 }
 
+export function mantinePopover() {
+  const MANTINE_POPOVER = "[data-popover=mantine-popover]";
+  return cy.get(MANTINE_POPOVER).should("be.visible");
+}
+
+const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']";
+
+export function hovercard() {
+  cy.get(HOVERCARD_ELEMENT).should("be.visible");
+  return cy.get(HOVERCARD_ELEMENT);
+}
+
 export function main() {
   return cy.get("main");
 }

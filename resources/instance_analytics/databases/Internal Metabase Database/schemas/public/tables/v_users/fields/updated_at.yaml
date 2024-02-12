@@ -8,9 +8,9 @@ table_id:
 - Internal Metabase Database
 - public
 - v_users
-database_type: timestamp
-base_type: type/DateTime
-effective_type: type/DateTime
+database_type: timestamptz
+base_type: type/DateTimeWithLocalTZ
+effective_type: type/DateTimeWithLocalTZ
 semantic_type: type/UpdatedTimestamp
 database_is_auto_increment: false
 database_required: false
@@ -20,9 +20,9 @@ json_unfolding: false
 parent_id: null
 coercion_strategy: null
 preview_display: true
-position: 8
+position: 9
 custom_position: 0
-database_position: 8
+database_position: 9
 has_field_values: null
 settings: null
 caveats: null
@@ -38,3 +38,4 @@ serdes/meta:
 - id: updated_at
   model: Field
 database_indexed: null
+database_partitioned: null

@@ -12,3 +12,9 @@ export interface SetupCheckListTask {
   triggered: boolean;
   is_next_step: boolean;
 }
+
+export type UsageReason =
+  | "self-service-analytics"
+  | "embedding"
+  | "both"
+  | "not-sure";

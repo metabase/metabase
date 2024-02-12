@@ -58,7 +58,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+      visitDashboard("@dashboardId");
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
@@ -70,11 +70,10 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId, {
-          params: { [filterDetails.slug]: filterValue },
-        });
+      visitDashboard("@dashboardId", {
+        params: { [filterDetails.slug]: filterValue },
       });
+
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 

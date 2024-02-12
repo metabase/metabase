@@ -24,6 +24,8 @@ export const setMultipleDashCardAttributes = createAction(
 );
 
 export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
+export const ADD_MANY_CARDS_TO_DASH =
+  "metabase/dashboard/ADD_MANY_CARDS_TO_DASH";
 
 export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
 

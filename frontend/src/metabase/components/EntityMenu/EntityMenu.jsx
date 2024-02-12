@@ -107,6 +107,12 @@ class EntityMenu extends Component {
                       />
                     </li>
                   );
+                } else if (item.component) {
+                  return (
+                    <li key={item.title} data-testid={item.testId}>
+                      {item.component}
+                    </li>
+                  );
                 } else {
                   return (
                     <li key={item.title} data-testid={item.testId}>

@@ -11,5 +11,13 @@
     "cypress/globals": true,
     "node": true
   },
-  "plugins": ["cypress"]
+  "plugins": ["cypress"],
+  "overrides": [
+    {
+      "files": ["*.cy.spec.*"],
+      "rules": {
+        "no-console": "error"
+      }
+    }
+  ]
 }

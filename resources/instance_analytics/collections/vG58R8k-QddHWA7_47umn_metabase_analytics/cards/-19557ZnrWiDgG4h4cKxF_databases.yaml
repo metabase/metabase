@@ -508,3 +508,4 @@ serdes/meta:
   label: databases
   model: Card
 metabase_version: vUNKNOWN (0e09ac7)
+type: model

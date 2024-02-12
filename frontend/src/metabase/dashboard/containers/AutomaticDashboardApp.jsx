@@ -31,6 +31,7 @@ import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import { DashboardTabs } from "../components/DashboardTabs";
+import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
 import {
   ItemContent,
   ItemDescription,
@@ -155,14 +156,19 @@ class AutomaticDashboardAppInner extends Component {
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
-                <SyncedParametersList
-                  className="mt1"
-                  parameters={getValuePopulatedParameters(
-                    parameters,
-                    parameterValues,
-                  )}
-                  setParameterValue={setParameterValue}
-                />
+                <FixedWidthContainer
+                  data-testid="fixed-width-filters"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <SyncedParametersList
+                    className="mt1"
+                    parameters={getValuePopulatedParameters({
+                      parameters,
+                      values: parameterValues,
+                    })}
+                    setParameterValue={setParameterValue}
+                  />
+                </FixedWidthContainer>
               </div>
             )}
             <Dashboard isXray {...this.props} />

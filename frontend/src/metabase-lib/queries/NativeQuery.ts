@@ -124,16 +124,6 @@ export default class NativeQuery extends AtomicQuery {
     return this._databaseId() == null || this.queryText().length === 0;
   }
 
-  clean() {
-    return this.setDatasetQuery(
-      updateIn(
-        this.datasetQuery(),
-        ["native", "template-tags"],
-        tt => tt || {},
-      ),
-    );
-  }
-
   /* AtomicQuery superclass methods */
   tables(): Table[] | null | undefined {
     const database = this._database();
@@ -162,13 +152,6 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   /* Methods unique to this query type */
-
-  /**
-   * @returns a new query with the provided Database set.
-   */
-  setDatabase(database: Database): NativeQuery {
-    return this.setDatabaseId(database.id);
-  }
 
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
     if (databaseId !== this._databaseId()) {
