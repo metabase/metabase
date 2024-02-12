@@ -3,8 +3,9 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
-import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";
+import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
 import type Table from "metabase-lib/metadata/Table";
 import type Field from "metabase-lib/metadata/Field";
 import DataSelectorLoading from "../DataSelectorLoading";
@@ -13,11 +14,11 @@ import {
   Container,
   HeaderContainer,
   HeaderName,
-  PopoverHoverTarget,
 } from "./DataSelectorFieldPicker.styled";
 
 type DataSelectorFieldPickerProps = {
   fields: Field[];
+  query: Lib.Query;
   hasFiltering?: boolean;
   hasInitialFocus?: boolean;
   isLoading?: boolean;
@@ -40,6 +41,7 @@ type FieldWithName = {
 const DataSelectorFieldPicker = ({
   isLoading,
   fields,
+  query,
   selectedTable,
   selectedField,
   onChangeField,
@@ -92,13 +94,12 @@ const DataSelectorFieldPicker = ({
           renderItemIcon={renderItemIcon}
           renderItemName={(item: FieldWithName) => item.name}
           renderItemExtra={(item: FieldWithName) => (
-            <FieldInfoPopover
-              field={item.field}
-              delay={[0, 100]}
+            <FieldInfoIcon
+              query={query}
+              stage={-1}
+              column={Lib.fromLegacyColumn(query, -1, item.field)}
               position="top-end"
-            >
-              <PopoverHoverTarget name="info_filled" />
-            </FieldInfoPopover>
+            />
           )}
         />
       </DelayGroup>

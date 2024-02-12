@@ -13,6 +13,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
 
+import { getQuestion } from "metabase/query_builder/selectors";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
@@ -160,6 +161,7 @@ const DataSelector = _.compose(
   }),
   connect(
     (state, ownProps) => ({
+      question: getQuestion(state),
       metadata: getMetadata(state),
       databases:
         ownProps.databases ||
@@ -866,6 +868,7 @@ export class UnconnectedDataSelector extends Component {
 
     const props = {
       ...this.state,
+      query: this.props.question.query(),
       databases: this.getDatabases(),
 
       onChangeDataBucket: this.onChangeDataBucket,

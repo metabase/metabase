@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Icon } from "metabase/ui";
+import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -7,6 +7,19 @@ import { space } from "metabase/styled-components/theme";
 export const Container = styled.div`
   overflow-y: auto;
   width: 300px;
+
+  ${FieldInfoIcon.HoverTarget} {
+    margin-left: 0.5em;
+    right: 0.5em;
+    position: absolute;
+    padding: 0.7em 0.65em;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  [role="option"]:hover ${FieldInfoIcon.HoverTarget} {
+    opacity: 1;
+  }
 `;
 
 export const HeaderContainer = styled.div`
@@ -21,16 +34,4 @@ export const HeaderName = styled.span`
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
-`;
-
-export const PopoverHoverTarget = styled(Icon)`
-  margin-left: 0.5em;
-  right: 0.5em;
-  position: absolute;
-  padding: 0.7em 0.65em;
-  opacity: 0;
-
-  [role="option"]:hover & {
-    opacity: 1;
-  }
 `;
