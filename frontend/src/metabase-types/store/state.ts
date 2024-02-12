@@ -21,8 +21,8 @@ export interface State {
   embed: EmbedState;
   entities: EntitiesState;
   metabot: MetabotState;
-  parameters: ParametersState;
   qb: QueryBuilderState;
+  parameters: ParametersState;
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
