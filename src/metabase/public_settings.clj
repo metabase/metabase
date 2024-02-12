@@ -122,7 +122,7 @@
   :audit      :never)
 
 (defsetting dismissed-browse-models-banner
-  (deferred-tru "Toggle which is true after a user has dismissed the banner on Browse Data about models")
+  (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
   :user-local :only
   :export?    false
   :visibility :authenticated
