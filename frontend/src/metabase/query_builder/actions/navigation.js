@@ -4,6 +4,7 @@ import { push, replace } from "react-router-redux";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
+import { getRouting } from "metabase/selectors/routing";
 
 import { isEqualCard } from "metabase/lib/card";
 
@@ -40,7 +41,7 @@ export const popState = createThunkAction(
 
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
-      const { locationBeforeTransitions = {} } = getState().routing;
+      const { locationBeforeTransitions = {} } = getRouting(getState());
       const { state, query } = locationBeforeTransitions;
       const previouslyZoomedObjectId = state?.objectId || query?.objectId;
 
