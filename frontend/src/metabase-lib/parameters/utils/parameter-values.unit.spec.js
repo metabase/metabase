@@ -73,9 +73,12 @@ describe("parameters/utils/parameter-values", () => {
   describe("getValuePopulatedParameters", () => {
     it("should return an array of parameter objects with the `value` property set if it exists in the given `parameterValues` id, value map, and null if it doesn't exist", () => {
       expect(
-        getValuePopulatedParameters([parameter1, parameter2], {
-          [parameter1.id]: "parameter1 value",
-          [parameter2.id]: "parameter2 value",
+        getValuePopulatedParameters({
+          parameters: [parameter1, parameter2],
+          values: {
+            [parameter1.id]: "parameter1 value",
+            [parameter2.id]: "parameter2 value",
+          },
         }),
       ).toEqual([
         {
@@ -90,9 +93,9 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should return null value if the parameter doesn't exist in the parameterValues arg", () => {
-      expect(getValuePopulatedParameters([parameter1], {})).toEqual([
-        { ...parameter1, value: null },
-      ]);
+      expect(
+        getValuePopulatedParameters({ parameters: [parameter1], values: {} }),
+      ).toEqual([{ ...parameter1, value: null }]);
     });
 
     it("should handle there being an undefined or null parameterValues object", () => {
@@ -106,11 +109,14 @@ describe("parameters/utils/parameter-values", () => {
           value: null,
         },
       ];
-      expect(getValuePopulatedParameters([parameter1, parameter2])).toEqual(
-        parametersWithNulls,
-      );
       expect(
-        getValuePopulatedParameters([parameter1, parameter2], null),
+        getValuePopulatedParameters({ parameters: [parameter1, parameter2] }),
+      ).toEqual(parametersWithNulls);
+      expect(
+        getValuePopulatedParameters({
+          parameters: [parameter1, parameter2],
+          values: null,
+        }),
       ).toEqual(parametersWithNulls);
     });
   });

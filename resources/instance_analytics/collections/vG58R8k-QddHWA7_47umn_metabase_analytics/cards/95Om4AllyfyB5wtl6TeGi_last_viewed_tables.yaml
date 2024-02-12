@@ -205,3 +205,4 @@ serdes/meta:
   label: last_viewed_tables
   model: Card
 metabase_version: vUNKNOWN (ad99d37)
+type: question

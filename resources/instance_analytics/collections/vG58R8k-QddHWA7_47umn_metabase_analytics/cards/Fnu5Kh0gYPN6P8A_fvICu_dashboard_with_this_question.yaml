@@ -113,3 +113,4 @@ serdes/meta:
   label: dashboard_with_this_question
   model: Card
 metabase_version: null
+type: question

@@ -202,6 +202,7 @@
    :description             nil
    :embedding_params        nil
    :enable_embedding        false
+   :initially_published_at  nil
    :entity_id               true
    :made_public_by_id       nil
    :parameters              []

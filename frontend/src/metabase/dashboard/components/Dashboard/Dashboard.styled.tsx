@@ -102,31 +102,17 @@ export const ParametersAndCardsContainer = styled.div<{
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
-  isEditing: boolean;
   isSticky: boolean;
   hasScroll: boolean;
 }>`
-  align-items: flex-start;
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
-  display: flex;
-  flex-direction: row;
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   /* z-index should be higher than in dashcards */
   z-index: 3;
   top: 0;
   left: 0;
-
-  ${breakpointMaxSmall} {
-    flex-direction: column;
-  }
-
-  ${({ isEditing }) =>
-    isEditing &&
-    css`
-      border-top: 1px solid ${color("border")};
-    `}
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
   ${({ isSticky, hasScroll }) =>
@@ -149,4 +135,25 @@ export const CardsContainer = styled(FullWidthContainer)`
       border: 1px solid ${color("border")};
     }
   }
+`;
+
+export const FIXED_WIDTH = "1048px";
+export const FixedWidthContainer = styled.div<{
+  isFixedWidth: boolean;
+}>`
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+  }
+
+  ${({ isFixedWidth }) =>
+    isFixedWidth &&
+    css`
+      margin: 0 auto;
+      max-width: ${FIXED_WIDTH};
+    `}
 `;

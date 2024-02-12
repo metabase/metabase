@@ -210,3 +210,4 @@ serdes/meta:
   label: dashboard_metadata
   model: Card
 metabase_version: null
+type: question

@@ -643,7 +643,7 @@
   "Additional conditions that should be used to restrict which instances automatically get deleted by
   `with-model-cleanup`. Conditions should be a HoneySQL `:where` clause."
   {:arglists '([model])}
-  mi/model)
+  identity)
 
 (defmethod with-model-cleanup-additional-conditions :default
   [_]

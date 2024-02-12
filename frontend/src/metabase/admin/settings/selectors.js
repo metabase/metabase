@@ -423,19 +423,22 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "-public-sharing-dashboards",
         display_name: t`Shared Dashboards`,
         widget: PublicLinksDashboardListing,
-        getHidden: settings => !settings["enable-public-sharing"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-public-sharing"],
       },
       {
         key: "-public-sharing-questions",
         display_name: t`Shared Questions`,
         widget: PublicLinksQuestionListing,
-        getHidden: settings => !settings["enable-public-sharing"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-public-sharing"],
       },
       {
         key: "-public-sharing-actions",
         display_name: t`Shared Action Forms`,
         widget: PublicLinksActionListing,
-        getHidden: settings => !settings["enable-public-sharing"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-public-sharing"],
       },
     ],
   },
