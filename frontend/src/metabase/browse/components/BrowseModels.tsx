@@ -4,7 +4,9 @@ import { t } from "ttag";
 import { useEffect } from "react";
 import type {
   Card,
+  Collection,
   CollectionEssentials,
+  CollectionId,
   SearchResult,
 } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
@@ -53,32 +55,12 @@ export const BrowseModels = ({
   const error = modelsResult.error || collectionsResult.error;
   const isLoading = modelsResult.isLoading || collectionsResult.isLoading;
 
-  // Enrich models data with collection data
-  if (collections?.length) {
-    models.forEach((model: SearchResult) => {
-      const collection = collections.find(
-        (collection: CollectionEssentials) =>
-          collection.id === model.collection.id,
-      );
-      if (collection) {
-        model.collection = collection;
-      }
-    });
-  }
-
-  const filteredModels = Object.values(filters).reduce(
-    (acc, filter) => (filter.active ? acc.filter(filter.predicate) : acc),
-    models,
-  );
-
   useEffect(() => {
     if (error || isLoading) {
       return;
     }
     localStorage.setItem("defaultBrowseTab", "models");
   }, [error, isLoading]);
-
-  const groupsOfModels = groupModels(filteredModels, localeCode);
 
   if (error || isLoading) {
     return (
@@ -89,6 +71,23 @@ export const BrowseModels = ({
       />
     );
   }
+
+  const filteredModels = Object.values(filters).reduce(
+    (acc, filter) => (filter.active ? acc.filter(filter.predicate) : acc),
+    models,
+  );
+
+  const collectionMap = new Map<CollectionId, Collection>();
+  collections.forEach((collection: Collection) => {
+    collectionMap.set(collection.id, collection);
+  });
+  const enrichedModels = models.map((model: SearchResult) => {
+    return {
+      ...model,
+      collection: collectionMap.get(model.collection.id) ?? model.collection,
+    };
+  });
+  const groupsOfModels = groupModels(enrichedModels, localeCode);
 
   if (filteredModels.length) {
     return (
