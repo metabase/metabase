@@ -1,5 +1,5 @@
 import type { CollectionEssentials, SearchResult } from "metabase-types/api";
-import type { BrowseFilters } from "metabase/browse/utils";
+import type { AvailableModelFilters } from "metabase/browse/utils";
 
 export const sortCollectionsByVerification = (
   collection1: CollectionEssentials,
@@ -31,7 +31,7 @@ export const sortModelsByVerification = (a: SearchResult, b: SearchResult) => {
   return 0;
 };
 
-export const browseFilters: BrowseFilters = {
+export const availableModelFilters: AvailableModelFilters = {
   onlyShowVerifiedModels: {
     predicate: model => model.moderated_status === "verified",
     activeByDefault: true,

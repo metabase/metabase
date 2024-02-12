@@ -13,7 +13,7 @@ import { Flex, Icon, Text } from "metabase/ui";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import type { BrowseFilters } from "../utils";
+import type { ActualModelFilters, ModelFilterName } from "../utils";
 import { isValidBrowseTab, type BrowseTabId } from "../utils";
 import {
   BrowseAppRoot,
@@ -27,6 +27,7 @@ import {
 import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
 import { BrowseModels } from "./BrowseModels";
+import _ from "underscore";
 
 export const BrowseApp = ({
   tab,
@@ -42,8 +43,7 @@ export const BrowseApp = ({
       filter_items_in_personal_collection: "exclude",
     },
   });
-  // TODO: Don't use this, just tell the backend to send a little more data. We just need the type "instance-analytics" to be hydrated
-  const collectionsResult = useCollectionListQuery();
+  // TODO: Tell the /api/search backend to send a little more data so we can get the collection icon. We just need the type "instance-analytics" to be hydrated
   const databasesResult = useDatabaseListQuery();
 
   useEffect(() => {
@@ -52,44 +52,60 @@ export const BrowseApp = ({
     }
   }, [tab]);
 
-  const initialFilters = PLUGIN_CONTENT_VERIFICATION.browseFilters;
+  const availableModelFilters =
+    PLUGIN_CONTENT_VERIFICATION.availableModelFilters;
 
-  for (const [filterName, filter] of Object.entries(initialFilters)) {
-    const storedValue = localStorage.getItem(`browseFilters.${filterName}`);
-    if (storedValue !== null) {
-      filter.active = storedValue === "on";
-    }
-  }
+  const getInitialModelFilters = useCallback(() => {
+    return _.reduce(
+      availableModelFilters,
+      (acc, filter, filterName) => {
+        const storedFilterStatus = localStorage.getItem(
+          `browseFilters.${filterName}`,
+        );
+        const shouldFilterBeActive =
+          storedFilterStatus === null
+            ? filter.activeByDefault
+            : storedFilterStatus === "on";
+        return {
+          ...acc,
+          [filterName]: shouldFilterBeActive,
+        };
+      },
+      {},
+    );
+  }, [availableModelFilters]);
 
-  // Use an anonymous function instead of initialFilters to populate active values from localStorage into initialFilters and then this will happen just on mount
-  // TODO: Consider just putting the active values in state rather than the whole filters object with its predicates, since predicates don't really belong in state
-  // State should be a Record<filterName, boolean>
-  // Perhaps this should be called actualFilters, to distinguish it from the possible filters that CAN be applied
-  const [filters, setFilters] = useState(initialFilters);
+  const [actualModelFilters, setActualModelFilters] =
+    useState<ActualModelFilters>(getInitialModelFilters);
+  const { data: unfilteredModels = [] } = modelsResult;
 
-  // TODO: I copied this code here, needs to be altered
-  const filteredModels = Object.values(filters).reduce(
-    (acc, filter) => (filter.active ? acc.filter(filter.predicate) : acc),
-    models,
-  );
+  const [filteredModels, setFilteredModels] = useState(modelsResult.data);
 
-  const handleFilterChange = useCallback(
-    // TODO: Use typeof<keyof PLUGIN_CONTENT_VERIFICATION.browseFilters>
-    (filterName: string, active: boolean) => {
-      // TODO: See if using icepick is worth using
-      setFilters((previousFilters: BrowseFilters) => {
-        const newFilters = { ...previousFilters };
-        newFilters[filterName].active = active;
-        return newFilters;
-      });
-      // TODO: Maybe filter the models here, which would require putting the models into state
-      // Something like this might be useful: filteredModelsResult = { ...modelsResult, data: modelsResult.data?.filter(filter...)
+  useEffect(() => {
+    const filteredModels = _.reduce(
+      actualModelFilters,
+      (acc, shouldFilterBeActive, filterName) =>
+        shouldFilterBeActive
+          ? acc.filter(availableModelFilters[filterName].predicate)
+          : acc,
+      unfilteredModels,
+    );
+    setFilteredModels(filteredModels);
+  }, [unfilteredModels, actualModelFilters]);
+
+  const filteredModelsResult = { ...modelsResult, data: filteredModels };
+
+  const handleModelFilterChange = useCallback(
+    (modelFilterName: ModelFilterName, active: boolean) => {
       localStorage.setItem(
-        `browseFilters.${filterName}`,
+        `browseFilters.${modelFilterName}`,
         active ? "on" : "off",
       );
+      setActualModelFilters((prev: ActualModelFilters) => {
+        return { ...prev, [modelFilterName]: active };
+      });
     },
-    [setFilters],
+    [setActualModelFilters],
   );
 
   if (!isValidBrowseTab(tab)) {
@@ -122,8 +138,8 @@ export const BrowseApp = ({
               </BrowseTab>
               {tab === "models" && (
                 <PLUGIN_CONTENT_VERIFICATION.BrowseFilterControls
-                  filters={filters}
-                  handleFilterChange={handleFilterChange}
+                  actualModelFilters={actualModelFilters}
+                  handleModelFilterChange={handleModelFilterChange}
                 />
               )}
               {tab === "databases" && <LearnAboutDataLink />}
@@ -139,8 +155,7 @@ export const BrowseApp = ({
             >
               <BrowseTabContent
                 tab={tab}
-                modelsResult={modelsResult}
-                collectionsResult={collectionsResult}
+                modelsResult={filteredModelsResult}
                 databasesResult={databasesResult}
                 filters={filters}
                 // TODO: Perhaps filter the models up here, to keep BrowseModels dumber

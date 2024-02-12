@@ -1,6 +1,6 @@
 import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 import { createMockModelResult } from "metabase-types/api/mocks";
-import { browseFilters, sortCollectionsForBrowseModels } from "./utils";
+import { browseFilters, sortCollectionsByVerification } from "./utils";
 
 describe("Utilities related to content verification", () => {
   it("include a function that sorts verified collections before unverified collections", () => {
@@ -17,7 +17,7 @@ describe("Utilities related to content verification", () => {
       },
     ];
     const sortFunction = (a: CollectionEssentials, b: CollectionEssentials) =>
-      sortCollectionsForBrowseModels(a, b) || a.name.localeCompare(b.name);
+      sortCollectionsByVerification(a, b) || a.name.localeCompare(b.name);
     const sorted = unsorted.sort(sortFunction);
     expect(sorted[0].name).toBe("Collection Zulu - verified");
     expect(sorted[1].name).toBe("Collection Alpha - unverified");

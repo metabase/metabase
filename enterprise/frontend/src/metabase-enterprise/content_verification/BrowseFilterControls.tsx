@@ -3,8 +3,8 @@ import { Switch, Text } from "metabase/ui";
 import type { BrowseFilterControlsProps } from "metabase/browse/utils";
 
 export const BrowseFilterControls = ({
-  filters,
-  toggleFilter,
+  actualModelFilters,
+  handleModelFilterChange,
 }: BrowseFilterControlsProps) => {
   return (
     <Switch
@@ -15,9 +15,9 @@ export const BrowseFilterControls = ({
           lh="1rem"
         >{t`Only show verified models`}</Text>
       }
-      checked={filters.onlyShowVerifiedModels.active}
+      checked={actualModelFilters.onlyShowVerifiedModels}
       onChange={e => {
-        toggleFilter("onlyShowVerifiedModels", e.target.checked);
+        handleModelFilterChange("onlyShowVerifiedModels", e.target.checked);
       }}
       ml="auto"
       size="sm"

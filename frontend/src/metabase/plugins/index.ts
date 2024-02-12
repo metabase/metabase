@@ -33,8 +33,8 @@ import type { AdminPathKey, State } from "metabase-types/store";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type {
+  AvailableModelFilters,
   BrowseFilterControlsProps,
-  BrowseFilters,
 } from "metabase/browse/utils";
 import type Question from "metabase-lib/Question";
 
@@ -333,7 +333,7 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
-  browseFilters: {} as BrowseFilters,
+  availableModelFilters: {} as AvailableModelFilters,
   BrowseFilterControls: {} as ComponentType<BrowseFilterControlsProps>,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,

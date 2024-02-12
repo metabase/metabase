@@ -75,8 +75,7 @@ export type BrowseTabId = "models" | "databases";
 export const isValidBrowseTab = (value: unknown): value is BrowseTabId =>
   value === "models" || value === "databases";
 
-/** The filters that can be applied */
-export type BrowseFilters = Record<
+export type AvailableModelFilters = Record<
   string,
   {
     predicate: (value: SearchResult) => boolean;
@@ -85,8 +84,11 @@ export type BrowseFilters = Record<
 >;
 
 export type BrowseFilterControlsProps = {
-  filters: BrowseFilters;
-  toggleFilter: (filterName: string, active: boolean) => void;
+  actualModelFilters: ActualModelFilters;
+  handleModelFilterChange: (
+    filterName: ModelFilterName,
+    active: boolean,
+  ) => void;
 };
 
 export const sortModels = (
@@ -119,3 +121,6 @@ export const sortModels = (
   const nameB = b.name.toLowerCase();
   return nameA.localeCompare(nameB, localeCode);
 };
+
+export type ModelFilterName = keyof AvailableModelFilters;
+export type ActualModelFilters = Record<ModelFilterName, boolean>;
