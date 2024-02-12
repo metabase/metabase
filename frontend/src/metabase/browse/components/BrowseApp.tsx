@@ -43,7 +43,6 @@ export const BrowseApp = ({
       filter_items_in_personal_collection: "exclude",
     },
   });
-  // TODO: Tell the /api/search backend to send a little more data so we can get the collection icon. We just need the type "instance-analytics" to be hydrated
   const databasesResult = useDatabaseListQuery();
 
   useEffect(() => {
