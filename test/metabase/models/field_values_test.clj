@@ -129,26 +129,20 @@
   (find-values field-values-id))
 
 (deftest implicit-deduplication-test
-  (mt/dataset test-data
-    (testing "We always return the latest FieldValues, and implicitly delete shadowed duplicates"
-      (let [table-id (:id (t2/select-one Table))
-            field-id 12345]
+  (let [now (t/zoned-date-time)
+        then (t/plus now (t/millis 1))]
+    (mt/with-temp [Database    {database-id :id} {}
+                   Table       {table-id :id}    {:db_id database-id}
+                   Field       {field-id :id}     {:table_id table-id}
+                   FieldValues _                 {:field_id field-id :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :updated_at now}
+                   FieldValues _                 {:field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :updated_at then}]
 
-        ;; Create a Field with duplicate FieldValues
-        (t2/insert! Field :id field-id :name "Field" :base_type :type/Text :table_id table-id :database_type "java.lang.String")
-        (t2/insert! FieldValues :field_id field-id :type :full :values ["a" "b"] :human_readable_values ["A" "B"])
-        (t2/insert! FieldValues :field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"])
-
-        (testing "When we have two FieldValues rows in the database"
-          (is (= 2 (count (t2/select FieldValues :field_id field-id :type :full :hash_key nil))))
-          (testing "We always fetch the most recently inserted row"
-            (is (= ["C" "D"] (:human_readable_values (#'field-values/get-latest-full-field-values field-id))))
-            (testing "... and the older rows are deleted"
-              (is (= 1 (count (t2/select FieldValues :field_id field-id :type :full)))))))
-
-        ;; Clean up
-        (t2/delete! FieldValues :field_id field-id)
-        (t2/delete! Field :id field-id)))))
+      (testing "When we have two FieldValues rows in the database"
+        (is (= 2 (count (t2/select FieldValues :field_id field-id :type :full :hash_key nil))))
+        (testing "We always fetch the most recently inserted row"
+          (is (= ["C" "D"] (:human_readable_values (#'field-values/get-latest-full-field-values field-id))))
+          (testing "... and the older rows are deleted"
+            (is (= 1 (count (t2/select FieldValues :field_id field-id :type :full))))))))))
 
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
