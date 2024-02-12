@@ -6,6 +6,7 @@ import {
   breakpointMinLarge,
   breakpointMinMedium,
   space,
+  breakpointMaxSmall,
 } from "metabase/styled-components/theme";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
@@ -58,6 +59,13 @@ export const TitleAndDescriptionContainer = styled(FullWidthContainer)`
 
   ${breakpointMinLarge} {
     margin-top: 1.5rem;
+  }
+`;
+
+export const DashboardTabsContainer = styled(FullWidthContainer)`
+  ${breakpointMaxSmall} {
+    padding-left: 0;
+    padding-right: 0;
   }
 `;
 

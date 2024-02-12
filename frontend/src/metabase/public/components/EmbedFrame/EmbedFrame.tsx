@@ -27,7 +27,6 @@ import type { State } from "metabase-types/store";
 
 import { useDispatch } from "metabase/lib/redux";
 import { setOptions } from "metabase/redux/embed";
-import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
@@ -47,6 +46,7 @@ import {
   ActionButtonsContainer,
   TitleAndDescriptionContainer,
   Separator,
+  DashboardTabsContainer,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
 
@@ -173,14 +173,14 @@ function EmbedFrame({
               </TitleAndDescriptionContainer>
             )}
             {dashboardTabs && (
-              <FullWidthContainer>
+              <DashboardTabsContainer>
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-tabs"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   {dashboardTabs}
                 </FixedWidthContainer>
-              </FullWidthContainer>
+              </DashboardTabsContainer>
             )}
             <Separator />
             {hasParameters && (
