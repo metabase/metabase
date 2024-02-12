@@ -258,7 +258,12 @@ function SavedQuestionLeftSide(props) {
             divider={<HeaderDivider>/</HeaderDivider>}
             parts={[
               ...(isAdditionalInfoVisible && type !== "question"
-                ? [<HeaderCollectionBadge key="collection" entity={question} />]
+                ? [
+                    <HeaderCollectionBadge
+                      key="collection"
+                      question={question}
+                    />,
+                  ]
                 : []),
 
               <SavedQuestionHeaderButton
@@ -349,12 +354,12 @@ function AhHocQuestionLeftSide(props) {
 }
 
 HeaderCollectionBadge.propTypes = {
-  entity: PropTypes.object.isRequired,
+  question: PropTypes.object.isRequired,
 };
 
-function HeaderCollectionBadge({ entity }) {
-  const { collection } = entity.card();
-  const icon = entity.type();
+function HeaderCollectionBadge({ question }) {
+  const { collection } = question.card();
+  const icon = question.type();
   return (
     <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon={icon}>
       {collection?.name || t`Our analytics`}
