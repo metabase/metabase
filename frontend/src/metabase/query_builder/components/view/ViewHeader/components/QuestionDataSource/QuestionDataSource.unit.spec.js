@@ -31,6 +31,8 @@ const MULTI_SCHEMA_TABLE2_ID = 101;
 const BASE_GUI_QUESTION = {
   display: "table",
   visualization_settings: {},
+  type: "question",
+  dataset: false,
   dataset_query: {
     type: "query",
     database: SAMPLE_DB_ID,
@@ -43,6 +45,8 @@ const BASE_GUI_QUESTION = {
 const BASE_NATIVE_QUESTION = {
   display: "table",
   visualization_settings: {},
+  type: "question",
+  dataset: false,
   dataset_query: {
     type: "native",
     database: SAMPLE_DB_ID,

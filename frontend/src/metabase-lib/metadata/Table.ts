@@ -69,7 +69,10 @@ class Table {
   }
 
   newQuestion() {
-    return this.question().setDefaultQuery().setDefaultDisplay();
+    return this.question()
+      .setDefaultQuery()
+      .setDefaultDisplay()
+      .setType("question");
   }
 
   question() {

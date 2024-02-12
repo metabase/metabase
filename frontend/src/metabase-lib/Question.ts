@@ -1038,7 +1038,7 @@ class Question {
     name,
     display = "table",
     visualization_settings = {},
-    dataset = false,
+    dataset,
     cardType = "question",
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
