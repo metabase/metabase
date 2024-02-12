@@ -53,6 +53,7 @@ const setup = ({
           onShowAddParameterPopover={jest.fn()}
           onClose={jest.fn()}
           onChangeRequired={jest.fn()}
+          getEmbeddedParameterVisibility={() => null}
         />
       </div>
     );

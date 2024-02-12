@@ -1,5 +1,5 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
-import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 /**
  * @typedef {object} QuestionResource
@@ -195,6 +195,44 @@ export function openStaticEmbeddingModal({
       cy.findByText(previewModeToKeyMap[previewMode]).click();
     }
   });
+}
+
+export function closeStaticEmbeddingModal() {
+  modal().icon("close").click();
+}
+
+/**
+ * Open Static Embedding setup modal
+ * @param {"card" | "dashboard"} apiPath
+ * @param callback
+ */
+export function publishChanges(apiPath, callback) {
+  cy.intercept("PUT", `/api/${apiPath}/*`).as("publishChanges");
+
+  cy.button(/^(Publish|Publish changes)$/).click();
+
+  // TODO this could be simplified when we send one publish request instead of two
+  cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
+    // Unfortunately, the order of requests is not always the same.
+    // Therefore, we must first get the one that has the `embedding_params` and then assert on it.
+    const targetXhr = xhrs.find(({ request }) =>
+      Object.keys(request.body).includes("embedding_params"),
+    );
+    callback?.(targetXhr);
+  });
+}
+
+export function getParametersContainer() {
+  return cy.findByLabelText("Configuring parameters");
+}
+
+export function setEmbeddingParameter(name, value) {
+  getParametersContainer().findByLabelText(name).click();
+  popover().contains(value).click();
+}
+
+export function assertEmbeddingParameter(name, value) {
+  getParametersContainer().findByLabelText(name).should("have.text", value);
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing

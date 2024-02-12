@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import type { Location } from "history";
+import type { Location, LocationDescriptor } from "history";
 
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
@@ -73,6 +73,7 @@ import type {
   State,
 } from "metabase-types/store";
 
+import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
@@ -162,7 +163,7 @@ interface DispatchProps {
   deleteBookmark: (args: { id: DashboardId }) => void;
   fetchPulseFormInput: () => void;
   toggleSidebar: (sidebarName: DashboardSidebarName) => void;
-  onChangeLocation: (location: Location) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
   addActionToDashboard: (
     opts: NewDashCardOpts & {
       action: Partial<WritebackAction>;
@@ -591,6 +592,8 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
+
+        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
       }
     }
 

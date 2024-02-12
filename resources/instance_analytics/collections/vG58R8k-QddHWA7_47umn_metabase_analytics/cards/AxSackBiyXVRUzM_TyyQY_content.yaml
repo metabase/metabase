@@ -607,3 +607,4 @@ serdes/meta:
   label: content
   model: Card
 metabase_version: null
+type: model

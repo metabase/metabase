@@ -148,3 +148,4 @@ serdes/meta:
   label: last_activity_on_question
   model: Card
 metabase_version: vUNKNOWN (13e6090)
+type: question

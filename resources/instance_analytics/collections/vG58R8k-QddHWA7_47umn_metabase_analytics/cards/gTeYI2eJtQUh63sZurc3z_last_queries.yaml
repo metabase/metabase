@@ -318,3 +318,4 @@ serdes/meta:
   label: last_queries
   model: Card
 metabase_version: vUNKNOWN (ad99d37)
+type: question
