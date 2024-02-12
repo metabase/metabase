@@ -118,7 +118,11 @@ export function getParameterMappingOptions(
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
 ): ParameterMappingOptions {
-  if (dashcard && isVirtualDashCard(dashcard)) {
+  if (
+    dashcard &&
+    isVirtualDashCard(dashcard) &&
+    ["heading", "text"].includes(card.display)
+  ) {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
