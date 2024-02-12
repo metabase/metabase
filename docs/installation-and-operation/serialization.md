@@ -325,51 +325,93 @@ You can include multiple parameters, separated by `&`. For example, to exclude b
 http://localhost:3000/api/ee/serialization/export?data_model=false&settings=false
 ```
 
-### Example params
+## Example export params
 
-Select which collections to export:
+### `collection`
+
+Type: Array of integers.
+
+Default value: Metabase will export all collections, unless `all_collections` is set to `false`.
+
+To select which collections to export, include the collection IDs. For example, to include collections `1` and `2`:
 
 ```html
 collection=1&collection=2
 ```
 
-Exclude all collections:
+### `all_collections`
+
+Type: Boolean
+
+Default: `true` (unless you specify a subset of collections with `collection`).
+
+To exclude all collections:
 
 ```html
 all_collections=false
 ```
 
-Exclude settings:
+### `settings`
+
+Type: Boolean.
+
+Default: `true`.
+
+To exclude settings:
 
 ```html
 settings=false
 ```
 
-Exclude the data model:
+### `data_model`
+
+Type: Boolean.
+
+Default: `true`.
+
+To exclude the data model:
 
 ```
 data_model=false
 ```
 
-Include field values:
+### `field_values`
+
+Type: Boolean.
+
+Default: `false`.
+
+To include field values:
 
 ```
 field_values=true
 ```
 
-Include secrets:
+### `database_secrets`
+
+Type: Boolean.
+
+Default: `false`.
+
+To include secrets:
 
 ```html
 database_secrets=true
 ```
 
-Specify the directory name:
+### `dirname`
+
+Type: String.
+
+Default: `<instance-name>-<YYYY-MM-dd_HH_mm>`
+
+To specify a different directory:
 
 ```
 dirname=name_of_your_directory
 ```
 
-### You must compress your files when serializing via API calls
+## You must compress your files when serializing via API calls
 
 To keep file sizes over the network under control, both the `export` and `import` endpoints expect GZIP-compressed Tar files (`.tgz`).
 
@@ -389,11 +431,11 @@ To extract/unzip a directory:
 tar -xvf  metabase_data.tgz
 ```
 
-### Logs are added to the export and import output
+## Metabase adds logs to exports and imports
 
-In the export, it is added in the compressed directory as export.log
+Exports: Metabase adds logs to the compressed directory as `export.log`.
 
-In the import, the logs are exported directly. You can add the `-o -` flag to export logs directly into the terminal or `-o import.log` to save to a file.
+Imports: You can add the `-o -` flag to export logs directly into the terminal, or `-o import.log` to save to a file.
 
 ### Example export request with `curl`
 
@@ -438,7 +480,7 @@ curl -X POST \
 -o -
 ```
 
-Substituting `YOUR_API_KEY` with your API key.
+Substituting `YOUR_API_KEY` with your API key. The `-o -` option will output logs in the terminal.
 
 ## Further reading
 
