@@ -13,12 +13,11 @@ export function FieldInfoIcon(props: FieldInfoIconProps) {
 
   const { description, semanticType } = Lib.displayInfo(query, stage, column);
 
-  const shouldBeActive =
-    (description && description !== "") || semanticType !== null;
+  const hasInfo = (description && description !== "") || semanticType !== null;
 
   return (
     <FieldInfoPopoverMLv2 {...props} delay={[0, 150]}>
-      <PopoverHoverTarget name="info_filled" aria-disabled={!shouldBeActive} />
+      <PopoverHoverTarget name="info_filled" hasInfo={hasInfo} />
     </FieldInfoPopoverMLv2>
   );
 }
