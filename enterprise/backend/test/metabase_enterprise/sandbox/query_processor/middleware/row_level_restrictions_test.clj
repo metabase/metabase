@@ -15,6 +15,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Card Collection Field Table]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query.permissions :as query-perms]
@@ -768,10 +769,7 @@
                         {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
                          :attributes {"user_id" 1}})
         ;; grant full data perms for products
-        (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path
-                                                           (mt/id)
-                                                           (t2/select-one-fn :schema Table :id (mt/id :products))
-                                                           (mt/id :products)))
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/data-access :unrestricted)
         (mt/with-test-user :rasta
           (testing "Sanity check: should be able to query products"
             (is (=? {:status :completed}
@@ -896,7 +894,7 @@
                         {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
                          :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-        (perms/grant-permissions! &group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :products)))
+        (data-perms/set-table-permission! &group (mt/id :products) :perms/data-access :unrestricted)
         (letfn [(do-tests []
                   ;; create a query based on the sandboxed Table
                   (testing "should be able to run the query. Results should come back with correct metadata"
@@ -1010,7 +1008,7 @@
                                        {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                         :products {:remappings {:user_cat [:dimension $products.category]}}})
                          :attributes {:user_id 1, :user_cat "Widget"}}
-          (perms/grant-permissions! &group (perms/table-query-path (t2/select-one Table :id (mt/id :people))))
+          (data-perms/set-table-permission! &group (mt/id :people) :perms/data-access :unrestricted)
           (is (= (->> [["Twitter" nil      0 401.51]
                        ["Twitter" "Widget" 0 498.59]
                        [nil       nil      1 401.51]
