@@ -51,18 +51,13 @@ export default class SaveStatus extends Component {
 
     if (this.state.saving) {
       return (
-        <div className={cx(className, "SaveStatus mx2 px2 border-right")}>
+        <div className={cx(className, "SaveStatus border-right")}>
           <LoadingSpinner size={24} />
         </div>
       );
     } else if (this.state.error) {
       return (
-        <div
-          className={cx(
-            className,
-            "SaveStatus mx2 px2 border-right text-error",
-          )}
-        >
+        <div className={cx(className, "SaveStatus border-right text-error")}>
           {t`Error:`} {String(this.state.error.message || this.state.error)}
         </div>
       );
@@ -71,7 +66,7 @@ export default class SaveStatus extends Component {
         <div
           className={cx(
             className,
-            "SaveStatus mx2 px2 border-right flex align-center text-success",
+            "SaveStatus border-right flex align-center text-success",
           )}
         >
           <Icon name="check" size={16} />
