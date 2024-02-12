@@ -22,7 +22,7 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
-  StyledFixedWidthContainer,
+  HeaderFixedWidthContainer,
 } from "../../components/DashboardHeaderView.styled";
 import { DashboardTabs } from "../../components/DashboardTabs/DashboardTabs";
 
@@ -119,7 +119,7 @@ export function DashboardHeaderComponent({
           data-testid="dashboard-header"
           ref={header}
         >
-          <StyledFixedWidthContainer
+          <HeaderFixedWidthContainer
             data-testid="fixed-width-dashboard-header"
             isNavBarOpen={isNavBarOpen}
             isFixedWidth={dashboard?.width === "fixed"}
@@ -158,10 +158,10 @@ export function DashboardHeaderComponent({
             <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
               {_headerButtons}
             </HeaderButtonsContainer>
-          </StyledFixedWidthContainer>
+          </HeaderFixedWidthContainer>
         </HeaderRow>
         <HeaderRow>
-          <StyledFixedWidthContainer
+          <HeaderFixedWidthContainer
             data-testid="fixed-width-dashboard-tabs"
             isNavBarOpen={isNavBarOpen}
             isFixedWidth={dashboard?.width === "fixed"}
@@ -171,7 +171,7 @@ export function DashboardHeaderComponent({
               location={location}
               isEditing={isEditing}
             />
-          </StyledFixedWidthContainer>
+          </HeaderFixedWidthContainer>
         </HeaderRow>
       </div>
     </div>

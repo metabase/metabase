@@ -151,7 +151,7 @@ export const FixedWidthContainer = styled.div<{
     `}
 `;
 
-export const StyledFixedWidthContainer = styled(FixedWidthContainer)`
+export const ParametersFixedWidthContainer = styled(FixedWidthContainer)`
   display: flex;
   flex-direction: row;
   align-items: flex-start;

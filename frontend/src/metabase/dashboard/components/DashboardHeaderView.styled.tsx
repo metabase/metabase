@@ -17,7 +17,7 @@ interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
 }
 
-export const StyledFixedWidthContainer = styled(
+export const HeaderFixedWidthContainer = styled(
   FixedWidthContainer,
 )<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;

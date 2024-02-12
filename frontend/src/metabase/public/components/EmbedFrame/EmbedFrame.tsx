@@ -30,7 +30,7 @@ import { setOptions } from "metabase/redux/embed";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   FixedWidthContainer,
-  StyledFixedWidthContainer,
+  ParametersFixedWidthContainer,
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import type Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
@@ -185,7 +185,7 @@ function EmbedFrame({
             <Separator />
             {hasParameters && (
               <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
-                <StyledFixedWidthContainer
+                <ParametersFixedWidthContainer
                   data-testid="fixed-width-filters"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
@@ -206,7 +206,7 @@ function EmbedFrame({
                     }
                   />
                   {dashboard && <FilterApplyButton />}
-                </StyledFixedWidthContainer>
+                </ParametersFixedWidthContainer>
               </ParametersWidgetContainer>
             )}
           </Header>
