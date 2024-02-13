@@ -50,7 +50,7 @@ export const ComboChart = ({
     [],
     computedVisualizationSettings,
     WIDTH,
-    HEIGHT,
+    HEIGHT - legendHeight,
     renderingContext,
   );
 

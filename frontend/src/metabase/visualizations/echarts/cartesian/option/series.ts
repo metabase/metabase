@@ -29,8 +29,12 @@ import type {
   ChartMeasurements,
   EChartsSeriesOption,
 } from "metabase/visualizations/echarts/cartesian/option/types";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { buildEChartsWaterfallSeries } from "metabase/visualizations/echarts/cartesian/waterfall/option";
+import {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { buildEChartsScatterSeries } from "../scatter/series";
 import { getSeriesYAxisIndex } from "./utils";
 
@@ -67,18 +71,20 @@ export function getDataLabelFormatter(
   settings: ComputedVisualizationSettings,
   labelDataKey: DataKey,
   renderingContext: RenderingContext,
+  formattingOptions: OptionsType = {},
 ) {
   const valueFormatter = (value: unknown) =>
     renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: settings["graph.label_value_formatting"] === "compact",
+      ...formattingOptions,
     });
 
   const valueGetter = getMetricDisplayValueGetter(settings);
 
   return (params: CallbackDataParams) => {
-    const value = params.data[labelDataKey];
+    const value = (params.data as Datum)[labelDataKey];
 
     if (value == null) {
       return " ";
@@ -314,7 +320,7 @@ const generateStackOption = (
     },
     label: {
       ...seriesOptionFromStack.label,
-      position: signKey === "positiveStackTotal" ? "top" : "bottom",
+      position: signKey === POSITIVE_STACK_TOTAL_DATA_KEY ? "top" : "bottom",
       show: true,
       formatter: (
         params: LabelLayoutOptionCallbackParams & { data: Datum },
@@ -324,8 +330,8 @@ const generateStackOption = (
           const seriesValue = params.data[stackDataKeys];
           if (
             typeof seriesValue === "number" &&
-            ((signKey === "positiveStackTotal" && seriesValue > 0) ||
-              (signKey === "negativeStackTotal" && seriesValue < 0))
+            ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue > 0) ||
+              (signKey === NEGATIVE_STACK_TOTAL_DATA_KEY && seriesValue < 0))
           ) {
             stackValue = (stackValue ?? 0) + seriesValue;
           }
@@ -374,7 +380,7 @@ export const getStackTotalsSeries = (
       generateStackOption(
         chartModel,
         settings,
-        "positiveStackTotal",
+        POSITIVE_STACK_TOTAL_DATA_KEY,
         stackDataKeys,
         firstSeriesInStack,
         renderingContext,
@@ -382,7 +388,7 @@ export const getStackTotalsSeries = (
       generateStackOption(
         chartModel,
         settings,
-        "negativeStackTotal",
+        NEGATIVE_STACK_TOTAL_DATA_KEY,
         stackDataKeys,
         firstSeriesInStack,
         renderingContext,
@@ -447,16 +453,6 @@ export const buildEChartsSeries = (
             seriesModel,
             chartModel.bubbleSizeDomain,
             yAxisIndex,
-            renderingContext,
-          );
-        case "waterfall":
-          return buildEChartsWaterfallSeries(
-            seriesModel,
-            chartModel.transformedDataset,
-            settings,
-            yAxisIndex,
-            chartModel.xAxisModel,
-            chartMeasurements,
             renderingContext,
           );
       }

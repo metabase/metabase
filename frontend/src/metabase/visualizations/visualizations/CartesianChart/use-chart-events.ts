@@ -23,7 +23,7 @@ import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartes
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
   chartModel: BaseCartesianChartModel,
-  timelineEventsModel: TimelineEventsModel,
+  timelineEventsModel: TimelineEventsModel | null,
   option: EChartsOption,
   {
     card,

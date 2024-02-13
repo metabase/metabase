@@ -1,4 +1,7 @@
-import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
+import type {
+  AxisBaseOption,
+  AxisBaseOptionCommon,
+} from "echarts/types/src/coord/axisCommonTypes";
 import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 import type {
   ComputedVisualizationSettings,
@@ -105,7 +108,7 @@ export const buildDimensionAxis = (
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
-): CartesianAxisOption => {
+): AxisBaseOption => {
   const { getColor } = renderingContext;
   const { axisType, formatter, timeSeriesInterval } = xAxisModel;
 
@@ -155,7 +158,7 @@ export const buildDimensionAxis = (
       timeSeriesInterval != null
         ? getTimeSeriesMinInterval(timeSeriesInterval)
         : undefined,
-  };
+  } as AxisBaseOption;
 };
 
 export const buildMetricAxis = (

@@ -47,7 +47,7 @@ export function ScatterPlot({
     [],
     computedVisualizationSettings,
     WIDTH,
-    HEIGHT,
+    HEIGHT - legendHeight,
     renderingContext,
   );
   chart.setOption(option);

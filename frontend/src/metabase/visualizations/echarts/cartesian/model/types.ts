@@ -108,10 +108,11 @@ export type YAxisModel = {
   formatter: AxisFormatter;
 };
 
-export type BaseCartesianChartModel<TSeriesModel = RegularSeriesModel> = {
+export type BaseCartesianChartModel = {
   dimensionModel: DimensionModel;
-  seriesModels: TSeriesModel[];
+  seriesModels: SeriesModel[];
   dataset: ChartDataset;
+  transformedDataset: ChartDataset;
 
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
@@ -120,8 +121,7 @@ export type BaseCartesianChartModel<TSeriesModel = RegularSeriesModel> = {
   columnByDataKey: Record<DataKey, DatasetColumn>;
 };
 
-export type CartesianChartModel = BaseCartesianChartModel<SeriesModel> & {
-  transformedDataset: ChartDataset;
+export type CartesianChartModel = BaseCartesianChartModel & {
   insights: Insight[];
   bubbleSizeDomain: Extent | null;
 };

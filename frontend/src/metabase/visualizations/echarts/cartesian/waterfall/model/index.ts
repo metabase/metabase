@@ -1,0 +1,95 @@
+import type { RawSeries } from "metabase-types/api";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import {
+  getCardSeriesModels,
+  getDimensionModel,
+} from "metabase/visualizations/echarts/cartesian/model/series";
+import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import {
+  getCardsColumnByDataKeyMap,
+  getJoinedCardsDataset,
+  sortDataset,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { getYAxisModel } from "metabase/visualizations/echarts/cartesian/model/axis";
+import { WATERFALL_END_KEY } from "../constants";
+import {
+  extendOriginalDatasetWithTotalDatum,
+  getWaterfallDataset,
+  getWaterfallXAxisModel,
+} from "./dataset";
+
+export const getWaterfallChartModel = (
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+): BaseCartesianChartModel => {
+  // Waterfall chart support one card only
+  const [singleRawSeries] = rawSeries;
+  const { data } = singleRawSeries;
+
+  const cardsColumns = [getCartesianChartColumns(data.cols, settings)];
+  const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
+  const dimensionModel = getDimensionModel(cardsColumns);
+  const [originalSeriesModel] = getCardSeriesModels(
+    singleRawSeries,
+    cardsColumns[0],
+    false,
+    settings,
+    renderingContext,
+  );
+
+  let dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
+  dataset = sortDataset(dataset, settings["graph.x_axis.scale"]);
+
+  const xAxisModel = getWaterfallXAxisModel(
+    dimensionModel,
+    rawSeries,
+    dataset,
+    settings,
+    renderingContext,
+  );
+
+  const transformedDataset = getWaterfallDataset(
+    dataset,
+    originalSeriesModel.dataKey,
+    settings,
+    xAxisModel,
+    !!settings["waterfall.show_total"],
+  );
+
+  const waterfallSeriesModels = [
+    { ...originalSeriesModel, dataKey: WATERFALL_END_KEY },
+  ];
+
+  // Pass waterfall dataset and keys for correct extent computation
+  const leftAxisModel = getYAxisModel(
+    [WATERFALL_END_KEY],
+    transformedDataset,
+    settings,
+    { [WATERFALL_END_KEY]: waterfallSeriesModels[0].column },
+    renderingContext,
+  );
+
+  // Extending the original dataset with total datum for tooltips
+  const originalDatasetWithTotal = extendOriginalDatasetWithTotalDatum(
+    dataset,
+    transformedDataset[transformedDataset.length - 1],
+    originalSeriesModel.dataKey,
+    settings,
+  );
+
+  return {
+    dataset: originalDatasetWithTotal,
+    transformedDataset,
+    seriesModels: waterfallSeriesModels,
+    columnByDataKey,
+    dimensionModel,
+    xAxisModel,
+    leftAxisModel,
+    rightAxisModel: null,
+  };
+};

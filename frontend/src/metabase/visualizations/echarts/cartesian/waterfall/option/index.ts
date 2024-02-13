@@ -1,9 +1,10 @@
-import type { RegisteredSeriesOption } from "echarts";
+import type { RegisteredSeriesOption, EChartsOption } from "echarts";
+import type { DatasetOption, SeriesOption } from "echarts/types/dist/shared";
 import type {
+  BaseCartesianChartModel,
   ChartDataset,
   DataKey,
   SeriesModel,
-  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -12,7 +13,6 @@ import type {
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import {
   buildEChartsLabelOptions,
-  getBarLabelLayout,
   getDataLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/option/series";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -24,7 +24,13 @@ import {
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
 } from "metabase/visualizations/echarts/cartesian/waterfall/constants";
-import type { ChartMeasurements } from "../option/types";
+import type { TimelineEventId } from "metabase-types/api";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import type { ChartMeasurements } from "../../option/types";
+import type { TimelineEventsModel } from "../../timeline-events/types";
+import { getChartMeasurements } from "../../utils/layout";
+import { getTimelineEventsSeries } from "../../timeline-events/option";
+import { buildAxes } from "../../option/axis";
 
 type WaterfallSeriesOptions =
   | RegisteredSeriesOption["line"]
@@ -37,8 +43,6 @@ export const buildEChartsWaterfallSeries = (
   seriesModel: SeriesModel,
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  yAxisIndex: number,
-  xAxisModel: XAxisModel,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): WaterfallSeriesOptions[] => {
@@ -54,6 +58,9 @@ export const buildEChartsWaterfallSeries = (
       settings,
       key,
       renderingContext,
+      {
+        negativeInParentheses: true,
+      },
     ),
   });
 
@@ -85,10 +92,9 @@ export const buildEChartsWaterfallSeries = (
         ],
       },
       zlevel: CHART_STYLE.series.zIndex,
-      yAxisIndex,
     },
     {
-      id: "waterfall_bar_label",
+      id: "waterfall_labels",
       type: "line",
       zlevel: CHART_STYLE.series.zIndex + 10,
       silent: true,
@@ -106,15 +112,24 @@ export const buildEChartsWaterfallSeries = (
         const datum = dataset[dataIndex];
         const value = datum[WATERFALL_VALUE_KEY] ?? 0;
         const end = datum[WATERFALL_END_KEY] ?? 0;
-        const isIncrease = value >= 0;
+        const isIncrease = getNumberOr(value, 0) >= 0;
 
         const verticalAlignOffset =
           CHART_STYLE.seriesLabels.size / 2 + CHART_STYLE.seriesLabels.offset;
 
+        const hasBottomSpace =
+          rect.y +
+            CHART_STYLE.seriesLabels.size +
+            CHART_STYLE.seriesLabels.offset <
+          chartMeasurements.bounds.bottom;
+
         const barHeight = rect.height;
-        const endSign = end < 0 ? 1 : -1;
+        const endSign = getNumberOr(end, 0) < 0 ? 1 : -1;
         let labelOffset = (endSign * barHeight) / 2;
-        labelOffset += isIncrease ? -verticalAlignOffset : verticalAlignOffset;
+        labelOffset +=
+          isIncrease || !hasBottomSpace
+            ? -verticalAlignOffset
+            : verticalAlignOffset;
 
         return {
           hideOverlap: settings["graph.label_value_frequency"] === "fit",
@@ -143,10 +158,77 @@ export const buildEChartsWaterfallSeries = (
       itemStyle: {
         color: settings["waterfall.total_color"],
       },
-      labelLayout: getBarLabelLayout(dataset, settings, WATERFALL_TOTAL_KEY),
-      label: buildLabelOption(WATERFALL_TOTAL_KEY),
     });
   }
 
   return series;
+};
+
+export const getWaterfallChartOption = (
+  chartModel: BaseCartesianChartModel,
+  timelineEventsModel: TimelineEventsModel | null,
+  selectedTimelineEventsIds: TimelineEventId[],
+  settings: ComputedVisualizationSettings,
+  chartWidth: number,
+  chartHeight: number,
+  renderingContext: RenderingContext,
+): EChartsOption => {
+  const hasTimelineEvents = timelineEventsModel != null;
+  const chartMeasurements = getChartMeasurements(
+    chartModel,
+    settings,
+    hasTimelineEvents,
+    chartWidth,
+    chartHeight,
+    renderingContext,
+  );
+  const timelineEventsSeries = hasTimelineEvents
+    ? getTimelineEventsSeries(
+        timelineEventsModel,
+        selectedTimelineEventsIds,
+        renderingContext,
+      )
+    : null;
+
+  const dataSeriesOptions = buildEChartsWaterfallSeries(
+    chartModel.seriesModels[0],
+    chartModel.transformedDataset,
+    settings,
+    chartMeasurements,
+    renderingContext,
+  );
+
+  const seriesOption = [dataSeriesOptions, timelineEventsSeries].flatMap(
+    option => option ?? [],
+  );
+
+  const echartsDataset = [{ source: chartModel.transformedDataset }];
+
+  return {
+    // TODO: extract common options
+    animation: true,
+    animationDuration: 0,
+    toolbox: {
+      show: false,
+    },
+    brush: {
+      toolbox: ["lineX"],
+      xAxisIndex: 0,
+      throttleType: "debounce",
+      throttleDelay: 200,
+    },
+    grid: {
+      ...chartMeasurements.padding,
+      containLabel: true,
+    },
+    dataset: echartsDataset as DatasetOption,
+    series: seriesOption as SeriesOption,
+    ...buildAxes(
+      chartModel,
+      settings,
+      chartMeasurements,
+      hasTimelineEvents,
+      renderingContext,
+    ),
+  } as EChartsOption;
 };

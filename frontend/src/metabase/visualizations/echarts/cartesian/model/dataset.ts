@@ -327,7 +327,10 @@ export const applyVisualizationSettingsDataTransformations = (
   ]);
 };
 
-export const sortDataset = (dataset: ChartDataset, xAxisScale?: XAxisScale) => {
+export const sortDataset = (
+  dataset: ChartDataset,
+  xAxisScale?: XAxisScale,
+): ChartDataset => {
   if (xAxisScale === "timeseries") {
     return sortByDimension(dataset, (left, right) => {
       if (typeof left === "string" && typeof right === "string") {
@@ -356,9 +359,9 @@ export const sortDataset = (dataset: ChartDataset, xAxisScale?: XAxisScale) => {
  * @returns A sorted dataset.
  */
 const sortByDimension = (
-  dataset: Record<DataKey, RowValue>[],
+  dataset: ChartDataset,
   compareFn: (a: RowValue, b: RowValue) => number,
-): Record<DataKey, RowValue>[] => {
+): ChartDataset => {
   return dataset.sort((left, right) => {
     return compareFn(left[X_AXIS_DATA_KEY], right[X_AXIS_DATA_KEY]);
   });

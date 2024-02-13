@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { EChartsType } from "echarts";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -14,6 +14,10 @@ import { useModelsAndOption } from "./use-models-and-option";
 import { useChartDebug } from "./use-chart-debug";
 
 export function CartesianChart(props: VisualizationProps) {
+  // The width and height from props reflect the dimensions of the entire container which includes legend,
+  // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
+  const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+
   const {
     rawSeries,
     settings,
@@ -28,7 +32,11 @@ export function CartesianChart(props: VisualizationProps) {
     onChangeCardAndRun,
     onHoverChange,
   } = props;
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption(props);
+  const { chartModel, timelineEventsModel, option } = useModelsAndOption({
+    ...props,
+    width: chartSize.width,
+    height: chartSize.height,
+  });
   useChartDebug({ isQueryBuilder, rawSeries, option });
 
   const chartRef = useRef<EChartsType>();
@@ -51,6 +59,10 @@ export function CartesianChart(props: VisualizationProps) {
     option,
     props,
   );
+
+  const handleResize = useCallback((width: number, height: number) => {
+    setChartSize({ width, height });
+  }, []);
 
   const canSelectTitle = !!onChangeCardAndRun;
 
@@ -81,6 +93,7 @@ export function CartesianChart(props: VisualizationProps) {
         <CartesianChartRenderer
           option={option}
           eventHandlers={eventHandlers}
+          onResize={handleResize}
           onInit={handleInit}
         />
       </CartesianChartLegendLayout>
