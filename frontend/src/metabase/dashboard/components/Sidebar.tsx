@@ -17,6 +17,7 @@ interface SidebarProps {
   "data-testid"?: string;
 }
 
+export const SIDEBAR_WIDTH = 384;
 export function Sidebar({
   closeIsDisabled,
   children,
@@ -26,7 +27,7 @@ export function Sidebar({
   "data-testid": dataTestId,
 }: SidebarProps) {
   return (
-    <SidebarAside data-testid={dataTestId} $width={384}>
+    <SidebarAside data-testid={dataTestId} $width={SIDEBAR_WIDTH}>
       <ChildrenContainer>{children}</ChildrenContainer>
       {(onClose || onCancel || onRemove) && (
         <ButtonContainer>
