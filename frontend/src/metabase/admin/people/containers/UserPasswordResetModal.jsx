@@ -17,16 +17,26 @@ import { clearTemporaryPassword } from "../people";
 import { ButtonContainer } from "./UserPasswordResetModal.styled";
 
 class UserPasswordResetModal extends Component {
+  state = {
+    resetButtonDisabled: false,
+  };
+
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }
+
+  handleClose = () => {
+    this.setState({ resetButtonDisabled: false });
+    this.props.onClose();
+  };
+
   render() {
-    const { user, emailConfigured, temporaryPassword, onClose } = this.props;
+    const { user, emailConfigured, temporaryPassword } = this.props;
     return temporaryPassword ? (
       <ModalContent
         title={t`${user.common_name}'s password has been reset`}
-        footer={<Button primary onClick={onClose}>{t`Done`}</Button>}
-        onClose={onClose}
+        footer={<Button primary onClick={this.handleClose}>{t`Done`}</Button>}
+        onClose={this.handleClose}
       >
         <span className="pb3 block">{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
 
@@ -35,17 +45,19 @@ class UserPasswordResetModal extends Component {
     ) : (
       <ModalContent
         title={t`Reset ${user.common_name}'s password?`}
-        onClose={onClose}
+        onClose={this.handleClose}
       >
         <p>{t`Are you sure you want to do this?`}</p>
 
         <ButtonContainer>
           <Button
             className="ml-auto"
+            disabled={this.state.resetButtonDisabled}
             onClick={async () => {
+              this.setState({ resetButtonDisabled: true });
               if (emailConfigured) {
                 await user.resetPasswordEmail();
-                onClose();
+                this.handleClose();
               } else {
                 await user.resetPasswordManual();
               }

@@ -118,15 +118,9 @@ describe("Static Embed Setup phase - EE, with token", () => {
           });
 
           expect(screen.getByText("Download data")).toBeVisible();
-          expect(
-            screen.getByLabelText(
-              "Enable users to download data from this embed",
-            ),
-          ).toBeChecked();
+          expect(screen.getByLabelText("Download data")).toBeChecked();
 
-          userEvent.click(
-            screen.getByText("Enable users to download data from this embed"),
-          );
+          userEvent.click(screen.getByLabelText("Download data"));
 
           expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
             `hide_download_button=true`,

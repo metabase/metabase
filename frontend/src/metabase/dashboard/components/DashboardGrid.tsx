@@ -51,7 +51,7 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 
 import {
   DashboardCardContainer,
-  FixedWidthContainer,
+  DashboardGridContainer,
 } from "./DashboardGrid.styled";
 
 import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
@@ -616,14 +616,14 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   render() {
     const { dashboard, width } = this.props;
     return (
-      <FixedWidthContainer
+      <DashboardGridContainer
         data-testid="dashboard-grid"
         isFixedWidth={dashboard?.width === "fixed"}
       >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
         {this.renderReplaceCardModal()}
-      </FixedWidthContainer>
+      </DashboardGridContainer>
     );
   }
 }

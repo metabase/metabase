@@ -115,6 +115,21 @@ describe("impersonation modal", () => {
     ).toHaveAttribute("href", "/admin/databases/1");
   });
 
+  it("should refer to 'users' instead of 'roles' for redshift impersonation", async () => {
+    await setup({ databaseDetails: { engine: "redshift" } });
+    expect(
+      await screen.findByText(
+        "Map a Metabase user attribute to database users",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByText(
+        "When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("should not update impersonation if it has not changed", async () => {
     const store = await setup({ userAttributes: ["foo"] });
 

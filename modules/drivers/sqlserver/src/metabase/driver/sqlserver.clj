@@ -25,7 +25,8 @@
    [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -281,7 +282,7 @@
 
 (defonce
   ^{:private true
-    :doc     "A map of all zone-id to the corresponding window-zone.
+    :doc     "A map of all zone-id to the corresponding windows-zone.
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
   (let [data (-> (io/resource "timezones/windowsZones.xml")
@@ -527,6 +528,58 @@
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(def ^:private ^:dynamic *compared-field-options*
+  "This variable is set to the options of the field we are comparing
+  (presumably in a filter)."
+  nil)
+
+(defn- timezoneless-comparison?
+  "Returns if we are currently comparing a timezoneless data type."
+  []
+  (contains? #{:type/DateTime :type/Time} (:base-type *compared-field-options*)))
+
+;; For some strange reason, comparing a datetime or datetime2 column
+;; against a Java LocaDateTime object sometimes doesn't work (see
+;; [[metabase.driver.sqlserver-test/filter-by-datetime-fields-test]]).
+;; Instead of this, we format a string which SQL Server then parses. Ugly.
+
+(defn- format-without-trailing-zeros
+  "Since there is no pattern for fractional seconds that produces a variable
+  number of digits, we remove any trailing zeros. The resulting string then
+  can be parsed as any data type supporting the required precision. (E.g.,
+  datetime support 3 fractional digits, datetime2 supports 7. If we read a
+  datetime value and then send back as a filter value, it will be formatted
+  with 7 fractional digits and then the zeros get removed so that SQL Server
+  can parse the result as a datetime value.)"
+  [value  ^DateTimeFormatter formatter]
+  (-> (.format formatter value)
+      (str/replace #"\.?0*$" "")))
+
+(def ^:private ^DateTimeFormatter time-format
+  (DateTimeFormatter/ofPattern "HH:mm:ss.SSSSSSS"))
+
+(defmethod sql.qp/->honeysql [:sqlserver OffsetTime]
+  [_driver t]
+  (cond-> t
+    (timezoneless-comparison?) (format-without-trailing-zeros time-format)))
+
+(def ^:private ^DateTimeFormatter datetime-format
+  (DateTimeFormatter/ofPattern "y-MM-dd HH:mm:ss.SSSSSSS"))
+
+(doseq [c [OffsetDateTime ZonedDateTime]]
+  (defmethod sql.qp/->honeysql [:sqlserver c]
+    [_driver t]
+    (cond-> t
+      (timezoneless-comparison?) (format-without-trailing-zeros datetime-format))))
+
+(doseq [op [:= :!= :< :<= :> :>= :between]]
+  (defmethod sql.qp/->honeysql [:sqlserver op]
+    [driver [_ field :as clause]]
+    (binding [*compared-field-options* (when (and (vector? field)
+                                                  (= (get field 0) :field))
+                                         (get field 2))]
+      ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause))))
 
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]

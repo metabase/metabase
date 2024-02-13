@@ -42,6 +42,7 @@
    [metabase.shared.util.i18n :refer [trs]]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util :as u]
+   [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -181,7 +182,7 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version :initially_published_at
    ;; we'll use type now
    :dataset])
 
@@ -560,6 +561,7 @@
       populate-result-metadata
       pre-update
       populate-query-fields
+      maybe-populate-initially-published-at
       (dissoc :id)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests

@@ -23,6 +23,8 @@ export type DashboardCard =
 
 export interface Dashboard {
   id: DashboardId;
+  created_at: string;
+  updated_at: string;
   collection?: Collection | null;
   collection_id: number | null;
   name: string;
@@ -44,8 +46,9 @@ export interface Dashboard {
   auto_apply_filters: boolean;
   archived: boolean;
   public_uuid: string | null;
-  width: "full" | "fixed";
+  initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
+  width: "full" | "fixed";
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;

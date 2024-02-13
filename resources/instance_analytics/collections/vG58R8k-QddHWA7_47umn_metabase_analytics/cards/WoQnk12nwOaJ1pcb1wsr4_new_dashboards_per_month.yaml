@@ -60,3 +60,4 @@ serdes/meta:
   label: new_dashboards_per_month
   model: Card
 metabase_version: null
+type: question

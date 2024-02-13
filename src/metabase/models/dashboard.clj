@@ -28,6 +28,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
+   [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -94,10 +95,11 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (u/prog1 dashboard
+  (u/prog1 (maybe-populate-initially-published-at dashboard)
     (params/assert-valid-parameters dashboard)
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-    (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
+    (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
+  (maybe-populate-initially-published-at dashboard))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -227,7 +229,7 @@
    ;;   lower-numbered positions appearing before higher numbered ones.
    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
    :public_uuid :made_public_by_id
-   :position])
+   :position :initially_published_at])
 
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])

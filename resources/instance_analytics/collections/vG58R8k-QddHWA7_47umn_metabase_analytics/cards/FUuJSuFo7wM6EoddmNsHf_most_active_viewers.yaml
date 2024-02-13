@@ -135,3 +135,4 @@ serdes/meta:
   label: most_active_viewers
   model: Card
 metabase_version: null
+type: question

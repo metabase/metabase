@@ -15,12 +15,14 @@ interface DashboardTabsProps {
   dashboardId: DashboardId;
   location: Location;
   isEditing?: boolean;
+  className?: string;
 }
 
 export function DashboardTabs({
   dashboardId,
   location,
   isEditing = false,
+  className,
 }: DashboardTabsProps) {
   const {
     tabs,
@@ -54,7 +56,7 @@ export function DashboardTabs({
   }
 
   return (
-    <Container>
+    <Container className={className}>
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}

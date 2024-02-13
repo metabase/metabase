@@ -103,3 +103,4 @@ serdes/meta:
   label: group_members
   model: Card
 metabase_version: null
+type: model
