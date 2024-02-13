@@ -34,7 +34,7 @@ import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover"
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass } from "metabase-lib/utils";
-import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import MiniBar from "../MiniBar";
 import {
   TableDraggable,
@@ -141,16 +141,18 @@ class TableInteractive extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(newProps) {
-    const { card, data } = this.props;
-    const { card: nextCard, data: nextData } = newProps;
+    const { card, data, metadata } = this.props;
+    const { card: newCard, data: newData, metadata: newMetadata } = newProps;
 
-    const isDataChange =
-      data && nextData && !_.isEqual(data.cols, nextData.cols);
-    const isDatasetStatusChange =
-      isAdHocModelQuestionCard(nextCard, card) ||
-      isAdHocModelQuestionCard(card, nextCard);
+    const question = newMetadata.question(newCard.id);
+    const originalQuestion = metadata.question(card.id);
 
-    if (isDataChange && !isDatasetStatusChange) {
+    const isDataChange = data && newData && !_.isEqual(data.cols, newData.cols);
+    const isModelOrMetricStatusChange =
+      isAdHocModelQuestion(question, originalQuestion) ||
+      isAdHocModelQuestion(originalQuestion, question);
+
+    if (isDataChange && !isModelOrMetricStatusChange) {
       this.resetColumnWidths();
     }
 
@@ -162,7 +164,7 @@ class TableInteractive extends Component {
     }
 
     if (isDataChange) {
-      this._findIDColumn(nextData, newProps.isPivoted);
+      this._findIDColumn(newData, newProps.isPivoted);
       this._showDetailShortcut(this.props.data, this.props.isPivoted);
     }
   }
