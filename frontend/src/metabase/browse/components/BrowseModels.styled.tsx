@@ -1,12 +1,18 @@
 import styled from "@emotion/styled";
-
+import type { HTMLAttributes } from "react";
 import Card from "metabase/components/Card";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
-import { Flex, Group, Icon } from "metabase/ui";
-
+import {
+  Button,
+  Collapse,
+  Flex,
+  Group,
+  Icon,
+  type ButtonProps,
+} from "metabase/ui";
 import { BrowseGrid } from "./BrowseApp.styled";
 
 export const ModelCard = styled(Card)`
@@ -79,4 +85,18 @@ export const BannerModelIcon = styled(Icon)`
 export const BannerCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
   margin-left: auto;
+`;
+
+export const ContainerCollapse = styled(Collapse)`
+  display: contents;
+`;
+
+export const ContainerExpandCollapseButton = styled(Button)<
+  ButtonProps & HTMLAttributes<HTMLButtonElement>
+>`
+  grid-column: 1 / -1;
+  border: 0;
+  background-color: inherit;
+  max-width: 50rem;
+  justify-self: center;
 `;
