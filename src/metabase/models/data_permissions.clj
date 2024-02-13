@@ -89,29 +89,34 @@
 (defn relevant-permissions-for-user
   "Returns all relevant rows for permissions for the user"
   [user-id]
-  (group-by (juxt :perm_type :db_id)
+  (group-by (juxt :user_id :perm_type :db_id)
             (t2/select :model/DataPermissions
-                       {:select [:p.*]
+                       {:select [:p.* [:pgm.user_id :user_id]]
                         :from [[:permissions_group_membership :pgm]]
                         :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                                [:data_permissions :p] [:= :p.group_id :pg.id]]
-                        :where [:and
-                                [:= :pgm.user_id user-id]]})))
+                        :where [:= :pgm.user_id user-id]})))
 
 (def ^:dynamic *permissions-for-user*
   "Filled by `with-relevant-permissions-for-user` with the output of `(relevant-permissions-for-user [user-id])`. A map
-  with keys like `[perm_type db_id]`, because nearly always we want to get permissions for a particular permission
-  type and database id. Values are collections of rows of DataPermissions."
-  nil)
+  with keys like `[user_id perm_type db_id]`, the latter two because nearly always we want to get permissions for a
+  particular permission type and database id, `user_id` because we want to be VERY sure that we never accidentally use
+  the cache for the wrong user (e.g. if we were checking whether *another* user could perform some action for some
+  reason). Of course, we also won't use the cache if we're not checking for the current user - but better safe than
+  sorry. The values are collections of rows of DataPermissions."
+  (delay nil))
 
 (defmacro with-relevant-permissions-for-user
   "Populates the `*permissions-for-user*` dynamic var for use by the cache-aware functions in this namespace."
   [user-id & body]
-  `(binding [*permissions-for-user* (relevant-permissions-for-user ~user-id)]
+  `(binding [*permissions-for-user* (delay (relevant-permissions-for-user ~user-id))]
      ~@body))
 
-(defn- use-cached-values? [user-id]
-  (and (= user-id api/*current-user-id*) (seq *permissions-for-user*)))
+(defn- get-permissions [user-id perm-type db-id]
+  (if-let [cached-perms (and (= user-id api/*current-user-id*)
+                             (get @*permissions-for-user* [user-id perm-type db-id]))]
+    cached-perms
+    (get (relevant-permissions-for-user user-id) [user-id perm-type db-id])))
 
 ;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
 
@@ -164,20 +169,9 @@
                     {perm-type (Permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
-    (let [perm-values (if (use-cached-values? user-id)
-                        (->> (get *permissions-for-user* [perm-type database-id])
-                             (map :perm_value)
-                             (into #{}))
-                        (t2/select-fn-set :value
-                                          :model/DataPermissions
-                                          {:select [[:p.perm_value :value]]
-                                           :from [[:permissions_group_membership :pgm]]
-                                           :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                                                  [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                                           :where [:and
-                                                   [:= :pgm.user_id user-id]
-                                                   [:= :p.perm_type (u/qualified-name perm-type)]
-                                                   [:= :p.db_id database-id]]}))]
+    (let [perm-values (->> (get-permissions user-id perm-type database-id)
+                           (map :perm_value)
+                           (into #{}))]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
@@ -232,25 +226,11 @@
                     {perm-type (Permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
-    (let [perm-values (if (use-cached-values? user-id)
-                        (->> (get *permissions-for-user* [perm-type database-id])
-                             (filter #(or (= (:table_id %) table-id)
-                                          (nil? (:table_id %))))
-                             (map :perm_value)
-                             (into #{}))
-                        (t2/select-fn-set :value
-                                          :model/DataPermissions
-                                          {:select [[:p.perm_value :value]]
-                                           :from [[:permissions_group_membership :pgm]]
-                                           :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                                                  [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                                           :where [:and
-                                                   [:= :pgm.user_id user-id]
-                                                   [:= :p.perm_type (u/qualified-name perm-type)]
-                                                   [:= :p.db_id database-id]
-                                                   [:or
-                                                    [:= :table_id table-id]
-                                                    [:= :table_id nil]]]}))]
+    (let [perm-values (->> (get-permissions user-id perm-type database-id)
+                           (filter #(or (= (:table_id %) table-id)
+                                        (nil? (:table_id %))))
+                           (map :perm_value)
+                           (into #{}))]
       (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
                                                                             perm-type)))
           (least-permissive-value perm-type)))))
@@ -281,26 +261,12 @@
     ;; restrictive group permission.
     (let [perm-values (most-restrictive-per-group
                        perm-type
-                       (if (use-cached-values? user-id)
-                         (->> (get *permissions-for-user* [perm-type database-id])
-                              (filter #(or (= (:schema_name %) schema-name)
-                                           (nil? (:table_id %))))
-                              (map #(set/rename-keys % {:group_id :group-id
-                                                        :perm_value :value}))
-                              (map #(select-keys % [:group-id :value])))
-                         (t2/select :model/DataPermissions
-                                    {:select [[:p.group_id :group-id]
-                                              [:p.perm_value :value]]
-                                     :from [[:permissions_group_membership :pgm]]
-                                     :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                                            [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                                     :where [:and
-                                             [:= :pgm.user_id user-id]
-                                             [:= :p.perm_type (u/qualified-name perm-type)]
-                                             [:= :p.db_id database-id]
-                                             [:or
-                                              [:= :schema_name schema-name]
-                                              [:= :table_id nil]]]})))]
+                       (->> (get-permissions user-id perm-type database-id)
+                            (filter #(or (= (:schema_name %) schema-name)
+                                         (nil? (:table_id %))))
+                            (map #(set/rename-keys % {:group_id :group-id
+                                                      :perm_value :value}))
+                            (map #(select-keys % [:group-id :value]))))]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
@@ -317,24 +283,11 @@
     ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
     ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
     ;; restrictive group permission.
-    (let [perm-values (if (use-cached-values? user-id)
-                        (->> (get *permissions-for-user* [perm-type database-id])
-                             (filter #(or (= (:schema_name %) schema-name)
-                                          (nil? (:table_id %))))
-                             (map :perm_value)
-                             (into #{}))
-                        (t2/select-fn-set :value :model/DataPermissions
-                                          {:select [[:p.perm_value :value]]
-                                           :from [[:permissions_group_membership :pgm]]
-                                           :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                                                  [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                                           :where [:and
-                                                   [:= :pgm.user_id user-id]
-                                                   [:= :p.perm_type (u/qualified-name perm-type)]
-                                                   [:= :p.db_id database-id]
-                                                   [:or
-                                                    [:= :schema_name schema-name]
-                                                    [:= :table_id nil]]]}))]
+    (let [perm-values (->> (get-permissions user-id perm-type database-id)
+                           (filter #(or (= (:schema_name %) schema-name)
+                                        (nil? (:table_id %))))
+                           (map :perm_value)
+                           (into #{}))]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
@@ -347,21 +300,9 @@
                     {perm-type (Permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
-    (let [perm-values (if (use-cached-values? user-id)
-                        (->> (get *permissions-for-user* [perm-type database-id])
+    (let [perm-values (->> (get-permissions user-id perm-type database-id)
                              (map :perm_value)
-                             (into #{}))
-                        (t2/select-fn-set
-                         :value
-                         :model/DataPermissions
-                         {:select [[:p.perm_value :value]]
-                          :from [[:permissions_group_membership :pgm]]
-                          :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                                 [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                          :where [:and
-                                  [:= :pgm.user_id user-id]
-                                  [:= :p.perm_type (u/qualified-name perm-type)]
-                                  [:= :p.db_id database-id]]}))]
+                             (into #{}))]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
@@ -373,21 +314,10 @@
   (if (is-superuser? user-id)
     (most-permissive-value :perms/download-results)
     (let [perm-values
-          (if (use-cached-values? user-id)
-            (->> (get *permissions-for-user* [:perms/download-results database-id])
-                 (map (fn [{:keys [perm_value group_id]}]
-                        {:group_id group_id :value perm_value}))
-                 first)
-            (t2/select :model/DataPermissions
-                       {:select [[:p.perm_value :value]
-                                 [:p.group_id :group_id]]
-                        :from [[:permissions_group_membership :pgm]]
-                        :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                               [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                        :where [:and
-                                [:= :pgm.user_id user-id]
-                                [:= :p.perm_type (u/qualified-name :perms/download-results)]
-                                [:= :p.db_id database-id]]}))
+          (->> (get-permissions user-id :perms/download-results database-id)
+               (map (fn [{:keys [perm_value group_id]}]
+                      {:group_id group_id :value perm_value}))
+               first)
 
           value-by-group
           (-> (group-by :group_id perm-values)
@@ -405,20 +335,9 @@
   (if (is-superuser? user-id)
     false
     (let [perm-values
-          (if (use-cached-values? user-id)
-            (->> (get *permissions-for-user* [:perms/data-access database-id])
-                 (map :perm_value)
-                 (into #{}))
-            (t2/select-fn-set :value
-                              :model/DataPermissions
-                              {:select [[:p.perm_value :value]]
-                               :from [[:permissions_group_membership :pgm]]
-                               :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                                      [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                               :where [:and
-                                       [:= :pgm.user_id user-id]
-                                       [:= :p.perm_type (u/qualified-name :perms/data-access)]
-                                       [:= :p.db_id database-id]]}))]
+          (->> (get-permissions user-id :perms/data-access database-id)
+               (map :perm_value)
+               (into #{}))]
       (= (coalesce :perms/data-access perm-values)
          :block))))
 
