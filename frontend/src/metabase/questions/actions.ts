@@ -23,7 +23,7 @@ const loadMetadata =
     const question = new Question(card, getMetadata(getState()));
     const dependencies = [
       ...question.dependentMetadata(),
-      ...Lib.dependentMetadata(question.query()),
+      ...Lib.dependentMetadata(question.composeDataset().query()),
     ];
     return dispatch(loadMetadataForDependentItems(dependencies, options));
   };
