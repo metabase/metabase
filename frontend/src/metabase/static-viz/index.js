@@ -20,7 +20,7 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
     getColor,
     formatValue: formatStaticValue,
     measureText: measureTextWidth,
-    fontFamily: "Lato",
+    fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
   };
 
   const props = {
