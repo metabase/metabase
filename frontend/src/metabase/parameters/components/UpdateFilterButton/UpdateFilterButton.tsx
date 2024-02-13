@@ -10,7 +10,7 @@ interface UpdateButtonProps {
   onClick?: () => void;
 }
 
-export function UpdateButton(props: UpdateButtonProps) {
+export function UpdateFilterButton(props: UpdateButtonProps) {
   const {
     value,
     unsavedValue,

@@ -5,7 +5,7 @@ import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 
 import { WidgetRoot } from "metabase/parameters/components/widgets/Widget.styled";
 
-import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 // Use a placeholder value as field references are not used in dashboard filters
@@ -50,7 +50,7 @@ export const DateAllOptionsWidget = ({
         disableOperatorSelection={disableOperatorSelection}
         supportsExpressions
       >
-        <UpdateButton
+        <UpdateFilterButton
           value={value}
           unsavedValue={unsavedValue}
           defaultValue={defaultValue}

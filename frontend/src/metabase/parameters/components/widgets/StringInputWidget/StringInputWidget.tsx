@@ -10,7 +10,7 @@ import {
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
-import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 
 type StringInputWidgetProps = {
   value: string[] | undefined;
@@ -63,7 +63,7 @@ export function StringInputWidget({
         />
       </TokenFieldWrapper>
       <Footer>
-        <UpdateButton
+        <UpdateFilterButton
           value={value}
           unsavedValue={unsavedArrayValue}
           defaultValue={parameter.default}

@@ -9,7 +9,7 @@ import {
   WidgetRoot,
   Footer,
 } from "metabase/parameters/components/widgets/Widget.styled";
-import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import {
   getFilterArgumentFormatOptions,
@@ -100,7 +100,7 @@ export default function ParameterFieldWidget({
         })}
       </div>
       <Footer>
-        <UpdateButton
+        <UpdateFilterButton
           value={value}
           unsavedValue={unsavedValue}
           defaultValue={parameter.default}

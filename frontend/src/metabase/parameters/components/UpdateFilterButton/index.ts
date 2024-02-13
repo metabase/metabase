@@ -1,1 +1,1 @@
-export { UpdateButton } from "./UpdateButton";
+export { UpdateFilterButton } from "./UpdateFilterButton";

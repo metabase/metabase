@@ -11,7 +11,7 @@ import {
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
-import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 
 export type NumberInputWidgetProps = {
   value: number[] | undefined;
@@ -98,7 +98,7 @@ export function NumberInputWidget({
         ))
       )}
       <Footer>
-        <UpdateButton
+        <UpdateFilterButton
           value={value}
           unsavedValue={unsavedArrayValue}
           defaultValue={parameter.default}
