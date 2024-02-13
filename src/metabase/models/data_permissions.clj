@@ -97,6 +97,19 @@
                                [:data_permissions :p] [:= :p.group_id :pg.id]]
                         :where [:= :pgm.user_id user-id]})))
 
+(defn- relevant-permissions-for-user-perm-and-db
+  "Returns all relevant rows for a given user, permission type, and db_id"
+  [user-id perm-type db-id]
+  (t2/select :model/DataPermissions
+             {:select [:p.* [:pgm.user_id :user_id]]
+              :from [[:permissions_group_membership :pgm]]
+              :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                     [:data_permissions :p] [:= :p.group_id :pg.id]]
+              :where [:and
+                      [:= :pgm.user_id user-id]
+                      [:= :p.perm_type (u/qualified-name perm-type)]
+                      [:= :p.db_id db-id]]}))
+
 (def ^:dynamic *permissions-for-user*
   "Filled by `with-relevant-permissions-for-user` with the output of `(relevant-permissions-for-user [user-id])`. A map
   with keys like `[user_id perm_type db_id]`, the latter two because nearly always we want to get permissions for a
@@ -116,7 +129,7 @@
   (if-let [cached-perms (and (= user-id api/*current-user-id*)
                              (get @*permissions-for-user* [user-id perm-type db-id]))]
     cached-perms
-    (get (relevant-permissions-for-user user-id) [user-id perm-type db-id])))
+    (relevant-permissions-for-user-perm-and-db user-id perm-type db-id)))
 
 ;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
 
