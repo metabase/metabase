@@ -328,15 +328,17 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         label={disabledSaveTooltip}
         disabled={!isSaveDisabled}
       >
-        <ActionButton
-          actionFn={() => this.onSave()}
-          className="Button Button--primary Button--small"
-          normalText={t`Save`}
-          activeText={t`Saving…`}
-          failedText={t`Save failed`}
-          successText={t`Saved`}
-          disabled={isSaveDisabled}
-        />
+        <span>
+          <ActionButton
+            actionFn={() => this.onSave()}
+            className="Button Button--primary Button--small"
+            normalText={t`Save`}
+            activeText={t`Saving…`}
+            failedText={t`Save failed`}
+            successText={t`Saved`}
+            disabled={isSaveDisabled}
+          />
+        </span>
       </Tooltip>,
     ];
   }
