@@ -69,7 +69,7 @@ if (hasPremiumFeature("whitelabel")) {
           key: "-branding-introduction",
           widget: () => (
             <Text>
-              Configure your instance to match your brand visuals and voice
+              {t`Configure your instance to match your brand visuals and voice`}
             </Text>
           ),
         },
@@ -86,6 +86,12 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "application-logo-url",
           display_name: t`Logo`,
+          note: (
+            <Text size="sm" color="text-light">
+              {t`For best results, use an SVG file with a transparent
+              background.`}
+            </Text>
+          ),
           type: "string",
           widget: ImageUpload,
         },
@@ -137,8 +143,7 @@ if (hasPremiumFeature("whitelabel")) {
           tab: "conceal-metabase",
           widget: () => (
             <Text>
-              Hide or customize pieces of the Metabase product to tailor the
-              experience to your brand and needs
+              {t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`}
             </Text>
           ),
         },
