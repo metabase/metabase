@@ -86,6 +86,8 @@ const getModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.slug()}/query` }),
   createMockLocation({ pathname: `/model/${model.id()}/metadata` }),
   createMockLocation({ pathname: `/model/${model.slug()}/metadata` }),
+  createMockLocation({ pathname: `/model/${model.id()}/notebook` }),
+  createMockLocation({ pathname: `/model/${model.slug()}/notebook` }),
   getRunModelLocation(model),
 ];
 

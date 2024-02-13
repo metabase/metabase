@@ -97,6 +97,7 @@ export const isNavigationAllowed = ({
       `/model/${slug}`,
       `/model/${slug}/query`,
       `/model/${slug}/metadata`,
+      `/model/${slug}/notebook`,
     ]);
 
     return allowedPathnames.includes(pathname);
