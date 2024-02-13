@@ -19,8 +19,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]))
@@ -212,8 +210,7 @@
 
     (grouped-datetime :day :timestamp) ;; -> `cast(timestamp AS date)` [honeysql equivalent]"
   [unit expr]
-  (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* 2]
-    (sql.qp/date (mdb/db-type) (keyword unit) expr)))
+  (sql.qp/date (mdb/db-type) (keyword unit) expr))
 
 (defn first-non-null
   "Build a `CASE` statement that returns the first non-`NULL` of `exprs`."

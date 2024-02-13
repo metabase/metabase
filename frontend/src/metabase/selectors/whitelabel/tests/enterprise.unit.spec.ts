@@ -1,4 +1,8 @@
-import { getIsWhiteLabeling, getWhiteLabeledLoadingMessage } from "..";
+import {
+  getApplicationName,
+  getIsWhiteLabeling,
+  getWhiteLabeledLoadingMessage,
+} from "..";
 import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 
@@ -37,5 +41,19 @@ describe("getIsWhiteLabeling (EE without token)", () => {
     const { getState } = setup({ applicationName: "something else" });
 
     expect(getIsWhiteLabeling(getState())).toBe(false);
+  });
+});
+
+describe("getApplicationName (EE without token)", () => {
+  it("should return Metabase when application-name is unchanged", () => {
+    const { getState } = setup();
+
+    expect(getApplicationName(getState())).toBe("Metabase");
+  });
+
+  it("should return Metabase when application-name is changed", () => {
+    const { getState } = setup({ applicationName: "something else" });
+
+    expect(getApplicationName(getState())).toBe("Metabase");
   });
 });

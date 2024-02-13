@@ -128,9 +128,10 @@
          (try
            (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
              (sql-jdbc.execute/set-parameters! driver stmt params)
-             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
-                   rows-affected (.executeUpdate stmt)]
-               (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
+             (let [[_tag _identifier-type components] table-identifier
+                   table-name                         (last components)
+                   rows-affected                      (.executeUpdate stmt)]
+               (log/infof "[%s] Inserted %d rows into %s." driver rows-affected table-name)))
            (catch Throwable e
              (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
                              {:driver driver, :sql sql, :params params}
@@ -172,5 +173,5 @@
 
 ;; Presto doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :presto-jdbc
-  [_ _ _ _]
+  [_driver _dbdef _tabledef _fielddef]
   nil)

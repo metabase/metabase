@@ -106,7 +106,6 @@ function FilterPopover({
   stageIndex,
   filter,
   filterIndex,
-  legacyQuery,
   onAddFilter,
   onUpdateFilter,
   onClose,
@@ -117,7 +116,6 @@ function FilterPopover({
       stageIndex={stageIndex}
       filter={filter}
       filterIndex={filterIndex}
-      legacyQuery={legacyQuery}
       onSelect={newFilter => {
         if (filter) {
           onUpdateFilter(filter, newFilter);

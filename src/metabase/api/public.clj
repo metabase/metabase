@@ -14,6 +14,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.db.util :as mdb.u]
+   [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.action :as action]
@@ -241,7 +242,9 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (dashboard-with-uuid uuid))
+  (u/prog1 (dashboard-with-uuid uuid)
+           (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
+                                                         :object  <>})))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via

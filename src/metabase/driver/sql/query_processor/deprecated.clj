@@ -6,16 +6,10 @@
   Deprecated method impls should call [[log-deprecation-warning]] to gently nudge driver authors to stop using this
   method."
   (:require
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]
-   [potemkin :as p]
-   [pretty.core :as pretty]))
-
-(set! *warn-on-reflection* true)
+   [metabase.util.log :as log]))
 
 ;;; This is unused at this moment in time but we can leave it around in case we want to use it again in the
 ;;; future (likely). See the code at `v0.45.0` for example where we were using this a lot
@@ -39,35 +33,3 @@
       (qp.store/cached [driver method-name deprecated-version]
         (thunk))
       (thunk))))
-
-(p/deftype+ ^{:deprecated "0.46.0"} SQLSourceQuery [sql params]
-  hformat/ToSql
-  (to-sql [_]
-    (dorun (map hformat/add-anon-param params))
-    sql)
-
-  pretty/PrettyPrintable
-  (pretty [_]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (list `->SQLSourceQuery sql params))
-
-  Object
-  (equals [_ other]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (and (instance? SQLSourceQuery other)
-         (= sql    (.sql ^SQLSourceQuery other))
-         (= params (.params ^SQLSourceQuery other)))))
-
-(defn format-honeysql-1
-  "Compile a `honeysql-form` map to a vector of `[sql & params]` with Honey SQL 1. `quote-style` is something like
-  `:ansi` or `:mysql`."
-  {:deprecated "0.46.0"}
-  [quote-style honeysql-form]
-  (let [f (if (and (vector? honeysql-form)
-                   (keyword? (first honeysql-form)))
-            hsql/format-predicate
-            hsql/format)]
-    (binding [hformat/*subquery?* false]
-      (f honeysql-form
-         :quoting             quote-style
-         :allow-dashed-names? true))))

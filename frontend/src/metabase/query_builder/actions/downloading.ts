@@ -70,7 +70,7 @@ const getDatasetParams = ({
     return {
       method: "GET",
       url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-      params: new URLSearchParams(Urls.extractQueryParams(params)),
+      params: Urls.getEncodedUrlSearchParams(params),
     };
   }
 

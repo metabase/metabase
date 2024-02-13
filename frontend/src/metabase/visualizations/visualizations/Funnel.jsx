@@ -253,7 +253,6 @@ export default class Funnel extends Component {
         {!hasTitle &&
           actionButtons && ( // always show action buttons if we have them
             <LegendHeader
-              className="flex-no-shrink"
               series={series._raw || series}
               actionButtons={actionButtons}
               onChangeCardAndRun={onChangeCardAndRun}

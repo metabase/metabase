@@ -5,7 +5,6 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [malli.core :as mc]
-   [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -17,12 +16,14 @@
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
+   [metabase.models.permissions-revision :as perms-revision]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -83,9 +84,13 @@
   The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with
   this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)
   response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
-  `:sandboxes` feature flag is not present."
-  [:as {body :body}]
-  {body :map}
+  `:sandboxes` feature flag is not present.
+
+  If the skip-graph query param is truthy, then the graph will not be returned."
+  [:as {body :body
+        {skip-graph :skip-graph} :params}]
+  {body :map
+   skip-graph [:maybe :boolean]}
   (api/check-superuser)
   (let [graph (mc/decode api.permission-graph/DataPermissionsGraph
                          body
@@ -93,13 +98,9 @@
                           mtx/string-transformer
                           (mtx/transformer {:name :perm-graph})))]
     (when-not (mc/validate api.permission-graph/DataPermissionsGraph graph)
-      (let [explained (mc/explain api.permission-graph/DataPermissionsGraph body)]
-        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
-                             (pr-str explained))
-                        {:status-code 400
-                         :error (str (me/humanize explained)
-                                     "\n"
-                                     (pr-str explained))}))))
+      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph graph)]
+        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
+                        {:status-code 400}))))
     (t2/with-transaction [_conn]
       (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
       (let [sandbox-updates        (:sandboxes graph)
@@ -108,10 +109,10 @@
             impersonation-updates  (:impersonations graph)
             impersonations         (when impersonation-updates
                                      (insert-impersonations! impersonation-updates))]
-        (merge
-         (perms/data-perms-graph)
-         (when sandboxes {:sandboxes sandboxes})
-         (when impersonations {:impersonations impersonations}))))))
+        (merge {:revision (perms-revision/latest-id)}
+               (when-not skip-graph {:groups (:groups (perms/data-perms-graph))})
+               (when sandboxes {:sandboxes sandboxes})
+               (when impersonations {:impersonations impersonations}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |

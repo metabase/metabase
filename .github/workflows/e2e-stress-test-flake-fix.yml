@@ -15,6 +15,11 @@ on:
         description: 'Grep and filter tests to run in isolation'
         type: string
         required: false
+      mb_edition:
+        description: 'Set MB_EDITION env var to "ee" (enteprise) or "oss" (open-source)'
+        type: string
+        required: false
+        default: "ee"
 
 jobs:
   workflow-summary:
@@ -44,6 +49,7 @@ jobs:
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+      MB_EDITION: ${{ inputs.mb_edition }}
       TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
     steps:

@@ -14,7 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { isLinkDashCard } from "metabase/dashboard/utils";
+import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
@@ -32,11 +32,11 @@ interface Props {
   dashboard: Dashboard;
   dashcard?: DashboardCard;
   isLoading: boolean;
-  isVirtualDashCard: boolean;
   isPreviewing: boolean;
   hasError: boolean;
   onRemove: () => void;
   onAddSeries: () => void;
+  onReplaceCard: () => void;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
   onUpdateVisualizationSettings: (
     settings: Partial<VisualizationSettings>,
@@ -52,11 +52,11 @@ export function DashCardActionsPanel({
   dashboard,
   dashcard,
   isLoading,
-  isVirtualDashCard,
   isPreviewing,
   hasError,
   onRemove,
   onAddSeries,
+  onReplaceCard,
   onReplaceAllVisualizationSettings,
   onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
@@ -117,7 +117,7 @@ export function DashCardActionsPanel({
       );
     }
 
-    if (!isVirtualDashCard && !disableClickBehavior) {
+    if (dashcard && !isVirtualDashCard(dashcard) && !disableClickBehavior) {
       buttons.push(
         <DashCardActionButton
           key="click-behavior-tooltip"
@@ -130,7 +130,22 @@ export function DashCardActionsPanel({
         </DashCardActionButton>,
       );
     }
+  }
 
+  if (!isLoading && dashcard && !isVirtualDashCard(dashcard)) {
+    buttons.push(
+      <DashCardActionButton
+        key="replace-question"
+        aria-label={t`Replace`}
+        tooltip={t`Replace`}
+        onClick={onReplaceCard}
+      >
+        <Icon name="refresh_downstream" />
+      </DashCardActionButton>,
+    );
+  }
+
+  if (!isLoading && !hasError) {
     if (supportsSeries) {
       buttons.push(
         <AddSeriesButton

@@ -35,7 +35,7 @@ jobs:
             const artifacts = await github.rest.actions.listArtifactsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              name: `metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar`,
+              name: `metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar`,
               per_page: 1,
             });
 

@@ -214,7 +214,7 @@
 (deftest duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
                             COUNT (*)         AS count]
                  :from     [{:select [products.category       AS category
@@ -236,9 +236,9 @@
   (testing "Don't allow connections to other SQLite databases with ATTACH DATABASE (https://github.com/metabase/metaboat/issues/152)"
     (mt/test-driver :sqlite
       ;; force creation of the sample dataset file
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/id))
-      (let [file (io/file "sample-dataset.sqlite")
+      (let [file (io/file "test-data.sqlite")
             path (.getAbsolutePath file)]
         (is (.exists file))
         (testing "Attach the sample dataset as an FDW called fdw_test"

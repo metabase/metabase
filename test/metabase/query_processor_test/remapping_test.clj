@@ -231,7 +231,7 @@
 
 (deftest ^:parallel native-query-remapping-test
   (testing "Remapping should work for native queries"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "With the metadata from an MBQL query"
         (let [metadata (get-in (qp/process-query (mt/mbql-query orders))
                                [:data :results_metadata :columns])]
@@ -245,7 +245,7 @@
   (mt/with-temporary-setting-values [report-timezone "UTC"]
     (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
       (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
-        (mt/dataset sample-dataset
+        (mt/dataset test-data
           (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                                (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                                                (mt/id :products :title)))
@@ -292,7 +292,7 @@
                          ;; mongodb doesn't support foreign keys required by this test
                          :mongo)
     (testing "Remapped columns in joined source queries should work (#15578)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                              qp.test-util/mock-fks-metadata-provider
                                              (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
@@ -326,7 +326,7 @@
 (deftest ^:parallel inception-style-nested-query-with-joins-test
   (testing "source query > source query > query with join (with remappings) should work (#14724)"
     ;; this error only seems to be triggered when actually using Cards as sources (and include the source metadata)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; this is only triggered when using the results metadata from the Card itself --  see #19895
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                            (lib.tu/remap-metadata-provider (mt/id :orders :product_id)

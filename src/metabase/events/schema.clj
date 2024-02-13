@@ -10,10 +10,14 @@
                       [:map {:closed true}
                        [:user-id pos-int?]
                        [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
+      view-only      (mc/schema
+                      [:map {:closed true}
+                       [:user-id [:maybe pos-int?]]
+                       [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
       with-dashcards (mut/assoc default-schema
                                 :dashcards [:sequential [:map [:id pos-int?]]])]
   (def ^:private dashboard-events-schemas
-    {:event/dashboard-read             default-schema
+    {:event/dashboard-read             view-only
      :event/dashboard-create           default-schema
      :event/dashboard-update           default-schema
      :event/dashboard-delete           default-schema

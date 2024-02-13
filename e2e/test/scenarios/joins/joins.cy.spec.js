@@ -147,7 +147,7 @@ describe("scenarios > question > joined questions", () => {
     popover().within(() => {
       cy.findByText("question b").click();
       cy.findByText("CATEGORY").click();
-      cy.findByPlaceholderText("Enter some text").type("Gadget");
+      cy.findByPlaceholderText("Search by CATEGORY").type("Gadget");
       cy.button("Add filter").click();
     });
 

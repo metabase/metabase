@@ -8,10 +8,11 @@
 
 (mr/def ::DatabaseMetadataTable
   [:map
-   [:name   ::lib.schema.common/non-blank-string]
-   [:schema [:maybe ::lib.schema.common/non-blank-string]]
+   [:name           ::lib.schema.common/non-blank-string]
+   [:schema         [:maybe ::lib.schema.common/non-blank-string]]
+   [:require-filter {:optional true} :boolean]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description {:optional true} [:maybe :string]]])
+   [:description    {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
@@ -48,6 +49,19 @@
 (def TableMetadataField
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."
   [:ref ::TableMetadataField])
+
+(mr/def ::TableIndexMetadata
+  [:set
+   [:and
+    [:map
+     [:type [:enum :normal-column-index :nested-column-index]]]
+    [:multi {:dispatch :type}
+     [:normal-column-index [:map [:value ::lib.schema.common/non-blank-string]]]
+     [:nested-column-index [:map [:value [:sequential ::lib.schema.common/non-blank-string]]]]]]])
+
+(def TableIndexMetadata
+  "Schema for a given Table as provided in [[metabase.driver/describe-table-indexes]]."
+  [:ref ::TableIndexMetadata])
 
 (mr/def ::TableMetadata
   [:map

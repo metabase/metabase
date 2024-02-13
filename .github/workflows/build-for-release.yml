@@ -187,7 +187,7 @@ jobs:
     - name: Upload JARs as artifact
       uses: actions/upload-artifact@v3
       with:
-        name: metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
+        name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
         path: |
           ./metabase.jar
           ./COMMIT-ID

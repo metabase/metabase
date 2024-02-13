@@ -1,4 +1,9 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  openNewPublicLinkDropdown,
+} from "e2e/support/helpers";
 
 describe("issue 20393", () => {
   beforeEach(() => {
@@ -26,8 +31,7 @@ describe("issue 20393", () => {
     cy.findByText("Save").click();
 
     // open the sharing modal and enable sharing
-    cy.icon("share").click();
-    cy.findByRole("switch").click();
+    openNewPublicLinkDropdown("dashboard");
 
     // navigate to the public dashboard link
     cy.wait("@publicLink").then(({ response: { body } }) => {

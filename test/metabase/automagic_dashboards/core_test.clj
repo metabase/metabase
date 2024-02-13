@@ -55,7 +55,7 @@
 
 (deftest source-root-table-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Table"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "The source of a table is the table itself"
         (let [table (t2/select-one :model/Table :id (mt/id :orders))
               {:keys [entity source]} (#'magic/->root table)]
@@ -65,7 +65,7 @@
 
 (deftest source-root-field-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Field"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "The source of a field is the originating table of the field"
         (let [table (t2/select-one :model/Table :id (mt/id :orders))
               field (t2/select-one :model/Field :id (mt/id :orders :discount))
@@ -75,7 +75,7 @@
 
 (deftest source-root-card-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Card sourcing has four branches..."
         (testing "A model's (dataset = true) source is itself with the :entity_type :entity/GenericTable assoced in"
           (mt/with-temp
@@ -131,7 +131,7 @@
 
 (deftest source-root-query-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Query"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "The source of a query is the underlying datasource of the query"
         (let [query (mi/instance
                       Query
@@ -185,8 +185,8 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [[table cardinality] (map vector
-                                       (t2/select Table :db_id (mt/id) {:order-by [[:id :asc]]})
-                                       [7 5 8 2])]
+                                       (t2/select Table :db_id (mt/id) {:order-by [[:name :asc]]})
+                                       [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))
 
     (automagic-dashboards.test/with-dashboard-cleanup
@@ -222,7 +222,7 @@
         (test-automagic-analysis metric 8)))))
 
 (deftest parameter-mapping-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "mbql queries have parameter mappings with field ids"
         (let [table (t2/select-one Table :id (mt/id :products))
               dashboard (magic/automagic-analysis table {})
@@ -343,7 +343,7 @@
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
@@ -372,7 +372,7 @@
 (deftest ensure-field-dimension-bindings-test-2
   (testing "A model that spans 3 tables should use all fields, provide correct candidate bindings,
             and choose the best-match candidate."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :type     :query
@@ -415,7 +415,7 @@
 
 (deftest field-candidate-matching-test
   (testing "Simple dimensions with only a tablespec can be matched directly against fields."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         ;; This is a fabricated context with simple fields.
         ;; These can be matched against dimension definitions with simple 1-element vector table specs
@@ -438,7 +438,7 @@
           ;; context is fabricated and needs additional data (:table). See above test for a working example with a match
           (is (= #{} (set (map :id (#'interesting/matching-fields context (dimensions "Lat"))))))))))
   (testing "Verify dimension selection works for dimension definitions with 2-element [tablespec fieldspec] definitions."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension definitions.
         (let [source-query {:database (mt/id)
@@ -531,7 +531,7 @@
   ;; (don't show non-selected fields from within the model or its parent)
   ;; - The dashboard should reference its source as a :related field
   (testing "Simple model with a price dimension"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
@@ -571,7 +571,7 @@
   (testing "Simple model with a temporal dimension detected"
     ;; Same as above, but the code should detect the time dimension of the model and present
     ;; cards with a time axis.
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [temporal-field-id (mt/id :products :created_at)
               source-query      {:database (mt/id)
@@ -606,7 +606,7 @@
 
 (deftest basic-root-model-test-3
   (testing "A simple model with longitude and latitude dimensions should generate a card with a map."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
@@ -638,7 +638,7 @@
 
 (deftest model-title-does-not-leak-abstraction-test
   (testing "The title of a model or question card should not be X model or X question, but just X."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
@@ -710,7 +710,7 @@
 (deftest model-with-joins-test
   ;; This model does a join of 3 tables and aliases columns.
   ;; The created dashboard should use all the data with the correct labels.
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [source-query {:database (mt/id)
                           :type     :query
@@ -906,7 +906,7 @@
       (mt/with-test-user :rasta
         (is (malli= [:cat
                      [:map
-                      [:tables [:sequential {:min 4, :max 4} :any]]]
+                      [:tables [:sequential {:min 8, :max 8} :any]]]
                      [:* :any]]
                     (magic/candidate-tables (mt/db))))))
 
@@ -1060,7 +1060,7 @@
 
 (deftest filter-referenced-fields-test
   (testing "X-Ray should work if there's a filter in the question (#19241)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mi/instance
                    Query
                    {:database-id   (mt/id)
@@ -1112,7 +1112,7 @@
 
 (deftest most-specific-definition-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from most-specific-definition"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing ""
         (testing "A table with a more specific entity-type will match to more specific binding definitions."
           (let [table (t2/select-one :model/Table (mt/id :people))]
@@ -1182,7 +1182,7 @@
 
 (deftest bind-dimensions-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from bind-dimensions"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Clearly demonstrate the mechanism of full dimension binding"
         (let [table (t2/select-one :model/Table (mt/id :people))]
           (let [{{:keys [entity_type]} :source :as root} (#'magic/->root table)
@@ -1216,7 +1216,7 @@
 (deftest binding-functions-with-all-same-names-and-types-test
   (testing "Ensure expected behavior when multiple columns alias to the same base column and display metadata uses the
             same name for all columns."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [source-query {:native   {:query "SELECT LATITUDE AS L1, LATITUDE AS L2, LATITUDE AS L3 FROM PEOPLE;"}
                           :type     :native
                           :database (mt/id)}]
@@ -1284,7 +1284,7 @@
 (deftest related-card-generation-test
   (testing "Ensure that the `related` function is called and the right cards are created."
     (mt/with-test-user :rasta
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [{table-id :id :as table} (t2/select-one Table :id (mt/id :orders))
               {:keys [related]} (magic/automagic-analysis table {:show :all})]
           (is (=? {:zoom-in [{:url         (format "/auto/dashboard/field/%s" (mt/id :people :created_at))
@@ -1327,7 +1327,7 @@
 
 (deftest linked-metrics-test
   (testing "Testing the ability to return linked metrics based on a provided entity."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp [Metric total-orders {:name       "Total Orders"
                                                     :table_id   (mt/id :orders)
                                                     :definition {:aggregation [[:count]]}}
@@ -1390,7 +1390,7 @@
 
 (deftest combination-grounded-metrics->dashcards-test
   (testing "Dashcard creation example test"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp [Metric _total-orders {:name       "Total Orders"
                                                      :table_id   (mt/id :orders)
                                                      :definition {:aggregation [[:count]]}}
@@ -1437,7 +1437,7 @@
 
 (deftest generate-dashboard-pipeline-test
   (testing "Example new pipeline dashboard generation test"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp [Metric _total-orders {:name       "Total Orders"
                                                      :table_id   (mt/id :orders)
                                                      :definition {:aggregation [[:count]]}}
@@ -1505,7 +1505,7 @@
 (deftest adhoc-query-with-explicit-joins-14793-test
   (testing "A verification of the fix for https://github.com/metabase/metabase/issues/14793,
             X-rays fails on explicit joins, when metric is for the joined table"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (let [query-with-joins {:database   (mt/id)
@@ -1542,7 +1542,7 @@
 
 (deftest compare-to-the-rest-25278+32557-test
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-test-user :rasta
         (let [left                 (query/adhoc-query
                                      {:database (mt/id)
@@ -1594,7 +1594,7 @@
 
 (deftest compare-to-the-rest-with-expression-16680-test
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-test-user :rasta
         (let [left                 (query/adhoc-query
                                      {:database (mt/id)
@@ -1693,7 +1693,7 @@
 
 (deftest compare-to-the-rest-15655-test
   (testing "Questions based on native questions should produce a valid dashboard."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-test-user :rasta
         (let [native-query {:native   {:query "select * from people"}
                             :type     :native

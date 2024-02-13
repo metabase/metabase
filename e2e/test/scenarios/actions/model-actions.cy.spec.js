@@ -123,10 +123,12 @@ describe(
         .findByText("Number")
         .click();
       cy.findByRole("button", { name: "Save" }).click();
-      modal().within(() => {
-        cy.findByLabelText("Name").type("Delete Order");
-        cy.findByRole("button", { name: "Create" }).click();
-      });
+      modal()
+        .eq(1)
+        .within(() => {
+          cy.findByLabelText("Name").type("Delete Order");
+          cy.findByRole("button", { name: "Create" }).click();
+        });
       cy.findByLabelText("Action list")
         .findByText("Delete Order")
         .should("be.visible");
@@ -217,9 +219,7 @@ describe(
         cy.findByRole("button", { name: "Save" }).click();
       });
 
-      modal().within(() => {
-        cy.findByText("Select a model").click();
-      });
+      modal().eq(1).findByText("Select a model").click();
       popover().findByText("Order").click();
       cy.findByRole("button", { name: "Create" }).click();
 
@@ -910,10 +910,12 @@ function disableSharingFor(actionName) {
     cy.findByRole("button", { name: "Action settings" }).click();
     cy.findByLabelText("Make public").should("be.checked").click();
   });
-  modal().within(() => {
-    cy.findByText("Disable this public link?").should("be.visible");
-    cy.findByRole("button", { name: "Yes" }).click();
-  });
+  modal()
+    .eq(1)
+    .within(() => {
+      cy.findByText("Disable this public link?").should("be.visible");
+      cy.findByRole("button", { name: "Yes" }).click();
+    });
   cy.wait("@disableActionSharing");
   cy.findByRole("dialog").within(() => {
     cy.button("Cancel").click();

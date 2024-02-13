@@ -1,7 +1,6 @@
 (ns metabase.driver.sql.query-processor.util
   (:require
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defn nfc-field->parent-identifier
   "Take a nested field column field corresponding to something like an inner key within a JSON column,
@@ -9,17 +8,15 @@
 
   Suppose you have the child with corresponding identifier
 
-  (metabase.util.honeysql-extensions/identifier :field \"blah -> boop\")
+    (metabase.util.honey-sql-2/identifier :field \"blah -> boop\")
 
   Ultimately, this is just a way to get the parent identifier
 
-  (metabase.util.honeysql-extensions/identifier :field \"blah\")"
+    (metabase.util.honey-sql-2/identifier :field \"blah\")"
   [field-identifier {:keys [nfc-path], :as _field}]
-  {:pre [(hx/identifier? field-identifier)]}
-  (let [parent-components (-> (case hx/*honey-sql-version*
-                                1 (:components field-identifier)
-                                2 (last field-identifier))
+  {:pre [(h2x/identifier? field-identifier)]}
+  (let [parent-components (-> (last field-identifier)
                               (vec)
                               (pop)
                               (conj (first nfc-path)))]
-    (apply hx/identifier (cons :field parent-components))))
+    (apply h2x/identifier (cons :field parent-components))))

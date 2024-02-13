@@ -61,7 +61,7 @@
     (qualify-and-quote [driver \"my-db\" \"my-table\"]) -> \"my-db\".\"dbo\".\"my-table\"
 
   You should only use this function in places where you are working directly with SQL. For HoneySQL forms, use
-  [[metabase.util.honeysql-extensions/identifier]] instead."
+  [[metabase.util.honey-sql-2/identifier]] instead."
   {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name]), :style/indent 1}
   [driver & names]
   (let [identifier-type (condp = (count names)
@@ -195,8 +195,8 @@
 (defmulti create-index-sql
   "Return a `CREATE INDEX` statement.
   `options` is a map. The supported keys are: unique?, method and condition"
-  {:arglists '([driver tabledef fielddef]
-               [driver tabledef fielddef options])}
+  {:arglists '([driver table-name field-names]
+               [driver table-name field-names options])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -211,7 +211,7 @@
   ([driver table-name field-names {:keys [unique? method condition]}]
    (format "CREATE %sINDEX %s ON %s%s (%s)%s;"
            (if unique? "UNIQUE " "")
-           (str "idx_" table-name "_" (str/join "_" field-names))
+           (format-and-quote-field-name driver (str "idx_" table-name "_" (str/join "_" field-names)))
            (qualify-and-quote driver table-name)
            (if method (str "USING " method) "")
            (str/join ", " (map #(format-and-quote-field-name driver %) field-names))

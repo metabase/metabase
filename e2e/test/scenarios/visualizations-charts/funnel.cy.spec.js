@@ -83,20 +83,20 @@ describe("scenarios > visualizations > funnel chart", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
 
-    cy.findByTestId("filter-field-Source").within(() => {
-      cy.findByTestId("operator-select").click();
+    cy.findByTestId("filter-column-Source").within(() => {
+      cy.findByLabelText("Filter operator").click();
     });
 
     popover().within(() => {
       cy.findByText("Is not").click();
     });
 
-    cy.findByTestId("filter-field-Source").within(() => {
+    cy.findByTestId("filter-column-Source").within(() => {
       cy.findByText("Facebook").click();
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Apply Filters").click();
+    cy.findByText("Apply filters").click();
 
     getDraggableElements().should("have.length", 4);
 

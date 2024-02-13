@@ -338,11 +338,11 @@
         (lib/with-temporal-bucket :day-of-week))
     :type/Temporal))
 
-(deftest ^:parallel named-expression-clause-do-not-wrap-values-test
+(deftest ^:parallel top-level-expression-clause-do-not-wrap-values-test
   (testing "named-expression-clause should not wrap a :value clause in another :value clause"
     (is (=? [:value {:semantic-type :type/Country, :base-type :type/Text, :lib/expression-name "Country"}
              "United States"]
-            (lib.util/named-expression-clause
+            (lib.util/top-level-expression-clause
              [:value {:semantic-type :type/Country, :base-type :type/Text, :lib/uuid (str (random-uuid))}
               "United States"]
              "Country")))))

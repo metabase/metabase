@@ -22,7 +22,7 @@
    (pivot-query true))
 
   ([include-pivot-options?]
-   (mt/dataset sample-dataset
+   (mt/dataset test-data
      (merge
       (mt/mbql-query orders
                      {:aggregation [[:count] [:sum $orders.quantity]]

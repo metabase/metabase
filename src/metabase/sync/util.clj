@@ -336,10 +336,10 @@
 
 (defmethod name-for-logging :model/Database
   [{database-name :name, id :id, engine :engine,}]
-  (format "%s Database %s ''%s ''" (name engine) (str (or id "")) database-name))
+  (format "%s Database %s ''%s''" (name engine) (str (or id "")) database-name))
 
 (defmethod name-for-logging :model/Table [{schema :schema, id :id, table-name :name}]
-  (format "Table %s ''%s ''" (or (str id) "") (str (when (seq schema) (str schema ".")) table-name)))
+  (format "Table %s ''%s''" (or (str id) "") (str (when (seq schema) (str schema ".")) table-name)))
 
 (defmethod name-for-logging Field [{field-name :name, id :id}]
   (format "Field %s ''%s''" (or (str id) "") field-name))

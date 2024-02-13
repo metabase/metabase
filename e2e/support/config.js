@@ -17,6 +17,8 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
 
+const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
+
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 
@@ -28,18 +30,20 @@ const {
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
-    // Cypress analytics and the alternative to Cypress dashboard
-    // Needs to be at the very top in the config!
-    [on, config] = require("@deploysentinel/cypress-debugger/plugin")(
-      on,
-      config,
-    );
-
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
+
+
+    if (runWithReplay) {
+      on = replay.wrapOn(on);
+      replay.default(on, config, {
+        upload: true,
+        apiKey: process.env.REPLAY_API_KEY,
+      });
+    }
 
     on(
       "file:preprocessor",
@@ -99,30 +103,31 @@ const defaultConfig = {
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
+    // Set on local, development-mode runs only
+    config.env.feHealthcheck = {
+      enabled: feHealthcheckEnabled,
+      url: feHealthcheckEnabled
+        ? "http://localhost:8080/webpack-dev-server/"
+        : undefined,
+    };
 
     require("@cypress/grep/src/plugin")(config);
 
-    if (runWithReplay) {
-      replay.default(on, config, {
-        upload: true,
-        apiKey: process.env.REPLAY_API_KEY,
-      });
-    }
 
     return config;
   },
   supportFile: "e2e/support/cypress.js",
-  videoUploadOnPasses: false,
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
-  specPattern: "e2e/test/**/*.cy.spec.js",
+  specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
 };
 
 const mainConfig = {
   ...defaultConfig,
+  projectId: "ywjy9z",
   viewportHeight: 800,
   viewportWidth: 1280,
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
@@ -132,7 +137,7 @@ const mainConfig = {
     toConsole: true,
   },
   retries: {
-    runMode: 2,
+    runMode: 1,
     openMode: 0,
   },
 };
@@ -145,13 +150,13 @@ const snapshotsConfig = {
 const crossVersionSourceConfig = {
   ...defaultConfig,
   baseUrl: "http://localhost:3000",
-  specPattern: "e2e/test/scenarios/cross-version/source/**/*.cy.spec.js",
+  specPattern: "e2e/test/scenarios/cross-version/source/**/*.cy.spec.{js,ts}",
 };
 
 const crossVersionTargetConfig = {
   ...defaultConfig,
   baseUrl: "http://localhost:3001",
-  specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.js",
+  specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.{js,ts}",
 };
 
 const stressTestConfig = {

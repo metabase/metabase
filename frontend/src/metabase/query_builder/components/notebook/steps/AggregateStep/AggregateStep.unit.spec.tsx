@@ -31,6 +31,7 @@ function setup(step = createMockNotebookStep()) {
     <AggregateStep
       step={step}
       query={step.query}
+      stageIndex={step.stageIndex}
       topLevelQuery={step.topLevelQuery}
       color="summarize"
       isLastOpened={false}
@@ -39,7 +40,7 @@ function setup(step = createMockNotebookStep()) {
     />,
   );
 
-  function getNextQuery() {
+  function getNextQuery(): Lib.Query {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
     return lastCall[0];
   }

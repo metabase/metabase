@@ -5,7 +5,7 @@ import { jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import SettingHeader from "./SettingHeader";
-import SettingInput from "./widgets/SettingInput";
+import { SettingInput } from "./widgets/SettingInput";
 import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";
 import SettingRadio from "./widgets/SettingRadio";

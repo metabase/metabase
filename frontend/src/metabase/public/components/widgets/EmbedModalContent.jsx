@@ -1,26 +1,16 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
-import { titleize } from "inflection";
-import { t } from "ttag";
 
 import _ from "underscore";
-import { Icon } from "metabase/core/components/Icon";
 
-import {
-  getSignedPreviewUrl,
-  getUnsignedPreviewUrl,
-  getSignedToken,
-} from "metabase/public/lib/embed";
-import { color } from "metabase/lib/colors";
+import PropTypes from "prop-types";
+import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
-import SharingPane from "./SharingPane";
-import { EmbedTitleLabel } from "./EmbedModalContent.styled";
+import { SharingPane } from "./SharingPane";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
@@ -41,7 +31,6 @@ class EmbedModalContent extends Component {
     };
     this.state = {
       pane: "preview",
-      embedType: null,
       embeddingParams: getDefaultEmbeddingParams(props),
       displayOptions,
       parameterValues: {},
@@ -52,8 +41,8 @@ class EmbedModalContent extends Component {
 
   handleSave = async () => {
     try {
-      const { resource } = this.props;
-      const { embeddingParams, embedType } = this.state;
+      const { resource, embedType } = this.props;
+      const { embeddingParams } = this.state;
       if (embedType === "application") {
         if (!resource.enable_embedding) {
           await this.props.onUpdateEnableEmbedding(true);
@@ -110,15 +99,11 @@ class EmbedModalContent extends Component {
       resource,
       resourceType,
       resourceParameters,
-      onClose,
-    } = this.props;
-    const {
-      pane,
       embedType,
-      embeddingParams,
-      parameterValues,
-      displayOptions,
-    } = this.state;
+      setEmbedType,
+    } = this.props;
+    const { pane, embeddingParams, parameterValues, displayOptions } =
+      this.state;
 
     const previewParametersBySlug = this.getPreviewParamsBySlug();
     const previewParameters = this.getPreviewParameters(
@@ -126,114 +111,78 @@ class EmbedModalContent extends Component {
       embeddingParams,
     );
 
-    return (
-      <div className="flex flex-column full-height">
-        <div
-          className="px2 py1 z1 flex align-center"
-          style={{
-            boxShadow:
-              embedType === "application"
-                ? `0px 8px 15px -9px ${color("text-dark")}`
-                : undefined,
-          }}
-        >
-          <h2 className="ml-auto">
-            <EmbedTitle
-              onClick={() => this.setState({ embedType: null })}
-              type={embedType && titleize(embedType)}
-            />
-          </h2>
-          <Icon
-            className="text-light text-medium-hover cursor-pointer p2 ml-auto"
-            name="close"
-            size={24}
-            onClick={() => {
-              MetabaseAnalytics.trackStructEvent(
-                "Sharing Modal",
-                "Modal Closed",
-              );
-              onClose();
-            }}
-          />
-        </div>
-        {embedType == null ? (
-          <div className="flex-full">
-            {/* Center only using margins because  */}
-            <div className="ml-auto mr-auto" style={{ maxWidth: 1040 }}>
-              <SharingPane
-                {...this.props}
-                publicUrl={getUnsignedPreviewUrl(
-                  siteUrl,
-                  resourceType,
-                  resource.public_uuid,
-                  displayOptions,
-                )}
-                iframeUrl={getUnsignedPreviewUrl(
-                  siteUrl,
-                  resourceType,
-                  resource.public_uuid,
-                  displayOptions,
-                )}
-                onChangeEmbedType={embedType => this.setState({ embedType })}
-              />
-            </div>
-          </div>
-        ) : embedType === "application" ? (
-          <div className="flex flex-full">
-            <AdvancedEmbedPane
-              pane={pane}
-              resource={resource}
-              resourceType={resourceType}
-              embedType={embedType}
-              token={getSignedToken(
-                resourceType,
-                resource.id,
-                previewParametersBySlug,
-                secretKey,
-                embeddingParams,
-              )}
-              iframeUrl={getSignedPreviewUrl(
-                siteUrl,
-                resourceType,
-                resource.id,
-                previewParametersBySlug,
-                displayOptions,
-                secretKey,
-                embeddingParams,
-              )}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={previewParametersBySlug}
-              displayOptions={displayOptions}
-              previewParameters={previewParameters}
-              parameterValues={parameterValues}
-              resourceParameters={resourceParameters}
-              embeddingParams={embeddingParams}
-              onChangeDisplayOptions={displayOptions =>
-                this.setState({ displayOptions })
-              }
-              onChangeEmbeddingParameters={embeddingParams =>
-                this.setState({ embeddingParams })
-              }
-              onChangeParameterValue={(id, value) =>
-                this.setState({
-                  parameterValues: {
-                    ...parameterValues,
-                    [id]: value,
-                  },
-                })
-              }
-              onChangePane={pane => this.setState({ pane })}
-              onSave={this.handleSave}
-              onUnpublish={this.handleUnpublish}
-              onDiscard={this.handleDiscard}
-            />
-          </div>
-        ) : null}
+    return embedType == null ? (
+      <SharingPane {...this.props} onChangeEmbedType={setEmbedType} />
+    ) : embedType === "application" ? (
+      <div className="flex flex-full" style={{ height: "100%" }}>
+        <AdvancedEmbedPane
+          pane={pane}
+          resource={resource}
+          resourceType={resourceType}
+          embedType={embedType}
+          token={getSignedToken(
+            resourceType,
+            resource.id,
+            previewParametersBySlug,
+            secretKey,
+            embeddingParams,
+          )}
+          iframeUrl={getSignedPreviewUrl(
+            siteUrl,
+            resourceType,
+            resource.id,
+            previewParametersBySlug,
+            displayOptions,
+            secretKey,
+            embeddingParams,
+          )}
+          siteUrl={siteUrl}
+          secretKey={secretKey}
+          params={previewParametersBySlug}
+          displayOptions={displayOptions}
+          previewParameters={previewParameters}
+          parameterValues={parameterValues}
+          resourceParameters={resourceParameters}
+          embeddingParams={embeddingParams}
+          onChangeDisplayOptions={displayOptions =>
+            this.setState({ displayOptions })
+          }
+          onChangeEmbeddingParameters={embeddingParams =>
+            this.setState({ embeddingParams })
+          }
+          onChangeParameterValue={(id, value) =>
+            this.setState({
+              parameterValues: {
+                ...parameterValues,
+                [id]: value,
+              },
+            })
+          }
+          onChangePane={pane => this.setState({ pane })}
+          onSave={this.handleSave}
+          onUnpublish={this.handleUnpublish}
+          onDiscard={this.handleDiscard}
+        />
       </div>
-    );
+    ) : null;
   }
 }
+
+EmbedModalContent.propTypes = {
+  resource: PropTypes.object.isRequired,
+  resourceType: PropTypes.string,
+  resourceParameters: PropTypes.array.isRequired,
+
+  siteUrl: PropTypes.string.isRequired,
+  secretKey: PropTypes.string.isRequired,
+
+  onCreatePublicLink: PropTypes.func,
+  onUpdateEnableEmbedding: PropTypes.func,
+  onUpdateEmbeddingParams: PropTypes.func,
+
+  embedType: PropTypes.string,
+  setEmbedType: PropTypes.func.isRequired,
+};
 
 function getDefaultEmbeddingParams(props) {
   const { resource, resourceParameters } = props;
@@ -249,13 +198,5 @@ function filterValidResourceParameters(embeddingParams, resourceParameters) {
 
   return _.pick(embeddingParams, validParameters);
 }
-
-export const EmbedTitle = ({ type, onClick }) => (
-  <a className="flex align-center" onClick={onClick}>
-    <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
-    {type && <Icon name="chevronright" className="mx1 text-medium" />}
-    {type}
-  </a>
-);
 
 export default connect(mapStateToProps)(EmbedModalContent);

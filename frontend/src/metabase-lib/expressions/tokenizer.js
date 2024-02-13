@@ -29,6 +29,10 @@ export const OPERATOR = {
   False: "false",
 };
 
+/**
+ *
+ * @param {string} expression
+ */
 export function tokenize(expression) {
   const source = expression;
   const length = expression.length;
@@ -42,7 +46,7 @@ export function tokenize(expression) {
     cp === 0x000d || // carriage return
     cp === 0x0020 || // space
     cp === 0x0085 || // next line
-    cp === 0x00a0 || // non-breking space
+    cp === 0x00a0 || // non-breaking space
     cp === 0x1680 || // ogham space
     cp === 0x2000 || // en quad
     cp === 0x2001 || // em quad

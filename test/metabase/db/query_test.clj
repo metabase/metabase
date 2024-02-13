@@ -23,7 +23,7 @@
 
 (deftest ensure-same-queries-test
   (testing "A test with several joins and an aggregate should produce the same result in mbql or the derived native sql"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [q {:type     :query
                :query    (mt/$ids
                           {:source-table (mt/id :orders)
@@ -48,7 +48,7 @@
                :database (mt/id)}]
         (verify-same-query q))))
   (testing "A test with several joins a custom column, and an aggregate should produce the same result in mbql or the derived native sql"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [q {:type     :query
                :query    (mt/$ids
                           {:source-table (mt/id :orders)

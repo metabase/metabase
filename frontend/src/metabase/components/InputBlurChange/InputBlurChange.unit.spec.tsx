@@ -41,11 +41,23 @@ describe("InputBlurChange", () => {
     expect(onBlurChange).toHaveBeenCalledTimes(1);
     expect(onBlurChange.mock.results[0].value).toBe("test");
   });
+
+  it("should set `internalValue` to the normalized value even if the normalized value is the same as the previous one", () => {
+    const value = "/";
+    setup({ value, normalize: value => (value as string).trim() });
+    const input = screen.getByDisplayValue(value) as HTMLInputElement;
+    userEvent.clear(input);
+    userEvent.type(input, "           /         ");
+
+    const normalizedValue = "/";
+    expect(input.value).toEqual(normalizedValue);
+  });
 });
 
 function setup({
   value = "",
   placeholder = "Type some texto",
+  normalize,
 }: Partial<InputBlurChangeProps> = {}) {
   const onChange = jest.fn();
   const onBlurChange = jest.fn(e => e.target.value);
@@ -56,6 +68,7 @@ function setup({
       placeholder={placeholder}
       onChange={onChange}
       onBlurChange={onBlurChange}
+      normalize={normalize}
     />,
   );
 

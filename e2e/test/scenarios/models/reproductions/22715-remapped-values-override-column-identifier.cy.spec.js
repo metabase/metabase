@@ -1,4 +1,10 @@
-import { restore, visitQuestion, popover, filter } from "e2e/support/helpers";
+import {
+  restore,
+  visitQuestion,
+  popover,
+  filter,
+  modal,
+} from "e2e/support/helpers";
 
 describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
   beforeEach(() => {
@@ -65,9 +71,9 @@ describe("filtering based on the remapped column name should result in a correct
   it("when done through the filter trigger (metabase#22715-2)", () => {
     filter();
 
-    cy.get(".Modal").within(() => {
+    modal().within(() => {
       cy.findByText("Today").click();
-      cy.findByText("Apply Filters").click();
+      cy.findByText("Apply filters").click();
     });
 
     cy.wait("@dataset");

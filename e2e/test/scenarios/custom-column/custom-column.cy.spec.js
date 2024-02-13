@@ -526,9 +526,10 @@ describe("scenarios > question > custom column", () => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
     summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sum of ...").click();
-    popover().findByText("MyCC [2027]").click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("MyCC [2027]").click();
+    });
     cy.findAllByTestId("notebook-cell-item")
       .contains("Sum of MyCC [2027]")
       .click();

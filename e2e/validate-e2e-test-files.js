@@ -5,7 +5,7 @@ const path = require("path");
 const glob = require("glob");
 const chalk = require("chalk");
 
-const E2E_FILE_EXTENSION = ".cy.spec.js";
+const E2E_FILE_EXTENSION = /\.cy\.spec\.(js|ts)$/;
 const E2E_HOME = "e2e/test/";
 
 init();
@@ -16,7 +16,7 @@ function validateE2EFileNames(files) {
   }
 
   const invalidFileNames = files.filter(fullPath => {
-    return !path.basename(fullPath).endsWith(E2E_FILE_EXTENSION);
+    return !path.basename(fullPath).match(E2E_FILE_EXTENSION);
   });
 
   printFeedback(invalidFileNames);

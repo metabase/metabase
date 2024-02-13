@@ -16,16 +16,18 @@ export const DashboardHeaderActionDivider = styled.div`
 export const DashboardHeaderButton = styled(Button)<{
   isActive?: boolean;
   visibleOnSmallScreen?: boolean;
+  hasBackground?: boolean;
 }>`
   padding: 0.25rem 0.5rem;
   height: 2rem;
   min-width: 2rem;
-  color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
+  color: ${props => (props.isActive ? color("brand") : color("text-medium"))};
   font-size: 1rem;
 
   &:hover {
     color: ${color("brand")};
-    background-color: ${color("bg-medium")};
+    background: ${({ hasBackground }) =>
+      hasBackground ? color("bg-light") : "transparent"};
   }
 
   svg {
@@ -45,4 +47,5 @@ DashboardHeaderButton.defaultProps = {
   onlyIcon: true,
   iconSize: 20,
   visibleOnSmallScreen: true,
+  hasBackground: true,
 };

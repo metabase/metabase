@@ -17,13 +17,13 @@ import { ConnectedAddToDashSelectDashModal } from "metabase/containers/AddToDash
 
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
-import QuestionEmbedWidget from "metabase/query_builder/components/QuestionEmbedWidget";
+import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import BulkFilterModal from "metabase/query_builder/components/filters/modals/BulkFilterModal";
+import { FilterModal } from "metabase/querying";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
@@ -37,7 +37,7 @@ import type {
   State,
 } from "metabase-types/store";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type { UpdateQuestionOpts } from "../actions/core/updateQuestion";
 
@@ -98,9 +98,11 @@ class QueryModals extends Component<QueryModalsProps> {
     }
   };
 
-  onQueryChange = (query: StructuredQuery) => {
-    const question = query.question();
-    this.props.updateQuestion(question, { run: true });
+  onQueryChange = (query: Lib.Query) => {
+    const { question, updateQuestion } = this.props;
+    const nextLegacyQuery = Lib.toLegacyQuery(query);
+    const nextQuestion = question.setDatasetQuery(nextLegacyQuery);
+    updateQuestion(nextQuestion, { run: true });
   };
 
   render() {
@@ -235,15 +237,12 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.FILTERS:
         return (
-          <Modal fit onClose={onCloseModal}>
-            <BulkFilterModal
-              question={question}
-              onQueryChange={this.onQueryChange}
-              onClose={onCloseModal}
-            />
-          </Modal>
+          <FilterModal
+            query={question._getMLv2Query()}
+            onSubmit={this.onQueryChange}
+            onClose={onCloseModal}
+          />
         );
-
       case MODAL_TYPES.MOVE:
         return (
           <Modal onClose={onCloseModal}>
@@ -280,12 +279,7 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.EMBED:
         return (
-          <Modal full onClose={onCloseModal}>
-            <QuestionEmbedWidget
-              card={this.props.card}
-              onClose={onCloseModal}
-            />
-          </Modal>
+          <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
         );
       case MODAL_TYPES.CLONE:
         return (

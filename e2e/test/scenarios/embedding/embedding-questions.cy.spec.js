@@ -3,6 +3,7 @@ import {
   visitQuestion,
   popover,
   visitIframe,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -42,9 +43,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal();
 
     visitIframe();
 
@@ -87,9 +86,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal();
 
     visitIframe();
 
@@ -122,9 +119,7 @@ describe("scenarios > embedding > questions ", () => {
       });
     });
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal();
 
     visitIframe();
 
@@ -160,9 +155,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal();
 
     visitIframe();
 
@@ -203,9 +196,7 @@ describe("scenarios > embedding > questions ", () => {
 
     visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal();
 
     visitIframe();
 

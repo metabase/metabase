@@ -107,9 +107,18 @@ export function SmartScalar({
   }
   const { unit } = insight;
   const lastDate = lastRow[dimensionIndex];
-  const lastPeriod = formatDateTimeRangeWithUnit([lastDate], unit, {
-    compact: true,
-  });
+
+  const dateColumn = cols[dimensionIndex];
+  const dateColumnSettings = settings.column(dateColumn) ?? {};
+
+  const lastPeriod = unit
+    ? formatDateTimeRangeWithUnit([lastDate], unit, {
+        compact: true,
+      })
+    : formatValue(lastDate, {
+        ...dateColumnSettings,
+        column: dateColumn,
+      });
 
   const lastValue = insight["last-value"];
   const formatOptions = settings.column(column);

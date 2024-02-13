@@ -49,7 +49,7 @@
 
 (deftest ^:parallel query->expected-cols-test
   (testing "field_refs in expected columns have the original join aliases (#30648)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
         (let [query
               (mt/mbql-query
@@ -100,13 +100,12 @@
 
 (deftest ^:parallel remapped-fks-test
   (testing "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys"
-    (mt/dataset sample-dataset
-      ;; Add column remapping from Orders Product ID -> Products.Title
-      (mt/with-temp [:model/Dimension _ (mt/$ids orders
-                                          {:field_id                %product_id
-                                           :name                    "Product ID"
-                                           :type                    :external
-                                           :human_readable_field_id %products.title})]
-        (let [expected-cols (qp.preprocess/query->expected-cols (mt/mbql-query orders))]
-          (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
-                         expected-cols))))))))
+    ;; Add column remapping from Orders Product ID -> Products.Title
+    (mt/with-temp [:model/Dimension _ (mt/$ids orders
+                                               {:field_id                %product_id
+                                                :name                    "Product ID"
+                                                :type                    :external
+                                                :human_readable_field_id %products.title})]
+      (let [expected-cols (qp.preprocess/query->expected-cols (mt/mbql-query orders))]
+        (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
+                       expected-cols)))))))

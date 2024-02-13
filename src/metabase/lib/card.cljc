@@ -46,7 +46,7 @@
             (lib.metadata.calculation/display-name query stage-number card-metadata :long))
           (fallback-display-name source-card)))))
 
-(mu/defn ^:private infer-returned-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn ^:private infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
   (when (some? card-query)
@@ -64,7 +64,7 @@
   nominal refs so as to not completely destroy the FE. Once we port more stuff over maybe we can fix this."
   true)
 
-(mu/defn ->card-metadata-column :- lib.metadata/ColumnMetadata
+(mu/defn ->card-metadata-column :- ::lib.schema.metadata/column
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."
   ([metadata-providerable col]
    (->card-metadata-column metadata-providerable nil col))
@@ -103,7 +103,7 @@
 
 (def ^:private CardColumnMetadata
   [:merge
-   lib.metadata/ColumnMetadata
+   ::lib.schema.metadata/column
    [:map
     [:lib/source [:= :source/card]]]])
 

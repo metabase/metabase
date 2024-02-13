@@ -35,7 +35,7 @@ describe("issue 28971", () => {
     filterField("Quantity", { operator: "equal to" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     filterFieldPopover("Quantity").within(() => cy.findByText("20").click());
-    cy.button("Apply Filters").click();
+    cy.button("Apply filters").click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 20").should("exist");

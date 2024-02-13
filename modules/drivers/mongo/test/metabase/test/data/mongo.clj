@@ -71,6 +71,9 @@
     (destroy-db! driver dbdef))
   (with-mongo-connection [mongo-db (tx/dbdef->connection-details driver :db dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
+      (doseq [{:keys [field-name indexed?]} field-definitions]
+        (when indexed?
+          (mcoll/create-index mongo-db table-name {field-name 1})))
       (let [field-names (for [field-definition field-definitions]
                           (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)

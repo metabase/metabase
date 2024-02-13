@@ -460,7 +460,7 @@
 (deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query products
                       {:expressions {:CATEGORY [:concat $category "2"]}
                        :breakout    [:expression :CATEGORY]
@@ -475,7 +475,7 @@
 (deftest ^:parallel fk-field-and-duplicate-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
     (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [results (mt/run-mbql-query orders
                         {:expressions {"CE" [:case
                                              [[[:> $discount 0] $created_at]]
@@ -523,7 +523,7 @@
 (deftest ^:parallel join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query nil
                       {:source-query {:source-query {:source-table $$products
                                                      :aggregation  [[:count]]
@@ -551,7 +551,7 @@
 (deftest ^:parallel nested-expressions-with-existing-names-test
   (testing "Expressions with the same name as existing columns should work correctly in nested queries (#21131)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (doseq [expression-name ["PRICE" "price"]]
           (testing (format "Expression name = %s" (pr-str expression-name))
             (let [query (mt/mbql-query products

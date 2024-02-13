@@ -17,14 +17,14 @@ function setup({ defaultValue }: SetupOpts = {}) {
 }
 
 interface TestInputProps {
-  defaultValue?: Date;
-  onChange?: (date: Date) => void;
+  defaultValue?: Date | null;
+  onChange?: (date: Date | null) => void;
 }
 
-function TestInput({ defaultValue, onChange }: TestInputProps) {
+function TestInput({ defaultValue = null, onChange }: TestInputProps) {
   const [value, setValue] = useState(defaultValue);
 
-  const handleChange = (value: Date) => {
+  const handleChange = (value: Date | null) => {
     setValue(value);
     onChange?.(value);
   };

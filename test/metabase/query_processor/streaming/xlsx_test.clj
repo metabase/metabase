@@ -680,7 +680,7 @@
 
 (deftest dont-format-non-temporal-columns-as-temporal-columns-test
   (testing "Don't format columns with temporal semantic type as datetime unless they're actually datetimes (#18729)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= [["CREATED_AT"]
               [1.0]
               [2.0]]

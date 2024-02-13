@@ -31,7 +31,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: | # js
-            const MAX_ATTEMPTS = 2;
+            const MAX_ATTEMPTS = 1;
             const ATTEMPT = "${{ github.event.workflow_run.run_attempt }}";
             const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
             const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";

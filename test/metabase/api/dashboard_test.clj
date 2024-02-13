@@ -272,7 +272,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest get-dashboard-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/with-column-remappings [orders.user_id people.name]
       (binding [api/*current-user-permissions-set* (atom #{"/"})]
         (t2.with-temp/with-temp
@@ -733,6 +733,44 @@
                                           {:collection_id (u/the-id new-collection)})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    UPDATING DASHBOARD CARD IN DASHCARD                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest update-dashcard-reference-in-dashboard-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "Let creators swap out dashboard questions with a different question (#36497)"
+      (mt/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     Card {card-id        :id
+                           card-entity-id :entity_id} {:name "Original Card"}
+                     DashboardCard {dashcard-entity-id :entity_id
+                                    :as                dashcard} {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}]
+        (let [{original-dashcard-entity-id          :entity_id
+               {original-card-entity-id :entity_id} :card} (-> (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
+                                                               dashboard-response
+                                                               (get-in [:dashcards 0]))]
+          (testing "Check that the before state is as expected -- it looks just like our fixture data"
+            (testing "Before the update the dashcard is the same as the one we started with"
+              (is (= dashcard-entity-id original-dashcard-entity-id)))
+            (testing "Before the update, the card on the dashcard is the "
+              (is (= card-entity-id original-card-entity-id))))
+          (mt/with-temp [Card {new-card-id            :id
+                               swapped-card-entity-id :entity_id} {:name "Swapped Card"}]
+            ;; Update the card_id.
+            (let [updated-card-payload {:dashcards [(assoc
+                                                      (select-keys dashcard [:id :entity_id :size_x :size_y :row :col])
+                                                      :card_id new-card-id)]}
+                  {updated-dashcard-entity-id          :entity_id
+                   {updated-card-entity-id :entity_id} :card} (-> (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                                                                        updated-card-payload)
+                                                                  dashboard-response
+                                                                  (get-in [:dashcards 0]))]
+              (testing "After the update the dashcard is the same as the one we started with"
+                (is (= dashcard-entity-id updated-dashcard-entity-id)))
+              (testing "After the update, the card on the dashcard is updated to our newly swapped card"
+                (is (= swapped-card-entity-id updated-card-entity-id))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD COLLECTION POSITIONS                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -963,7 +1001,7 @@
 
 (deftest copy-dashboard-test-3
   (testing "Deep copy: POST /api/dashboard/:id/copy"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp
         [Collection source-coll {:name "Source collection"}
          Collection dest-coll   {:name "Destination collection"}
@@ -1050,7 +1088,7 @@
 
 (deftest copy-dashboard-test-4
   (testing "Deep copy: POST /api/dashboard/:id/copy"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "When there are cards the user lacks write perms for"
         (mt/with-temp [Collection source-coll {:name "Source collection"}
                        Collection no-read-coll {:name "Crowberto lacks write coll"}
@@ -1132,7 +1170,7 @@
 
 (deftest copy-dashboard-test-5
   (testing "Deep copy: POST /api/dashboard/:id/copy"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "When source and destination are the same"
         (mt/with-temp [Collection source-coll {:name "Source collection"}
                        Dashboard  dashboard {:name          "Dashboard to be Copied"
@@ -2073,20 +2111,22 @@
                      Card          {model-id :id} {:dataset true}
                      Card          {model-id-2 :id} {:dataset true}
                      Action        {action-id :id} {:model_id model-id :type :implicit :name "action"}
+                     ;; Put the **same** card on the dashboard as both an action card and a question card
                      DashboardCard action-card {:dashboard_id dashboard-id
                                                 :action_id action-id
                                                 :card_id model-id}
                      DashboardCard question-card {:dashboard_id dashboard-id, :card_id model-id}]
         (with-dashboards-in-writeable-collection [dashboard-id]
           ;; TODO adds test for return
+          ;; Update **both** cards to use the new card id
           (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
                                        {:dashcards [(assoc action-card :card_id model-id-2)
                                                     (assoc question-card :card_id model-id-2)]
                                         :tabs      []})
-          ;; Only action card should change
-          (is (partial= [{:card_id model-id-2}
-                         {:card_id model-id}]
-                        (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
+          (testing "Both updated card ids should be reflected after making the dashcard changes."
+            (is (partial= [{:card_id model-id-2}
+                           {:card_id model-id-2}]
+                          (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]})))))))))
 
 (deftest update-tabs-test
   (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
@@ -2791,7 +2831,7 @@
 
 (deftest native-query-get-params-test
   (testing "GET /api/dashboard/:id/params/:param-key/values works for native queries"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; Note that we can directly query the values for the model, but this is
       ;; nonsensical from a dashboard standpoint as the returned values aren't
       ;; usable for filtering...
@@ -3305,7 +3345,7 @@
 ;; see also [[metabase.query-processor.dashboard-test]]
 (deftest dashboard-native-card-query-parameters-test
   (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/native-query {:query         "SELECT * FROM \"PRODUCTS\" WHERE {{cat}}"
                                     :template-tags {"cat" {:id           "__cat__"
                                                            :name         "cat"
@@ -3370,7 +3410,7 @@
 (deftest dashboard-card-query-pivot-test
   (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/test-drivers (api.pivots/applicable-drivers)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temp [Dashboard     {dashboard-id :id} {}
                        Card          {card-id :id} (api.pivots/pivot-card)
                        DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id :card_id card-id}]
@@ -3861,7 +3901,7 @@
 (deftest param-values-no-field-ids-test
   (testing "Ensure param value lookup works for values where field ids are not provided, but field refs are."
     ;; This is a common case for nested queries
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :people)))
@@ -3906,7 +3946,7 @@
 
 (deftest param-values-expression-test
   (testing "Ensure param value lookup works for when the value is an expression"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :products)))

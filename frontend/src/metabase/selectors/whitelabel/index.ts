@@ -8,3 +8,7 @@ export function getWhiteLabeledLoadingMessage(state: State) {
 export function getIsWhiteLabeling(state: State) {
   return PLUGIN_SELECTORS.getIsWhiteLabeling(state);
 }
+
+export function getApplicationName(state: State) {
+  return PLUGIN_SELECTORS.getApplicationName(state);
+}

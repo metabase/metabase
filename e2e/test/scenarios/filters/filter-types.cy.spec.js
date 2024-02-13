@@ -416,10 +416,7 @@ describe("scenarios > filters > filter types", () => {
           selectOperator(operator);
           popover().within(() => {
             values.forEach((value, index) => {
-              if (index !== 0) {
-                cy.findByRole("textbox").type("{enter}");
-              }
-              cy.findByRole("textbox").type(value);
+              cy.findByLabelText("Filter value").focus().type(value).blur();
             });
             options.forEach(option => cy.findByText(option).click());
             cy.button("Add filter").click();
@@ -452,11 +449,8 @@ describe("scenarios > filters > filter types", () => {
           popover()
             .first()
             .within(() => {
-              values.forEach((value, index) => {
-                if (index !== 0) {
-                  cy.findByRole("textbox").type("{enter}");
-                }
-                cy.findByRole("textbox").type(value);
+              values.forEach(value => {
+                cy.findByLabelText("Filter value").focus().type(value).blur();
               });
               cy.button("Add filter").click();
             });

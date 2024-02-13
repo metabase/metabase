@@ -49,6 +49,54 @@
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
    :source/implicitly-joinable])
 
+;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
+;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
+;;; in [[metabase.models.field-values]], [[metabase.models.params.chain-filter]],
+;;; and [[metabase.query-processor.middleware.add-dimension-projections]] explain this stuff in more detail, read
+;;; those and then maybe you will understand what the hell is going on.
+
+(def column-has-field-values-options
+  "Possible options for column metadata `:has-field-values`. This is used to determine whether we keep FieldValues for a
+  Field (during sync), and which type of widget should be used to pick values of this Field when filtering by it in
+  the Query Builder. Not otherwise used by MLv2 (except for [[metabase.lib.field/field-values-search-info]], which is
+  a frontend convenience) or QP at the time of this writing. For column remapping purposes in the Query Processor and
+  MLv2 we just ignore `has_field_values` and only look for FieldValues/Dimension."
+  ;; AUTOMATICALLY-SET VALUES, SET DURING SYNC
+  ;;
+  ;; `nil` -- means infer which widget to use based on logic in [[metabase.lib.field/infer-has-field-values]]; this
+  ;; will either return `:search` or `:none`.
+  ;;
+  ;; This is the default state for Fields not marked `auto-list`. Admins cannot explicitly mark a Field as
+  ;; `has_field_values` `nil`. This value is also subject to automatically change in the future if the values of a
+  ;; Field change in such a way that it can now be marked `auto-list`. Fields marked `nil` do *not* have FieldValues
+  ;; objects.
+  ;;
+  #{;; The other automatically-set option. Automatically marked as a 'List' Field based on cardinality and other factors
+    ;; during sync. Store a FieldValues object; use the List Widget. If this Field goes over the distinct value
+    ;; threshold in a future sync, the Field will get switched back to `has_field_values = nil`.
+    ;;
+    ;; Note that when this comes back from the REST API or [[metabase.lib.field/field-values-search-info]] we always
+    ;; return this as `:list` instead of `:auto-list`; this is done by [[metabase.lib.field/infer-has-field-values]].
+    ;; I guess this is because the FE isn't supposed to need to care about whether this is `:auto-list` vs `:list`;
+    ;; those distinctions are only important for sync I guess.
+    :auto-list
+    ;;
+    ;; EXPLICITLY-SET VALUES, SET BY AN ADMIN
+    ;;
+    ;; Admin explicitly marked this as a 'Search' Field, which means we should *not* keep FieldValues, and should use
+    ;; Search Widget.
+    :search
+    ;; Admin explicitly marked this as a 'List' Field, which means we should keep FieldValues, and use the List
+    ;; Widget. Unlike `auto-list`, if this Field grows past the normal cardinality constraints in the future, it will
+    ;; remain `List` until explicitly marked otherwise.
+    :list
+    ;; Admin explicitly marked that this Field shall always have a plain-text widget, neither allowing search, nor
+    ;; showing a list of possible values. FieldValues not kept.
+    :none})
+
+(mr/def ::column.has-field-values
+  (into [:enum] (sort column-has-field-values-options)))
+
 ;;; External remapping (Dimension) for a column. From the [[metabase.models.dimension]] with `type = external`
 ;;; associated with a `Field` in the application database.
 ;;; See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.
@@ -126,8 +174,19 @@
    ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
    [:selected? {:optional true} :boolean]
    ;;
-   ;; REMAPPING
+   ;; REMAPPING & FIELD VALUES
    ;;
+   ;; See notes above for more info. `:has-field-values` comes from the application database and is used to decide
+   ;; whether to sync FieldValues when running sync, and what certain FE QB widgets should
+   ;; do. (See [[metabase.lib.field/field-values-search-info]]). Note that all metadata providers may not return this
+   ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
+   [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
+   ;;
+   ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
+   ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
+   ;; the application database, look at the implementation for fetching a `:metadata/column`
+   ;; in [[metabase.lib.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
+   ;; provider doesn't add these keys.
    [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]])
 

@@ -76,6 +76,6 @@
     "2022_02_31_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
   (are [s] (not (old-dataset-name? s))
     "2050_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-    "v3_test-data"
+    "v4_test-data"
     (str (unique-prefix*) "test-data")
     (str (unique-prefix* (u.date/add (utc-date) :day -1)) "test-data")))

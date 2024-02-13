@@ -1,10 +1,14 @@
-import { render, screen } from "@testing-library/react";
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { TimelineEmptyStateProps } from "./TimelineEmptyState";
 import TimelineEmptyState from "./TimelineEmptyState";
+
+function setup(props: TimelineEmptyStateProps) {
+  renderWithProviders(<TimelineEmptyState {...props} />);
+}
 
 describe("TimelineEmptyState", () => {
   it("should allow event creation for users with write access to the collection", () => {
@@ -14,7 +18,7 @@ describe("TimelineEmptyState", () => {
       }),
     });
 
-    render(<TimelineEmptyState {...props} />);
+    setup(props);
 
     const button = screen.getByRole("button", { name: "Add an event" });
     expect(button).toBeInTheDocument();
@@ -32,7 +36,7 @@ describe("TimelineEmptyState", () => {
       }),
     });
 
-    render(<TimelineEmptyState {...props} />);
+    setup(props);
 
     const button = screen.getByRole("button", { name: "Add an event" });
     expect(button).toBeInTheDocument();
@@ -45,7 +49,7 @@ describe("TimelineEmptyState", () => {
       }),
     });
 
-    render(<TimelineEmptyState {...props} />);
+    setup(props);
 
     const button = screen.queryByRole("button", { name: "Add an event" });
     expect(button).not.toBeInTheDocument();

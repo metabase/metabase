@@ -29,10 +29,6 @@
 
 (driver/register! :athena, :parent #{:sql-jdbc})
 
-(defmethod sql.qp/honey-sql-version :athena
-  [_driver]
-  2)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -192,8 +188,8 @@
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   ;; this is identical to the normal version except for the `::offset` instead of `:offset`
   (assoc honeysql-form
-         :limit items
-         ::offset (* items (dec page))))
+         :limit (sql.qp/inline-num items)
+         ::offset (sql.qp/inline-num (* items (dec page)))))
 
 (defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
 

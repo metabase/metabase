@@ -19,17 +19,20 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- normalize-binning-options [opts]
   (lib.normalize/normalize-map
@@ -723,3 +726,66 @@
   "Return true if field is a JSON field, false if not."
   [field]
   (some? (:nfc-path field)))
+
+;;; yes, this is intentionally different from the version in `:metabase.lib.schema.metadata/column.has-field-values`.
+;;; The FE isn't supposed to need to worry about the distinction between `:auto-list` and `:list` for filter purposes.
+;;; See [[infer-has-field-values]] for more info.
+(mr/def ::field-values-search-info.has-field-values
+  [:enum :list :search :none])
+
+(mr/def ::field-values-search-info
+  [:map
+   [:field-id         [:maybe [:ref ::lib.schema.id/field]]]
+   [:search-field-id  [:maybe [:ref ::lib.schema.id/field]]]
+   [:has-field-values [:ref ::field-values-search-info.has-field-values]]])
+
+(mu/defn infer-has-field-values :- ::field-values-search-info.has-field-values
+  "Determine the value of `:has-field-values` we should return for column metadata for frontend consumption to power
+  filter search widgets, either when returned by the the REST API or in MLv2 with [[field-values-search-info]].
+
+  Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
+  `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by
+  the FE filter stuff, so we will instead return `:list`; the distinction is not important to it anyway."
+  [{:keys [has-field-values], :as field} :- [:map
+                                             ;; this doesn't use `::lib.schema.metadata/column` because it's stricter
+                                             ;; than we need and the REST API calls this function with optimized Field
+                                             ;; maps that don't include some keys like `:name`
+                                             [:base-type        {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                             [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                             [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]
+  (cond
+    ;; if `has_field_values` is set in the DB, use that value; but if it's `auto-list`, return the value as `list` to
+    ;; avoid confusing FE code, which can remain blissfully unaware that `auto-list` is a thing
+    (= has-field-values :auto-list)   :list
+    has-field-values                  has-field-values
+    ;; otherwise if it does not have value set in DB we will infer it
+    (lib.types.isa/searchable? field) :search
+    :else                             :none))
+
+(mu/defn ^:private remapped-field :- [:maybe ::lib.schema.metadata/column]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+    (lib.metadata/field metadata-providerable remap-field-id)))
+
+(mu/defn ^:private search-field :- [:maybe ::lib.schema.metadata/column]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  ;; ignore remappings for PK columns.
+  (let [col (or (when (lib.types.isa/primary-key? column)
+                  column)
+                (remapped-field metadata-providerable column)
+                column)]
+    (when (lib.types.isa/searchable? col)
+      col)))
+
+(mu/defn field-values-search-info :- ::field-values-search-info
+  "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
+  widget in the QB filter modals."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  {:field-id         (:id column)
+   :search-field-id  (:id (search-field metadata-providerable column))
+   :has-field-values (if column
+                       (infer-has-field-values column)
+                       :none)})

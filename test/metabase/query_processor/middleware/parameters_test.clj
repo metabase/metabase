@@ -14,17 +14,9 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
-
-(use-fixtures :each (fn [thunk]
-                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
-                      ;; tests.
-                      (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* 2]
-                        (thunk))))
 
 (deftest ^:parallel move-top-level-params-to-inner-query-test
   (is (= {:type            :native

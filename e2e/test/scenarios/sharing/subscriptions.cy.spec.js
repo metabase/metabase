@@ -13,15 +13,20 @@ import {
   setTokenFeatures,
   emailSubscriptionRecipients,
   openEmailPage,
-  setupSubscriptionWithRecipient,
+  setupSubscriptionWithRecipients,
   openPulseSubscription,
   sendEmailAndVisitIt,
   clickSend,
   viewEmailPage,
+  openPublicLinkPopoverFromMenu,
+  openEmbedModalFromMenu,
+  getEmbedModalSharingPane,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
@@ -30,21 +35,24 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("should not allow sharing if there are no dashboard cards", () => {
+  it("should allow sharing if there are no dashboard cards", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       visitDashboard(DASHBOARD_ID);
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
-
-    cy.icon("share")
-      .closest("a")
-      .should("have.attr", "aria-disabled", "true")
-      .click();
 
     cy.findByLabelText("subscriptions").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Share this dashboard with people *./i).should("not.exist");
+
+    openPublicLinkPopoverFromMenu();
+    cy.findByTestId("public-link-popover-content").should("be.visible");
+
+    // close link popover
+    cy.icon("share").click();
+
+    openEmbedModalFromMenu();
+    getEmbedModalSharingPane().within(() => {
+      cy.findByText("Public embed").should("be.visible");
+      cy.findByText("Static embed").should("be.visible");
+    });
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
@@ -55,15 +63,17 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.icon("share").closest("a").click();
-
+    openEmbedModalFromMenu();
     // Ensure clicking share icon opens sharing and embedding modal directly,
     // without a menu with sharing and dashboard subscription options.
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
     cy.findByLabelText("subscriptions").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Share this dashboard with people *./i);
+
+    getEmbedModalSharingPane().within(() => {
+      cy.findByText("Public embed").should("be.visible");
+      cy.findByText("Static embed").should("be.visible");
+    });
   });
 
   describe("sidebar toggling behavior", () => {
@@ -206,105 +216,101 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
     });
 
-    describe(
-      "let non-users unsubscribe from subscriptions",
-      { tags: "@flaky" },
-      () => {
-        it("should allow non-user to unsubscribe from subscription", () => {
-          const nonUserEmail = "non-user@example.com";
-          const dashboardName = "Orders in a dashboard";
+    describe("let non-users unsubscribe from subscriptions", () => {
+      it("should allow non-user to unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const otherUserEmail = "other-user@example.com";
+        const dashboardName = "Orders in a dashboard";
 
-          visitDashboard(ORDERS_DASHBOARD_ID);
+        visitDashboard(ORDERS_DASHBOARD_ID);
 
-          setupSubscriptionWithRecipient(nonUserEmail);
+        setupSubscriptionWithRecipients([nonUserEmail, otherUserEmail]);
 
-          emailSubscriptionRecipients();
+        emailSubscriptionRecipients();
 
-          openEmailPage(dashboardName).then(() => {
-            cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
-            cy.findByText("Unsubscribe").click();
-            cy.wait("@unsubscribe");
-            cy.contains(
-              `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
-            ).should("exist");
-          });
-
-          openDashboardSubscriptions();
-          openPulseSubscription();
-
-          sidebar().findByText(nonUserEmail).should("not.exist");
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
         });
 
-        it("should allow non-user to undo-unsubscribe from subscription", () => {
-          const nonUserEmail = "non-user@example.com";
-          const dashboardName = "Orders in a dashboard";
-          visitDashboard(ORDERS_DASHBOARD_ID);
+        openDashboardSubscriptions();
+        openPulseSubscription();
 
-          setupSubscriptionWithRecipient(nonUserEmail);
+        sidebar().findByText(nonUserEmail).should("not.exist");
+        sidebar().findByText(otherUserEmail).should("exist");
+      });
 
-          emailSubscriptionRecipients();
+      it("should allow non-user to undo-unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const dashboardName = "Orders in a dashboard";
+        visitDashboard(ORDERS_DASHBOARD_ID);
 
-          openEmailPage(dashboardName).then(() => {
-            cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
-            cy.intercept("/api/session/pulse/unsubscribe/undo").as(
-              "resubscribe",
-            );
+        setupSubscriptionWithRecipients([nonUserEmail]);
 
-            cy.findByText("Unsubscribe").click();
-            cy.wait("@unsubscribe");
+        emailSubscriptionRecipients();
 
-            cy.contains(
-              `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
-            ).should("exist");
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.intercept("/api/session/pulse/unsubscribe/undo").as("resubscribe");
 
-            cy.findByText("Undo").click();
-            cy.wait("@resubscribe");
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
 
-            cy.contains(
-              `Okay, ${nonUserEmail} is subscribed to the "${dashboardName}" alert again.`,
-            ).should("exist");
-          });
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
 
-          openDashboardSubscriptions();
-          openPulseSubscription();
+          cy.findByText("Undo").click();
+          cy.wait("@resubscribe");
 
-          sidebar().findByText(nonUserEmail).should("exist");
+          cy.contains(
+            `Okay, ${nonUserEmail} is subscribed to the "${dashboardName}" alert again.`,
+          ).should("exist");
         });
 
-        it("should show 404 page when missing required parameters", () => {
-          const nonUserEmail = "non-user@example.com";
+        openDashboardSubscriptions();
+        openPulseSubscription();
 
-          const params = {
-            hash: "459a8e9f8d9e",
-            email: nonUserEmail,
-          }; // missing pulse-id
+        sidebar().findByText(nonUserEmail).should("exist");
+      });
 
-          cy.visit({
-            url: `/unsubscribe`,
-            qs: params,
-          });
+      it("should show 404 page when missing required parameters", () => {
+        const nonUserEmail = "non-user@example.com";
 
-          cy.findByLabelText("error page").should("exist");
+        const params = {
+          hash: "459a8e9f8d9e",
+          email: nonUserEmail,
+        }; // missing pulse-id
+
+        cy.visit({
+          url: `/unsubscribe`,
+          qs: params,
         });
 
-        it("should show error message when server responds with an error", () => {
-          const nonUserEmail = "non-user@example.com";
+        cy.findByLabelText("error page").should("exist");
+      });
 
-          const params = {
-            hash: "459a8e9f8d9e",
-            email: nonUserEmail,
-            "pulse-id": "f", // invalid pulse-id
-          };
+      it("should show error message when server responds with an error", () => {
+        const nonUserEmail = "non-user@example.com";
 
-          cy.visit({
-            url: `/unsubscribe`,
-            qs: params,
-          });
+        const params = {
+          hash: "459a8e9f8d9e",
+          email: nonUserEmail,
+          "pulse-id": "f", // invalid pulse-id
+        };
 
-          cy.findByLabelText("error message").should("exist");
+        cy.visit({
+          url: `/unsubscribe`,
+          qs: params,
         });
-      },
-    );
+
+        cy.findByLabelText("error message").should("exist");
+      });
+    });
 
     it("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
       assignRecipient();
@@ -430,6 +436,38 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByText(TEXT_CARD).click();
       sendEmailAndAssert(email => {
         expect(email.html).to.include(TEXT_CARD);
+      });
+    });
+
+    it(`should load question binned by "Month of year" or similar granularity (metabase#16918)`, () => {
+      const questionDetails = {
+        name: "16918",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "temporal-unit": "month-of-year" },
+            ],
+            ["field", PRODUCTS.CATEGORY, null],
+          ],
+        },
+        display: "line",
+      };
+
+      const dashboardDetails = { name: "Repro Dashboard" };
+
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: { dashboard_id } }) => {
+          assignRecipient({ dashboard_id });
+        },
+      );
+
+      sendEmailAndAssert(email => {
+        expect(email.html).to.include(dashboardDetails.name);
+        expect(email.html).to.include(questionDetails.name);
       });
     });
   });

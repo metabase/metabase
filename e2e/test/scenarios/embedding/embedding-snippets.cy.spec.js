@@ -4,6 +4,7 @@ import {
   visitDashboard,
   visitQuestion,
   setTokenFeatures,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 import {
   ORDERS_QUESTION_ID,
@@ -24,9 +25,7 @@ features.forEach(feature => {
 
     it("dashboard should have the correct embed snippet", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.icon("share").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Embed in your application").click();
+      openStaticEmbeddingModal();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Code").click();
 
@@ -90,9 +89,7 @@ features.forEach(feature => {
 
     it("question should have the correct embed snippet", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      cy.icon("share").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Embed in your application").click();
+      openStaticEmbeddingModal();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Code").click();
 

@@ -743,7 +743,7 @@
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
-            (mt/dataset sample-dataset
+            (mt/dataset test-data
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
               (mt/$ids nil
@@ -774,11 +774,11 @@
                   (storage/store! (extract/extract {}) dump-dir)))))
 
           (ts/with-dest-db
-            ;; ensure there is something in db so that sample-dataset gets different field ids for sure
+            ;; ensure there is something in db so that test-data gets different field ids for sure
             (mt/dataset office-checkins
               (mt/db))
 
-            (mt/dataset sample-dataset
+            (mt/dataset test-data
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
               (mt/$ids nil

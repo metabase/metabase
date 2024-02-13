@@ -1,4 +1,9 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  FieldId,
+  FieldValuesType,
+  RowValue,
+} from "metabase-types/api";
 import type {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
@@ -151,6 +156,7 @@ export type SegmentDisplayInfo = {
   longDisplayName: string;
   description: string;
   filterPositions?: number[];
+  effectiveType?: string;
 };
 
 export type AggregationOperatorDisplayInfo = {
@@ -492,4 +498,10 @@ export interface ClickObject {
   };
   extraData?: Record<string, unknown>;
   data?: ClickObjectDataRow[];
+}
+
+export interface FieldValuesSearchInfo {
+  fieldId: FieldId | null;
+  searchFieldId: FieldId | null;
+  hasFieldValues: FieldValuesType;
 }

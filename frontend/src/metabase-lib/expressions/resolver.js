@@ -66,6 +66,12 @@ const isCompatible = (a, b) => {
   return false;
 };
 
+/**
+ *
+ * @param {import("./pratt").Expr} expression
+ * @param {string} type
+ * @param {?(kind: string, name: string, node: import("./pratt").Node) => void} fn
+ */
 export function resolve(expression, type = "expression", fn = undefined) {
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;

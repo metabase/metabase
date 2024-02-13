@@ -4,7 +4,9 @@ import {
   popover,
   restore,
 } from "e2e/support/helpers";
-import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("issue 28599", () => {
   beforeEach(() => {

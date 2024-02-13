@@ -50,7 +50,11 @@ const setup = options => {
 
 describe("DashCardParameterMapper", () => {
   it("should render an unauthorized state for a card with no dataset query", () => {
-    setup();
+    const card = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({ query: {} }),
+    });
+    setup({ card });
+
     expect(getIcon("key")).toBeInTheDocument();
     expect(
       screen.getByLabelText(/permission to see this question/i),

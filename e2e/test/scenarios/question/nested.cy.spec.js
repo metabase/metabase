@@ -528,10 +528,11 @@ describe("scenarios > question > nested", () => {
     cy.findByText("Filter").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summaries").click();
-    cy.findByTestId("operator-select").click();
-    popover().contains("Equal to").click();
-    cy.findByPlaceholderText("Enter a number").type("5");
-    cy.button("Apply Filters").click();
+    filterField("Count", {
+      operator: "Equal to",
+      value: "5",
+    });
+    cy.button("Apply filters").click();
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

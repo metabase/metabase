@@ -100,8 +100,6 @@
   - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since these IDs are sequential."
   [engine id]
-  ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-  (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
   (t2/insert! Database {:is_audit         true
                         :id               id
                         :name             "Internal Metabase Database"
@@ -110,7 +108,9 @@
                         :is_full_sync     true
                         :is_on_demand     false
                         :creator_id       nil
-                        :auto_run_queries true}))
+                        :auto_run_queries true})
+  ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
+  (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" id "/%")]}))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
@@ -148,32 +148,34 @@
                   {:name [:upper :name]}))
     (log/infof "Adjusted Audit DB to match host engine: %s" (name mdb.env/db-type))))
 
-(def analytics-dir-resource
+(def ^:private analytics-dir-resource
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(def instance-analytics-plugin-dir
+(defn- instance-analytics-plugin-dir
   "The directory analytics content is unzipped or moved to, and subsequently loaded into the app from on startup."
-  (fs/path (plugins/plugins-dir) "instance_analytics"))
+  [plugins-dir]
+  (fs/path (fs/absolutize plugins-dir) "instance_analytics"))
 
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
-   and put it into plugins/instance_analytics"
-  []
-  (when (fs/exists? (u.files/relative-path instance-analytics-plugin-dir))
-    (fs/delete-tree (u.files/relative-path instance-analytics-plugin-dir)))
-  (if (running-from-jar?)
-    (let [path-to-jar (get-jar-path)]
-      (log/info "The app is running from a jar, starting copy...")
-      (copy-from-jar! path-to-jar "instance_analytics/" "plugins/")
-      (log/info "Copying complete."))
-    (let [in-path (fs/path analytics-dir-resource)]
-      (log/info "The app is not running from a jar, starting copy...")
-      (log/info (str "Copying " in-path " -> " instance-analytics-plugin-dir))
-      (fs/copy-tree (u.files/relative-path in-path)
-                    (u.files/relative-path instance-analytics-plugin-dir)
-                    {:replace-existing true})
-      (log/info "Copying complete."))))
+   and copies it into the provided directory (by default, plugins/instance_analytics)."
+  [plugins-dir]
+  (let [ia-dir (instance-analytics-plugin-dir plugins-dir)]
+    (when (fs/exists? (u.files/relative-path ia-dir))
+      (fs/delete-tree (u.files/relative-path ia-dir)))
+    (if (running-from-jar?)
+      (let [path-to-jar (get-jar-path)]
+        (log/info "The app is running from a jar, starting copy...")
+        (copy-from-jar! path-to-jar "instance_analytics/" plugins-dir)
+        (log/info "Copying complete."))
+      (let [in-path (fs/path analytics-dir-resource)]
+        (log/info "The app is not running from a jar, starting copy...")
+        (log/info (str "Copying " in-path " -> " ia-dir))
+        (fs/copy-tree (u.files/relative-path in-path)
+                      (u.files/relative-path ia-dir)
+                      {:replace-existing true})
+        (log/info "Copying complete.")))))
 
 (defsetting load-analytics-content
   "Whether or not we should load Metabase analytics content on startup. Defaults to true, but can be disabled via environment variable."
@@ -190,11 +192,11 @@
     (ee.internal-user/ensure-internal-user-exists!)
     (adjust-audit-db-to-source! audit-db)
     (log/info "Loading Analytics Content...")
-    (ia-content->plugins)
-    (log/info (str "Loading Analytics Content from: " instance-analytics-plugin-dir))
+    (ia-content->plugins (plugins/plugins-dir))
+    (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
     ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
     (let [report (log/with-no-logs
-                   (serialization.cmd/v2-load-internal! (str instance-analytics-plugin-dir)
+                   (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
                                                         {}
                                                         :token-check? false))]
       (if (not-empty (:errors report))

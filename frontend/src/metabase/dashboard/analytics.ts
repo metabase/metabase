@@ -49,3 +49,10 @@ export const trackCardMoved = (dashboardId: DashboardId) => {
     dashboard_id: dashboardId,
   });
 };
+
+export const trackQuestionReplaced = (dashboardId: DashboardId) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_card_replaced",
+    dashboard_id: dashboardId,
+  });
+};

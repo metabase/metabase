@@ -33,6 +33,7 @@ export type DatabaseFeature =
   | "inner-join"
   | "full-join"
   | "nested-field-columns"
+  | "advanced-math-expressions"
   | "connection-impersonation"
   | "connection-impersonation-requires-role";
 

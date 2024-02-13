@@ -42,6 +42,7 @@ Metabase recognizes the following field types:
   - Quantity
   - Score
   - Share
+  - Percentage
 - **Profile**
   - Birthday
   - Company

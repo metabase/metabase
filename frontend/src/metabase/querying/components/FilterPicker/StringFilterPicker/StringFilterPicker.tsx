@@ -1,20 +1,15 @@
-import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
+import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import * as Lib from "metabase-lib";
+import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { getAvailableOperatorOptions } from "../utils";
-import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FlexWithScroll } from "../FilterPicker.styled";
-import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
-
-const MAX_HEIGHT = 300;
 
 export function StringFilterPicker({
   query,
@@ -30,42 +25,38 @@ export function StringFilterPicker({
     [query, stageIndex, column],
   );
 
-  const filterParts = useMemo(
-    () => (filter ? Lib.stringFilterParts(query, stageIndex, filter) : null),
-    [query, stageIndex, filter],
-  );
+  const {
+    operator,
+    availableOptions,
+    values,
+    valueCount,
+    hasMultipleValues,
+    hasCaseSensitiveOption,
+    options,
+    isValid,
+    getDefaultValues,
+    getFilterClause,
+    setOperator,
+    setValues,
+    setOptions,
+  } = useStringFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
-  const availableOperators = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
-    [query, stageIndex, column],
-  );
-
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "=",
-  );
-
-  const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values),
-  );
-
-  const [options, setOptions] = useState(
-    filterParts ? filterParts.options : {},
-  );
-
-  const { valueCount, hasMultipleValues, hasCaseSensitiveOption } =
-    OPERATOR_OPTIONS[operator];
-  const isValid = hasValidValues(operator, values);
-
-  const handleOperatorChange = (operator: Lib.StringFilterOperatorName) => {
-    setOperator(operator);
-    setValues(getDefaultValues(operator, values));
+  const handleOperatorChange = (newOperator: Lib.StringFilterOperatorName) => {
+    setOperator(newOperator);
+    setValues(getDefaultValues(newOperator, values));
   };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (isValid) {
-      onChange(getFilterClause(operator, column, values, options));
+
+    const filter = getFilterClause(operator, values, options);
+    if (filter) {
+      onChange(filter);
     }
   };
 
@@ -83,12 +74,14 @@ export function StringFilterPicker({
       >
         <FilterOperatorPicker
           value={operator}
-          options={availableOperators}
+          options={availableOptions}
           onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
       <div>
         <StringValueInput
+          query={query}
+          stageIndex={stageIndex}
           column={column}
           values={values}
           valueCount={valueCount}
@@ -109,6 +102,8 @@ export function StringFilterPicker({
 }
 
 interface StringValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
   valueCount: number;
@@ -117,6 +112,8 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
+  query,
+  stageIndex,
   column,
   values,
   valueCount,
@@ -125,14 +122,16 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FlexWithScroll p="md" mah={MAX_HEIGHT}>
-        <FilterValuesWidget
+      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+        <StringFilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
           column={column}
-          value={values}
-          hasMultipleValues={hasMultipleValues}
+          values={values}
+          autoFocus
           onChange={onChange}
         />
-      </FlexWithScroll>
+      </Box>
     );
   }
 
@@ -141,10 +140,11 @@ function StringValueInput({
       <Flex p="md">
         <TextInput
           value={values[0]}
-          onChange={event => onChange([event.target.value])}
           placeholder={t`Enter some text`}
           autoFocus
           w="100%"
+          aria-label={t`Filter value`}
+          onChange={event => onChange([event.target.value])}
         />
       </Flex>
     );

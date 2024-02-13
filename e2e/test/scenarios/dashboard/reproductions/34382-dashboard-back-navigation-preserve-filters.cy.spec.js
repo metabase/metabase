@@ -7,7 +7,9 @@ import {
   queryBuilderHeader,
   popover,
 } from "e2e/support/helpers";
-import { PRODUCTS, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 34382", () => {
   beforeEach(() => {

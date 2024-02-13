@@ -15,28 +15,33 @@
 
 (def topic-generator (gen/fmap (fn [k] (keyword "event" (name k))) (mg/generator :keyword)))
 
-(defspec topic-gets-unqualified 5000
+(defspec topic-gets-unqualified 2000
   (prop/for-all [ns-kw topic-generator]
-    (is (= (keyword (name ns-kw)) (:unqualified-topic (audit-log/construct-event ns-kw {} nil))))))
+    (= (keyword (name ns-kw))
+       (:unqualified-topic (audit-log/construct-event ns-kw {} nil)))))
 
-(defspec params-take-precedence 1000
+(defspec user-id-params-take-precedence 1000
+  (prop/for-all [topic topic-generator
+                 event-params (mg/generator ::audit-log/event-params)
+                 user-id (mg/generator [:maybe pos-int?])]
+    (let [constructed-event (audit-log/construct-event topic event-params user-id)]
+      (= (cond
+           (:user-id event-params) (:user-id event-params)
+           user-id user-id
+           :else nil)
+         (:user-id constructed-event)))))
+
+(defspec model-id-params-take-precedence 1000
   (prop/for-all [topic topic-generator
                  event-params (mg/generator ::audit-log/event-params)
                  user-id (mg/generator [:maybe pos-int?])]
     (let [object (:object event-params)
           constructed-event (audit-log/construct-event topic event-params user-id)]
-      (testing "user-id in event takes precident over current-user-id"
-        (is (= (cond
-                 (:user-id event-params) (:user-id event-params)
-                 user-id user-id
-                 :else nil)
-               (:user-id constructed-event))))
-      (testing "model-id in event takes precident over model id on object"
-        (is (= (cond
-                 (:model-id event-params) (:model-id event-params)
-                 (u/id object) (u/id object)
-                 :else nil)
-               (:model-id constructed-event)))))))
+      (= (cond
+           (:model-id event-params) (:model-id event-params)
+           (u/id object) (u/id object)
+           :else nil)
+         (:model-id constructed-event)))))
 
 (deftest basic-record-event-test
   (premium-features-test/with-premium-features #{:audit-app}

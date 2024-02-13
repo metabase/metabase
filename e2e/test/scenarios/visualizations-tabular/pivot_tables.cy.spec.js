@@ -11,6 +11,8 @@ import {
   main,
   modal,
   getIframeBody,
+  openPublicLinkPopoverFromMenu,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -675,14 +677,12 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           cy.visit("collection/root");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(test.subject).click();
-          cy.icon("share").click();
         });
 
         it("should display pivot table in a public link", () => {
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Public link")
-            .parent()
-            .find("input")
+          openPublicLinkPopoverFromMenu();
+          cy.findByTestId("public-link-popover-content")
+            .findByTestId("public-link-input")
             .invoke("val")
             .then($value => {
               cy.visit($value);
@@ -702,8 +702,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/Embed in your application/).click();
+          openStaticEmbeddingModal();
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Publish").click();

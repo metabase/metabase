@@ -33,6 +33,7 @@ import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/paramete
 import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
   getDashboardComplete,
+  getDashCardBeforeEditing,
   getParameterValues,
   getLoadingDashCards,
   getCanShowAutoApplyFiltersToast,
@@ -420,9 +421,20 @@ export const fetchCardData = createThunkAction(
           ),
         );
       } else {
+        const dashcardBeforeEditing = getDashCardBeforeEditing(
+          getState(),
+          dashcard.id,
+        );
+        const hasReplacedCard =
+          dashcard.card_id != null &&
+          dashcardBeforeEditing &&
+          dashcardBeforeEditing.card_id !== dashcard.card_id;
+
         // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
         const endpoint =
-          isNewDashcard(dashcard) || isNewAdditionalSeriesCard(card, dashcard)
+          isNewDashcard(dashcard) ||
+          isNewAdditionalSeriesCard(card, dashcard) ||
+          hasReplacedCard
             ? CardApi.query
             : DashboardApi.cardQuery;
 

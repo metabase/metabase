@@ -1,6 +1,3 @@
-// Cypress analytics and the alternative to Cypress dashboard
-// Needs to sit at the top of this file to catch all exceptions!
-import "@deploysentinel/cypress-debugger/support";
 import registerCypressGrep from "@cypress/grep";
 registerCypressGrep();
 
@@ -20,6 +17,18 @@ if (runWithReplay) {
 require("cy-verify-downloads").addCustomCommand();
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
+
+Cypress.on("test:before:run", () => {
+  // Check wether FE is running in dev mode
+  const feHealthcheck = Cypress.env().feHealthcheck;
+  if (feHealthcheck?.enabled) {
+    fetch(feHealthcheck.url).catch(() =>
+      alert(
+        `⛔️ ${feHealthcheck.url} is not available.\n\nIs dev server running?`,
+      ),
+    );
+  }
+});
 
 Cypress.on("test:after:run", (test, runnable) => {
   if (test.state === "failed") {

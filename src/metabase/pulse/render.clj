@@ -150,7 +150,7 @@
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
 - attachments
-- content (a hiccup form suitable for rending on rich clients or rendering into an image)
+- content (a hiccup form suitable for rendering on rich clients or rendering into an image)
 - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
   scalar results where text is preferable to an image of a div of a single result."
   [render-type timezone-id :- (s/maybe s/Str) card dashcard results]
@@ -182,7 +182,9 @@
                          [:div {:class "pulse-body"
                                 :style (style/style {:display :block
                                                      :margin  :16px})}
-                          pulse-body]]]]}
+                          (if-let [more-results-message (body/attached-results-text render-type card)]
+                            (conj more-results-message (list pulse-body))
+                            pulse-body)]]]]}
       text (assoc :render/text text))))
 
 (defn render-pulse-card-for-display

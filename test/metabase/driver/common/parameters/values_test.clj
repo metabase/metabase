@@ -602,7 +602,7 @@
 
 (deftest ^:parallel no-value-template-tag-defaults-test
   (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Field filters"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -643,7 +643,7 @@
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-test
   (testing "Default values passed in as part of the request should not apply when the value is nil"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Field filters"
         (is (=? {"filter" {:value ::params/no-value}}
                 (query->params-map
@@ -695,7 +695,7 @@
 
 (deftest ^:parallel use-parameter-defaults-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Field filters"
         (is (=? {"filter" {:value ::params/no-value}}
                 (query->params-map
@@ -740,7 +740,7 @@
 
 (deftest ^:parallel handle-referenced-card-parameter-mixed-with-other-parameters-test
   (testing "Should be able to handle for Card ref params regardless of whether other params are passed in (#21246)\n"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                         meta/metadata-provider
                                         [(lib.tu.macros/mbql-query products)])

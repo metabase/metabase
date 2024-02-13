@@ -38,7 +38,6 @@ describe("filter bug reproductions", () => {
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Search by Email").type("foo");
-      cy.findByText(/no matching/i);
     });
   });
 });

@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -14,7 +13,7 @@ import { checkNotNull } from "metabase/lib/types";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
-  PRODUCTS,
+  PEOPLE,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
@@ -92,6 +91,14 @@ async function setOperator(operator: string) {
 }
 
 describe("StringFilterPicker", () => {
+  beforeAll(() => {
+    jest.useFakeTimers({ advanceTimers: true });
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   describe("new filter", () => {
     it("should render a blank editor", () => {
       setup();
@@ -117,7 +124,7 @@ describe("StringFilterPicker", () => {
 
     it("should handle fields with listable values", async () => {
       const query = createQuery();
-      const column = findStringColumn(query, { fieldValues: "list" });
+      const column = findStringColumn(query, "PRODUCTS", "CATEGORY");
       const { getNextFilterParts, getNextFilterColumnName } = setup({
         query,
         column,
@@ -131,7 +138,7 @@ describe("StringFilterPicker", () => {
 
       userEvent.type(screen.getByPlaceholderText("Search the list"), "G");
 
-      await waitForElementToBeRemoved(() => screen.queryByText("Doohickey"));
+      expect(screen.queryByText("Doohickey")).not.toBeInTheDocument();
       userEvent.click(screen.getByText("Gadget"));
       userEvent.click(screen.getByText("Widget"));
       userEvent.click(screen.getByText("Add filter"));
@@ -146,26 +153,20 @@ describe("StringFilterPicker", () => {
     });
 
     it("should handle fields with searchable values", async () => {
-      setupFieldSearchValuesEndpoints(
-        PRODUCTS.VENDOR,
-        "Ven",
-        PRODUCT_VENDOR_VALUES.values,
-      );
+      setupFieldSearchValuesEndpoints(PEOPLE.EMAIL, "t", [
+        ["test@metabase.test"],
+      ]);
       const query = createQuery();
-      const column = findStringColumn(query, { fieldValues: "search" });
+      const column = findStringColumn(query, "PEOPLE", "EMAIL");
       const { getNextFilterParts, getNextFilterColumnName } = setup({
         query,
         column,
       });
       await waitForLoaderToBeRemoved();
 
-      expect(screen.queryByText(/^Vendor(.*)/)).not.toBeInTheDocument();
-      userEvent.type(screen.getByPlaceholderText("Search by Vendor"), "Ven");
-      userEvent.click(await screen.findByText("Vendor 1"));
-
-      expect(screen.getByText("Vendor 2")).toBeInTheDocument();
-      expect(screen.getByText("Vendor 3")).toBeInTheDocument();
-      expect(screen.getByText("Vendor 4")).toBeInTheDocument();
+      userEvent.type(screen.getByPlaceholderText("Search by Email"), "t");
+      jest.advanceTimersByTime(500);
+      userEvent.click(await screen.findByText("test@metabase.test"));
 
       userEvent.click(screen.getByText("Add filter"));
 
@@ -173,9 +174,9 @@ describe("StringFilterPicker", () => {
       expect(filterParts).toMatchObject({
         operator: "=",
         column: expect.anything(),
-        values: ["Vendor 1"],
+        values: ["test@metabase.test"],
       });
-      expect(getNextFilterColumnName()).toBe("Product → Vendor");
+      expect(getNextFilterColumnName()).toBe("User → Email");
     });
 
     it("should add a filter with one value", async () => {
@@ -234,7 +235,7 @@ describe("StringFilterPicker", () => {
 
     it("should add a filter with multiple values", async () => {
       const query = createQuery();
-      const column = findStringColumn(query, { fieldValues: "list" });
+      const column = findStringColumn(query, "PRODUCTS", "CATEGORY");
       const { getNextFilterParts, getNextFilterColumnName } = setup({
         query,
         column,
@@ -257,7 +258,7 @@ describe("StringFilterPicker", () => {
 
     it("should add a filter with multiple values via keyboard", async () => {
       const query = createQuery();
-      const column = findStringColumn(query, { fieldValues: "list" });
+      const column = findStringColumn(query, "PRODUCTS", "CATEGORY");
       const { onChange, getNextFilterParts, getNextFilterColumnName } = setup({
         query,
         column,
@@ -399,7 +400,7 @@ describe("StringFilterPicker", () => {
       const opts = createQueryWithStringFilter({
         query,
         operator: "=",
-        column: findStringColumn(query, { fieldValues: "list" }),
+        column: findStringColumn(query, "PRODUCTS", "CATEGORY"),
         values: ["Gadget", "Gizmo"],
       });
 
@@ -505,7 +506,7 @@ describe("StringFilterPicker", () => {
           query,
           operator: "=",
           values: ["Gadget", "Gizmo"],
-          column: findStringColumn(query, { fieldValues: "list" }),
+          column: findStringColumn(query, "PRODUCTS", "CATEGORY"),
         }),
       );
       await waitForLoaderToBeRemoved();
@@ -542,7 +543,7 @@ describe("StringFilterPicker", () => {
     });
 
     it("should go back", async () => {
-      const { onBack, onChange } = await setup(createQueryWithStringFilter());
+      const { onBack, onChange } = setup(createQueryWithStringFilter());
       userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();

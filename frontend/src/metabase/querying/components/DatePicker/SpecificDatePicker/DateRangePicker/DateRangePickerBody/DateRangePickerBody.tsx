@@ -36,12 +36,12 @@ export function DateRangePickerBody({
     newDate && onChange([startDate, setDatePart(endDate, newDate)]);
   };
 
-  const handleStartTimeChange = (newTime: Date) => {
-    onChange([setTimePart(startDate, newTime), endDate]);
+  const handleStartTimeChange = (newTime: Date | null) => {
+    newTime && onChange([setTimePart(startDate, newTime), endDate]);
   };
 
-  const handleEndTimeChange = (newTime: Date) => {
-    onChange([startDate, setTimePart(endDate, newTime)]);
+  const handleEndTimeChange = (newTime: Date | null) => {
+    newTime && onChange([startDate, setTimePart(endDate, newTime)]);
   };
 
   return (

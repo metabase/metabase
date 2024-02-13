@@ -16,7 +16,7 @@ import {
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 
-import { usePeopleQuery } from "metabase/admin/people/hooks/use-people-query";
+import { usePagination } from "metabase/hooks/use-pagination";
 import {
   CardContent,
   ListGridItem,
@@ -26,8 +26,7 @@ import {
 const PAGE_SIZE = 27;
 
 export const UserCollectionList = () => {
-  const { query, handleNextPage, handlePreviousPage } =
-    usePeopleQuery(PAGE_SIZE);
+  const { page, handleNextPage, handlePreviousPage } = usePagination();
 
   const {
     data: users = [],
@@ -35,8 +34,8 @@ export const UserCollectionList = () => {
     metadata,
   } = useUserListQuery({
     query: {
-      limit: query.pageSize,
-      offset: query.pageSize * query.page,
+      limit: PAGE_SIZE,
+      offset: PAGE_SIZE * page,
     },
   });
 
@@ -89,7 +88,7 @@ export const UserCollectionList = () => {
       </Box>
       <Flex justify="end">
         <PaginationControls
-          page={query.page}
+          page={page}
           pageSize={PAGE_SIZE}
           total={metadata?.total}
           itemsLength={PAGE_SIZE}

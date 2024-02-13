@@ -7,6 +7,9 @@ import {
   visitIframe,
   getDashboardCard,
   addOrUpdateDashboardCard,
+  openStaticEmbeddingModal,
+  downloadAndAssert,
+  assertSheetRowsCount,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -17,7 +20,7 @@ import {
   mapParameters,
 } from "./shared/embedding-dashboard";
 
-const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > dashboard parameters", () => {
   beforeEach(() => {
@@ -50,8 +53,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      cy.icon("share").click();
-      cy.get(".Modal--full").findByText("Embed in your application").click();
+      openStaticEmbeddingModal();
 
       cy.findByRole("heading", { name: "Parameters" })
         .parent()
@@ -132,8 +134,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      cy.icon("share").click();
-      cy.get(".Modal--full").findByText("Embed in your application").click();
+      openStaticEmbeddingModal();
 
       cy.get("@allParameters").findByText("Locked").click();
       popover().contains("Disabled").click();
@@ -258,16 +259,26 @@ describe("scenarios > embedding > dashboard parameters", () => {
       id: "377a4a4a-179e-4d86-8263-f3b3887df15f",
       "display-name": "Category",
     };
+    const createdAtTemplateTag = {
+      type: "dimension",
+      name: "createdAt",
+      id: "ae3bd89b-1b94-47db-9020-8ee74afdb67a",
+      "display-name": "CreatedAt",
+      dimension: ["field", PRODUCTS.CREATED_AT, null],
+      "widget-type": "date/month-year",
+    };
     const questionDetails = {
       native: {
-        query: "Select * from products Where category = {{category}}",
+        query:
+          "Select * from products Where category = {{category}} [[and {{createdAt}}]]",
         "template-tags": {
           category: categoryTemplateTag,
+          createdAt: createdAtTemplateTag,
         },
       },
     };
 
-    const dashboardParameter = {
+    const dashboardCategoryParameter = {
       name: "Category",
       slug: "category",
       id: "9cd1ee78",
@@ -275,9 +286,16 @@ describe("scenarios > embedding > dashboard parameters", () => {
       sectionId: "string",
       values_query_type: "none",
     };
+    const dashboardCreatedAtParameter = {
+      name: "Created At",
+      slug: "createdAt",
+      id: "98831577",
+      type: "date/month-year",
+      sectionId: "date",
+    };
     const dashboardDetails = {
-      name: 'dashboard with "category" parameter',
-      parameters: [dashboardParameter],
+      name: "dashboard with parameters",
+      parameters: [dashboardCategoryParameter, dashboardCreatedAtParameter],
     };
 
     cy.createNativeQuestionAndDashboard({
@@ -292,9 +310,17 @@ describe("scenarios > embedding > dashboard parameters", () => {
         card: {
           parameter_mappings: [
             {
-              parameter_id: dashboardParameter.id,
+              parameter_id: dashboardCategoryParameter.id,
               card_id,
               target: ["variable", ["template-tag", categoryTemplateTag.name]],
+            },
+            {
+              parameter_id: dashboardCreatedAtParameter.id,
+              card_id,
+              target: [
+                "dimension",
+                ["template-tag", createdAtTemplateTag.name],
+              ],
             },
           ],
           visualization_settings: {
@@ -306,6 +332,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
         embedding_params: {
           category: "enabled",
+          createdAt: "enabled",
         },
         enable_embedding: true,
       });
@@ -329,6 +356,26 @@ describe("scenarios > embedding > dashboard parameters", () => {
     getDashboardCard()
       .findByText("Practical Bronze Computer")
       .should("be.visible");
+
+    cy.log("test downloading result (metabase#36721)");
+    getDashboardCard().realHover();
+    downloadAndAssert(
+      {
+        fileType: "csv",
+        isDashboard: true,
+        isEmbed: true,
+        logResults: true,
+        downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
+      },
+      sheet => {
+        expect(sheet["A1"].v).to.eq("ID");
+        expect(sheet["A2"].v).to.eq(9);
+        expect(sheet["B1"].v).to.eq("EAN");
+        expect(sheet["B2"].v).to.eq(7217466997444);
+
+        assertSheetRowsCount(54)(sheet);
+      },
+    );
   });
 });
 
@@ -352,9 +399,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal();
     // ID param is disabled by default
     setParameter("Name", "Editable");
     setParameter("Source", "Locked");

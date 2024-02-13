@@ -8,7 +8,7 @@
    [toucan2.util :as u]))
 
 (deftest full-lifecycle-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [query     (mt/mbql-query products)
           pk_ref    (mt/$ids $products.id)
           value_ref (mt/$ids $products.title)]
@@ -60,7 +60,7 @@
 
 (deftest create-tests
   (testing "Ensures that the pk ref is a primary key"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/mbql-query products)]
         (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
                                                    :dataset         true
@@ -98,7 +98,7 @@
 (deftest snowplow-create-model-index-event-test
   (testing "Send a snowplow event when “Surface individual records matching against column” is toggled on (and saved)"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query     (mt/mbql-query products)
               pk_ref    (mt/$ids $products.id)
               value_ref (mt/$ids $products.title)]

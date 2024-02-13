@@ -1,11 +1,25 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+import isPropValid from "@emotion/is-prop-valid";
 
 import { color } from "metabase/lib/colors";
 
-export const DashCardActionsPanelContainer = styled.div<{
+type DashCardActionsPanelContainerProps = {
   isDashCardTabMenuOpen: boolean;
   onLeftEdge: boolean;
-}>`
+};
+
+function shouldForwardProp(propName: string) {
+  return (
+    isPropValid(propName) &&
+    propName !== "isDashCardTabMenuOpen" &&
+    propName !== "onLeftEdge"
+  );
+}
+
+export const DashCardActionsPanelContainer = styled("div", {
+  shouldForwardProp,
+})<DashCardActionsPanelContainerProps>`
   padding: 0.125em 0.25em;
   position: absolute;
   background: white;
@@ -19,13 +33,19 @@ export const DashCardActionsPanelContainer = styled.div<{
   opacity: ${({ isDashCardTabMenuOpen }) => (isDashCardTabMenuOpen ? 1 : 0)};
   pointer-events: ${({ isDashCardTabMenuOpen }) =>
     isDashCardTabMenuOpen ? "all" : "none"};
+
   // react-resizable covers panel, we have to override it
   z-index: 2;
+
   // left align on small cards on the left edge to not make the actions go out of the viewport
-  @container (max-width: 12rem) {
-    ${({ onLeftEdge }) => onLeftEdge && "right: unset;"}
-    ${({ onLeftEdge }) => onLeftEdge && "left: 20px;"}
-  }
+  ${({ onLeftEdge }) =>
+    onLeftEdge &&
+    css`
+      @container DashboardCard (max-width: 12rem) {
+        right: unset;
+        left: 20px;
+      }
+    `}
 
   .Card:hover &,
   .Card:focus-within & {
