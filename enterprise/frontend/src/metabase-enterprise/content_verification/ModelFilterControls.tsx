@@ -14,7 +14,7 @@ export const ModelFilterControls = ({
           align="right"
           weight="bold"
           lh="1rem"
-          pr=".25rem"
+          px=".75rem"
         >{t`Only show verified models`}</Text>
       }
       role="switch"
@@ -27,9 +27,14 @@ export const ModelFilterControls = ({
       size="sm"
       labelPosition="left"
       styles={{
-        body: { alignItems: "center" },
+        body: {
+          alignItems: "center",
+          // Align with tab labels:
+          position: "relative",
+          top: "-.5px",
+        },
         labelWrapper: { justifyContent: "center", padding: 0 },
-        track: { marginTop: "-.5px" },
+        track: { marginTop: "-1.5px" },
       }}
     />
   );

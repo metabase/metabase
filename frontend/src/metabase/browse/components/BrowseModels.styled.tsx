@@ -58,7 +58,7 @@ export const GridContainer = styled(Grid)`
   width: 100%;
 
   ${breakpointMinSmall} {
-    padding-bottom: 1rem;
+    padding-bottom: 2.5rem;
   }
   ${breakpointMinMedium} {
     padding-bottom: 3rem;

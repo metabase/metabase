@@ -161,6 +161,7 @@ export function getIcon(question) {
     return {
       name: type.icon,
       color: type.color ? color(type.color) : undefined,
+      tooltip: type.tooltip,
     };
   }
 

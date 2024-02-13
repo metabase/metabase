@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { useEffect } from "react";
 import type {
   Card,
   CollectionEssentials,
@@ -42,13 +41,6 @@ export const BrowseModels = ({
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
-
-  useEffect(() => {
-    if (error || isLoading) {
-      return;
-    }
-    localStorage.setItem("defaultBrowseTab", "models");
-  }, [error, isLoading]);
 
   if (error || isLoading) {
     return (
