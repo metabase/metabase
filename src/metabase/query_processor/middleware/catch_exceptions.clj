@@ -9,8 +9,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [schema.utils]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [schema.utils])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)

@@ -40,8 +40,7 @@
                               (reduce
                                (fn [qp middleware-fn]
                                  (middleware-fn qp))
-                               (fn qp [query rff]
-                                 (qp.pipeline/*run* query rff))
+                               qp.pipeline/*run*
                                middleware))))
 
 (rebuild-execute-fn!)
