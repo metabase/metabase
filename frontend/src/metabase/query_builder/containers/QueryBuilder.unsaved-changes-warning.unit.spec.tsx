@@ -30,7 +30,7 @@ import {
   triggerNativeQueryChange,
   triggerNotebookQueryChange,
   triggerVisualizationQueryChange,
-  waitForNativeQueryEditoReady,
+  waitForNativeQueryEditorReady,
   waitForSaveChangesToBeDisabled,
   waitForSaveChangesToBeEnabled,
   waitForSaveToBeEnabled,
@@ -529,7 +529,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
 
-      await waitForNativeQueryEditoReady();
+      await waitForNativeQueryEditorReady();
 
       history.push("/redirect");
 

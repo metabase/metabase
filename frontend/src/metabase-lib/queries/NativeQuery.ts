@@ -9,7 +9,6 @@ import type {
   Card,
   DatabaseId,
   DatasetQuery,
-  DependentMetadataItem,
   NativeDatasetQuery,
   ParameterValuesConfig,
   TemplateTag,
@@ -23,9 +22,8 @@ import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-
 import type Variable from "metabase-lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import ValidationError from "metabase-lib/ValidationError";
-import { isFieldReference } from "metabase-lib/references";
 import type Dimension from "../Dimension";
-import { FieldDimension, TemplateTagDimension } from "../Dimension";
+import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
@@ -420,23 +418,5 @@ export default class NativeQuery extends AtomicQuery {
     return queryText && this.supportsNativeParameters()
       ? Lib.extractTemplateTags(queryText, this.templateTagsMap())
       : {};
-  }
-
-  dependentMetadata(): DependentMetadataItem[] {
-    const templateTags = this.templateTags();
-    return templateTags
-      .filter(
-        tag => tag.type === "dimension" && isFieldReference(tag.dimension),
-      )
-      .map(tag => {
-        const dimension = FieldDimension.parseMBQL(
-          tag.dimension,
-          this.metadata(),
-        );
-        return {
-          type: "field",
-          id: dimension.field().id,
-        };
-      });
   }
 }

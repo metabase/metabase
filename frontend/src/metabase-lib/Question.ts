@@ -28,7 +28,6 @@ import type {
   DatabaseId,
   DatasetQuery,
   DatasetData,
-  DependentMetadataItem,
   TableId,
   Parameter as ParameterObject,
   ParameterValues,
@@ -262,8 +261,8 @@ class Question {
     return this._card && this._card.dataset;
   }
 
-  type(): CardType | undefined {
-    return this._card && this._card.type;
+  type(): CardType {
+    return this._card?.type ?? "question";
   }
 
   /**
@@ -611,9 +610,11 @@ class Question {
       return this;
     }
 
+    const query = this.query();
+
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
-        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+        findColumnSettingIndexForColumn(query, vizSettings, col) >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
@@ -773,7 +774,7 @@ class Question {
     return this.card().result_metadata ?? [];
   }
 
-  dependentMetadata(): DependentMetadataItem[] {
+  dependentMetadata(): Lib.DependentItem[] {
     const dependencies = [];
 
     // we frequently treat dataset/model questions like they are already nested

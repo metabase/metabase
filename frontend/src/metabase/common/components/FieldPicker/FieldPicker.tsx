@@ -1,9 +1,14 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import CheckBox from "metabase/core/components/CheckBox";
-import { StackedCheckBox } from "metabase/components/StackedCheckBox";
+import { Checkbox } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { ToggleItem, ColumnItem } from "./FieldPicker.styled";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  ToggleItem,
+  ColumnItem,
+  ItemTitle,
+  ItemIcon,
+} from "./FieldPicker.styled";
 
 interface FieldPickerProps {
   query: Lib.Query;
@@ -61,22 +66,28 @@ export const FieldPicker = ({
   return (
     <ul data-testid={props["data-testid"]}>
       <ToggleItem>
-        <StackedCheckBox
-          className=""
-          label={isAll ? t`Select none` : t`Select all`}
-          checked={isAll}
-          indeterminate={!isAll && !isNone}
-          onChange={handleLabelToggle}
-        />
+        <label>
+          <Checkbox
+            variant="stacked"
+            checked={isAll}
+            indeterminate={!isAll && !isNone}
+            onChange={handleLabelToggle}
+          />
+          <ItemTitle>{isAll ? t`Select none` : t`Select all`}</ItemTitle>
+        </label>
       </ToggleItem>
       {items.map((item, index) => (
         <ColumnItem key={item.longDisplayName}>
-          <CheckBox
-            checked={isColumnSelected(item.column)}
-            label={item.displayName}
-            disabled={isColumnSelected(item.column) && isDisabledDeselection}
-            onChange={event => onToggle(index, event.target.checked)}
-          />
+          <label>
+            <Checkbox
+              checked={isColumnSelected(item.column)}
+              disabled={isColumnSelected(item.column) && isDisabledDeselection}
+              onChange={event => onToggle(index, event.target.checked)}
+            />
+
+            <ItemIcon name={getColumnIcon(item.column)} size={18} />
+            <ItemTitle>{item.displayName}</ItemTitle>
+          </label>
         </ColumnItem>
       ))}
     </ul>

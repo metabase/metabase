@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const SetupRoot = styled.div`
   max-width: 42rem;
@@ -70,9 +69,4 @@ export const SectionMessage = styled.div`
   color: ${color("text-medium")};
   line-height: 1.5rem;
   margin-bottom: 1.5rem;
-`;
-
-export const SectionLink = styled(ExternalLink)`
-  color: ${color("brand")};
-  font-weight: bold;
 `;

@@ -26,7 +26,6 @@ export function AppBarToggle({
     <Tooltip
       label={getSidebarTooltipLabel(isNavBarOpen)}
       disabled={isSmallAppBar}
-      withArrow
       offset={-12}
     >
       <SidebarButton

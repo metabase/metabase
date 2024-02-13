@@ -53,17 +53,3 @@ export const FilterOperator = styled(FilterSection)`
     color: ${color("filter")};
   }
 `;
-
-export const FilterValue = styled(FilterSection)`
-  padding-right: 0.5em;
-  padding-bottom: 0.25em;
-
-  ${QueryOption} {
-    color: ${color("white")};
-    background-color: ${color("filter")};
-    border: 1px solid ${color("filter")};
-    border-radius: 6px;
-    padding: 0.3em 0.5em;
-    margin-bottom: 0.2em;
-  }
-`;
