@@ -5,7 +5,7 @@
    [metabase.async.streaming-response :as streaming-response]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt])
   (:import
    (com.mongodb BasicDBObject)
@@ -74,7 +74,7 @@
     ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
     (mt/run-mbql-query people {:limit 10})
     (let [canceled-chan (a/chan)]
-      (with-redefs [qp.context/canceled-chan (constantly canceled-chan)]
+      (binding [qp.pipeline/*canceled-chan* canceled-chan]
         (let [query (mt/mbql-query orders
                                    {:aggregation [[:sum $total]],
                                     :breakout [!month.created_at],
