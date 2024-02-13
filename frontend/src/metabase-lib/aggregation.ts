@@ -63,9 +63,6 @@ export function aggregationClause(
   operator: AggregationOperator,
   column?: ColumnMetadata,
 ): AggregationClause {
-  if (typeof column === "undefined") {
-    return ML.aggregation_clause(operator);
-  }
   return ML.aggregation_clause(operator, column);
 }
 
