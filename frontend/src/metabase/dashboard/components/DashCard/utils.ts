@@ -4,7 +4,6 @@ import type {
   DashboardCard,
   ParameterTarget,
   QuestionDashboardCard,
-  StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import {
   getVirtualCardType,
@@ -34,25 +33,31 @@ export function shouldShowParameterMapper({
 }
 
 // TODO: @uladzimirdev fix type definition in https://github.com/metabase/metabase/pull/38596
-type MappingOption = {
+export type MappingOption = {
   name: string;
   icon: string;
   isForeign: boolean;
-  target: StructuredParameterDimensionTarget;
+  target: ParameterTarget;
 };
 
 export function getMappingOptionByTarget<T extends DashboardCard>(
   mappingOptions: MappingOption[],
   dashcard: T,
   target: ParameterTarget,
-  question: T extends QuestionDashboardCard ? Question : never,
+  question?: T extends QuestionDashboardCard ? Question : undefined,
 ): MappingOption | undefined {
   if (!target) {
     return;
   }
 
-  const isVirtual = isVirtualDashCard(dashcard);
   const isAction = isActionDashCard(dashcard);
+
+  // action has it's own settings, no need to get mapping options
+  if (isAction) {
+    return;
+  }
+
+  const isVirtual = isVirtualDashCard(dashcard);
   const isNative = isQuestionDashCard(dashcard)
     ? isNativeDashCard(dashcard)
     : false;
@@ -63,6 +68,10 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     return mappingOptions.find(mappingOption =>
       _.isEqual(normalize(mappingOption.target), normalizedTarget),
     );
+  }
+
+  if (!question) {
+    return;
   }
 
   const stageIndex = -1;
