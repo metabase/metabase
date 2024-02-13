@@ -19,6 +19,7 @@ import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import { getCollectionIcon } from "metabase/entities/collections";
 import { getLocale } from "metabase/setup/selectors";
 import { entityForObject } from "metabase/lib/schema";
+import { color } from "metabase/lib/colors";
 import { getCollectionName, groupModels, sortModels } from "../utils";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";
@@ -140,7 +141,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     >
       <ModelCard>
         <Box mb="auto">
-          <Icon {...icon} size={20} className="text-brand" />
+          <Icon {...icon} size={20} color={color("brand")} />
         </Box>
         <Title mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>

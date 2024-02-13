@@ -13,7 +13,8 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { groupModels } from "../utils";
+import type { ActualModelFilters, AvailableModelFilters } from "../utils";
+import { filterModels, groupModels } from "../utils";
 import { BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
@@ -302,5 +303,62 @@ describe("BrowseModels", () => {
     expect(groupedModels[6]).toHaveLength(3);
     expect(groupedModels[7][0].collection.name).toEqual("Özgür");
     expect(groupedModels[7]).toHaveLength(3);
+  });
+
+  const diverseModels = mockModels.map((model, index) => ({
+    ...model,
+    name: index % 2 === 0 ? `red ${index}` : `blue ${index}`,
+    moderated_status: index % 3 === 0 ? `good ${index}` : `bad ${index}`,
+  }));
+  const availableModelFilters: AvailableModelFilters = {
+    onlyRed: {
+      predicate: (model: SearchResult) => model.name.startsWith("red"),
+      activeByDefault: false,
+    },
+    onlyGood: {
+      predicate: (model: SearchResult) =>
+        Boolean(model.moderated_status?.startsWith("good")),
+      activeByDefault: false,
+    },
+    onlyBig: {
+      predicate: (model: SearchResult) =>
+        Boolean(model.description?.startsWith("big")),
+      activeByDefault: true,
+    },
+  };
+
+  it("filterModels filters models based on the filters object provided", () => {
+    const onlyRedAndGood: ActualModelFilters = {
+      onlyRed: true,
+      onlyGood: true,
+      onlyBig: false,
+    };
+    const filteredModels = filterModels(
+      diverseModels,
+      onlyRedAndGood,
+      availableModelFilters,
+    );
+    // Since every other model is red and every third model is good, we expect every sixth model to be both red and good
+    const everySixthModel = diverseModels.reduce<SearchResult[]>(
+      (acc, model, index) => {
+        return index % 6 === 0 ? [...acc, model] : acc;
+      },
+      [],
+    );
+    expect(filteredModels).toEqual(everySixthModel);
+  });
+
+  it("filterModels does not filter out models if no filters are active", () => {
+    const noActiveFilters: ActualModelFilters = {
+      onlyRed: false,
+      onlyGood: false,
+      onlyBig: false,
+    };
+    const filteredModels = filterModels(
+      diverseModels,
+      noActiveFilters,
+      availableModelFilters,
+    );
+    expect(filteredModels).toEqual(diverseModels);
   });
 });

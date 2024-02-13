@@ -120,3 +120,18 @@ export const sortModels = (
 };
 
 export type ActualModelFilters = Record<string, boolean>;
+
+export const filterModels = (
+  unfilteredModels: SearchResult[],
+  actualModelFilters: ActualModelFilters,
+  availableModelFilters: AvailableModelFilters,
+) => {
+  return _.reduce(
+    actualModelFilters,
+    (acc, shouldFilterBeActive, filterName) =>
+      shouldFilterBeActive
+        ? acc.filter(availableModelFilters[filterName].predicate)
+        : acc,
+    unfilteredModels,
+  );
+};

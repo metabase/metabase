@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,7 +15,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import type { ActualModelFilters } from "../utils";
-import { isValidBrowseTab, type BrowseTabId } from "../utils";
+import { isValidBrowseTab, type BrowseTabId, filterModels } from "../utils";
 import {
   BrowseAppRoot,
   BrowseContainer,
@@ -79,20 +79,11 @@ export const BrowseApp = ({
     useState<ActualModelFilters>(getInitialModelFilters);
   const { data: unfilteredModels = [] } = modelsResult;
 
-  const [filteredModels, setFilteredModels] = useState(modelsResult.data);
-
-  useEffect(() => {
-    const filteredModels = _.reduce(
-      actualModelFilters,
-      (acc, shouldFilterBeActive, filterName) =>
-        shouldFilterBeActive
-          ? acc.filter(availableModelFilters[filterName].predicate)
-          : acc,
-      unfilteredModels,
-    );
-    setFilteredModels(filteredModels);
-  }, [unfilteredModels, actualModelFilters, availableModelFilters]);
-
+  const filteredModels = useMemo(
+    () =>
+      filterModels(unfilteredModels, actualModelFilters, availableModelFilters),
+    [unfilteredModels, actualModelFilters, availableModelFilters],
+  );
   const filteredModelsResult = { ...modelsResult, data: filteredModels };
 
   const handleModelFilterChange = useCallback(
