@@ -1,5 +1,6 @@
 import type {
   Card,
+  Collection,
   CollectionEssentials,
   SearchResult,
 } from "metabase-types/api";
@@ -9,10 +10,12 @@ import Link from "metabase/core/components/Link";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
+import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
 import { getCollectionName, sortModels } from "../utils";
+import ActionMenu from "metabase/collections/components/ActionMenu";
+import { entityForObject } from "metabase/lib/schema";
 import {
   CollectionHeaderContainer,
   CollectionHeaderGroup,
@@ -65,7 +68,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
-  // const entity = entityForObject(model);
+  const entity = entityForObject(model);
 
   return (
     <Link
@@ -74,9 +77,29 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
       to={Urls.model(model as unknown as Partial<Card>)}
     >
       <ModelCard>
-        <Box mb="auto">
+        <Flex w="100%" justify="space-between" mb="auto">
           <Icon name="model" size={20} color={color("brand")} />
-        </Box>
+          <ActionMenu
+            item={entity}
+            collection={
+              {
+                ...model.collection,
+                // TODO: Use real data rather than this dummy data
+                can_write: true,
+                description: "",
+                archived: false,
+              } as Collection
+            }
+            bookmarks={[]}
+            databases={[]}
+            //isXrayEnabled={false}
+            //isMetabotEnabled
+            onCopy={() => void 0}
+            onMove={() => void 0}
+            //createBookmark
+            //deleteBookmark
+          />
+        </Flex>
         <Title mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
