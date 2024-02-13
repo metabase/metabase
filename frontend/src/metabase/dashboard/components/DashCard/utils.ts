@@ -85,7 +85,7 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     question.query(),
     stageIndex,
     columns,
-    mappingOptions.map(({ target }) => target[1]),
+    mappingOptions.map(({ target }) => normalize(target[1])),
   );
 
   const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);
