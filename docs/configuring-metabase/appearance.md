@@ -23,7 +23,7 @@ Click on the gear icon at the bottom of the navigation sidebar and select **Admi
 
 ## De-Metabasing your Metabase for whitelabeling
 
-When embedding Metabase in your app, in addition to changing colors and fonts, you can show or hide Metabase-branded UI elements and links (like links to Metabase's hallowed documentation). Here are some settings you might want to change:
+When embedding Metabase in your app, in addition to changing colors and fonts, you can show or hide Metabase-branded UI elements and links (like in-app links to Metabase's hallowed documentation). If you're embedding Metabase in your app, here are some settings you might want to change:
 
 - [Application name](#application-name)
 - [Logo](#logo)
