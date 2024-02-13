@@ -18,7 +18,6 @@ import {
   getDatasetExtents,
   replaceValues,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { getYAxisModel } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import type {
   WaterfallDataset,
@@ -168,7 +167,7 @@ const addTotalDatum = (
   }
 
   const totalDatum: Datum = {
-    [seriesDataKey]: waterfallDatasetTotalDatum.end,
+    [seriesDataKey]: waterfallDatasetTotalDatum[WATERFALL_TOTAL_KEY],
     [X_AXIS_DATA_KEY]: t`Total`,
   };
 
@@ -206,17 +205,19 @@ export function getWaterfallChartModel(
   );
 
   const extents = getDatasetExtents([seriesModel.dataKey], waterfallDataset);
+  const yAxisExtent = [
+    waterfallDataset[0][WATERFALL_START_KEY],
+    waterfallDataset[waterfallDataset.length - 1][WATERFALL_TOTAL_KEY] ??
+      waterfallDataset[waterfallDataset.length - 1][WATERFALL_END_KEY],
+  ];
 
-  const leftYAxisModel = getYAxisModel(
-    [seriesModel.dataKey],
-    waterfallDataset,
-    settings,
-    cartesianChartModel.columnByDataKey,
-    renderingContext,
-  );
+  const leftAxisModel = {
+    ...cartesianChartModel.leftAxisModel,
+    extent: yAxisExtent,
+  };
 
   const xAxisModel = {
-    ...cartesianChartModel.xAxisModel.formatter,
+    ...cartesianChartModel.xAxisModel,
     formatter: (value: RowValue) => {
       const hasTotal = !!settings["waterfall.show_total"];
       if (!hasTotal || settings["graph.x_axis.scale"] !== "timeseries") {
@@ -235,12 +236,13 @@ export function getWaterfallChartModel(
       return cartesianChartModel.xAxisModel.formatter(value);
     },
   };
+
   return {
     ...cartesianChartModel,
     seriesModels: [seriesModel],
     transformedDataset: waterfallDataset,
     dataset: originalDatasetWithTotal,
-    leftYAxisModel,
+    leftAxisModel,
     xAxisModel,
     extents,
   };

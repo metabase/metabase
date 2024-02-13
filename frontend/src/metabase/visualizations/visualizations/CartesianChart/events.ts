@@ -90,10 +90,11 @@ export const getEventColumnsData = (
   seriesIndex: number,
   dataIndex: number,
 ) => {
-  const seriesModel = chartModel.seriesModels[seriesIndex];
-
   const datum = chartModel.dataset[dataIndex];
-  const isBreakoutSeries = "breakoutColumn" in seriesModel;
+
+  const seriesModel = chartModel.seriesModels[seriesIndex];
+  const isBreakoutSeries =
+    seriesModel != null && "breakoutColumn" in seriesModel;
 
   return getObjectEntries(datum)
     .map(([dataKey, value]) => {
@@ -101,9 +102,12 @@ export const getEventColumnsData = (
         return null;
       }
 
-      const { cardId, breakoutValue } = parseDataKey(dataKey);
+      const { cardId, breakoutValue } =
+        seriesModel != null
+          ? parseDataKey(dataKey)
+          : { cardId: null, breakoutValue: null };
 
-      const isSameCard = cardId === seriesModel.cardId;
+      const isSameCard = cardId == null || cardId === seriesModel?.cardId;
       const isDifferentBreakoutSeries =
         isBreakoutSeries && String(seriesModel.breakoutValue) !== breakoutValue;
 
@@ -205,7 +209,7 @@ export const getSeriesHoverData = (
     seriesModel => seriesModel.dataKey === seriesId,
   );
 
-  if (seriesIndex < 0 || dataIndex == null) {
+  if (dataIndex == null) {
     return;
   }
 

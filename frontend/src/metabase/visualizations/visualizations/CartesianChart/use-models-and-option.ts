@@ -63,6 +63,7 @@ export function useModelsAndOption({
         timelineEvents ?? [],
         settings,
         width,
+        height,
         renderingContext,
       ),
     [chartModel, timelineEvents, settings, width, renderingContext],
@@ -75,11 +76,12 @@ export function useModelsAndOption({
       selectedTimelineEventIds ?? [],
       settings,
       width,
+      height,
       renderingContext,
     );
   }, [
-    card.display,
     chartModel,
+    height,
     renderingContext,
     selectedTimelineEventIds,
     settings,

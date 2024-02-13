@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import type { LineSeriesOption } from "echarts/types/dist/echarts";
+import type { EChartsOption, EChartsType } from "echarts";
+import type * as React from "react";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import type {
   EChartsSeriesBrushEndEvent,
@@ -13,9 +16,6 @@ import {
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import type { LineSeriesOption } from "echarts/types/dist/echarts";
-import type { EChartsOption, EChartsType } from "echarts";
-import type * as React from "react";
 import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
@@ -165,13 +165,16 @@ export const useChartEvents = (
       }
 
       const { datumIndex, index } = hovered;
-      const seriesId = chartModel.seriesModels[index].dataKey;
+      const hoveredSeries = chartModel.seriesModels[index];
+      if (!hoveredSeries) {
+        return;
+      }
 
       // ECharts series contain goal line, trend lines, and timeline events so the series index
       // is different from one in chartModel.seriesModels
       const eChartsSeriesIndex = (
         option?.series as LineSeriesOption[]
-      ).findIndex(series => series.id === seriesId);
+      ).findIndex(series => series.id === hoveredSeries.dataKey);
 
       chart.dispatchAction({
         type: "highlight",
@@ -187,7 +190,7 @@ export const useChartEvents = (
         });
       };
     },
-    [chartModel.seriesModels, hovered, option?.series],
+    [chartModel.seriesModels, chartRef, hovered, option?.series],
   );
 
   // In order to keep brushing always enabled we have to re-enable it on every model change
@@ -208,7 +211,7 @@ export const useChartEvents = (
         });
       }, 0);
     },
-    [onChangeCardAndRun, option, rawSeries, settings],
+    [chartRef, onChangeCardAndRun, option, rawSeries, settings],
   );
 
   const onSelectSeries = useCallback(

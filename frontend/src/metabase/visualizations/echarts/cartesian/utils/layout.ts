@@ -9,8 +9,10 @@ import type {
 } from "metabase/visualizations/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
+  ChartBoundsCoords,
   ChartMeasurements,
   Padding,
+  TicksDimensions,
 } from "metabase/visualizations/echarts/cartesian/option/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isNotNull } from "metabase/lib/types";
@@ -179,10 +181,26 @@ export const getChartPadding = (
   return padding;
 };
 
+export const getChartBounds = (
+  width: number,
+  height: number,
+  padding: Padding,
+  ticksDimensions: TicksDimensions,
+): ChartBoundsCoords => {
+  return {
+    top: padding.top,
+    bottom: height - padding.bottom - ticksDimensions.xTicksHeight,
+    left: padding.left + ticksDimensions.yTicksWidthLeft,
+    right: width - padding.right - ticksDimensions.yTicksWidthRight,
+  };
+};
+
 export const getChartMeasurements = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
+  width: number,
+  height: number,
   renderingContext: RenderingContext,
 ): ChartMeasurements => {
   const ticksDimensions = getTicksDimensions(
@@ -192,9 +210,11 @@ export const getChartMeasurements = (
     renderingContext,
   );
   const padding = getChartPadding(chartModel, settings);
+  const bounds = getChartBounds(width, height, padding, ticksDimensions);
 
   return {
     ticksDimensions,
     padding,
+    bounds,
   };
 };

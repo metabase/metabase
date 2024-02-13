@@ -24,6 +24,7 @@ import {
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
 } from "metabase/visualizations/echarts/cartesian/waterfall/constants";
+import type { ChartMeasurements } from "../option/types";
 
 type WaterfallSeriesOptions =
   | RegisteredSeriesOption["line"]
@@ -38,6 +39,7 @@ export const buildEChartsWaterfallSeries = (
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   xAxisModel: XAxisModel,
+  chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): WaterfallSeriesOptions[] => {
   const buildLabelOption = (key: DataKey) => ({

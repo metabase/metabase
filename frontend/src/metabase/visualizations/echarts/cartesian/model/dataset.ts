@@ -29,8 +29,6 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
 
-import { getXAxisType } from "../option/axis";
-
 /**
  * Sums two metric column values.
  *
@@ -370,7 +368,7 @@ export function getDimensionDisplayValueGetter(
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
 ) {
-  const axisType = getXAxisType(settings);
+  const { axisType } = chartModel.xAxisModel;
   const isPowerScale = settings["graph.x_axis.scale"] === "pow";
 
   return (value: string) => {

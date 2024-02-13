@@ -25,7 +25,10 @@ import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/car
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getObjectValues } from "metabase/lib/objects";
-import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
+import type {
+  ChartMeasurements,
+  EChartsSeriesOption,
+} from "metabase/visualizations/echarts/cartesian/option/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { buildEChartsWaterfallSeries } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import { buildEChartsScatterSeries } from "../scatter/series";
@@ -392,6 +395,7 @@ export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartWidth: number,
+  chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption[] => {
   const seriesSettingsByDataKey = chartModel.seriesModels.reduce(
@@ -452,6 +456,7 @@ export const buildEChartsSeries = (
             settings,
             yAxisIndex,
             chartModel.xAxisModel,
+            chartMeasurements,
             renderingContext,
           );
       }

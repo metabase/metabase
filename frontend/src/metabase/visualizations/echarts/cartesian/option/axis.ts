@@ -87,21 +87,6 @@ export const getTicksDefaultOption = ({
   };
 };
 
-export const getXAxisType = (settings: ComputedVisualizationSettings) => {
-  switch (settings["graph.x_axis.scale"]) {
-    case "timeseries":
-      return "time";
-    case "linear":
-    case "pow":
-      return "value";
-    case "log":
-      return "log";
-    // ^ pow and log are only for scatter plot
-    default:
-      return "category";
-  }
-};
-
 const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   switch (settings["graph.x_axis.axis_enabled"]) {
     case "rotate-45":
@@ -122,7 +107,7 @@ export const buildDimensionAxis = (
   renderingContext: RenderingContext,
 ): CartesianAxisOption => {
   const { getColor } = renderingContext;
-  const axisType = getXAxisType(settings);
+  const { axisType, formatter, timeSeriesInterval } = xAxisModel;
 
   const boundaryGap =
     axisType === "value" || axisType === "log"
@@ -158,8 +143,7 @@ export const buildDimensionAxis = (
       rotate: getRotateAngle(settings),
       ...getTicksDefaultOption(renderingContext),
       // Value is always converted to a string by ECharts
-      formatter: (value: string) =>
-        ` ${xAxisModel.formatter(valueGetter(value))} `, // spaces force padding between ticks
+      formatter: (value: string) => ` ${formatter(valueGetter(value))} `, // spaces force padding between ticks
     },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
@@ -168,8 +152,8 @@ export const buildDimensionAxis = (
       },
     },
     minInterval:
-      xAxisModel.timeSeriesInterval != null
-        ? getTimeSeriesMinInterval(xAxisModel.timeSeriesInterval)
+      timeSeriesInterval != null
+        ? getTimeSeriesMinInterval(timeSeriesInterval)
         : undefined,
   };
 };

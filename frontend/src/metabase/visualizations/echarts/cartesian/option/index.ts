@@ -25,6 +25,7 @@ export const getCartesianChartOption = (
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
+  chartHeight: number,
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -32,6 +33,8 @@ export const getCartesianChartOption = (
     chartModel,
     settings,
     hasTimelineEvents,
+    chartWidth,
+    chartHeight,
     renderingContext,
   );
   const timelineEventsSeries = hasTimelineEvents
@@ -47,6 +50,7 @@ export const getCartesianChartOption = (
     chartModel,
     settings,
     chartWidth,
+    chartMeasurements,
     renderingContext,
   );
   const goalSeriesOption = getGoalLineSeriesOption(

@@ -1,5 +1,6 @@
 import d3 from "d3";
 import _ from "underscore";
+import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 import type {
   AxisFormatter,
   DataKey,
@@ -35,6 +36,7 @@ import {
 } from "metabase/visualizations/lib/timeseries";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { isDate } from "metabase-lib/types/utils/isa";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -457,6 +459,26 @@ export function getYAxesModels(
   };
 }
 
+export const getXAxisEChartsType = (
+  dimensionModel: DimensionModel,
+  settings: ComputedVisualizationSettings,
+): OptionAxisType => {
+  // Relative time scale charts have numeric dimensions but should use category scale
+  const isDimensionColumnDate = isDate(dimensionModel.column);
+
+  switch (settings["graph.x_axis.scale"]) {
+    case "timeseries":
+      return "time";
+    case "linear":
+    case "pow":
+      return isDimensionColumnDate ? "category" : "value";
+    case "log":
+      return isDimensionColumnDate ? "category" : "log";
+    default:
+      return "category";
+  }
+};
+
 export function getXAxisModel(
   dimensionModel: DimensionModel,
   rawSeries: RawSeries,
@@ -489,11 +511,15 @@ export function getXAxisModel(
     dimensionModel,
     settings,
   );
+
+  const axisType = getXAxisEChartsType(dimensionModel, settings);
+
   return {
     formatter,
     label,
     timeSeriesInterval,
     numericInterval,
+    axisType,
   };
 }
 

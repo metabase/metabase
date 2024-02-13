@@ -43,7 +43,6 @@ const getXAxisRange = (dataset: ChartDataset): DateRange | null => {
   return [minDate, maxDate];
 };
 
-
 const getDayWidth = (
   range: DateRange,
   chartMeasurements: ChartMeasurements,
@@ -173,6 +172,7 @@ export const getTimelineEventsModel = (
   timelineEvents: TimelineEvent[],
   settings: ComputedVisualizationSettings,
   width: number,
+  height: number,
   renderingContext: RenderingContext,
 ) => {
   if (timelineEvents.length === 0) {
@@ -203,6 +203,8 @@ export const getTimelineEventsModel = (
     chartModel,
     settings,
     hasTimelineEvents,
+    width,
+    height,
     renderingContext,
   );
 
