@@ -8,7 +8,7 @@ import ActionMenu from "metabase/collections/components/ActionMenu";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import {
   ActionsContainer,

@@ -5,7 +5,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 
-import type { TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
@@ -14,7 +14,6 @@ import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../../FieldsPickerIcon";
 import { DataStepCell } from "./DataStep.styled";
 
 export const DataStep = ({
-  topLevelQuery,
   query,
   step,
   readOnly,
@@ -23,55 +22,30 @@ export const DataStep = ({
 }: NotebookStepUiComponentProps) => {
   const { stageIndex } = step;
 
-  const question = query.question();
-  const metadata = question.metadata();
+  const question = step.question;
   const collectionId = question.collectionId();
-  const tableId = query.sourceTableId();
-
-  const databaseId = Lib.databaseID(topLevelQuery);
-  const table = tableId
-    ? Lib.tableOrCardMetadata(topLevelQuery, tableId)
-    : null;
+  const databaseId = Lib.databaseID(query);
+  const tableId = Lib.sourceTableOrCardId(query);
+  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
 
   const pickerLabel = table
-    ? Lib.displayInfo(topLevelQuery, stageIndex, table).displayName
+    ? Lib.displayInfo(query, stageIndex, table).displayName
     : t`Pick your starting data`;
 
   const isRaw = useMemo(() => {
     return (
-      Lib.aggregations(topLevelQuery, stageIndex).length === 0 &&
-      Lib.breakouts(topLevelQuery, stageIndex).length === 0
+      Lib.aggregations(query, stageIndex).length === 0 &&
+      Lib.breakouts(query, stageIndex).length === 0
     );
-  }, [topLevelQuery, stageIndex]);
+  }, [query, stageIndex]);
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
-  const handleCreateQuery = (tableId: TableId) => {
-    const databaseId = metadata.table(tableId)?.db_id;
-    if (databaseId) {
-      const nextQuery = Lib.fromLegacyQuery(databaseId, metadata, {
-        type: "query",
-        database: databaseId,
-        query: {
-          "source-table": tableId,
-        },
-      });
-      updateQuery(nextQuery);
-    }
-  };
-
-  const handleChangeTable = (nextTableId: TableId) => {
-    const nextQuery = Lib.withDifferentTable(topLevelQuery, nextTableId);
-    updateQuery(nextQuery);
-  };
-
-  const handleTableSelect = (tableId: TableId) => {
-    const isNew = !databaseId;
-    if (isNew) {
-      handleCreateQuery(tableId);
-    } else {
-      handleChangeTable(tableId);
-    }
+  const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
+    const metadata = question.metadata();
+    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
+    updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
   };
 
   return (
@@ -82,7 +56,7 @@ export const DataStep = ({
         right={
           canSelectTableColumns && (
             <DataFieldsPicker
-              query={topLevelQuery}
+              query={query}
               stageIndex={stageIndex}
               updateQuery={updateQuery}
             />

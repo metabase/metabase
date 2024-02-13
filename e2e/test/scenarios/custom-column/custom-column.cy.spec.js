@@ -390,7 +390,9 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
     // Test displays collapsed filter - click on number 1 to expand and show the filter name
-    cy.icon("filter").parent().contains("1").click();
+    cy.findByTestId("filters-visibility-control")
+      .should("have.text", "1")
+      .click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Subtotal is greater than 0/i)

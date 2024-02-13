@@ -1,5 +1,6 @@
 import {
   getApplicationName,
+  getCanWhitelabel,
   getIsWhiteLabeling,
   getWhiteLabeledLoadingMessage,
 } from "..";
@@ -61,5 +62,13 @@ describe("getApplicationName (EE with token)", () => {
     const { getState } = setup({ applicationName: "something else" });
 
     expect(getApplicationName(getState())).toBe("something else");
+  });
+});
+
+describe("getCanWhitelabel (EE without token)", () => {
+  it("should return true", () => {
+    const { getState } = setup();
+
+    expect(getCanWhitelabel(getState())).toBe(true);
   });
 });

@@ -514,13 +514,13 @@
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
-   (with-embedding-enabled-and-new-secret-key
-     (mt/with-temp [Card card (card-with-date-field-filter)]
-       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-       (binding [client/*url-prefix* ""]
-         (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-           (is (= "count\n107\n"
-                  (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
+    (with-embedding-enabled-and-new-secret-key
+      (mt/with-temp [Card card (card-with-date-field-filter)]
+        ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+        (binding [client/*url-prefix* ""]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+            (is (= "count\n107\n"
+                   (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------

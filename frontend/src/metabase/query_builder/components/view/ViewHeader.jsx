@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { usePrevious } from "react-use";
 
+import * as Lib from "metabase-lib";
 import * as Urls from "metabase/lib/urls";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
@@ -88,26 +89,26 @@ export function ViewTitleHeader(props) {
 
   const previousQuestion = usePrevious(question);
 
+  const query = question.query();
+  const previousQuery = usePrevious(query);
+
   useEffect(() => {
     if (!question.isStructured() || !previousQuestion?.isStructured()) {
       return;
     }
 
-    const filtersCount = question.query().filters().length;
-    const previousFiltersCount = previousQuestion.query().filters().length;
+    const filtersCount = Lib.filters(query, -1).length;
+    const previousFiltersCount = Lib.filters(previousQuery, -1).length;
 
     if (filtersCount > previousFiltersCount) {
       expandFilters();
     }
-  }, [previousQuestion, question, expandFilters]);
+  }, [previousQuestion, question, expandFilters, previousQuery, query]);
 
-  const isStructured = question.isStructured();
   const isNative = question.isNative();
   const isSaved = question.isSaved();
   const isDataset = question.isDataset();
-
-  const isSummarized =
-    isStructured && question.query().topLevelQuery().hasAggregations();
+  const isSummarized = Lib.aggregations(query, -1).length > 0;
 
   const onQueryChange = useCallback(
     newQuery => {
@@ -416,7 +417,9 @@ function ViewTitleHeaderRightSide(props) {
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !question.query().hasData();
+  const isNewQuery = !question
+    .legacyQuery({ useStructuredQuery: true })
+    .hasData();
   const hasSaveButton =
     !isDataset &&
     !!isDirty &&
@@ -445,8 +448,8 @@ function ViewTitleHeaderRightSide(props) {
       {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
-          query={question._getMLv2Query()}
-          expanded={areFiltersExpanded}
+          query={question.query()}
+          isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
         />

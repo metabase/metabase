@@ -542,7 +542,7 @@
           (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))))))
 
 (deftest audit-v2-views-test
-  (testing "Migrations v48.00-029 - v48.00-040"
+  (testing "Migrations v48.00-029 - end"
     ;; Use an open-ended migration range so that we can detect if any migrations added after these views broke the view
     ;; queries
     (impl/test-migrations ["v48.00-029"] [migrate!]
@@ -562,7 +562,6 @@
         (doseq [view-name new-view-names]
           (testing (str "View " view-name " should be created")
             (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
-
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]

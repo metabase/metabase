@@ -166,10 +166,10 @@
        false)))
 
 (defn- date-string? [s]
-  (does-not-throw? (t/local-date s)))
+  (does-not-throw? (upload-parsing/parse-local-date s)))
 
 (defn- datetime-string? [s]
-  (does-not-throw? (upload-parsing/parse-datetime s)))
+  (does-not-throw? (upload-parsing/parse-local-datetime s)))
 
 (defn- offset-datetime-string? [s]
   (does-not-throw? (upload-parsing/parse-offset-datetime s)))

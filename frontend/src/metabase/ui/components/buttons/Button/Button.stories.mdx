@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { Group, Stack } from "metabase/ui";
 import { Button } from "./";
 
@@ -21,7 +21,7 @@ export const argTypes = {
     control: { type: "inline-radio" },
   },
   color: {
-    options: { default: undefined, success: "success.0", error: "error.0" },
+    options: { default: undefined, success: "success", error: "error" },
     control: { type: "inline-radio" },
   },
   compact: {
@@ -183,7 +183,7 @@ export const DefaultGrid = GridTemplate.bind({});
 
 export const CustomColorGrid = GridTemplate.bind({});
 CustomColorGrid.args = {
-  color: "error.0",
+  color: "error",
 };
 
 <Canvas>
@@ -266,7 +266,7 @@ CompactGrid.args = {
 
 export const CompactCustomColorGrid = GridTemplate.bind({});
 CompactCustomColorGrid.args = {
-  color: "error.0",
+  color: "error",
   compact: true,
 };
 

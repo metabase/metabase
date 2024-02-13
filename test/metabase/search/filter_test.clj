@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
    [metabase.test :as mt]))
@@ -287,7 +286,7 @@
 
 (deftest build-verified-filter-test
   (testing "verified filter"
-    (premium-features-test/with-premium-features #{:content-verification}
+    (mt/with-premium-features #{:content-verification}
       (testing "for cards"
         (is (= (merge
                 base-search-query
@@ -314,7 +313,7 @@
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))
 
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (testing "for cards without ee features"
         (is (= (merge
                 base-search-query

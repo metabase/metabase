@@ -2,6 +2,7 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
   getWhiteLabeledLoadingMessage,
+  getCanWhitelabel,
 } from "..";
 import { setup } from "./setup";
 
@@ -50,5 +51,13 @@ describe("getApplicationName (OSS)", () => {
     const { getState } = setup({ applicationName: "something else" });
 
     expect(getApplicationName(getState())).toBe("Metabase");
+  });
+});
+
+describe("getCanWhitelabel (OSS)", () => {
+  it("should return false", () => {
+    const { getState } = setup();
+
+    expect(getCanWhitelabel(getState())).toBe(false);
   });
 });

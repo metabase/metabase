@@ -5,7 +5,8 @@
    [malli.core :as mc]
    [malli.experimental :as mx]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.defn :as mu.defn]))
+   [metabase.util.malli.defn :as mu.defn]
+   [metabase.util.malli.fn :as mu.fn]))
 
 (deftest ^:parallel annotated-docstring-test
   (are [fn-tail expected] (= expected
@@ -158,3 +159,25 @@
              :tag)))
   (is (= 'Integer
          (-> #'add-ints meta :arglists first meta :tag))))
+
+(deftest defn-forms-are-not-emitted-for-skippable-ns-in-prod-test
+  (testing "omission in macroexpansion"
+    (testing "returns a simple fn*"
+      (binding [mu.fn/*skip-ns-decision-fn* (constantly true)]
+        (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
+          (is (= '(def f
+                    "Inputs: []\n  Return: :int" (clojure.core/fn [] "foo"))
+                 expansion)))))
+    (testing "returns an instrumented fn"
+      (binding [mu.fn/*skip-ns-decision-fn* (constantly false)]
+        (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
+          (is (= '(def f
+                    "Inputs: []\n  Return: :int"
+                    (clojure.core/let
+                        [&f (clojure.core/fn [] "foo")]
+                      (clojure.core/fn
+                        ([]
+                         (try
+                           (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
+                           (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
+                 expansion)))))))

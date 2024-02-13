@@ -7,7 +7,7 @@ export const UserElement = styled(Button)<
   HTMLAttributes<HTMLButtonElement> & ButtonProps
 >`
   &:hover {
-    background-color: ${({ theme }) => theme.colors.brand[0]};
+    background-color: ${({ theme }) => theme.fn.themeColor("brand-lighter")};
   }
 
   & > div {

@@ -5,7 +5,7 @@ import type {
   DashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {

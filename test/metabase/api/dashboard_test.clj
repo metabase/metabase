@@ -2,6 +2,7 @@
   "Tests for /api/dashboard endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -30,6 +31,7 @@
             Revision
             Table
             User]]
+   [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
@@ -40,8 +42,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -266,6 +266,71 @@
                                                                     :collection_id       (u/the-id collection)
                                                                     :collection_position 1000})
                 (is (not (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               GET /api/dashboard/                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest get-dashboards-test
+  (mt/with-temp
+    [:model/Dashboard {rasta-dash     :id} {:creator_id    (mt/user->id :rasta)}
+     :model/Dashboard {crowberto-dash :id} {:creator_id    (mt/user->id :crowberto)
+                                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+     :model/Dashboard {archived-dash  :id} {:archived      true
+                                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                            :creator_id    (mt/user->id :crowberto)}]
+
+    (testing "should include creator info and last edited info"
+      (revision/push-revision!
+       {:entity       :model/Dashboard
+        :id           crowberto-dash
+        :user-id      (mt/user->id :crowberto)
+        :is-creation? true
+        :object       {:id crowberto-dash}})
+      (is (=? (merge (t2/select-one :model/Dashboard crowberto-dash)
+                     {:creator        {:id          (mt/user->id :crowberto)
+                                       :email       "crowberto@metabase.com"
+                                       :first_name  "Crowberto"
+                                       :last_name   "Corv"
+                                       :common_name "Crowberto Corv"}}
+                     {:last-edit-info {:id         (mt/user->id :crowberto)
+                                       :first_name "Crowberto"
+                                       :last_name  "Corv"
+                                       :email      "crowberto@metabase.com"
+                                       :timestamp  true}})
+              (-> (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")
+                  first
+                  (update-in [:last-edit-info :timestamp] boolean)))))
+
+    (testing "f=all shouldn't return archived dashboards"
+      (is (set/subset?
+           #{rasta-dash crowberto-dash}
+           (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
+
+      (is (not (set/subset?
+                #{archived-dash}
+                (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all"))))))
+
+      (testing "and should respect read perms"
+        (is (set/subset?
+             #{rasta-dash}
+             (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))
+
+        (is (not (set/subset?
+                  #{crowberto-dash archived-dash}
+                  (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all"))))))))
+
+    (testing "f=archvied return archived dashboards"
+      (is (= #{archived-dash}
+             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
+
+      (testing "and should return read perms"
+        (is (= #{}
+               (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
+
+    (testing "f=mine return dashboards created by caller but do not include archived"
+      (is (= #{crowberto-dash}
+             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -1664,14 +1729,14 @@
                                   :col          3
                                   :series       [{:name "Series Card 1"}]}
               revisions-after    (get-revision-count)]
-          (is (=? [updated-card-1
-                   updated-card-2
-                   new-card]
-                  cards))
-          ;; dashcard 3 is deleted
-          (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
-          (testing "only one revision is created from the request"
-            (is (= 1 (- revisions-after revisions-before)))))))))
+         (is (=? [updated-card-1
+                  updated-card-2
+                  new-card]
+                 cards))
+;; dashcard 3 is deleted
+         (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
+         (testing "only one revision is created from the request"
+           (is (= 1 (- revisions-after revisions-before)))))))))
 
 (deftest e2e-update-tabs-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
@@ -3865,7 +3930,7 @@
                                          dashboard-id
                                          dashcard-id)]
                 (testing "with :advanced-permissions feature flag"
-                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                  (mt/with-premium-features #{:advanced-permissions}
                     (testing "for non-magic group"
                       (mt/with-temp [PermissionsGroup {group-id :id} {}
                                      PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)

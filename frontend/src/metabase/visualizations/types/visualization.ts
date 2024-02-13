@@ -7,7 +7,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { ClickObject } from "metabase/visualizations/types";
-import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
 import type Query from "metabase-lib/queries/Query";
 
 import type { HoveredObject } from "./hover";

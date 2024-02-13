@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import { space } from "metabase/styled-components/theme";
 import { alpha, color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 

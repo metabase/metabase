@@ -215,17 +215,6 @@
     (keyword "display-info-outer" (str "stage-" stage-number)) x
     #(display-info* a-query stage-number %)))
 
-(defn ^:export field-id
-  "Find the field id for something or nil."
-  [field-metadata]
-  (lib.core/field-id field-metadata))
-
-(defn ^:export legacy-card-or-table-id
-  "Find the legacy card id or table id for a given ColumnMetadata or nil.
-   Returns a either `\"card__<id>\"` or integer table id."
-  [field-metadata]
-  (lib.core/legacy-card-or-table-id field-metadata))
-
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
   ([orderable]
@@ -564,13 +553,6 @@
     itself should be removed from the query."
   [a-query stage-number column]
   (lib.core/remove-field a-query stage-number column))
-
-(defn ^:export find-visible-column-for-legacy-ref
-  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
-  only meant for use with `:field` clauses."
-  [a-query stage-number a-legacy-ref]
-  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
-  (lib.core/find-visible-column-for-legacy-ref a-query stage-number a-legacy-ref))
 
 (defn ^:export find-column-for-legacy-ref
   "Given a sequence of `columns` (column metadatas), return the one that is the best fit for `legacy-ref`."
@@ -1118,7 +1100,7 @@
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
-                      (= (first legacy-expr) :aggregation-options))
+                      (#{:aggregation-options :value} (first legacy-expr)))
                  (get 1))))))
 
 (defn ^:export field-values-search-info

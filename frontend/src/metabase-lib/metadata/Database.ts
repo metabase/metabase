@@ -150,7 +150,7 @@ class Database {
   }
 
   nativeQuery(native: Partial<NativeQuery>) {
-    return this.nativeQuestion(native).query();
+    return this.nativeQuestion(native).legacyQuery();
   }
 
   savedQuestionsDatabase() {

@@ -1,4 +1,4 @@
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 type Props = {
   isFullscreen: boolean;

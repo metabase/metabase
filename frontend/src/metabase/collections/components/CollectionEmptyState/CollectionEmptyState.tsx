@@ -24,7 +24,7 @@ const CollectionEmptyState = ({
     <EmptyStateRoot data-testid="collection-empty-state">
       <CollectionEmptyIcon />
       <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
-      <Text size="1rem" color="text.1" align="center" mb="1.5rem">
+      <Text size="1rem" color="text-medium" align="center" mb="1.5rem">
         {t`Use collections to organize and group dashboards and questions for your team or yourself`}
       </Text>
       {canWrite && (

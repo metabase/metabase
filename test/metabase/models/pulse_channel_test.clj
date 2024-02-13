@@ -8,8 +8,6 @@
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :refer [User]]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -158,7 +156,7 @@
 
 ;; create-pulse-channel!
 (deftest create-pulse-channel!-test
-  (premium-features-test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (t2.with-temp/with-temp [Pulse {:keys [id]}]
       (mt/with-model-cleanup [Pulse]
         (testing "disabled"
@@ -223,7 +221,7 @@
                                    {:id (mt/user->id :crowberto)}]}))))))))
 
 (deftest update-pulse-channel!-test
-  (premium-features-test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (t2.with-temp/with-temp [Pulse {pulse-id :id}]
       (testing "simple starting case where we modify the schedule hour and add a recipient"
         (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
@@ -423,7 +421,7 @@
 
 (deftest inactive-users-test
   (testing "Inactive users shouldn't get Pulses"
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (mt/with-temp [Pulse                 {pulse-id :id} {}
                      PulseChannel          {channel-id :id :as channel} {:pulse_id pulse-id
                                                                          :details  {:emails ["cam@test.com"]}}
@@ -472,7 +470,7 @@
 
 (deftest identity-hash-test
   (testing "Pulse channel hashes are composed of the pulse's hash, the channel type, and the details and the collection hash"
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
         (mt/with-temp [Collection   coll  {:name "field-db" :location "/" :created_at now}
                        Pulse        pulse {:name "my pulse" :collection_id (:id coll) :created_at now}

@@ -21,7 +21,7 @@ import {
   CloseSidebarButton,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import {
   clearSaveError as clearPermissionsSaveError,

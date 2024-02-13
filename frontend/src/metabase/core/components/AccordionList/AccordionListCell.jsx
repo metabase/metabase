@@ -5,10 +5,10 @@ import { t } from "ttag";
 import cx from "classnames";
 import { color } from "metabase/lib/colors";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, Box } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
-import { Box } from "metabase/ui";
+
 import {
   ListCellItem,
   FilterContainer,

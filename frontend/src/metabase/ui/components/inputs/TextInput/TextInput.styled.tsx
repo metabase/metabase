@@ -14,7 +14,7 @@ export const getTextInputOverrides =
           },
         },
         label: {
-          color: theme.colors.text[1],
+          color: theme.fn.themeColor("text-medium"),
           fontSize: getSize({ size, sizes: theme.fontSizes }),
         },
       }),

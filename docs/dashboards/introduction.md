@@ -116,11 +116,12 @@ Each question on a dashboard is in its own card that you can move around or resi
 
 Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
-![Editing dashboard](images/edit.png)
+![Editing dashboard](images/replace-card.png)
 
-- **To move a card**, just click and drag the card. Other cards will move out of the way.
-- **To resize a card**, click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
-- **To remove a card**, hover over the card, and click the X icon in the top right corner.
+- **To move a card**: click and drag the card. Other cards will move out of the way.
+- **To resize a card**: click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
+- **To remove a card**: hover over the card, and click the X icon in the top right corner.
+- **To replace a card**: hover over the card, and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card.
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
 
@@ -134,7 +135,7 @@ Click on the **pencil** icon to enter dashboard edit mode, hover over the questi
 
 ### Hiding a card when it doesn't return results
 
-One neat thing to call out: if you have a question card that rarely returns results, but you still want to include it in your dashboard because you want to know when it _does_ return results, you can tell Metabase to hide the card unless it returns at least one row of data.
+One neat thing to call out: if you have a question card that rarely returns results, but you still want to include that card in your dashboard because you want to know when the question _does_ return results, you can tell Metabase to hide the card unless it returns at least one row of data.
 
 When in dashboard edit mode, click on the **Visualization settings** for the card.
 

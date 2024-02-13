@@ -85,8 +85,12 @@ class Table {
     return match ? parseInt(match[1]) : null;
   }
 
-  query(query = {}) {
-    return (this.question().query() as StructuredQuery).updateQuery(q => ({
+  legacyQuery(query = {}) {
+    return (
+      this.question().legacyQuery({
+        useStructuredQuery: true,
+      }) as StructuredQuery
+    ).updateQuery(q => ({
       ...q,
       ...query,
     }));

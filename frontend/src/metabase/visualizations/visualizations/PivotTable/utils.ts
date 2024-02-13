@@ -188,12 +188,20 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   return columnValues;
 }
 
-export function databaseSupportsPivotTables(query: StructuredQuery) {
-  if (query && query.database && query.database() != null) {
-    // if we don't have metadata, we can't check this
-    return query.database()?.supportsPivots();
+function databaseSupportsPivotTables(query: StructuredQuery) {
+  if (!query) {
+    return true;
   }
-  return true;
+
+  const question = query.question();
+  const database = question.database();
+
+  if (!database) {
+    // if we don't have metadata, we can't check this
+    return true;
+  }
+
+  return database.supportsPivots();
 }
 
 export function isSensible(

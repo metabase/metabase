@@ -1,5 +1,5 @@
 import { forwardRef, isValidElement } from "react";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import type { BorderSide } from "./NotebookCell.styled";
 import {
   NotebookCell as _NotebookCell,

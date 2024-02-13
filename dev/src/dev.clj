@@ -38,9 +38,10 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [dev.debug-qp :as debug-qp]
-   [dev.model-tracking :as model-tracking]
    [dev.explain :as dev.explain]
+   [dev.model-tracking :as model-tracking]
    [honey.sql :as sql]
+   [java-time :as t]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -96,6 +97,11 @@
   []
   (mbc/init!)
   (reset! initialized? true))
+
+(defn migration-timestamp
+  "Returns a UTC timestamp in format `yyyy-MM-dd'T'HH:mm:ss` that you can used to postfix for migration ID."
+  []
+  (t/format (t/formatter "yyyy-MM-dd'T'HH:mm:ss") (t/zoned-date-time (t/zone-id "UTC"))))
 
 (defn deleted-inmem-databases
   "Finds in-memory Databases for which the underlying in-mem h2 db no longer exists."

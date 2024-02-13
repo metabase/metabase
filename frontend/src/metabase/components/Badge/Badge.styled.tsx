@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import type { HTMLAttributes } from "react";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import type { LinkProps } from "metabase/core/components/Link";
 import Link from "metabase/core/components/Link";
 

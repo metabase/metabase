@@ -15,6 +15,7 @@ import {
   setModelMetadata,
   sidebar,
   saveMetadataChanges,
+  main,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -192,7 +193,7 @@ describe("scenarios > models metadata", () => {
     // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
 
-  it("should keep metadata in sync with the query", { tags: "@flaky" }, () => {
+  it("should keep metadata in sync with the query", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
@@ -207,9 +208,12 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
     popover().findByTextEnsureVisible("Edit query definition").click();
 
-    cy.get(".ace_content").type(
-      "{selectAll}{backspace}SELECT TOTAL FROM ORDERS LIMIT 5",
-    );
+    main().within(() => {
+      cy.get("textarea")
+        .focus()
+        .invoke("val", "")
+        .type("SELECT TOTAL FROM ORDERS LIMIT 5");
+    });
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     cy.wait("@dataset");

@@ -312,9 +312,17 @@ export default class Aggregation extends MBQLClause {
       switch (this.expressionName()) {
         case "share":
         case "count-where":
-          return new Filter(this[1], null, this.query());
+          return new Filter(
+            this[1],
+            null,
+            this.legacyQuery({ useStructuredQuery: true }),
+          );
         case "sum-where":
-          return new Filter(this[2], null, this.query());
+          return new Filter(
+            this[2],
+            null,
+            this.legacyQuery({ useStructuredQuery: true }),
+          );
       }
     }
 
@@ -324,7 +332,11 @@ export default class Aggregation extends MBQLClause {
   metricFilters(): Filter[] | null {
     if (this.isMetric()) {
       const metric = this.metric();
-      return metric?.filters().map(filter => filter.setQuery(this.query()));
+      return metric
+        ?.filters()
+        .map(filter =>
+          filter.setQuery(this.legacyQuery({ useStructuredQuery: true })),
+        );
     }
 
     return null;

@@ -18,7 +18,7 @@ const breakoutTetherOptions = {
 };
 
 function BreakoutStep({
-  topLevelQuery,
+  query,
   step,
   color,
   isLastOpened,
@@ -28,14 +28,14 @@ function BreakoutStep({
   const { stageIndex } = step;
 
   const breakouts = useMemo(() => {
-    return Lib.breakouts(topLevelQuery, stageIndex);
-  }, [topLevelQuery, stageIndex]);
+    return Lib.breakouts(query, stageIndex);
+  }, [query, stageIndex]);
 
   const renderBreakoutName = (clause: Lib.BreakoutClause) =>
-    Lib.displayInfo(topLevelQuery, stageIndex, clause).longDisplayName;
+    Lib.displayInfo(query, stageIndex, clause).longDisplayName;
 
   const handleAddBreakout = (column: Lib.ColumnMetadata) => {
-    const nextQuery = Lib.breakout(topLevelQuery, stageIndex, column);
+    const nextQuery = Lib.breakout(query, stageIndex, column);
     updateQuery(nextQuery);
   };
 
@@ -43,17 +43,12 @@ function BreakoutStep({
     clause: Lib.BreakoutClause,
     column: Lib.ColumnMetadata,
   ) => {
-    const nextQuery = Lib.replaceClause(
-      topLevelQuery,
-      stageIndex,
-      clause,
-      column,
-    );
+    const nextQuery = Lib.replaceClause(query, stageIndex, clause, column);
     updateQuery(nextQuery);
   };
 
   const handleRemoveBreakout = (clause: Lib.BreakoutClause) => {
-    const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, clause);
+    const nextQuery = Lib.removeClause(query, stageIndex, clause);
     updateQuery(nextQuery);
   };
 
@@ -68,7 +63,7 @@ function BreakoutStep({
       renderName={renderBreakoutName}
       renderPopover={({ item: breakout, index }) => (
         <BreakoutPopover
-          query={topLevelQuery}
+          query={query}
           stageIndex={stageIndex}
           breakout={breakout}
           breakoutIndex={index}

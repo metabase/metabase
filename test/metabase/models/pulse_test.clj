@@ -10,7 +10,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -186,7 +185,7 @@
   (testing "Creating pulse also logs event."
     (t2.with-temp/with-temp [Card card {:name "Test Card"}]
       (mt/with-model-cleanup [Pulse]
-        (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-premium-features #{:audit-app}
           (let [pulse (pulse/create-pulse! [(pulse/card->ref card)]
                                            [{:channel_type  :email
                                              :schedule_type :daily
@@ -243,7 +242,7 @@
 ;;  6. ability to update cards and ensure proper ordering
 ;;  7. subscription-update event is called
 (deftest update-pulse-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (t2.with-temp/with-temp [Pulse pulse  {}
                              Card  card-1 {:name "Test Card"}
                              Card  card-2 {:name "Bar Card" :display :bar}]

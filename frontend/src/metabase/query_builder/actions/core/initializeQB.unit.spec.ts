@@ -35,6 +35,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockEntitiesState } from "__support__/store";
+import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
@@ -644,7 +645,7 @@ describe("QB Actions > initializeQB", () => {
             },
           });
           const formattedQuestion = new Question(result.card, metadata);
-          const query = formattedQuestion.query() as NativeQuery;
+          const query = formattedQuestion.legacyQuery() as NativeQuery;
 
           expect(query.queryText().toLowerCase()).toBe(
             "select * from orders {{snippet: bar}}",
@@ -706,7 +707,9 @@ describe("QB Actions > initializeQB", () => {
       });
 
       const question = new Question(result.card, metadata);
-      const query = question.query() as StructuredQuery;
+      const query = question.legacyQuery({
+        useStructuredQuery: true,
+      }) as StructuredQuery;
 
       return {
         question,
@@ -724,10 +727,10 @@ describe("QB Actions > initializeQB", () => {
 
       const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });
       const question = new Question(result.card, metadata);
-      const query = question.query() as StructuredQuery;
+      const query = question.query();
 
       expect(result.card).toEqual(expectedCard);
-      expect(query.sourceTableId()).toBe(null);
+      expect(Lib.sourceTableOrCardId(query)).toBe(null);
       expect(result.originalCard).toBeUndefined();
     });
 

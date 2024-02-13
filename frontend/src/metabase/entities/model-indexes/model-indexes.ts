@@ -20,6 +20,8 @@ export const ModelIndexes = createEntity({
   schema: ModelIndexSchema,
   api: {
     ...ModelIndexApi,
+    list: ({ model_id }: { model_id?: string | null }) =>
+      model_id ? ModelIndexApi.list({ model_id }) : { data: [] },
   },
   actions,
   utils,

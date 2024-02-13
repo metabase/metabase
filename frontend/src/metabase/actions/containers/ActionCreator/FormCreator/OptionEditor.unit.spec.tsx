@@ -27,6 +27,7 @@ async function baseSetup({
   render(<UncontrolledOptionEditor />);
 
   userEvent.click(getIcon("list"));
+  userEvent.unhover(getIcon("list"));
   await screen.findByRole("tooltip");
 
   const input = screen.getByPlaceholderText("Enter one option per line");

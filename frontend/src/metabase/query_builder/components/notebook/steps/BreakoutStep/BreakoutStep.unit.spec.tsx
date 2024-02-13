@@ -58,7 +58,6 @@ function setup(step = createMockNotebookStep()) {
       step={step}
       stageIndex={step.stageIndex}
       query={step.query}
-      topLevelQuery={step.topLevelQuery}
       color="summarize"
       isLastOpened={false}
       reportTimezone="UTC"
@@ -93,7 +92,7 @@ describe("BreakoutStep", () => {
   it("should render a breakout correctly", () => {
     const { query, columnInfo } = createQueryWithBreakout();
     const columnName = columnInfo.displayName;
-    setup(createMockNotebookStep({ topLevelQuery: query }));
+    setup(createMockNotebookStep({ query }));
 
     userEvent.click(screen.getByText(columnName));
 
@@ -104,7 +103,7 @@ describe("BreakoutStep", () => {
 
   it("shouldn't show already used columns when adding a new breakout", () => {
     const { query, columnInfo } = createQueryWithBreakout();
-    setup(createMockNotebookStep({ topLevelQuery: query }));
+    setup(createMockNotebookStep({ query }));
 
     userEvent.click(getIcon("add"));
 
@@ -126,7 +125,7 @@ describe("BreakoutStep", () => {
   it("should change a breakout column", () => {
     const { query, columnInfo } = createQueryWithBreakout();
     const { getRecentBreakoutClause } = setup(
-      createMockNotebookStep({ topLevelQuery: query }),
+      createMockNotebookStep({ query }),
     );
 
     userEvent.click(screen.getByText(columnInfo.displayName));
@@ -138,9 +137,7 @@ describe("BreakoutStep", () => {
 
   it("should remove a breakout", () => {
     const { query } = createQueryWithBreakout();
-    const { getNextQuery } = setup(
-      createMockNotebookStep({ topLevelQuery: query }),
-    );
+    const { getNextQuery } = setup(createMockNotebookStep({ query }));
 
     userEvent.click(getIcon("close"));
 
@@ -177,7 +174,7 @@ describe("BreakoutStep", () => {
 
     it("should highlight selected binning strategy", async () => {
       const { query } = createQueryWithBinning();
-      setup(createMockNotebookStep({ topLevelQuery: query }));
+      setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Tax: 10 bins"));
       const option = screen.getByRole("option", { name: "Tax" });
@@ -190,9 +187,7 @@ describe("BreakoutStep", () => {
 
     it("shouldn't update a query when clicking a selected binned column", async () => {
       const { query } = createQueryWithBinning();
-      const { updateQuery } = setup(
-        createMockNotebookStep({ topLevelQuery: query }),
-      );
+      const { updateQuery } = setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Tax: 10 bins"));
       userEvent.click(screen.getByText("Tax"));
@@ -202,7 +197,7 @@ describe("BreakoutStep", () => {
 
     it("should highlight the `Don't bin` option when a column is not binned", async () => {
       const { query, columnInfo } = createQueryWithBinning("Don't bin");
-      setup(createMockNotebookStep({ topLevelQuery: query }));
+      setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText(columnInfo.displayName));
       const option = screen.getByRole("option", {
@@ -244,7 +239,7 @@ describe("BreakoutStep", () => {
 
     it("should highlight selected temporal bucket", async () => {
       const { query } = createQueryWithTemporalBreakout("Quarter");
-      setup(createMockNotebookStep({ topLevelQuery: query }));
+      setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Created At: Quarter"));
       const option = screen.getByRole("option", { name: "Created At" });
@@ -257,7 +252,7 @@ describe("BreakoutStep", () => {
 
     it("should handle `Don't bin` option for temporal bucket (metabase#19684)", async () => {
       const { query } = createQueryWithTemporalBreakout("Don't bin");
-      setup(createMockNotebookStep({ topLevelQuery: query }));
+      setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Created At"));
       const option = screen.getByRole("option", {
@@ -279,9 +274,7 @@ describe("BreakoutStep", () => {
 
     it("shouldn't update a query when clicking a selected column with temporal bucketing", async () => {
       const { query } = createQueryWithTemporalBreakout("Quarter");
-      const { updateQuery } = setup(
-        createMockNotebookStep({ topLevelQuery: query }),
-      );
+      const { updateQuery } = setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Created At: Quarter"));
       userEvent.click(screen.getByText("Created At"));

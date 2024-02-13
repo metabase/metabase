@@ -1,4 +1,4 @@
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";

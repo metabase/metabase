@@ -27,16 +27,15 @@
     (str/split endpoint #"metabase-enterprise.")
     (str/split endpoint #"\.")))
 
-(def initialisms "Used to format initialisms/acronyms in generated docs." '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON"])
+(def initialisms
+  "Used to format initialisms/acronyms in generated docs."
+  '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON" "API"])
 
 (defn capitalize-initialisms
   "Converts initialisms to upper case."
   [name initialisms]
-  (let [re (re-pattern (str "(?i)(?:" (str/join "|" initialisms) ")"))
-        matches (re-seq re name)]
-    (if matches
-      (reduce (fn [n m] (str/replace n m (u/upper-case-en m))) name matches)
-      name)))
+  (let [re (re-pattern (str "(?i)(?:" (str/join "|" (map #(str % "\\b") initialisms)) ")"))]
+    (str/replace name re u/upper-case-en)))
 
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.

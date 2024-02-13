@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import * as ML from "cljs/metabase.lib.js";
+import * as Lib from "metabase-lib";
 import type {
   Card,
   DatabaseId,
@@ -104,7 +104,7 @@ export default class NativeQuery extends AtomicQuery {
   /* Query superclass methods */
   hasData() {
     return (
-      this.databaseId() != null && (!this.requiresTable() || this.collection())
+      this._databaseId() != null && (!this.requiresTable() || this.collection())
     );
   }
 
@@ -117,7 +117,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   isEmpty() {
-    return this.databaseId() == null || this.queryText().length === 0;
+    return this._databaseId() == null || this.queryText().length === 0;
   }
 
   clean() {
@@ -132,29 +132,35 @@ export default class NativeQuery extends AtomicQuery {
 
   /* AtomicQuery superclass methods */
   tables(): Table[] | null | undefined {
-    const database = this.database();
+    const database = this._database();
     return (database && database.tables) || null;
   }
 
-  databaseId(): DatabaseId | null | undefined {
+  /**
+   * @deprecated Use MLv2
+   */
+  _databaseId(): DatabaseId | null | undefined {
     // same for both structured and native
     return this._nativeDatasetQuery.database;
   }
 
-  database(): Database | null | undefined {
-    const databaseId = this.databaseId();
+  /**
+   * @deprecated Use MLv2
+   */
+  _database(): Database | null | undefined {
+    const databaseId = this._databaseId();
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
   engine(): string | null | undefined {
-    const database = this.database();
+    const database = this._database();
     return database && database.engine;
   }
 
   // Whether the user can modify and run this query
   // Determined based on availability of database metadata and native database permissions
   isEditable(): boolean {
-    const database = this.database();
+    const database = this._database();
     return database != null && database.native_permissions === "write";
   }
 
@@ -168,7 +174,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
-    if (databaseId !== this.databaseId()) {
+    if (databaseId !== this._databaseId()) {
       // TODO: this should reset the rest of the query?
       return new NativeQuery(
         this._originalQuestion,
@@ -192,12 +198,12 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   hasWritePermission() {
-    const database = this.database();
+    const database = this._database();
     return database != null && database.native_permissions === "write";
   }
 
   supportsNativeParameters() {
-    const database = this.database();
+    const database = this._database();
     return (
       database != null && _.contains(database.features, "native-parameters")
     );
@@ -205,12 +211,6 @@ export default class NativeQuery extends AtomicQuery {
 
   table(): Table | null {
     return getNativeQueryTable(this);
-  }
-
-  sourceTable(): null {
-    // Source tables are only available in structured queries,
-    // this method exists to keep query API consistent
-    return null;
   }
 
   queryText(): string {
@@ -342,7 +342,7 @@ export default class NativeQuery extends AtomicQuery {
     config: ParameterValuesConfig,
   ): NativeQuery {
     const newParameter = getTemplateTagParameter(tag, config);
-    return this.question().setParameter(tag.id, newParameter).query();
+    return this.question().setParameter(tag.id, newParameter).legacyQuery();
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
@@ -431,7 +431,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     return queryText && this.supportsNativeParameters()
-      ? ML.extract_template_tags(queryText, this.templateTagsMap())
+      ? Lib.extractTemplateTags(queryText, this.templateTagsMap())
       : {};
   }
 

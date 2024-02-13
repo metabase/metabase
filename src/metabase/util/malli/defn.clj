@@ -47,6 +47,9 @@
   https://metaboat.slack.com/archives/CKZEMT1MJ/p1690496060299339 and #32843 for more information. This new
   implementation solves most of our memory consumption problems.
 
+  Unless it's in a skipped namespace during prod, (see: [[mu.fn/instrument-ns?]]) this macro emits clojure code to
+  validate its inputs and outputs based on its malli schema annotations.
+
   Example macroexpansion:
 
     (mu/defn f :- :int
@@ -71,10 +74,15 @@
                           {:arglists (list 'quote (deparameterized-arglists parsed))
                            :schema   (mu.fn/fn-schema parsed)}
                           attr-map)
-        docstring        (annotated-docstring parsed)]
-    `(def ~(vary-meta fn-name merge attr-map)
-       ~docstring
-       ~(macros/case
-          :clj  (let [error-context {:fn-name (list 'quote (symbol (name (ns-name *ns*)) (name fn-name)))}]
-                  (mu.fn/instrumented-fn-form error-context parsed))
-          :cljs (mu.fn/deparameterized-fn-form parsed)))))
+        docstring        (annotated-docstring parsed)
+        skip?            (#'mu.fn/*skip-ns-decision-fn* *ns*)]
+    (if skip?
+      `(def ~(vary-meta fn-name merge attr-map)
+         ~docstring
+         ~(mu.fn/deparameterized-fn-form parsed))
+      `(def ~(vary-meta fn-name merge attr-map)
+         ~docstring
+         ~(macros/case
+            :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
+                    (mu.fn/instrumented-fn-form error-context parsed))
+            :cljs (mu.fn/deparameterized-fn-form parsed))))))

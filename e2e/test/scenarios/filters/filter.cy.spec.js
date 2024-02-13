@@ -190,14 +190,15 @@ describe("scenarios > question > filter", () => {
     );
 
     // Test shows two filter collapsed - click on number 2 to expand and show filter names
-    cy.icon("filter").parent().contains("2").click();
+    cy.findByTestId("filters-visibility-control")
+      .should("have.text", "2")
+      .click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(AGGREGATED_FILTER);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Created At is after/i)
-      .parent()
       .find(".Icon-close")
       .click();
 

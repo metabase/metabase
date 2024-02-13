@@ -47,19 +47,25 @@
    ;; TODO -- these need to be curated a bit before publishing...
    :highlights (mapv :title (github/milestone-issues))})
 
+(defn- update-version-info [{:keys [latest] :as info} new-version-info]
+  (if (= (:version new-version-info) (:version latest))
+    ;; if the latest version has not changed, just return the current info
+    info
+    (-> info
+        ;; move the current `:latest` to the beginning of `:older`
+        (update :older (fn [older] (distinct (cons latest older))))
+        (assoc :latest new-version-info))))
+
 (defn- generate-version-info! []
   (let [filename (version-info-filename)
         tmpname  (tmp-version-info-filename)]
     (u/step (format "Generate %s" filename)
       (u/step (format "Delete and create %s" tmpname)
         (u/delete-file-if-exists! tmpname)
-        (let [{:keys [latest], :as info} (current-version-info)]
-          (spit tmpname (-> info
-                            ;; move the current `:latest` to the beginning of `:older`
-                            (update :older (fn [older]
-                                             (distinct (cons latest older))))
-                            (assoc :latest (info-for-new-version))
-                            json/generate-string)))))))
+          (let [current-info     (current-version-info)
+                new-version-info (info-for-new-version)
+                new-info         (update-version-info current-info new-version-info)]
+            (spit tmpname (json/generate-string new-info)))))))
 
 (defn- upload-version-info! []
   (u/step "Upload version info"

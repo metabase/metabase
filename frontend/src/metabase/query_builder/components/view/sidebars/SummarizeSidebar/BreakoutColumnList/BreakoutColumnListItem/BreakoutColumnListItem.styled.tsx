@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { BucketPickerPopover as BaseBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { color, alpha } from "metabase/lib/colors";
 

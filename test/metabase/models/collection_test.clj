@@ -13,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -1690,14 +1689,14 @@
       (with-redefs [perms/default-audit-collection          (constantly audit-collection)
                     perms/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (premium-features-test/with-additional-premium-features #{:audit-app}
+          (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))
                 "Admin isn't able to write to audit collection")
             (is (not (mi/can-write? audit-card))
                 "Admin isn't able to write to audit collection card")
             (is (not (mi/can-write? audit-dashboard))
                 "Admin isn't able to write to audit collection dashboard"))
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (is (not (mi/can-read? audit-collection))
                 "Admin isn't able to read audit collection when audit app isn't enabled")
             (is (not (mi/can-read? audit-card))

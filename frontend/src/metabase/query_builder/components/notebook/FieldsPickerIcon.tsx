@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";

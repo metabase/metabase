@@ -5,6 +5,7 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
+import * as Lib from "metabase-lib";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -64,7 +65,6 @@ import {
 import { getBaseDimensionReference } from "metabase-lib/references";
 
 import type { Query } from "./types";
-import * as ML from "./v2";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -179,7 +179,7 @@ class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  query = _.once((): AtomicQuery => {
+  _legacyQuery = _.once((): AtomicQuery => {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
@@ -194,19 +194,31 @@ class Question {
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
 
+  legacyQuery({ useStructuredQuery }: { useStructuredQuery?: boolean } = {}) {
+    const query = this._legacyQuery();
+    if (query instanceof StructuredQuery && !useStructuredQuery) {
+      throw new Error("StructuredQuery usage is forbidden. Use MLv2");
+    }
+    return query;
+  }
+
   isNative(): boolean {
-    return this.query() instanceof NativeQuery;
+    return (
+      this.legacyQuery({ useStructuredQuery: true }) instanceof NativeQuery
+    );
   }
 
   isStructured(): boolean {
-    return this.query() instanceof StructuredQuery;
+    return (
+      this.legacyQuery({ useStructuredQuery: true }) instanceof StructuredQuery
+    );
   }
 
   /**
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: BaseQuery): Question {
+  setLegacyQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -228,7 +240,7 @@ class Question {
    * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
    */
   atomicQueries(): AtomicQuery[] {
-    const query = this.query();
+    const query = this.legacyQuery({ useStructuredQuery: true });
 
     if (query instanceof AtomicQuery) {
       return [query];
@@ -335,7 +347,7 @@ class Question {
       return this;
     }
 
-    const query = this.query();
+    const query = this.legacyQuery({ useStructuredQuery: true });
 
     if (query instanceof StructuredQuery) {
       // TODO: move to StructuredQuery?
@@ -415,7 +427,9 @@ class Question {
   }
 
   setDefaultQuery() {
-    return this.query().setDefaultQuery().question();
+    return this.legacyQuery({ useStructuredQuery: true })
+      .setDefaultQuery()
+      .question();
   }
 
   settings(): VisualizationSettings {
@@ -444,7 +458,7 @@ class Question {
   }
 
   isEmpty(): boolean {
-    return this.query().isEmpty();
+    return this.legacyQuery({ useStructuredQuery: true }).isEmpty();
   }
 
   /**
@@ -458,7 +472,7 @@ class Question {
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
-    return this.query().canRun();
+    return this.legacyQuery({ useStructuredQuery: true }).canRun();
   }
 
   canWrite(): boolean {
@@ -477,17 +491,17 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
+    const legacyQuery = this.legacyQuery({ useStructuredQuery: true });
     const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
-    const table = query.sourceTable();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    const table = this.metadata().table(sourceTableId);
 
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return (
-      query instanceof StructuredQuery && !query.hasAnyClauses() && hasSinglePk
-    );
+    return this.isStructured() && !legacyQuery.hasAnyClauses() && hasSinglePk;
   }
 
   canAutoRun(): boolean {
@@ -496,7 +510,7 @@ class Question {
   }
 
   isQueryEditable(): boolean {
-    const query = this.query();
+    const query = this.legacyQuery({ useStructuredQuery: true });
     return query ? query.isEditable() : false;
   }
 
@@ -561,7 +575,11 @@ class Question {
     return (
       this.isStructured() &&
       _.any(
-        QUERY.getAggregations(this.query().query()),
+        QUERY.getAggregations(
+          this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
+            useStructuredQuery: true,
+          }),
+        ),
         aggregation => AGGREGATION.getMetric(aggregation) === metricId,
       )
     );
@@ -570,9 +588,11 @@ class Question {
   usesSegment(segmentId): boolean {
     return (
       this.isStructured() &&
-      QUERY.getFilters(this.query().query()).some(
-        filter => FILTER.isSegment(filter) && filter[1] === segmentId,
-      )
+      QUERY.getFilters(
+        this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
+          useStructuredQuery: true,
+        }),
+      ).some(filter => FILTER.isSegment(filter) && filter[1] === segmentId)
     );
   }
 
@@ -610,7 +630,7 @@ class Question {
     previousQuestion,
     previousQuery,
   ) {
-    const query = this.query();
+    const query = this.legacyQuery({ useStructuredQuery: true });
 
     if (
       !_.isEqual(
@@ -726,14 +746,15 @@ class Question {
   }
 
   syncColumnsAndSettings(previous, queryResults) {
-    const query = this.query();
+    const query = this.legacyQuery({ useStructuredQuery: true });
     const isQueryResultValid = queryResults && !queryResults.error;
 
     if (query instanceof NativeQuery && isQueryResultValid) {
       return this._syncNativeQuerySettings(queryResults);
     }
 
-    const previousQuery = previous && previous.query();
+    const previousQuery =
+      previous && previous.legacyQuery({ useStructuredQuery: true });
 
     if (
       query instanceof StructuredQuery &&
@@ -823,24 +844,25 @@ class Question {
     return this._card && this._card.public_uuid;
   }
 
-  database(): Database | null | undefined {
-    const query = this.query();
-    return query && typeof query.database === "function"
-      ? query.database()
-      : null;
+  database(): Database | null {
+    const metadata = this.metadata();
+    const databaseId = this.databaseId();
+    const database = metadata.database(databaseId);
+    return database;
   }
 
-  databaseId(): DatabaseId | null | undefined {
-    const db = this.database();
-    return db ? db.id : null;
+  databaseId(): DatabaseId | null {
+    const query = this.query();
+    const databaseId = Lib.databaseID(query);
+    return databaseId;
   }
 
-  table(): Table | null | undefined {
-    const query = this.query();
+  table(): Table | null {
+    const query = this.legacyQuery({ useStructuredQuery: true });
     return query && typeof query.table === "function" ? query.table() : null;
   }
 
-  tableId(): TableId | null | undefined {
+  tableId(): TableId | null {
     const table = this.table();
     return table ? table.id : null;
   }
@@ -987,7 +1009,9 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? this.query().clean() : this.query();
+    const query = clean
+      ? this.legacyQuery({ useStructuredQuery: true }).clean()
+      : this.legacyQuery({ useStructuredQuery: true });
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
@@ -1026,7 +1050,7 @@ class Question {
       return this;
     }
 
-    const query = this._getMLv2Query();
+    const query = this.query();
     const stageIndex = -1;
     const filters = this.parameters()
       .map(parameter =>
@@ -1035,9 +1059,9 @@ class Question {
       .filter(mbqlFilter => mbqlFilter != null);
 
     const newQuery = filters.reduce((query, filter) => {
-      return ML.filter(query, stageIndex, filter);
+      return Lib.filter(query, stageIndex, filter);
     }, query);
-    const newQuestion = this._setMLv2Query(newQuery)
+    const newQuestion = this.setQuery(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
@@ -1045,12 +1069,14 @@ class Question {
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
-  _getMLv2Query(metadata = this._metadata): Query {
+  query(metadata = this._metadata): Query {
+    const databaseId = this.datasetQuery().database;
+
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = ML.metadataProvider(
-          this.databaseId(),
+        this.__mlv2MetadataProvider = Lib.metadataProvider(
+          databaseId,
           metadata,
         );
       }
@@ -1064,8 +1090,8 @@ class Question {
 
     if (!this.__mlv2Query) {
       this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = ML.fromLegacyQuery(
-        this.databaseId(),
+      this.__mlv2Query = Lib.fromLegacyQuery(
+        databaseId,
         metadata,
         this.datasetQuery(),
       );
@@ -1080,13 +1106,13 @@ class Question {
     return this.__mlv2Query;
   }
 
-  _setMLv2Query(query: Query): Question {
-    return this.setDatasetQuery(ML.toLegacyQuery(query));
+  setQuery(query: Query): Question {
+    return this.setDatasetQuery(Lib.toLegacyQuery(query));
   }
 
   generateQueryDescription() {
-    const query = this._getMLv2Query();
-    return ML.suggestedName(query);
+    const query = this.query();
+    return Lib.suggestedName(query);
   }
 
   getModerationReviews() {
@@ -1099,11 +1125,13 @@ class Question {
    * and satisfies other conditionals below.
    */
   canExploreResults() {
+    const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
+
     return (
       this.isNative() &&
       this.isSaved() &&
       this.parameters().length === 0 &&
-      this.query().canNest() &&
+      canNest &&
       this.isQueryEditable() // originally "canRunAdhocQuery"
     );
   }

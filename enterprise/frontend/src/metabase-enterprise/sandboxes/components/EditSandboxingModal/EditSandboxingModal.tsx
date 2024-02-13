@@ -8,8 +8,8 @@ import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import Radio from "metabase/core/components/Radio";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import { EntityName } from "metabase/entities/containers/EntityName";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -334,7 +334,9 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
               return null;
             }
 
-            const dimension = question.query().parseFieldReference(fieldRef);
+            const dimension = question
+              .legacyQuery({ useStructuredQuery: true })
+              .parseFieldReference(fieldRef);
             return (
               <span>
                 <strong>{dimension?.render()}</strong> field

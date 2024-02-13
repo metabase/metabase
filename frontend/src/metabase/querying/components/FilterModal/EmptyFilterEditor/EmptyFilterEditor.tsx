@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Flex, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, Text, Icon } from "metabase/ui";
+
 import * as Lib from "metabase-lib";
 import type { FilterEditorProps } from "../types";
 

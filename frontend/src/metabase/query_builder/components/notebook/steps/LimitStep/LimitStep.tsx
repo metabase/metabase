@@ -8,20 +8,20 @@ import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell } from "../../NotebookCell";
 
 function LimitStep({
-  topLevelQuery,
+  query,
   step,
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) {
   const { stageIndex } = step;
 
-  const limit = Lib.currentLimit(topLevelQuery, stageIndex);
+  const limit = Lib.currentLimit(query, stageIndex);
   const value = typeof limit === "number" ? limit : "";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextLimit = parseInt(e.target.value, 0);
     if (nextLimit >= 1) {
-      updateQuery(Lib.limit(topLevelQuery, stageIndex, nextLimit));
+      updateQuery(Lib.limit(query, stageIndex, nextLimit));
     }
   };
 

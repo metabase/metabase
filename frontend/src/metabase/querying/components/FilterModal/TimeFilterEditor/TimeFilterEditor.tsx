@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Flex, Grid, Text, TimeInput } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, Grid, Text, TimeInput, Icon } from "metabase/ui";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
 import type { TimeValue } from "metabase/querying/hooks/use-time-filter";

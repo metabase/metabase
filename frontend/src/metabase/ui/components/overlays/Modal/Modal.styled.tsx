@@ -9,13 +9,13 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
         fontWeight: 700,
       },
       close: {
-        color: theme.colors.text[0],
+        color: theme.fn.themeColor("text-light"),
         ":hover": {
-          color: theme.colors.text[1],
+          color: theme.fn.themeColor("text-medium"),
         },
       },
       overlay: {
-        backgroundColor: theme.fn.rgba(theme.colors.bg[3], 0.6),
+        backgroundColor: theme.fn.rgba(theme.fn.themeColor("bg-black"), 0.6),
       },
     }),
   },

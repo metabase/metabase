@@ -62,7 +62,8 @@
                               :now                      true
                               :persist-models           true
                               :schemas                  true
-                              :connection-impersonation true}]
+                              :connection-impersonation true
+                              :uploads                  true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]

@@ -183,8 +183,11 @@
     (let [query lib.tu/venues-query
           legacy-expr 0
           expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
-          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)]
-      (is (= legacy-expr expr legacy-expr')))))
+          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
+          query-with-expr (lib/expression query 0 "expr" expr)
+          expr-from-query (first (lib/expressions query-with-expr 0))
+          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)]
+      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query)))))
 
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"

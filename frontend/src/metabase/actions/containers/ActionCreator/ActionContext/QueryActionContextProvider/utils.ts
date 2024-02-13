@@ -52,17 +52,17 @@ export const setTemplateTagTypesFromFieldSettings = (
   settings: ActionFormSettings,
 ): Question => {
   const fields = settings.fields || {};
-  const query = question.query() as NativeQuery;
+  const query = question.legacyQuery() as NativeQuery;
   let tempQuestion = question.clone();
 
   query.variableTemplateTags().forEach((tag: TemplateTag) => {
-    const currentQuery = tempQuestion.query() as NativeQuery;
+    const currentQuery = tempQuestion.legacyQuery() as NativeQuery;
     const fieldType = fields[tag.id]?.fieldType ?? "string";
     const nextTag = {
       ...tag,
       type: getTagTypeFromFieldSettings(fieldType),
     };
-    tempQuestion = tempQuestion.setQuery(
+    tempQuestion = tempQuestion.setLegacyQuery(
       currentQuery.setTemplateTag(tag.name, nextTag),
     );
   });

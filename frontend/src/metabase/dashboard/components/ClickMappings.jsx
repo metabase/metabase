@@ -5,7 +5,7 @@ import _ from "underscore";
 import { t } from "ttag";
 import { getIn, assocIn, dissocIn } from "icepick";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Select from "metabase/core/components/Select";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -286,7 +286,9 @@ function loadQuestionMetadata(getQuestion) {
       fetch() {
         const { question, loadMetadataForQuery } = this.props;
         if (question) {
-          loadMetadataForQuery(question.query());
+          loadMetadataForQuery(
+            question.legacyQuery({ useStructuredQuery: true }),
+          );
         }
       }
 

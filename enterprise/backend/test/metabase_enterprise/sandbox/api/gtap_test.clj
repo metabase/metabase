@@ -6,7 +6,6 @@
    [metabase.models :refer [Card Field PermissionsGroup Table]]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -14,7 +13,7 @@
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
-    (premium-features-test/with-premium-features #{:sandboxes}
+    (mt/with-premium-features #{:sandboxes}
       (is (= (get mw.util/response-unauthentic :body)
              (client/client :get 401 "mt/gtap")))
 
@@ -33,7 +32,7 @@
   "Invokes `body` ensuring any `GroupTableAccessPolicy` created will be removed afterward. Leaving behind a GTAP can
   case referential integrity failures for any related `Card` that would be cleaned up as part of a `with-temp*` call"
   [& body]
-  `(premium-features-test/with-premium-features #{:sandboxes}
+  `(mt/with-premium-features #{:sandboxes}
      (mt/with-model-cleanup [GroupTableAccessPolicy]
        ~@body)))
 
@@ -185,7 +184,7 @@
     (mt/with-temp [Table            {table-id :id} {}
                    PermissionsGroup {group-id :id} {}
                    Card             {card-id :id}  {}]
-      (premium-features-test/with-premium-features #{:sandboxes}
+      (mt/with-premium-features #{:sandboxes}
         (testing "Test that we can update only the attribute remappings for a GTAP"
           (t2.with-temp/with-temp [GroupTableAccessPolicy {gtap-id :id} {:table_id             table-id
                                                                          :group_id             group-id
@@ -234,7 +233,7 @@
                    PermissionsGroup {group-id :id}   {}
                    Card             {card-id-1 :id}  {}
                    Card             {card-id-2 :id}  {}]
-      (premium-features-test/with-premium-features #{:sandboxes}
+      (mt/with-premium-features #{:sandboxes}
         (with-gtap-cleanup
           (testing "Test that we can create a new sandbox using the permission graph API"
             (let [graph  (-> (perms/data-perms-graph)

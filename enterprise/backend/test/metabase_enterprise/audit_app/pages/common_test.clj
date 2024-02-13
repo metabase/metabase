@@ -3,8 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -13,7 +11,7 @@
 (defn- run-query
   [query-type & {:as additional-query-params}]
   (mt/with-test-user :crowberto
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (qp/process-query (merge {:type :internal
                                 :fn   (u/qualified-name query-type)}
                                additional-query-params)))))
@@ -41,7 +39,7 @@
 
 (deftest transform-results-test
   (testing "Make sure query function result are transformed to QP results correctly"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn
                                                                              :expected-rows [[100 2] [3 4]]}
                                                                 "reducible" {:query-type    ::reducible-format-query-fn
@@ -75,7 +73,7 @@
 
 (deftest query-limit-and-offset-test
   (testing "Make sure params passed in as part of the query map are respected"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn
                                                                              :expected-rows [[100 2] [3 4]]}
                                                                 "reducible" {:query-type    ::reducible-format-query-fn

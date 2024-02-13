@@ -5,8 +5,6 @@
    [metabase.driver.h2 :as h2]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting-test :as models.setting-test]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -137,7 +135,7 @@
 (deftest fetch-calculated-settings-test
   (testing "GET /api/setting"
     (testing "Should return the correct `:value` for Settings with no underlying DB/env var value"
-      (premium-features-test/with-premium-features #{:embedding}
+      (mt/with-premium-features #{:embedding}
         (is (=? {:key            "hide-embed-branding?"
                  :value          true
                  :is_env_setting false
@@ -276,7 +274,7 @@
     (models.setting-test/test-user-local-allowed-setting! nil)))
 
 (deftest user-local-settings-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (testing "GET /api/setting/"
       (testing "admins can list all settings and see user-local values included"
         (set-initial-user-local-values)

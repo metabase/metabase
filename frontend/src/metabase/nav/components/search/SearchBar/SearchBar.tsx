@@ -6,7 +6,7 @@ import { withRouter } from "react-router";
 import type { LocationDescriptorObject } from "history";
 
 import { usePrevious } from "react-use";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";

@@ -99,7 +99,7 @@ describe("scenarios > question > joined questions", () => {
     assertQueryBuilderRowCount(89);
   });
 
-  it.skip("should join a native question (metabase#37100)", () => {
+  it("should join a native question (metabase#37100)", () => {
     cy.createNativeQuestion({
       name: "question a",
       native: { query: "select ID, PRODUCT_ID, TOTAL from orders" },
@@ -147,7 +147,7 @@ describe("scenarios > question > joined questions", () => {
     popover().within(() => {
       cy.findByText("question b").click();
       cy.findByText("CATEGORY").click();
-      cy.findByPlaceholderText("Search by CATEGORY").type("Gadget");
+      cy.findByPlaceholderText("Enter some text").type("Gadget");
       cy.button("Add filter").click();
     });
 

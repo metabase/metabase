@@ -8,31 +8,70 @@ import * as FIELD from "./field";
 import * as FIELD_REF from "./field-ref";
 
 // AGGREGATION
-
+/**
+ * @deprecated use MLv2
+ */
 export const getAggregations = query => A.getAggregations(query.aggregation);
+
+/**
+ * @deprecated use MLv2
+ */
 export const addAggregation = (query, aggregation) =>
   setAggregationClause(query, A.addAggregation(query.aggregation, aggregation));
+
+/**
+ * @deprecated use MLv2
+ */
 export const updateAggregation = (query, index, aggregation) =>
   setAggregationClause(
     query,
     A.updateAggregation(query.aggregation, index, aggregation),
   );
+
+/**
+ * @deprecated use MLv2
+ */
 export const removeAggregation = (query, index) =>
   setAggregationClause(query, A.removeAggregation(query.aggregation, index));
+
+/**
+ * @deprecated use MLv2
+ */
 export const clearAggregations = query =>
   setAggregationClause(query, A.clearAggregations(query.aggregation));
 
+/**
+ * @deprecated use MLv2
+ */
 export const isBareRows = query => A.isBareRows(query.aggregation);
 
 // BREAKOUT
-
+/**
+ * @deprecated use MLv2
+ */
 export const getBreakouts = query => B.getBreakouts(query.breakout);
+
+/**
+ * @deprecated use MLv2
+ */
 export const addBreakout = (query, breakout) =>
   setBreakoutClause(query, B.addBreakout(query.breakout, breakout));
+
+/**
+ * @deprecated use MLv2
+ */
 export const updateBreakout = (query, index, breakout) =>
   setBreakoutClause(query, B.updateBreakout(query.breakout, index, breakout));
+
+/**
+ * @deprecated use MLv2
+ */
 export const removeBreakout = (query, index) =>
   setBreakoutClause(query, B.removeBreakout(query.breakout, index));
+
+/**
+ * @deprecated use MLv2
+ */
 export const clearBreakouts = query =>
   setBreakoutClause(query, B.clearBreakouts(query.breakout));
 

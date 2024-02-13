@@ -3,15 +3,13 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embed.settings :as embed.settings]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (deftest enable-embedding-test
   (testing "A snowplow event is sent whenever embedding is enabled or disabled"
    (mt/with-test-user :crowberto
-     (premium-features-test/with-premium-features #{:embedding}
+     (mt/with-premium-features #{:embedding}
       (mt/with-temporary-setting-values [enable-embedding     false
                                          embedding-app-origin "https://example.com"]
         (let [embedded-dash-count (t2/count :model/Dashboard :enable_embedding true)

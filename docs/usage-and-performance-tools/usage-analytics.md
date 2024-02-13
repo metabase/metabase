@@ -6,7 +6,11 @@ title: Usage analytics
 
 {% include plans-blockquote.html feature="Metabase analytics" %}
 
-The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase. These resources are useful for:
+The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
+
+![Metabase analytics collection](./images/metabase-analytics.png)
+
+These resources are useful for:
 
 - **Understanding Usage**: Understand how people use your Metabase (e.g., new questions, most active people and groups, and so on).
 - **Auditing activity**: Know who viewed or did what and when, including tracking dashboard and question views, queries, downloads, and other activity like changing settings or inviting people to your Metabase.
@@ -32,7 +36,7 @@ You can duplicate any of the questions, dashboards and models in the Metabase an
 
 ### Custom reports collection
 
-While you _can_ save custom questions, models, and dashboards wherever you like (except for the Metabase analytics collection), we recommend that you save your custom Metabase analytics reports in the conveniently named "Custom reports" sub-collection. That way these items inherit the same permissions as the parent Metabase analytics collection. 
+While you _can_ save custom questions, models, and dashboards wherever you like (except for the Metabase analytics collection), we recommend that you save your custom Metabase analytics reports in the conveniently named "Custom reports" sub-collection. That way these items inherit the same permissions as the parent Metabase analytics collection.
 
 There is one thing to know about the Custom reports collection: its metadata resets whenever Metabase restarts. While you are able to temporarily rename the Custom reports collection, or give it a description or an Official badge, Metabase will drop this collection's metadata when it restarts. But rest assured that Metabase will preserve any questions, models, events, or dashboards that you add to the Custom reports collection.
 
@@ -206,14 +210,16 @@ Query sources include:
 - csv-download
 - dashboard
 - embedded-dashboard
+- embedded-csv-download
+- embedded-json-download
 - embedded-question
-- embedded-xlsx/csv/json-download 
+- embedded-xlsx-download
 - json-download
 - map-tiles
-- metabot
+- metabot (experimental)
 - public-dashboard
 - public-question
-- pulse
+- pulse (which includes dashboard subscriptions and alerts)
 - question
 - xlsx-download
 

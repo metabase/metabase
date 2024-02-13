@@ -350,3 +350,22 @@
          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
      (log/infof "Rolling back app database schema to version %d" target-version)
      (.rollback liquibase (count ids-to-drop) ""))))
+
+(defn latest-applied-major-version
+  "Gets the latest version that was applied to the database."
+  [conn]
+  (when-not (fresh-install? conn)
+    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED DESC LIMIT 1" (changelog-table-name conn))
+          changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
+      (some-> changeset-id extract-numbers first))))
+
+(defn latest-available-major-version
+  "Get the latest version that Liquibase would apply if we ran migrations right now."
+  [^Liquibase liquibase]
+  (->> liquibase
+       (.getDatabaseChangeLog)
+       (.getChangeSets)
+       (map #(.getId ^ChangeSet %))
+       last
+       extract-numbers
+       first))

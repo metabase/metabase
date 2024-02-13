@@ -7,7 +7,7 @@ import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 import { Grid } from "metabase/components/Grid";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";

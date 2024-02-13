@@ -22,10 +22,10 @@ export const getRadioOverrides = (): MantineThemeOverride["components"] => ({
       root: {
         [`&:has(.${getStylesRef("input")}:disabled)`]: {
           [`.${getStylesRef("label")}`]: {
-            color: theme.colors.text[0],
+            color: theme.fn.themeColor("text-light"),
           },
           [`.${getStylesRef("description")}`]: {
-            color: theme.colors.text[0],
+            color: theme.fn.themeColor("text-light"),
           },
           [`.${getStylesRef("icon")}`]: {
             color: theme.white,
@@ -41,28 +41,28 @@ export const getRadioOverrides = (): MantineThemeOverride["components"] => ({
         width: getSize({ size, sizes: SIZES }),
         height: getSize({ size, sizes: SIZES }),
         cursor: "pointer",
-        borderColor: theme.colors.text[0],
+        borderColor: theme.fn.themeColor("text-light"),
 
         "&:checked": {
-          borderColor: theme.colors.brand[1],
-          backgroundColor: theme.colors.brand[1],
+          borderColor: theme.fn.themeColor("brand"),
+          backgroundColor: theme.fn.themeColor("brand"),
         },
         "&:disabled": {
           opacity: 0.3,
         },
         "&:disabled:not(:checked)": {
-          borderColor: theme.colors.text[0],
-          backgroundColor: theme.colors.bg[1],
+          borderColor: theme.fn.themeColor("text-light"),
+          backgroundColor: theme.fn.themeColor("bg-medium"),
         },
       },
       label: {
         ref: getStylesRef("label"),
-        color: theme.colors.text[2],
+        color: theme.fn.themeColor("text-dark"),
         fontSize: theme.fontSizes.md,
       },
       description: {
         ref: getStylesRef("description"),
-        color: theme.colors.text[2],
+        color: theme.fn.themeColor("text-dark"),
         fontSize: theme.fontSizes.sm,
         lineHeight: theme.lineHeight,
         marginTop: theme.spacing.xs,

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SelectList from "metabase/components/SelectList";

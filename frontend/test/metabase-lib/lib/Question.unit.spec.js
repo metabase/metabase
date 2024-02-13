@@ -307,8 +307,12 @@ describe("Question", () => {
       });
 
       it("contains an empty structured query", () => {
-        expect(question.query().constructor).toBe(StructuredQuery);
-        expect(question.query().constructor).toBe(StructuredQuery);
+        expect(
+          question.legacyQuery({ useStructuredQuery: true }).constructor,
+        ).toBe(StructuredQuery);
+        expect(
+          question.legacyQuery({ useStructuredQuery: true }).constructor,
+        ).toBe(StructuredQuery);
       });
 
       it("defaults to table display", () => {
@@ -342,22 +346,31 @@ describe("Question", () => {
   });
 
   describe("At the heart of a question is an MBQL query.", () => {
-    describe("query()", () => {
+    describe("legacyQuery()", () => {
       it("returns a correct class instance for structured query", () => {
         // This is a bit wack, and the repetitive naming is pretty confusing.
-        const query = orders_raw_question.query();
+        const query = orders_raw_question.legacyQuery({
+          useStructuredQuery: true,
+        });
         expect(query instanceof StructuredQuery).toBe(true);
       });
       it("returns a correct class instance for native query", () => {
-        const query = native_orders_count_question.query();
+        const query = native_orders_count_question.legacyQuery({
+          useStructuredQuery: true,
+        });
         expect(query instanceof NativeQuery).toBe(true);
       });
     });
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
-        const rawQuery = native_orders_count_question.query();
-        const newRawQuestion = orders_raw_question.setQuery(rawQuery);
-        expect(newRawQuestion.query() instanceof NativeQuery).toBe(true);
+        const rawQuery = native_orders_count_question.legacyQuery({
+          useStructuredQuery: true,
+        });
+        const newRawQuestion = orders_raw_question.setLegacyQuery(rawQuery);
+        expect(
+          newRawQuestion.legacyQuery({ useStructuredQuery: true }) instanceof
+            NativeQuery,
+        ).toBe(true);
       });
     });
     describe("setDatasetQuery(datasetQuery)", () => {
@@ -366,7 +379,10 @@ describe("Question", () => {
           native_orders_count_question.datasetQuery(),
         );
 
-        expect(rawQuestion.query() instanceof NativeQuery).toBe(true);
+        expect(
+          rawQuestion.legacyQuery({ useStructuredQuery: true }) instanceof
+            NativeQuery,
+        ).toBe(true);
       });
     });
   });
@@ -557,7 +573,7 @@ describe("Question", () => {
       it("returns the correct query for a summarization of a raw data table", () => {
         const summarizedQuestion = orders_raw_question.aggregate(["count"]);
         expect(summarizedQuestion.canRun()).toBe(true);
-        // if I actually call the .query() method below, this blows up garbage collection =/
+        // if I actually call the .legacyQuery({ useStructuredQuery: true })  method below, this blows up garbage collection =/
         expect(summarizedQuestion.datasetQuery()).toEqual(
           orders_count_card.dataset_query,
         );

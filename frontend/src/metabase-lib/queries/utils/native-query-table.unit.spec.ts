@@ -98,7 +98,7 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
     ) as Question;
 
     const table = getNativeQueryTable(
-      nativeQuestionWithCollection.query() as NativeQuery,
+      nativeQuestionWithCollection.legacyQuery() as NativeQuery,
     );
 
     it("should return the concrete `table` associated with the given collection name", () => {
@@ -108,7 +108,9 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
 
   describe("basic native query question", () => {
     const nativeQuestion = metadata.question(card.id) as Question;
-    const table = getNativeQueryTable(nativeQuestion.query() as NativeQuery);
+    const table = getNativeQueryTable(
+      nativeQuestion.legacyQuery() as NativeQuery,
+    );
 
     it("should not return a table", () => {
       expect(table).toBeNull();

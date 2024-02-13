@@ -60,6 +60,16 @@ export function dropStageIfEmpty(query: Query, stageIndex: number): Query {
   return ML.drop_stage_if_empty(query, stageIndex);
 }
 
+export function dropEmptyStages(query: Query): Query {
+  const stageIndexes = Array.from({ length: stageCount(query) }).map(
+    (_, index) => index,
+  );
+
+  return stageIndexes.reduceRight((query, stageIndex) => {
+    return dropStageIfEmpty(query, stageIndex);
+  }, query);
+}
+
 export function removeClause(
   query: Query,
   stageIndex: number,

@@ -45,7 +45,9 @@ export const getMultiSelectOverrides =
         },
         searchInput: {
           "&::placeholder": {
-            color: invalid ? theme.colors.error[0] : theme.colors.text[0],
+            color: invalid
+              ? theme.fn.themeColor("error")
+              : theme.fn.themeColor("text-light"),
           },
           "&::-webkit-search-cancel-button": {
             display: "none",
@@ -58,11 +60,11 @@ export const getMultiSelectOverrides =
           fontWeight: "normal",
           fontSize: theme.fontSizes.xs,
           borderRadius: theme.radius.xs,
-          color: theme.colors.text[2],
-          backgroundColor: theme.colors.bg[1],
+          color: theme.fn.themeColor("text-dark"),
+          backgroundColor: theme.fn.themeColor("bg-medium"),
         },
         defaultValueRemove: {
-          color: theme.colors.text[2],
+          color: theme.fn.themeColor("text-dark"),
           width: rem(12),
           height: rem(12),
           minWidth: rem(12),

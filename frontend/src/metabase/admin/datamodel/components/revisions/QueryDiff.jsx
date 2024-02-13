@@ -1,7 +1,7 @@
 import { Component } from "react";
 import PropTypes from "prop-types";
 
-import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
+import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
 
 export default class QueryDiff extends Component {
   static propTypes = {

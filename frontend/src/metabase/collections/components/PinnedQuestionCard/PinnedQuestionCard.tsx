@@ -6,7 +6,7 @@ import {
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import ActionMenu from "metabase/collections/components/ActionMenu";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {

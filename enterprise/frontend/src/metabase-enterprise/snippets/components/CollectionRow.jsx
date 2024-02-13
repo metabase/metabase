@@ -2,7 +2,7 @@
 import { Component } from "react";
 import cx from "classnames";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
 import CollectionOptionsButton from "./CollectionOptionsButton";

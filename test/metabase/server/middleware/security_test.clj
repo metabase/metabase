@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.test :as mt]
    [metabase.test.util :as tu]
    [stencil.core :as stencil]))
 
@@ -34,7 +34,7 @@
       (is (str/includes? (csp-directive "script-src") "'unsafe-inline'")))))
 
 (deftest csp-header-frame-ancestor-tests
-  (premium-features-test/with-premium-features #{:embedding}
+  (mt/with-premium-features #{:embedding}
     (testing "Frame ancestors from `embedding-app-origin` setting"
       (let [multiple-ancestors "https://*.metabase.com http://metabase.internal"]
         (tu/with-temporary-setting-values [enable-embedding     true
@@ -55,7 +55,7 @@
                (csp-directive "frame-ancestors")))))))
 
 (deftest xframeoptions-header-tests
-  (premium-features-test/with-premium-features #{:embedding}
+  (mt/with-premium-features #{:embedding}
     (testing "`DENY` when embedding is disabled"
       (tu/with-temporary-setting-values [enable-embedding     false
                                          embedding-app-origin "https://somesite.metabase.com"]

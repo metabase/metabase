@@ -1,4 +1,5 @@
 import {
+  modal,
   openStaticEmbeddingModal,
   restore,
   visitIframe,
@@ -32,9 +33,9 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
   });
 
   it("should let the user lock parameters to specific values", () => {
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    cy.get(".Modal--full").within(() => {
+    modal().within(() => {
       // select the dropdown next to the Text parameter so that we can set the value to "Locked"
       cy.findByText("Text")
         .parent()
@@ -46,12 +47,12 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Locked").click();
 
-    cy.get(".Modal--full").within(() => {
+    modal().within(() => {
       // set a parameter value
       cy.findByPlaceholderText("Text").type("foo{enter}");
 
       // publish the embedded question so that we can directly navigate to its url
-      cy.findByText("Publish").click();
+      cy.findByText("Publish changes").click();
       cy.wait("@publishChanges");
     });
 

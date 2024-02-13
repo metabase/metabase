@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import {
   ToggleContent,
   ToggleRoot,

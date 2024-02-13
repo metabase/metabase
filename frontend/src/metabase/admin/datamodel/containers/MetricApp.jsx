@@ -84,6 +84,7 @@ const CreateMetricForm = ({
         onChangeLocation("/admin/datamodel/metrics");
       } catch (error) {
         setIsDirty(isDirty);
+        throw error;
       }
     },
     [createMetric, isDirty, onChangeLocation],

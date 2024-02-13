@@ -1,7 +1,6 @@
 import { t } from "ttag";
-import { Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import type { ButtonProps } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
 
 interface TimeToggleProps extends ButtonProps {
   hasTime: boolean;
@@ -11,7 +10,7 @@ interface TimeToggleProps extends ButtonProps {
 export function TimeToggle({ hasTime, ...props }: TimeToggleProps) {
   return (
     <Button
-      c="text.1"
+      c="text-medium"
       variant="subtle"
       leftIcon={<Icon name="clock" />}
       {...props}

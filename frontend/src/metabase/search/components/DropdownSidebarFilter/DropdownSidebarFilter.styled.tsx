@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
-import { Group } from "metabase/ui";
+import { Group, Icon } from "metabase/ui";
 
 import FieldSet from "metabase/components/FieldSet";
 import EventSandbox from "metabase/components/EventSandbox";
-import { Icon } from "metabase/core/components/Icon";
 
 export const DropdownFieldSet = styled(FieldSet)<{
   fieldHasValueOrFocus?: boolean;
@@ -14,7 +13,9 @@ export const DropdownFieldSet = styled(FieldSet)<{
 
   border: 2px solid
     ${({ theme, fieldHasValueOrFocus }) =>
-      fieldHasValueOrFocus ? theme.colors.brand[1] : theme.colors.border[0]};
+      fieldHasValueOrFocus
+        ? theme.fn.themeColor("brand")
+        : theme.fn.themeColor("border")};
 
   margin: 0;
   padding: 0.5rem 0.75rem;
@@ -38,7 +39,7 @@ export const DropdownFieldSet = styled(FieldSet)<{
   &,
   legend {
     color: ${({ theme, fieldHasValueOrFocus }) =>
-      fieldHasValueOrFocus && theme.colors.brand[1]};
+      fieldHasValueOrFocus && theme.fn.themeColor("brand")};
   }
 `;
 

@@ -5,7 +5,7 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import FormToggle from "metabase/core/components/FormToggle";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 import { FIELD_OVERRIDES } from "../../constants";
