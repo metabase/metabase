@@ -89,6 +89,7 @@ import {
   isResultsMetadataDirty,
   getShouldShowUnsavedChangesWarning,
   getRequiredTemplateTags,
+  getEmbeddedParameterVisibility,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -182,6 +183,8 @@ const mapStateToProps = (state, props) => {
     reportTimezone: getSetting(state, "report-timezone-long"),
 
     requiredTemplateTags: getRequiredTemplateTags(state),
+    getEmbeddedParameterVisibility: slug =>
+      getEmbeddedParameterVisibility(state, slug),
   };
 };
 

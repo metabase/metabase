@@ -126,14 +126,6 @@ class StructuredQuery extends AtomicQuery {
 
   /* Query superclass methods */
 
-  /**
-   * @returns true if we have metadata for the root source table loaded
-   */
-  hasMetadata(): boolean {
-    const metadata = this.metadata();
-    return metadata != null && metadata.table(this._sourceTableId()) != null;
-  }
-
   /* AtomicQuery superclass methods */
 
   /**
@@ -162,22 +154,7 @@ class StructuredQuery extends AtomicQuery {
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
-  /**
-   * @returns the database engine object, if a database is selected and loaded.
-   */
-  engine(): string | null | undefined {
-    const database = this._database();
-    return database && database.engine;
-  }
-
   /* Methods unique to this query type */
-
-  /**
-   * @returns a new reset @type {StructuredQuery} with the same parent @type {Question}
-   */
-  reset(): StructuredQuery {
-    return new StructuredQuery(this._originalQuestion);
-  }
 
   /**
    * @returns the underlying MBQL query object
@@ -194,31 +171,6 @@ class StructuredQuery extends AtomicQuery {
     fn: (q: StructuredQueryObject) => StructuredQueryObject,
   ): StructuredQuery {
     return this._updateQuery(fn, []);
-  }
-
-  /**
-   * @returns a new query with the provided Database set.
-   */
-  setDatabase(database: Database): StructuredQuery {
-    return this.setDatabaseId(database.id);
-  }
-
-  /**
-   * @returns a new query with the provided Database ID set.
-   */
-  setDatabaseId(databaseId: DatabaseId): StructuredQuery {
-    if (databaseId !== this._databaseId()) {
-      // TODO: this should reset the rest of the query?
-      return new StructuredQuery(
-        this._originalQuestion,
-        chain(this.datasetQuery())
-          .assoc("database", databaseId)
-          .assoc("query", {})
-          .value(),
-      );
-    } else {
-      return this;
-    }
   }
 
   /**
@@ -317,20 +269,6 @@ class StructuredQuery extends AtomicQuery {
       (join, index) => new JoinWrapper(join, index, this),
     );
   });
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  updateJoin(index, join) {
-    return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  removeJoin(_index) {
-    return this._updateQuery(Q.removeJoin, arguments);
-  }
 
   // AGGREGATIONS
 
@@ -548,13 +486,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeBreakout, arguments);
   }
 
-  /**
-   * @returns {StructuredQuery} new query with all breakouts removed.
-   */
-  clearBreakouts() {
-    return this._updateQuery(Q.clearBreakouts, arguments);
-  }
-
   // FILTERS
 
   /**
@@ -735,10 +666,6 @@ class StructuredQuery extends AtomicQuery {
 
   removeField(_name) {
     return this._updateQuery(Q.removeField, arguments);
-  }
-
-  clearFields() {
-    return this._updateQuery(Q.clearFields, arguments);
   }
 
   // DIMENSION OPTIONS

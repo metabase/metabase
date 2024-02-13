@@ -6,7 +6,6 @@ import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { selectStep, submitSetup, updateTracking } from "../../actions";
-import { PREFERENCES_STEP } from "../../constants";
 import {
   getIsSetupCompleted,
   getIsStepActive,
@@ -14,7 +13,8 @@ import {
   getIsTrackingAllowed,
 } from "../../selectors";
 import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InvactiveStep";
+import { InactiveStep } from "../InactiveStep";
+import type { NumberedStepProps } from "../types";
 import {
   StepDescription,
   StepToggleContainer,
@@ -24,14 +24,16 @@ import {
   StepToggle,
 } from "./PreferencesStep.styled";
 
-export const PreferencesStep = (): JSX.Element => {
+export const PreferencesStep = ({
+  stepLabel,
+}: NumberedStepProps): JSX.Element => {
   const [errorMessage, setErrorMessage] = useState<string>();
   const isTrackingAllowed = useSelector(getIsTrackingAllowed);
   const isStepActive = useSelector(state =>
-    getIsStepActive(state, PREFERENCES_STEP),
+    getIsStepActive(state, "data_usage"),
   );
   const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, PREFERENCES_STEP),
+    getIsStepCompleted(state, "data_usage"),
   );
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
@@ -41,7 +43,7 @@ export const PreferencesStep = (): JSX.Element => {
   };
 
   const handleStepSelect = () => {
-    dispatch(selectStep(PREFERENCES_STEP));
+    dispatch(selectStep("data_usage"));
   };
 
   const handleStepSubmit = async () => {
@@ -57,7 +59,7 @@ export const PreferencesStep = (): JSX.Element => {
     return (
       <InactiveStep
         title={getStepTitle(isTrackingAllowed, isStepCompleted)}
-        label={4}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
         onStepSelect={handleStepSelect}
@@ -68,7 +70,7 @@ export const PreferencesStep = (): JSX.Element => {
   return (
     <ActiveStep
       title={getStepTitle(isTrackingAllowed, isStepCompleted)}
-      label={4}
+      label={stepLabel}
     >
       <StepDescription>
         {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}

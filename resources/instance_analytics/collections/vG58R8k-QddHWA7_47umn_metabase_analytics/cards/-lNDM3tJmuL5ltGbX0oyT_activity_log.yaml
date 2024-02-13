@@ -303,3 +303,4 @@ serdes/meta:
   label: activity_log
   model: Card
 metabase_version: null
+type: model

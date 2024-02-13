@@ -38,3 +38,4 @@ serdes/meta:
 - id: cache_field_values_schedule
   model: Field
 database_indexed: null
+database_partitioned: null

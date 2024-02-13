@@ -87,3 +87,4 @@ serdes/meta:
   label: active_users_last_week
   model: Card
 metabase_version: null
+type: question

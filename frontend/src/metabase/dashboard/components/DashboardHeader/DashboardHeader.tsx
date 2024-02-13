@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import type { Location } from "history";
+import type { Location, LocationDescriptor } from "history";
 
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
@@ -14,7 +14,7 @@ import ActionButton from "metabase/components/ActionButton";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/ui";
+import { Icon, Menu, Tooltip } from "metabase/ui";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
@@ -33,11 +33,18 @@ import {
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
+import type {
+  AddSectionOpts,
+  NewDashCardOpts,
+} from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
+  addSectionToDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
+import type { SectionLayout } from "metabase/dashboard/sections";
+import { layoutOptions } from "metabase/dashboard/sections";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
@@ -66,20 +73,17 @@ import type {
   State,
 } from "metabase-types/store";
 
+import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
+import { SectionLayoutPreview } from "./SectionLayoutPreview";
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
 } from "./DashboardHeader.styled";
-
-type NewDashCardOpts = {
-  dashId: DashboardId;
-  tabId: DashboardTabId | null;
-};
 
 interface OwnProps {
   dashboardId: DashboardId;
@@ -110,6 +114,7 @@ interface OwnProps {
   addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addSectionToDashboard: (opts: AddSectionOpts) => void;
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
@@ -158,7 +163,7 @@ interface DispatchProps {
   deleteBookmark: (args: { id: DashboardId }) => void;
   fetchPulseFormInput: () => void;
   toggleSidebar: (sidebarName: DashboardSidebarName) => void;
-  onChangeLocation: (location: Location) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
   addActionToDashboard: (
     opts: NewDashCardOpts & {
       action: Partial<WritebackAction>;
@@ -193,6 +198,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
   toggleSidebar,
   addActionToDashboard,
+  addSectionToDashboard,
   dismissAllUndo,
 };
 
@@ -231,6 +237,14 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
     this.props.addLinkDashCardToDashboard({
       dashId: this.props.dashboard.id,
       tabId: this.props.selectedTabId,
+    });
+  }
+
+  onAddSection(sectionLayout: SectionLayout) {
+    this.props.addSectionToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+      sectionLayout,
     });
   }
 
@@ -400,10 +414,45 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       // Add link card button
       buttons.push(
         <DashboardButtonTooltip key="add-link-card" label={t`Add link card`}>
-          <DashboardHeaderButton onClick={() => this.onAddLinkCard()}>
+          <DashboardHeaderButton
+            aria-label={t`Add link card`}
+            onClick={() => this.onAddLinkCard()}
+          >
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
         </DashboardButtonTooltip>,
+      );
+
+      buttons.push(
+        <Menu key="add-section" position="bottom-end">
+          <Menu.Target>
+            <span>
+              <DashboardButtonTooltip label={t`Add section`}>
+                <DashboardHeaderButton aria-label={t`Add section`}>
+                  <Icon name="section" size={18} />
+                </DashboardHeaderButton>
+              </DashboardButtonTooltip>
+            </span>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {layoutOptions.map(layout => (
+              <Tooltip
+                key={layout.id}
+                label={<SectionLayoutPreview layout={layout} />}
+                position="left"
+              >
+                <span>
+                  <Menu.Item
+                    onClick={() => this.onAddSection(layout)}
+                    fw="bold"
+                  >
+                    {layout.label}
+                  </Menu.Item>
+                </span>
+              </Tooltip>
+            ))}
+          </Menu.Dropdown>
+        </Menu>,
       );
 
       const {
@@ -543,6 +592,8 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
+
+        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
       }
     }
 

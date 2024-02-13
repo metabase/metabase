@@ -9,6 +9,7 @@ import type {
   EmbeddingDisplayOptions,
   EmbeddingParameters,
   EmbeddingParametersValues,
+  EmbeddingParameterVisibility,
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
@@ -18,23 +19,37 @@ import {
   optionsToHashParams,
 } from "metabase/public/lib/embed";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
-
-import { DEFAULT_DISPLAY_OPTIONS } from "./config";
+import {
+  trackStaticEmbedCodeCopied,
+  trackStaticEmbedDiscarded,
+  trackStaticEmbedPublished,
+  trackStaticEmbedUnpublished,
+} from "metabase/public/lib/analytics";
+import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { getParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import { getDefaultDisplayOptions } from "./config";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { ParametersSettings } from "./ParametersSettings";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { OverviewSettings } from "./OverviewSettings";
 import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
+import { EMBED_MODAL_TABS } from "./tabs";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { PreviewModeSelector } from "./PreviewModeSelector";
 import { PreviewPane } from "./PreviewPane";
 
-const TABS = {
-  Overview: "overview" as const,
-  Parameters: "parameters" as const,
-  Appearance: "appearance" as const,
-};
+const countEmbeddingParameterOptions = (embeddingParams: EmbeddingParameters) =>
+  Object.values(embeddingParams).reduce(
+    (acc, value) => {
+      acc[value] += 1;
+      return acc;
+    },
+    { disabled: 0, locked: 0, enabled: 0 } as Record<
+      EmbeddingParameterVisibility,
+      number
+    >,
+  );
 
 export interface StaticEmbedSetupPaneProps {
   resource: EmbedResource;
@@ -69,8 +84,11 @@ export const StaticEmbedSetupPane = ({
   );
   const [parameterValues, setParameterValues] =
     useState<EmbeddingParametersValues>({});
+
+  const canWhitelabel = useSelector(getCanWhitelabel);
+  const shouldShowDownloadData = canWhitelabel && resourceType === "question";
   const [displayOptions, setDisplayOptions] = useState<EmbeddingDisplayOptions>(
-    DEFAULT_DISPLAY_OPTIONS,
+    getDefaultDisplayOptions(shouldShowDownloadData),
   );
 
   const previewParametersBySlug = useMemo(
@@ -101,11 +119,12 @@ export const StaticEmbedSetupPane = ({
     displayOptions,
   });
 
-  const [selectedServerCodeOptionName, setSelectedServerCodeOptionName] =
-    useState(serverCodeOptions[0].name);
+  const [selectedServerCodeOptionId, setSelectedServerCodeOptionId] = useState(
+    serverCodeOptions[0].id,
+  );
 
   const selectedServerCodeOption = serverCodeOptions.find(
-    ({ name }) => name === selectedServerCodeOptionName,
+    ({ id }) => id === selectedServerCodeOptionId,
   );
 
   const hasSettingsChanges = getHasSettingsChanges({
@@ -140,36 +159,83 @@ export const StaticEmbedSetupPane = ({
       await onUpdateEnableEmbedding(true);
     }
     await onUpdateEmbeddingParams(embeddingParams);
+    trackStaticEmbedPublished({
+      artifact: resourceType,
+      resource,
+      params: countEmbeddingParameterOptions({
+        ...convertResourceParametersToEmbeddingParams(resourceParameters),
+        ...embeddingParams,
+      }),
+    });
   };
 
   const handleUnpublish = async () => {
     await onUpdateEnableEmbedding(false);
+    trackStaticEmbedUnpublished({
+      artifact: resourceType,
+      resource,
+    });
   };
 
   const handleDiscard = () => {
     setEmbeddingParams(getDefaultEmbeddingParams(resource, resourceParameters));
+    trackStaticEmbedDiscarded({
+      artifact: resourceType,
+    });
   };
 
-  const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => (
-    <ServerEmbedCodePane
-      className="flex-full w-full"
-      variant={variant}
-      initialPreviewParameters={initialPreviewParameters}
-      resource={resource}
-      resourceType={resourceType}
-      siteUrl={siteUrl}
-      secretKey={secretKey}
-      params={previewParametersBySlug}
-      displayOptions={displayOptions}
-      serverCodeOptions={serverCodeOptions}
-      selectedServerCodeOptionName={selectedServerCodeOptionName}
-      setSelectedServerCodeOptionName={setSelectedServerCodeOptionName}
-    />
-  );
+  const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => {
+    return (
+      <ServerEmbedCodePane
+        className="flex-full w-full"
+        variant={variant}
+        initialPreviewParameters={initialPreviewParameters}
+        resource={resource}
+        resourceType={resourceType}
+        siteUrl={siteUrl}
+        secretKey={secretKey}
+        params={previewParametersBySlug}
+        displayOptions={displayOptions}
+        serverCodeOptions={serverCodeOptions}
+        selectedServerCodeOptionId={selectedServerCodeOptionId}
+        setSelectedServerCodeOptionId={setSelectedServerCodeOptionId}
+        onCopy={() =>
+          handleCodeCopy({
+            code: "backend",
+            variant,
+            language: selectedServerCodeOptionId,
+          })
+        }
+      />
+    );
+  };
 
-  const [activeTab, setActiveTab] = useState<typeof TABS[keyof typeof TABS]>(
-    TABS.Overview,
-  );
+  const handleCodeCopy = ({
+    code,
+    variant,
+    language,
+  }: {
+    code: "backend" | "view";
+    variant: EmbedCodePaneVariant;
+    language: string;
+  }) => {
+    const locationMap = {
+      overview: "code_overview",
+      parameters: "code_params",
+      appearance: "code_appearance",
+    } as const;
+    trackStaticEmbedCodeCopied({
+      artifact: resourceType,
+      location: locationMap[variant],
+      code,
+      language,
+      displayOptions,
+    });
+  };
+
+  const [activeTab, setActiveTab] = useState<
+    typeof EMBED_MODAL_TABS[keyof typeof EMBED_MODAL_TABS]
+  >(EMBED_MODAL_TABS.Overview);
   return (
     <Stack spacing={0}>
       <EmbedModalContentStatusBar
@@ -181,19 +247,22 @@ export const StaticEmbedSetupPane = ({
         onDiscard={handleDiscard}
       />
 
-      <Tabs defaultValue={TABS.Overview} data-testid="embedding-preview">
+      <Tabs
+        defaultValue={EMBED_MODAL_TABS.Overview}
+        data-testid="embedding-preview"
+      >
         <Tabs.List p="0 1.5rem">
           <Tabs.Tab
-            value={TABS.Overview}
-            onClick={() => setActiveTab(TABS.Overview)}
+            value={EMBED_MODAL_TABS.Overview}
+            onClick={() => setActiveTab(EMBED_MODAL_TABS.Overview)}
           >{t`Overview`}</Tabs.Tab>
           <Tabs.Tab
-            value={TABS.Parameters}
-            onClick={() => setActiveTab(TABS.Parameters)}
+            value={EMBED_MODAL_TABS.Parameters}
+            onClick={() => setActiveTab(EMBED_MODAL_TABS.Parameters)}
           >{t`Parameters`}</Tabs.Tab>
           <Tabs.Tab
-            value={TABS.Appearance}
-            onClick={() => setActiveTab(TABS.Appearance)}
+            value={EMBED_MODAL_TABS.Appearance}
+            onClick={() => setActiveTab(EMBED_MODAL_TABS.Appearance)}
           >{t`Appearance`}</Tabs.Tab>
         </Tabs.List>
         {/**
@@ -210,13 +279,18 @@ export const StaticEmbedSetupPane = ({
          * different `Tabs.Panel` if you were to use it as Mantine suggests.
          */}
         <Tabs.Panel value={activeTab}>
-          {activeTab === TABS.Overview ? (
+          {activeTab === EMBED_MODAL_TABS.Overview ? (
             <OverviewSettings
               resourceType={resourceType}
               selectedServerCodeOption={selectedServerCodeOption}
-              serverEmbedCodeSlot={getServerEmbedCodePane(TABS.Overview)}
+              serverEmbedCodeSlot={getServerEmbedCodePane(
+                EMBED_MODAL_TABS.Overview,
+              )}
+              onClientCodeCopy={language =>
+                handleCodeCopy({ code: "view", variant: "overview", language })
+              }
             />
-          ) : activeTab === TABS.Parameters ? (
+          ) : activeTab === EMBED_MODAL_TABS.Parameters ? (
             <SettingsTabLayout
               settingsSlot={
                 <ParametersSettings
@@ -247,12 +321,12 @@ export const StaticEmbedSetupPane = ({
                     isTransparent={displayOptions.theme === "transparent"}
                   />
                   {activePane === "code"
-                    ? getServerEmbedCodePane(TABS.Parameters)
+                    ? getServerEmbedCodePane(EMBED_MODAL_TABS.Parameters)
                     : null}
                 </>
               }
             />
-          ) : activeTab === TABS.Appearance ? (
+          ) : activeTab === EMBED_MODAL_TABS.Appearance ? (
             <SettingsTabLayout
               settingsSlot={
                 <AppearanceSettings
@@ -274,7 +348,7 @@ export const StaticEmbedSetupPane = ({
                     isTransparent={displayOptions.theme === "transparent"}
                   />
                   {activePane === "code"
-                    ? getServerEmbedCodePane(TABS.Appearance)
+                    ? getServerEmbedCodePane(EMBED_MODAL_TABS.Appearance)
                     : null}
                 </>
               }
@@ -290,19 +364,24 @@ function getDefaultEmbeddingParams(
   resource: EmbedResource,
   resourceParameters: EmbedResourceParameter[],
 ): EmbeddingParameters {
-  return filterValidResourceParameters(
-    resourceParameters,
-    resource.embedding_params || {},
+  const validSlugs = resourceParameters.map(param => param.slug);
+  // We first pick only dashboard parameters with valid slugs
+  const defaultParams = _.pick(resource.embedding_params || {}, validSlugs);
+  // Then pick valid required dashboard parameters
+  const validRequiredParams = resourceParameters.filter(
+    param => param.slug && param.required,
   );
-}
 
-function filterValidResourceParameters(
-  resourceParameters: EmbedResourceParameter[],
-  embeddingParams: EmbeddingParameters,
-) {
-  const validParameters = resourceParameters.map(parameter => parameter.slug);
-
-  return _.pick(embeddingParams, validParameters);
+  // And for each required parameter set its value to "enabled"
+  // (Editable) because this is the default for a required parameter.
+  // This is needed to save embedding_params when a user clicks
+  // "Publish" without changing parameter visibility.
+  return validRequiredParams.reduce((acc, param) => {
+    if (!acc[param.slug] || acc[param.slug] === "disabled") {
+      acc[param.slug] = "enabled";
+    }
+    return acc;
+  }, defaultParams);
 }
 
 function getPreviewParamsBySlug({
@@ -322,7 +401,11 @@ function getPreviewParamsBySlug({
   return Object.fromEntries(
     lockedParameters.map(parameter => [
       parameter.slug,
-      parameterValues[parameter.id] ?? null,
+      getParameterValue({
+        parameter,
+        values: parameterValues,
+        defaultRequired: true,
+      }),
     ]),
   );
 }
@@ -365,4 +448,15 @@ function getNonDisabledEmbeddingParams(
 
     return result;
   }, {} as EmbeddingParameters);
+}
+
+function convertResourceParametersToEmbeddingParams(
+  resourceParameters: EmbedResourceParameter[],
+) {
+  const embeddingParams: EmbeddingParameters = {};
+  for (const parameter of resourceParameters) {
+    embeddingParams[parameter.slug] = "disabled";
+  }
+
+  return embeddingParams;
 }

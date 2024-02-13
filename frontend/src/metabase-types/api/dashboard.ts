@@ -7,6 +7,7 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { ActionDisplayType, WritebackAction } from "./actions";
 import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
@@ -22,6 +23,8 @@ export type DashboardCard =
 
 export interface Dashboard {
   id: DashboardId;
+  created_at: string;
+  updated_at: string;
   collection?: Collection | null;
   collection_id: number | null;
   name: string;
@@ -43,7 +46,8 @@ export interface Dashboard {
   auto_apply_filters: boolean;
   archived: boolean;
   public_uuid: string | null;
-  embedding_params?: Record<string, string> | null;
+  initially_published_at: string | null;
+  embedding_params?: EmbeddingParameters | null;
   width: "full" | "fixed";
 
   /* Indicates whether static embedding for this dashboard has been published */
@@ -52,17 +56,20 @@ export interface Dashboard {
 
 export type DashCardId = number;
 
-export type BaseDashboardCard = {
+export type DashboardCardLayoutAttrs = {
+  col: number;
+  row: number;
+  size_x: number;
+  size_y: number;
+};
+
+export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   id: DashCardId;
   dashboard_id: DashboardId;
   dashboard_tab_id: DashboardTabId | null;
   card_id: CardId | null;
   card: Card | VirtualCard;
   collection_authority_level?: CollectionAuthorityLevel;
-  size_x: number;
-  size_y: number;
-  col: number;
-  row: number;
   entity_id: string;
   visualization_settings?: {
     [key: string]: unknown;
@@ -73,7 +80,12 @@ export type BaseDashboardCard = {
   updated_at: string;
 };
 
-export type VirtualCardDisplay = "text" | "action" | "link" | "heading";
+export type VirtualCardDisplay =
+  | "action"
+  | "heading"
+  | "link"
+  | "placeholder"
+  | "text";
 
 export type VirtualCard = Partial<
   Omit<Card, "name" | "dataset_query" | "visualization_settings">

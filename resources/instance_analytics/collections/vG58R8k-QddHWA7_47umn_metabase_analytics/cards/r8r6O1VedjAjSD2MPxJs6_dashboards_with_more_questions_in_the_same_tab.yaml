@@ -100,3 +100,4 @@ serdes/meta:
   label: dashboards_with_more_questions_in_the_same_tab
   model: Card
 metabase_version: vUNKNOWN (901f705)
+type: question

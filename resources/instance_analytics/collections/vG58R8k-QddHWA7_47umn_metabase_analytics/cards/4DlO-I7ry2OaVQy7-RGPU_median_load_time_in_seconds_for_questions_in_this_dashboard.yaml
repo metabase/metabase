@@ -57,3 +57,4 @@ serdes/meta:
   label: median_load_time_in_seconds_for_questions_in_this_dashboard
   model: Card
 metabase_version: vUNKNOWN (13e6090)
+type: question

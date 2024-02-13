@@ -138,8 +138,12 @@ export function setFilter(type, subType) {
   });
 }
 
+export function getRequiredToggle() {
+  return cy.findByLabelText("Always require a value");
+}
+
 export function toggleRequiredParameter() {
-  cy.findByLabelText("Always require a value").click();
+  getRequiredToggle().click();
 }
 
 export function createEmptyTextBox() {
@@ -151,6 +155,11 @@ export function createEmptyTextBox() {
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
   addTextBoxWhileEditing(string, options);
+}
+
+export function addLinkWhileEditing(string, options = {}) {
+  cy.findByLabelText("Add link card").click();
+  cy.findByPlaceholderText("https://example.com").type(string, options);
 }
 
 export function addTextBoxWhileEditing(string, options = {}) {
