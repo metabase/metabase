@@ -9,8 +9,7 @@ import * as Urls from "metabase/lib/urls";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
-import Search from "metabase/entities/search";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
@@ -19,6 +18,7 @@ import { Box, Group, Icon, Text, Title } from "metabase/ui";
 
 import { getCollectionIcon } from "metabase/entities/collections";
 import { getLocale } from "metabase/setup/selectors";
+import { entityForObject } from "metabase/lib/schema";
 import { getCollectionName, groupModels, sortModels } from "../utils";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";
@@ -129,9 +129,8 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
-  const dispatch = useDispatch();
-  const wrappedModel = Search.wrapEntity(model, dispatch);
-  const icon = wrappedModel.getIcon();
+  const entity = entityForObject(model);
+  const icon = entity?.objectSelectors?.getIcon?.(model);
 
   return (
     <Link
