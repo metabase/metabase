@@ -98,7 +98,6 @@ describe("scenarios > browse data", () => {
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.findByRole("heading", { name: "Orders Model" }).should("not.exist");
     toggle().next("label").click();
-    cy.findByRole("heading", { name: "Orders Model" }).should("be.visible");
     toggle().should("have.attr", "aria-checked", "false");
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByLabelText("Move, archive, and more...").click();
