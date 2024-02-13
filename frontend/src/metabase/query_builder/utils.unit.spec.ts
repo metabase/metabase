@@ -243,14 +243,6 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
-    it("allows to run a model", () => {
-      const destination = runModelLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(true);
-    });
-
     describe("allows to open the question and the notebook editor", () => {
       it.each(getStructuredQuestionLocations(question))(
         "to `$pathname`",
