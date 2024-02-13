@@ -26,47 +26,6 @@ export { MetabaseLinksToggleWidget } from "./MetabaseLinksToggleWidget";`,
   const label = "some string"`,
   },
   {
-    // "Detect in literal strings",
-    code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
-
-  const label = "Metabase blabla"`,
-  },
-  {
-    // "Detect in literal strings",
-    code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
-
-  function MyComponent() {
-    return <AnotherComponent label="Hello Metabase" />;
-  }`,
-  },
-  {
-    // "Detect in template strings",
-    code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
-
-  const label = t\`Metabase blabla\``,
-  },
-  {
-    // "Detect in template strings",
-    code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
-
-  function MyComponent() {
-    return <AnotherComponent label={t\`Hello Metabase\`} />;
-  }`,
-  },
-  {
-    // "Detect in JSX tags",
-    code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
-
-  function MyComponent() {
-    return <div>Metabase store {"interpolation"} something else</div>;
-  }`,
-  },
-  {
     // "Detect disabled rule next line",
     code: `
   function MyComponent() {
@@ -92,6 +51,24 @@ const INVALID_CASES = [
     error: /Metabase string must not be used directly./,
   },
   {
+    name: "Detect in literal strings",
+    code: `
+  import { getApplicationName } from 'metabase/selectors/whitelabel';
+
+  const label = "Metabase blabla"`,
+    error: /Metabase string must not be used directly./,
+  },
+  {
+    name: "Detect in literal strings",
+    code: `
+  import { getApplicationName } from 'metabase/selectors/whitelabel';
+
+  function MyComponent() {
+    return <AnotherComponent label="Hello Metabase" />;
+  }`,
+    error: /Metabase string must not be used directly./,
+  },
+  {
     name: "Detect in template strings",
     code: `
   const label = t\`Metabase blabla\``,
@@ -106,8 +83,36 @@ const INVALID_CASES = [
     error: /Metabase string must not be used directly./,
   },
   {
+    name: "Detect in template strings",
+    code: `
+  import { getApplicationName } from 'metabase/selectors/whitelabel';
+
+  const label = t\`Metabase blabla\``,
+    error: /Metabase string must not be used directly./,
+  },
+  {
+    name: "Detect in template strings",
+    code: `
+  import { getApplicationName } from 'metabase/selectors/whitelabel';
+
+  function MyComponent() {
+    return <AnotherComponent label={t\`Hello Metabase\`} />;
+  }`,
+    error: /Metabase string must not be used directly./,
+  },
+  {
     name: "Detect in JSX tags",
     code: `
+  function MyComponent() {
+    return <div>Metabase store {"interpolation"} something else</div>;
+  }`,
+    error: /Metabase string must not be used directly./,
+  },
+  {
+    name: "Detect in JSX tags",
+    code: `
+  import { getApplicationName } from 'metabase/selectors/whitelabel';
+
   function MyComponent() {
     return <div>Metabase store {"interpolation"} something else</div>;
   }`,

@@ -4,10 +4,6 @@
  * ------------------------------------------------------------------------------
  */
 
-function getImportNodeLocation(node) {
-  return node.source.value;
-}
-
 const ADD_COMMENT_MESSAGE =
   'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins."';
 const ERROR_MESSAGE =
@@ -27,49 +23,7 @@ module.exports = {
   },
 
   create(context) {
-    let isGetApplicationNameImported = false;
-
-    /**
-     * @typedef DefaultImport
-     * @property {true} isDefault
-     * @property {string} source
-     *
-     * @typedef NamedImport
-     * @property {string} named
-     * @property {string} source
-     *
-     * @param {object} node
-     * @param {DefaultImport|NamedImport} parameter
-     */
-    function getImportedModuleNode(node, { isDefault, named, source }) {
-      if (getImportNodeLocation(node) === source) {
-        const variables = context.getDeclaredVariables(node);
-        if (isDefault) {
-          return variables.find(
-            variable => variable.defs[0].node.type === "ImportDefaultSpecifier",
-          );
-        }
-
-        // Named import
-        return variables.find(
-          variable =>
-            variable.defs[0].node.type === "ImportSpecifier" &&
-            variable.name === named,
-        );
-      }
-
-      return undefined;
-    }
-
     return {
-      ImportDeclaration(node) {
-        isGetApplicationNameImported = Boolean(
-          getImportedModuleNode(node, {
-            named: "getApplicationName",
-            source: "metabase/selectors/whitelabel",
-          }),
-        );
-      },
       Literal(node) {
         if (
           typeof node.value !== "string" ||
@@ -80,10 +34,7 @@ module.exports = {
           return;
         }
 
-        if (
-          LITERAL_METABASE_STRING_REGEX.exec(node.value) &&
-          !isGetApplicationNameImported
-        ) {
+        if (LITERAL_METABASE_STRING_REGEX.exec(node.value)) {
           context.report({
             node,
             message: ERROR_MESSAGE,
@@ -93,10 +44,7 @@ module.exports = {
       TemplateLiteral(node) {
         const quasis = node.quasis;
         quasis.forEach(quasi => {
-          if (
-            LITERAL_METABASE_STRING_REGEX.exec(quasi.value.raw) &&
-            !isGetApplicationNameImported
-          ) {
+          if (LITERAL_METABASE_STRING_REGEX.exec(quasi.value.raw)) {
             context.report({
               node,
               message: ERROR_MESSAGE,
@@ -105,10 +53,7 @@ module.exports = {
         });
       },
       JSXText(node) {
-        if (
-          LITERAL_METABASE_STRING_REGEX.exec(node.value) &&
-          !isGetApplicationNameImported
-        ) {
+        if (LITERAL_METABASE_STRING_REGEX.exec(node.value)) {
           context.report({
             node,
             message: ERROR_MESSAGE,
