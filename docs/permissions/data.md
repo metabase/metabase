@@ -61,7 +61,7 @@ Note that [Block](#block-access) access is unavailable for individual tables/sch
 
 {% include plans-blockquote.html feature="Impersonation access" %}
 
-> For now, impersonation access is only available for PostgreSQL, and Snowflake.
+> For now, impersonation access is only available for PostgreSQL, Redshift, and Snowflake.
 
 **Impersonation access** allows you to associate user attributes with database-defined roles and their privileges. Metabase queries made by people with attributes that you define will respect the grants given to the database roles.
 
