@@ -22,7 +22,7 @@ import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import type { SettingValue } from "metabase-types/api";
 import type { SettingElement } from "metabase/admin/settings/types";
-import { SettingsUserProvisionToggle } from "metabase-enterprise/auth/components/SettingsUserProvisionToggle";
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
@@ -114,11 +114,16 @@ export const SettingsLdapFormView = ({
               [t`LDAP`],
             ]}
           />
-          <SettingsUserProvisionToggle
-            field={fields["ldap-user-provisioning-enabled?"]}
-            mt="2.5rem"
-            mb="2.5rem"
-          />
+          <Stack spacing="0.75rem" m="2.5rem 0">
+            <SettingHeader
+              id="ldap-user-provisioning-enabled?"
+              setting={settings["ldap-user-provisioning-enabled?"]}
+            />
+            <FormSwitch
+              id="ldap-user-provisioning-enabled?"
+              name={fields["ldap-user-provisioning-enabled?"].name}
+            />
+          </Stack>
           <FormSection title={"Server Settings"}>
             <Stack spacing="md">
               <FormTextInput {...fields["ldap-host"]} />

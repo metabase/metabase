@@ -9,6 +9,7 @@ import {
   FormProvider,
   FormSecretKey,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -17,7 +18,7 @@ import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import type { SettingValue } from "metabase-types/api";
 import type { SettingElement } from "metabase/admin/settings/types";
-import { SettingsUserProvisionToggle } from "../SettingsUserProvisionToggle";
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 
 type SettingValues = { [key: string]: SettingValue };
 
@@ -86,10 +87,16 @@ export const SettingsJWTForm = ({
               [t`JWT`],
             ]}
           />
-          <SettingsUserProvisionToggle
-            field={fields["jwt-user-provisioning-enabled?"]}
-            m="2.5rem 0"
-          />
+          <Stack spacing="0.75rem" m="2.5rem 0">
+            <SettingHeader
+              id="jwt-user-provisioning-enabled?"
+              setting={settings["jwt-user-provisioning-enabled?"]}
+            />
+            <FormSwitch
+              id="jwt-user-provisioning-enabled?"
+              name={fields["jwt-user-provisioning-enabled?"].name}
+            />
+          </Stack>
           <FormSection title={"Server Settings"}>
             <Stack spacing="md">
               <FormTextInput {...fields["jwt-identity-provider-uri"]} />
@@ -123,7 +130,6 @@ export const SettingsJWTForm = ({
               groupPlaceholder={t`Group Name`}
             />
           </FormSection>
-
           <Flex direction={"column"} align={"start"} gap={"1rem"}>
             <FormErrorMessage />
             <FormSubmitButton

@@ -11,6 +11,7 @@ import {
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
+  FormSwitch,
   FormTextarea,
   FormTextInput,
 } from "metabase/forms";
@@ -19,12 +20,12 @@ import MetabaseSettings from "metabase/lib/settings";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateSamlSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import {
   SAMLFormCaption,
   SAMLFormFooter,
   SAMLFormSection,
 } from "./SettingsSAMLForm.styled";
-import { SettingsUserProvisionToggle } from "../SettingsUserProvisionToggle";
 
 const propTypes = {
   elements: PropTypes.array,
@@ -87,10 +88,16 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               >{t`documentation`}</ExternalLink>
             )}.`}
           </SAMLFormCaption>
-          <SettingsUserProvisionToggle
-            field={fields["saml-user-provisioning-enabled?"]}
-            mb="2.5rem"
-          />
+          <Stack spacing="0.75rem" m="2.5rem 0">
+            <SettingHeader
+              id="saml-user-provisioning-enabled?"
+              setting={settings["saml-user-provisioning-enabled?"]}
+            />
+            <FormSwitch
+              id="saml-user-provisioning-enabled?"
+              name={fields["saml-user-provisioning-enabled?"].name}
+            />
+          </Stack>
           <SAMLFormSection>
             <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
             {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
