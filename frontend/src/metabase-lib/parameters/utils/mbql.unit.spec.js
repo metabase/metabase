@@ -1,22 +1,16 @@
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
-import { createMockMetadata } from "__support__/metadata";
-import {
-  createSampleDatabase,
-  PRODUCTS,
-} from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
+import { PRODUCTS, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
-  fieldFilterParameterToMBQLFilter,
+  fieldFilterParameterToFilter,
 } from "metabase-lib/parameters/utils/mbql";
+import { createQuery } from "metabase-lib/test-helpers";
 
 describe("parameters/utils/mbql", () => {
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-  });
-
   describe("dateParameterValueToMBQL", () => {
     const date = () =>
       moment().utc().hours(0).minutes(0).seconds(0).milliseconds(0);
@@ -245,10 +239,13 @@ describe("parameters/utils/mbql", () => {
     });
   });
 
-  describe("fieldFilterParameterToMBQLFilter", () => {
+  describe("fieldFilterParameterToFilter", () => {
+    const query = Lib.withDifferentTable(createQuery(), PRODUCTS_ID);
+    const stageIndex = -1;
+
     it("should return null for parameter targets that are not field dimension targets", () => {
       expect(
-        fieldFilterParameterToMBQLFilter({
+        fieldFilterParameterToFilter(query, stageIndex, {
           target: null,
           type: "category",
           value: ["foo"],
@@ -256,7 +253,7 @@ describe("parameters/utils/mbql", () => {
       ).toBe(null);
 
       expect(
-        fieldFilterParameterToMBQLFilter({
+        fieldFilterParameterToFilter(query, stageIndex, {
           target: [],
           type: "category",
           value: ["foo"],
@@ -264,7 +261,7 @@ describe("parameters/utils/mbql", () => {
       ).toBe(null);
 
       expect(
-        fieldFilterParameterToMBQLFilter({
+        fieldFilterParameterToFilter(query, stageIndex, {
           target: ["dimension"],
           type: "category",
           value: ["foo"],
@@ -272,7 +269,7 @@ describe("parameters/utils/mbql", () => {
       ).toBe(null);
 
       expect(
-        fieldFilterParameterToMBQLFilter({
+        fieldFilterParameterToFilter(query, stageIndex, {
           target: ["dimension", ["template-tag", "foo"]],
           type: "category",
           value: ["foo"],
@@ -281,100 +278,74 @@ describe("parameters/utils/mbql", () => {
     });
 
     it("should return mbql filter for date parameter", () => {
-      expect(
-        fieldFilterParameterToMBQLFilter(
-          {
-            target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
-            type: "date/single",
-            value: "01-01-2020",
-          },
-          metadata,
-        ),
-      ).toEqual(["=", ["field", PRODUCTS.CREATED_AT, null], "01-01-2020"]);
+      const filter = fieldFilterParameterToFilter(query, stageIndex, {
+        target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
+        type: "date/single",
+        value: "01-01-2020",
+      });
+      expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+        displayName: "Created At is on 01-01-2020",
+      });
     });
 
     it("should return mbql filter for string parameter", () => {
-      expect(
-        fieldFilterParameterToMBQLFilter(
-          {
-            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-            type: "string/contains",
-            value: "foo",
-          },
-          metadata,
-        ),
-      ).toEqual([
-        "contains",
-        ["field", PRODUCTS.CATEGORY, null],
-        "foo",
-        {
-          "case-sensitive": false,
-        },
-      ]);
+      const containsFilter = fieldFilterParameterToFilter(query, stageIndex, {
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+        type: "string/contains",
+        value: "foo",
+      });
+      expect(Lib.displayInfo(query, stageIndex, containsFilter)).toMatchObject({
+        displayName: "Category contains foo",
+      });
 
-      expect(
-        fieldFilterParameterToMBQLFilter(
-          {
-            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-            type: "string/starts-with",
-            value: ["foo"],
-          },
-          metadata,
-        ),
-      ).toEqual([
-        "starts-with",
-        ["field", PRODUCTS.CATEGORY, null],
-        "foo",
-        { "case-sensitive": false },
-      ]);
+      const startsFilter = fieldFilterParameterToFilter(query, stageIndex, {
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+        type: "string/starts-with",
+        value: ["foo"],
+      });
+      expect(Lib.displayInfo(query, stageIndex, startsFilter)).toMatchObject({
+        displayName: "Category starts with foo",
+      });
     });
 
     it("should return mbql filter for category parameter", () => {
-      expect(
-        fieldFilterParameterToMBQLFilter(
-          {
-            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-            type: "category",
-            value: ["foo", "bar"],
-          },
-          metadata,
-        ),
-      ).toEqual(["=", ["field", PRODUCTS.CATEGORY, null], "foo", "bar"]);
+      const filter = fieldFilterParameterToFilter(query, stageIndex, {
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+        type: "category",
+        value: ["foo", "bar"],
+      });
+      expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+        displayName: "Category is 2 selections",
+      });
     });
 
     it("should return mbql filter for number parameter", () => {
-      expect(
-        fieldFilterParameterToMBQLFilter(
-          {
-            target: ["dimension", ["field", PRODUCTS.RATING, null]],
-            type: "number/=",
-            value: [111],
-          },
-          metadata,
-        ),
-      ).toEqual(["=", ["field", PRODUCTS.RATING, null], 111]);
+      const valueFilter = fieldFilterParameterToFilter(query, stageIndex, {
+        target: ["dimension", ["field", PRODUCTS.RATING, null]],
+        type: "number/=",
+        value: 111,
+      });
+      expect(Lib.displayInfo(query, stageIndex, valueFilter)).toMatchObject({
+        displayName: "Rating is equal to 111",
+      });
 
-      expect(
-        fieldFilterParameterToMBQLFilter(
-          {
-            target: ["dimension", ["field", PRODUCTS.RATING, null]],
-            type: "number/=",
-            value: 111,
-          },
-          metadata,
-        ),
-      ).toEqual(["=", ["field", PRODUCTS.RATING, null], 111]);
+      const arrayFilter = fieldFilterParameterToFilter(query, stageIndex, {
+        target: ["dimension", ["field", PRODUCTS.RATING, null]],
+        type: "number/=",
+        value: [111],
+      });
+      expect(Lib.displayInfo(query, stageIndex, arrayFilter)).toMatchObject({
+        displayName: "Rating is equal to 111",
+      });
 
-      expect(
-        fieldFilterParameterToMBQLFilter(
-          {
-            target: ["dimension", ["field", PRODUCTS.RATING, null]],
-            type: "number/between",
-            value: [1, 100],
-          },
-          metadata,
-        ),
-      ).toEqual(["between", ["field", PRODUCTS.RATING, null], 1, 100]);
+      const betweenFilter = fieldFilterParameterToFilter(query, stageIndex, {
+        target: ["dimension", ["field", PRODUCTS.RATING, null]],
+        type: "number/between",
+        value: [1, 100],
+      });
+      expect(Lib.displayInfo(query, stageIndex, betweenFilter)).toMatchObject({
+        displayName: "Rating is between 1 and 100",
+      });
     });
   });
 });

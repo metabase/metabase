@@ -2,8 +2,11 @@
   "Shared util fns for various export (download) streaming formats."
   (:require
    [java-time.api :as t]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.shared.util.currency :as currency]
    [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang ISeq)
@@ -61,3 +64,51 @@
   ZonedDateTime
   (format-value [t]
     (format-value (t/offset-date-time t))))
+
+(defn merge-global-settings
+  "Merge format settings defined in the localization preferences into the format settings
+  for a single column."
+  [format-settings global-settings-key]
+  (let [global-settings (global-settings-key (public-settings/custom-formatting))
+        normalized      (mb.viz/db->norm-column-settings-entries global-settings)]
+    (merge normalized format-settings)))
+
+(defn currency-identifier
+  "Given the format settings for a currency column, returns the symbol, code or name for the
+  appropriate currency."
+  [format-settings]
+  (let [currency-code (::mb.viz/currency format-settings "USD")]
+    (condp = (::mb.viz/currency-style format-settings "symbol")
+      "symbol"
+      (if (currency/supports-symbol? currency-code)
+        (get-in currency/currency [(keyword currency-code) :symbol])
+        ;; Fall back to using code if symbol isn't supported on the Metabase frontend
+        currency-code)
+
+      "code"
+      currency-code
+
+      "name"
+      (get-in currency/currency [(keyword currency-code) :name_plural]))))
+
+(defn column-titles
+  "Generates the column titles that should be used in the export, taking into account viz settings."
+  [ordered-cols col-settings]
+  (for [col ordered-cols]
+    (let [id-or-name      (or (and (:remapped_from col) (:fk_field_id col))
+                              (:id col)
+                              (:name col))
+          col-settings'   (update-keys col-settings #(select-keys % [::mb.viz/field-id ::mb.viz/column-name]))
+          format-settings (or (get col-settings' {::mb.viz/field-id id-or-name})
+                              (get col-settings' {::mb.viz/column-name id-or-name}))
+          is-currency?    (or (isa? (:semantic_type col) :type/Currency)
+                              (= (::mb.viz/number-style format-settings) "currency"))
+          merged-settings (if is-currency?
+                            (merge-global-settings format-settings :type/Currency)
+                            format-settings)
+          column-title    (or (::mb.viz/column-title merged-settings)
+                              (:display_name col)
+                              (:name col))]
+      (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))
+        (str column-title " (" (currency-identifier merged-settings) ")")
+        column-title))))

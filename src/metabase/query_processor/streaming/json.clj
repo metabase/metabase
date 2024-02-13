@@ -2,12 +2,13 @@
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
   (:require
-    [cheshire.core :as json]
-    [java-time.api :as t]
-    [metabase.formatter :as formatter]
-    [metabase.query-processor.streaming.common :as common]
-    [metabase.query-processor.streaming.interface :as qp.si]
-    [metabase.util.date-2 :as u.date])
+   [cheshire.core :as json]
+   [java-time.api :as t]
+   [metabase.formatter :as formatter]
+   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.util.date-2 :as u.date])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -33,7 +34,7 @@
       (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
         ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
         ;; probably going to be parsed programmatically
-        (vreset! col-names (mapv (some-fn :display_name :name) ordered-cols))
+        (vreset! col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings)))
         (vreset! ordered-formatters (mapv (fn [col]
                                             (formatter/create-formatter results_timezone col viz-settings))
                                           ordered-cols))

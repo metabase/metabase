@@ -33,6 +33,15 @@ databaseChangeLog:
       name: databasechangelog.name
       value: databasechangelog
       dbms: postgresql
+  # in MySQL, use bit(1) for booleans instead of tinyint
+  - property:
+      name: boolean.type
+      value: boolean
+      dbms: postgresql,h2
+  - property:
+      name: boolean.type
+      value: bit(1)
+      dbms: mysql,mariadb
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
@@ -4380,6 +4389,760 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   remarks: 'If true, the table requires a filter to be able to query it'
+
+  - changeSet:
+      id: v49.00-012
+      author: qnkhuat
+      comment: Add metabase_field.database_partitioned
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_partitioned
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'Whether the table is partitioned by this field'
+
+  - changeSet:
+      id: v49.00-013
+      author: johnswanson
+      comment: Add `api_key.updated_by_id`
+      rollback: # will be removed with the table
+      changes:
+        - addColumn:
+            tableName: api_key
+            columns:
+              - column:
+                  remarks: The ID of the user that last updated this API key
+                  name: updated_by_id
+                  type: integer
+                  constraints:
+                    # no default and nullable: false for a new column? yikes! But this should probably be ok, because
+                    # we don't yet have any UI for creating a new API key.
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_api_key_updated_by_id_user_id
+
+  - changeSet:
+      id: v49.00-014
+      author: johnswanson
+      comment: Add an index on `api_key.updated_by_id`
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: api_key
+            indexName: idx_api_key_updated_by_id
+            columns:
+              column:
+                name: updated_by_id
+
+  - changeSet:
+      id: v49.00-015
+      author: johnswanson
+      comment: Rename `created_by` to `creator_id`
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - renameColumn:
+            tableName: api_key
+            columnDataType: integer
+            oldColumnName: created_by
+            newColumnName: creator_id
+
+  - changeSet:
+      id: v49.00-016
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of action.archived from boolean to
+        ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: action
+            columnName: archived
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: action
+            columnName: archived
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-017
+      author: noahmoss
+      comment: Add NOT NULL constraint to action.archived
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: action
+            columnName: archived
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-018
+      author: noahmoss
+      comment: Add default value to action.archived
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: action
+            columnName: archived
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-019
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.json_unfolding from
+        boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: json_unfolding
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: json_unfolding
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-020
+      author: noahmoss
+      comment: Add NOT NULL constraint to metabase_field.json_unfolding
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: metabase_field
+            columnName: json_unfolding
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-021
+      author: noahmoss
+      comment: Add default value to metabase_field.json_unfolding
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: metabase_field
+            columnName: json_unfolding
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-022
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.database_is_auto_increment
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_is_auto_increment
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_is_auto_increment
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-023
+      author: noahmoss
+      comment: Add NOT NULL constraint to metabase_field.database_is_auto_increment
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: metabase_field
+            columnName: database_is_auto_increment
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-024
+      author: noahmoss
+      comment: Add default value to metabase_field.database_is_auto_increment
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: metabase_field
+            columnName: database_is_auto_increment
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-025
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of report_dashboard.auto_apply_filters
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: auto_apply_filters
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: auto_apply_filters
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-026
+      author: noahmoss
+      comment: Add NOT NULL constraint to report_dashboard.auto_apply_filters
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: report_dashboard
+            columnName: auto_apply_filters
+            defaultNullValue: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-027
+      author: noahmoss
+      comment: Add default value to report_dashboard.auto_apply_filters
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: true
+            tableName: report_dashboard
+            columnName: auto_apply_filters
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-028
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_database.is_audit
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: is_audit
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: is_audit
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-029
+      author: noahmoss
+      comment: Add NOT NULL constraint to metabase_database.is_audit
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: metabase_database
+            columnName: is_audit
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-030
+      author: noahmoss
+      comment: Add default value to metabase_database.is_audit
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: metabase_database
+            columnName: is_audit
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-031
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_table.is_upload
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: is_upload
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: is_upload
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-032
+      author: noahmoss
+      comment: Add NOT NULL constraint to metabase_table.is_upload
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: metabase_table
+            columnName: is_upload
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-033
+      author: noahmoss
+      comment: Add default value to metabase_table.is_upload
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: metabase_table
+            columnName: is_upload
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-034
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of revision.most_recent
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: most_recent
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: revision
+            columnName: most_recent
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-035
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of revision.most_recent
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: most_recent
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: revision
+            columnName: most_recent
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-036
+      author: noahmoss
+      comment: Add NOT NULL constraint to revision.most_recent
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: revision
+            columnName: most_recent
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-037
+      author: noahmoss
+      comment: Add default value to revision.most_recent
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: revision
+            columnName: most_recent
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-038
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of table_privileges.select
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: select
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: select
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-039
+      author: noahmoss
+      comment: Add NOT NULL constraint to table_privileges.select
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: table_privileges
+            columnName: select
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-040
+      author: noahmoss
+      comment: Add default value to table_privileges.select
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: table_privileges
+            columnName: select
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-041
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of table_privileges.update
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: update
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: update
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-042
+      author: noahmoss
+      comment: Add NOT NULL constraint to table_privileges.update
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: table_privileges
+            columnName: update
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-043
+      author: noahmoss
+      comment: Add default value to table_privileges.update
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: table_privileges
+            columnName: update
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-044
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of table_privileges.insert
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: insert
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: insert
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-045
+      author: noahmoss
+      comment: Add NOT NULL constraint to table_privileges.insert
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: table_privileges
+            columnName: insert
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-046
+      author: noahmoss
+      comment: Add default value to table_privileges.insert
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: table_privileges
+            columnName: insert
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-047
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of table_privileges.delete
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: delete
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: delete
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-048
+      author: noahmoss
+      comment: Add NOT NULL constraint to table_privileges.delete
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: table_privileges
+            columnName: delete
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-049
+      author: noahmoss
+      comment: Add default value to table_privileges.delete
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: table_privileges
+            columnName: delete
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-050
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of query_execution.is_sandboxed
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: is_sandboxed
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: is_sandboxed
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-051
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of view_log.has_access
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: view_log
+            columnName: has_access
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: view_log
+            columnName: has_access
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-052
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.database_indexed
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_indexed
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_indexed
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-053
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_table.database_require_filter
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: database_require_filter
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: database_require_filter
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-060
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.database_partitioned
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_partitioned
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_partitioned
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

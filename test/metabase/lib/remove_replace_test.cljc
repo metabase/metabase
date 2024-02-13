@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]))
@@ -1044,3 +1045,216 @@
                 (lib/replace-clause (first (lib/expressions query))
                                     (lib/with-expression-name 2 "evaluated expr"))
                 lib/expressions)))))
+
+(deftest ^:parallel normalize-fields-clauses-test
+  (testing "queries with no :fields clauses should not be changed"
+    (are [query] (= query (lib.remove-replace/normalize-fields-clauses query))
+      lib.tu/query-with-join
+      lib.tu/query-with-self-join
+      lib.tu/venues-query))
+  (testing "a :fields clause with extras is retained"
+    (let [base     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          viz      (lib/visible-columns base)
+          category (m/find-first #(= (:name %) "CATEGORY") viz)
+          query    (lib/add-field base 0 category)]
+      (is (= base  (lib.remove-replace/normalize-fields-clauses base)))
+      (is (= query (lib.remove-replace/normalize-fields-clauses query)))))
+  (testing "a :fields clause with a default field removed is retained"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/remove-field 0 (assoc (meta/field-metadata :orders :tax)
+                                               :lib/source :source/table-defaults)))]
+      (is (= 8 (-> query :stages first :fields count)))
+      (is (= query (lib.remove-replace/normalize-fields-clauses query)))))
+  (testing "if :fields clause matches the defaults it is dropped"
+    (testing "removing then restoring a field"
+      (let [tax     (assoc (meta/field-metadata :orders :tax)
+                           :lib/source :source/table-defaults)
+            tax-ref (lib/ref tax)
+            query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/remove-field 0 tax)
+                        ;; Can't use lib/add-field here because it will normalize the :fields clause.
+                        (update-in [:stages 0 :fields] conj tax-ref))]
+        (is (= 9 (-> query :stages first :fields count)))
+        (is (nil? (-> query
+                      lib.remove-replace/normalize-fields-clauses
+                      :stages
+                      first
+                      :fields)))))
+    (testing "adding and dropping and implicit join field"
+      (let [category (assoc (meta/field-metadata :products :category)
+                            :lib/source :source/implicitly-joinable)
+            query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/add-field 0 category)
+                         ;; Can't use remove-field itself; it will normalize the fields clause.
+                         (update-in [:stages 0 :fields] #(remove (comp #{(meta/id :products :category)} last) %)))]
+        (is (= 9 (-> query :stages first :fields count)))
+        (is (nil? (-> query
+                      lib.remove-replace/normalize-fields-clauses
+                      :stages
+                      first
+                      :fields))))))
+  (testing ":fields clauses on joins"
+    (testing "are preserved if :none or :all"
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                 [(lib/= (meta/field-metadata :orders :product-id)
+                                                         (meta/field-metadata :products :id))])))
+            none  (assoc-in query [:stages 0 :joins 0 :fields] :none)]
+        (is (= :all (-> query :stages first :joins first :fields)))
+        (is (= query (lib.remove-replace/normalize-fields-clauses query)))
+        (is (= none  (lib.remove-replace/normalize-fields-clauses none)))))
+    (testing "are preserved if they do not match the defaults"
+      (let [join   (-> (lib/join-clause (meta/table-metadata :products)
+                                        [(lib/= (meta/field-metadata :orders :product-id)
+                                                (meta/field-metadata :products :id))])
+                       (lib/with-join-fields (for [field (take 4 (meta/fields :products))]
+                                               (meta/field-metadata :products field))))
+            query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join join))]
+        (is (= 4 (-> query :stages first :joins first :fields count)))
+        (is (= query (lib.remove-replace/normalize-fields-clauses query)))))
+    (testing "are replaced with :all if they include all the defaults"
+      (let [join   (-> (lib/join-clause (meta/table-metadata :products)
+                                        [(lib/= (meta/field-metadata :orders :product-id)
+                                                (meta/field-metadata :products :id))])
+                       (lib/with-join-fields (for [field (meta/fields :products)]
+                                               (meta/field-metadata :products field))))
+            query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join join))]
+        (is (= 8 (-> query :stages first :joins first :fields count)))
+        (is (= (assoc-in query [:stages 0 :joins 0 :fields] :all)
+               (lib.remove-replace/normalize-fields-clauses query)))))))
+
+(defn- by-name
+  [columns col-name]
+  (m/find-first #(= (:name %) col-name) columns))
+
+(def ^:private multi-stage-query-with-expressions
+  (-> lib.tu/venues-query
+      (lib/expression "double price" (lib/* (meta/field-metadata :venues :price) 2))
+      (lib/expression "name length" (lib/length (meta/field-metadata :venues :name)))
+      (as-> q
+          (lib/filter q (lib/< (lib/expression-ref q "double price") 5))
+          (lib/filter q (lib/> (lib/expression-ref q "name length") 9))
+          (lib/breakout q (lib/expression-ref q "name length"))
+          (lib/aggregate q (lib/sum (lib/expression-ref q "double price"))))
+      lib/append-stage
+      (as-> q
+          (lib/filter q (lib/> (by-name (lib/filterable-columns q) "sum") 20))
+          (lib/order-by q (by-name (lib/orderable-columns q) "sum") :desc)
+          (lib/order-by q (by-name (lib/orderable-columns q) "name length")))
+      lib/append-stage
+      (as-> q
+          (lib/breakout q (by-name (lib/breakoutable-columns q) "name length")))
+      lib/append-stage
+      lib/append-stage
+      (as-> q
+            (lib/filter q (lib/< (by-name (lib/filterable-columns q) "name length") 23)))))
+
+(deftest ^:parallel rename-expression-test
+  (let [q multi-stage-query-with-expressions
+        replaced (lib/replace-clause  q 0
+                                      (first (lib/expressions q 0))
+                                      (lib/with-expression-name
+                                        (lib/+ (meta/field-metadata :venues :price) 2)
+                                        "increased price"))]
+    (is (=? {:stages [{:source-table (meta/id :venues)
+                       :expressions [[:+ {:lib/expression-name "increased price"}
+                                      [:field {:base-type :type/Integer} (meta/id :venues :price)] 2]
+                                     [:length {:lib/expression-name "name length"}
+                                      [:field {:base-type :type/Text} (meta/id :venues :name)]]]
+                       :breakout [[:expression {:effective-type :type/Integer} "name length"]]
+                       :aggregation [[:sum {} [:expression {:effective-type :type/Integer} "increased price"]]]
+                       :filters [[:< {} [:expression {:effective-type :type/Integer} "increased price"] 5]
+                                 [:> {} [:expression {:effective-type :type/Integer} "name length"] 9]]}
+                      {:lib/type :mbql.stage/mbql
+                       :filters [[:> {} [:field {:base-type :type/Integer} "sum"] 20]]
+                       :order-by [[:desc {} [:field {:base-type :type/Integer} "sum"]]
+                                  [:asc {} [:field {:base-type :type/Integer} "name length"]]]}
+                      {:lib/type :mbql.stage/mbql
+                       :breakout [[:field {:effective-type :type/Integer} "name length"]]}
+                      {:lib/type :mbql.stage/mbql}
+                      {:lib/type :mbql.stage/mbql
+                       :filters [[:< {} [:field {:effective-type :type/Integer} "name length"] 23]]}]}
+            replaced))))
+
+(deftest ^:parallel rename-expression-propagation-test
+  (let [q multi-stage-query-with-expressions
+        replaced (lib/replace-clause q 0
+                                     (second (lib/expressions q 0))
+                                     (lib/with-expression-name
+                                       (lib/* (lib/length (meta/field-metadata :venues :name)) 2)
+                                       "double name len"))]
+    (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+                       :expressions [[:* {:lib/expression-name "double price"}
+                                      [:field {:effective-type :type/Integer} (meta/id :venues :price)] 2]
+                                     [:* {:lib/expression-name "double name len"}
+                                      [:length {} [:field {:effective-type :type/Text} (meta/id :venues :name)]] 2]]
+                       :filters [[:< {} [:expression {:effective-type :type/Integer} "double price"] 5]
+                                 [:> {} [:expression {:effective-type :type/Integer} "double name len"] 9]]
+                       :breakout [[:expression {:effective-type :type/Integer} "double name len"]]
+                       :aggregation [[:sum {} [:expression {:effective-type :type/Integer} "double price"]]]}
+                      {:lib/type :mbql.stage/mbql,
+                       :filters [[:> {} [:field {:effective-type :type/Integer} "sum"] 20]]
+                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "sum"]]
+                                  [:asc {} [:field {:effective-type :type/Integer} "double name len"]]]}
+                      {:lib/type :mbql.stage/mbql
+                       :breakout [[:field {:effective-type :type/Integer} "double name len"]]}
+                      {:lib/type :mbql.stage/mbql}
+                      {:lib/type :mbql.stage/mbql
+                       :filters [[:< {} [:field {:effective-type :type/Integer} "double name len"] 23]]}]}
+            replaced))))
+
+(deftest ^:parallel replace-breakout-propagation-test
+  (let [q multi-stage-query-with-expressions
+        replaced (lib/replace-clause q 0
+                                     (first (lib/breakouts q 0))
+                                     (lib/ref (meta/field-metadata :venues :id)))]
+    (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+                       :expressions [[:* {:lib/expression-name "double price"}
+                                      [:field {:effective-type :type/Integer} (meta/id :venues :price)] 2]
+                                     [:length {:lib/expression-name "name length"}
+                                      [:field {:base-type :type/Text} (meta/id :venues :name)]]]
+                       :filters [[:< {} [:expression {:effective-type :type/Integer} "double price"] 5]
+                                 [:> {} [:expression {:effective-type :type/Integer} "name length"] 9]]
+                       :breakout [[:field {:effective-type :type/BigInteger} (meta/id :venues :id)]]
+                       :aggregation [[:sum {} [:expression {:effective-type :type/Integer} "double price"]]]}
+                      {:lib/type :mbql.stage/mbql,
+                       :filters [[:> {} [:field {:effective-type :type/Integer} "sum"] 20]]
+                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "sum"]]
+                                  [:asc {} [:field {:effective-type :type/BigInteger} "ID"]]]}
+                      {:lib/type :mbql.stage/mbql
+                       :breakout [[:field {:effective-type :type/BigInteger} "ID"]]}
+                      {:lib/type :mbql.stage/mbql}
+                      {:lib/type :mbql.stage/mbql
+                       :filters [[:< {} [:field {:effective-type :type/BigInteger} "ID"] 23]]}]}
+            replaced))))
+
+(deftest ^:parallel replace-aggregation-propagation-test
+  (let [q multi-stage-query-with-expressions
+        replaced (lib/replace-clause q 0
+                                     (first (lib/aggregations q 0))
+                                     (lib/with-expression-name
+                                       (lib/min (lib/length (meta/field-metadata :venues :name)))
+                                       "min name len"))]
+    (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+                       :expressions [[:* {:lib/expression-name "double price"}
+                                      [:field {:effective-type :type/Integer} (meta/id :venues :price)] 2]
+                                     [:length {:lib/expression-name "name length"}
+                                      [:field {:base-type :type/Text} (meta/id :venues :name)]]]
+                       :filters [[:< {} [:expression {:effective-type :type/Integer} "double price"] 5]
+                                 [:> {} [:expression {:effective-type :type/Integer} "name length"] 9]]
+                       :breakout [[:expression {:effective-type :type/Integer} "name length"]]
+                       :aggregation [[:min {:name "min name len", :display-name "min name len",
+                                            :effective-type :type/Integer}
+                                      [:length {} [:field {:effective-type :type/Text} (meta/id :venues :name)]]]]}
+                      {:lib/type :mbql.stage/mbql,
+                       :filters [[:> {} [:field {:effective-type :type/Integer} "min name len"] 20]]
+                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "min name len"]]
+                                  [:asc {} [:field {:base-type :type/Integer} "name length"]]]}
+                      {:lib/type :mbql.stage/mbql
+                       :breakout [[:field {:base-type :type/Integer} "name length"]]}
+                      {:lib/type :mbql.stage/mbql}
+                      {:lib/type :mbql.stage/mbql
+                       :filters [[:< {} [:field {:base-type :type/Integer} "name length"] 23]]}]}
+            replaced))))

@@ -29,7 +29,7 @@ You can also upload data to the Sample Database included with Metabase (an H2 da
 For more, check out:
 
 - [Adding and managing databases](./connecting.md)
-- [Database users, roles, and privileges](./users-roles-privileges.md)
+- [Database users, roles, and privileges](./users-roles-privileges.md#privileges-to-enable-uploads)
 
 ### Select the database and schema that you want to store the data in
 
@@ -87,7 +87,7 @@ Represents the year, month, day, hour. Minutes, seconds, and fractional seconds 
 
 **Format**: `yyyy-MM-ddTHH:mm:ss.SSS`. The "T" separator could also be a space (" ").
 
-**Examples**: 
+**Examples**:
 
 - `2023-01-01 00`
 - `2023-01-01 00:00:00.000`
@@ -98,12 +98,12 @@ Represents the year, month, day, hour. Minutes, seconds, and fractional seconds 
 
 Represents the datetime with an offset from Coordinated Universal Time (UTC). Minutes and seconds in the offset are optional.
 
-**Formats**: 
+**Formats**:
 
 Datetime formats:
 
-- `yyyy-MM-ddTHH:mm`. 
-- `yyyy-MM-ddTHH:mm:ss`. 
+- `yyyy-MM-ddTHH:mm`.
+- `yyyy-MM-ddTHH:mm:ss`.
 - `yyyy-MM-ddTHH:mm:ss.SSS` (and any number of S's).
 
 The "T" separator could also be a space (" ").
@@ -111,9 +111,9 @@ The "T" separator could also be a space (" ").
 Offsets:
 
 - `Z` (for UTC)
-- `+HH` or `-HH` 
-- `+HH:mm` or `-HH:mm` 
-- `+HH:mm:ss` or `-HH:mm:ss` 
+- `+HH` or `-HH`
+- `+HH:mm` or `-HH:mm`
+- `+HH:mm:ss` or `-HH:mm:ss`
 
 **Examples**:
 

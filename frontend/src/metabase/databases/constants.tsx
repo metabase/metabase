@@ -64,7 +64,7 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "include-user-id-and-hash": {
     title: t`Include User ID and query hash in queries`,
-    description: t`This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.`,
+    description: t`This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs.`,
   },
   "use-srv": {
     title: t`Connect using DNS SRV`,

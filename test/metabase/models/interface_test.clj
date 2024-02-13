@@ -8,9 +8,13 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
+   [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import (com.fasterxml.jackson.core JsonParseException)))
 
 ;; let's make sure the `transform-metabase-query`/`transform-metric-segment-definition`/`transform-parameters-list`
 ;; normalization functions respond gracefully to invalid stuff when pulling them out of the Database. See #8914
@@ -130,3 +134,28 @@
                (migrate {:pie.show_legend          legend
                          :pie.show_legend_perecent percent
                          :pie.show_data_labels     labels})))))))
+
+(deftest encrypted-data-with-no-secret-test
+  (encryption-test/with-secret-key nil
+    (testing "Just parses string normally when there is no key and the string is JSON"
+      (is (= {:a 1}
+             (mi/encrypted-json-out "{\"a\": 1}"))))
+    (testing "Also parses string if it's encrypted and JSON"
+      (is (= {:a 1}
+             (encryption-test/with-secret-key "qwe"
+               (mi/encrypted-json-out
+                (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+    (testing "Logs an error message when incoming data looks encrypted"
+      (is (=? [[:error JsonParseException "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"]]
+              (tu.log/with-log-messages-for-level :error
+                (mi/encrypted-json-out
+                 (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+    (testing "Invalid JSON throws correct error"
+      (is (=? [[:error JsonParseException "Error parsing JSON"]]
+              (tu.log/with-log-messages-for-level :error
+                (mi/encrypted-json-out "{\"a\": 1"))))
+      (is (=? [[:error JsonParseException "Error parsing JSON"]]
+              (tu.log/with-log-messages-for-level :error
+                (encryption-test/with-secret-key "qwe"
+                  (mi/encrypted-json-out
+                   (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))))))))

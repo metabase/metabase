@@ -31,7 +31,11 @@ const cleanup = async (exitCode = 0) => {
     await CypressBackend.stop(server);
   }
 
-  process.exit(exitCode);
+  // We might get a signal code instead, which is a string
+  // and doesn't require process.exit call
+  if (typeof exitCode === "number") {
+    process.exit(exitCode);
+  }
 };
 
 const launch = () =>

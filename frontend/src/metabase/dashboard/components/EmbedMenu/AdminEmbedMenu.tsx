@@ -30,7 +30,9 @@ export const AdminEmbedMenu = ({
     getSetting(state, "enable-embedding"),
   );
 
-  const target = <DashboardEmbedHeaderButton />;
+  const target = (
+    <DashboardEmbedHeaderButton hasBackground={resourceType === "dashboard"} />
+  );
 
   if (menuMode === "public-link-popover") {
     return resourceType === "dashboard" ? (

@@ -13,6 +13,7 @@ export const LegendLabel = styled.div`
   font-weight: bold;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;
+  margin-top: 2px;
 
   &:hover {
     color: ${({ onClick }) => (onClick ? color("brand") : "")};

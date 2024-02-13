@@ -417,7 +417,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         );
 
         modal().within(() => {
-          cy.findByText("Change access to this database to limited?");
+          cy.findByText("Change access to this database to granular?");
           cy.button("Change").click();
         });
 
@@ -531,7 +531,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         );
 
         modal().within(() => {
-          cy.findByText("Change access to this database to limited?");
+          cy.findByText("Change access to this database to granular?");
           cy.button("Change").click();
         });
 
@@ -616,7 +616,7 @@ describeEE("scenarios > admin > permissions", () => {
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
     modal().within(() => {
-      cy.findByText("Change access to this database to limited?");
+      cy.findByText("Change access to this database to granular?");
       cy.button("Change").click();
     });
 

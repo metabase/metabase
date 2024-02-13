@@ -17,6 +17,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -235,9 +236,9 @@
           "`describe-database` should see the view")
       (is (= {:schema test-db-name
               :name   view-name
-              :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
-                        {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
-                        {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
+              :fields #{{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
+                        {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false}
+                        {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false}}}
              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema test-db-name}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
@@ -259,34 +260,87 @@
                                                "partition_by_ingestion_time"     true
                                                "partition_by_range_not_required" false
                                                "not_partitioned"                 false}]
-         (try
-          (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
+          (try
+           (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
                                 PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
                                 OPTIONS (require_partition_filter = TRUE);"
-                               (fmt-table-name "partition_by_range"))
-                       (format "CREATE TABLE %s (transaction_id INT64, transaction_time TIMESTAMP)
+                                (fmt-table-name "partition_by_range"))
+                        (format "CREATE TABLE %s (transaction_id INT64, transaction_time TIMESTAMP)
                                 PARTITION BY DATE(transaction_time)
                                 OPTIONS (require_partition_filter = TRUE);"
-                               (fmt-table-name "partition_by_time"))
-                       (format "CREATE TABLE %s (transaction_id INT64)
+                                (fmt-table-name "partition_by_time"))
+                        (format "CREATE TABLE %s (transaction_id INT64)
                                 PARTITION BY _PARTITIONDATE
                                 OPTIONS (require_partition_filter = TRUE);"
-                               (fmt-table-name "partition_by_ingestion_time"))
-                       (format "CREATE TABLE %s (customer_id INT64, transaction_date DATE)
+                                (fmt-table-name "partition_by_ingestion_time"))
+                        (format "CREATE TABLE %s (customer_id INT64, transaction_date DATE)
                                 PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
                                 OPTIONS (require_partition_filter = FALSE);"
-                               (fmt-table-name "partition_by_range_not_required"))
-                       (format "CREATE TABLE %s (transaction_id INT64);"
-                               (fmt-table-name "not_partitioned"))]]
-            (bigquery.tx/execute! sql))
+                                (fmt-table-name "partition_by_range_not_required"))
+                        (format "CREATE TABLE %s (transaction_id INT64);"
+                                (fmt-table-name "not_partitioned"))]]
+             (bigquery.tx/execute! sql))
+           (sync/sync-database! (mt/db) {:scan :schema})
 
-          (sync/sync-database! (mt/db) {:scan :schema})
-          (is (= table-name->is-filter-required?
-                 (t2/select-fn->fn :name :database_require_filter :model/Table
-                                   :name [:in (keys table-name->is-filter-required?)])))
-          (finally
-           (doall (map drop-table-if-exists! (keys table-name->is-filter-required?)))
-           nil)))))))
+           (testing "tables that require a filter are correctly identified"
+             (is (= table-name->is-filter-required?
+                    (t2/select-fn->fn :name :database_require_filter :model/Table
+                                      :name [:in (keys table-name->is-filter-required?)]))))
+
+           (testing "partitioned fields are correctly identified"
+             (is (= {["not_partitioned"                 "transaction_id"]   false
+                     ["partition_by_range_not_required" "customer_id"]      true
+                     ["partition_by_range_not_required" "transaction_date"] false
+                     ["partition_by_range"              "customer_id"]      true
+                     ["partition_by_ingestion_time"     "transaction_id"]   false
+                     ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
+                     ["partition_by_ingestion_time"     "_PARTITIONDATE"]   true
+                     ["partition_by_time"               "transaction_time"] true
+                     ["partition_by_time"               "transaction_id"]   false}
+                    (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
+                                    :from   [[:metabase_field :field]]
+                                    :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
+                                    :where  [:and [:= :table.db_id (mt/id)]
+                                             [:in :table.name (keys table-name->is-filter-required?)]]})
+                         (map (fn [{:keys [table_name field_name database_partitioned]}]
+                                [[table_name field_name] database_partitioned]))
+                         (into {})))))
+
+           (finally
+            (doall (map drop-table-if-exists! (keys table-name->is-filter-required?)))
+            nil)))))))
+
+(deftest sync-pseudocolumn-for-ingestion-time-partitioned-table-test
+  (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME AND _PARTITIONDATE"
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/with-model-cleanup [:model/Table]
+        (let [table-name "partition_by_ingestion_time"]
+          (try
+           (doseq [sql [(format "CREATE TABLE %s (transaction_id INT64)
+                                PARTITION BY _PARTITIONDATE;"
+                                (fmt-table-name table-name))
+                        (format "INSERT INTO %s(transaction_id) VALUES(1);"
+                                (fmt-table-name table-name))]]
+             (bigquery.tx/execute! sql))
+           (sync/sync-database! (mt/db) {:scan :schema})
+
+           (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)]
+             (is (=? [{:name           "_PARTITIONTIME"
+                       :database_type "TIMESTAMP"
+                       :base_type     :type/DateTimeWithLocalTZ
+                       :database_position 1}
+                      {:name           "_PARTITIONDATE"
+                       :database_type "DATE"
+                       :base_type     :type/Date
+                       :database_position 2}]
+                     (t2/select :model/Field :table_id partitioned-by-ingestion-time-table-id
+                                :database_partitioned true {:order-by [[:name :desc]]}))))
+           (testing "and query this table should return the column pseudocolumn as well"
+             (is (malli=
+                  [:tuple :int ms/TemporalString ms/TemporalString]
+                  (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time {:limit 1}))))))
+           (finally
+            (drop-table-if-exists! table-name))))))))
 
 (deftest sync-update-require-partition-option-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -359,21 +413,31 @@
   (testing "Table with decimal types"
     (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema test-db-name, :name tbl-nm :database_require_filter false})
+                     {:schema test-db-name :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
       (is (= {:schema test-db-name
               :name   tbl-nm
-              :fields #{{:name "numeric_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 0}
-                        {:name "decimal_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 1}
-                        {:name "bignumeric_col"
+              :fields #{{:base-type :type/Decimal
+                         :database-partitioned false
+                         :database-position 0
+                         :database-type "NUMERIC"
+                         :name "numeric_col"}
+                        {:base-type :type/Decimal
+                         :database-partitioned false
+                         :database-position 1
+                         :database-type "NUMERIC"
+                         :name "decimal_col"}
+                        {:base-type :type/Decimal
+                         :database-partitioned false
+                         :database-position 2
                          :database-type "BIGNUMERIC"
-                         :base-type :type/Decimal
-                         :database-position 2}
-                        {:name "bigdecimal_col"
+                         :name "bignumeric_col"}
+                        {:base-type :type/Decimal
+                         :database-partitioned false
+                         :database-position 3
                          :database-type "BIGNUMERIC"
-                         :base-type :type/Decimal
-                         :database-position 3}}}
-            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema test-db-name}))
+                         :name "bigdecimal_col"}}}
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
           "`describe-table` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -403,9 +467,9 @@
       (fn [tbl-nm]
         (is (= {:schema test-db-name
                 :name   tbl-nm
-                :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
-                          {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema test-db-name}))
+                :fields #{{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
+                          {:name "array_col" :database-type "INTEGER" :base-type :type/Array :database-position 1 :database-partitioned false}}}
+               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
             "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
@@ -439,6 +503,29 @@
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
           (is (true? @fake-execute-called)))))))
+
+(deftest not-retry-cancellation-exception-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [fake-execute-called (atom false)
+          orig-fn        @#'bigquery/execute-bigquery]
+      (testing "Should not retry query on cancellation"
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
+                                                  ;; We only want to simulate exception on the query that we're testing and not on possible db setup queries
+                                                  (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
+                                                    (do (reset! fake-execute-called true)
+                                                        ;; Simulate a cancellation happening
+                                                        (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
+                                                    (orig-fn client sql parameters nil nil)))]
+          (try
+            (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
+                               :type     :native})
+            ;; If no exception is thrown, then the test should fail
+            (is false "Query should have failed")
+            (catch clojure.lang.ExceptionInfo e
+              ;; Verify exception as expected
+              (is (= "Query cancelled" (.getMessage e)))
+              ;; make sure that the fake exception was thrown
+              (is (true? @fake-execute-called)))))))))
 
 (deftest query-cancel-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -478,30 +565,51 @@
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (t2.with-temp/with-temp [Database db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (doseq [table (t2/select-one Table :db_id (u/the-id db-filtered))]
-      (assert-table-fn table))))
+    (let [tables (t2/select Table :db_id (u/the-id db-filtered))]
+      (assert (not-empty tables))
+      (doseq [table tables]
+        (assert-table-fn table)))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Filtering BigQuery connections for datasets works as expected"
-      (testing " with an inclusion filter"
-        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
-                                          :engine  :bigquery-cloud-sdk
-                                          :details (-> (mt/db)
-                                                       :details
-                                                       (assoc :dataset-filters-type "inclusion"
-                                                              :dataset-filters-patterns "a*,t*"))}
-                                         (fn [{dataset-id :schema}]
-                                           (is (not (contains? #{\a \t} (first dataset-id)))))))
-      (testing " with an exclusion filter"
-        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
-                                          :engine  :bigquery-cloud-sdk
-                                          :details (-> (mt/db)
-                                                       :details
-                                                       (assoc :dataset-filters-type "exclusion"
-                                                              :dataset-filters-patterns "v*"))}
-          (fn [{dataset-id :schema}]
-            (is (not= \v (first dataset-id)))))))))
+      (mt/db) ;; force the creation of one test dataset
+      (mt/dataset avian-singles
+        (mt/db) ;; force the creation of another test dataset
+        (let [;; This test is implemented in this way to avoid having to create new datasets, and to avoid
+              ;; syncing most of the tables in the test DB.
+              datasets (#'bigquery/list-datasets (-> (mt/db)
+                                                     :details
+                                                     (dissoc :dataset-filters-type
+                                                             :dataset-filters-patterns)))
+              dataset-ids (map #(.getDataset %) datasets)
+              ;; get the first 4 characters of each dataset-id
+              prefixes (->> dataset-ids
+                            (map (fn [dataset-id]
+                                   (apply str (take 4 dataset-id)))))
+              ;; inclusion-patterns selects the first dataset
+              ;; exclusion-patterns excludes almost everything else
+              include-prefix (first prefixes)
+              inclusion-patterns (str include-prefix "*")
+              exclusion-patterns (str/join "," (map #(str % "*") (set (rest prefixes))))]
+          (testing " with an inclusion filter"
+            (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                              :engine  :bigquery-cloud-sdk
+                                              :details (-> (mt/db)
+                                                           :details
+                                                           (assoc :dataset-filters-type "inclusion"
+                                                                  :dataset-filters-patterns inclusion-patterns))}
+                                             (fn [{dataset-id :schema}]
+                                               (is (str/starts-with? dataset-id include-prefix)))))
+          (testing " with an exclusion filter"
+            (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
+                                              :engine  :bigquery-cloud-sdk
+                                              :details (-> (mt/db)
+                                                           :details
+                                                           (assoc :dataset-filters-type "exclusion"
+                                                                  :dataset-filters-patterns exclusion-patterns))}
+                                             (fn [{dataset-id :schema}]
+                                               (is (str/starts-with? dataset-id include-prefix))))))))))
 
 (deftest normalize-away-dataset-id-test
   (mt/test-driver :bigquery-cloud-sdk

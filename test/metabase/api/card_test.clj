@@ -16,7 +16,8 @@
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [CardBookmark
+    :refer [Card
+            CardBookmark
             Collection
             Dashboard
             Database
@@ -32,6 +33,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor :as qp]
@@ -972,8 +974,8 @@
             (is (malli= [:map
                          [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                          [:query          [:= {} (mt/obj->json->obj query)]]
-                         [:required-perms [:sequential perms/PathSchema]]
-                         [:actual-perms   [:sequential perms/PathSchema]]
+                         [:required-perms [:sequential perms.u/PathSchema]]
+                         [:actual-perms   [:sequential perms.u/PathSchema]]
                          [:trace          [:sequential :any]]]
                         (create-card! :rasta 403)))))))))
 
@@ -1502,8 +1504,8 @@
                 (is (malli= [:map
                              [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                              [:query          [:= {} (mt/obj->json->obj (mt/mbql-query users))]]
-                             [:required-perms [:sequential perms/PathSchema]]
-                             [:actual-perms   [:sequential perms/PathSchema]]
+                             [:required-perms [:sequential perms.u/PathSchema]]
+                             [:actual-perms   [:sequential perms.u/PathSchema]]
                              [:trace          [:sequential :any]]]
                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
@@ -1587,38 +1589,39 @@
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
                                                                                                      [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
-   (testing message
-     (mt/with-temp!
-       [:model/Card           card  card
-        Pulse                 pulse {:alert_condition  "rows"
-                                     :alert_first_only false
-                                     :creator_id       (mt/user->id :rasta)
-                                     :name             "Original Alert Name"}
+    (testing message
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card           card  card
+           Pulse                 pulse {:alert_condition  "rows"
+                                        :alert_first_only false
+                                        :creator_id       (mt/user->id :rasta)
+                                        :name             "Original Alert Name"}
 
-        PulseCard             _     {:pulse_id (u/the-id pulse)
-                                     :card_id  (u/the-id card)
-                                     :position 0}
-        PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-        PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                     :pulse_channel_id (u/the-id pc)}
-        PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                     :pulse_channel_id (u/the-id pc)}]
-       (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-         (with-cards-in-writeable-collection card
-           (mt/with-fake-inbox
-             (when deleted?
-               (u/with-timeout 5000
-                 (mt/with-expected-messages 2
-                   (f {:card card}))
-                 (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
-                               (rasta-alert-not-working     {(str expected-email-re) true}))
-                        (mt/regex-email-bodies expected-email-re))
-                     (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
-             (if deleted?
-               (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                   "Alert should have been deleted")
-               (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                   "Alert should not have been deleted")))))))))
+           PulseCard             _     {:pulse_id (u/the-id pulse)
+                                        :card_id  (u/the-id card)
+                                        :position 0}
+           PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+           PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
+                                        :pulse_channel_id (u/the-id pc)}
+           PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
+                                        :pulse_channel_id (u/the-id pc)}]
+          (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+            (with-cards-in-writeable-collection card
+              (mt/with-fake-inbox
+                (when deleted?
+                  (u/with-timeout 5000
+                    (mt/with-expected-messages 2
+                      (f {:card card}))
+                    (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
+                                  (rasta-alert-not-working     {(str expected-email-re) true}))
+                           (mt/regex-email-bodies expected-email-re))
+                        (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
+                (if deleted?
+                  (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                      "Alert should have been deleted")
+                  (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                      "Alert should not have been deleted"))))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (is (= {:emails-1 {}
@@ -1826,6 +1829,91 @@
         (is (= [{(keyword "COUNT(*)") "8"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
                                      :parameters encoded-params)))))))
+
+(deftest renamed-column-names-are-applied-to-json-test
+  (testing "JSON downloads should have the same columns as displayed in Metabase (#18572)"
+    (mt/with-temporary-setting-values [custom-formatting nil]
+      (let [query        {:source-table (mt/id :orders)
+                          :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                         [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :discount) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :quantity) {:base-type :type/Integer}]
+                                         [:expression "Tax Rate"]],
+                          :expressions  {"Tax Rate" [:/
+                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                          :limit        10}
+            viz-settings {:table.cell_column "TAX",
+                          :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :id))
+                                              {:column_title "THE_ID"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :tax))
+                                              {:column_title "ORDER TAX"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :total))
+                                              {:column_title "Total Amount"},
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :discount))
+                                              {:column_title "Discount Applied"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                      (mt/id :orders :quantity))
+                                              {:column_title "Amount Ordered"}
+                                              "[\"ref\",[\"expression\",\"Tax Rate\"]]"
+                                              {:column_title "Effective Tax Rate"}}}]
+        (t2.with-temp/with-temp [Card {base-card-id :id} {:dataset_query          {:database (mt/id)
+                                                                                   :type     :query
+                                                                                   :query    query}
+                                                          :visualization_settings viz-settings}
+                                 Card {model-card-id  :id
+                                       model-metadata :result_metadata} {:dataset       true
+                                                                         :dataset_query {:database (mt/id)
+                                                                                         :type     :query
+                                                                                         :query    {:source-table
+                                                                                                    (format "card__%s" base-card-id)}}}
+                                 Card {meta-model-card-id :id} {:dataset         true
+                                                                :dataset_query   {:database (mt/id)
+                                                                                  :type     :query
+                                                                                  :query    {:source-table
+                                                                                             (format "card__%s" model-card-id)}}
+                                                                :result_metadata (mapv
+                                                                                   (fn [{column-name :name :as col}]
+                                                                                     (cond-> col
+                                                                                       (= "DISCOUNT" column-name)
+                                                                                       (assoc :display_name "Amount of Discount")
+                                                                                       (= "TOTAL" column-name)
+                                                                                       (assoc :display_name "Grand Total")
+                                                                                       (= "QUANTITY" column-name)
+                                                                                       (assoc :display_name "N")))
+                                                                                   model-metadata)}
+                                 Card {question-card-id :id} {:dataset_query          {:database (mt/id)
+                                                                                       :type     :query
+                                                                                       :query    {:source-table
+                                                                                                  (format "card__%s" meta-model-card-id)}}
+                                                              :visualization_settings {:table.pivot_column "DISCOUNT",
+                                                                                       :table.cell_column  "TAX",
+                                                                                       :column_settings    {(format
+                                                                                                              "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                              (mt/id :orders :quantity))
+                                                                                                            {:column_title "Count"}
+                                                                                                            (format
+                                                                                                              "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                              (mt/id :orders :id))
+                                                                                                            {:column_title "IDENTIFIER"}}}}]
+          (letfn [(col-names [card-id]
+                    (->> (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" card-id)) first keys (map name) set))]
+            (testing "Renaming columns via viz settings is correctly applied to the CSV export"
+              (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
+                     (col-names base-card-id))))
+            (testing "A question derived from another question does not bring forward any renames"
+              (is (= #{"ID" "Tax" "Total" "Discount ($)" "Quantity" "Tax Rate"}
+                     (col-names model-card-id))))
+            (testing "A model with custom metadata shows the renamed metadata columns"
+              (is (= #{"ID" "Tax" "Grand Total" "Amount of Discount ($)" "N" "Tax Rate"}
+                     (col-names meta-model-card-id))))
+            (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
+              (is (= #{"IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"}
+                     (col-names question-card-id))))))))))
 
 (defn- parse-xlsx-results [results]
   (->> results
@@ -2857,11 +2945,12 @@
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id (mt/id)
                                            uploads-table-prefix nil
-                                           uploads-schema-name "PUBLIC"]          (let [{:keys [status body]} (upload-example-csv-via-api!)]
-            (is (= 200
-                   status))
-            (is (= body
-                   (t2/select-one-pk :model/Card :database_id (mt/id)))))))
+                                           uploads-schema-name "PUBLIC"]
+          (let [{:keys [status body]} (upload-example-csv-via-api!)]
+           (is (= 200
+                  status))
+           (is (= body
+                  (t2/select-one-pk :model/Card :database_id (mt/id)))))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id nil

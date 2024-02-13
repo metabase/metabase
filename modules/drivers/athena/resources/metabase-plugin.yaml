@@ -39,6 +39,12 @@ driver:
         - additional-options
         - display-name: Additional Athena connection string options
           placeholder: "UseResultsetStreaming=0;LogLevel=6"
+    - name: include-user-id-and-hash
+      display-name: Include User ID and query hash in queries
+      default: true
+      type: boolean
+      visible-if:
+        advanced-options: true
     - default-advanced-options
 init:
   - step: load-namespace

@@ -1,4 +1,4 @@
-import { ORDERS, PRODUCTS } from "metabase-types/api/mocks/presets";
+import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { isSearchable, getValuesMode, searchField } from "./utils";
 
@@ -11,7 +11,7 @@ import {
 describe("Components > FieldValuesWidget > utils", () => {
   describe("isSearchable", () => {
     const listField = metadata.field(PRODUCTS.CATEGORY);
-    const searchField = metadata.field(PRODUCTS.VENDOR);
+    const searchField = metadata.field(PEOPLE.EMAIL);
     const nonExhaustiveListField = metadata.field(
       LISTABLE_FIELD_WITH_MANY_VALUES_ID,
     );
@@ -59,7 +59,7 @@ describe("Components > FieldValuesWidget > utils", () => {
 
     describe("when passed fields that are searchable", () => {
       it("should return 'search'", () => {
-        const fields = [metadata.field(PRODUCTS.VENDOR)];
+        const fields = [metadata.field(PEOPLE.EMAIL)];
         expect(getValuesMode({ fields })).toBe("search");
       });
     });

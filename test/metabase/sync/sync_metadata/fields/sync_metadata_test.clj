@@ -46,7 +46,8 @@
    :base-type                  :type/Integer
    :database-position          0
    :database-required          false
-   :database-is-auto-increment false})
+   :database-is-auto-increment false
+   :database-partitioned       nil})
 
 (deftest database-position-changed-test
   (testing "test that if database-position changes and table.field_order=database we will update the position too"
@@ -158,6 +159,19 @@
              :database-required          false
              :database-is-auto-increment true
              :json-unfolding             false})))))
+
+(deftest update-database-partitioned-test
+  (testing "update from nil -> boolean"
+    (is (= [["Field" 1 {:database_partitioned false}]]
+           (updates-that-will-be-performed
+            (merge default-metadata {:database-partitioned false})
+            (merge default-metadata {:database-partitioned nil :id 1})))))
+
+  (testing "flip the state"
+    (is (= [["Field" 1 {:database_partitioned false}]]
+           (updates-that-will-be-performed
+            (merge default-metadata {:database-partitioned false})
+            (merge default-metadata {:database-partitioned true :id 1}))))))
 
 (deftest nil-database-type-test
   (testing (str "test that if `database-type` comes back as `nil` in the metadata from the sync process, we won't try "

@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Box, Button, Checkbox, Divider, Group, Stack } from "metabase/ui";
-import { BackButton } from "../BackButton";
+import type { PopoverBackButtonProps } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Divider,
+  Group,
+  PopoverBackButton,
+  Stack,
+} from "metabase/ui";
 import { MIN_WIDTH } from "../constants";
 import type {
   DatePickerExtractionUnit,
@@ -217,4 +225,8 @@ function ExcludeValuePicker({
       </Group>
     </Box>
   );
+}
+
+function BackButton(props: PopoverBackButtonProps) {
+  return <PopoverBackButton px="md" py="sm" {...props} />;
 }

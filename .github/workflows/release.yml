@@ -220,7 +220,7 @@ jobs:
 
           console.log("Latest version?", isLatest);
 
-          if (isLatest === "true") {
+          if (isLatest) {
             return edition === 'ee' ? 'enterprise/latest' : 'latest';
           }
           return "false";

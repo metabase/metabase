@@ -81,7 +81,7 @@
 (defn no-bare-blob-or-text-types?
   "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
   0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
-  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type\" should be used instead of \"blob\"."
+  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type}\" should be used instead of \"blob\"."
   [change-log]
   (let [problem-cols (atom [])
         walk-fn      (partial assert-no-types-in-change-set #{"blob" "text"} problem-cols)]
@@ -96,6 +96,19 @@
       (walk/postwalk walk-fn change-set))
     (empty? @problem-cols)))
 
+(defn no-bare-boolean-types?
+  "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
+  \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
+  [change-log]
+  (let [problem-cols (atom [])
+        walk-fn      (partial assert-no-types-in-change-set #{"boolean"} problem-cols)]
+    (doseq [{{id :id} :changeSet :as change-set} change-log
+            :when                                (and id
+                                                      (string? id)
+                                                      (pos? (compare-ids id "v49.00-032")))]
+      (walk/postwalk walk-fn change-set))
+    (empty? @problem-cols)))
+
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
 
@@ -103,6 +116,7 @@
   (s/and distinct-change-set-ids?
          change-set-ids-in-order?
          no-bare-blob-or-text-types?
+         no-bare-boolean-types?
          (s/+ (s/alt :property              (s/keys :req-un [::property])
                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
                      :changeSet             (s/keys :req-un [::changeSet])))))

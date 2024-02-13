@@ -35,6 +35,14 @@ const PARAMETER = {
     name: "Not mapped to anything",
     type: "number/=",
   }),
+
+  // Used to reproduce:
+  // https://github.com/metabase/metabase/issues/36984
+  DATE_2: createMockParameter({
+    id: "2",
+    name: "Created At (2)",
+    type: "date/range",
+  }),
 };
 
 const DASHBOARD_CREATE_INFO = {
@@ -60,6 +68,11 @@ function getDashboardCards(mappedQuestionId) {
     parameter_mappings: [
       {
         parameter_id: PARAMETER.DATE.id,
+        card_id: mappedQuestionId,
+        target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
+      },
+      {
+        parameter_id: PARAMETER.DATE_2.id,
         card_id: mappedQuestionId,
         target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
       },
@@ -114,7 +127,7 @@ describe("scenarios > dashboard cards > replace question", () => {
     );
   });
 
-  it("should replace a dashboard card question", () => {
+  it("should replace a dashboard card question (metabase#36984)", () => {
     visitDashboardAndEdit();
 
     findDashCardAction(findHeadingDashcard(), "Replace").should("not.exist");

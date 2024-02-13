@@ -129,7 +129,7 @@ describe("scenarios > question > native", () => {
     cy.location("pathname").should("match", /\/question\/\d+/);
   });
 
-  it(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332)`, () => {
+  it.skip(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332, metabase#37100)`, () => {
     const FILTERS = ["Is not", "Does not contain"];
 
     const questionDetails = {

@@ -90,6 +90,13 @@ modules/drivers/*/.lsp/*
 !modules/drivers/*/.lsp/config.edn
 **/.clj-kondo/.cache
 
+# clj-kondo: ignore all except our defined config
+.clj-kondo/*
+!.clj-kondo/README.md
+!.clj-kondo/config.edn
+!.clj-kondo/hooks/
+!.clj-kondo/macros/
+
 # Editor- or environment-specific local files
 *.code-workspace
 .java-version

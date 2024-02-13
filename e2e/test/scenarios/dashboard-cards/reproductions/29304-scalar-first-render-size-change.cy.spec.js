@@ -92,7 +92,7 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 80;
+        const expectedWidth = 72;
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,

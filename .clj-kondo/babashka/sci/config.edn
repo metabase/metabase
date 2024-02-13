@@ -1,1 +1,0 @@
-{:hooks {:macroexpand {sci.core/copy-ns sci.core/copy-ns}}}

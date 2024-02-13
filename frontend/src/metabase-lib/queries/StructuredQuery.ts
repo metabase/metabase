@@ -154,15 +154,15 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @returns true if we have metadata for the root source table loaded
    */
-  hasMetadata() {
-    return this.metadata() && !!this.rootTable();
+  hasMetadata(): boolean {
+    return this.metadata() != null && this.rootTable() != null;
   }
 
-  /**
-   * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
-   */
-  isEditable() {
-    return !this.readOnly() && this.hasMetadata();
+  // Whether the user can modify and run this query
+  // Determined based on availability of database and source table metadata
+  // For queries based on questions expects virtual table metadata for the source card
+  isEditable(): boolean {
+    return this.database() != null && this.hasMetadata();
   }
 
   /* AtomicQuery superclass methods */
@@ -197,13 +197,6 @@ class StructuredQuery extends AtomicQuery {
   engine(): string | null | undefined {
     const database = this.database();
     return database && database.engine;
-  }
-
-  /**
-   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
-   */
-  readOnly() {
-    return !this.database();
   }
 
   /* Methods unique to this query type */
@@ -373,13 +366,7 @@ class StructuredQuery extends AtomicQuery {
       query = query.setSourceQuery(sourceQuery.clean({ skipFilters }));
     }
 
-    query = query.cleanJoins().cleanExpressions().cleanFields();
-
-    if (!skipFilters) {
-      query = query.cleanFilters();
-    }
-
-    return query.cleanEmpty();
+    return query.cleanJoins().cleanExpressions().cleanFields().cleanEmpty();
   }
 
   /**

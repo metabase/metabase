@@ -46,8 +46,8 @@
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
     (t2/insert-returning-pks! Field
-      (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
-                    field-comment database-position nfc-path visibility-type json-unfolding]
+      (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
+                    database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
              field-name :name :as field} new-field-metadatas]
         (do
           (when (and effective-type
@@ -78,6 +78,7 @@
            :json_unfolding             (or json-unfolding false)
            :database_is_auto_increment (or database-is-auto-increment false)
            :database_required          (or database-required false)
+           :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
            :visibility_type            (or visibility-type :normal)})))))
 
 (mu/defn ^:private create-or-reactivate-fields! :- [:maybe [:sequential i/FieldInstance]]

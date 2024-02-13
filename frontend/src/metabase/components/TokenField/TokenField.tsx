@@ -83,7 +83,7 @@ const defaultStyleValue = {
   fontWeight: 700,
 };
 
-class TokenField extends Component<TokenFieldProps, TokenFieldState> {
+class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
   inputRef: React.RefObject<HTMLInputElement>;
   scrollElement = null;
 
@@ -701,8 +701,13 @@ DefaultTokenFieldLayout.propTypes = {
   isFocused: PropTypes.bool,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(TokenField, {
+/**
+ * @deprecated use MultiSelect or Autocomplete from metabase/ui
+ */
+const TokenField = Object.assign(_TokenField, {
   FieldItem: TokenFieldItem,
   NewItemInputContainer: TokenInputItem,
 });
+
+// eslint-disable-next-line import/no-default-export
+export default TokenField;

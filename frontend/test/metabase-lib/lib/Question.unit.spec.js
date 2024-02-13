@@ -1117,7 +1117,14 @@ describe("Question", () => {
 
       expect(questionWithFilters.datasetQuery().query.filter).toEqual([
         "starts-with",
-        ["field", PRODUCTS.CATEGORY, null],
+        [
+          "field",
+          PRODUCTS.CATEGORY,
+          {
+            "base-type": "type/Text",
+            "source-field": ORDERS.PRODUCT_ID,
+          },
+        ],
         "abc",
         { "case-sensitive": false },
       ]);
@@ -1198,7 +1205,7 @@ describe("Question", () => {
           ...assocIn(
             dissoc(card, "id"),
             ["dataset_query", "query", "filter"],
-            ["=", ["field", 1, null], "bar"],
+            ["=", ["field", 1, { "base-type": "type/Text" }], "bar"],
           ),
           original_card_id: card.id,
         };
@@ -1222,7 +1229,7 @@ describe("Question", () => {
             ...assocIn(
               dissoc(card, "id"),
               ["dataset_query", "query", "filter"],
-              ["=", ["field", 2, null], 123],
+              ["=", ["field", 2, { "base-type": "type/Float" }], 123],
             ),
             original_card_id: card.id,
           },
@@ -1241,7 +1248,15 @@ describe("Question", () => {
             ...assocIn(
               dissoc(card, "id"),
               ["dataset_query", "query", "filter"],
-              ["=", ["field", 3, { "temporal-unit": "month" }], "2017-05-01"],
+              [
+                "=",
+                [
+                  "field",
+                  3,
+                  { "base-type": "type/BigInteger", "temporal-unit": "month" },
+                ],
+                "2017-05-01",
+              ],
             ),
             original_card_id: card.id,
           },

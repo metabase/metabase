@@ -598,14 +598,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn nodes-with-text
-  "Returns a list of nodes from the `tree` that contain an exact match of `text` as the last entry of the node.
+  "Returns a list of nodes from the `tree` that includes text `text` as the last entry of the node.
   The tree is assumed to be a valid hiccup-style tree.
 
   `(nodes-with-text \"the text\" [:svg [:tspan [:text \"the text\"]]]) -> ([:text \"the text\"])`"
   [tree text]
   (->> tree
-       (tree-seq vector? (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
-       (filter #(#{text} (last %)))))
+       (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
+       (filter #(and (string? (last %)) (str/includes? (last %) text)))))
+
+(defn nodes-with-exact-text
+  "Returns a list of nodes from the `tree` that exactly matches text `text` as the last entry of the node.
+  The tree is assumed to be a valid hiccup-style tree.
+
+  `(nodes-with-text \"the text\" [:svg [:tspan [:text \"the text\"]]]) -> ([:text \"the text\"])`"
+  [tree text]
+  (->> tree
+       (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
+       (filter #(and (string? (last %)) (= (last %) text)))))
 
 (defn nodes-with-tag
   "Returns a list of nodes from the `tree` that contain an exact match of `tag` as the first entry of the node.
@@ -614,7 +624,7 @@
   `(nodes-with-tag :tspan [:svg [:tspan [:text \"the text\"]]]) -> ([:tspan [:text \"the text\"]])`"
   [tree tag]
   (->> tree
-       (tree-seq vector? (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
+       (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
        (filter #(#{tag} (first %)))))
 
 (defn remove-attrs

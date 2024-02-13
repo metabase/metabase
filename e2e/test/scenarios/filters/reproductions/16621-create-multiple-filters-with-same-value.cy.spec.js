@@ -1,6 +1,6 @@
 import { restore, openProductsTable, popover } from "e2e/support/helpers";
 
-describe("issue 16661", () => {
+describe("issue 16621", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -12,14 +12,15 @@ describe("issue 16661", () => {
     cy.findByText("Category").click();
     popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search the list").type("Doo{enter}");
+      cy.findByPlaceholderText("Search the list").type("Gadget");
+      cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Category is Doo").click();
+      cy.findByText("Category is Gadget").click();
     });
     popover().within(() => {
-      cy.findByText("Doohickey").click();
+      cy.findByText("Gizmo").click();
       cy.button("Update filter").click();
     });
     cy.findByTestId("qb-filters-panel")

@@ -485,7 +485,7 @@
     ;; Dollar symbol is included by default if semantic type of column derives from :type/Currency
     (is (= ["Col ($)"]
            (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                               {::mb.viz/column-settings {::mb.viz/field-id 0}}
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {}}}
                                []))))
     ;; Currency code is used if requested in viz settings
     (is (= ["Col (USD)"]

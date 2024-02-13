@@ -37,7 +37,7 @@ export const DASHBOARD_SQL_DATE_FILTERS = {
     value: {
       timeBucket: "years",
     },
-    representativeResult: "Araceli Stiedemann",
+    representativeResult: "Lina Heaney", // this may change every year
   },
 };
 

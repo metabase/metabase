@@ -1,3 +1,0 @@
-;!zprint {:width 140}
-
-{:lint-as {steffan-westcott.clj-otel.api.trace.span/with-span-binding clojure.core/let}}

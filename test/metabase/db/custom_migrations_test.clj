@@ -1340,34 +1340,34 @@
                                                                                :size_x                 4
                                                                                :size_y                 4
                                                                                :col                    1
-                                                                               :row                    1})]
-            (let [expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
-                                     :graph.metrics    ["count"],
-                                     :click            "link",
-                                     :click_link_template
-                                     "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"
-                                     :click_behavior
-                                     {:type         "link",
-                                      :linkType     "url",
-                                      :linkTemplate "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
-                                     :column_settings
-                                     ;; the model keywordizes the json parsing yielding this monstrosity below
-                                     {"[\"ref\",[\"field\",2,null]]"
-                                      {:click_behavior
-                                       {:type             "link",
-                                        :linkType         "url",
-                                        :linkTemplate     "http://example.com/{{ID}}",
-                                        :linkTextTemplate "here's an id: {{ID}}"}},
-                                      "[\"ref\",[\"field\",6,null]]"
-                                      {:click_behavior
-                                       {:type             "link",
-                                        :linkType         "url",
-                                        :linkTemplate     "http://example.com//{{id}}",
-                                        :linkTextTemplate "here is my id: {{id}}"}}}}]
-              (f)
-              (is (= expected-settings
-                     (-> (t2/select-one :model/DashboardCard :id dashcard-id)
-                         :visualization_settings))))))]
+                                                                               :row                    1})
+                expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
+                                   :graph.metrics    ["count"],
+                                   :click            "link",
+                                   :click_link_template
+                                   "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"
+                                   :click_behavior
+                                   {:type         "link",
+                                    :linkType     "url",
+                                    :linkTemplate "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
+                                   :column_settings
+                                   ;; the model keywordizes the json parsing yielding this monstrosity below
+                                   {"[\"ref\",[\"field\",2,null]]"
+                                    {:click_behavior
+                                     {:type             "link",
+                                      :linkType         "url",
+                                      :linkTemplate     "http://example.com/{{ID}}",
+                                      :linkTextTemplate "here's an id: {{ID}}"}},
+                                    "[\"ref\",[\"field\",6,null]]"
+                                    {:click_behavior
+                                     {:type             "link",
+                                      :linkType         "url",
+                                      :linkTemplate     "http://example.com//{{id}}",
+                                      :linkTextTemplate "here is my id: {{id}}"}}}}]
+            (f)
+            (is (= expected-settings
+                   (-> (t2/select-one :model/DashboardCard :id dashcard-id)
+                       :visualization_settings)))))]
     (testing "Running the migration from scratch"
       (impl/test-migrations ["v48.00-022"] [migrate!]
         (expect-correct-settings! migrate!)))

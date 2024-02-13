@@ -2,7 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase.public-settings :as public-settings]
-   [metabase.shared.util.internal.time-common :as common])
+   [metabase.shared.util.internal.time-common :as common]
+   [metabase.util.date-2 :as u.date])
   (:import
    java.util.Locale))
 
@@ -217,10 +218,48 @@
 
 ;;; ------------------------------------------------ arithmetic ------------------------------------------------------
 
+(defn unit-diff
+  "Return the number of `unit`s between two temporal values `before` and `after`, e.g. maybe there are 32 `:day`s
+  between Jan 1st and Feb 2nd."
+  [unit before after]
+  (let [before   (cond-> before
+                   (string? before) u.date/parse)
+        after    (cond-> after
+                   (string? after) u.date/parse)
+        ;; you can't use LocalDates in durations I guess, so just convert them LocalDateTimes with time = 0
+        before   (cond-> before
+                   (instance? java.time.LocalDate before) (t/local-date-time 0))
+        after    (cond-> after
+                   (instance? java.time.LocalDate after) (t/local-date-time 0))
+        duration (t/duration before after)]
+    (case unit
+      :millisecond (.toMillis duration)
+      :second      (.toSeconds duration)
+      :minute      (.toMinutes duration)
+      :hour        (.toHours duration)
+      :day         (.toDays duration)
+
+      :week
+      (long (/ (unit-diff :day before after) 7))
+
+      :month
+      (let [diff-months (- (u.date/extract after :month-of-year)
+                           (u.date/extract before :month-of-year))
+            diff-years  (- (u.date/extract after :year)
+                          (u.date/extract before :year))]
+        (+ diff-months (* diff-years 12)))
+
+      :quarter
+      (long (/ (unit-diff :month before after) 3))
+
+      :year
+      (- (u.date/extract after :year)
+         (u.date/extract before :year)))))
+
 (defn day-diff
   "Returns the time elapsed between `before` and `after` in days (an integer)."
   [before after]
-  (.toDays (t/duration before after)))
+  (unit-diff :day before after))
 
 (defn- coerce-local-date-time [input]
   (cond-> input
@@ -339,3 +378,19 @@
                                             :offset-n offset-n
                                             :offset-unit offset-unit}))]
      (apply format-diff date-ranges))))
+
+(defn truncate
+  "Clojure implementation of [[metabase.shared.util.time/truncate]]; basically the same as [[u.date/truncate]] but also
+  handles ISO-8601 strings."
+  [t unit]
+  (if (string? t)
+    (str (truncate (u.date/parse t) unit))
+    (u.date/truncate t unit)))
+
+(defn add
+  "Clojure implementation of [[metabase.shared.util.time/add]]; basically the same as [[u.date/add]] but also handles
+  ISO-8601 strings."
+  [t unit amount]
+  (if (string? t)
+    (str (add (u.date/parse t) unit amount))
+    (u.date/add t unit amount)))

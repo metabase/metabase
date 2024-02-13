@@ -1,4 +1,4 @@
-import type { MouseEventHandler, ReactNode } from "react";
+import type { MouseEvent, MouseEventHandler, ReactNode } from "react";
 import {
   SharingPaneButtonContent,
   SharingPaneButtonTitle,
@@ -22,11 +22,15 @@ export const SharingPaneButton = ({
   disabled,
   onClick,
 }: SharingOptionProps) => (
-  <SharingPaneButtonContent withBorder>
-    <Center h="22.5rem" p="8rem" onClick={onClick}>
+  <SharingPaneButtonContent withBorder disabled={disabled}>
+    <Center
+      h="22.5rem"
+      p="8rem"
+      onClick={(event: MouseEvent) => !disabled && onClick?.(event)}
+    >
       <Stack w="17.5rem" justify="center" align="center">
         {illustration}
-        <SharingPaneButtonTitle disabled={disabled}>
+        <SharingPaneButtonTitle fz="xl" disabled={disabled}>
           {header}
         </SharingPaneButtonTitle>
         <Text>{description}</Text>

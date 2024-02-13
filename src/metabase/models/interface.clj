@@ -17,7 +17,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -140,7 +140,7 @@
     (try
       (json/parse-string s keywordize-keys?)
       (catch Throwable e
-        (log/error e (str (trs "Error parsing JSON")))
+        (log/error e "Error parsing JSON")
         s))
     s))
 
@@ -225,9 +225,18 @@
   "Serialize encrypted json."
   (comp encryption/maybe-encrypt json-in))
 
-(def encrypted-json-out
+(defn encrypted-json-out
   "Deserialize encrypted json."
-  (comp json-out-with-keywordization encryption/maybe-decrypt))
+  [v]
+  (let [decrypted (encryption/maybe-decrypt v)]
+    (try
+      (json/parse-string decrypted true)
+      (catch Throwable e
+        (if (or (encryption/possibly-encrypted-string? decrypted)
+                (encryption/possibly-encrypted-bytes? decrypted))
+          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+        v))))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
 ;; cache the decrypted JSON for one hour

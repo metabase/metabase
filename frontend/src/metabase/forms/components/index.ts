@@ -3,6 +3,7 @@ export * from "./FormCheckbox";
 export * from "./FormCheckboxGroup";
 export * from "./FormErrorMessage";
 export * from "./FormGroupsWidget";
+export * from "./FormGroupWidget";
 export * from "./FormNumberInput";
 export * from "./FormProvider";
 export * from "./FormRadioGroup";

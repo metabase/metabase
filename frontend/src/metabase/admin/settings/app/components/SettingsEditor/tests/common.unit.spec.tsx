@@ -17,14 +17,13 @@ describe("SettingsEditor", () => {
 
       userEvent.click(screen.getByText("Embedding"));
       userEvent.click(screen.getByText("Interactive embedding"));
-      expect(screen.getByText(/some of our paid plans/)).toBeInTheDocument();
       expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
       expect(
         screen.queryByText("SameSite cookie setting"),
       ).not.toBeInTheDocument();
     });
 
-    it("should redirect from the full-app embedding page if embedding is not enabled", async () => {
+    it("should allow visiting the full-app embedding page even if embedding is not enabled", async () => {
       await setup({
         settings: [createMockSettingDefinition({ key: "enable-embedding" })],
         settingValues: createMockSettings({ "enable-embedding": false }),
@@ -34,9 +33,7 @@ describe("SettingsEditor", () => {
       expect(
         screen.getByText(/Embed dashboards, questions/),
       ).toBeInTheDocument();
-      expect(
-        screen.queryByText("Interactive embedding"),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
     });
   });
 

@@ -129,6 +129,18 @@ export const findAggregationOperator = (
   return operator;
 };
 
+export const findSegment = (query: Lib.Query, segmentName: string) => {
+  const stageIndex = 0;
+  const segment = Lib.availableSegments(query, stageIndex).find(
+    segment =>
+      Lib.displayInfo(query, stageIndex, segment).displayName === segmentName,
+  );
+  if (!segment) {
+    throw new Error(`Could not find segment ${segmentName}`);
+  }
+  return segment;
+};
+
 function withTemporalBucketAndBinningStrategy(
   query: Lib.Query,
   column: Lib.ColumnMetadata,

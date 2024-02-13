@@ -134,7 +134,7 @@ const canEditQuestion = (question: Question) => {
   return (
     question.canWrite() &&
     question.query() != null &&
-    question.query().isEditable()
+    question.isQueryEditable()
   );
 };
 

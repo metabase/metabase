@@ -663,34 +663,3 @@ export const notify = (opts = {}, subject, verb) =>
 
 export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});
-
-// decorator versions disabled due to incompatibility with current version of flow
-//
-// // merges in options to give an object action a notification
-// export function notify(subject: string, verb: string, undo: boolean = false) {
-//   return function(target: Object, name: string, descriptor: any) {
-//     // https://github.com/loganfsmyth/babel-plugin-transform-decorators-legacy/issues/34
-//     const original = descriptor.initializer
-//       ? descriptor.initializer()
-//       : descriptor.value;
-//     delete descriptor.initializer;
-//     descriptor.value = function(o, arg, opts = {}) {
-//       opts = merge(
-//         {
-//           notify: {
-//             subject: typeof subject === "function" ? subject(o, arg) : subject,
-//             verb: typeof verb === "function" ? verb(o, arg) : verb,
-//             undo,
-//           },
-//         },
-//         opts,
-//       );
-//       return original(o, arg, opts);
-//     };
-//   };
-// }
-//
-// // merges in options to give make object action undo-able
-// export function undo(subject: string, verb: string) {
-//   return notify(subject, verb, true);
-// }

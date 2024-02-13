@@ -224,4 +224,40 @@ describe("scenarios > visualizations > maps", () => {
       "true",
     );
   });
+
+  it("should apply brush filters by dragging map", () => {
+    cy.viewport(1280, 800);
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PEOPLE_ID,
+        },
+      },
+      display: "map",
+      visualization_settings: {
+        "map.region": "us_states",
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    cy.get(".CardVisualization").realHover();
+    cy.findByTestId("visualization-root")
+      .findByText("Draw box to filter")
+      .click();
+
+    cy.findByTestId("visualization-root")
+      .trigger("mousedown", 500, 500)
+      .trigger("mousemove", 600, 600)
+      .trigger("mouseup", 600, 600);
+
+    cy.wait("@dataset");
+
+    // selecting area at the map provides different filter values, so the simplified assertion is used
+    cy.findByTestId("filter-pill").should("have.length", 1);
+  });
 });

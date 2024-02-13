@@ -33,7 +33,7 @@ describe("SettingsEditor", () => {
     });
 
     userEvent.click(screen.getByText("Embedding"));
-    userEvent.click(screen.getByText("Interactive embedding"));
+    goToInteractiveEmbeddingSettings();
     expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
 
     expect(screen.getByText("Authorized origins")).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe("SettingsEditor", () => {
       });
 
       userEvent.click(screen.getByText("Embedding"));
-      userEvent.click(screen.getByText("Interactive embedding"));
+      goToInteractiveEmbeddingSettings();
 
       expect(screen.getByTestId("authorized-origins-note")).toBeInTheDocument();
     });
@@ -80,7 +80,7 @@ describe("SettingsEditor", () => {
       });
 
       userEvent.click(screen.getByText("Embedding"));
-      userEvent.click(screen.getByText("Interactive embedding"));
+      goToInteractiveEmbeddingSettings();
 
       expect(
         screen.queryByTestId("authorized-origins-note"),
@@ -102,7 +102,7 @@ describe("SettingsEditor", () => {
       });
 
       userEvent.click(screen.getByText("Embedding"));
-      userEvent.click(screen.getByText("Interactive embedding"));
+      goToInteractiveEmbeddingSettings();
 
       expect(
         screen.queryByTestId("authorized-origins-note"),
@@ -110,3 +110,7 @@ describe("SettingsEditor", () => {
     });
   });
 });
+
+const goToInteractiveEmbeddingSettings = () => {
+  userEvent.click(screen.getByText("Configure"));
+};

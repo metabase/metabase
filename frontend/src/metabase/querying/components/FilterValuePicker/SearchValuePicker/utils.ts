@@ -24,9 +24,9 @@ export function shouldSearch(
   searchQuery: string,
   fieldValues: FieldValue[],
 ) {
-  const isSearchEmpty = searchQuery === "";
-  const isExtensionOfLastSearch = searchValue.startsWith(searchQuery);
+  const isExtensionOfLastSearch =
+    searchQuery.length > 0 && searchValue.startsWith(searchQuery);
   const hasMoreValues = fieldValues.length === SEARCH_LIMIT;
 
-  return isSearchEmpty || !isExtensionOfLastSearch || hasMoreValues;
+  return !isExtensionOfLastSearch || hasMoreValues;
 }

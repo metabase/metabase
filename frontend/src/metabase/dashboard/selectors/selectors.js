@@ -14,9 +14,6 @@ import {
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
-import Question from "metabase-lib/Question";
-
-import { isVirtualDashCard } from "../utils";
 import {
   getDashboardId,
   getDashCardById,
@@ -101,16 +98,6 @@ export const getSingleDashCardData = (state, dashcardId) => {
     return;
   }
   return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
-};
-
-export const getDashCardTable = (state, dashcardId) => {
-  const dashcard = getDashCardById(state, dashcardId);
-  if (!dashcard || isVirtualDashCard(dashcard)) {
-    return null;
-  }
-  const metadata = getMetadata(state);
-  const question = new Question(dashcard.card, metadata);
-  return question.table();
 };
 
 export const getDashboardComplete = createSelector(

@@ -18,6 +18,7 @@
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -48,6 +49,7 @@
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
+         lib.filter.update/keep-me
          lib.join/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
@@ -197,6 +199,10 @@
   contains does-not-contain
   time-interval
   segment]
+ [lib.filter.update
+  update-lat-lon-filter
+  update-numeric-filter
+  update-temporal-filter]
  [lib.join
   available-join-strategies
   join

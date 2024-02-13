@@ -7,5 +7,6 @@ export const DownloadIcon = styled(Icon)`
 
   &:hover {
     color: ${color("brand")};
+    cursor: pointer;
   }
 `;

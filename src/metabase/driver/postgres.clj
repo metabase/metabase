@@ -39,7 +39,7 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)
    (org.postgresql.copy CopyManager)
@@ -825,24 +825,23 @@
 
 (defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db-id
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (let [copy-manager (CopyManager. (.unwrap conn PgConnection))
-           [sql & _]    (sql/format {::copy       (keyword table-name)
-                                     :columns     (map keyword column-names)
-                                     ::from-stdin "''"}
-                                    :quoted true
-                                    :dialect (sql.qp/quote-style driver))]
-       ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
-       (doseq [slice-of-values (partition-all 100 values)]
-         (let [tsvs (->> slice-of-values
-                         (map row->tsv)
-                         (str/join "\n")
-                         (StringReader.))]
-           (.copyIn copy-manager ^String sql tsvs)))))))
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
+          [sql & _]    (sql/format {::copy       (keyword table-name)
+                                    :columns     (map keyword column-names)
+                                    ::from-stdin "''"}
+                                   :quoted true
+                                   :dialect (sql.qp/quote-style driver))
+          ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
+          ;; little faster but not by much (3.63m), and 10,000 threw an error:
+          ;;     PreparedStatement can have at most 65,535 parameters
+          chunks (partition-all (or driver/*insert-chunk-rows* 1000) values)]
+      (doseq [chunk chunks]
+        (let [tsvs (->> chunk
+                        (map row->tsv)
+                        (str/join "\n")
+                        (StringReader.))]
+          (.copyIn copy-manager ^String sql tsvs))))))
 
 (defmethod driver/current-user-table-privileges :postgres
   [_driver database]

@@ -384,3 +384,23 @@
                                         (map #(find-matching-column query stage-number % cols))
                                         selected-refs)]
        (mapv #(assoc % :selected? (contains? matching-selected-cols %)) cols)))))
+
+(mu/defn matching-column-sets? :- :boolean
+  "Returns true if the provided `refs` is the same set as the provided `columns`.
+
+  Order is ignored. Only returns true if each of the `refs` matches a column, and each of the `columns` is matched by
+  exactly 1 of the `refs`. (A bijection, in math terms.)"
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   refs         :- [:sequential ::lib.schema.ref/ref]
+   columns      :- [:sequential ::lib.schema.metadata/column]]
+  ;; The lists match iff:
+  ;; - Each ref matches a column; AND
+  ;; - Each column was matched by exactly one ref
+  ;; So we return true if nil is not a key in the matching, AND all vals in the matching have length 1,
+  ;; AND the matching has as many elements as `columns` (usually the list of columns returned by default).
+  (and (= (count refs) (count columns))
+       (let [matching (group-by #(find-matching-column query stage-number % columns) refs)]
+         (and (not (contains? matching nil))
+              (= (count matching) (count columns))
+              (every? #(= (count %) 1) (vals matching))))))

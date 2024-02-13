@@ -13,13 +13,13 @@ redirect_from:
 
 Interactive embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
 
-### Interactive embedding demo
+## Interactive embedding demo
 
 To get a feel for what you can do with interactive embedding, check out our [interactive embedding demo](https://www.metabase.com/embedding-demo).
 
 To see the query builder in action, click on **Reports** > **+ New** > **Question**.
 
-### Quick start
+## Quick start
 
 Check out the [Interactive embedding quick start](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start).
 

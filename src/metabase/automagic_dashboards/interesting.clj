@@ -462,8 +462,8 @@
            metric-specs
            filter-specs]} :- [:map
                                [:dimension-specs [:maybe [:sequential ads/dimension-template]]]
-                                 [:metric-specs [:maybe [:sequential ads/metric-template]]]
-                                 [:filter-specs [:maybe [:sequential ads/filter-template]]]]]
+                               [:metric-specs [:maybe [:sequential ads/metric-template]]]
+                               [:filter-specs [:maybe [:sequential ads/filter-template]]]]]
   (let [dims      (->> (find-dimensions context dimension-specs)
                        (add-field-self-reference context))
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)

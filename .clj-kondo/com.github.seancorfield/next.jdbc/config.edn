@@ -1,8 +1,0 @@
-{:hooks
- {:analyze-call
-  {next.jdbc/with-transaction
-   hooks.com.github.seancorfield.next-jdbc/with-transaction
-   next.jdbc/with-transaction+options
-   hooks.com.github.seancorfield.next-jdbc/with-transaction+options}}
- :lint-as {next.jdbc/on-connection clojure.core/with-open
-           next.jdbc/on-connection+options clojure.core/with-open}}

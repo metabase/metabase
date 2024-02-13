@@ -56,8 +56,6 @@ export const PublicLinkCopyPanel = ({
               }
             >
               <RemoveLinkAnchor
-                inline
-                lh="1"
                 fz="sm"
                 c="error.0"
                 fw={700}

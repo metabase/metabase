@@ -33,6 +33,4 @@ export function QuestionNotebookButton({
 }
 
 QuestionNotebookButton.shouldRender = ({ question, isActionListVisible }) =>
-  question.isStructured() &&
-  question.query().isEditable() &&
-  isActionListVisible;
+  question.isStructured() && question.isQueryEditable() && isActionListVisible;

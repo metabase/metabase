@@ -179,7 +179,7 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const isDirty =
-      question.query().isEditable() &&
+      question.isQueryEditable() &&
       question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {

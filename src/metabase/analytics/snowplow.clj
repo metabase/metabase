@@ -24,6 +24,51 @@
 
 (set! *warn-on-reflection* true)
 
+;; Adding or updating a Snowplow schema? Make sure that the two maps below are updated accordingly.
+
+(def ^:private schema->version
+  "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
+  to SnowcatCloud, at the same time that the data sent to the collector is updated."
+  {::account      "1-0-1"
+   ::invite       "1-0-1"
+   ::csvupload    "1-0-0"
+   ::dashboard    "1-1-3"
+   ::database     "1-0-1"
+   ::instance     "1-1-2"
+   ::metabot      "1-0-1"
+   ::search       "1-0-1"
+   ::model        "1-0-0"
+   ::timeline     "1-0-0"
+   ::task         "1-0-0"
+   ::action       "1-0-0"
+   ::embed_share  "1-0-0"})
+
+(def ^:private event->schema
+  "The schema to use for each analytics event."
+  {::new-instance-created           ::account
+   ::new-user-created               ::account
+   ::invite-sent                    ::invite
+   ::index-model-entities-enabled   ::model
+   ::dashboard-created              ::dashboard
+   ::question-added-to-dashboard    ::dashboard
+   ::dashboard-tab-created          ::dashboard
+   ::dashboard-tab-deleted          ::dashboard
+   ::database-connection-successful ::database
+   ::database-connection-failed     ::database
+   ::new-event-created              ::timeline
+   ::new-task-history               ::task
+   ::new-search-query               ::search
+   ::search-results-filtered        ::search
+   ::action-created                 ::action
+   ::action-updated                 ::action
+   ::action-deleted                 ::action
+   ::action-executed                ::action
+   ::csv-upload-successful          ::csvupload
+   ::csv-upload-failed              ::csvupload
+   ::metabot-feedback-received      ::metabot
+   ::embedding-enabled              ::embed_share
+   ::embedding-disabled             ::embed_share})
+
 (defsetting analytics-uuid
   (deferred-tru
     (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
@@ -134,22 +179,6 @@
        ;; Override with localhost IP to avoid logging actual user IP addresses
        (.ipAddress "127.0.0.1"))))
 
-(def ^:private schema->version
-  "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
-  to SnowcatCloud, at the same time that the data sent to the collector is updated."
-  {::account      "1-0-1"
-   ::invite       "1-0-1"
-   ::csvupload    "1-0-0"
-   ::dashboard    "1-1-3"
-   ::database     "1-0-1"
-   ::instance     "1-1-2"
-   ::metabot      "1-0-1"
-   ::search       "1-0-1"
-   ::model        "1-0-0"
-   ::timeline     "1-0-0"
-   ::task         "1-0-0"
-   ::action       "1-0-0"})
-
 (defn- app-db-type
   "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
   []
@@ -195,30 +224,6 @@
   event data to an in-memory store."
   [tracker event]
   (.track ^Tracker tracker ^SelfDescribing event))
-
-(def ^:private event->schema
-  "The schema to use for each analytics event."
-  {::new-instance-created           ::account
-   ::new-user-created               ::account
-   ::invite-sent                    ::invite
-   ::index-model-entities-enabled   ::model
-   ::dashboard-created              ::dashboard
-   ::question-added-to-dashboard    ::dashboard
-   ::dashboard-tab-created          ::dashboard
-   ::dashboard-tab-deleted          ::dashboard
-   ::database-connection-successful ::database
-   ::database-connection-failed     ::database
-   ::new-event-created              ::timeline
-   ::new-task-history               ::task
-   ::new-search-query               ::search
-   ::search-results-filtered        ::search
-   ::action-created                 ::action
-   ::action-updated                 ::action
-   ::action-deleted                 ::action
-   ::action-executed                ::action
-   ::csv-upload-successful          ::csvupload
-   ::csv-upload-failed              ::csvupload
-   ::metabot-feedback-received      ::metabot})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector

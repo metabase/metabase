@@ -39,6 +39,26 @@ export function filterField(
   return getFilterField(fieldName, order);
 }
 
+export function filterSelectField(fieldName, { operator, value, order } = {}) {
+  if (operator) {
+    changeOperator(getFilterField(fieldName, order), operator);
+  }
+
+  if (value) {
+    const values = Array.isArray(value) ? value : [value];
+    values.forEach(value => {
+      getFilterField(fieldName, order)
+        .findByLabelText("Filter value")
+        .focus()
+        .clear()
+        .type(value);
+      popover().findByText(value).click();
+    });
+  }
+
+  return getFilterField(fieldName, order);
+}
+
 export function filterFieldPopover(
   fieldName,
   { value, placeholder, order } = {},

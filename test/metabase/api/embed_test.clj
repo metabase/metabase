@@ -304,7 +304,7 @@
 
 (deftest card-query-test
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (do-response-formats [response-format _request-options]
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding false]
@@ -315,7 +315,7 @@
 
 (deftest card-query-test-2
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (do-response-formats [response-format request-options]
         (with-embedding-enabled-and-new-secret-key
           (let [expected-status (response-format->status-code response-format)]
@@ -329,7 +329,7 @@
 
 (deftest card-query-test-3
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (do-response-formats [response-format _request-options]
         (with-embedding-enabled-and-new-secret-key
           (let [expected-status (response-format->status-code response-format)]
@@ -345,7 +345,7 @@
 
 (deftest card-query-test-4
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (do-response-formats [response-format _request-options]
         (with-embedding-enabled-and-new-secret-key
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
@@ -355,7 +355,7 @@
 
 (deftest card-query-test-5
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (do-response-formats [response-format _request-options]
         (with-embedding-enabled-and-new-secret-key
           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
@@ -380,7 +380,7 @@
                    (count (csv/read-csv results))))))))))
 
 (deftest card-locked-params-test
-  (mt/with-ensure-with-temp-no-transaction!
+  (mt/test-helpers-set-global-values!
     (with-embedding-enabled-and-new-secret-key
       (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "locked"}}]
         (do-response-formats [response-format request-options]
@@ -415,7 +415,7 @@
                  (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
 
 (deftest card-enabled-params-test
-  (mt/with-ensure-with-temp-no-transaction!
+  (mt/test-helpers-set-global-values!
     (with-embedding-enabled-and-new-secret-key
       (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "enabled"}}]
         (do-response-formats [response-format request-options]
@@ -513,13 +513,14 @@
                (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
-  (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp! [Card card (card-with-date-field-filter)]
-      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* ""]
-        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-          (is (= "count\n107\n"
-                 (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
+  (mt/test-helpers-set-global-values!
+   (with-embedding-enabled-and-new-secret-key
+     (mt/with-temp [Card card (card-with-date-field-filter)]
+       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+       (binding [client/*url-prefix* ""]
+         (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+           (is (= "count\n107\n"
+                  (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
@@ -716,7 +717,7 @@
   (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
     ;; Clear out the query execution log so that test doesn't read stale state
     (t2/delete! :model/QueryExecution)
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (mt/mbql-query venues)}}]
@@ -1452,7 +1453,7 @@
 
 (deftest pivot-dashcard-locked-params-test
   (mt/dataset test-data
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                   :embedding_params {:abc "locked"}

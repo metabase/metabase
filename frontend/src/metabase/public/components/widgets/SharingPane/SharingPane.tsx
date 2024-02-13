@@ -7,13 +7,14 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
 import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Group, Text, Anchor } from "metabase/ui";
+import { Group, Text, Anchor, Stack } from "metabase/ui";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Link from "metabase/core/components/Link";
 import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
+import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 
 export type Resource = Dashboard | Card;
 
@@ -111,43 +112,46 @@ function SharingPane({
   };
 
   return (
-    <Group p="lg" data-testid="sharing-pane-container">
-      <SharingPaneButton
-        header={t`Static embed`}
-        description={t`Securely embed this dashboard in your own application’s server code.`}
-        illustration={<StaticEmbedIcon />}
-        onClick={() => onChangeEmbedType("application")}
-      >
-        <SharingPaneActionButton
-          data-testid="sharing-pane-static-embed-button"
-          fullWidth
+    <Stack p="lg" spacing="lg" data-testid="sharing-pane-container">
+      <Group spacing="lg">
+        <SharingPaneButton
+          header={t`Static embed`}
+          description={t`Securely embed this dashboard in your own application’s server code.`}
+          illustration={<StaticEmbedIcon />}
           onClick={() => onChangeEmbedType("application")}
         >
-          {resource.enable_embedding ? t`Edit settings` : t`Set this up`}
-        </SharingPaneActionButton>
-      </SharingPaneButton>
+          <SharingPaneActionButton
+            data-testid="sharing-pane-static-embed-button"
+            fullWidth
+            onClick={() => onChangeEmbedType("application")}
+          >
+            {resource.enable_embedding ? t`Edit settings` : t`Set this up`}
+          </SharingPaneActionButton>
+        </SharingPaneButton>
 
-      <SharingPaneButton
-        header={t`Public embed`}
-        description={
-          isPublicSharingEnabled ? (
-            publicLinkInfoText
-          ) : (
-            <Text>
-              {t`Public embeds and links are disabled.`}{" "}
-              <Link to="/admin/settings/public-sharing">
-                <Anchor data-testid="sharing-pane-settings-link">{t`Settings`}</Anchor>
-              </Link>
-            </Text>
-          )
-        }
-        disabled={!isPublicSharingEnabled}
-        onClick={createPublicLink}
-        illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
-      >
-        {getPublicLinkElement()}
-      </SharingPaneButton>
-    </Group>
+        <SharingPaneButton
+          header={t`Public embed`}
+          description={
+            isPublicSharingEnabled ? (
+              publicLinkInfoText
+            ) : (
+              <Text>
+                {t`Public embeds and links are disabled.`}{" "}
+                <Link to="/admin/settings/public-sharing">
+                  <Anchor data-testid="sharing-pane-settings-link">{t`Settings`}</Anchor>
+                </Link>
+              </Text>
+            )
+          }
+          disabled={!isPublicSharingEnabled}
+          onClick={createPublicLink}
+          illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
+        >
+          {getPublicLinkElement()}
+        </SharingPaneButton>
+      </Group>
+      <InteractiveEmbeddingCTA />
+    </Stack>
   );
 }
 

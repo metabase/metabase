@@ -12,6 +12,7 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
+   [metabase.permissions.util :as perms.u]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -72,7 +73,7 @@
 (mu/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
   [group-id :- ms/PositiveInt
-   object   :- perms/PathSchema]
+   object   :- perms.u/PathSchema]
   ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
   (t2/exists? Permissions
               :group_id group-id

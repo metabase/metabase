@@ -76,6 +76,61 @@ export const REVIEWS = {
 // Field values are not included in the field object in the API response
 // Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
 
+export const ORDER_QUANTITY_VALUES: FieldValuesResult = {
+  field_id: ORDERS.QUANTITY,
+  values: Array.from({ length: 101 }, (_, i) => [i]),
+  has_more_values: false,
+};
+
+export const PRODUCT_TITLE_VALUES: FieldValuesResult = {
+  field_id: PRODUCTS.TITLE,
+  values: [
+    ["Aerodynamic Bronze Hat"],
+    ["Aerodynamic Concrete Bench"],
+    ["Aerodynamic Concrete Lamp"],
+    ["Aerodynamic Copper Knife"],
+    ["Aerodynamic Cotton Bottle"],
+    ["Aerodynamic Cotton Lamp"],
+    ["Aerodynamic Granite Bench"],
+    ["Aerodynamic Granite Bottle"],
+    ["Aerodynamic Leather Computer"],
+    ["Aerodynamic Leather Toucan"],
+    ["Aerodynamic Linen Coat"],
+    ["Aerodynamic Paper Coat"],
+    ["Aerodynamic Paper Computer"],
+    ["Aerodynamic Rubber Bench"],
+    ["Awesome Aluminum Keyboard"],
+    ["Awesome Aluminum Table"],
+    ["Awesome Bronze Plate"],
+    ["Awesome Concrete Shoes"],
+    ["Awesome Cotton Shoes"],
+    ["Awesome Granite Car"],
+  ],
+  has_more_values: false,
+};
+
+export const PRODUCT_EAT_VALUES: FieldValuesResult = {
+  field_id: PRODUCTS.EAN,
+  values: [
+    ["0001664425970"],
+    ["0006590063715"],
+    ["0010465925138"],
+    ["0038948983000"],
+    ["0095774502751"],
+    ["0096051986448"],
+    ["0157967025871"],
+    ["0212722801067"],
+    ["0225815844582"],
+    ["0236197465609"],
+    ["0255973714120"],
+    ["0272643267465"],
+    ["0335243754848"],
+    ["0399569209871"],
+    ["0498395047364"],
+  ],
+  has_more_values: false,
+};
+
 export const PRODUCT_CATEGORY_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.CATEGORY,
   values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
@@ -88,11 +143,84 @@ export const PRODUCT_VENDOR_VALUES: FieldValuesResult = {
   has_more_values: true,
 };
 
+export const PRODUCT_RATING_VALUES: FieldValuesResult = {
+  field_id: PRODUCTS.RATING,
+  values: [[1], [2], [3], [4], [5]],
+  has_more_values: false,
+};
+
 export const PEOPLE_SOURCE_VALUES: FieldValuesResult = {
   field_id: PEOPLE.SOURCE,
   values: [["Affiliate"], ["Facebook"], ["Google"], ["Organic"], ["Twitter"]],
   has_more_values: false,
 };
+
+export const PEOPLE_STATE_VALUES: FieldValuesResult = {
+  field_id: PEOPLE.STATE,
+  values: [
+    ["AK"],
+    ["AL"],
+    ["AR"],
+    ["AZ"],
+    ["CA"],
+    ["CO"],
+    ["CT"],
+    ["DE"],
+    ["FL"],
+    ["GA"],
+    ["IA"],
+    ["ID"],
+    ["IL"],
+    ["IN"],
+    ["KS"],
+    ["KY"],
+    ["LA"],
+    ["MA"],
+    ["MD"],
+    ["ME"],
+    ["MI"],
+    ["MN"],
+    ["MO"],
+    ["MS"],
+    ["MT"],
+    ["NC"],
+    ["ND"],
+    ["NE"],
+    ["NH"],
+    ["NJ"],
+    ["NM"],
+    ["NV"],
+    ["NY"],
+    ["OH"],
+    ["OK"],
+    ["OR"],
+    ["PA"],
+    ["RI"],
+    ["SC"],
+    ["SD"],
+    ["TN"],
+    ["TX"],
+    ["UT"],
+    ["VA"],
+    ["VT"],
+    ["WA"],
+    ["WI"],
+    ["WV"],
+    ["WY"],
+  ],
+  has_more_values: false,
+};
+
+export const SAMPLE_DB_FIELD_VALUES = [
+  ORDER_QUANTITY_VALUES,
+  PRODUCT_TITLE_VALUES,
+  PRODUCT_EAT_VALUES,
+  PRODUCT_CATEGORY_VALUES,
+  PRODUCT_VENDOR_VALUES,
+  PRODUCT_RATING_VALUES,
+  PEOPLE_SOURCE_VALUES,
+  PEOPLE_STATE_VALUES,
+];
 
 const DEFAULT_NUMERIC_BINNING_OPTION: FieldDimensionOption = {
   name: "Auto bin",
@@ -224,7 +352,6 @@ export const createOrdersIdField = (opts?: Partial<Field>): Field =>
     base_type: "type/BigInteger",
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
-    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -239,7 +366,6 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PEOPLE.ID,
-    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 929,
@@ -258,7 +384,6 @@ export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PRODUCTS.ID,
-    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -276,7 +401,6 @@ export const createOrdersSubtotalField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -306,7 +430,6 @@ export const createOrdersTaxField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -336,7 +459,6 @@ export const createOrdersTotalField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -366,7 +488,6 @@ export const createOrdersDiscountField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Discount",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -397,7 +518,6 @@ export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
@@ -425,6 +545,7 @@ export const createOrdersQuantityField = (opts?: Partial<Field>): Field =>
     semantic_type: "type/Quantity",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 62,
@@ -453,7 +574,6 @@ export const createPeopleIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
     fingerprint: null,
-    has_field_values: "none",
     ...opts,
   });
 
@@ -587,7 +707,6 @@ export const createPeopleLongitudeField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Longitude",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_COORDINATE_BINNING_OPTION,
     dimension_options: createCoordinateFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -617,6 +736,7 @@ export const createPeopleStateField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/State",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 49,
@@ -640,6 +760,7 @@ export const createPeopleSourceField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Source",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 5,
@@ -662,7 +783,6 @@ export const createPeopleBirthDateField = (opts?: Partial<Field>): Field =>
     base_type: "type/Date",
     effective_type: "type/Date",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
@@ -711,7 +831,6 @@ export const createPeopleLatitudeField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Latitude",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_COORDINATE_BINNING_OPTION,
     dimension_options: createCoordinateFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -767,7 +886,6 @@ export const createProductsIdField = (opts?: Partial<Field>): Field =>
     base_type: "type/BigInteger",
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
-    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -781,7 +899,7 @@ export const createProductsEanField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: null,
-    has_field_values: "none",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -804,6 +922,7 @@ export const createProductsTitleField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Title",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 199,
@@ -827,6 +946,7 @@ export const createProductsCategoryField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Category",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 4,
@@ -849,7 +969,7 @@ export const createProductsVendorField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Company",
-    has_field_values: "search",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -872,7 +992,6 @@ export const createProductsPriceField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -902,9 +1021,9 @@ export const createProductsRatingField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Score",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 23,
@@ -932,7 +1051,6 @@ export const createProductsCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
@@ -957,7 +1075,6 @@ export const createReviewsIdField = (opts?: Partial<Field>): Field =>
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
-    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -972,7 +1089,6 @@ export const createReviewsProductIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PRODUCTS.ID,
-    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 176,

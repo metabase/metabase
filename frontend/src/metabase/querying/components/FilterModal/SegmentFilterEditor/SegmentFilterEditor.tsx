@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 import { Flex, Grid, MultiSelect, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
@@ -13,17 +12,14 @@ export function SegmentFilterEditor({
   segmentItems,
   onChange,
 }: SegmentFilterEditorProps) {
-  const data = useMemo(() => {
-    return segmentItems.map((segmentItem, segmentIndex) => ({
-      value: String(segmentIndex),
-      label: segmentItem.displayName,
-      isSelected: segmentItem.filterPositions.length > 0,
-    }));
-  }, [segmentItems]);
+  const options = segmentItems.map((segmentItem, segmentIndex) => ({
+    value: String(segmentIndex),
+    label: segmentItem.displayName,
+    isSelected: segmentItem.filterPositions.length > 0,
+  }));
 
-  const value = useMemo(() => {
-    return data.filter(item => item.isSelected).map(item => item.value);
-  }, [data]);
+  const data = options.map(({ value, label }) => ({ value, label }));
+  const value = options.filter(item => item.isSelected).map(item => item.value);
 
   const handleChange = (newValue: string[]) => {
     const newSegments = newValue
@@ -47,6 +43,9 @@ export function SegmentFilterEditor({
           data={data}
           value={value}
           placeholder={t`Filter segments`}
+          nothingFound={t`No matching segment found.`}
+          aria-label={t`Filter segments`}
+          searchable
           onChange={handleChange}
         />
       </Grid.Col>

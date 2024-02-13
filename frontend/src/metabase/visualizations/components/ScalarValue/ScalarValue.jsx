@@ -39,7 +39,7 @@ const ScalarValue = ({
         targetHeight: height,
         targetWidth: width,
         fontFamily: fontFamily ?? "Lato",
-        fontWeight: 900,
+        fontWeight: 700,
         unit: "rem",
         step: 0.2,
         min: 1,

@@ -3,16 +3,16 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { checkNotNull } from "metabase/lib/types";
-import { Loader, Center } from "metabase/ui";
+import { Center, Loader } from "metabase/ui";
 import { useFieldValuesQuery } from "metabase/common/hooks";
 import { ListValuePicker } from "./ListValuePicker";
 import { SearchValuePicker } from "./SearchValuePicker";
 import { StaticValuePicker } from "./StaticValuePicker";
 import {
-  canLoadFieldValues,
-  isKeyColumn,
   canListFieldValues,
+  canLoadFieldValues,
   canSearchFieldValues,
+  isKeyColumn,
 } from "./utils";
 
 interface FilterValuePickerProps<T> {
@@ -55,23 +55,20 @@ function FilterValuePicker({
     enabled: canLoadFieldValues(fieldInfo),
   });
 
-  const fieldValues = fieldData?.values ?? [];
-
   if (isLoading) {
     return (
       <Center h="2.5rem">
-        <Loader />
+        <Loader data-testid="loading-spinner" />
       </Center>
     );
   }
 
-  if (fieldData && canListFieldValues(fieldData, compact)) {
+  if (fieldData && canListFieldValues(fieldData)) {
     return (
       <ListValuePicker
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
-        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         compact={compact}
         onChange={onChange}
@@ -86,23 +83,20 @@ function FilterValuePicker({
       <SearchValuePicker
         fieldId={checkNotNull(fieldInfo.fieldId)}
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
-        fieldValues={fieldValues}
+        fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
-        shouldCreate={shouldCreate}
+        nothingFound={t`No matching ${columnInfo.displayName} found.`}
         autoFocus={autoFocus}
         onChange={onChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
       />
     );
   }
 
   return (
     <StaticValuePicker
-      fieldValues={fieldValues}
       selectedValues={selectedValues}
-      placeholder={fieldValues.length > 0 ? t`Search the list` : placeholder}
+      placeholder={placeholder}
       shouldCreate={shouldCreate}
       autoFocus={autoFocus}
       onChange={onChange}
@@ -117,13 +111,17 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
+  const shouldCreate = (query: string) => {
+    return query.trim().length > 0 && !values.includes(query);
+  };
+
   return (
     <FilterValuePicker
       {...props}
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      shouldCreate={query => query.length > 0}
+      shouldCreate={shouldCreate}
     />
   );
 }
@@ -134,13 +132,18 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<number>) {
+  const shouldCreate = (query: string) => {
+    const number = parseFloat(query);
+    return isFinite(number) && !values.includes(number);
+  };
+
   return (
     <FilterValuePicker
       {...props}
       column={column}
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      shouldCreate={query => isFinite(parseFloat(query))}
+      shouldCreate={shouldCreate}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />
   );

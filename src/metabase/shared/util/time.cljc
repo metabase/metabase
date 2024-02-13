@@ -25,7 +25,10 @@
   same-day?
   same-month?
   same-year?
-  day-diff])
+  day-diff
+  unit-diff
+  truncate
+  add])
 
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))

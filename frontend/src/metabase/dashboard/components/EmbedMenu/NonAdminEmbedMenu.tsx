@@ -28,6 +28,7 @@ export const NonAdminEmbedMenu = ({
 
   const target = (
     <DashboardEmbedHeaderButton
+      hasBackground={resourceType === "dashboard"}
       onClick={() => setIsOpen(!isOpen)}
       disabled={isDisabled}
       tooltip={isDisabled ? tooltipLabel : null}

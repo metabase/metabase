@@ -31,11 +31,6 @@ describe("StructuredQuery", () => {
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
-
-      it("should remove filters referencing invalid field ID", () => {
-        const q = ordersTable.query().filter(["=", ["field", 12345, null], 42]);
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
-      });
     });
 
     describe("aggregations", () => {
@@ -144,22 +139,6 @@ describe("StructuredQuery", () => {
       it("should remove unnecessary layers of nesting via question()", () => {
         const q = ordersTable.query().nest();
         expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
-      });
-
-      it("should remove clauses dependent on removed clauses in the parent", () => {
-        const q = ordersTable
-          .query()
-          .breakout(["field", ORDERS.PRODUCT_ID, null])
-          .nest()
-          .filter([
-            "=",
-            ["field", "count", { "base-type": "type/Integer" }],
-            42,
-          ]);
-        expect(q.clean().query()).toEqual({
-          breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          "source-table": ORDERS_ID,
-        });
       });
     });
   });

@@ -302,3 +302,93 @@
       "Dec 14, 2022, 1:17 PM – 1:18 PM" -1 :minute true
       "Dec 14, 2022, 1:14 PM – 1:17 PM" -4 :minute false
       "Dec 14, 2022, 1:14 PM – 1:18 PM" -4 :minute true)))
+
+(deftest ^:parallel truncate-datetime-test
+  (are [unit expected] (= expected
+                          (shared.ut/truncate "2024-02-02T12:02:12.345" unit))
+    :millisecond "2024-02-02T12:02:12.345"
+    :second      "2024-02-02T12:02:12"
+    :minute      "2024-02-02T12:02"
+    :hour        "2024-02-02T12:00"
+    :day         "2024-02-02T00:00"
+    :week        "2024-01-28T00:00"
+    :month       "2024-02-01T00:00"
+    :quarter     "2024-01-01T00:00"
+    :year        "2024-01-01T00:00"))
+
+(deftest ^:parallel truncate-date-test
+  (are [unit expected] (= expected
+                          (shared.ut/truncate "2024-02-02" unit))
+    :day         "2024-02-02"
+    :week        "2024-01-28"
+    :month       "2024-02-01"
+    :quarter     "2024-01-01"
+    :year        "2024-01-01"))
+
+(deftest ^:parallel truncate-time-test
+  (are [unit expected] (= expected
+                          (shared.ut/truncate "12:02:12.345" unit))
+    :millisecond "12:02:12.345"
+    :second      "12:02:12"
+    :minute      "12:02"
+    :hour        "12:00"))
+
+(deftest ^:parallel unit-diff-datetime-test
+  (are [unit expected] (= expected
+                          (shared.ut/unit-diff unit "2024-01-01T00:00:00.000" "2024-02-02T12:02:12.345"))
+    :millisecond 2808132345
+    :second      2808132
+    :minute      46802
+    :hour        780
+    :day         32
+    :week        4
+    :month       1
+    :quarter     0
+    :year        0))
+
+(deftest ^:parallel unit-diff-date-test
+  (are [unit expected] (= expected
+                          (shared.ut/unit-diff unit "2024-01-01" "2024-02-02"))
+    :day         32
+    :week        4
+    :month       1
+    :quarter     0
+    :year        0))
+
+(deftest ^:parallel unit-diff-time-test
+  (are [unit expected] (= expected
+                          (shared.ut/unit-diff unit "00:00:00.000" "12:02:12.345"))
+    :millisecond 43332345
+    :second      43332
+    :minute      722
+    :hour        12))
+
+(deftest ^:parallel add-datetime-test
+  (are [unit expected] (= expected
+                          (shared.ut/add "2024-01-01T00:00:00.000" unit 2))
+    :millisecond "2024-01-01T00:00:00.002"
+    :second      "2024-01-01T00:00:02"
+    :minute      "2024-01-01T00:02"
+    :hour        "2024-01-01T02:00"
+    :day         "2024-01-03T00:00"
+    :week        "2024-01-15T00:00"
+    :month       "2024-03-01T00:00"
+    :quarter     "2024-07-01T00:00"
+    :year        "2026-01-01T00:00"))
+
+(deftest ^:parallel add-date-test
+  (are [unit expected] (= expected
+                          (shared.ut/add "2024-01-01" unit 2))
+    :day         "2024-01-03"
+    :week        "2024-01-15"
+    :month       "2024-03-01"
+    :quarter     "2024-07-01"
+    :year        "2026-01-01"))
+
+(deftest ^:parallel add-time-test
+  (are [unit expected] (= expected
+                          (shared.ut/add "00:00:00.000" unit 2))
+    :millisecond "00:00:00.002"
+    :second      "00:00:02"
+    :minute      "00:02"
+    :hour        "02:00"))

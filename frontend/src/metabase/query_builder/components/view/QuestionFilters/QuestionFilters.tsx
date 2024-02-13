@@ -197,7 +197,7 @@ const shouldRender = ({
 }: RenderCheckOpts) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
-  question.query().isEditable() &&
+  question.isQueryEditable() &&
   (question.query() as LegacyQuery).topLevelFilters().length > 0 &&
   !isObjectDetail;
 

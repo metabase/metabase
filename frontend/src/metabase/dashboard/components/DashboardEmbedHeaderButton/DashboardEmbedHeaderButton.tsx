@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { Tooltip, Text, Box } from "metabase/ui";
+import { Tooltip, Text, Flex } from "metabase/ui";
 
 export type DashboardEmbedHeaderButtonProps = {
   onClick?: () => void;
@@ -40,7 +40,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
         py="0.6rem"
         px="0.75rem"
         bg="bg.3"
-        offset={hasBackground ? 4 : 0}
+        offset={4}
         label={
           <Text c="inherit" size="sm" fw={700}>
             {tooltipLabel}
@@ -49,7 +49,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
         withArrow
         arrowSize={10}
       >
-        <Box>
+        <Flex>
           <DashboardHeaderButton
             data-disabled={disabled}
             data-testid="dashboard-embed-button"
@@ -59,7 +59,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
             ref={ref}
             hasBackground={hasBackground}
           />
-        </Box>
+        </Flex>
       </Tooltip>
     );
   },

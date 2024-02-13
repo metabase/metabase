@@ -151,18 +151,11 @@ export default class NativeQuery extends AtomicQuery {
     return database && database.engine;
   }
 
-  /**
-   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
-   */
-  readOnly() {
+  // Whether the user can modify and run this query
+  // Determined based on availability of database metadata and native database permissions
+  isEditable(): boolean {
     const database = this.database();
-    return !database || database.native_permissions !== "write";
-  }
-
-  // This basically just mirrors StructuredQueries `isEditable` method,
-  // so there is no need to do `isStructured ? isEditable() : readOnly()`
-  isEditable() {
-    return !this.readOnly();
+    return database != null && database.native_permissions === "write";
   }
 
   /* Methods unique to this query type */

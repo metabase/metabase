@@ -1,0 +1,340 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Autocomplete, Stack } from "metabase/ui";
+
+export const dataWithGroupsLarge = [
+  { value: "Entity key", icon: "label", group: "Overall row" },
+  { value: "Entity name", icon: "string", group: "Overall row" },
+  { value: "Foreign key", icon: "connections", group: "Overall row" },
+  { value: "Category", icon: "string", group: "Common" },
+  { value: "Comment", icon: "string", group: "Common" },
+  { value: "Description", icon: "string", group: "Common" },
+  { value: "Title", icon: "string", group: "Common" },
+  { value: "City", icon: "location", group: "Location" },
+  { value: "Country", icon: "location", group: "Location" },
+  { value: "Latitude", icon: "location", group: "Location" },
+  { value: "Longitude", icon: "location", group: "Location" },
+  { value: "Longitude", icon: "location", group: "Location" },
+  { value: "State", icon: "location", group: "Location" },
+  { value: "Zip code", icon: "location", group: "Location" },
+];
+
+export const dataWithGroups = dataWithGroupsLarge.slice(0, 6);
+
+export const dataWithIcons = dataWithGroups.map(item => ({
+  ...item,
+  group: undefined,
+}));
+
+export const dataWithLabels = dataWithIcons.map(item => ({
+  ...item,
+  icon: undefined,
+}));
+
+export const args = {
+  data: dataWithLabels,
+  size: "md",
+  label: "Field type",
+  description: undefined,
+  error: undefined,
+  placeholder: "No semantic type",
+  limit: undefined,
+  disabled: false,
+  readOnly: false,
+  withAsterisk: false,
+  dropdownPosition: "flip",
+};
+
+export const sampleArgs = {
+  value: dataWithLabels[0].value,
+  description: "Determines how Metabase displays the field",
+  error: "required",
+};
+
+export const argTypes = {
+  data: {
+    control: { type: "json" },
+  },
+  size: {
+    options: ["xs", "md"],
+    control: { type: "inline-radio" },
+  },
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  error: {
+    control: { type: "text" },
+  },
+  placeholder: {
+    control: { type: "text" },
+  },
+  limit: {
+    control: { type: "number" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  readOnly: {
+    control: { type: "boolean" },
+  },
+  withAsterisk: {
+    control: { type: "boolean" },
+  },
+  dropdownPosition: {
+    options: ["bottom", "top", "flip"],
+    control: { type: "inline-radio" },
+  },
+};
+
+<Meta
+  title="Inputs/Autocomplete"
+  component={Autocomplete}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Autocomplete
+
+Our themed wrapper around [Mantine Autocomplete](https://v6.mantine.dev/core/autocomplete/).
+
+## Docs
+
+- [Mantine Autocomplete Docs](https://v6.mantine.dev/core/autocomplete/)
+
+## Examples
+
+export const DefaultTemplate = args => <Autocomplete {...args} />;
+
+export const VariantTemplate = args => (
+  <Stack>
+    <Autocomplete {...args} />
+    <Autocomplete {...args} variant="unstyled" />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Size - md
+
+export const EmptyMd = VariantTemplate.bind({});
+
+<Canvas>
+  <Story name="Empty, md">{EmptyMd}</Story>
+</Canvas>
+
+#### Asterisk
+
+export const AsteriskMd = VariantTemplate.bind({});
+AsteriskMd.args = {
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Asterisk, md">{AsteriskMd}</Story>
+</Canvas>
+
+#### Description
+
+export const DescriptionMd = VariantTemplate.bind({});
+DescriptionMd.args = {
+  description: sampleArgs.description,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Description, md">{DescriptionMd}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledMd = VariantTemplate.bind({});
+DisabledMd.args = {
+  description: sampleArgs.description,
+  disabled: true,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Disabled, md">{DisabledMd}</Story>
+</Canvas>
+
+#### Error
+
+export const ErrorMd = VariantTemplate.bind({});
+ErrorMd.args = {
+  description: sampleArgs.description,
+  error: sampleArgs.error,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Error, md">{ErrorMd}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyMd = VariantTemplate.bind({});
+ReadOnlyMd.args = {
+  defaultValue: sampleArgs.value,
+  description: sampleArgs.description,
+  readOnly: true,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Read only, md">{ReadOnlyMd}</Story>
+</Canvas>
+
+#### Icons
+
+export const IconsMd = VariantTemplate.bind({});
+IconsMd.args = {
+  data: dataWithIcons,
+  description: sampleArgs.description,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Icons, md">{IconsMd}</Story>
+</Canvas>
+
+#### Groups
+
+export const GroupsMd = VariantTemplate.bind({});
+GroupsMd.args = {
+  data: dataWithGroups,
+  description: sampleArgs.description,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Groups, md">{GroupsMd}</Story>
+</Canvas>
+
+#### Large sets
+
+export const LargeSetsMd = VariantTemplate.bind({});
+LargeSetsMd.args = {
+  data: dataWithGroupsLarge,
+  description: sampleArgs.description,
+  limit: 5,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Large sets, md">{LargeSetsMd}</Story>
+</Canvas>
+
+### Size - xs
+
+export const EmptyXs = VariantTemplate.bind({});
+EmptyXs.args = {
+  ...EmptyMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Empty, xs">{EmptyXs}</Story>
+</Canvas>
+
+#### Asterisk
+
+export const AsteriskXs = VariantTemplate.bind({});
+AsteriskXs.args = {
+  ...AsteriskMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Asterisk, xs">{AsteriskXs}</Story>
+</Canvas>
+
+#### Description
+
+export const DescriptionXs = VariantTemplate.bind({});
+DescriptionXs.args = {
+  ...DescriptionMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Description, xs">{DescriptionXs}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledXs = VariantTemplate.bind({});
+DisabledXs.args = {
+  ...DisabledMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Disabled, xs">{DisabledXs}</Story>
+</Canvas>
+
+#### Error
+
+export const ErrorXs = VariantTemplate.bind({});
+ErrorXs.args = {
+  ...ErrorMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Error, xs">{ErrorXs}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyXs = VariantTemplate.bind({});
+ReadOnlyXs.args = {
+  ...ReadOnlyMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Read only, xs">{ReadOnlyXs}</Story>
+</Canvas>
+
+#### Icons
+
+export const IconsXs = VariantTemplate.bind({});
+IconsXs.args = {
+  ...IconsMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Icons, xs">{IconsXs}</Story>
+</Canvas>
+
+#### Groups
+
+export const GroupsXs = VariantTemplate.bind({});
+GroupsXs.args = {
+  ...GroupsMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Groups, xs">{GroupsXs}</Story>
+</Canvas>
+
+#### Large sets
+
+export const LargeSetsXs = VariantTemplate.bind({});
+LargeSetsXs.args = {
+  ...LargeSetsMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Large sets, xs">{LargeSetsXs}</Story>
+</Canvas>

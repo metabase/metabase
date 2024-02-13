@@ -27,18 +27,22 @@
 (mbql-clause/define-tuple-mbql-clause :between :- :type/Boolean
   ;; TODO -- we should probably enforce additional constraints that the various arg types have to agree, e.g. it makes
   ;; no sense to say something like `[:between {} <date> <[:ref ::expression/string]> <integer>]`
+  ;;
+  ;; TODO -- should we enforce that min is <= max (for literal number values?)
   #_expr [:ref ::expression/orderable]
   #_min  [:ref ::expression/orderable]
   #_max  [:ref ::expression/orderable])
 
 ;; sugar: a pair of `:between` clauses
 (mbql-clause/define-tuple-mbql-clause :inside :- :type/Boolean
+  ;; TODO -- should we enforce that lat-min <= lat-max and lon-min <= lon-max? Should we enforce that -90 <= lat 90
+  ;; and -180 <= lon 180 ?? (for literal number values)
   #_lat-expr [:ref ::expression/orderable]
   #_lon-expr [:ref ::expression/orderable]
-  #_lat-max  [:ref ::expression/orderable]
-  #_lon-min  [:ref ::expression/orderable]
-  #_lat-min  [:ref ::expression/orderable]
-  #_lon-max  [:ref ::expression/orderable])
+  #_lat-max  [:ref ::expression/orderable]  ; north
+  #_lon-min  [:ref ::expression/orderable]  ; west
+  #_lat-min  [:ref ::expression/orderable]  ; south
+  #_lon-max  [:ref ::expression/orderable]) ; east
 
 ;;; null checking expressions
 ;;;

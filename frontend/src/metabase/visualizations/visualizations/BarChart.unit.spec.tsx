@@ -26,7 +26,7 @@ const setup = ({ series, question }: SetupProps) => {
   renderWithProviders(
     <ChartSettings
       series={series}
-      quesiton={question}
+      question={question}
       initial={{ section: "Data" }}
       noPreview
     />,
