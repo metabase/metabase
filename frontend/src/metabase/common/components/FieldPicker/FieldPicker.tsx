@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Checkbox } from "metabase/ui";
+import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
 import {
   ToggleItem,
   ColumnItem,
@@ -76,20 +77,30 @@ export const FieldPicker = ({
           <ItemTitle>{isAll ? t`Select none` : t`Select all`}</ItemTitle>
         </label>
       </ToggleItem>
-      {items.map((item, index) => (
-        <ColumnItem key={item.longDisplayName}>
-          <label>
-            <Checkbox
-              checked={isColumnSelected(item.column)}
-              disabled={isColumnSelected(item.column) && isDisabledDeselection}
-              onChange={event => onToggle(index, event.target.checked)}
-            />
+      <DelayGroup>
+        {items.map((item, index) => (
+          <ColumnItem key={item.longDisplayName}>
+            <label>
+              <Checkbox
+                checked={isColumnSelected(item.column)}
+                disabled={
+                  isColumnSelected(item.column) && isDisabledDeselection
+                }
+                onChange={event => onToggle(index, event.target.checked)}
+              />
 
-            <ItemIcon name={getColumnIcon(item.column)} size={18} />
-            <ItemTitle>{item.displayName}</ItemTitle>
-          </label>
-        </ColumnItem>
-      ))}
+              <ItemIcon name={getColumnIcon(item.column)} size={18} />
+              <ItemTitle>{item.displayName}</ItemTitle>
+              <FieldInfoIcon
+                query={query}
+                stageIndex={stageIndex}
+                column={item.column}
+                position="right"
+              />
+            </label>
+          </ColumnItem>
+        ))}
+      </DelayGroup>
     </ul>
   );
 };

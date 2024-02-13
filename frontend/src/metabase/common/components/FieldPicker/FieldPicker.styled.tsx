@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color, alpha, darken } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
 
 export const ItemTitle = styled.div`
   min-width: 10ch;
@@ -31,6 +32,18 @@ export const ColumnItem = styled.li`
 
     &:hover {
       background: ${color("bg-medium")};
+    }
+  }
+
+  ${FieldInfoIcon.HoverTarget} {
+    color: ${alpha(darken(color("brand"), 0.6), 0.8)};
+    position: absolute;
+    right: 0.5em;
+  }
+
+  &:hover {
+    ${FieldInfoIcon.HoverTarget} {
+      opacity: 1;
     }
   }
 `;
