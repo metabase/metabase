@@ -4,21 +4,8 @@ import _ from "underscore";
 import { useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
 
-import { useSelector, useDispatch } from "metabase/lib/redux";
-import {
-  useCollectionQuery,
-  useCollectionListQuery,
-  useDatabaseListQuery,
-  useBookmarkListQuery,
-} from "metabase/common/hooks";
-
 import { useToggle } from "metabase/hooks/use-toggle";
-import Bookmark from "metabase/entities/bookmarks";
 import Search from "metabase/entities/search";
-
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { getSetting } from "metabase/selectors/settings";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
@@ -26,21 +13,17 @@ import CollectionEmptyState from "metabase/collections/components/CollectionEmpt
 import Header from "metabase/collections/containers/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
-import { isPersonalCollectionChild } from "metabase/collections/utils";
-import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
-import Databases from "metabase/entities/databases";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import UploadOverlay from "../components/UploadOverlay";
-import { ModelUploadModal } from "../components/ModelUploadModal";
+import { isPersonalCollectionChild } from "metabase/collections/utils";
+import UploadOverlay from "../UploadOverlay";
+import { ModelUploadModal } from "../ModelUploadModal";
 import { getComposedDragProps } from "./utils";
-
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -61,7 +44,7 @@ const ALL_MODELS = [
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
-function CollectionContentView({
+export function CollectionContentView({
   databases,
   bookmarks,
   collection,
@@ -370,78 +353,5 @@ function CollectionContentView({
         );
       }}
     </Search.ListLoader>
-  );
-}
-
-export function CollectionContent({ collectionId }) {
-  const { data: bookmarks, error: bookmarksError } = useBookmarkListQuery();
-  const { data: databases, error: databasesError } = useDatabaseListQuery();
-  const { data: collections, error: collectionsError } = useCollectionListQuery(
-    {
-      query: {
-        tree: true,
-        "exclude-other-user-collections": true,
-        "exclude-archived": true,
-      },
-    },
-  );
-  const { data: collection, error: collectionError } = useCollectionQuery({
-    id: collectionId,
-  });
-
-  const uploadDbId = useSelector(state =>
-    getSetting(state, "uploads-database-id"),
-  );
-  const uploadsEnabled = useSelector(state =>
-    getSetting(state, "uploads-enabled"),
-  );
-
-  const canUploadToDb = useSelector(
-    state =>
-      uploadDbId &&
-      Databases.selectors
-        .getObject(state, {
-          entityId: uploadDbId,
-        })
-        ?.canUpload(),
-  );
-
-  const isAdmin = useSelector(getUserIsAdmin);
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
-
-  const dispatch = useDispatch();
-
-  const createBookmark = (id, type) =>
-    dispatch(Bookmark.actions.create({ id, type }));
-  const deleteBookmark = (id, type) =>
-    dispatch(Bookmark.actions.delete({ id, type }));
-
-  const uploadFile = dispatch(uploadFileAction);
-
-  if (!bookmarks || !databases || !collections || !collection) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
-  const error =
-    bookmarksError || databasesError || collectionsError || collectionError;
-  if (error) {
-    return <LoadingAndErrorWrapper error={error} />;
-  }
-
-  return (
-    <CollectionContentView
-      databases={databases}
-      bookmarks={bookmarks}
-      collection={collection}
-      collections={collections}
-      collectionId={collectionId}
-      createBookmark={createBookmark}
-      deleteBookmark={deleteBookmark}
-      isAdmin={isAdmin}
-      isNavbarOpen={isNavbarOpen}
-      uploadFile={uploadFile}
-      uploadsEnabled={uploadsEnabled}
-      canUploadToDb={canUploadToDb}
-    />
   );
 }
