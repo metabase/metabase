@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.search.config :as search.config]
-   [metabase.search.scoring :as scoring]))
+   [metabase.search.scoring :as scoring]
+   [metabase.test :as mt]))
 
 (defn- result-row
   ([name]
@@ -267,10 +268,10 @@
 
 (deftest score-and-result-test
   (testing "If all scores are 0, does not divide by zero"
-    (with-redefs [scoring/score-result
-                  (fn [_]
-                    [{:weight 100 :score 0 :name "Some score type"}
-                     {:weight 100 :score 0 :name "Some other score type"}])]
+    (mt/with-dynamic-redefs [scoring/score-result
+                             (fn [_]
+                               [{:weight 100 :score 0 :name "Some score type"}
+                                {:weight 100 :score 0 :name "Some other score type"}])]
       (is (= 0 (:score (scoring/score-and-result "" {:name "racing yo" :model "card"})))))))
 
 (deftest ^:parallel serialize-test

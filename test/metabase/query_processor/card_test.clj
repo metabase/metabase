@@ -30,7 +30,7 @@
     (testing "query-magic-ttl converts to seconds correctly"
       (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
         ;; fake average execution time (in millis)
-        (with-redefs [query/average-execution-time-ms (constantly 4000)]
+        (mt/with-dynamic-redefs [query/average-execution-time-ms (constantly 4000)]
           (t2.with-temp/with-temp [Card card]
             ;; the magic multiplier should be ttl-ratio times avg execution time
             (is (= (* 2 4) (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))))

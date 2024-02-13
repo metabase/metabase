@@ -121,7 +121,7 @@
     (mt/with-log-level :warn
       (with-user-in-groups [user [(perms-group/admin)]]
         (let [log-warn-count (atom #{})]
-          (with-redefs [t2/delete!
+          (mt/with-dynamic-redefs [t2/delete!
                         (fn [model & _args]
                           (when (= model PermissionsGroupMembership)
                             (throw (ex-info (str perms-group-membership/fail-to-remove-last-admin-msg)

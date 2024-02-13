@@ -10,7 +10,7 @@
 (def ^:private test-max-results 10000)
 
 (defn- limit [query]
-  (with-redefs [qp.i/absolute-max-results test-max-results]
+  (mt/with-dynamic-redefs [qp.i/absolute-max-results test-max-results]
     (let [rff (limit/limit-result-rows query qp.reducible/default-rff)
           rf  (rff {})]
       (transduce identity rf (repeat (inc test-max-results) [:ok])))))

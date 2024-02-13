@@ -1653,7 +1653,7 @@
           (mt/with-temp [DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
                                                           :action_id action-id
                                                           :card_id model-id}]
-            (with-redefs [api.public/dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1)]
+            (mt/with-dynamic-redefs [api.public/dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1)]
               (is (partial= {:rows-affected 1}
                             (client/client
                              :post 200
@@ -1711,7 +1711,7 @@
         (mt/with-actions [{} action-opts]
           ;; Decrease the throttle threshold to 1 so we can test the throttle,
           ;; and set the throttle delay high enough the throttle will definitely trigger
-          (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 20000)]
+          (mt/with-dynamic-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 20000)]
             (testing "Happy path - we can execute a public action"
               (is (=? {:rows-affected 1}
                       (client/client
@@ -1726,7 +1726,7 @@
                 (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
                 (is (contains? (:headers throttled-response) "Retry-After"))))))
         ;; Lift the throttle attempts threshold so we don't have to wait between requests
-        (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
+        (mt/with-dynamic-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
           (mt/with-actions [{} (assoc action-opts :archived true)]
             (testing "Check that we get a 400 if the action is archived"
               (is (= "Not found."

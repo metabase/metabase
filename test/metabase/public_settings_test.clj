@@ -186,13 +186,13 @@
 
 (deftest cloud-gateway-ips-test
   (mt/with-temp-env-var-value! [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Setting returns ips given comma delimited ips."
         (is (= ["1.2.3.4" "5.6.7.8"]
                (public-settings/cloud-gateway-ips)))))
 
     (testing "Setting returns nil in self-hosted environments"
-      (with-redefs [premium-features/is-hosted? (constantly false)]
+      (mt/with-dynamic-redefs [premium-features/is-hosted? (constantly false)]
         (is (= nil (public-settings/cloud-gateway-ips)))))))
 
 (deftest start-of-week-test
@@ -322,7 +322,7 @@
       (public-settings/landing-page! "#hash")
       (is (= "/#hash" (public-settings/landing-page)))
 
-      (with-redefs [public-settings/site-url (constantly "http://localhost")]
+      (mt/with-dynamic-redefs [public-settings/site-url (constantly "http://localhost")]
         (public-settings/landing-page! "http://localhost/absolute/same-origin")
         (is (= "/absolute/same-origin" (public-settings/landing-page)))))
 

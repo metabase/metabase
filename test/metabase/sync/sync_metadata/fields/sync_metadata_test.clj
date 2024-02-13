@@ -17,7 +17,7 @@
   ([new-metadata-from-sync metadata-in-application-db table]
    (t2.with-temp/with-temp [:model/Table table table]
      (let [update-operations (atom [])]
-       (with-redefs [t2/update! (fn [model id updates]
+       (mt/with-dynamic-redefs [t2/update! (fn [model id updates]
                                   (swap! update-operations conj [(name model) id updates])
                                   (count updates))]
          (#'sync-metadata/update-field-metadata-if-needed!

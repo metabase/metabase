@@ -20,7 +20,7 @@
 (derive ::FakedCard :metabase/model)
 
 (defn- do-with-model-i18n-strs! [thunk]
-  (with-redefs [revision.diff/model-str->i18n-str (fn [model-str]
+  (mt/with-dynamic-redefs [revision.diff/model-str->i18n-str (fn [model-str]
                                                     (case model-str
                                                       "Dashboard"     (deferred-tru "Dashboard")
                                                       "Card"          (deferred-tru "Card")
@@ -443,7 +443,7 @@
     (let [new-version "just a test"]
       (t2.with-temp/with-temp [Card {card-id :id}]
         (push-fake-revision! card-id, :name "one", :message "yay!")
-        (with-redefs [config/mb-version-string new-version]
+        (mt/with-dynamic-redefs [config/mb-version-string new-version]
           (push-fake-revision! card-id, :name "two", :message "yay!"))
         (is (=? [{:metabase_version new-version}
                  {:metabase_version config/mb-version-string}]

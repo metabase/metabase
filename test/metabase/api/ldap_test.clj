@@ -38,7 +38,7 @@
         (mt/user-http-request :crowberto :put 500 "ldap/settings"
                               (assoc (ldap-test-details false) :ldap-password "wrong-password")))
 
-      (with-redefs [ldap/test-ldap-connection (constantly {:status :SUCCESS})]
+      (mt/with-dynamic-redefs [ldap/test-ldap-connection (constantly {:status :SUCCESS})]
         (testing "LDAP port is saved as default value if passed as an empty string (#18936)"
           (mt/user-http-request :crowberto :put 200 "ldap/settings"
                                 (assoc (ldap-test-details) :ldap-port ""))
@@ -57,11 +57,11 @@
   (ldap.test/with-ldap-server
     (testing "`ldap-enabled` setting validates currently saved LDAP settings"
       (mt/with-temporary-setting-values [ldap-enabled false]
-        (with-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR :message "test error"})]
+        (mt/with-dynamic-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR :message "test error"})]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Unable to connect to LDAP server"
                                 (api.ldap/ldap-enabled! true))))
-        (with-redefs [ldap/test-current-ldap-details (constantly {:status :SUCCESS})]
+        (mt/with-dynamic-redefs [ldap/test-current-ldap-details (constantly {:status :SUCCESS})]
           (api.ldap/ldap-enabled! true)
           (is (api.ldap/ldap-enabled))
 

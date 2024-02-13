@@ -22,6 +22,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -567,10 +568,10 @@
   This does result in a malformed img tag, because the src string ends up being an svg-string, but we immediately
   extract and replace this tag with the `img-node->svg-node` function."
   [{:keys [card data]}]
-  (with-redefs [js-svg/svg-string->bytes       identity
-                image-bundle/make-image-bundle (fn [_ s]
-                                                 {:image-src   s
-                                                  :render-type :inline})]
+  (mt/with-dynamic-redefs [js-svg/svg-string->bytes identity
+                           image-bundle/make-image-bundle (fn [_ s]
+                                                            {:image-src   s
+                                                             :render-type :inline})]
     (let [content (-> (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)
                       :content)]
       (-> content
@@ -651,7 +652,7 @@
   (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
         results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
-    (with-redefs [js-svg/svg-string->bytes       identity
+    (mt/with-dynamic-redefs [js-svg/svg-string->bytes       identity
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
                                                     :render-type :inline})]
@@ -670,7 +671,7 @@
   (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
         results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
-    (with-redefs [js-svg/svg-string->bytes       identity
+    (mt/with-dynamic-redefs [js-svg/svg-string->bytes       identity
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
                                                     :render-type :inline})]

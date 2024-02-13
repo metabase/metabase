@@ -191,7 +191,7 @@
          :port                          1234}))))
 
 (deftest connects-with-default-tunnel-port-test
-  (with-redefs [ssh/default-ssh-tunnel-port ssh-mock-server-with-password-port]
+  (mt/with-dynamic-redefs [ssh/default-ssh-tunnel-port ssh-mock-server-with-password-port]
     (#'ssh/start-ssh-tunnel!
      {:tunnel-user ssh-username
       :tunnel-host "127.0.0.1"

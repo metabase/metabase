@@ -66,7 +66,7 @@
     (do-with-setup!*
      request-body
      (fn []
-       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
+       (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
                      h2/*allow-testing-h2-connections*                       true]
          (testing "API response should return a Session UUID"
            (is (=? {:id mt/is-uuid-string?}
@@ -239,7 +239,7 @@
     (testing "error conditions"
       (testing "should throw Exception if driver is invalid"
         (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
-               (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
+               (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
                              h2/*allow-testing-h2-connections*                       true]
                  (client/client :post 400 "setup" (assoc (default-setup-input)
                                                          :database {:engine  "my-fake-driver"
@@ -308,7 +308,7 @@
                 (setup! assoc-in [:prefs :site_locale] "en-EN")))))
 
     (testing "user"
-      (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
+      (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
         (testing "first name may be nil"
           (is (:id (setup! 200 m/dissoc-in [:user :first_name])))
           (is (:id (setup! 200 assoc-in [:user :first_name] nil))))
@@ -364,7 +364,7 @@
                                     :email      (mt/random-email)
                                     :password   "p@ssword1"}}
             has-user-setup (atom false)]
-        (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
+        (mt/with-dynamic-redefs [setup/has-user-setup (fn [] @has-user-setup)]
           (is (not (setup/has-user-setup)))
           (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
             (is (malli= [:map {:closed true} [:id ms/NonBlankString]]
@@ -397,7 +397,7 @@
         (do-with-setup!*
          body
          (fn []
-           (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
+           (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
                          h2/*allow-testing-h2-connections*                       true
                          api.setup/setup-set-settings! (let [orig @#'api.setup/setup-set-settings!]
                                                          (fn [& args]
@@ -428,7 +428,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- api-validate [expected-status-code request-body]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (mt/with-dynamic-redefs [h2/*allow-testing-h2-connections* true]
     (client/client :post expected-status-code "setup/validate" request-body)))
 
 (deftest validate-setup-test
@@ -493,7 +493,7 @@
 
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
-    (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
+    (mt/with-dynamic-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
       (is (partial= [{:name  "Get connected"
                       :tasks [{:title        "Add a database"
                                :completed    true
@@ -533,12 +533,12 @@
                                     (update :title str)))}))))
     (testing "info about switching to postgres or mysql"
       (testing "is included when h2 and not hosted"
-        (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
+        (mt/with-dynamic-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (= ["Get connected" "Productionize" "Curate your data"]
                    (map :name checklist))))))
       (testing "is omitted if hosted"
-        (with-redefs [api.setup/state-for-checklist (constantly
+        (mt/with-dynamic-redefs [api.setup/state-for-checklist (constantly
                                                      (merge default-checklist-state
                                                             {:hosted? true}))]
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]

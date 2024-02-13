@@ -307,7 +307,7 @@
                    :limit       1}))))))
 
 (deftest join-source-query-join-test
-  (with-redefs [fix-bad-refs/fix-bad-references identity]
+  (mt/with-dynamic-redefs [fix-bad-refs/fix-bad-references identity]
     (is (query= (lib.tu.macros/mbql-query orders
                   {:joins  [{:source-query {:source-table $$reviews
                                             :aggregation  [[:aggregation-options

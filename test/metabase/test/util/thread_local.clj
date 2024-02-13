@@ -18,7 +18,7 @@
 
 (defmacro test-helpers-set-global-values!
   "Tells various test helpers like [[metabase.test/with-temp]] to set values globally in a thread-unsafe manner (e.g.
-  via with [[with-redefs]], or by affecting the global state of the application database) rather than
+  via with [[mt/with-dynamic-redefs]], or by affecting the global state of the application database) rather than
   thread-locally (e.g. with [[binding]]). Check docstrings for which helpers support this."
   {:style/indent 0}
   [& body]

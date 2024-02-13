@@ -52,7 +52,7 @@
                                      anon-tracking-enabled true]
     (binding [*snowplow-collector* (atom [])]
       (let [collector *snowplow-collector*] ;; get a reference to the atom
-        (with-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
+        (mt/with-dynamic-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
           (f))))))
 
 (defmacro with-fake-snowplow-collector
@@ -178,7 +178,7 @@
     (try
       (testing "Instance creation timestamp is set only once when setting is first fetched"
         (t2/delete! Setting :key "instance-creation")
-        (with-redefs [snowplow/first-user-creation (constantly nil)]
+        (mt/with-dynamic-redefs [snowplow/first-user-creation (constantly nil)]
           (let [first-value (snowplow/instance-creation)]
             (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
             (is (= first-value

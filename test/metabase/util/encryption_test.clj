@@ -13,7 +13,7 @@
   (initialize/initialize-if-needed! :db)
   (setting.cache/restore-cache!)
   (try
-    (with-redefs [encryption/default-secret-key (when (seq secret-key)
+    (mt/with-dynamic-redefs [encryption/default-secret-key (when (seq secret-key)
                                                   (encryption/secret-key->hash secret-key))]
       (thunk))
     (finally

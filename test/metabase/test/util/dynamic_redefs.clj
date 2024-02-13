@@ -37,12 +37,12 @@
 (defn- sym->var [sym] `(var ~sym))
 
 (defn- bindings->var->definition
-  "Given a with-redefs style binding, return a mapping from each corresponding var to its given replacement."
+  "Given a mt/with-dynamic-redefs style binding, return a mapping from each corresponding var to its given replacement."
   [binding]
   (m/map-keys sym->var (into {} (partition-all 2) binding)))
 
 (defmacro with-dynamic-redefs
-  "A thread-safe version of with-redefs. It only supports functions, and adds a fair amount of overhead.
+  "A thread-safe version of mt/with-dynamic-redefs. It only supports functions, and adds a fair amount of overhead.
    It works by replacing each original definition with a proxy the first time it is redefined.
    This proxy uses a dynamic mapping to check whether the function is currently redefined."
   [bindings & body]

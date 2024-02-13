@@ -69,7 +69,7 @@
     (testing "Setting up DB with `auto-migrate?`=false should exit if any migrations exist which need to be run"
       ;; Use a migration file that intentionally errors with failOnError: false, so that a migration is still unrun
       ;; when we re-run `setup-db!`
-      (with-redefs [liquibase/changelog-file "error-migration.yaml"]
+      (mt/with-dynamic-redefs [liquibase/changelog-file "error-migration.yaml"]
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (is (= :done
                  (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
@@ -93,7 +93,7 @@
 (deftest setup-a-mb-instance-running-version-lower-than-45
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
+      (mt/with-dynamic-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
         ;; set up a db in a way we have a MB instance running metabase 44
         (update-to-changelog-id "v44.00-000" conn))
       (is (= :done
@@ -102,7 +102,7 @@
 (deftest setup-a-mb-instance-running-version-greater-than-45
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
-     (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
+     (mt/with-dynamic-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
              ;; set up a db in a way we have a MB instance running metabase 45
              (update-to-changelog-id "v45.00-001" conn))
      (is (= :done
@@ -116,14 +116,14 @@
 
       ;; the latest changeSet in `000_legacy_migrations.yaml` is `v44.00-044`. We can simulate a downgrade to that
       ;; version by telling Liquibase that's the migrations file.
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
+      (mt/with-dynamic-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
         (is (thrown-with-msg?
              Exception #"Downgrade detected. Please run `migrate down` from version 45."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
 
       ;; check that the error correctly reports the version to run `downgrade` from
       (update-to-changelog-id "v46.00-001" conn)
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
+      (mt/with-dynamic-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
         (is (thrown-with-msg?
              Exception #"Downgrade detected. Please run `migrate down` from version 46."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))

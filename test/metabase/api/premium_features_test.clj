@@ -8,7 +8,7 @@
 
 (deftest get-token-status-test
   (testing "GET /api/premium-features/token/status"
-    (with-redefs [premium-features/fetch-token-status (fn [_x]
+    (mt/with-dynamic-redefs [premium-features/fetch-token-status (fn [_x]
                                                         {:valid    true
                                                          :status   "fake"
                                                          :features ["test" "fixture"]
@@ -27,7 +27,7 @@
 
   (testing "Invalid token format"
     ;; with-temporary-setting-values triggers error in premium-embedding-token :setter
-    (with-redefs [premium-features/premium-embedding-token (constantly "qwertyuiop")]
+    (mt/with-dynamic-redefs [premium-features/premium-embedding-token (constantly "qwertyuiop")]
       (testing "returns an error"
         (is (= {:valid         false
                 :status        "invalid"

@@ -296,7 +296,7 @@
                          (map (comp group-names :group_ids) users)))))))
 
     (testing "should be the hydrate function for `:group_ids`"
-      (with-redefs [user/group-ids     (constantly '(user/group-ids <user>))
+      (mt/with-dynamic-redefs [user/group-ids     (constantly '(user/group-ids <user>))
                     user/add-group-ids (fn [users]
                                          (for [user users]
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
@@ -530,7 +530,7 @@
 
 (deftest last-acknowledged-version-is-set-on-create
   (testing "last-acknowledged-version is automatically set for new users"
-    (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.47.1")]
+    (mt/with-dynamic-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.47.1")]
       (t2.with-temp/with-temp [User {user-id :id} {}]
         (mw.session/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))

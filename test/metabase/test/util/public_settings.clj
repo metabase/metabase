@@ -3,21 +3,22 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test.util.dynamic-redefs :as tu.dr]
    [metabase.test.util.thread-local :as tu.thread-local]))
 
 (defn do-with-premium-features
   [features thunk]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
-      ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
-      ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
+      ;; non-thread-local usages need to do both [[binding]] AND [[mt/with-dynamic-redefs]], because if a thread-local usage
+      ;; happened already then the binding it establishes will shadow the value set by [[mt/with-dynamic-redefs]].
       ;; See [[with-premium-features-test]] below.
       (let [thunk (^:once fn* []
                           (binding [premium-features/*token-features* (constantly features)]
                             (thunk)))]
         (if tu.thread-local/*thread-local*
           (thunk)
-          (with-redefs [premium-features/*token-features* (constantly features)]
+          (tu.dr/with-dynamic-redefs [premium-features/*token-features* (constantly features)]
             (thunk)))))))
 
 (defmacro with-premium-features
@@ -30,7 +31,7 @@
 
   Normally, this will only change the premium features for the current thread, but if used
   inside [[metabase.test/test-helpers-set-global-values!]], it will affect premium features globally (i.e., it will
-  use [[with-redefs]] instead of [[binding]])."
+  use [[mt/with-dynamic-redefs]] instead of [[binding]])."
   {:style/indent 1}
   [features & body]
   `(do-with-premium-features ~features (^:once fn* [] ~@body)))
@@ -46,7 +47,7 @@
 
   Normally, this will only change the premium features for the current thread, but if used
   inside [[metabase.test/test-helpers-set-global-values!]], it will affect premium features globally (i.e., it will
-  use [[with-redefs]] instead of [[binding]])."
+  use [[mt/with-dynamic-redefs]] instead of [[binding]])."
   {:style/indent 1}
   [features & body]
   `(do-with-premium-features (set/union (premium-features/*token-features*) ~features)

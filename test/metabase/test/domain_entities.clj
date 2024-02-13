@@ -32,5 +32,5 @@
   `test-domain-entity-specs`"
   [& body]
   `(testing "with-test-domain-entity-specs\n"
-     (with-redefs [de.specs/domain-entity-specs (delay test-domain-entity-specs)]
+     (mt/with-dynamic-redefs [de.specs/domain-entity-specs (delay test-domain-entity-specs)]
        ~@body)))

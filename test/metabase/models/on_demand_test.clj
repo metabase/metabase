@@ -20,7 +20,7 @@
   {:style/indent 0}
   [f]
   (let [updated-field-names (atom #{})]
-    (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
+    (mt/with-dynamic-redefs [field-values/create-or-update-full-field-values! (fn [field]
                                                                      (swap! updated-field-names conj (:name field)))]
       (f updated-field-names)
       @updated-field-names)))

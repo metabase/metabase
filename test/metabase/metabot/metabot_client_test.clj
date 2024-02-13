@@ -1,13 +1,14 @@
 (ns metabase.metabot.metabot-client-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.client :as metabot-client]))
+   [metabase.metabot.client :as metabot-client]
+   [metabase.test :as mt]))
 
 (deftest invoke-metabot-test
   (testing "A simple test showing the expected input and output of invoke-metabot"
     (let [result {:choices [{:message "SELECT * FROM SOMETHING"}]}]
-      (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_prompt _options]
-                                                                       result)]
+      (mt/with-dynamic-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_prompt _options]
+                                                                                  result)]
         (= result
            (metabot-client/invoke-metabot
             {:model    "gpt-4"
@@ -19,7 +20,7 @@
 
 (deftest create-embedding-test
   (testing "A simple test showing the expected input and output of create-embedding"
-    (with-redefs [metabot-client/*create-embedding-endpoint* (fn [{:keys [_model input]} _options]
+    (mt/with-dynamic-redefs [metabot-client/*create-embedding-endpoint* (fn [{:keys [_model input]} _options]
                                                                {:data  [{:embedding [1.0 0.0 0.0 0.0]}]
                                                                 :usage {:prompt_tokens (quot
                                                                                         (count input)

@@ -178,7 +178,7 @@
     (let [sync-db-metadata-ran?    (promise)
           analyze-db-ran?          (promise)
           update-field-values-ran? (promise)]
-      (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
+      (mt/with-dynamic-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
                     metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
                     metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
         (with-scheduler-setup

@@ -266,8 +266,8 @@
   {:style/indent 0}
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
-     ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-     (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
+     ;; since the actual group defs are not dynamic, we need mt/with-dynamic-redefs to change them here
+     (mt/with-dynamic-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
        (mdb/setup-db!)
        ~@body)))

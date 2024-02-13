@@ -913,7 +913,7 @@
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
     (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
-      (with-redefs [pulse-channel/validate-email-domains (fn [& _]
+      (mt/with-dynamic-redefs [pulse-channel/validate-email-domains (fn [& _]
                                                            (throw (ex-info "Nope!" {:status-code 403})))]
         ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
         ;; technically allow either right now
@@ -1114,7 +1114,7 @@
             (is (some? body))))
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
-          (with-redefs [style/register-fonts-if-needed! (fn []
+          (mt/with-dynamic-redefs [style/register-fonts-if-needed! (fn []
                                                           (throw (ex-info "Can't register fonts!"
                                                                           {}
                                                                           (NullPointerException.))))]

@@ -67,7 +67,7 @@
   (testing "compile and preprocess should not be called if no exception occurs"
     (let [compile-call-count (atom 0)
           preprocess-call-count (atom 0)]
-      (with-redefs [qp/compile    (fn [_] (swap! compile-call-count inc))
+      (mt/with-dynamic-redefs [qp/compile    (fn [_] (swap! compile-call-count inc))
                     qp/preprocess (fn [_] (swap! preprocess-call-count inc))]
         (is (= {:data {}, :row_count 0, :status :completed}
                (catch-exceptions

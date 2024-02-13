@@ -28,5 +28,5 @@
   "Evaluate `body` in a context where `transforms.specs/transform-specs` have been swapped for `test-transform-specs`"
   [& body]
   `(testing "with-test-transform-specs\n"
-     (with-redefs [tf.specs/transform-specs (delay [test-transform-spec])]
+     (mt/with-dynamic-redefs [tf.specs/transform-specs (delay [test-transform-spec])]
        ~@body)))

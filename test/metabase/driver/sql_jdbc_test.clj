@@ -234,7 +234,7 @@
                               :when  (driver.u/find-schema-filters-prop driver)]
                           driver))
     (let [fake-schema-name (u/qualified-name ::fake-schema)]
-      (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
+      (mt/with-dynamic-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
                                                              (fn [metadata]
                                                                (eduction
                                                                 cat

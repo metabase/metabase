@@ -60,7 +60,7 @@
   element. In our test cases that's the Tax Rate column."
   [pulse]
   (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
+    (mt/with-dynamic-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
         (metabase.pulse/send-pulse! pulse)))
     (let [html-body  (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
@@ -171,7 +171,7 @@
   attachment name -> column name -> column data"
   [pulse]
   (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
+    (mt/with-dynamic-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
         (metabase.pulse/send-pulse! pulse)))
     (->>
@@ -535,7 +535,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [attachment-name->cols (mt/with-fake-inbox
-                                        (with-redefs [email/bcc-enabled? (constantly false)]
+                                        (mt/with-dynamic-redefs [email/bcc-enabled? (constantly false)]
                                           (mt/with-test-user nil
                                             (metabase.pulse/send-pulse! pulse)))
                                         (->>
@@ -565,7 +565,7 @@
   "Simulate sending the pulse email, get the html body of the response and return the scalar value of the card."
   [pulse]
   (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
+    (mt/with-dynamic-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
         (metabase.pulse/send-pulse! pulse)))
     (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
@@ -627,7 +627,7 @@
   If not pulse is sent, return `nil`."
   [pulse]
   (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
+    (mt/with-dynamic-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
         (metabase.pulse/send-pulse! pulse)))
     (when-some [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
@@ -750,7 +750,7 @@
                          PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                   :user_id          (mt/user->id :rasta)}]
             (mt/with-fake-inbox
-              (with-redefs [email/bcc-enabled? (constantly false)]
+              (mt/with-dynamic-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
                   (metabase.pulse/send-pulse! pulse)))
               (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
@@ -827,7 +827,7 @@
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
         (mt/with-fake-inbox
-          (with-redefs [email/bcc-enabled? (constantly false)]
+          (mt/with-dynamic-redefs [email/bcc-enabled? (constantly false)]
             (mt/with-test-user nil
               (metabase.pulse/send-pulse! pulse)))
           (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content]))))))))

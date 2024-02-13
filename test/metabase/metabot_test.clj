@@ -62,7 +62,7 @@
                         :query    {:source-table (mt/id :orders)}}
                        :dataset true}]
           (let [bot-sql (format "SELECT * FROM %s" (:name model))]
-            (with-redefs [metabot-client/*create-chat-completion-endpoint* (test-bot-endpoint-single-message bot-sql)
+            (mt/with-dynamic-redefs [metabot-client/*create-chat-completion-endpoint* (test-bot-endpoint-single-message bot-sql)
                           metabot-client/*create-embedding-endpoint*       simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly test-prompt-templates)]
               (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
@@ -108,7 +108,7 @@
                                     :user_prompt user_prompt
                                     :prompt_task :infer_model}
                 bot-message        (format "The best model is probably %s" (:id orders-model))]
-            (with-redefs [metabot-client/*create-chat-completion-endpoint* (test-bot-endpoint-single-message bot-message)
+            (mt/with-dynamic-redefs [metabot-client/*create-chat-completion-endpoint* (test-bot-endpoint-single-message bot-message)
                           ;; Both the prompt and the model pseudo-ddl containing the text "orders" have better
                           ;; encoding matches than other model ddls.
                           metabot-client/*create-embedding-endpoint*       (fn [{:keys [_model input]} _options]
@@ -133,7 +133,7 @@
               context     {:database    (metabot-util/denormalize-database (mt/db))
                            :user_prompt user_prompt
                            :prompt_task :infer_native_sql}]
-          (with-redefs [metabot-client/*create-chat-completion-endpoint*
+          (mt/with-dynamic-redefs [metabot-client/*create-chat-completion-endpoint*
                         (fn [{:keys [messages]} _]
                           ;; If the test messages contains REVIEWS, use it.
                           ;; Otherwise, return a useless result.

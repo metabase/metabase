@@ -39,19 +39,19 @@
 (deftest session-cookie-test
   (testing "`SameSite` value is read from config (env)"
     (is (= :lax ; Default value
-           (with-redefs [env/env (dissoc env/env :mb-session-cookie-samesite)]
+           (mt/with-dynamic-redefs [env/env (dissoc env/env :mb-session-cookie-samesite)]
              (mw.session/session-cookie-samesite))))
 
     (is (= :strict
-           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "StRiCt")]
+           (mt/with-dynamic-redefs [env/env (assoc env/env :mb-session-cookie-samesite "StRiCt")]
              (mw.session/session-cookie-samesite))))
 
     (is (= :none
-           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
+           (mt/with-dynamic-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
              (mw.session/session-cookie-samesite))))
 
     (is (thrown-with-msg? ExceptionInfo #"Invalid value for session cookie samesite"
-          (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
+          (mt/with-dynamic-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
             (mw.session/session-cookie-samesite))))))
 
 (deftest set-session-cookie-test
@@ -127,7 +127,7 @@
 (deftest session-expired-test
   (init-status/set-complete!)
   (testing "Session expiration time = 1 minute"
-    (with-redefs [env/env (assoc env/env :max-session-age "1")]
+    (mt/with-dynamic-redefs [env/env (assoc env/env :max-session-age "1")]
       (doseq [[created-at expected msg]
               [[:%now                                                               false "brand-new session"]
                [#t "1970-01-01T00:00:01Z"                                           true  "really old session"]
@@ -156,7 +156,7 @@
    :type             :full-app-embed})
 
 (deftest set-full-app-embedding-session-cookie-test
-  (with-redefs [env/env (assoc env/env :max-session-age "1")]
+  (mt/with-dynamic-redefs [env/env (assoc env/env :max-session-age "1")]
     (mt/with-temporary-setting-values [session-timeout nil]
       (testing "test that we can set a full-app-embedding session cookie"
         (is (= {:body    {}
@@ -347,7 +347,7 @@
         (testing "is `true` if advanced-permisison is enabled"
           ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
           ;; `enable-advanced-permissions?` will still return false
-          (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
+          (mt/with-dynamic-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
             (is (= true
                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil)))))))
       (finally
@@ -619,7 +619,7 @@
 
     (testing "If [[public-settings/session-cookies]] is false and the `:remember` flag is set, then the session cookie
               should have a max age attribute."
-      (with-redefs [env/env (assoc env/env :max-session-age "1")]
+      (mt/with-dynamic-redefs [env/env (assoc env/env :max-session-age "1")]
         (mt/with-temporary-setting-values [session-timeout nil
                                            public-settings/session-cookies false]
           (let [request {:body                  {:remember true}
@@ -643,7 +643,7 @@
 
     (testing "If [[public-settings/session-cookies]] is true and the `:remember` flag is set, then the session cookie
               shouldn't have a max age attribute."
-      (with-redefs [env/env (assoc env/env :max-session-age "1")]
+      (mt/with-dynamic-redefs [env/env (assoc env/env :max-session-age "1")]
         (mt/with-temporary-setting-values [session-timeout nil
                                            public-settings/session-cookies true]
           (let [request {:metabase-session-id   session-id

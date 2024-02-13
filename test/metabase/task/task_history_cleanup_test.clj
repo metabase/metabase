@@ -25,7 +25,7 @@
                              TaskHistory t3 (assoc (tht/make-10-millis-task t3-start)
                                                    :task task-3)]
                 (t2/delete! TaskHistory :id [:not-in (map u/the-id [t1 t2 t3])])
-                (with-redefs [cleanup-task/history-rows-to-keep rows-to-keep]
+                (mt/with-dynamic-redefs [cleanup-task/history-rows-to-keep rows-to-keep]
                   (#'cleanup-task/task-history-cleanup!))
                 (thunk)))
             (task-history-tasks []

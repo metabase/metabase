@@ -7,6 +7,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -61,7 +62,7 @@
 (deftest handle-errors-gracefully-test
   (testing (str "Cheat and override the `normalization-tokens` function to always throw an Exception so we can make "
                 "sure the Toucan type fn handles the error gracefully")
-    (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
+    (mt/with-dynamic-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
       (is (= nil
              ((:out mi/transform-parameters-list)
               (json/generate-string
@@ -71,7 +72,7 @@
   (testing "should not eat Exceptions if normalization barfs when saving"
     (is (thrown?
          Exception
-         (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
+         (mt/with-dynamic-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
            ((:in mi/transform-parameters-list)
             [{:target [:dimension [:field "ABC" nil]]}]))))))
 

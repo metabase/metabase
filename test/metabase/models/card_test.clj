@@ -144,7 +144,7 @@
       (testing "should not attempt to delete if it's not a model"
         (t2.with-temp/with-temp [:model/Card {id :id} {:dataset       false
                                                        :dataset_query (mt/mbql-query users)}]
-          (with-redefs [card/disable-implicit-action-for-model! (fn [& _args]
+          (mt/with-dynamic-redefs [card/disable-implicit-action-for-model! (fn [& _args]
                                                                   (throw (ex-info "Should not be called" {})))]
             (is (= 1 (t2/update! 'Card :id id {:dataset_query (mt/mbql-query users {:limit 1})}))))))
 
@@ -816,7 +816,7 @@
     (t2.with-temp/with-temp [:model/Card card {}]
       (is (= config/mb-version-string (:metabase_version card)))
 
-      (with-redefs [config/mb-version-string "blablabla"]
+      (mt/with-dynamic-redefs [config/mb-version-string "blablabla"]
         (t2/update! :model/Card :id (:id card) {:description "test"}))
 
       ;; we store version of metabase which created the card

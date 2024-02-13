@@ -22,8 +22,8 @@
 
 (defmacro with-scheduler-setup [& body]
   `(let [scheduler# (#'tu/in-memory-scheduler)]
-     ;; need cross thread rebinding from with-redefs not a binding
-     (with-redefs [task/scheduler (constantly scheduler#)]
+     ;; need cross thread rebinding from mt/with-dynamic-redefs not a binding
+     (mt/with-dynamic-redefs [task/scheduler (constantly scheduler#)]
        (qs/standby scheduler#)
        (#'task.index-values/job-init!)
        ;; with-temp creates new dbs which schedules the refresh tasks. without this, if this is the first time the db

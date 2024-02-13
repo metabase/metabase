@@ -35,7 +35,7 @@
 ;;; --------------------------------------------- account autocreation -----------------------------------------------
 
 (defmacro ^:private with-no-sso-google-token [& body]
-  `(with-redefs [premium-features/enable-sso-google? (constantly false)]
+  `(mt/with-dynamic-redefs [premium-features/enable-sso-google? (constantly false)]
      ~@body))
 
 (deftest allow-autocreation-test

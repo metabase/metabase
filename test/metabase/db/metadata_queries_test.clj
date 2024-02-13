@@ -55,22 +55,22 @@
               "Did not truncate a text field")))))
 
   (testing "substring checking"
-    (with-redefs [driver.u/database->driver (constantly (:engine (mt/db)))
+    (mt/with-dynamic-redefs [driver.u/database->driver (constantly (:engine (mt/db)))
                   table/database (constantly (mi/instance Database {:id 5678}))]
       (let [table  (mi/instance Table {:id 1234})
             fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
-          (with-redefs [driver/database-supports? (constantly true)]
+          (mt/with-dynamic-redefs [driver/database-supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (seq (get-in query [:query :expressions]))))))
         (testing "doesnt' use substrings if driver doesn't support expressions"
-          (with-redefs [driver/database-supports? (constantly false)]
+          (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
         (let [table (mi/instance Table {:id 1234})
               fields [(mi/instance Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
-          (with-redefs [driver/database-supports? (constantly true)]
+          (mt/with-dynamic-redefs [driver/database-supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
 

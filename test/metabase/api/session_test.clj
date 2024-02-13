@@ -139,7 +139,7 @@
 (deftest failure-threshold-throttling-test
   (reset-throttlers!)
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
-    (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
+    (mt/with-dynamic-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
                   public-settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
@@ -160,7 +160,7 @@
 (deftest failure-threshold-per-request-source
   (reset-throttlers!)
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
-    (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
+    (mt/with-dynamic-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
                   public-settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
@@ -214,7 +214,7 @@
   (reset-throttlers!)
   (testing "POST /api/session/forgot_password"
     ;; deref forgot-password-impl for the tests since it returns a future
-    (with-redefs [api.session/forgot-password-impl
+    (mt/with-dynamic-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (testing "Test that we can initiate password reset"
@@ -252,7 +252,7 @@
 (deftest forgot-password-event-test
   (reset-throttlers!)
   (mt/with-premium-features #{:audit-app}
-    (with-redefs [api.session/forgot-password-impl
+    (mt/with-dynamic-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-model-cleanup [:model/User]
@@ -272,7 +272,7 @@
   (testing "Test that email based throttling kicks in after the login failure threshold (3) has been reached"
     (letfn [(send-password-reset! [& [expected-status & _more]]
               (mt/client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
-      (with-redefs [api.session/forgot-password-throttlers (cleaned-throttlers #'api.session/forgot-password-throttlers
+      (mt/with-dynamic-redefs [api.session/forgot-password-throttlers (cleaned-throttlers #'api.session/forgot-password-throttlers
                                                                                [:email :ip-address])]
         (dotimes [_ 3]
           (send-password-reset!))
@@ -421,7 +421,7 @@
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-       (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+       (mt/with-dynamic-redefs [setting/has-advanced-setting-access? (constantly true)]
          (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
                 (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
@@ -459,7 +459,7 @@
     (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
         (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active true}]
-          (with-redefs [http/post (constantly
+          (mt/with-dynamic-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                  "\"email_verified\":\"true\","
@@ -470,7 +470,7 @@
                         (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
         (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active false}]
-          (with-redefs [http/post (constantly
+          (mt/with-dynamic-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                  "\"email_verified\":\"true\","

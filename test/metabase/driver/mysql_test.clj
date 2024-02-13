@@ -176,7 +176,7 @@
   (mt/test-driver :mysql
     (let [timezone (fn [result-row]
                      (let [db (mt/db)]
-                       (with-redefs [jdbc/query (let [orig jdbc/query]
+                       (mt/with-dynamic-redefs [jdbc/query (let [orig jdbc/query]
                                                   (fn [spec sql-args & options]
                                                     (if (and (string? sql-args)
                                                              (str/includes? sql-args "GLOBAL.time_zone"))
@@ -440,7 +440,7 @@
     (mt/test-driver :mysql
       (when-not (mysql/mariadb? (mt/db))
         (drop-if-exists-and-create-db! "composite_pks_test")
-        (with-redefs [metadata-queries/nested-field-sample-limit 4]
+        (mt/with-dynamic-redefs [metadata-queries/nested-field-sample-limit 4]
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
                 spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
             (doseq [statement (concat ["CREATE TABLE `json_table` (`first_id` INT, `second_id` INT, `json_val` JSON, PRIMARY KEY(`first_id`, `second_id`));"]
@@ -546,7 +546,7 @@
             "Column 'f1' cannot be null"))))
 
   (testing "violate unique constraint"
-    (with-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
+    (mt/with-dynamic-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
       (is (= {:type :metabase.actions.error/violate-unique-constraint,
               :message "Primary already exists.",
               :errors {"PRIMARY" "This Primary value already exists."}}
@@ -696,7 +696,7 @@
                                                                              :additional-options "trustServerCertificate=true"))]
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                      [spec [:mysql new-connection-details]]
-                                     (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                     (mt/with-dynamic-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                        (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec {})))))]
           (try
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"

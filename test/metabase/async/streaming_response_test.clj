@@ -34,7 +34,7 @@
                                               (.namingPattern "streaming-response-test-thread-pool-%d")
                                               ;; Daemon threads do not block shutdown of the JVM
                                               (.daemon true))))]
-    (with-redefs [thread-pool/thread-pool (constantly pool)]
+    (mt/with-dynamic-redefs [thread-pool/thread-pool (constantly pool)]
       (try
         (thunk)
         (finally
@@ -125,7 +125,7 @@
 (deftest cancelation-test
   (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
     (mt/test-helpers-set-global-values!
-      (with-redefs [streaming-response/async-cancellation-poll-interval-ms 50]
+      (mt/with-dynamic-redefs [streaming-response/async-cancellation-poll-interval-ms 50]
         (with-test-driver-db!
           (reset! canceled? false)
           (with-start-execution-chan [start-chan]

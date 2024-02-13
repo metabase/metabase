@@ -55,7 +55,7 @@
          :model/QueryExecution {qe3-id :id} (merge (query-execution-defaults)
                                                    {:started_at (t/minus (t/offset-date-time) (t/years 1))})]
         ;; Mock a cloud environment so that we can change the setting value via env var
-        (with-redefs [premium-features/is-hosted? (constantly true)]
+        (mt/with-dynamic-redefs [premium-features/is-hosted? (constantly true)]
           (testing "When the threshold is 0 (representing infinity), no rows are deleted"
             (mt/with-temp-env-var-value! [mb-audit-max-retention-days 0]
               (#'task.truncate-audit-tables/truncate-audit-tables!)

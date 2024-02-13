@@ -62,7 +62,7 @@
 
 (deftest mark-fields-as-analyzed-test
   (testing "Make sure that only the correct Fields get marked as recently analyzed"
-    (with-redefs [i/*latest-fingerprint-version* Short/MAX_VALUE]
+    (mt/with-dynamic-redefs [i/*latest-fingerprint-version* Short/MAX_VALUE]
       (t2.with-temp/with-temp [Table table {}
                                Field _ {:table_id            (u/the-id table)
                                         :name                "Current fingerprint, not analyzed"
@@ -235,7 +235,7 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
+    (mt/with-dynamic-redefs [sync.concurrent/submit-task (fn [task] (task))]
       (mt/with-temp [Table table (fake-table)
                      Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")

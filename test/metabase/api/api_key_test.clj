@@ -41,7 +41,7 @@
                                   generated-key
                                   generated-key
                                   (api-key/generate-key)])]
-        (with-redefs [api-key/generate-key (fn [] (let [next-val (first @generated-keys)]
+        (mt/with-dynamic-redefs [api-key/generate-key (fn [] (let [next-val (first @generated-keys)]
                                                     (swap! generated-keys next)
                                                     next-val))]
           ;; put an API Key in the database with that key.
@@ -58,7 +58,7 @@
             (is (empty? @generated-keys))))))
     (testing "We don't retry forever if prefix collision keeps happening"
       (let [generated-key (api-key/generate-key)]
-        (with-redefs [api-key/generate-key (constantly generated-key)]
+        (mt/with-dynamic-redefs [api-key/generate-key (constantly generated-key)]
           (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  generated-key
                                                     :name          "my cool name"
                                                     :user_id       (mt/user->id :crowberto)

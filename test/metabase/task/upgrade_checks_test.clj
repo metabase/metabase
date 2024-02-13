@@ -4,11 +4,12 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
-   [metabase.task.upgrade-checks :as upgrade-checks]))
+   [metabase.task.upgrade-checks :as upgrade-checks]
+   [metabase.test :as mt]))
 
 (deftest site-uuid-test
   (testing "A unique and stable instance UUID is included in version info requests in prod"
-    (with-redefs [config/is-prod? true]
+    (mt/with-dynamic-redefs [config/is-prod? true]
       (http-fake/with-fake-routes-in-isolation
         {{:address #"https://static.metabase.com/version-info(-ee)?.json.*"
           :query-params {:instance (public-settings/site-uuid-for-version-info-fetching)}}
@@ -16,7 +17,7 @@
         (is (= {} (@#'upgrade-checks/get-version-info))))))
 
   (testing "Instance UUID is not included when not running in prod"
-    (with-redefs [config/is-prod? false]
+    (mt/with-dynamic-redefs [config/is-prod? false]
       (http-fake/with-fake-routes-in-isolation
         {{:address #"https://static.metabase.com/version-info(-ee)?.json.*"
           :query-params {}}

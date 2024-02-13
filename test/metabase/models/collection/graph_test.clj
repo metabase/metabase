@@ -96,7 +96,7 @@
   (testing "Check that the audit collection has :read for admins."
     (mt/with-non-admin-groups-no-root-collection-perms
       (t2.with-temp/with-temp [Collection collection {}]
-        (with-redefs [perms/default-audit-collection (constantly collection)]
+        (mt/with-dynamic-redefs [perms/default-audit-collection (constantly collection)]
           (is (= {:revision 0
                   :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
                              (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :read}}}

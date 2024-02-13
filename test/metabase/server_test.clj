@@ -2,11 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.server :as server]))
+   [metabase.server :as server]
+   [metabase.test :as mt]))
 
 (deftest config-test
   (testing "Make sure our Jetty config functions work as expected/we don't accidentally break things (#9333)"
-    (with-redefs [config/config-str (constantly "10")]
+    (mt/with-dynamic-redefs [config/config-str (constantly "10")]
       (is (= {:keystore            "10"
               :max-queued          10
               :request-header-size 10

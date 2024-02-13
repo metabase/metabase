@@ -357,7 +357,7 @@
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
-    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+    (mt/with-dynamic-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
       (is (= [:and
               [:or [:like [:lower :model-index-value.name] "%foo%"]]
               [:inline [:= 1 1]]]
@@ -367,7 +367,7 @@
                       (merge default-search-ctx {:search-string "foo"})))))))
 
   (testing "otherwise search result is empty"
-    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+    (mt/with-dynamic-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
       (is (= [:and
               [:or [:= 0 1]]
               [:inline [:= 1 1]]]

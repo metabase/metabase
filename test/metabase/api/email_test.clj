@@ -78,10 +78,10 @@
                             (update default-email-settings :email-smtp-port str)]
               ;; test what happens on both a successful and an unsuccessful connection.
               [success? f] {true  (fn [thunk]
-                                    (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                                    (mt/with-dynamic-redefs [email/test-smtp-settings (constantly {::email/error nil})]
                                       (thunk)))
                             false (fn [thunk]
-                                    (with-redefs [email/retry-delay-ms 0]
+                                    (mt/with-dynamic-redefs [email/retry-delay-ms 0]
                                       (thunk)))}]
         (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
                                      email-smtp-password email-from-address email-from-name email-reply-to]
@@ -118,7 +118,7 @@
                                           mb-email-smtp-username (:email-smtp-username default-email-settings)
                                           mb-email-smtp-password (:email-smtp-password default-email-settings)
                                           mb-email-from-address  (:email-from-address default-email-settings)]
-              (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+              (mt/with-dynamic-redefs [email/test-smtp-settings (constantly {::email/error nil})]
                 (testing "API request"
                   (is (= (-> default-email-settings
                              (assoc :with-corrections {})
@@ -133,7 +133,7 @@
                                        email-reply-to      ["reply-to@metabase.com"]
                                        email-smtp-host     "www.test.com"
                                        email-smtp-password "preexisting"]
-      (with-redefs [email/test-smtp-connection (fn [settings]
+      (mt/with-dynamic-redefs [email/test-smtp-connection (fn [settings]
                                                  (let [obfuscated? (str/starts-with? (:pass settings) "****")]
                                                    (is (not obfuscated?) "We received an obfuscated password!")
                                                    (if obfuscated?
@@ -158,7 +158,7 @@
   (testing "DELETE /api/email"
     (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
                                  email-smtp-password email-from-address email-from-name email-reply-to]
-      (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+      (mt/with-dynamic-redefs [email/test-smtp-settings (constantly {::email/error nil})]
         (is (= (-> default-email-settings
                    (assoc :with-corrections {})
                    (update :email-smtp-security name))

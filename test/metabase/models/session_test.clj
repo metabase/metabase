@@ -27,7 +27,7 @@
 (deftest embedding-test
   (testing "if request is an embedding request, we should get ourselves an embedded Session"
     (binding [mw.misc/*request* {:headers {"x-metabase-embedded" "true"}}]
-      (with-redefs [session/random-anti-csrf-token (constantly "315c1279c6f9f873bf1face7afeee420")]
+      (mt/with-dynamic-redefs [session/random-anti-csrf-token (constantly "315c1279c6f9f873bf1face7afeee420")]
         (is (=? {:id              "092797dd-a82a-4748-b393-697d7bb9ab65"
                  :user_id         (mt/user->id :trashbird)
                  :anti_csrf_token "315c1279c6f9f873bf1face7afeee420"

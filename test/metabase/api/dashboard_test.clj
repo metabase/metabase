@@ -2769,7 +2769,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
                      (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
@@ -2777,7 +2777,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
               (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
                      (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
@@ -2837,7 +2837,7 @@
           ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
-          (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
+          (mt/with-dynamic-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
@@ -3214,7 +3214,7 @@
   (testing "fallback to chain-filter"
     (let [mock-chain-filter-result {:has_more_values true
                                     :values [["chain-filter"]]}]
-      (with-redefs [api.dashboard/chain-filter (constantly mock-chain-filter-result)]
+      (mt/with-dynamic-redefs [api.dashboard/chain-filter (constantly mock-chain-filter-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [Card       {card-id :id} {}
                          Dashboard  dashboard     {:parameters    [{:id                   "abc"

@@ -42,7 +42,7 @@
             (is (= (embed/show-static-embed-terms) false))))
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
-           (with-redefs [premium-features/fetch-token-status (fn [_x]
+           (mt/with-dynamic-redefs [premium-features/fetch-token-status (fn [_x]
                                                                {:valid    true
                                                                 :status   "fake"
                                                                 :features ["test" "fixture"]

@@ -1,10 +1,11 @@
 (ns metabase.cmd-test
   (:require
    [clojure.test :as t :refer [are deftest is testing]]
-   [metabase.cmd :as cmd]))
+   [metabase.cmd :as cmd]
+   [metabase.test :as mt]))
 
 (defn- do-with-captured-call-enterprise-calls! [thunk]
-  (with-redefs [cmd/call-enterprise list]
+  (mt/with-dynamic-redefs [cmd/call-enterprise list]
     (thunk)))
 
 (deftest ^:parallel error-message-test

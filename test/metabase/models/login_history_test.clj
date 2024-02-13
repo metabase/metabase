@@ -48,7 +48,7 @@
             (mt/with-fake-inbox
               ;; mock out the IP address geocoding function so we can make sure it handles timezones like PST correctly
               ;; (#15603)
-              (with-redefs [request.u/geocode-ip-addresses (fn [ip-addresses]
+              (mt/with-dynamic-redefs [request.u/geocode-ip-addresses (fn [ip-addresses]
                                                              (into {} (for [ip-address ip-addresses]
                                                                         [ip-address
                                                                          {:description "San Francisco, California, United States"

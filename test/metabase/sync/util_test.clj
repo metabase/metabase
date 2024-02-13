@@ -71,7 +71,7 @@
         created-task-history-ids (atom [])
         orig-log-fn              @#'sync-util/log-sync-summary
         orig-store-fn            @#'sync-util/store-sync-summary!]
-    (with-redefs [sync-util/log-sync-summary    (fn [operation database operation-metadata]
+    (mt/with-dynamic-redefs [sync-util/log-sync-summary    (fn [operation database operation-metadata]
                                                   (swap! step-info-atom conj operation-metadata)
                                                   (orig-log-fn operation database operation-metadata))
                   sync-util/store-sync-summary! (fn [operation database operation-metadata]
@@ -292,7 +292,7 @@
     (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
             db (t2/select-one Database :id (:id (mt/db)))]
-        (with-redefs [sync-metadata/make-sync-steps (fn [_]
+        (mt/with-dynamic-redefs [sync-metadata/make-sync-steps (fn [_]
                                                       [(sync-util/create-sync-step
                                                          "fake-step"
                                                          (fn [_] (throw (java.net.ConnectException.))))])]
@@ -319,7 +319,7 @@
         (let [syncing-chan   (a/chan)
               completed-chan (a/chan)]
           (let [sync-fields! sync-fields/sync-fields!]
-            (with-redefs [sync-fields/sync-fields! (fn [database]
+            (mt/with-dynamic-redefs [sync-fields/sync-fields! (fn [database]
                                                      (a/>!! syncing-chan ::syncing)
                                                      (sync-fields! database))]
               (future

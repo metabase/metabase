@@ -202,7 +202,7 @@
                                  (mt/process-query
                                   (mt/query orders)))))
             expected-row-count 1]
-        (with-redefs [api.preview-embed/max-results expected-row-count]
+        (mt/with-dynamic-redefs [api.preview-embed/max-results expected-row-count]
           (mt/dataset test-data
             (embed-test/with-embedding-enabled-and-new-secret-key
               (let [sample-db-orders-question (mt/query orders)]

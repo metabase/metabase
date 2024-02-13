@@ -113,7 +113,7 @@
 
 (deftest create-prompt-test
   (testing "We can do prompt lookup and interpolation"
-    (with-redefs [metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
+    (mt/with-dynamic-redefs [metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
       (let [prompt (metabot-util/create-prompt
                     {:model       {:sql_name         "TEST_MODEL"
                                    :create_table_ddl "CREATE TABLE TEST_MODEL"}
@@ -432,7 +432,7 @@
 
 (deftest score-prompt-embeddings-test
   (testing "score-prompt-embeddings scores a single prompt against a seq of existing embeddings."
-    (with-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
+    (mt/with-dynamic-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
       (let [prompt-objects [(metabot-client/create-embedding "This is awesome!")
                             (metabot-client/create-embedding "Teenage mutant ninja turtles!")
                             (metabot-client/create-embedding "All you need is love")]]
@@ -444,7 +444,7 @@
 
 (deftest generate-prompt-test
   (testing "generate-prompt will create a single prompt that is the join of the best of all inputs under the token limit."
-    (with-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
+    (mt/with-dynamic-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
       (let [prompt-objects [(metabot-client/create-embedding "This is awesome!")
                             (metabot-client/create-embedding "Teenage mutant ninja turtles!")
                             (metabot-client/create-embedding "All you need is love")]]
@@ -475,7 +475,7 @@
 
 (deftest best-prompt-object-test
   (testing "best-prompt-object selects the best-match object based on embedding distance."
-    (with-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
+    (mt/with-dynamic-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
       (let [prompt-objects [(metabot-client/create-embedding "This is awesome!")
                             (metabot-client/create-embedding "Teenage mutant ninja turtles!")
                             (metabot-client/create-embedding "All you need is love")]]
@@ -506,7 +506,7 @@
     (mt/dataset test-data
       (let [max-tokens 5000]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
-          (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
+          (mt/with-dynamic-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
             (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
               (is (<= 800 tokens max-tokens))
               tokens))))))
@@ -514,13 +514,13 @@
     (mt/dataset test-data
       (let [max-tokens 500]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
-          (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
+          (mt/with-dynamic-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
             (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
               (is (<= 400 tokens max-tokens))))))))
   (testing "The token limit is reduced to demonstrate that we produce nothing when we can't create a small enough prompt."
     (mt/dataset test-data
       (let [max-tokens 1]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
-          (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
+          (mt/with-dynamic-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
             (let [response (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
               (is (nil? response)))))))))

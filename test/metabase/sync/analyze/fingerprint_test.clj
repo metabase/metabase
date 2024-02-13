@@ -136,7 +136,7 @@
 (defn- field-was-fingerprinted?! [fingerprint-versions field-properties]
   (let [fingerprinted? (atom false)]
     (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* fingerprint-versions]
-      (with-redefs [qp/process-query              (fn process-query
+      (mt/with-dynamic-redefs [qp/process-query              (fn process-query
                                                     ([_query rff _context]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]])))
                     fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
@@ -255,7 +255,7 @@
                                           :fingerprint_version 1
                                           :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
-        (with-redefs [qp/process-query             (fn [_query rff _context]
+        (mt/with-dynamic-redefs [qp/process-query             (fn [_query rff _context]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                       fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
           (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
@@ -268,7 +268,7 @@
 
 (deftest test-fingerprint-failure
   (testing "if fingerprinting fails, the exception should not propagate"
-    (with-redefs [fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
+    (mt/with-dynamic-redefs [fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
       (is (= (fingerprint/empty-stats-map 0)
              (fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues))))))))
 
@@ -276,7 +276,7 @@
   (testing "Google Analytics doesn't support fingerprinting fields"
     (let [fake-db (-> (data/db)
                       (assoc :engine :googleanalytics))]
-      (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
+      (mt/with-dynamic-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
         (is (= (fingerprint/empty-stats-map 0)
                (fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (data/id :venues))] (fn [_ _]))))))))
 
@@ -310,7 +310,7 @@
 (deftest refingerprint-fields-for-db!-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "refingerprints up to a limit"
-      (with-redefs [fingerprint/save-fingerprint! (constantly nil)
+      (mt/with-dynamic-redefs [fingerprint/save-fingerprint! (constantly nil)
                     fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
         (let [table (t2/select-one Table :id (mt/id :checkins))
               results (fingerprint/refingerprint-fields-for-db! (mt/db)

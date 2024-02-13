@@ -5,11 +5,13 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.splice-params-in-response
     :as splice-params-in-response]
+   [metabase.test :as mt]
    [metabase.test.data :as data]))
 
 (defn- do-with-splice-params-call? [f]
-  (with-redefs [driver/splice-parameters-into-native-query (fn [& args]
-                                                             (cons 'splice-parameters-into-native-query args))]
+  (mt/with-dynamic-redefs [driver/splice-parameters-into-native-query
+                           (fn [& args]
+                             (cons 'splice-parameters-into-native-query args))]
     (f)))
 
 (defmacro ^:private with-splice-params-call?

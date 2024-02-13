@@ -238,7 +238,7 @@
 
 (deftest instrument-ns-test
   (doseq [mode ["test" "prod" "dev"]]
-    (with-redefs [config/is-prod? (= mode "prod")
+    (mt/with-dynamic-redefs [config/is-prod? (= mode "prod")
                   config/is-dev?  (= mode "dev")
                   config/is-test? (= mode "test")]
       (testing (str "In " mode)

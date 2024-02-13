@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
+   [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :refer [prog1]]
@@ -71,7 +72,7 @@
 (defn do-with-fake-inbox
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
   [f]
-  (with-redefs [email/send-email! fake-inbox-email-fn]
+  (mt/with-dynamic-redefs [email/send-email! fake-inbox-email-fn]
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                        email-smtp-port 587]
@@ -248,7 +249,7 @@
              (@inbox "test@test.com")))))
     (testing "metrics collection"
       (let [calls (atom nil)]
-        (with-redefs [prometheus/inc #(swap! calls conj %)]
+        (mt/with-dynamic-redefs [prometheus/inc #(swap! calls conj %)]
           (with-fake-inbox
             (email/send-message!
              :subject      "101 Reasons to use Metabase"
@@ -263,7 +264,7 @@
                                   :max-attempts 1
                                   :initial-interval-millis 1)
               test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [prometheus/inc    #(swap! calls conj %)
+        (mt/with-dynamic-redefs [prometheus/inc    #(swap! calls conj %)
                       retry/decorate    (rt/test-retry-decorate-fn test-retry)
                       email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
           (email/send-message!
@@ -320,7 +321,7 @@
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))
         (testing "it does not wrap long, non-ASCII filenames"
-          (with-redefs [email/send-email! mock-send-email!]
+          (mt/with-dynamic-redefs [email/send-email! mock-send-email!]
             (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
                   csv-file                     (temp-csv basename csv-contents)
                   params-with-problematic-file (-> params

@@ -56,7 +56,7 @@
 
 (defn- do-with-mocked-settings-manager-access
   [f]
-  (with-redefs [setting/has-advanced-setting-access?        (constantly true)
+  (mt/with-dynamic-redefs [setting/has-advanced-setting-access?        (constantly true)
                 validation/check-has-application-permission (constantly true)]
     (f)))
 

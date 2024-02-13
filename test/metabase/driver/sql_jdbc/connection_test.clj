@@ -48,7 +48,7 @@
             original-destroy   @#'sql-jdbc.conn/destroy-pool!
             connection-details {:db "mem:connection_test"}
             spec               (mdb.spec/spec :h2 connection-details)]
-        (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
+        (mt/with-dynamic-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]
           (sql-jdbc.execute/do-with-connection-with-options
@@ -128,7 +128,7 @@
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! db)
           ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
-          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
+          (mt/with-dynamic-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
                   db-hash-1   (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
               (testing "hash value calculated correctly for new pooled conn"

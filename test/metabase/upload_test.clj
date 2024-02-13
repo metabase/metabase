@@ -610,7 +610,7 @@
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-        (with-redefs [driver/db-default-timezone (constantly "Z")
+        (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
                       upload/current-database    (constantly (mt/db))]
           (let [table-name (mt/random-name)
                 datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
@@ -1030,7 +1030,7 @@
             _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                     :is_full_sync false})]
         (try
-          (with-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
+          (mt/with-dynamic-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
                         future-call (fn [thunk]
                                       (swap! in-future? (constantly true))
                                       (thunk))]
@@ -1113,7 +1113,7 @@
                         "event"           "csv_upload_successful"}
                  :user-id (str (mt/user->id :rasta))}
                 (last (snowplow-test/pop-event-data-and-user-id!))))
-        (with-redefs [upload/load-from-csv! (fn [_ _ _ _]
+        (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _]
                                               (throw (Exception.)))]
           (try (upload-example-csv!)
                (catch Throwable _
@@ -1141,7 +1141,7 @@
               #"^The uploads database does not exist\.$"
               (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "Uploads must be supported"
-        (with-redefs [driver/database-supports? (constantly false)]
+        (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^Uploads are not supported on Postgres databases\."
@@ -1275,7 +1275,7 @@
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
       (testing "Uploads must be supported"
-        (with-redefs [driver/database-supports? (constantly false)]
+        (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
           (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                   :data    {:status-code 422}}
                  (catch-ex-info (append-csv-with-defaults!)))))))))
@@ -1336,7 +1336,7 @@
     (with-mysql-local-infile-on-and-off
       (mt/with-report-timezone-id "UTC"
         (testing "Append should succeed for all possible CSV column types"
-          (with-redefs [driver/db-default-timezone (constantly "Z")
+          (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
                         upload/current-database    (constantly (mt/db))]
             (with-upload-table!
               [table (create-upload-table!

@@ -174,7 +174,7 @@
 
 (deftest url-proxy-endpoint-non-responding-server-test
   (testing "error is returned if URL server never responds (#28752)"
-    (with-redefs [api.geojson/connection-timeout-ms 200]
+    (mt/with-dynamic-redefs [api.geojson/connection-timeout-ms 200]
       ;; use a webserver which accepts a connection and never responds. The geojson endpoint opens a reader to the url
       ;; and responds with it. And if there are never any bytes going across, the whole thing just sits there. Our
       ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar

@@ -354,7 +354,7 @@
     (is (= {:type :metabase.actions.error/violate-unique-constraint,
             :message "Ranking already exists.",
             :errors {"RANKING" "This Ranking value already exists."}}
-           (with-redefs [h2.actions/constraint->column-names (fn [& _args]
+           (mt/with-dynamic-redefs [h2.actions/constraint->column-names (fn [& _args]
                                                                ["RANKING"])]
              (sql-jdbc.actions/maybe-parse-sql-error
               :h2 actions.error/violate-unique-constraint nil nil

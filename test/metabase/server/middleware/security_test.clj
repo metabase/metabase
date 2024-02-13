@@ -24,12 +24,12 @@
 
 (deftest csp-header-script-src-tests
   (testing "Inline scripts use hash-based allowlist in prod environment"
-    (with-redefs [config/is-dev? false]
+    (mt/with-dynamic-redefs [config/is-dev? false]
       (is (str/includes? (csp-directive "script-src") "sha256"))
       (is (not (str/includes? (csp-directive "script-src") "'unsafe-inline'")))))
 
   (testing "Any inline scripts are allowed in dev environment (#16375)"
-    (with-redefs [config/is-dev? true]
+    (mt/with-dynamic-redefs [config/is-dev? true]
       (is (not (str/includes? (csp-directive "script-src") "sha256")))
       (is (str/includes? (csp-directive "script-src") "'unsafe-inline'")))))
 
@@ -72,7 +72,7 @@
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
     (let [nonceJSON (atom nil)
           render-file stencil/render-file]
-      (with-redefs [stencil/render-file (fn [path variables]
+      (mt/with-dynamic-redefs [stencil/render-file (fn [path variables]
                                           (reset! nonceJSON (:nonceJSON variables))
                                           ;; Use index_template.html instead of index.html so the frontend doesn't
                                           ;; have to be built to run the test. The only difference between them

@@ -11,7 +11,7 @@
   (testing "PUT /api/slack/settings"
     (testing "An admin can set a valid Slack app token to the slack-app-token setting, and any value in the
              `slack-token` setting is cleared"
-      (with-redefs [slack/valid-token?                                (constantly true)
+      (mt/with-dynamic-redefs [slack/valid-token?                                (constantly true)
                     slack/channel-exists?                             (constantly true)
                     slack/refresh-channels-and-usernames!             (constantly nil)
                     slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
@@ -23,7 +23,7 @@
 
     (testing "A 400 error is returned if the Slack app token is invalid"
       (mt/with-temporary-setting-values [slack-app-token nil]
-        (with-redefs [slack/valid-token?                                (constantly false)
+        (mt/with-dynamic-redefs [slack/valid-token?                                (constantly false)
                       ;; Token validation is skipped by default in test environments; overriding `is-test?` ensures
                       ;; that validation occurs
                       config/is-test?                                   false
@@ -38,7 +38,7 @@
     (testing "The Slack files channel setting can be set by an admin, and the leading # is stripped if it is present"
       (mt/with-temporary-setting-values [slack-files-channel                       nil
                                          slack-channels-and-usernames-last-updated nil]
-        (with-redefs [slack/channel-exists? (constantly true)]
+        (mt/with-dynamic-redefs [slack/channel-exists? (constantly true)]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-files-channel "fake-channel"})
           (is (= "fake-channel" (slack/slack-files-channel)))
 
@@ -46,7 +46,7 @@
           (is (= "fake-channel" (slack/slack-files-channel))))))
 
     (testing "An error is returned if the Slack files channel cannot be found, and the integration is not enabled"
-      (with-redefs [slack/channel-exists?                             (constantly nil)
+      (mt/with-dynamic-redefs [slack/channel-exists?                             (constantly nil)
                     slack/valid-token?                                (constantly true)
                     slack/refresh-channels-and-usernames!             (constantly nil)
                     slack/refresh-channels-and-usernames-when-needed! (constantly nil)]

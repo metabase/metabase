@@ -56,7 +56,7 @@
   (testing "Persisted models should have the full number of rows of the underlying query,
             not limited by `absolute-max-results` (#24793)"
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (with-redefs [qp.i/absolute-max-results 3]
+    (mt/with-dynamic-redefs [qp.i/absolute-max-results 3]
       (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
         (mt/dataset daily-bird-counts
           (mt/with-persistence-enabled [persist-models!]

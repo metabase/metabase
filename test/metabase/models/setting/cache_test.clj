@@ -130,7 +130,7 @@
     (reset-last-update-check!)
     (setting-test/test-setting-1! "Starfish")
     ;; 1. User writes
-    (with-redefs [setting.cache/cache* external-cache]
+    (mt/with-dynamic-redefs [setting.cache/cache* external-cache]
       (setting-test/toucan-name! "Batman Toucan"))
     (setting-test/test-setting-1! "Batman")
     (is (= "Batman Toucan"

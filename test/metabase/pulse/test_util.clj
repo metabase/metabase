@@ -19,7 +19,7 @@
   [user-kw card]
   (t2.with-temp/with-temp [Pulse     pulse {:creator_id (test.users/user->id user-kw)}
                            PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
-    (with-redefs [pulse/send-notifications!    identity
+    (mt/with-dynamic-redefs [pulse/send-notifications!    identity
                   pulse/parts->notifications (fn [_ results]
                                                (vec results))]
       (let [[{:keys [result]}] (pulse/send-pulse! pulse)]
@@ -71,7 +71,7 @@
 (defmacro slack-test-setup
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [pulse/send-notifications! realize-lazy-seqs
+  `(mt/with-dynamic-redefs [pulse/send-notifications! realize-lazy-seqs
                  slack/files-channel       (constantly "FOO")]
      (do-with-site-url (fn [] ~@body))))
 

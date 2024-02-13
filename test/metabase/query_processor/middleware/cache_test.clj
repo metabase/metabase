@@ -95,7 +95,7 @@
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
         (let [orig @#'cache/serialized-bytes]
-          (with-redefs [cache/serialized-bytes (fn []
+          (mt/with-dynamic-redefs [cache/serialized-bytes (fn []
                                                  ;; if `save-results!` isn't going to get called because `*result-fn*`
                                                  ;; throws an Exception, catch it and send it to `save-chan` so it still
                                                  ;; gets a result and tests can finish
@@ -326,7 +326,7 @@
           called-promise                      (promise)
           save-query-execution-original       (var-get #'process-userland-query/save-query-execution!*)
           save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
-      (with-redefs [process-userland-query/save-query-execution!*       (fn [& args]
+      (mt/with-dynamic-redefs [process-userland-query/save-query-execution!*       (fn [& args]
                                                                           (swap! save-query-execution-count inc)
                                                                           (apply save-query-execution-original args)
                                                                           (deliver called-promise true))
@@ -394,7 +394,7 @@
                                  (let [{:keys [context rff]} (qp.streaming/streaming-context-and-rff :csv ostream)]
                                    (qp/process-query (dissoc query :cache-ttl) rff context))
                                  (vec (csv/read-csv reader)))]
-          (with-redefs [sql-jdbc.execute/execute-reducible-query (fn [& _]
+          (mt/with-dynamic-redefs [sql-jdbc.execute/execute-reducible-query (fn [& _]
                                                                    (throw (Exception. "Should be cached!")))]
             (with-open [ostream (java.io.PipedOutputStream.)
                         istream (java.io.PipedInputStream. ostream)

@@ -285,7 +285,7 @@
 
      :fixture
      (fn [_ thunk]
-       (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
+       (mt/with-dynamic-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
          (mt/with-temporary-setting-values [site-name "Metabase Test"]
            (thunk))))
 
@@ -447,7 +447,7 @@
                       (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (deftest dashboard-filter-test
-  (with-redefs [metabase.pulse/attachment-text-length-limit 15]
+  (mt/with-dynamic-redefs [metabase.pulse/attachment-text-length-limit 15]
     (tests {:pulse     {:skip_if_empty false}
             :dashboard pulse.test-util/test-dashboard}
       "Dashboard subscription that includes a dashboard filters"
@@ -594,7 +594,7 @@
                (pulse.test-util/thunk->boolean pulse-results))))}}))
 
 (deftest mrkdwn-length-limit-test
-  (with-redefs [metabase.pulse/block-text-length-limit 10]
+  (mt/with-dynamic-redefs [metabase.pulse/block-text-length-limit 10]
     (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
       "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
       {:card (pulse.test-util/checkins-query-card {})
@@ -926,7 +926,7 @@
                          PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                          PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                   :pulse_channel_id pc-id}]
-            (with-redefs [messages/result-attachment result-attachment]
+            (mt/with-dynamic-redefs [messages/result-attachment result-attachment]
               (metabase.pulse/send-pulse! pulse)
               (is (= 1
                      (-> @mt/inbox

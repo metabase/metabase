@@ -39,7 +39,7 @@
                                (mdb.spec/spec driver/*driver* details))))]
           (binding [setting/*disable-cache*         true
                     mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
-            (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+            (mt/with-dynamic-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (binding [copy/*copy-h2-database-details* true]

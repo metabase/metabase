@@ -19,7 +19,7 @@
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
-      (with-redefs [process-userland-query/save-query-execution!* (fn [query-execution]
+      (mt/with-dynamic-redefs [process-userland-query/save-query-execution!* (fn [query-execution]
                                                                     (when-let [^bytes qe-hash (:hash query-execution)]
                                                                       (when (java.util.Arrays/equals qe-hash original-hash)
                                                                         (deliver result query-execution))))]
@@ -131,7 +131,7 @@
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]
-    (with-redefs [process-userland-query/save-query-execution! (fn [_] (reset! saved-query-execution? true))]
+    (mt/with-dynamic-redefs [process-userland-query/save-query-execution! (fn [_] (reset! saved-query-execution? true))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (future
           (let [out-chan (mt/test-qp-middleware [process-userland-query/process-userland-query async-middleware]

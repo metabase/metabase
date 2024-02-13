@@ -740,7 +740,7 @@
 
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (t2.with-temp/with-temp [Collection cr-collection {}]
-      (with-redefs [perms/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-redefs [perms/default-custom-reports-collection (constantly cr-collection)]
         (is (thrown-with-msg?
              Exception
              #"You cannot archive the Custom Reports Collection."
@@ -1686,7 +1686,7 @@
                              Collection cr-collection    {}
                              Card       cr-card          {:collection_id (:id cr-collection)}
                              Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
-      (with-redefs [perms/default-audit-collection          (constantly audit-collection)
+      (mt/with-dynamic-redefs [perms/default-audit-collection          (constantly audit-collection)
                     perms/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}

@@ -24,5 +24,5 @@
   "Can sync process survive `f` crashing?"
   [f]
   `(is (= (sync-steps-run-to-completion)
-          (with-redefs [~f crash-fn]
+          (mt/with-dynamic-redefs [~f crash-fn]
             (sync-steps-run-to-completion)))))

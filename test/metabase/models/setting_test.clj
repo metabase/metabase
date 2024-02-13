@@ -264,7 +264,7 @@
       (let [orig  setting/set!
             calls (atom 0)]
         ;; allow the first Setting change to succeed, then throw an Exception after that
-        (with-redefs [setting/set! (fn [& args]
+        (mt/with-dynamic-redefs [setting/set! (fn [& args]
                                      (if (zero? @calls)
                                        (do
                                          (swap! calls inc)
@@ -511,7 +511,7 @@
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value [v]
-  (with-redefs [setting/db-or-cache-value (constantly v)]
+  (mt/with-dynamic-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
@@ -754,7 +754,7 @@
         (testing setting
           (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
   (testing "non-admin user with advanced setting access"
-    (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+    (mt/with-dynamic-redefs [setting/has-advanced-setting-access? (constantly true)]
       (mt/with-current-user (mt/user->id :rasta)
         (doseq [[setting expected] {:test-public-setting           true
                                     :test-authenticated-setting    true
@@ -1079,7 +1079,7 @@
 
 (deftest retired-settings-test
   (testing "Should not be able to define a setting with a retired name"
-    (with-redefs [setting/retired-setting-names #{"retired-setting"}]
+    (mt/with-dynamic-redefs [setting/retired-setting-names #{"retired-setting"}]
       (try
         (defsetting retired-setting (deferred-tru "A retired setting name"))
         (catch Exception e
@@ -1121,7 +1121,7 @@
   (testing "Only valid characters used for environment lookup"
     (is (nil? (test-setting-with-question-mark?)))
     ;; note now question mark on the environmental setting
-    (with-redefs [env/env {:mb-test-setting-with-question-mark "resolved"}]
+    (mt/with-dynamic-redefs [env/env {:mb-test-setting-with-question-mark "resolved"}]
       (binding [setting/*disable-cache* false]
         (is (= "resolved" (test-setting-with-question-mark?))))))
   (testing "Setting a setting that would munge the same throws an error"
@@ -1201,7 +1201,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [setting/ns-in-test? (constantly false)]
+  (mt/with-dynamic-redefs [setting/ns-in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all

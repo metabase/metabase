@@ -212,7 +212,7 @@
       (tu/with-temporary-setting-values [slack/slack-app-token "slack-configured?"
                                          slack/slack-cached-channels-and-usernames
                                          {:channels channel-info}]
-        (with-redefs [slack/POST (fn [endpoint payload]
+        (mt/with-dynamic-redefs [slack/POST (fn [endpoint payload]
                                    (case endpoint
                                      "files.upload"
                                      (if @joined?
@@ -267,7 +267,7 @@
                   (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
 
 (deftest slack-token-error-test
-  (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
+  (mt/with-dynamic-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
     (tu/with-temporary-setting-values [slack-app-token    "test-token"
                                        #_:clj-kondo/ignore slack-token-valid? true]
       (mt/with-fake-inbox

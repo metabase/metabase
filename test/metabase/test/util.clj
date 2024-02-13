@@ -40,6 +40,7 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
+   [metabase.test.util.dynamic-redefs :as tu.dr]
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -311,7 +312,7 @@
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
         ;; temporarily override the underlying environment variable value
-        (with-redefs [env/env (assoc env/env env-var-keyword value)]
+        (tu.dr/with-dynamic-redefs [env/env (assoc env/env env-var-keyword value)]
           ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
           (setting.cache/restore-cache!)
           (thunk))
@@ -423,7 +424,7 @@
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
-              (with-redefs [setting/has-feature? (constantly true)]
+              (tu.dr/with-dynamic-redefs [setting/has-feature? (constantly true)]
                 (setting/set! setting-k value :bypass-read-only? true)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
@@ -438,7 +439,7 @@
               (if raw-setting?
                 (restore-raw-setting! original-value setting-k)
                 ;; bypass the feature check when reset settings to the original value
-                (with-redefs [setting/has-feature? (constantly true)]
+                (tu.dr/with-dynamic-redefs [setting/has-feature? (constantly true)]
                   (setting/set! setting-k original-value :bypass-read-only? true)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
@@ -833,8 +834,8 @@
   {:style/indent 1}
   [fn-symb & body]
   {:pre [(symbol? fn-symb)]}
-  `(with-redefs [~fn-symb (fn [& ~'_]
-                            (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
+  `(tu.dr/with-dynamic-redefs [~fn-symb (fn [& ~'_]
+                                          (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
 (defn do-with-discarded-collections-perms-changes [collection-or-id f]
@@ -1010,7 +1011,7 @@
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
-  Useful for tests when you need the entire object to be realized in the body of a `binding`, `with-redefs`, or
+  Useful for tests when you need the entire object to be realized in the body of a `binding`, `mt/with-dynamic-redefs`, or
   `with-temp` form."
   [x]
   (cond
@@ -1162,7 +1163,7 @@
         renames    (reduce-kv renames-fn {} orig-e)
         new-e      (set/rename-keys orig-e renames)]
     (testing (colorize/blue (format "\nRenaming env vars by map: %s\n" (u/pprint-to-str renames)))
-      (with-redefs [env/env new-e]
+      (tu.dr/with-dynamic-redefs [env/env new-e]
         (thunk)))))
 
 (defmacro with-env-keys-renamed-by

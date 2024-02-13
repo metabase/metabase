@@ -285,7 +285,7 @@
       ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
       ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`
       ;; middleware is doing the right thing
-      (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
+      (mt/with-dynamic-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [(mt/mbql-query venues)])
           (is (thrown-with-msg?

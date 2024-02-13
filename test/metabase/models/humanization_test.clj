@@ -3,12 +3,13 @@
    [clojure.test :refer :all]
    [metabase.models.humanization :as humanization]
    [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
    [metabase.test.util :as tu]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- get-humanized-display-name [actual-name strategy]
-  (with-redefs [humanization/humanization-strategy (constantly strategy)]
+  (mt/with-dynamic-redefs [humanization/humanization-strategy (constantly strategy)]
     (t2.with-temp/with-temp [Table {table-id :id} {:name actual-name}]
       (t2/select-one-fn :display_name Table, :id table-id))))
 
