@@ -120,10 +120,10 @@
   [a-query]
   (lib.core/drop-stage a-query))
 
-(defn ^:export drop-stage-if-empty
+(defn ^:export drop-empty-stages
   "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
   [a-query]
-  (lib.core/drop-stage-if-empty a-query))
+  (lib.core/drop-empty-stages a-query))
 
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To

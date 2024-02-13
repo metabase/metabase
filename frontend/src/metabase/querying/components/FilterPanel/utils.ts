@@ -11,6 +11,6 @@ export function getFilterItems(query: Lib.Query): FilterItem[] {
   });
 }
 
-export function dropStageIfEmpty(query: Lib.Query): Lib.Query {
-  return Lib.dropStageIfEmpty(query, -1);
+export function dropEmptyStages(query: Lib.Query): Lib.Query {
+  return Lib.dropEmptyStages(query);
 }

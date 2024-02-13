@@ -15,8 +15,8 @@ export function appendStageIfAggregated(query: Lib.Query) {
     : query;
 }
 
-export function dropStageIfEmpty(query: Lib.Query) {
-  return Lib.dropStageIfEmpty(query, -1);
+export function dropEmptyStages(query: Lib.Query) {
+  return Lib.dropEmptyStages(query);
 }
 
 function getStageIndexes(query: Lib.Query) {
