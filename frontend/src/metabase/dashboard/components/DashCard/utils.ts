@@ -44,8 +44,14 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     return;
   }
 
-  const isVirtual = isVirtualDashCard(dashcard);
   const isAction = isActionDashCard(dashcard);
+
+  // action has it's own settings, no need to get mapping options
+  if (isAction) {
+    return;
+  }
+
+  const isVirtual = isVirtualDashCard(dashcard);
   const isNative = isQuestionDashCard(dashcard)
     ? isNativeDashCard(dashcard)
     : false;
@@ -85,7 +91,7 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     columns,
     mappingOptions
       .filter(isStructuredQuerySectionOption)
-      .map(({ target }) => target[1]),
+      .map(({ target }) => normalize(target[1])),
   );
 
   const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);

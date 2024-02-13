@@ -98,6 +98,7 @@ type VirtualDashcardParameterMappingOptions = {
 type ActionDashcardParameterMappingOptions = WritebackParameter & {
   icon: string;
   isForeign: boolean;
+  hasVariableTemplateTagTarget?: boolean;
 };
 
 type NativeParameterMappingOptions = {
