@@ -16,12 +16,9 @@ export const sortCollectionsByVerification = (
   return 0;
 };
 
-const isModelVerified = (model: SearchResult) =>
-  model.moderated_status === "verified";
-
 export const sortModelsByVerification = (a: SearchResult, b: SearchResult) => {
-  const aVerified = isModelVerified(a);
-  const bVerified = isModelVerified(b);
+  const aVerified = a.moderated_status === "verified";
+  const bVerified = b.moderated_status === "verified";
   if (aVerified && !bVerified) {
     return -1;
   }
