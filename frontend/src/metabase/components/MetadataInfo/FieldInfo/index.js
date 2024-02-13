@@ -1,1 +1,1 @@
-export { default } from "./FieldInfo";
+export { default, FieldInfo, FieldInfoProps } from "./FieldInfo";
