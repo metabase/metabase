@@ -16,7 +16,9 @@
   consumed."
   nil)
 
-(defn canceled? []
+(defn canceled?
+  "Whether the current query execution has been canceled."
+  []
   (some-> *canceled-chan* a/poll!))
 
 (defn ^:dynamic *result*
@@ -27,7 +29,7 @@
     result))
 
 (defn ^:dynamic *execute*
-  "Called by [[runf]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a
+  "Called by [[*run*]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a
   callback with the signature:
 
     (respond results-metadata reducible-rows)
@@ -40,8 +42,8 @@
       (driver/execute-reducible-query driver query context respond))))
 
 (defn ^:dynamic *reduce*
-  "Called by [[runf]] (inside the `respond` callback provided by it) to reduce results of query. Reduces results, then
-  calls [[resultf]] with the reduced results. results."
+  "Called by [[*run*]] (inside the `respond` callback provided by it) to reduce results of query. Reduces results, then
+  calls [[*result*]] with the reduced results. results."
   [rff metadata reducible-rows]
   (when-not (canceled?)
     (let [[status rf]     (try
@@ -62,6 +64,7 @@
         ::error   (throw result)))))
 
 (defn ^:dynamic *run*
+  "Function for running the query. Calls [[*execute*]], then [[*reduce*]] on the results."
   [query rff]
   (when-not (canceled?)
     (letfn [(respond [metadata reducible-rows]

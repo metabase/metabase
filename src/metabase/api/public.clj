@@ -28,6 +28,7 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.middleware.session :as mw.session]
@@ -38,8 +39,7 @@
    [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan2.core :as t2]
-   [metabase.query-processor.pipeline :as qp.pipeline])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 

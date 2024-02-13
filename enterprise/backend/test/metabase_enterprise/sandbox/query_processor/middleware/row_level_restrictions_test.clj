@@ -1124,5 +1124,5 @@
                                           :dataset_query (mt/mbql-query categories)}]
         (let [query (:dataset_query card)]
           (process-userland-query-test/with-query-execution [qe query]
-            (qp/process-userland-query query)
+            (qp/process-query (qp/userland-query query))
             (is (:is_sandboxed (qe)))))))))

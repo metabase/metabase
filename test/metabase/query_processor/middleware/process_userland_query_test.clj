@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.events :as events]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
@@ -15,7 +14,8 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

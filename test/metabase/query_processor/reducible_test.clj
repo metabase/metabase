@@ -34,8 +34,7 @@
                                           {:database (mt/id)
                                            :type     :query
                                            :query    {:source-table (mt/id :venues), :limit 3}}
-                                          print-rows-rff
-                                          nil))))]
+                                          print-rows-rff))))]
       (is (= 3
              @qp-result))
       (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
@@ -84,5 +83,4 @@
              {:database (mt/id)
               :type     :query
               :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
-             maps-rff
-             nil))))))
+             maps-rff))))))

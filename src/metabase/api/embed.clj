@@ -29,7 +29,6 @@
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.pulse.parameters :as params]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
