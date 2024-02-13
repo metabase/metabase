@@ -4,7 +4,7 @@ import { merge } from "icepick";
 import { t } from "ttag";
 
 import { addUndo } from "metabase/redux/undo";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
+import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import Questions from "metabase/entities/questions";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -49,7 +49,8 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const metadata = getMetadata(getState());
   const dataset = metadata.question(question.id());
 
-  await dispatch(loadMetadataForQueries([], [dataset.dependentMetadata()]));
+  const dependentItems = dataset.dependentMetadata();
+  await dispatch(loadMetadataForDependentItems(dependentItems));
 
   await dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
 

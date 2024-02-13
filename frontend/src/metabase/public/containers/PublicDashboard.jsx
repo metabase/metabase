@@ -29,6 +29,7 @@ import {
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
+import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 
 import {
   setPublicDashboardEndpoints,
@@ -36,11 +37,7 @@ import {
 } from "metabase/services";
 import EmbedFrame from "../components/EmbedFrame";
 
-import {
-  DashboardContainer,
-  DashboardGridContainer,
-  StyledDashboardTabs,
-} from "./PublicDashboard.styled";
+import { DashboardContainer } from "./PublicDashboard.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -180,7 +177,7 @@ class PublicDashboard extends Component {
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
         }
-        dashboardTabs={<StyledDashboardTabs location={this.props.location} />}
+        dashboardTabs={<DashboardTabs location={this.props.location} />}
       >
         <LoadingAndErrorWrapper
           className={cx({
@@ -191,16 +188,14 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardGridContainer>
-                <DashboardGridConnected
-                  {...this.props}
-                  isPublic
-                  className="spread"
-                  mode={PublicMode}
-                  metadata={this.props.metadata}
-                  navigateToNewCardFromDashboard={() => {}}
-                />
-              </DashboardGridContainer>
+              <DashboardGridConnected
+                {...this.props}
+                isPublic
+                className="spread"
+                mode={PublicMode}
+                metadata={this.props.metadata}
+                navigateToNewCardFromDashboard={() => {}}
+              />
             </DashboardContainer>
           )}
         </LoadingAndErrorWrapper>
