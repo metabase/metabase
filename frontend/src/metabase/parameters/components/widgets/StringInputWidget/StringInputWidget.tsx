@@ -7,11 +7,10 @@ import {
   WidgetRoot,
   WidgetLabel,
   Footer,
-  UpdateButton,
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
-import { getUpdateButtonProps } from "../getUpdateButtonProps";
+import { UpdateButton } from "../UpdateButton";
 
 type StringInputWidgetProps = {
   value: string[] | undefined;
@@ -50,13 +49,6 @@ function StringInputWidget({
     }
   };
 
-  const { label: buttonLabel, disabled: buttonDisabled } = getUpdateButtonProps(
-    value,
-    unsavedArrayValue,
-    parameter.default,
-    parameter.required,
-  );
-
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
@@ -73,9 +65,14 @@ function StringInputWidget({
         />
       </TokenFieldWrapper>
       <Footer>
-        <UpdateButton disabled={buttonDisabled || !isValid} onClick={onClick}>
-          {buttonLabel}
-        </UpdateButton>
+        <UpdateButton
+          value={value}
+          unsavedValue={unsavedArrayValue}
+          defaultValue={parameter.default}
+          valueRequired={parameter.required ?? false}
+          isValid={isValid}
+          onClick={onClick}
+        />
       </Footer>
     </WidgetRoot>
   );

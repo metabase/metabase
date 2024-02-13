@@ -66,9 +66,11 @@ describe("scenarios > embedding > native questions", () => {
       setEmbeddingParameter("State", "Editable");
       setEmbeddingParameter("Product ID", "Editable");
 
+      // TODO WHAT IS THIS?
       // Total is greater than or equal to 0
       cy.findByPlaceholderText("Enter a number").type("0").blur();
       cy.button("Set to default").click();
+      // TODO END WHAT IS THIS?
 
       publishChanges("card", ({ request }) => {
         const actual = request.body.embedding_params;

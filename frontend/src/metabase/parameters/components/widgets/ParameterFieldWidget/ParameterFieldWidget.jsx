@@ -8,7 +8,6 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import {
   WidgetRoot,
   Footer,
-  UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import {
@@ -17,7 +16,7 @@ import {
   isFuzzyOperator,
 } from "metabase-lib/operators/utils";
 
-import { getUpdateButtonProps } from "../getUpdateButtonProps";
+import { UpdateButton } from "../UpdateButton";
 import { normalizeValue } from "./normalizeValue";
 
 const propTypes = {
@@ -56,13 +55,6 @@ export default function ParameterFieldWidget({
   const isValid =
     unsavedValue.every(value => value != null) &&
     (supportsMultipleValues || unsavedValue.length === numFields);
-
-  const { label: buttonLabel, disabled: buttonDisabled } = getUpdateButtonProps(
-    value,
-    unsavedValue,
-    parameter.default,
-    parameter.required,
-  );
 
   return (
     <WidgetRoot>
@@ -109,13 +101,13 @@ export default function ParameterFieldWidget({
       </div>
       <Footer>
         <UpdateButton
-          disabled={buttonDisabled || !isValid}
-          onClick={() => {
-            setValue(unsavedValue);
-          }}
-        >
-          {buttonLabel}
-        </UpdateButton>
+          value={value}
+          unsavedValue={unsavedValue}
+          defaultValue={parameter.default}
+          valueRequired={parameter.required ?? false}
+          isValid={isValid}
+          onClick={() => setValue(unsavedValue)}
+        />
       </Footer>
     </WidgetRoot>
   );

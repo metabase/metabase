@@ -7,9 +7,9 @@ const RESET = t`Set to default`;
 
 /**
  * This is used to show the correct button when picking filter values.
- * Since the label and disable state depend on current value, unsaved value
- * and whether a parameter is required or not, the logic is a bit more
- * sophisticated that we would like it to be.
+ * Since the label and disable state depend on current value, unsaved value,
+ * default value and whether a parameter is required or not, the logic is
+ * a bit more sophisticated that we would like it to be.
  *
  * See tests for a better explanation.
  */
@@ -18,7 +18,7 @@ export function getUpdateButtonProps(
   unsavedValue: unknown,
   defaultValue?: unknown,
   required?: boolean,
-): { label: string; disabled: boolean } {
+): { label: string; isDisabled: boolean } {
   if (required) {
     return {
       label:
@@ -26,7 +26,7 @@ export function getUpdateButtonProps(
         areParameterValuesIdentical(unsavedValue, defaultValue)
           ? RESET
           : UPDATE,
-      disabled:
+      isDisabled:
         areParameterValuesIdentical(unsavedValue, value) &&
         hasValue(unsavedValue),
     };
@@ -37,13 +37,13 @@ export function getUpdateButtonProps(
       label: areParameterValuesIdentical(unsavedValue, defaultValue)
         ? RESET
         : UPDATE,
-      disabled: areParameterValuesIdentical(value, unsavedValue),
+      isDisabled: areParameterValuesIdentical(value, unsavedValue),
     };
   }
 
   return {
     label: hasValue(value) ? UPDATE : ADD,
-    disabled: areParameterValuesIdentical(value, unsavedValue),
+    isDisabled: areParameterValuesIdentical(value, unsavedValue),
   };
 }
 

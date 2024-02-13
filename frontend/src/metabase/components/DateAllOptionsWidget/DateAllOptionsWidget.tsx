@@ -1,15 +1,11 @@
 import { useState } from "react";
-import cx from "classnames";
 
 import DatePicker from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
 import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 
-import {
-  WidgetRoot,
-  UpdateButton,
-} from "metabase/parameters/components/widgets/Widget.styled";
+import { WidgetRoot } from "metabase/parameters/components/widgets/Widget.styled";
 
-import { getUpdateButtonProps } from "metabase/parameters/components/widgets/getUpdateButtonProps";
+import { UpdateButton } from "metabase/parameters/components/widgets/UpdateButton";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 // Use a placeholder value as field references are not used in dashboard filters
@@ -41,15 +37,8 @@ export const DateAllOptionsWidget = ({
     onClose?.();
   };
 
-  const isValid = filter.slice(2).every((value: any) => value != null);
-
+  const isValid = filter.slice(2).every((value: unknown) => value != null);
   const unsavedValue = filterToUrlEncoded(filter);
-  const { label: buttonLabel, disabled: buttonDisabled } = getUpdateButtonProps(
-    value,
-    unsavedValue,
-    defaultValue,
-    required,
-  );
 
   return (
     <WidgetRoot>
@@ -62,14 +51,23 @@ export const DateAllOptionsWidget = ({
         supportsExpressions
       >
         <UpdateButton
-          disabled={buttonDisabled || !isValid}
+          value={value}
+          unsavedValue={unsavedValue}
+          defaultValue={defaultValue}
+          valueRequired={required}
+          isValid={isValid}
+          onClick={() => commitAndClose()}
+        />
+        {/* 
+        <UpdateButtonStyled
+          disabled={isDisabled || !isValid}
           className={cx({
             disabled: !isValid,
           })}
           onClick={() => commitAndClose()}
         >
-          {buttonLabel}
-        </UpdateButton>
+          {label}
+        </UpdateButtonStyled> */}
       </DatePicker>
     </WidgetRoot>
   );

@@ -23,12 +23,12 @@ export const Footer = styled.div`
   align-items: center;
 `;
 
-export const UpdateButton = styled(Button)`
+export const UpdateButtonStyled = styled(Button)`
   justify-self: end;
   grid-column-start: 2;
 `;
 
-UpdateButton.defaultProps = {
+UpdateButtonStyled.defaultProps = {
   purple: true,
 };
 
