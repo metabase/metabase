@@ -88,17 +88,14 @@ export const isNavigationAllowed = ({
     .map(String);
 
   if (question.type() === "model") {
-    if (isNewQuestion) {
-      const allowedPathnames = ["/model/query", "/model/metadata"];
-      return allowedPathnames.includes(pathname);
-    }
-
-    const allowedPathnames = validSlugs.flatMap(slug => [
-      `/model/${slug}`,
-      `/model/${slug}/query`,
-      `/model/${slug}/metadata`,
-      `/model/${slug}/notebook`,
-    ]);
+    const allowedPathnames = isNewQuestion
+      ? ["/model/query", "/model/metadata"]
+      : validSlugs.flatMap(slug => [
+          `/model/${slug}`,
+          `/model/${slug}/query`,
+          `/model/${slug}/metadata`,
+          `/model/${slug}/notebook`,
+        ]);
 
     return allowedPathnames.includes(pathname);
   }
