@@ -24,7 +24,7 @@ import { LandingPageWidget } from "./components/LandingPageWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
 import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
 import MetabotToggleWidget from "./components/MetabotToggleWidget";
-import LogoUpload from "./components/LogoUpload";
+import { ImageUpload } from "./components/ImageUpload";
 import LogoIcon from "./components/LogoIcon";
 import { updateColors } from "./lib/whitelabel";
 import { getLoadingMessageOptions } from "./lib/loading-message";
@@ -87,7 +87,7 @@ if (hasPremiumFeature("whitelabel")) {
           key: "application-logo-url",
           display_name: t`Logo`,
           type: "string",
-          widget: LogoUpload,
+          widget: ImageUpload,
         },
         {
           key: "application-font",
@@ -112,6 +112,7 @@ if (hasPremiumFeature("whitelabel")) {
           key: "application-favicon-url",
           display_name: t`Favicon`,
           type: "string",
+          widget: ImageUpload,
         },
       ],
     },
