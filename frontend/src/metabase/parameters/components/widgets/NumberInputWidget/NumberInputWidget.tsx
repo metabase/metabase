@@ -9,7 +9,6 @@ import {
   WidgetLabel,
   Footer,
   TokenFieldWrapper,
-  UpdateButtonContainer,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
 import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
@@ -99,16 +98,14 @@ export function NumberInputWidget({
         ))
       )}
       <Footer>
-        <UpdateButtonContainer>
-          <UpdateButton
-            value={value}
-            unsavedValue={unsavedArrayValue}
-            defaultValue={parameter.default}
-            isValueRequired={parameter.required ?? false}
-            isValid={isValid}
-            onClick={onClick}
-          />
-        </UpdateButtonContainer>
+        <UpdateButton
+          value={value}
+          unsavedValue={unsavedArrayValue}
+          defaultValue={parameter.default}
+          isValueRequired={parameter.required ?? false}
+          isValid={isValid}
+          onClick={onClick}
+        />
       </Footer>
     </WidgetRoot>
   );

@@ -3,10 +3,7 @@ import { useState } from "react";
 import DatePicker from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
 import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 
-import {
-  UpdateButtonContainer,
-  WidgetRoot,
-} from "metabase/parameters/components/widgets/Widget.styled";
+import { WidgetRoot } from "metabase/parameters/components/widgets/Widget.styled";
 
 import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
@@ -53,16 +50,14 @@ export const DateAllOptionsWidget = ({
         disableOperatorSelection={disableOperatorSelection}
         supportsExpressions
       >
-        <UpdateButtonContainer>
-          <UpdateButton
-            value={value}
-            unsavedValue={unsavedValue}
-            defaultValue={defaultValue}
-            isValueRequired={required}
-            isValid={isValid}
-            onClick={() => commitAndClose()}
-          />
-        </UpdateButtonContainer>
+        <UpdateButton
+          value={value}
+          unsavedValue={unsavedValue}
+          defaultValue={defaultValue}
+          isValueRequired={required}
+          isValid={isValid}
+          onClick={() => commitAndClose()}
+        />
       </DatePicker>
     </WidgetRoot>
   );

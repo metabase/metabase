@@ -8,7 +8,6 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import {
   WidgetRoot,
   Footer,
-  UpdateButtonContainer,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
@@ -101,16 +100,14 @@ export default function ParameterFieldWidget({
         })}
       </div>
       <Footer>
-        <UpdateButtonContainer>
-          <UpdateButton
-            value={value}
-            unsavedValue={unsavedValue}
-            defaultValue={parameter.default}
-            isValueRequired={parameter.required ?? false}
-            isValid={isValid}
-            onClick={() => setValue(unsavedValue)}
-          />
-        </UpdateButtonContainer>
+        <UpdateButton
+          value={value}
+          unsavedValue={unsavedValue}
+          defaultValue={parameter.default}
+          isValueRequired={parameter.required ?? false}
+          isValid={isValid}
+          onClick={() => setValue(unsavedValue)}
+        />
       </Footer>
     </WidgetRoot>
   );

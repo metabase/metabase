@@ -15,16 +15,10 @@ export const WidgetLabel = styled.label`
 `;
 
 export const Footer = styled.div`
-  border-top: 1px solid ${color("border")};
+  display: flex;
+  justify-content: flex-end;
   padding: ${space(1)};
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-`;
-
-export const UpdateButtonContainer = styled.div`
-  justify-self: end;
-  grid-column-start: 2;
+  border-top: 1px solid ${color("border")};
 `;
 
 export const TokenFieldWrapper = styled.div`
