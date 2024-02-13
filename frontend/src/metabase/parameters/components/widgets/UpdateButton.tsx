@@ -1,11 +1,11 @@
-import { UpdateButtonStyled } from "metabase/parameters/components/widgets/Widget.styled";
+import { Button } from "metabase/ui";
 import { getUpdateButtonProps } from "./getUpdateButtonProps";
 
 interface UpdateButtonProps {
   value: unknown;
   unsavedValue: unknown;
   defaultValue: unknown;
-  valueRequired: boolean;
+  isValueRequired: boolean;
   isValid?: boolean;
   onClick?: () => void;
 }
@@ -15,7 +15,7 @@ export function UpdateButton(props: UpdateButtonProps) {
     value,
     unsavedValue,
     defaultValue,
-    valueRequired,
+    isValueRequired,
     isValid,
     onClick = () => {},
   } = props;
@@ -24,12 +24,17 @@ export function UpdateButton(props: UpdateButtonProps) {
     value,
     unsavedValue,
     defaultValue,
-    valueRequired,
+    isValueRequired,
   );
 
   return (
-    <UpdateButtonStyled disabled={isDisabled || !isValid} onClick={onClick}>
+    <Button
+      disabled={isDisabled || !isValid}
+      onClick={onClick}
+      variant="filled"
+      aria-label={label}
+    >
       {label}
-    </UpdateButtonStyled>
+    </Button>
   );
 }

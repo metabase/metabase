@@ -8,6 +8,7 @@ import {
   WidgetLabel,
   Footer,
   TokenFieldWrapper,
+  UpdateButtonContainer,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
 import { UpdateButton } from "../UpdateButton";
@@ -65,14 +66,16 @@ function StringInputWidget({
         />
       </TokenFieldWrapper>
       <Footer>
-        <UpdateButton
-          value={value}
-          unsavedValue={unsavedArrayValue}
-          defaultValue={parameter.default}
-          valueRequired={parameter.required ?? false}
-          isValid={isValid}
-          onClick={onClick}
-        />
+        <UpdateButtonContainer>
+          <UpdateButton
+            value={value}
+            unsavedValue={unsavedArrayValue}
+            defaultValue={parameter.default}
+            isValueRequired={parameter.required ?? false}
+            isValid={isValid}
+            onClick={onClick}
+          />
+        </UpdateButtonContainer>
       </Footer>
     </WidgetRoot>
   );

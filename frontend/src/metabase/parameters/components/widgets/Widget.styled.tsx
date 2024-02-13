@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Button from "metabase/core/components/Button";
 
 export const WidgetRoot = styled.div`
   min-width: 300px;
@@ -23,14 +22,10 @@ export const Footer = styled.div`
   align-items: center;
 `;
 
-export const UpdateButtonStyled = styled(Button)`
+export const UpdateButtonContainer = styled.div`
   justify-self: end;
   grid-column-start: 2;
 `;
-
-UpdateButtonStyled.defaultProps = {
-  purple: true,
-};
 
 export const TokenFieldWrapper = styled.div`
   margin: ${space(1)};
