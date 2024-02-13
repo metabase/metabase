@@ -152,8 +152,7 @@
   (testing "simple query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
-                      {:type :table,    :id (meta/id :venues)}
-                      {:type :table,    :id (meta/id :categories)}]
+                      {:type :table,    :id (meta/id :venues)}]
                      (lib/dependent-metadata query))
       lib.tu/venues-query
       (lib/append-stage lib.tu/venues-query)))
@@ -175,8 +174,7 @@
   (testing "source card based query with result metadata"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
-                      {:type :table,    :id "card__1"}
-                      {:type :table,    :id (meta/id :users)}]
+                      {:type :table,    :id "card__1"}]
                      (lib/dependent-metadata query))
       lib.tu/query-with-source-card-with-result-metadata
       (lib/append-stage lib.tu/query-with-source-card-with-result-metadata)))
