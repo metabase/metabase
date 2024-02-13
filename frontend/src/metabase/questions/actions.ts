@@ -11,13 +11,6 @@ export interface LoadMetadataOptions {
 }
 
 export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
-    await dispatch(loadMetadata(card, options));
-    // load entities referenced by previously loaded metadata without reloading
-    await dispatch(loadMetadata(card));
-  };
-
-const loadMetadata =
   (card: Card, options?: LoadMetadataOptions) =>
   (dispatch: Dispatch, getState: GetState) => {
     const question = new Question(card, getMetadata(getState()));
