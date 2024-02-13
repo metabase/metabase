@@ -5,6 +5,7 @@ import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
+import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { computeStaticWaterfallChartSettings } from "./settings";
 
 const WIDTH = 540;
@@ -28,13 +29,20 @@ export function WaterfallChart({
     computedVisualizationSettings,
     renderingContext,
   );
+  const chartMeasurements = getChartMeasurements(
+    chartModel,
+    computedVisualizationSettings,
+    false,
+    width,
+    height,
+    renderingContext,
+  );
   const option = getWaterfallChartOption(
     chartModel,
+    chartMeasurements,
     null,
     [],
     computedVisualizationSettings,
-    WIDTH,
-    HEIGHT,
     renderingContext,
   );
 
