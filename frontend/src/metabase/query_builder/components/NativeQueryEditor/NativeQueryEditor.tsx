@@ -20,6 +20,7 @@ import "ace/snippets/json";
 import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
+import * as Lib from "metabase-lib";
 
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
@@ -56,6 +57,7 @@ import { ResponsiveParametersList } from "../ResponsiveParametersList";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 import {
   calcInitialEditorHeight,
+  formatQuery,
   getEditorLineHeight,
   getMaxAutoSizeLines,
 } from "./utils";
@@ -128,7 +130,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   runQuestionQuery: (opts?: {
-    overrideWithCard?: Card;
+    overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
   setNativeEditorSelectedRange: (range: Ace.Range) => void;
@@ -137,6 +139,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
+  setParameterValueToDefault: (parameterId: ParameterId) => void;
   onOpenModal: (modalType: string) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
@@ -383,10 +386,10 @@ export class NativeQueryEditor extends Component<
     const selectedText = this._editor?.getSelectedText();
 
     if (selectedText) {
-      const temporaryCard = query.setQueryText(selectedText).question().card();
+      const temporaryQuestion = query.setQueryText(selectedText).question();
 
       runQuestionQuery({
-        overrideWithCard: temporaryCard,
+        overrideWithQuestion: temporaryQuestion,
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
@@ -747,6 +750,16 @@ export class NativeQueryEditor extends Component<
     );
   };
 
+  formatQuery = async () => {
+    const { question } = this.props;
+    const query = question.query();
+    const engine = Lib.engine(query);
+    const queryText = Lib.rawNativeQuery(query);
+
+    this.handleQueryUpdate(await formatQuery(queryText, engine));
+    this._editor?.focus();
+  };
+
   render() {
     const {
       question,
@@ -765,6 +778,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery,
       sidebarFeatures,
       canChangeDatabase,
+      setParameterValueToDefault,
     } = this.props;
 
     const isPromptInputVisible = this.isPromptInputVisible();
@@ -802,6 +816,8 @@ export class NativeQueryEditor extends Component<
                 parameters={parameters}
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
+                setParameterValueToDefault={setParameterValueToDefault}
+                enableParameterRequiredBehavior
               />
             )}
             {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
@@ -878,6 +894,7 @@ export class NativeQueryEditor extends Component<
                 features={sidebarFeatures}
                 onShowPromptInput={this.togglePromptVisibility}
                 isPromptInputVisible={isPromptInputVisible}
+                onFormatQuery={this.formatQuery}
                 {...this.props}
               />
             )}

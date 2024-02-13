@@ -639,7 +639,11 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       return isSavedQuestionChanged;
     }
 
-    if (originalQuestion?.isStructured()) {
+    const isOriginalQuestionNative =
+      originalQuestion &&
+      Lib.queryDisplayInfo(originalQuestion.query()).isNative;
+
+    if (!isOriginalQuestionNative) {
       return uiControls.isModifiedFromNotebook;
     }
 
@@ -990,3 +994,33 @@ export const getIsEditingInDashboard = state => {
 export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
 };
+
+export const canUploadToQuestion = question => state => {
+  const uploadsEnabled = getSetting(state, "uploads-enabled");
+  if (!uploadsEnabled) {
+    return false;
+  }
+  const uploadsDbId = getSetting(state, "uploads-database-id");
+  const canUploadToDb =
+    uploadsDbId === question.databaseId() &&
+    Databases.selectors
+      .getObject(state, {
+        entityId: uploadsDbId,
+      })
+      ?.canUpload();
+  return canUploadToDb;
+};
+
+export const getTemplateTags = createSelector([getCard], card =>
+  getIn(card, ["dataset_query", "native", "template-tags"]),
+);
+
+export const getRequiredTemplateTags = createSelector(
+  [getTemplateTags],
+  templateTags =>
+    templateTags
+      ? Object.keys(templateTags)
+          .filter(key => templateTags[key].required)
+          .map(key => templateTags[key])
+      : [],
+);

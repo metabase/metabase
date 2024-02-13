@@ -208,6 +208,7 @@
    :points_of_interest      nil
    :cache_ttl               nil
    :position                nil
+   :width                   "fixed"
    :public_uuid             nil
    :auto_apply_filters      true
    :show_in_getting_started false
@@ -796,6 +797,27 @@
             (is (=? {:message "You do not have curate permissions for this Collection."}
                     (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
                                           {:collection_id (u/the-id new-collection)})))))))))
+
+(deftest update-dashboard-width-setting-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "We can change the dashboard's width between 'fixed' and 'full' settings."
+      (t2.with-temp/with-temp [Dashboard dashboard {}]
+        (with-dashboards-in-writeable-collection [dashboard]
+          (testing "the default dashboard width value is 'fixed'."
+            (is (= "fixed"
+                   (t2/select-one-fn :width Dashboard :id (u/the-id dashboard)))))
+
+          (testing "changing the width setting to 'full' works."
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:width "full"})
+            (is (= "full"
+                   (t2/select-one-fn :width Dashboard :id (u/the-id dashboard)))))
+
+          (testing "values that are not 'fixed' or 'full' error."
+            (is (= "should be either fixed or full, received: 1200"
+                   (-> (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})
+                       :specific-errors
+                       :width
+                       first)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD CARD IN DASHCARD                                         |
@@ -2814,7 +2836,7 @@
           ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
-          (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
+          (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
@@ -2830,6 +2852,23 @@
                  (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                       (mt/user-http-request :rasta :get 200)
                       (chain-filter-test/take-n-values 3)))))))))
+
+(deftest block-data-should-not-expose-field-values
+  (testing "block data perms should not allow access to field values (private#196)"
+    (when config/ee-available?
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp-copy-of-db
+          (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+            (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                            {:schemas :block})
+            (is (= "You don't have permissions to do that."
+                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                        (mt/user-http-request :rasta :get 403))))
+            (testing "search"
+              (is (= "You don't have permissions to do that."
+                     (->> (chain-filter-search-url (:id dashboard) (:category-name param-keys) "BBQ")
+                          (mt/user-http-request :rasta :get 403)))))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
@@ -4048,3 +4087,31 @@
             (testing "We have values and they all match the expression concatenation"
               (is (pos? (count values)))
               (is (every? (partial re-matches #"[^🦜]+🦜🦜🦜[^🦜]+") (map first values))))))))))
+
+(deftest param-values-permissions-test
+  (testing "Users without permissions should not see all options in a dashboard filter (private#196)"
+    (when config/ee-available?
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp-copy-of-db
+          (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+            (testing "Return values with access"
+              (is (=? {:values (comp #(contains? % ["African"]) set)}
+                      (mt/user-http-request :rasta :get 200
+                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+            (testing "Return values with no self-service (#26874)"
+              (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+              (is (=? {:values (comp #(contains? % ["African"]) set)}
+                      (mt/user-http-request :rasta :get 200
+                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+            (testing "Return values for admin"
+              (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                              {:schemas :block})
+              (is (=? {:values (comp #(contains? % ["African"]) set)}
+                      (mt/user-http-request :crowberto :get 200
+                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+            (testing "Don't return with block perms."
+              (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                              {:schemas :block})
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403
+                                           (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))))

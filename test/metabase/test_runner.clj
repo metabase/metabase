@@ -87,6 +87,12 @@
    :exclude-directories excluded-directories
    :test-warn-time      3000})
 
+(defn find-tests
+  "Find all tests, in case you wish to run them yourself."
+  ([] (find-tests {}))
+  ([options]
+   (hawk/find-tests nil (merge (default-options) options))))
+
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."
   [options]

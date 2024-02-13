@@ -4,7 +4,7 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { useDropzone } from "react-dropzone";
 
-import { usePrevious, useMount } from "react-use";
+import { usePrevious } from "react-use";
 import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
@@ -12,7 +12,6 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getIsBookmarked } from "metabase/collections/selectors";
 import { getSetting } from "metabase/selectors/settings";
-import { openNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -29,7 +28,6 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
-import { isSmallScreen } from "metabase/lib/dom";
 import Databases from "metabase/entities/databases";
 
 import UploadOverlay from "../components/UploadOverlay";
@@ -76,7 +74,6 @@ function mapStateToProps(state, props) {
 }
 
 const mapDispatchToProps = {
-  openNavbar,
   createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
   deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
   uploadFile,
@@ -92,7 +89,6 @@ function CollectionContent({
   deleteBookmark,
   isAdmin,
   isNavbarOpen,
-  openNavbar,
   uploadFile,
   uploadsEnabled,
   canUploadToDb,
@@ -109,12 +105,6 @@ function CollectionContent({
   const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
-
-  useMount(() => {
-    if (!isSmallScreen()) {
-      openNavbar();
-    }
-  });
 
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
@@ -134,7 +124,7 @@ function CollectionContent({
 
   const onDrop = useCallback(
     acceptedFiles => {
-      uploadFile(acceptedFiles[0], collectionId);
+      uploadFile({ file: acceptedFiles[0], collectionId });
     },
     [collectionId, uploadFile],
   );

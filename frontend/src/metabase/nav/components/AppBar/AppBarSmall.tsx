@@ -89,6 +89,7 @@ const AppBarSmall = ({
             <AppBarLogo
               isSmallAppBar
               isLogoVisible={isLogoVisible}
+              isNavBarEnabled={isNavBarEnabled}
               onLogoClick={onCloseNavbar}
             />
           </AppBarLogoContainer>

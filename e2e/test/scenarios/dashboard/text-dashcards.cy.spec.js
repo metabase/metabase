@@ -6,6 +6,7 @@ import {
   addTextBox,
   editDashboard,
   saveDashboard,
+  selectDashboardFilter,
   describeWithSnowplow,
   enableTracking,
   resetSnowplow,
@@ -146,6 +147,7 @@ describe("scenarios > dashboard > text and headings", () => {
         cy.findByText("Text or Category").click();
         cy.findByText("Is").click();
       });
+      selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Name");
       cy.findByTestId("edit-bar").findByText("Save").click();
 
       // confirm text box and filter are still there

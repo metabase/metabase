@@ -88,6 +88,9 @@
     [:result_metadata _ _]
     (deferred-tru "edited the metadata")
 
+    [:width _ _]
+    (deferred-tru "changed the width setting from {0} to {1}" (name v1) (name v2))
+
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
     [#{:table_id :database_id :query_type} _ _]

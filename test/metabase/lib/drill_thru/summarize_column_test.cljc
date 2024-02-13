@@ -3,7 +3,19 @@
    [clojure.test :refer [deftest testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.types.isa :as lib.types.isa]))
+
+(deftest ^:parallel summarize-column-availability-test
+  (testing "summarize-column is available for column headers with no aggregations or breakouts"
+    (canned/canned-test
+      :drill-thru/summarize-column
+      (fn [test-case context {:keys [click]}]
+        (and (= click :header)
+             (zero? (:aggregations test-case))
+             (zero? (:breakouts test-case))
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel returns-summarize-column-test-1
   (lib.drill-thru.tu/test-returns-drill

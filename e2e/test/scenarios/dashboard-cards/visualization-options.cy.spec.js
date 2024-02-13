@@ -5,6 +5,9 @@ import {
   getDashboardCard,
   editDashboard,
   showDashboardCardActions,
+  modal,
+  saveDashboard,
+  getDashboardCardMenu,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -14,20 +17,30 @@ describe("scenarios > dashboard cards > visualization options", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow empty card title (metabase#12013)", () => {
+  it("should allow empty card title (metabase#12013, metabase#36788)", () => {
+    const originalCardTitle = "Orders";
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.findByTextEnsureVisible("Orders");
-    cy.findByTestId("legend-caption").should("exist");
+    cy.findByTestId("legend-caption")
+      .should("contain", originalCardTitle)
+      .and("be.visible");
 
     editDashboard();
     showDashboardCardActions();
     cy.icon("palette").click();
 
-    cy.findByDisplayValue("Orders").click().clear();
-    cy.get("[data-metabase-event='Chart Settings;Done']").click();
+    modal().within(() => {
+      cy.findByDisplayValue(originalCardTitle).click().clear();
+      cy.button("Done").click();
+    });
 
-    cy.findByTestId("legend-caption").should("not.exist");
+    cy.findByTestId("legend-caption").should("not.contain", originalCardTitle);
+    saveDashboard();
+    getDashboardCard().realHover();
+    getDashboardCardMenu().click();
+    popover()
+      .should("contain", "Edit question")
+      .and("contain", "Download results");
   });
 
   it("column reordering should work (metabase#16229)", () => {

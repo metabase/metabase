@@ -20,6 +20,7 @@ import { ModelIndexes } from "metabase/entities/model-indexes";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Revision from "metabase/entities/revisions";
 import * as Lib from "metabase-lib";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -37,6 +38,7 @@ import {
   getResultsMetadata,
   getTransformedSeries,
   isBasedOnExistingQuestion,
+  getParameters,
 } from "../../selectors";
 
 import { updateUrl } from "../navigation";
@@ -75,11 +77,28 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     );
     const card = Questions.HACK_getObjectFromAction(action);
 
+    // We need to manually massage the paramters into the parameterValues shape,
+    // to be able to pass them to new Question.
+    // We could use _parameterValues here but prefer not to use internal fields.
+    const parameterValues = outdatedQuestion.parameters().reduce(
+      (acc, next) => ({
+        ...acc,
+        [next.id]: next.value,
+      }),
+      {},
+    );
+
+    const question = new Question(
+      card,
+      getMetadata(getState()),
+      parameterValues,
+    );
+
     dispatch(loadMetadataForCard(card));
 
     dispatch(
       runQuestionQuery({
-        overrideWithCard: card,
+        overrideWithQuestion: question,
         shouldUpdateUrl: false,
       }),
     );
@@ -241,7 +260,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       );
     }
 
-    if (question.isStructured()) {
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    if (!isNative) {
       rerunQuery = rerunQuery ?? isResultDirty;
     }
 
@@ -302,6 +323,22 @@ export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => {
     return { id: parameterId, value: normalizeValue(value) };
+  },
+);
+
+export const SET_PARAMETER_VALUE_TO_DEFAULT =
+  "metabase/qb/SET_PARAMETER_VALUE_TO_DEFAULT";
+export const setParameterValueToDefault = createThunkAction(
+  SET_PARAMETER_VALUE_TO_DEFAULT,
+  parameterId => (dispatch, getState) => {
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+    const defaultValue = parameter?.default;
+
+    if (defaultValue) {
+      dispatch(setParameterValue(parameterId, defaultValue));
+    }
   },
 );
 

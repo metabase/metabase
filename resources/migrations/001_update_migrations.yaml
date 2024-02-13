@@ -5205,6 +5205,82 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v49.2023-01-24T12:00:00
+      author: piranha
+      comment: >-
+        This significantly speeds up api.database/autocomplete-fields query
+        and is an improvement for issue 30588.
+        H2 does not support this: https://github.com/h2database/h2database/issues/3535
+        Mariadb does not support this.
+        Mysql says it does, but reports an error during migration.
+      dbms: postgresql
+      changes:
+        - createIndex:
+            tableName: metabase_field
+            indexName: idx_field_name_lower
+            columns:
+              - column:
+                  name: lower(name)
+                  computed: true
+      rollback:
+        - dropIndex:
+            tableName: metabase_field
+            indexName: idx_field_name_lower
+
+  - changeSet:
+      id: v49.2024-01-29T19:26:40
+      author: adam-james
+      comment: Add width setting to Dashboards
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: width
+                  type: varchar(16)
+                  defaultValue: "fixed"
+                  remarks: "The value of the dashboard's width setting can be fixed or full. New dashboards will be set to fixed"
+
+  - changeSet:
+      id: v49.2024-01-29T19:30:00
+      author: adam-james
+      comment: Update existing report_dashboard width values to full
+      changes:
+        - update:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: width
+                  value: "full"
+      rollback: []
+
+  - changeSet:
+      id: v49.2024-01-29T19:56:40
+      author: adam-james
+      comment: Dashboard width setting must have a value
+      changes:
+        - addNotNullConstraint:
+            tableName: report_dashboard
+            columnName: width
+            columnDatatype: varchar(16)
+            defaultNullvalue: "full"
+            remarks: "If for some reason an existing dashboard has null width value it is set to full"
+
+  - changeSet:
+      id: v49.2024-01-29T19:59:12
+      author: adam-james
+      comment: Add default value to report_dashboard.width for mysql and mariadb
+      changes:
+        - addDefaultValue:
+            defaultValue: "fixed"
+            tableName: report_dashboard
+            columnName: width
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

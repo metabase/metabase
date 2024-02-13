@@ -39,8 +39,8 @@
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to
   short circuit the setup process and make it clear we can't proceed."
-  [liquibase]
-  (when (seq (liquibase/unrun-migrations liquibase))
+  [liquibase data-source]
+  (when (seq (liquibase/unrun-migrations data-source))
     (log/info (str (trs "Database Upgrade Required")
                    "\n\n"
                    (trs "NOTICE: Your database requires updates to work with this version of Metabase.")
@@ -77,10 +77,10 @@
        (liquibase/consolidate-liquibase-changesets! conn)
        (log/info (trs "Liquibase is ready."))
        (case direction
-         :up            (liquibase/migrate-up-if-needed! liquibase)
-         :force         (liquibase/force-migrate-up-if-needed! liquibase)
+         :up            (liquibase/migrate-up-if-needed! liquibase data-source)
+         :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
          :down          (apply liquibase/rollback-major-version db-type conn liquibase args)
-         :print         (print-migrations-and-quit-if-needed! liquibase)
+         :print         (print-migrations-and-quit-if-needed! liquibase data-source)
          :release-locks (liquibase/force-release-locks! liquibase))
        ;; Migrations were successful; commit everything and re-enable auto-commit
        (.commit conn)

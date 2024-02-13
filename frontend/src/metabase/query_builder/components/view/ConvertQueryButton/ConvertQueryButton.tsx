@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+import * as Lib from "metabase-lib";
 import { getEngineNativeType } from "metabase/lib/engine";
 import Tooltip from "metabase/core/components/Tooltip";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -29,11 +30,7 @@ const ConvertQueryButton = ({
 
   return (
     <Tooltip tooltip={tooltip} placement="top">
-      <SqlButton
-        onClick={handleClick}
-        aria-label={tooltip}
-        data-metabase-event="Notebook Mode; Convert to SQL Click"
-      >
+      <SqlButton onClick={handleClick} aria-label={tooltip}>
         <SqlIcon name="sql" />
       </SqlButton>
     </Tooltip>
@@ -49,8 +46,9 @@ ConvertQueryButton.shouldRender = ({
   question,
   queryBuilderMode,
 }: ConvertQueryButtonOpts) => {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
   return (
-    question.isStructured() &&
+    !isNative &&
     question.database()?.native_permissions === "write" &&
     queryBuilderMode === "notebook"
   );

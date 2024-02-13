@@ -246,17 +246,20 @@ export function RenameableTabButton<T>({
     setIsRenaming(false);
   };
 
-  const renameItem = {
-    label: renameMenuLabel,
-    action: () => {
-      setIsRenaming(true);
-    },
-  };
-  const menuItems = [
-    ...originalMenuItems.slice(0, renameMenuIndex),
-    renameItem,
-    ...originalMenuItems.slice(renameMenuIndex),
-  ];
+  let menuItems = [...originalMenuItems];
+  if (canRename) {
+    const renameItem = {
+      label: renameMenuLabel,
+      action: () => {
+        setIsRenaming(true);
+      },
+    };
+    menuItems = [
+      ...menuItems.slice(0, renameMenuIndex),
+      renameItem,
+      ...menuItems.slice(renameMenuIndex),
+    ];
+  }
 
   const dragLabel = (s: string) => {
     if (s.length < 20) {

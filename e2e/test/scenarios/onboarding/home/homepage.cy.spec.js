@@ -5,6 +5,7 @@ import {
   modal,
   dashboardHeader,
   navigationSidebar,
+  openNavigationSidebar,
   describeWithSnowplow,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
@@ -380,6 +381,7 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       // Navigate to home
+      openNavigationSidebar();
       navigationSidebar().within(() => {
         cy.findByText("Home").click();
       });

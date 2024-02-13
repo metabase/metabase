@@ -10,6 +10,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.constraints :as qp.constraints]
    [metabase.query-processor.execute :as qp.execute]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -127,4 +128,5 @@
     info  :- [:maybe mbql.s/Info]]
    (-> query
        (userland-query info)
-       (assoc-in [:middleware :add-default-userland-constraints?] true))))
+       (assoc-in [:middleware :add-default-userland-constraints?] true)
+       qp.constraints/mark-needs-default-userland-constraints)))

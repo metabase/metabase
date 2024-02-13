@@ -50,7 +50,7 @@
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'normalize/normalize-preprocessing-middleware
    #'qp.perms/remove-permissions-key
-   #'qp.constraints/add-default-userland-constraints
+   #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'fetch-source-query/resolve-card-id-source-tables
    #'expand-macros/expand-macros
