@@ -129,13 +129,9 @@
          {:type :field, :id id}))
      ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       (let [card-metadata (lib.metadata/card metadata-providerable card-id)]
-         (->> (:result-metadata card-metadata)
-              (map u/normalize-map)
-              (cons {:type :table, :id (str "card__" card-id)}))))
+       [{:type :table, :id (str "card__" card-id)}])
      (when-let [table-id (:source-table base-stage)]
-       (->> (lib.metadata/fields metadata-providerable table-id)
-            (cons {:type :table, :id table-id})))
+       [{:type :table, :id table-id}])
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]
