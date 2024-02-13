@@ -58,7 +58,9 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
         }
 
         FieldFilter.openEntryForm({ isFilterRequired: true });
-        FieldFilter.addDefaultNumberFilter(value);
+        FieldFilter.addDefaultNumberFilter(value, {
+          buttonLabel: "Update filter",
+        });
 
         SQLFilter.runQuery();
 

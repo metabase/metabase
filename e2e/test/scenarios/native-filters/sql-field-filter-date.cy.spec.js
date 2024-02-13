@@ -59,6 +59,8 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         filterType: subType,
         filterValue: value,
         isFilterRequired: true,
+        // As we're updating the filter, the button will change to "Update filter"
+        buttonLabel: index !== 0 ? "Update filter" : "Add filter",
       });
 
       SQLFilter.runQuery();
@@ -82,6 +84,7 @@ function dateFilterSelector({
   filterType,
   filterValue,
   isFilterRequired = false,
+  buttonLabel = "Add filter",
 } = {}) {
   openDateFilterPicker(isFilterRequired);
 
@@ -109,7 +112,7 @@ function dateFilterSelector({
       break;
 
     case "Date Filter":
-      DateFilter.setAdHocFilter(filterValue);
+      DateFilter.setAdHocFilter({ ...filterValue, buttonLabel });
       break;
 
     default:

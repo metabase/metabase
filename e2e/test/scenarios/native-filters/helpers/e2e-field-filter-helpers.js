@@ -42,12 +42,15 @@ export function setWidgetStringFilter(value) {
  * @param {string} value
  */
 
-export function selectFilterValueFromList(value, { addFilter = true } = {}) {
+export function selectFilterValueFromList(
+  value,
+  { addFilter = true, buttonLabel = "Add filter" } = {},
+) {
   popover().within(() => {
     cy.findByText(value).click();
 
     if (addFilter) {
-      cy.button("Add filter").click();
+      cy.button(buttonLabel).click();
     }
   });
 }
@@ -95,10 +98,13 @@ export function addWidgetNumberFilter(value) {
  * @param {array|string} value
  * @return {function}
  */
-export function addDefaultNumberFilter(value) {
+export function addDefaultNumberFilter(
+  value,
+  { buttonLabel = "Add filter" } = {},
+) {
   return isBetweenFilter(value)
-    ? addBetweenFilter(value)
-    : enterDefaultValue(value);
+    ? addBetweenFilter(value, buttonLabel)
+    : enterDefaultValue(value, buttonLabel);
 }
 
 // UI PATTERNS
@@ -142,33 +148,33 @@ export function closeEntryForm() {
  *
  * @param {Array.<string>} options
  */
-function addBetweenFilter([low, high] = []) {
+function addBetweenFilter([low, high] = [], buttonLabel = "Add filter") {
   popover().within(() => {
     cy.get("input").first().type(`${low}{enter}`);
 
     cy.get("input").last().type(`${high}{enter}`);
   });
 
-  cy.button("Add filter").click();
+  cy.button(buttonLabel).click();
 }
 
 /**
  *
  * @param {string} value
  */
-function addSimpleNumberFilter(value) {
+function addSimpleNumberFilter(value, buttonLabel = "Add filter") {
   cy.findByPlaceholderText("Enter a number").type(`${value}{enter}`);
-  cy.button("Add filter").click();
+  cy.button(buttonLabel).click();
 }
 
 /**
  *
  * @param {string} value
  */
-function enterDefaultValue(value) {
+function enterDefaultValue(value, buttonLabel = "Add filter") {
   cy.findByText("Enter a default value…").click();
   cy.findByPlaceholderText("Enter a default value…").type(`${value}{enter}`);
-  cy.button("Add filter").click();
+  cy.button(buttonLabel).click();
 }
 
 /**
