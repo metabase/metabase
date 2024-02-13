@@ -41,19 +41,23 @@ export function useModelsAndOption({
   );
 
   const chartModel = useMemo(() => {
+    const hasTimelineEvents = timelineEvents
+      ? timelineEvents.length !== 0
+      : false;
+
     switch (card.display) {
       case "waterfall":
         return getWaterfallChartModel(
           seriesToRender,
           settings,
-          false,
+          hasTimelineEvents,
           renderingContext,
         );
       default:
         return getCartesianChartModel(
           seriesToRender,
           settings,
-          timelineEvents ? timelineEvents.length !== 0 : false,
+          hasTimelineEvents,
           renderingContext,
         );
     }
