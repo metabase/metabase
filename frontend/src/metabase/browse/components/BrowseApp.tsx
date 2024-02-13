@@ -30,6 +30,8 @@ import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
 import { BrowseModels } from "./BrowseModels";
 
+const availableModelFilters = PLUGIN_CONTENT_VERIFICATION.availableModelFilters;
+
 export const BrowseApp = ({
   tab,
   children,
@@ -51,9 +53,6 @@ export const BrowseApp = ({
       localStorage.setItem("defaultBrowseTab", tab);
     }
   }, [tab]);
-
-  const availableModelFilters =
-    PLUGIN_CONTENT_VERIFICATION.availableModelFilters;
 
   const getInitialModelFilters = () => {
     return _.reduce(
@@ -82,7 +81,7 @@ export const BrowseApp = ({
   const filteredModels = useMemo(
     () =>
       filterModels(unfilteredModels, actualModelFilters, availableModelFilters),
-    [unfilteredModels, actualModelFilters, availableModelFilters],
+    [unfilteredModels, actualModelFilters],
   );
   const filteredModelsResult = { ...modelsResult, data: filteredModels };
 
