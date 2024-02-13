@@ -37,6 +37,8 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     setIsAnimating(false);
   }, []);
 
+  const iconName = isBookmarked ? "bookmark_filled" : "bookmark";
+
   return (
     <Tooltip
       tooltip={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
@@ -49,7 +51,7 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
         onClick={handleClick}
       >
         <BookmarkIcon
-          name="bookmark"
+          name={iconName}
           isBookmarked={isBookmarked}
           isAnimating={isAnimating}
           onAnimationEnd={handleAnimationEnd}

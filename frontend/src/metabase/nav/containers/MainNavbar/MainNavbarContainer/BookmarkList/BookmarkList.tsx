@@ -84,6 +84,8 @@ const BookmarkItem = ({
     bookmark.type === "collection" &&
     !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
 
+  const iconName = isSelected ? "bookmark_filled" : "bookmark";
+
   return (
     <Sortable id={bookmark.id} key={bookmark.id}>
       <SidebarBookmarkItem
@@ -97,7 +99,7 @@ const BookmarkItem = ({
         right={
           <button onClick={onRemove}>
             <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
-              <Icon name="bookmark" />
+              <Icon name={iconName} />
             </Tooltip>
           </button>
         }
