@@ -21,9 +21,24 @@ If you're looking for date, time, number, or currency formatting, see [Formattin
 
 Click on the gear icon at the bottom of the navigation sidebar and select **Admin settings** > **Settings** > **Appearance**. Here’s what you can do:
 
+## De-Metabasing your Metabase for whitelabeling
+
+When embedding Metabase in your app, in addition to changing colors and fonts, you can show or hide Metabase-branded UI elements and links (like links to Metabase's hallowed documentation). Here are some settings you might want to change:
+
+- [Application name](#application-name)
+- [Logo](#logo)
+- [Favicon](#favicon)
+- [Loading message](#loading-message)
+- [Help link in the settings menu](#help-link-in-the-settings-menu)
+- [Metabot](#metabot)
+- [Lighthouse illustration](#lighthouse-illustration)
+- [Documentation and reference](#documentation-and-references)
+
 ## Application name
 
 You can change every place in the app that says “Metabase” to something like “Acme Analytics,” or whatever you want to call your Metabase app.
+
+See other settings to de-Metabase your Metabase for whitelabeling:
 
 ## Font
 
@@ -94,6 +109,12 @@ You can decide whether to display our little friend on the home page.
 ## Lighthouse illustration
 
 Show the Metabase lighthouse image on the home and login pages.
+
+## Documentation and references
+
+Control the visibility of links to official Metabase documentation and other references to Metabase in your instance.
+
+This setting affects all links in the product experience that point to Metabase.com URLs (with the exception of links and references in the Admin settings).
 
 ## Further reading
 
