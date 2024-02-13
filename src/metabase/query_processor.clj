@@ -33,8 +33,8 @@
   (classloader/require 'metabase.query-processor-test.test-mlv2))
 
 (def around-middleware
-  "Middleware that goes AROUND *all* the other middleware (even for pre-processing only or compilation only). Has the
-  form
+  "Middleware that goes AROUND [[process-query]]. Does extra stuff like handling `:internal` Audit v1 queries or saving
+  QueryExecutions (userland queries only)
 
     (f qp) -> qp
 
@@ -50,8 +50,8 @@
    ;; It doesn't really need to be 'around' middleware tho.
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    #'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware
-   ;; userland queries only: save a QueryExecution
    #'process-userland-query/process-userland-query-middleware
+   ;; TODO -- not 100% we need to do this since the preprocessing middleware should be taking care of normalization now.
    #'normalize/normalize-around-middleware
    ;; userland queries only: catch Exceptions and return a special error response
    #'catch-exceptions/catch-exceptions])
