@@ -1,6 +1,7 @@
 import {
   blockSnowplow,
   describeWithSnowplow,
+  expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   main,
@@ -366,24 +367,57 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit(`/setup`);
 
     // 3 - setup/step_seen "welcome"
+    expectGoodSnowplowEvent({
+      event: "step_seen",
+      step: "welcome",
+    });
     skipWelcomePage();
     // 4 - setup/step_seen  "language"
+    expectGoodSnowplowEvent({
+      event: "step_seen",
+      step: "language",
+    });
     selectPreferredLanguageAndContinue();
 
+    // 5 - setup/step_seen "user_info"
+    expectGoodSnowplowEvent({
+      event: "step_seen",
+      step: "user_info",
+    });
     cy.findByTestId("setup-forms").within(() => {
-      // 5 - setup/step_seen "user_info"
       fillUserAndContinue({ firstName: null, lastName: null });
 
       cy.findByText("What will you use Metabase for?").should("exist");
       // 6 - setup/step_seen "usage_question"
-
+      expectGoodSnowplowEvent({
+        event: "step_seen",
+        step: "usage_question",
+      });
       cy.button("Next").click();
 
-      // 7 setup/usage_reason_selected
-      // 8 setup/step_seen "database"
+      // 7 - setup/usage_reason_selected
+      expectGoodSnowplowEvent({
+        event: "usage_reason_selected",
+        usage_reason: "self-service-analytics",
+      });
+      // 8 - setup/step_seen "db_connection"
+      expectGoodSnowplowEvent({
+        event: "step_seen",
+        step: "db_connection",
+      });
+      cy.findByText("I'll add my data later").click();
+      // 9 - setup/add_data_later_clicked
+      expectGoodSnowplowEvent({
+        event: "add_data_later_clicked",
+      });
+      // 10 - setup/step_seen "data_usage"
+      expectGoodSnowplowEvent({
+        event: "step_seen",
+        step: "data_usage",
+      });
     });
 
-    expectGoodSnowplowEvents(8);
+    expectGoodSnowplowEvents(10);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
