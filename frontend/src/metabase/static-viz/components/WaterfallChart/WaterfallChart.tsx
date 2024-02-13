@@ -26,6 +26,7 @@ export function WaterfallChart({
   const chartModel = getWaterfallChartModel(
     rawSeries,
     computedVisualizationSettings,
+    false,
     renderingContext,
   );
   const option = getWaterfallOption(

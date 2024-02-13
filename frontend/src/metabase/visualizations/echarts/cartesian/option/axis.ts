@@ -14,7 +14,6 @@ import type {
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/option/types";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -112,11 +111,16 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   }
 };
 
+// function formatDimensionAxisLabel(
+//   chartModel: CartesianChartModel,
+//   settings: ComputedVisualizationSettings,
+//   formatter: AxisFormatter,
+// ) {}
+
 export const buildDimensionAxis = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   formatter: AxisFormatter,
-  chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ): CartesianAxisOption => {
@@ -129,7 +133,7 @@ export const buildDimensionAxis = (
       : ([0.02, 0.02] as [number, number]);
 
   const nameGap = getAxisNameGap(
-    chartMeasurements.ticksDimensions.xTicksHeight,
+    chartModel.chartMeasurements.ticksDimensions.xTicksHeight,
   );
   const valueGetter = getDimensionDisplayValueGetter(chartModel, settings);
 
@@ -219,7 +223,6 @@ export const buildMetricAxis = (
 const buildMetricsAxes = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
-  chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): CartesianAxisOption[] => {
   const axes: CartesianAxisOption[] = [];
@@ -228,7 +231,7 @@ const buildMetricsAxes = (
     axes.push(
       buildMetricAxis(
         chartModel.leftAxisModel,
-        chartMeasurements.ticksDimensions.yTicksWidthLeft,
+        chartModel.chartMeasurements.ticksDimensions.yTicksWidthLeft,
         settings,
         "left",
         true,
@@ -242,7 +245,7 @@ const buildMetricsAxes = (
     axes.push(
       buildMetricAxis(
         chartModel.rightAxisModel,
-        chartMeasurements.ticksDimensions.yTicksWidthRight,
+        chartModel.chartMeasurements.ticksDimensions.yTicksWidthRight,
         settings,
         "right",
         isOnlyAxis,
@@ -257,7 +260,6 @@ const buildMetricsAxes = (
 export const buildAxes = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
-  chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ) => {
@@ -266,15 +268,9 @@ export const buildAxes = (
       chartModel,
       settings,
       chartModel.xAxisModel.formatter,
-      chartMeasurements,
       hasTimelineEvents,
       renderingContext,
     ),
-    yAxis: buildMetricsAxes(
-      chartModel,
-      settings,
-      chartMeasurements,
-      renderingContext,
-    ),
+    yAxis: buildMetricsAxes(chartModel, settings, renderingContext),
   };
 };

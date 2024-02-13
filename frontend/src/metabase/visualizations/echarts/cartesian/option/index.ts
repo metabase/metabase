@@ -7,7 +7,6 @@ import type {
 } from "metabase/visualizations/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/utils/layout";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 import type { TimelineEventId } from "metabase-types/api";
@@ -28,12 +27,6 @@ export const getCartesianChartOption = (
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
-  const chartMeasurements = getChartMeasurements(
-    chartModel,
-    settings,
-    hasTimelineEvents,
-    renderingContext,
-  );
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
         timelineEventsModel,
@@ -90,17 +83,11 @@ export const getCartesianChartOption = (
       throttleDelay: 200,
     },
     grid: {
-      ...chartMeasurements.padding,
+      ...chartModel.chartMeasurements.padding,
       containLabel: true,
     },
     dataset: echartsDataset,
     series: seriesOption,
-    ...buildAxes(
-      chartModel,
-      settings,
-      chartMeasurements,
-      hasTimelineEvents,
-      renderingContext,
-    ),
+    ...buildAxes(chartModel, settings, hasTimelineEvents, renderingContext),
   } as EChartsOption;
 };

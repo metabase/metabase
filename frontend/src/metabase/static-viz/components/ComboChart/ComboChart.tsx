@@ -37,6 +37,7 @@ export const ComboChart = ({
   const chartModel = getCartesianChartModel(
     rawSeries,
     computedVisualizationSettings,
+    false,
     renderingContext,
   );
 

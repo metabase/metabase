@@ -19,8 +19,6 @@ import {
 import type { WaterfallChartModel } from "../types";
 import { getDimensionDisplayValueGetter } from "../../model/dataset";
 import { getWaterfallExtent } from "../model";
-import { getChartMeasurements } from "../../utils/layout";
-import type { TimelineEventsModel } from "../../timeline-events/types";
 import { CHART_STYLE } from "../../constants/style";
 
 function getXAxisType(settings: ComputedVisualizationSettings) {
@@ -93,7 +91,6 @@ function getYAxisFormatter(
 function getYAxis(
   settings: ComputedVisualizationSettings,
   chartModel: WaterfallChartModel,
-  timelineEventsModel: TimelineEventsModel | null,
   renderingContext: RenderingContext,
 ): YAXisOption {
   // y-axis
@@ -110,14 +107,8 @@ function getYAxis(
     renderingContext,
   );
 
-  const chartMeasurements = getChartMeasurements(
-    chartModel,
-    settings,
-    timelineEventsModel != null,
-    renderingContext,
-  );
   const nameGap = getAxisNameGap(
-    chartMeasurements.ticksDimensions.yTicksWidthLeft,
+    chartModel.chartMeasurements.ticksDimensions.yTicksWidthLeft,
   );
   const range = getYAxisRange(chartModel.leftAxisModel, settings);
   const axisType = settings["graph.y_axis.scale"] === "log" ? "log" : "value";
@@ -161,7 +152,6 @@ function getYAxis(
 export function getAxes(
   settings: ComputedVisualizationSettings,
   chartModel: WaterfallChartModel,
-  timelineEventsModel: TimelineEventsModel | null,
   baseOption: EChartsOption,
   renderingContext: RenderingContext,
 ) {
@@ -181,11 +171,6 @@ export function getAxes(
 
   return {
     xAxis,
-    yAxis: getYAxis(
-      settings,
-      chartModel,
-      timelineEventsModel,
-      renderingContext,
-    ),
+    yAxis: getYAxis(settings, chartModel, renderingContext),
   };
 }

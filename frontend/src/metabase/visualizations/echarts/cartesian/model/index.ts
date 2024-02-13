@@ -23,6 +23,7 @@ import {
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
+import { getChartMeasurements } from "./chart-measurements";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -67,6 +68,7 @@ export const getCardsSeriesModels = (
 export const getCartesianChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ): CartesianChartModel => {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
@@ -117,12 +119,22 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const yAxesModels = getYAxesModels(
+  const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
     transformedDataset,
     settings,
     columnByDataKey,
     isAutoSplitSupported,
+    renderingContext,
+  );
+
+  const chartMeasurements = getChartMeasurements(
+    dataset,
+    leftAxisModel,
+    rightAxisModel,
+    xAxisModel,
+    settings,
+    hasTimelineEvents,
     renderingContext,
   );
 
@@ -134,7 +146,9 @@ export const getCartesianChartModel = (
     dimensionModel,
     insights,
     xAxisModel,
-    ...yAxesModels,
+    leftAxisModel,
+    rightAxisModel,
+    chartMeasurements,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
   };
 };

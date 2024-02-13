@@ -34,6 +34,7 @@ export function ScatterPlot({
   const chartModel = getCartesianChartModel(
     rawSeries,
     computedVisualizationSettings,
+    false,
     renderingContext,
   );
 

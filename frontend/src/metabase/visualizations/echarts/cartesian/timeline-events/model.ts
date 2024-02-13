@@ -2,19 +2,20 @@ import type { Dayjs, OpUnitType } from "dayjs";
 import dayjs from "dayjs";
 import _ from "underscore";
 import type { RowValue, TimelineEvent } from "metabase-types/api";
-import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  CartesianChartModel,
+  ChartMeasurements,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   DateRange,
   TimelineEventGroup,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/utils/layout";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { ChartMeasurements } from "../option/types";
 
 const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   if (typeof rowValue === "boolean") {
@@ -190,8 +191,8 @@ export const getTimelineEventsModel = (
     dimensionRange,
   );
 
-  const hasTimelineEvents = visibleTimelineEvents.length === 0;
-  if (hasTimelineEvents) {
+  const hasTimelineEvents = visibleTimelineEvents.length !== 0;
+  if (!hasTimelineEvents) {
     return null;
   }
 
@@ -200,14 +201,11 @@ export const getTimelineEventsModel = (
     chartModel.dimensionModel.column.unit ?? "day", // TODO: compute binning unit for native questions
   );
 
-  const chartMeasurements = getChartMeasurements(
-    chartModel,
-    settings,
-    hasTimelineEvents,
-    renderingContext,
+  const dayWidth = getDayWidth(
+    dimensionRange,
+    chartModel.chartMeasurements,
+    width,
   );
-
-  const dayWidth = getDayWidth(dimensionRange, chartMeasurements, width);
   return mergeOverlappingTimelineEventGroups(
     timelineEventsByUnitStart,
     dayWidth,

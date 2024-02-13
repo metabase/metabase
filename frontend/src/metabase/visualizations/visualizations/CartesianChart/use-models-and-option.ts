@@ -46,16 +46,24 @@ export function useModelsAndOption({
         return getWaterfallChartModel(
           seriesToRender,
           settings,
+          false,
           renderingContext,
         );
       default:
         return getCartesianChartModel(
           seriesToRender,
           settings,
+          timelineEvents?.length !== 0,
           renderingContext,
         );
     }
-  }, [card.display, seriesToRender, settings, renderingContext]);
+  }, [
+    card.display,
+    seriesToRender,
+    settings,
+    renderingContext,
+    timelineEvents?.length,
+  ]);
 
   const timelineEventsModel = useMemo(
     () =>

@@ -38,12 +38,6 @@ export function getWaterfallOption(
   return {
     ...baseOption,
     dataset,
-    ...getAxes(
-      settings,
-      chartModel,
-      timelineEventsModel,
-      baseOption,
-      renderingContext,
-    ),
+    ...getAxes(settings, chartModel, baseOption, renderingContext),
   };
 }
