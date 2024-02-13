@@ -728,28 +728,41 @@ describe("Question", () => {
       });
 
       it("should handle the mutation of extraneous column props", () => {
+        const updatedColumn = {
+          display_name: "num with mutated display_name",
+          source: "native",
+          field_ref: [
+            "field",
+            "foo",
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          name: "foo",
+          base_type: "type/Float",
+        };
         question._syncNativeQuerySettings({
           data: {
-            cols: [
-              {
-                display_name: "num with mutated display_name",
-                source: "native",
-                field_ref: [
-                  "field",
-                  "num",
-                  {
-                    "base-type": "type/Float",
-                  },
-                ],
-                name: "foo",
-                base_type: "type/Float",
-              },
-              ...cols.slice(1),
-            ],
+            cols: [updatedColumn, ...cols.slice(1)],
           },
         });
 
-        expect(question.updateSettings).not.toHaveBeenCalled();
+        expect(question.updateSettings).toHaveBeenCalledWith({
+          "table.columns": [
+            ...vizSettingCols.slice(1),
+            {
+              enabled: true,
+              fieldRef: [
+                "field",
+                "foo",
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+              name: "foo",
+            },
+          ],
+        });
       });
 
       it("should handle the mutation of a field_ref on an existing column", () => {
