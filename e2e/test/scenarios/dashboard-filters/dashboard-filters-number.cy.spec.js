@@ -80,7 +80,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
     filterWidget().click();
 
-    addWidgetNumberFilter("5.27");
+    addWidgetNumberFilter("5.27", { buttonLabel: "Update filter" });
 
     cy.get(".Card").within(() => {
       cy.findByText("101.04");
@@ -102,7 +102,7 @@ describe("scenarios > dashboard > filters > number", () => {
     );
 
     sidebar().findByText("Default value").next().click();
-    addWidgetNumberFilter("2.07");
+    addWidgetNumberFilter("2.07", { buttonLabel: "Update filter" });
 
     saveDashboard();
     ensureDashboardCardHasText("37.65");
@@ -117,7 +117,9 @@ describe("scenarios > dashboard > filters > number", () => {
     ensureDashboardCardHasText("37.65");
 
     // Removing value resets back to default
-    setFilterWidgetValue(null, "Enter a number");
+    setFilterWidgetValue(null, "Enter a number", undefined, {
+      buttonLabel: "Set to default",
+    });
     filterWidget().findByText("2.07");
     ensureDashboardCardHasText("37.65");
   });

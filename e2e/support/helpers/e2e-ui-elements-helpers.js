@@ -97,23 +97,32 @@ export function resetFilterWidgetToDefault(index = 0) {
   return filterWidget().eq(index).icon("refresh").click();
 }
 
-export function setFilterWidgetValue(value, targetPlaceholder, index = 0) {
+export function setFilterWidgetValue(
+  value,
+  targetPlaceholder,
+  index = 0,
+  { buttonLabel = "Update filter" } = {},
+) {
   filterWidget().eq(index).click();
   popover().within(() => {
     cy.icon("close").click();
     if (value) {
       cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
     }
-    cy.button("Update filter").click();
+    cy.button(buttonLabel).click();
   });
 }
 
-export function toggleFilterWidgetValues(values = [], index = 0) {
+export function toggleFilterWidgetValues(
+  values = [],
+  index = 0,
+  { buttonLabel = "Add filter" } = {},
+) {
   filterWidget().eq(index).click();
 
   popover().within(() => {
     values.forEach(value => cy.findByText(value).click());
-    cy.button("Update filter").click();
+    cy.button(buttonLabel).click();
   });
 }
 

@@ -38,13 +38,13 @@ describe("scenarios > filters > sql filters > field filter", () => {
       FieldFilter.setWidgetType("ID");
     });
 
-    function setDefaultFieldValue(value) {
+    function setDefaultFieldValue(value, { buttonLabel = "Add filter" } = {}) {
       cy.findByTestId("sidebar-content")
         .findByText("Enter a default value…")
         .click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter a default value…").type(value);
-        cy.button("Add filter").click();
+        cy.button(buttonLabel).click();
       });
     }
 
@@ -58,7 +58,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         'The "Filter" variable requires a default value but none was provided.',
       );
 
-      setDefaultFieldValue(4);
+      setDefaultFieldValue(4, { buttonLabel: "Update filter" });
 
       SQLFilter.getRunQueryButton().should("not.be.disabled");
       SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
@@ -78,7 +78,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       filterWidget().click();
       popover().within(() => {
         cy.icon("close").click();
-        cy.findByText("Update filter").click();
+        cy.findByText("Set to default").click();
       });
       filterWidget()
         .findByTestId("field-set-content")
@@ -215,7 +215,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
       popover().within(() => {
         cy.findByText("Gizmo").click();
-        cy.button("Add filter").click();
+        cy.button("Update filter").click();
       });
 
       cy.findByTestId("qb-header").find(".Icon-play").click();

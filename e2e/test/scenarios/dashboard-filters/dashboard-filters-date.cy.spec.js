@@ -199,7 +199,7 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("janvier").click(); // "January"
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mettre à jour le filtre").click(); // "Update filter"
+    cy.findByText("Ajouter un filtre").click(); // "Add filter"
 
     cy.url().should(
       "match",

@@ -32,7 +32,7 @@ describe("issue 15444", () => {
     // This flow tests the ability to pick the filter from a dropdown when there are not too many results (easy to choose from).
     popover().within(() => {
       cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+      cy.button("Update filter").click();
     });
 
     SQLFilter.runQuery();

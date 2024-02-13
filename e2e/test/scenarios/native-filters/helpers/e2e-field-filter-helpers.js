@@ -23,9 +23,12 @@ export function setWidgetType(type) {
  *
  * @param {string} value
  */
-export function addWidgetStringFilter(value) {
+export function addWidgetStringFilter(
+  value,
+  { buttonLabel = "Add filter" } = {},
+) {
   setWidgetStringFilter(value);
-  cy.button("Add filter").click();
+  cy.button(buttonLabel).click();
 }
 
 export function clearWidgetValue() {
@@ -62,11 +65,15 @@ export function selectFilterValueFromList(
  * @param {string} value
  */
 
-export function applyFilterByType(filter, value) {
+export function applyFilterByType(
+  filter,
+  value,
+  { buttonLabel = "Add filter" } = {},
+) {
   if (["Is", "Is not"].includes(filter)) {
-    selectFilterValueFromList(value);
+    selectFilterValueFromList(value, { buttonLabel });
   } else {
-    addWidgetStringFilter(value);
+    addWidgetStringFilter(value, { buttonLabel });
   }
 }
 
@@ -90,10 +97,13 @@ export function addDefaultStringFilter(
  * @param {string} value
  * @return {function}
  */
-export function addWidgetNumberFilter(value) {
+export function addWidgetNumberFilter(
+  value,
+  { buttonLabel = "Add filter" } = {},
+) {
   return isBetweenFilter(value)
-    ? addBetweenFilter(value)
-    : addSimpleNumberFilter(value);
+    ? addBetweenFilter(value, buttonLabel)
+    : addSimpleNumberFilter(value, buttonLabel);
 }
 
 /**
@@ -221,7 +231,10 @@ export function clearDefaultFilterValue() {
     .click();
 }
 
-export function selectDefaultValueFromPopover(value) {
+export function selectDefaultValueFromPopover(
+  value,
+  { buttonLabel = "Add filter" } = {},
+) {
   cy.findByText("Default value").next().click();
-  selectFilterValueFromList(value);
+  selectFilterValueFromList(value, { buttonLabel });
 }
