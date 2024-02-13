@@ -367,7 +367,7 @@ describe("isNavigationAllowed", () => {
     });
 
     it("allows to run the model", () => {
-      const destination = getRunModelLocation(structuredModelQuestion);
+      const destination = runModelLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -375,7 +375,7 @@ describe("isNavigationAllowed", () => {
     });
 
     it("allows to run edited model", () => {
-      const destination = runModelLocation;
+      const destination = getRunModelLocation(structuredModelQuestion);
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -412,7 +412,7 @@ describe("isNavigationAllowed", () => {
     });
 
     it("allows to run the model", () => {
-      const destination = getRunModelLocation(nativeModelQuestion);
+      const destination = runModelLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -420,7 +420,7 @@ describe("isNavigationAllowed", () => {
     });
 
     it("allows to run edited model", () => {
-      const destination = runModelLocation;
+      const destination = getRunModelLocation(nativeModelQuestion);
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
