@@ -336,7 +336,7 @@
 
 (defn- delete-duplicates-and-return-latest!
   "This is a workaround for the issue of stale FieldValues rows (metabase#668)
-  In order to mitigate the impact of duplicates, we return the most recently updated row, and deleted the older rows."
+  In order to mitigate the impact of duplicates, we return the most recently updated row, and delete the older rows."
   [rows]
   (if (<= (count rows) 1)
     (first rows)
