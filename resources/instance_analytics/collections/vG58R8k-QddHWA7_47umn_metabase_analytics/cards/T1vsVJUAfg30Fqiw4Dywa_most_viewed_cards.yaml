@@ -147,3 +147,4 @@ serdes/meta:
   label: most_viewed_cards
   model: Card
 metabase_version: null
+type: question

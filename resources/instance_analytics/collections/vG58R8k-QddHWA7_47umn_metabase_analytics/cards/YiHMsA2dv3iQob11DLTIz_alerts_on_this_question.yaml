@@ -140,3 +140,4 @@ serdes/meta:
   label: alerts_on_this_question
   model: Card
 metabase_version: vUNKNOWN (13e6090)
+type: question

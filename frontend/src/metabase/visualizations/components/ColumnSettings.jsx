@@ -20,6 +20,7 @@ function getWidgets({
   onChangeSetting,
   allowlist,
   denylist,
+  extraData,
 }) {
   // fake series
   const series = [{ card: {}, data: { rows: [], cols: [] } }];
@@ -35,7 +36,7 @@ function getWidgets({
     settingsDefs,
     column,
     { ...inheritedSettings, ...storedSettings },
-    { series },
+    { series, ...extraData },
   );
 
   const widgets = getSettingsWidgets(
@@ -51,7 +52,7 @@ function getWidgets({
         onChangeSetting(changedSettings);
       }
     },
-    { series },
+    { series, ...extraData },
   );
 
   return widgets.filter(

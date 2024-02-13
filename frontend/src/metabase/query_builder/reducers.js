@@ -399,6 +399,7 @@ export const card = handleActions(
       next: (state, { payload }) => ({
         ...state,
         embedding_params: payload.embedding_params,
+        initially_published_at: payload.initially_published_at,
       }),
     },
   },

@@ -105,16 +105,9 @@ created_at: '2023-05-22T14:32:28.124325'
 public_uuid: null
 ```
 
-## Before exporting or importing
+## If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
 
-If your Metabase is:
-
-- currently running, and
-- you're using the default H2 database
-
-You'll need to stop Metabase before exporting or importing.
-
-Otherwise, you're good.
+If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running.
 
 ## Exporting a Metabase
 

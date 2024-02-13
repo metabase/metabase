@@ -98,3 +98,4 @@ serdes/meta:
   label: question_views_per_month
   model: Card
 metabase_version: vUNKNOWN (13e6090)
+type: question

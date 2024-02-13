@@ -28,6 +28,7 @@ import type {
   EditParameterSidebarState,
   State,
 } from "metabase-types/store";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import Question from "metabase-lib/Question";
 import { isQuestionDashCard } from "./utils";
 
@@ -394,6 +395,22 @@ export const getDashcardParameterMappingOptions = createCachedSelector(
 )((state, props) => {
   return props.card.id ?? props.dashcard.id;
 });
+
+// Embeddings might be published without passing embedding_params to the server,
+// in which case it's an empty object. We should treat such situations with
+// caution, assuming that an absent parameter is "disabled".
+export function getEmbeddedParameterVisibility(
+  state: State,
+  slug: string,
+): EmbeddingParameterVisibility | null {
+  const dashboard = getDashboard(state);
+  if (!dashboard?.enable_embedding) {
+    return null;
+  }
+
+  const embeddingParams = dashboard.embedding_params ?? {};
+  return embeddingParams[slug] ?? "disabled";
+}
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
