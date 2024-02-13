@@ -65,7 +65,7 @@ function buildNativeQuerySectionOptions(
     name: dimension.displayName(),
     icon: dimension.icon() ?? "",
     isForeign: false,
-    target: buildDimensionTarget(dimension) as NativeParameterDimensionTarget,
+    target: buildDimensionTarget(dimension),
   }));
 }
 
@@ -76,7 +76,7 @@ function buildVariableOption(
     name: variable.displayName() ?? "",
     icon: variable.icon() ?? "",
     isForeign: false,
-    target: buildTemplateTagVariableTarget(variable) as ParameterVariableTarget,
+    target: buildTemplateTagVariableTarget(variable),
   };
 }
 

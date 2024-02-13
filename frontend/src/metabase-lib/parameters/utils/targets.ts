@@ -1,5 +1,8 @@
 import type {
+  DimensionReference,
+  NativeParameterDimensionTarget,
   ParameterTarget,
+  ParameterVariableTarget,
   StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
@@ -40,8 +43,13 @@ export function getParameterTargetField(
   return null;
 }
 
-export function buildDimensionTarget(dimension: Dimension) {
-  return ["dimension", dimension.mbql()];
+export function buildDimensionTarget(
+  dimension: Dimension,
+): NativeParameterDimensionTarget {
+  return [
+    "dimension",
+    dimension.mbql() as DimensionReference,
+  ] as NativeParameterDimensionTarget;
 }
 
 export function buildColumnTarget(
@@ -55,8 +63,10 @@ export function buildColumnTarget(
   ] as StructuredParameterDimensionTarget;
 }
 
-export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
-  return ["variable", variable.mbql()];
+export function buildTemplateTagVariableTarget(
+  variable: TemplateTagVariable,
+): ParameterVariableTarget {
+  return ["variable", variable.mbql()] as ParameterVariableTarget;
 }
 
 export function buildTextTagTarget(tagName: string): ["text-tag", string] {
