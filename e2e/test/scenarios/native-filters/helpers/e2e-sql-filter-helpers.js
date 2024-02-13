@@ -92,10 +92,12 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
-  cy.get("@editor").type(query, {
-    parseSpecialCharSequences: false,
-    ...options,
-  });
+  cy.get("@editor")
+    .focus()
+    .type(query, {
+      parseSpecialCharSequences: false,
+      ...options,
+    });
 }
 
 export function getRunQueryButton() {
