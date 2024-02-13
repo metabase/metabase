@@ -611,9 +611,11 @@ class Question {
       return this;
     }
 
+    const query = this.query();
+
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
-        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+        findColumnSettingIndexForColumn(query, vizSettings, col) >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {

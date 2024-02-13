@@ -170,7 +170,7 @@ describe("CollectionHeader", () => {
         collection,
         isBookmarked: true,
       });
-      userEvent.click(screen.getByLabelText("bookmark icon"));
+      userEvent.click(screen.getByLabelText("bookmark_filled icon"));
 
       expect(onDeleteBookmark).toHaveBeenCalledWith(myCollection);
     });
