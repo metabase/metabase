@@ -97,12 +97,10 @@ export function enterParameterizedQuery(query, options = {}) {
   cy.get("@editor").type("{leftArrow}{rightArrow}{leftArrow}{rightArrow}", {
     delay: 50,
   });
-  cy.get("@editor")
-    .type(query, {
-      parseSpecialCharSequences: false,
-      ...options,
-    })
-    .then(() => {});
+  cy.get("@editor").type(query, {
+    parseSpecialCharSequences: false,
+    ...options,
+  });
 }
 
 export function getRunQueryButton() {
