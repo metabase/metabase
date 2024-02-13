@@ -232,8 +232,8 @@
   [fields]
   ;; In 44 we added a new concept of Advanced FieldValues, so FieldValues are no longer have an one-to-one relationship
   ;; with Field. See the doc in [[metabase.models.field-values]] for more.
-  ;; Adding an explicity filter by :type =:full for FieldValues here bc I believe this hydration does not concern
-  ;; the new Advanced FieldValues.
+  ;; We filter down to only :type =:full values, as they contain configured labels which must be preserved. The Advanced
+  ;; FieldValues can then be regenerated without loss given these Full entities.
   (let [id->field-values (select-field-id->instance fields FieldValues :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
