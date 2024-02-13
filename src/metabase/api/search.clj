@@ -10,6 +10,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
@@ -116,7 +117,7 @@
                                   visible-collections)]
     (cond-> honeysql-query
       true
-      (sql.helpers/where  collection-filter-clause [:= :collection.namespace nil])
+      (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
       ;; add a JOIN against Collection *unless* the source table is already Collection
       (not= collection-id-column :collection.id)
       (sql.helpers/left-join [:collection :collection]

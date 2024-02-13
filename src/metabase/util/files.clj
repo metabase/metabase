@@ -68,6 +68,8 @@
 (defn create-dir-if-not-exists!
   "Self-explanatory. Create a directory with `path` if it does not already exist."
   [^Path path]
+  (when-let [parent (fs/parent path)]
+    (create-dir-if-not-exists! parent))
   (when-not (exists? path)
     (Files/createDirectory path (u/varargs FileAttribute))))
 

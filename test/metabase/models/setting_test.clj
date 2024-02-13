@@ -1112,56 +1112,57 @@
   :audit      :getter)
 
 (deftest setting-audit-test
-  (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
-                                            :topic :setting-update
-                                            {:order-by [[:id :desc]]})]
-    (testing "Settings are audited by default without their value included"
-      (mt/with-test-user :rasta
-        (test-setting-1! "DON'T INCLUDE THIS VALUE"))
-      (is (= {:topic   :setting-update
-              :user_id  (mt/user->id :rasta)
-              :model   "Setting"
-              :details {:key "test-setting-1"}}
-             (last-audit-event-fn))))
-
-    (testing "Auditing can be disabled with `:audit :never`"
-      (test-setting-audit-never! "DON'T AUDIT")
-      (is (not= "test-setting-audit-never"
-                (-> (last-audit-event-fn) :details :key))))
-
-    (testing "Raw values (as stored in the DB) can be logged with `:audit :raw-value`"
-      (mt/with-temporary-setting-values [test-setting-audit-raw-value 99]
-        (test-setting-audit-raw-value! 100)
+  (premium-features-test/with-premium-features #{:audit-app}
+    (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
+                                              :topic :setting-update
+                                              {:order-by [[:id :desc]]})]
+      (testing "Settings are audited by default without their value included"
+        (mt/with-test-user :rasta
+          (test-setting-1! "DON'T INCLUDE THIS VALUE"))
         (is (= {:topic   :setting-update
-                :user_id  nil
+                :user_id  (mt/user->id :rasta)
                 :model   "Setting"
-                :details {:key            "test-setting-audit-raw-value"
-                          :previous-value "99"
-                          :new-value      "100"}}
-               (last-audit-event-fn)))))
+                :details {:key "test-setting-1"}}
+               (last-audit-event-fn))))
 
-    (testing "Values returned from the setting's getter can be logged with `:audit :getter`"
-      (mt/with-temporary-setting-values [test-setting-audit-getter "PREVIOUS VALUE"]
-        (test-setting-audit-getter! "NEW RAW VALUE")
-        (is (= {:topic   :setting-update
-                :user_id  nil
-                :model   "Setting"
-                :details {:key            "test-setting-audit-getter"
-                          :previous-value "GETTER VALUE"
-                          :new-value      "GETTER VALUE"}}
-               (last-audit-event-fn)))))
+      (testing "Auditing can be disabled with `:audit :never`"
+        (test-setting-audit-never! "DON'T AUDIT")
+        (is (not= "test-setting-audit-never"
+                  (-> (last-audit-event-fn) :details :key))))
 
-    (testing "Sensitive settings have their values obfuscated automatically"
-      (mt/with-temporary-setting-values [test-sensitive-setting-audit nil]
-        (test-sensitive-setting-audit! "old password")
-        (test-sensitive-setting-audit! "new password")
-        (is (= {:topic   :setting-update
-                :user_id  nil
-                :model   "Setting"
-                :details {:key            "test-sensitive-setting-audit"
-                          :previous-value "**********rd"
-                          :new-value      "**********rd"}}
-               (last-audit-event-fn)))))))
+      (testing "Raw values (as stored in the DB) can be logged with `:audit :raw-value`"
+        (mt/with-temporary-setting-values [test-setting-audit-raw-value 99]
+          (test-setting-audit-raw-value! 100)
+          (is (= {:topic   :setting-update
+                  :user_id  nil
+                  :model   "Setting"
+                  :details {:key            "test-setting-audit-raw-value"
+                            :previous-value "99"
+                            :new-value      "100"}}
+                 (last-audit-event-fn)))))
+
+      (testing "Values returned from the setting's getter can be logged with `:audit :getter`"
+        (mt/with-temporary-setting-values [test-setting-audit-getter "PREVIOUS VALUE"]
+          (test-setting-audit-getter! "NEW RAW VALUE")
+          (is (= {:topic   :setting-update
+                  :user_id  nil
+                  :model   "Setting"
+                  :details {:key            "test-setting-audit-getter"
+                            :previous-value "GETTER VALUE"
+                            :new-value      "GETTER VALUE"}}
+                 (last-audit-event-fn)))))
+
+      (testing "Sensitive settings have their values obfuscated automatically"
+        (mt/with-temporary-setting-values [test-sensitive-setting-audit nil]
+          (test-sensitive-setting-audit! "old password")
+          (test-sensitive-setting-audit! "new password")
+          (is (= {:topic   :setting-update
+                  :user_id  nil
+                  :model   "Setting"
+                  :details {:key            "test-sensitive-setting-audit"
+                            :previous-value "**********rd"
+                            :new-value      "**********rd"}}
+                 (last-audit-event-fn))))))))
 
 (defsetting test-user-local-only-audited-setting
   (deferred-tru  "Audited user-local setting")
@@ -1170,14 +1171,12 @@
   :audit      :raw-value)
 
 (deftest user-local-settings-audit-test
-  (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
-                                            :topic :setting-update
-                                            {:order-by [[:id :desc]]})]
+  (premium-features-test/with-premium-features #{:audit-app}
     (testing "User-local settings are not audited by default"
       (mt/with-test-user :rasta
         (test-user-local-only-setting! "DON'T AUDIT"))
       (is (not= "test-user-local-only-setting"
-                (-> (last-audit-event-fn) :details :key))))
+                (-> (mt/latest-audit-log-entry :setting-update) :details :key))))
 
     (testing "User-local settings can be audited"
       (mt/with-test-user :rasta
@@ -1185,8 +1184,9 @@
           (test-user-local-only-audited-setting! "AUDIT ME")
           (is (= {:topic   :setting-update
                   :user_id  (mt/user->id :rasta)
+                  :model_id nil
                   :model   "Setting"
                   :details {:key            "test-user-local-only-audited-setting"
                             :previous-value nil
                             :new-value      "AUDIT ME"}}
-                 (last-audit-event-fn))))))))
+                 (mt/latest-audit-log-entry :setting-update))))))))

@@ -72,7 +72,9 @@ describe("Mode", function () {
             type: "query",
             query: {
               "source-table": ORDERS_ID,
-              "order-by": [["asc", ["field", ORDERS.ID, null]]],
+              "order-by": [
+                ["asc", ["field", ORDERS.ID, { "base-type": "type/Integer" }]],
+              ],
             },
           },
         });

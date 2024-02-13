@@ -554,4 +554,15 @@ describe("Admin > Settings > UploadSetting", () => {
       ).toBeInTheDocument();
     });
   });
+
+  it("should show a warning for h2 databases", async () => {
+    setup();
+    userEvent.click(await screen.findByText("Select a database"));
+
+    userEvent.click(await screen.findByText("Db Cinco")); // h2
+
+    expect(
+      screen.getByText(/uploads to the Sample Database are for testing only/i),
+    ).toBeInTheDocument();
+  });
 });

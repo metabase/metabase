@@ -8,11 +8,11 @@
    [metabase.api.alert :as api.alert]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.pulse]
    [metabase.pulse.test-util :as pulse.tu]
    [metabase.query-processor :as qp]
@@ -87,7 +87,7 @@
 
 (deftest pulse-send-event-test
   (testing "When we send a pulse, we also log the event:"
-    (mt/with-model-cleanup [:model/AuditLog]
+    (premium-features-test/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [Card                  pulse-card {}
                                Pulse                 pulse {:creator_id (mt/user->id :crowberto)
                                                             :name "Test Pulse"}
@@ -110,11 +110,11 @@
                     :model_id (:id pulse)
                     :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
                                :filters    []}}
-                   (audit-log-test/latest-event :subscription-send (:id pulse))))))))))
+                   (mt/latest-audit-log-entry :subscription-send (:id pulse))))))))))
 
 (deftest alert-send-event-test
   (testing "When we send a pulse, we also log the event:"
-    (mt/with-model-cleanup [:model/AuditLog]
+    (premium-features-test/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
                                Pulse                 pulse {:creator_id (mt/user->id :crowberto)
                                                             :name "Test Pulse"
@@ -138,7 +138,7 @@
                     :model_id (:id pulse)
                     :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
                                :filters    []}}
-                   (audit-log-test/latest-event :alert-send (:id pulse))))))))))
+                   (mt/latest-audit-log-entry :alert-send (:id pulse))))))))))
 
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"

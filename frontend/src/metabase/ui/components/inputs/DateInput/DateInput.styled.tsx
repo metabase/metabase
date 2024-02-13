@@ -1,4 +1,5 @@
 import type { MantineThemeOverride } from "@mantine/core";
+import { getSize } from "@mantine/core";
 
 export const getDateInputOverrides =
   (): MantineThemeOverride["components"] => ({
@@ -6,7 +7,7 @@ export const getDateInputOverrides =
       defaultProps: {
         size: "md",
       },
-      styles: theme => ({
+      styles: (theme, _, { size = "md" }) => ({
         wrapper: {
           "&:not(:only-child)": {
             marginTop: theme.spacing.xs,
@@ -14,6 +15,10 @@ export const getDateInputOverrides =
         },
         calendar: {
           padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+        },
+        label: {
+          color: theme.colors.text[1],
+          fontSize: getSize({ size, sizes: theme.fontSizes }),
         },
       }),
     },

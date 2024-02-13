@@ -105,15 +105,21 @@ Note that your interactive embed must be compatible with Safari to run on _any_ 
 
 > Skip this section if your Metabase and embedding app are already in the same top-level domain (TLD).
 
-If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can set the following [environment variable](../configuring-metabase/environment-variables.md):
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none". 
 
-```sh
-MB_SESSION_COOKIE_SAMESITE=None
-```
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive embedding** > **SameSite cookie setting**. 
 
-If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+SameSite values include:
 
-Note that `SameSite=None` is incompatible with most Safari and iOS browser versions (including any browser that runs on iOS, such as Chrome on iOS).
+- **Lax** (default): Allows cookies to be sent when someone navigates to the origin site from an external site (like when following a link). 
+- **None**: Allows all cross-site requests. Incompatible with most Safari and iOS browsers, such as Chrome on iOS. If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. 
+- **Strict** (not recommended): Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.
+
+You can also set the the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
+
+If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing emdedded items in private/incognito tabs.
+
+Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ## Securing interactive embeds
 
@@ -329,12 +335,16 @@ top_nav=false
 
 `search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
 
-## Reference app
+## Reference apps
 
-To build a sample interactive embed, see our [reference app on GitHub](https://github.com/metabase/sso-examples/tree/master/app-embed-example).
+To build a sample interactive embed using SSO with JWT, see our reference apps:
+
+- [Node.js + Express](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample) (with [quick start guide](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start))
+- [Node.js + React](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
 
 ## Further reading
 
+- [Interactive embedding quick start](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start)
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
 - [Permissions strategies](https://www.metabase.com/learn/permissions/strategy).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).

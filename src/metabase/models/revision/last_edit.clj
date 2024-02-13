@@ -13,6 +13,7 @@
    [medley.core :as m]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
@@ -38,15 +39,18 @@
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
   [{:keys [id] :as item} model :- [:enum :dashboard :card]]
-  (if-let [updated-info (t2/query-one {:select    [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
-                                       :from      [[:revision :r]]
-                                       :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                       :where     [:and
-                                                   [:= :r.most_recent true]
-                                                   [:= :r.model (model->db-model model)]
-                                                   [:= :r.model_id id]]})]
-    (assoc item :last-edit-info updated-info)
-    item))
+  (span/with-span!
+    {:name       "with-last-edit-info"
+     :attributes {:item/id id}}
+    (if-let [updated-info (t2/query-one {:select    [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
+                                         :from      [[:revision :r]]
+                                         :left-join [[:core_user :u] [:= :u.id :r.user_id]]
+                                         :where     [:and
+                                                     [:= :r.most_recent true]
+                                                     [:= :r.model (model->db-model model)]
+                                                     [:= :r.model_id id]]})]
+      (assoc item :last-edit-info updated-info)
+      item)))
 
 (mu/defn edit-information-for-user :- LastEditInfo
   "Construct the `:last-edit-info` map given a user. Useful for editing routes. Most edit info information comes from

@@ -1,7 +1,7 @@
 (ns ^:mb/once metabase.util.malli.fn-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.tools.macro :as tools.macro]
    [clojure.walk :as walk]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
@@ -71,44 +71,61 @@
   (are [form expected] (= expected
                           (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
     '([x :- :int y])
-    '(fn* ([a b]
-           (metabase.util.malli.fn/validate-input {} :int a)
-           ((fn* ([x y])) a b)))
+    '(let* [&f (fn* ([x y]))]
+       (fn* ([a b]
+             (try
+               (metabase.util.malli.fn/validate-input {} :int a)
+               (&f a b)
+               (catch java.lang.Exception error
+                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int [x :- :int y])
-    '(fn* ([a b]
-           (metabase.util.malli.fn/validate-input {} :int a)
-           (metabase.util.malli.fn/validate-output {} :int ((fn* ([x y])) a b))))
+    '(let* [&f (fn* ([x y]))]
+       (fn* ([a b]
+             (try
+               (metabase.util.malli.fn/validate-input {} :int a)
+               (metabase.util.malli.fn/validate-output {} :int (&f a b))
+               (catch java.lang.Exception error
+                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int [x :- :int y] (+ x y))
-    '(fn* ([a b]
-           (metabase.util.malli.fn/validate-input {} :int a)
-           (metabase.util.malli.fn/validate-output {} :int ((fn* ([x y] (+ x y))) a b))))
+    '(let* [&f (fn* ([x y] (+ x y)))]
+       (fn* ([a b]
+             (try
+               (metabase.util.malli.fn/validate-input {} :int a)
+               (metabase.util.malli.fn/validate-output {} :int (&f a b))
+               (catch java.lang.Exception error
+                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '([x :- :int y] {:pre [(int? x)]})
-    '(fn* ([a b]
-           (metabase.util.malli.fn/validate-input {} :int a)
-           ((fn* ([x y]
-                  {:pre [(int? x)]}))
-            a b)))
+    '(let* [&f (fn* ([x y]
+                     {:pre [(int? x)]}))]
+       (fn* ([a b]
+             (try
+               (metabase.util.malli.fn/validate-input {} :int a)
+               (&f a b)
+               (catch java.lang.Exception error
+                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int
          ([x] (inc x))
          ([x :- :int y] (+ x y)))
-    '(fn*
-      ([a]
-       (metabase.util.malli.fn/validate-output {} :int ((fn* ([x]
-                                                              (inc x))
-                                                             ([x y]
-                                                              (+ x y)))
-                                                        a)))
-      ([a b]
-       (metabase.util.malli.fn/validate-input {} :int a)
-       (metabase.util.malli.fn/validate-output {} :int ((fn* ([x]
-                                                              (inc x))
-                                                             ([x y]
-                                                              (+ x y)))
-                                                        a b))))))
+    '(let* [&f (fn* ([x]
+                     (inc x))
+                    ([x y]
+                     (+ x y)))]
+       (fn*
+        ([a]
+         (try
+           (metabase.util.malli.fn/validate-output {} :int (&f a))
+           (catch java.lang.Exception error
+             (throw (metabase.util.malli.fn/fixup-stacktrace error)))))
+        ([a b]
+         (try
+           (metabase.util.malli.fn/validate-input {} :int a)
+           (metabase.util.malli.fn/validate-output {} :int (&f a b))
+           (catch java.lang.Exception error
+             (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))))
 
 (deftest ^:parallel fn-test
   (let [f (mu.fn/fn :- :int [y] y)]
@@ -119,11 +136,7 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid output:.*should be an integer"
-         (f nil)))
-    (testing "the stacktrace does not begin in the validation function"
-      (let [e ^Exception (is (thrown? clojure.lang.ExceptionInfo (f nil)))]
-        (is (not (str/starts-with? (.getClassName (first (.getStackTrace e)))
-                                   "metabase.util.malli.fn")))))))
+         (f nil)))))
 
 (deftest ^:parallel registry-test
   (mr/def ::number :int)
@@ -149,13 +162,16 @@
                  & {:keys [token-check?]
                     :or   {token-check? true}}]
                 (merge {:path path, :token-check? token-check?} opts))]
-    (is (= '(fn*
-              ([a b & more]
-               (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
-               (clojure.core/apply (clojure.core/fn
-                                     [path opts & {:keys [token-check?], :or {token-check? true}}]
-                                     (merge {:path path, :token-check? token-check?} opts))
-                                   a b more)))
+    (is (= '(let* [&f (clojure.core/fn
+                        [path opts & {:keys [token-check?], :or {token-check? true}}]
+                        (merge {:path path, :token-check? token-check?} opts))]
+              (clojure.core/fn
+                ([a b & more]
+                 (try
+                   (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
+                   (clojure.core/apply &f a b more)
+                   (catch java.lang.Exception error
+                     (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
            (macroexpand form)))
     (is (= [:=>
             [:cat :any :map [:* :any]]
@@ -181,3 +197,39 @@
              :args
              meta
              :tag))))
+
+(mu/defn ^:private foo :- keyword? [_x :- string?] "bad output")
+(mu/defn ^:private bar :- keyword?
+  ([_x :- string? _y] "bad output")
+  ([_x :- string? _y & _xs] "bad output"))
+
+(mu/defn ^:private works? :- keyword? [_x :- string?] :yes)
+
+(defn from-here? [^Exception e]
+  (let [top-trace (-> e (.getStackTrace) first)
+        cn        (when top-trace
+                    (.getClassName ^StackTraceElement top-trace))]
+    (when cn
+      (is (re-find (re-pattern (munge (namespace `foo))) cn))
+      (is (not (re-find #"metabase.util.malli.fn\$validate" cn))))))
+
+(deftest ^:parallel error-location-tests
+  (tools.macro/macrolet [(check-error-location [expr]
+                           `(try ~expr
+                                 (is false "Did not throw")
+                                 (catch Exception e# (from-here? e#))))]
+    (testing "Top stack trace is this namespace, not in validate"
+      (testing "single arity input"
+        (check-error-location (foo 1)))
+      (testing "single arity output"
+        (check-error-location (foo "good input")))
+      (testing "multi arity input"
+        (check-error-location (bar 1 2)))
+      (testing "multi arity output"
+        (check-error-location (bar "good input" 2)))
+      (testing "var args input"
+        (check-error-location (bar 1 2 3 4 5)))
+      (testing "var args output"
+        (check-error-location (bar "good input" 2 3 4 5))))
+    (testing "sanity check-error-location that it works"
+      (is (= :yes (works? "valid input"))))))

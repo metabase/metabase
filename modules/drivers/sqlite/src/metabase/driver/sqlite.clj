@@ -114,9 +114,17 @@
                                   :from   [[(h2x/identifier :table schema table)]]
                                   :limit  1}))
 
-(def ^:private ->date     (partial conj [:date]))
-(def ^:private ->datetime (partial conj [:datetime]))
-(def ^:private ->time     (partial conj [:time]))
+(defn- ->date [& args]
+  (-> (into [:date] args)
+      (h2x/with-database-type-info "date")))
+
+(defn- ->datetime [& args]
+  (-> (into [:datetime] args)
+      (h2x/with-database-type-info "datetime")))
+
+(defn- ->time [& args]
+  (-> (into [:time] args)
+      (h2x/with-database-type-info "time")))
 
 (defn- strftime [format-str expr]
   [:strftime (h2x/literal format-str) expr])
@@ -126,24 +134,30 @@
 (defmethod sql.qp/date [:sqlite :default] [_driver _unit expr] expr)
 
 (defmethod sql.qp/date [:sqlite :second]
-  [_driver _ expr]
-  (->datetime (strftime "%Y-%m-%d %H:%M:%S" expr)))
+  [_driver _unit expr]
+  (if (= (h2x/database-type expr) "time")
+    (->time (strftime "%H:%M:%S" expr))
+    (->datetime (strftime "%Y-%m-%d %H:%M:%S" expr))))
 
 (defmethod sql.qp/date [:sqlite :second-of-minute]
-  [_driver _ expr]
+  [_driver _unit expr]
   (h2x/->integer (strftime "%S" expr)))
 
 (defmethod sql.qp/date [:sqlite :minute]
-  [_driver _ expr]
-  (->datetime (strftime "%Y-%m-%d %H:%M" expr)))
+  [_driver _unit expr]
+  (if (= (h2x/database-type expr) "time")
+    (->time (strftime "%H:%M" expr))
+    (->datetime (strftime "%Y-%m-%d %H:%M" expr))))
 
 (defmethod sql.qp/date [:sqlite :minute-of-hour]
   [_driver _ expr]
   (h2x/->integer (strftime "%M" expr)))
 
 (defmethod sql.qp/date [:sqlite :hour]
-  [_driver _ expr]
-  (->datetime (strftime "%Y-%m-%d %H:00" expr)))
+  [_driver _unit expr]
+  (if (= (h2x/database-type expr) "time")
+    (->time (strftime "%H:00" expr))
+    (->datetime (strftime "%Y-%m-%d %H:00" expr))))
 
 (defmethod sql.qp/date [:sqlite :hour-of-day]
   [_driver _ expr]

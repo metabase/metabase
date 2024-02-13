@@ -155,7 +155,11 @@
            ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
            ;; of problem at this point in time.
-           (dissoc ::lib.field/temporal-unit))))))
+           ;;
+           ;; also don't retain `:lib/expression-name`, the fact that this column came from an expression in the
+           ;; previous stage should be totally irrelevant and we don't want it confusing our code that decides whether
+           ;; to generate `:expression` or `:field` refs.
+           (dissoc ::lib.field/temporal-unit :lib/expression-name))))))
 
 (mu/defn ^:private saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"

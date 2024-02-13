@@ -11,5 +11,5 @@ serdes/meta:
   id: vG58R8k-QddHWA7_47umn
   label: metabase_analytics
 entity_id: vG58R8k-QddHWA7_47umn
-namespace: null
+namespace: "analytics"
 created_at: '2023-06-08T14:12:32.4457Z'

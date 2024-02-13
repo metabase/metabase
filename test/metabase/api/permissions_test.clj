@@ -75,7 +75,7 @@
       (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1" :limit 50)
              (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
     (testing "Limit and offset pagination works for permissions list"
-      (is (partial= [{:id 1, :name "All Users"}]
+      (is (partial= [{:id (:id (perms-group/all-users)), :name "All Users"}]
              (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
 (deftest fetch-group-test

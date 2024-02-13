@@ -32,12 +32,9 @@
      :event/card-update default-schema
      :event/card-delete default-schema
      :event/card-query  [:map {:closed true}
-                         [:card-id                       pos-int?]
-                         [:user-id                       [:maybe pos-int?]]
-                         [:cached       {:optional true} :any]
-                         [:context      {:optional true} :any]
-                         [:ignore_cache {:optional true} :any]]}))
-
+                         [:card-id pos-int?]
+                         [:user-id [:maybe pos-int?]]
+                         [:context {:optional true} :any]]}))
 
 ;; user events
 
@@ -117,7 +114,8 @@
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id [:maybe pos-int?]]
-                       [:object [:fn #(boolean (t2/model %))]]])]
+                       [:object [:maybe [:fn #(boolean (t2/model %))]]]
+                       [:has-access {:optional true} [:maybe :boolean]]])]
   (def ^:private permission-failure-events
     {:event/read-permission-failure default-schema
      :event/write-permission-failure default-schema

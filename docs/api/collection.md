@@ -53,17 +53,17 @@ Fetch a specific Collection's items with the following options:
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
+*  **`models`** nullable sequence of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card, or enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`pinned_state`** value may be nil, or if non-nil, value must be one of: `all`, `is_not_pinned`, `is_pinned`.
+*  **`pinned_state`** nullable enum of is_not_pinned, is_pinned, all
 
-*  **`sort_column`** value may be nil, or if non-nil, value must be one of: `last_edited_at`, `last_edited_by`, `model`, `name`.
+*  **`sort_column`** nullable enum of model, name, last_edited_by, last_edited_at
 
-*  **`sort_direction`** value may be nil, or if non-nil, value must be one of: `asc`, `desc`.
+*  **`sort_direction`** nullable enum of desc, asc
 
 ## `GET /api/collection/:id/timelines`
 
@@ -113,17 +113,17 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ### PARAMS:
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
+*  **`models`** nullable sequence of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card, or enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
-*  **`pinned_state`** value may be nil, or if non-nil, value must be one of: `all`, `is_not_pinned`, `is_pinned`.
+*  **`pinned_state`** nullable enum of is_not_pinned, is_pinned, all
 
-*  **`sort_column`** value may be nil, or if non-nil, value must be one of: `last_edited_at`, `last_edited_by`, `model`, `name`.
+*  **`sort_column`** nullable enum of model, name, last_edited_by, last_edited_at
 
-*  **`sort_direction`** value may be nil, or if non-nil, value must be one of: `asc`, `desc`.
+*  **`sort_direction`** nullable enum of desc, asc
 
 ## `GET /api/collection/root/timelines`
 
@@ -174,15 +174,13 @@ Create a new Collection.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`color`** value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+*  **`description`** nullable value must be a non-blank string.
 
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`parent_id`** nullable value must be an integer greater than zero.
 
-*  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`namespace`** nullable value must be a non-blank string.
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
+*  **`authority_level`** nullable enum of official
 
 ## `PUT /api/collection/:id`
 
@@ -190,19 +188,17 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`name`** nullable value must be a non-blank string.
 
-*  **`color`** value may be nil, or if non-nil, value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+*  **`description`** nullable value must be a non-blank string.
 
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+*  **`parent_id`** nullable value must be an integer greater than zero.
 
-*  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
-
-*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
+*  **`authority_level`** nullable enum of official
 
 *  **`collection-updates`**
 

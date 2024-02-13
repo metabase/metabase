@@ -27,7 +27,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.jdbc :as t2.jdbc]))
+   [toucan2.jdbc.options :as t2.jdbc.options]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,7 +84,7 @@
     ;; will help with debugging stuff. This should mostly be dev-facing because we should hopefully not be committing
     ;; any busted code into the repo
     (try
-      (binding [t2.jdbc/*options* (merge t2.jdbc/*options* jdbc-options)]
+      (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options* jdbc-options)]
         (t2/query sql-args))
       (catch Throwable e
         (let [formatted-sql (format-sql (first sql-args))]
@@ -112,5 +112,5 @@
     ;; until we actually reduce it
     (reify clojure.lang.IReduceInit
       (reduce [_this rf init]
-        (binding [t2.jdbc/*options* (merge t2.jdbc/*options* jdbc-options)]
+        (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options* jdbc-options)]
           (reduce rf init (t2/reducible-query sql-args)))))))

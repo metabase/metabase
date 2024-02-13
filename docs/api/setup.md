@@ -31,29 +31,29 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 *  **`engine`** 
 
-*  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
+*  **`schedules`** nullable :metabase.sync.schedules/ExpandedSchedulesMap
 
-*  **`allow_tracking`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
+*  **`allow_tracking`** nullable boolean, or value must be a valid boolean string ('true' or 'false').
 
-*  **`invited_last_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`invited_last_name`** nullable value must be a non-blank string.
 
-*  **`site_locale`** value may be nil, or if non-nil, String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
+*  **`site_locale`** nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
 
 *  **`email`** value must be a valid email address.
 
-*  **`first_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`first_name`** nullable value must be a non-blank string.
 
 *  **`request`** 
 
-*  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
+*  **`auto_run_queries`** nullable boolean
 
 *  **`password`** password is too common.
 
 *  **`name`** 
 
-*  **`invited_email`** value may be nil, or if non-nil, value must be a valid email address.
+*  **`invited_email`** nullable value must be a valid email address.
 
-*  **`invited_first_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`invited_first_name`** nullable value must be a non-blank string.
 
 *  **`site_name`** value must be a non-blank string.
 
@@ -63,7 +63,7 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 *  **`database`** 
 
-*  **`last_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`last_name`** nullable value must be a non-blank string.
 
 ## `POST /api/setup/validate`
 

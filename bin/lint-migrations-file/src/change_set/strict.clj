@@ -1,14 +1,34 @@
 (ns change-set.strict
   (:require
-   [change-set.common]
    [change.strict]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
 
-(comment change-set.common/keep-me
-         change.strict/keep-me)
+(comment change.strict/keep-me)
+
+(s/def ::id (s/and string?
+                   #(re-matches #"^v\d{2,}\.\d{2}-\d{3}$" %)))
+
+(s/def ::author string?)
+
+(s/def ::preCondition
+  (s/keys :opt-un [::dbms]))
+
+(s/def ::preConditions
+  (s/coll-of ::preCondition))
+
+(s/def ::dbms
+  (s/keys :req-un [::type]))
+
+(s/def ::type (s/and string? ::valid-dbs))
+
+(s/def ::valid-dbs
+  (fn [s]
+    (let [dbs (into #{} (map str/trim) (str/split s #","))]
+      (and (seq dbs)
+           (every? #{"h2" "mysql" "mariadb" "postgresql"} dbs)))))
 
 ;; comment is required for strict change set spec
 (s/def ::comment
@@ -96,6 +116,5 @@
   (s/and
    rollback-present-when-required?
    disallow-delete-cascade-with-add-column
-   (s/merge
-    :change-set.common/change-set
-    (s/keys :req-un [::changes ::comment]))))
+   (s/keys :req-un [::id ::author ::changes ::comment]
+           :opt-un [::preConditions])))

@@ -3,11 +3,12 @@ default: &default
   - "bin/**/!(*.md)"
 
 shared_sources: &shared_sources
-  - "shared/src/**"
-  - "src/metabase/lib/**"
+  - "src/**/*.cljc"
+  - "src/**/*.cljs"
 
 shared_specs: &shared_specs
-  - "shared/test/**"
+  - "test/**/*.cljc"
+  - "test/**/*.cljs"
 
 frontend_ci: &frontend_ci
   - ".github/actions/prepare-frontend/**"

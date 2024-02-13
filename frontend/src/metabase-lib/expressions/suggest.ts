@@ -46,7 +46,7 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 
 type SuggestArgs = {
   source: string;
-  query: StructuredQuery;
+  legacyQuery: StructuredQuery;
   reportTimezone?: string;
   startRule: string;
   targetOffset?: number;
@@ -54,7 +54,7 @@ type SuggestArgs = {
 
 export function suggest({
   source,
-  query,
+  legacyQuery,
   reportTimezone,
   startRule,
   targetOffset = source.length,
@@ -72,7 +72,7 @@ export function suggest({
     const functionDisplayName = enclosingFunction(partialSource);
     if (functionDisplayName) {
       const name = getMBQLName(functionDisplayName);
-      const database = query.database();
+      const database = legacyQuery.database();
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
@@ -103,7 +103,7 @@ export function suggest({
     },
   );
 
-  const database = query.database();
+  const database = legacyQuery.database();
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({
       type: "functions",
@@ -149,7 +149,7 @@ export function suggest({
 
   if (_.last(matchPrefix) !== "]") {
     suggestions.push(
-      ...query
+      ...legacyQuery
         .dimensionOptions(() => true)
         .all()
         .map(dimension => ({
@@ -166,7 +166,7 @@ export function suggest({
         })),
     );
 
-    const segments = query.table()?.segments;
+    const segments = legacyQuery.table()?.segments;
     if (segments) {
       suggestions.push(
         ...segments.map(segment => ({
@@ -181,7 +181,7 @@ export function suggest({
     }
 
     if (startRule === "aggregation") {
-      const metrics = query.table()?.metrics;
+      const metrics = legacyQuery.table()?.metrics;
       if (metrics) {
         suggestions.push(
           ...metrics.map(metric => ({
@@ -236,7 +236,7 @@ export function suggest({
     const { icon } = suggestions[0];
     if (icon === "function") {
       const name = getMBQLName(matchPrefix);
-      const database = query.database();
+      const database = legacyQuery.database();
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);

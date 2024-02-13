@@ -2,8 +2,9 @@ import type {
   Dataset,
   DatasetColumn,
   DatasetData,
-  PublicDataset,
-  PublicDatasetData,
+  EmbedDataset,
+  EmbedDatasetData,
+  ErrorEmbedDataset,
   ResultsMetadata,
   TemplateTag,
 } from "metabase-types/api/dataset";
@@ -57,7 +58,7 @@ export const createMockDataset = ({
   ...opts,
 });
 
-export const createMockPublicDatasetData = ({
+export const createMockEmbedDatasetData = ({
   cols = [
     createMockColumn({
       display_name: "NAME",
@@ -66,7 +67,7 @@ export const createMockPublicDatasetData = ({
     }),
   ],
   ...opts
-}: Partial<PublicDatasetData>): PublicDatasetData => ({
+}: Partial<EmbedDatasetData>): EmbedDatasetData => ({
   rows: [],
   cols,
   rows_truncated: 0,
@@ -74,16 +75,29 @@ export const createMockPublicDatasetData = ({
   ...opts,
 });
 
-export const createMockPublicDataset = ({
-  data = {},
-  ...opts
-}: MockDatasetOpts = {}): PublicDataset => ({
-  data: createMockPublicDatasetData(data),
-  database_id: 1,
-  row_count: 0,
-  running_time: 1000,
-  ...opts,
-});
+export type MockEmbedDatasetOpts = Omit<Partial<EmbedDataset>, "data"> & {
+  data?: Partial<EmbedDatasetData>;
+};
+
+export const createMockEmbedDataset = (
+  opts: MockEmbedDatasetOpts,
+): EmbedDataset => {
+  if ("data" in opts) {
+    const { data = {}, ...rest } = opts;
+    return {
+      data: createMockEmbedDatasetData(data),
+      json_query: {
+        database: 1,
+        type: "native",
+        native: { query: "SELECT 1" },
+      },
+      status: "success",
+      ...rest,
+    };
+  }
+
+  return opts as ErrorEmbedDataset;
+};
 
 export const createMockTemplateTag = (
   opts?: Partial<TemplateTag>,

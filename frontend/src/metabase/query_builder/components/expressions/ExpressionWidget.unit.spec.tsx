@@ -166,7 +166,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const props = {
     expression: undefined,
     name: undefined,
-    query: createMockQueryForExpressions(),
+    legacyQuery: createMockQueryForExpressions(),
     reportTimezone: "UTC",
     ...mocks,
     ...additionalProps,

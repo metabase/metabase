@@ -60,18 +60,20 @@ function formatNumberLiteral(mbql) {
 }
 
 function formatDimension(fieldRef, options) {
-  const { query } = options;
-  if (query) {
-    const dimension = query.parseFieldReference(fieldRef);
+  const { legacyQuery } = options;
+  if (legacyQuery) {
+    const dimension = legacyQuery.parseFieldReference(fieldRef);
     return formatDimensionName(dimension, options);
   } else {
-    throw new Error("`query` is a required parameter to format expressions");
+    throw new Error(
+      "`legacyQuery` is a required parameter to format expressions",
+    );
   }
 }
 
 function formatMetric([, metricId], options) {
-  const { query } = options;
-  const metric = _.findWhere(query.table().metrics, { id: metricId });
+  const { legacyQuery } = options;
+  const metric = _.findWhere(legacyQuery.table().metrics, { id: metricId });
   if (!metric) {
     throw "metric with ID does not exist: " + metricId;
   }
@@ -79,8 +81,8 @@ function formatMetric([, metricId], options) {
 }
 
 function formatSegment([, segmentId], options) {
-  const { query } = options;
-  const segment = _.findWhere(query.table().segments, { id: segmentId });
+  const { legacyQuery } = options;
+  const segment = _.findWhere(legacyQuery.table().segments, { id: segmentId });
   if (!segment) {
     throw "segment with ID does not exist: " + segment;
   }

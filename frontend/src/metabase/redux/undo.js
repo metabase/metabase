@@ -14,13 +14,23 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
   return (dispatch, getState) => {
     const { icon = "check", timeout = 5000, canDismiss = true } = undo;
     const id = undo.id ?? nextUndoId++;
+    // if we're overwriting an existing undo, clear its timeout
+    const currentUndo = getUndo(getState(), id);
+    clearTimeoutForUndo(currentUndo);
+
+    let timeoutId = null;
     if (timeout) {
-      setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
+      timeoutId = setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
     }
-    return { ...undo, id, _domId: id, icon, canDismiss };
+    return { ...undo, id, _domId: id, icon, canDismiss, timeoutId };
   };
 });
-
+/**
+ *
+ * @param {import("metabase-types/store").State} state
+ * @param {*} undoId
+ * @returns
+ */
 function getUndo(state, undoId) {
   return _.findWhere(state.undo, { id: undoId });
 }
@@ -89,13 +99,25 @@ export default function (state = [], { type, payload, error }) {
       return state.concat(undo);
     }
   } else if (type === DISMISS_UNDO) {
+    const dismissedUndo = getUndo({ undo: state }, payload);
+
+    clearTimeoutForUndo(dismissedUndo);
     if (error) {
       console.warn("DISMISS_UNDO", payload);
       return state;
     }
     return state.filter(undo => undo.id !== payload);
   } else if (type === DISMISS_ALL_UNDO) {
+    for (const undo of state) {
+      clearTimeoutForUndo(undo);
+    }
     return [];
   }
   return state;
 }
+
+const clearTimeoutForUndo = undo => {
+  if (undo?.timeoutId) {
+    clearTimeout(undo.timeoutId);
+  }
+};

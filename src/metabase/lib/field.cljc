@@ -438,14 +438,16 @@
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    ;; :source/breakouts hides the true origin of the column. Since it's impossible to
-    ;; break out by aggregation references at the current stage, we only have to check
-    ;; if we break out by an expression reference. :expression-name is only set for
-    ;; expression references, so if it's set, we have to generate an expression ref,
-    ;; otherwise we generate a normal field ref.
-    :source/breakouts    (if (contains? metadata :lib/expression-name)
-                           (lib.expression/column-metadata->expression-ref metadata)
-                           (column-metadata->field-ref metadata))
+    ;; `:source/fields`/`:source/breakouts` can hide the true origin of the column. Since it's impossible to break out
+    ;; by aggregation references at the current stage, we only have to check if we break out by an expression
+    ;; reference. `:lib/expression-name` is only set for expression references, so if it's set, we have to generate an
+    ;; expression ref, otherwise we generate a normal field ref.
+    (:source/fields :source/breakouts)
+    (if (:lib/expression-name metadata)
+      (lib.expression/column-metadata->expression-ref metadata)
+      (column-metadata->field-ref metadata))
+
+    #_else
     (column-metadata->field-ref metadata)))
 
 (defn- expression-columns

@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
@@ -242,7 +243,12 @@
               :display-name "expr"}]
             (-> lib.tu/venues-query
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                lib/expressions-metadata))))
+                lib/expressions-metadata)))
+    (is (= ["expr"]
+           (-> lib.tu/venues-query
+               (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+               lib/expressions
+               (->> (map lib/expression-name))))))
   (testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
@@ -350,3 +356,19 @@
       (let [dropped (lib/remove-join query join)]
         (is (empty? (lib/joins dropped)))
         (is (empty? (lib/expressions dropped)))))))
+
+(deftest ^:parallel with-expression-name-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
+        [orig-expr :as orig-exprs] (lib/expressions query)
+        expr (lib/with-expression-name orig-expr "newly-named-expression")]
+    (testing "expressions should include the original expression name"
+      (is (=? [{:name         "expr"
+                :display-name "expr"}]
+              (lib/expressions-metadata query)))
+      (is (= ["expr"]
+             (map lib/expression-name orig-exprs)))
+      (is (= "newly-named-expression"
+             (lib/expression-name expr)))
+      (is (not= (lib.options/uuid orig-expr)
+                (lib.options/uuid expr))))))

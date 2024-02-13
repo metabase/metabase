@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
@@ -51,13 +50,6 @@
 (def ^:private default-idp-uri-with-param (str default-idp-uri "?someparam=true"))
 (def ^:private default-idp-cert           (slurp "test_resources/sso/auth0-public-idp.cert"))
 
-(defmacro with-sso-saml-token
-  "Stubs the `premium-features/token-features` function to simulate a premium token with the `:sso-saml` feature.
-   This needs to be included to test any of the SAML features."
-  [& body]
-  `(premium-features-test/with-premium-features #{:sso-saml}
-     ~@body))
-
 (defn call-with-default-saml-config [f]
   (let [current-features (premium-features/token-features)]
     (premium-features-test/with-premium-features #{:sso-saml}
@@ -88,7 +80,7 @@
 (defmacro with-saml-default-setup [& body]
   ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
   `(mt/with-ensure-with-temp-no-transaction!
-    (with-sso-saml-token
+    (premium-features-test/with-additional-premium-features #{:sso-saml}
       (call-with-login-attributes-cleared!
        (fn []
          (call-with-default-saml-config
@@ -147,7 +139,7 @@
                (client :get 400 "/auth/sso")))))))
 
 (deftest require-saml-enabled-test
-  (with-sso-saml-token
+  (premium-features-test/with-premium-features #{:sso-saml}
     (testing "SSO requests fail if SAML hasn't been configured or enabled"
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         nil
@@ -443,41 +435,42 @@
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
-    (do-with-some-validators-disabled
-      (fn []
-        (with-saml-default-setup
-          (try
-            (is (not (t2/exists? User :%lower.email "newuser@metabase.com")))
-            (let [req-options (saml-post-request-options (new-user-saml-test-response)
-                                                         (saml/str->base64 default-redirect-uri))]
-              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options))))
-            (let [new-user (t2/select-one User :email "newuser@metabase.com")]
-              (is (= {:email        "newuser@metabase.com"
-                      :first_name   "New"
-                      :is_qbnewb    true
-                      :is_superuser false
-                      :id           true
-                      :last_name    "User"
-                      :date_joined  true
-                      :common_name  "New User"}
-                     (-> (mt/boolean-ids-and-timestamps new-user)
-                         (dissoc :last_login))))
-              (testing "User Invite Event is logged."
-                (is (= {:details  {:email      "newuser@metabase.com"
-                                   :first_name "New"
-                                   :last_name  "User"
-                                   :user_group_memberships [{:id 1}]
-                                   :sso_source "saml"}
-                        :model    "User"
-                        :model_id (:id new-user)
-                        :topic    :user-invited
-                        :user_id  nil}
-                       (audit-log-test/latest-event :user-invited (:id new-user))))))
-            (testing "attributes"
-              (is (= (some-saml-attributes "newuser")
-                     (saml-login-attributes "newuser@metabase.com"))))
-            (finally
-              (t2/delete! User :%lower.email "newuser@metabase.com"))))))))
+    (premium-features-test/with-premium-features #{:audit-app}
+      (do-with-some-validators-disabled
+        (fn []
+          (with-saml-default-setup
+            (try
+              (is (not (t2/exists? User :%lower.email "newuser@metabase.com")))
+              (let [req-options (saml-post-request-options (new-user-saml-test-response)
+                                                           (saml/str->base64 default-redirect-uri))]
+                (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options))))
+              (let [new-user (t2/select-one User :email "newuser@metabase.com")]
+                (is (= {:email        "newuser@metabase.com"
+                        :first_name   "New"
+                        :is_qbnewb    true
+                        :is_superuser false
+                        :id           true
+                        :last_name    "User"
+                        :date_joined  true
+                        :common_name  "New User"}
+                       (-> (mt/boolean-ids-and-timestamps new-user)
+                           (dissoc :last_login))))
+                (testing "User Invite Event is logged."
+                  (is (= {:details  {:email      "newuser@metabase.com"
+                                     :first_name "New"
+                                     :last_name  "User"
+                                     :user_group_memberships [{:id 1}]
+                                     :sso_source "saml"}
+                          :model    "User"
+                          :model_id (:id new-user)
+                          :topic    :user-invited
+                          :user_id  nil}
+                         (mt/latest-audit-log-entry :user-invited (:id new-user))))))
+              (testing "attributes"
+                (is (= (some-saml-attributes "newuser")
+                       (saml-login-attributes "newuser@metabase.com"))))
+              (finally
+                (t2/delete! User :%lower.email "newuser@metabase.com")))))))))
 
 (deftest login-update-account-test
   (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"

@@ -89,13 +89,17 @@
   before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
   no-op."
   [expr]
+  ;; TODO -- this seems clearly wrong for LocalTimes and OffsetTimes
   (if (instance? java.time.temporal.Temporal expr)
     (h2x/cast :timestamp expr)
     expr))
 
-(defn- date-trunc [unit expr] [:date_trunc   (h2x/literal unit) (cast-timestamp expr)])
-(defn- extract    [unit expr] [::h2x/extract unit               (cast-timestamp expr)])
-(defn- datediff   [unit a b]  [:datediff     (h2x/literal unit) (cast-timestamp a) (cast-timestamp b)])
+(defn- date-trunc [unit expr]
+  (-> [:date_trunc (h2x/literal unit) (cast-timestamp expr)]
+      (h2x/with-database-type-info (h2x/database-type expr))))
+
+(defn- extract  [unit expr] [::h2x/extract unit               (cast-timestamp expr)])
+(defn- datediff [unit a b]  [:datediff     (h2x/literal unit) (cast-timestamp a) (cast-timestamp b)])
 
 (def ^:private extract-integer (comp h2x/->integer extract))
 

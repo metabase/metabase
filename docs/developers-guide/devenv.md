@@ -274,24 +274,22 @@ Ran 5 tests containing 147 assertions.
 
 ;; but we also have a lovely test runner with lots of cool options
 some-ns=> (metabase.test-runner/find-and-run-tests-repl {:namespace-pattern ".*pulse.*"})
-Running tests with options {:mode :repl, :namespace-pattern ".*pulse.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000}
+Running tests with options {:mode :repl, :namespace-pattern ".*pulse.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "src" "target" "test_config" "test_resources"], :test-warn-time 3000}
 Excluding directory "dev/src"
 Excluding directory "local/src"
 Looking for test namespaces in directory test
-Looking for test namespaces in directory shared/test
 Finding tests took 1.6 s.
 Excluding directory "test_resources"
 Excluding directory "enterprise/backend/src"
 Looking for test namespaces in directory enterprise/backend/test
 Excluding directory "src"
-Excluding directory "shared/src"
 Excluding directory "resources"
 Running 159 tests
 ...
 
 ;; you can even specify a directory if you're working on a subfeature like that
 some-ns=> (metabase.test-runner/find-and-run-tests-repl {:only "test/metabase/pulse/"})
-Running tests with options {:mode :repl, :namespace-pattern #"^metabase.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :only "test/metabase/pulse/"}
+Running tests with options {:mode :repl, :namespace-pattern #"^metabase.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :only "test/metabase/pulse/"}
 Running tests in "test/metabase/pulse/"
 Looking for test namespaces in directory test/metabase/pulse
 Finding tests took 37.0 ms.

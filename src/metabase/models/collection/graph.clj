@@ -66,7 +66,7 @@
         honeysql-form           {:select [[:id :id]]
                                  :from   [:collection]
                                  :where  (into [:and
-                                                [:= :namespace (u/qualified-name collection-namespace)]
+                                                (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
                                                 [:= :personal_owner_id nil]]
                                                (for [collection-id personal-collection-ids]
                                                  [:not [:like :location (h2x/literal (format "/%d/%%" collection-id))]]))}]

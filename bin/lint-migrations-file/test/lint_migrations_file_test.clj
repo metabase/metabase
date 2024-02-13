@@ -4,15 +4,15 @@
    [clojure.test :refer :all]
    [lint-migrations-file :as lint-migrations-file]))
 
-(defn mock-change-set
-  "Returns a \"strict\" migration (id > switch to strict). If you want a non-strict migration send :id 1 in `keyvals`. "
+(defn- mock-change-set
   [& keyvals]
   {:changeSet
    (merge
-    {:id      1000
+    {:id      "v45.00-001"
      :author  "camsaul"
-     :comment "Added x.37.0"
-     :changes [{:whatever {}}]}
+     :comment "Added x.45.0"
+     :changes [{:whatever {}}]
+     :rollback []}
     (apply array-map keyvals))})
 
 (defn mock-column [& keyvals]
@@ -31,11 +31,11 @@
                        (apply array-map keyvals))})
 
 (defn- validate [& changes]
-  (lint-migrations-file/validate-migrations
+  (#'lint-migrations-file/validate-migrations
    {:databaseChangeLog changes}))
 
 (defn- validate-ex-info [& changes]
-  (try (lint-migrations-file/validate-migrations {:databaseChangeLog changes})
+  (try (#'lint-migrations-file/validate-migrations {:databaseChangeLog changes})
        (catch Exception e (ex-data e))))
 
 (deftest require-unique-ids-test
@@ -44,8 +44,8 @@
          clojure.lang.ExceptionInfo
          #"distinct-change-set-ids"
          (validate
-          (mock-change-set :id "1")
-          (mock-change-set :id 1))))))
+          (mock-change-set :id "v45.00-001")
+          (mock-change-set :id "v45.00-001"))))))
 
 (deftest require-migrations-in-order-test
   (testing "Migrations must be in order"
@@ -53,8 +53,8 @@
          clojure.lang.ExceptionInfo
          #"change-set-ids-in-order"
          (validate
-          (mock-change-set :id 2)
-          (mock-change-set :id 1))))))
+          (mock-change-set :id "v45.00-002")
+          (mock-change-set :id "v45.00-001"))))))
 
 (deftest only-one-column-per-add-column-test
   (testing "we should only allow one column per addColumn change"
@@ -62,7 +62,7 @@
       (is (= :ok
              (validate
               (mock-change-set
-               :id id
+               :id (format "v45.00-%03d" id)
                :changes [(mock-add-column-changes)]))))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -74,10 +74,7 @@
                                                           (mock-column :name "B")])])))))))
 
 (deftest one-change-per-change-set-test
-  (testing "[strict only] only allow one change per change set"
-    (is (= :ok
-           (validate
-            (mock-change-set :id 1 :changes [(mock-add-column-changes) (mock-add-column-changes)]))))
+  (testing "only allow one change per change set"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Extra input"
@@ -85,11 +82,13 @@
           (mock-change-set :changes [(mock-add-column-changes) (mock-add-column-changes)]))))))
 
 (deftest require-comment-test
-  (testing "[strict only] require a comment for a change set"
+  (testing "require a comment for a change set"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Validation failed:"
+         (validate (update (mock-change-set) :changeSet dissoc :comment))))
     (is (= :ok
-           (validate (dissoc (mock-change-set) :comment))))
-    (is (= :ok
-           (validate (mock-change-set :id 200, :comment "Added x.38.0"))))))
+           (validate (mock-change-set :id "v45.00-001", :comment "Added x.45.0"))))))
 
 (deftest no-on-delete-in-constraints-test
   (testing "Make sure we don't use onDelete in constraints"
@@ -109,12 +108,7 @@
              (validate change-set)))))))
 
 (deftest require-remarks-for-create-table-test
-  (testing "[strict only] require remarks for newly created tables"
-    (is (= :ok
-           (validate
-            (mock-change-set
-             :id 1
-             :changes [(update (mock-create-table-changes) :createTable dissoc :remarks)]))))
+  (testing "require remarks for newly created tables"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #":remarks"
@@ -128,7 +122,6 @@
     (is (= :ok
            (validate
             (mock-change-set
-             :id 200
              :changes
              [{:sql {:dbms "h2", :sql "1"}}
               {:sql {:dbms "postgresql", :sql "2"}}
@@ -140,7 +133,6 @@
          #":dbms"
          (validate
           (mock-change-set
-           :id 200
            :changes
            [{:sql {:dbms "h2", :sql "1"}}
             {:sql {:sql "2"}}])))))
@@ -151,7 +143,6 @@
          #":changes"
          (validate
           (mock-change-set
-           :id 200
            :changes
            [{:sql {:dbms "h2", :sql "1"}}
             {:sql {:dbms "postgresql,h2", :sql "2"}}]))))))
@@ -165,17 +156,17 @@
     (testing "ID that's missing a zero should fail"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"new-style-id"
+           #"Validation failed"
            (validate-id "v42.01-01"))))
     (testing "ID with an extra zero should fail"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"new-style-id"
+           #"Validation failed"
            (validate-id "v42.01-0001"))))
     (testing "Has to start with v"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"new-style-id"
+           #"Validation failed"
            (validate-id "42.01-001"))))))
 
 (deftest prevent-text-types-test
@@ -201,7 +192,8 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"rollback-present-when-required"
-           (validate (mock-change-set :id "v45.12-345" :changes [{:sql {:sql "select 1"}}])))))
+           (validate (update (mock-change-set :id "v45.12-345" :changes [{:sql {:sql "select 1"}}])
+                             :changeSet dissoc :rollback)))))
     (testing "nil rollback is allowed"
       (is (= :ok (validate (mock-change-set :id "v45.12-345"
                                             :changes [{:sql {:sql "select 1"}}]

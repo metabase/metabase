@@ -23,7 +23,7 @@ const ExpressionStep = ({
       readOnly={readOnly}
       renderPopover={item => (
         <ExpressionWidget
-          query={query}
+          legacyQuery={query}
           name={item?.name}
           expression={item?.expression}
           withName

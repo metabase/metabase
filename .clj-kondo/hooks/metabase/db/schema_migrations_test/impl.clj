@@ -8,7 +8,7 @@
                 (hooks/token-node `let)
                 (hooks/vector-node
                  [binding (hooks/list-node (list (hooks/token-node `fn)
-                                                 (hooks/vector-node [])))])
+                                                 (hooks/vector-node [(hooks/token-node '&) (hooks/token-node '_args)])))])
                 migration-range
                 body))]
     {:node node*}))

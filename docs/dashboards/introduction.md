@@ -46,9 +46,10 @@ In both cases, duplication only includes the dashboard, its card layout, filters
 
 There are two ways to add questions to a dashboard: from the dashboard, or from the question you want to add.
 
-**From a question**: you can add a newly saved question to a dashboard directly from the window that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the **pencil** icon next to the name of the question, and selecting **Add to dashboard**.
+- **From a question**: You can add a newly saved question to a dashboard directly from the modal that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the ellipsis (**...**) at the top right of a question and selecting **Add to dashboard**.
+- **From a dashboard**: Click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar) to add any of your saved questions to the dashboard, regardless of which collection the questions are in.
 
-**From a dashboard**: Click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar) to add any of your saved questions to the dashboard, regardless of which collection the questions are in.
+> If your question is saved to your personal collection, you'll only be able to add that question to dashboards in your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question to that collection (or any other public collection).
 
 Once you add a question to your dashboard, it’ll look something like this:
 

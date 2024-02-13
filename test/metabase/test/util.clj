@@ -1307,7 +1307,10 @@
 
 (defn latest-audit-log-entry
   "Returns the latest audit log entry, optionally filters on `topic`."
-  ([]
-   (t2/select-one :model/AuditLog {:order-by [[:id :desc]]}))
-  ([topic]
-   (t2/select-one :model/AuditLog {:order-by [[:id :desc]] :where [:= :topic topic]})))
+  ([] (latest-audit-log-entry nil nil))
+  ([topic] (latest-audit-log-entry topic nil))
+  ([topic model-id]
+   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
+                  {:order-by [[:id :desc]]
+                   :where [:and (when topic [:= :topic (name topic)])
+                                (when model-id [:= :model_id model-id])]})))

@@ -320,12 +320,11 @@
         user-cols    ["ID" "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE"
                       "STATE" "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]
         product-cols ["ID" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE" "RATING" "CREATED_AT"]
-        implicit     (fn [field-names alias-prefix]
+        implicit     (fn [field-names alias-prefix alias-suffix]
                        {::lib.column-group/group-type :group-type/join.implicit
                         :lib/type :metadata/column-group
                         ::lib.column-group/columns
-                        (for [alias-suffix ["" "_2"]
-                              field-name   field-names]
+                        (for [field-name field-names]
                           {:name                     field-name
                            :lib/desired-column-alias (str alias-prefix field-name alias-suffix)
                            :lib/source               :source/implicitly-joinable})})]
@@ -349,6 +348,67 @@
                 {:name field-name
                  :lib/desired-column-alias (str "Orders__" field-name)
                  :lib/source :source/joins})}
-             (implicit user-cols    "PEOPLE__via__USER_ID__")
-             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__")]
+             (implicit user-cols    "PEOPLE__via__USER_ID__" "")
+             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__" "")
+             (implicit user-cols    "PEOPLE__via__USER_ID__" "_2")
+             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__" "_2")]
             (lib/group-columns marked)))))
+
+(deftest ^:parallel self-joined-cards-duplicate-implicit-columns-test
+  (testing "Duplicate columns from different foreign key paths should get grouped separately (#34742)"
+    (let [card (:orders lib.tu/mock-cards)
+          query (lib/query lib.tu/metadata-provider-with-mock-cards card)
+          clause (lib/join-clause card [(lib/= (first (lib/join-condition-lhs-columns query card nil nil))
+                                               (first (lib/join-condition-rhs-columns query card nil nil)))])
+
+          query (lib/join query clause)
+          cols (lib/visible-columns query)
+          [_ _ _ product-1 _ product-2 :as groups] (lib/group-columns cols)]
+      (is (=? [{:display-name "Mock Orders Card"
+                :is-from-join false,
+                :is-implicitly-joinable false}
+               ;; Not sure why this is inconsistent
+               {:display-name "Mock orders card"
+                :is-from-join true,
+                :is-implicitly-joinable false}
+               {:display-name "Product ID"
+                :is-from-join false,
+                :is-implicitly-joinable true}
+               {:display-name "User ID"
+                :is-from-join false,
+                :is-implicitly-joinable true}
+               {:display-name "Product ID"
+                :is-from-join false,
+                :is-implicitly-joinable true}
+               {:display-name "User ID"
+                :is-from-join false,
+                :is-implicitly-joinable true}]
+              (map #(lib/display-info query %) groups)))
+      (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__ID", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__ADDRESS", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__EMAIL", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__PASSWORD", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__NAME", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__CITY", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__LONGITUDE", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__STATE", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__SOURCE", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__BIRTH_DATE", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__ZIP", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__LATITUDE", :fk-join-alias nil}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__CREATED_AT", :fk-join-alias nil}]
+              (::lib.column-group/columns product-1)))
+      (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__ID_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__ADDRESS_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__EMAIL_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__PASSWORD_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__NAME_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__CITY_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__LONGITUDE_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__STATE_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__SOURCE_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__BIRTH_DATE_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__ZIP_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__LATITUDE_2", :fk-join-alias "Mock orders card"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__CREATED_AT_2", :fk-join-alias "Mock orders card"}]
+              (::lib.column-group/columns product-2))))))

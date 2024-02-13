@@ -18,13 +18,13 @@ Return an automagic dashboard for entity `entity` with id `id`.
 
 *  **`entity-id-or-query`** 
 
-*  **`show`** nullable must equal all
+*  **`show`** nullable must equal all, or natural integer
 
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query`
 
 Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
    defined by
-   query `cell-querry`.
+   query `cell-query`.
 
 ### PARAMS:
 
@@ -39,7 +39,7 @@ Return an automagic dashboard analyzing cell in  automagic dashboard for entity 
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query`
 
 Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `id` defined by query `cell-querry`; compared with entity `comparison-entity` with id
+   with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`.
 
 ### PARAMS:
@@ -56,10 +56,10 @@ Return an automagic comparison dashboard for cell in automagic dashboard for ent
 
 *  **`comparison-entity-id-or-query`**
 
-## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule`
+## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template`
 
 Return an automagic dashboard analyzing cell in question  with id `id` defined by
-   query `cell-querry` using rule `rule`.
+   query `cell-query` using dashboard-template `dashboard-template`.
 
 ### PARAMS:
 
@@ -71,14 +71,14 @@ Return an automagic dashboard analyzing cell in question  with id `id` defined b
 
 *  **`prefix`** invalid value for prefix
 
-*  **`rule`** invalid value for rule name
+*  **`dashboard-template`** invalid value for dashboard template name
 
 *  **`show`** invalid show value
 
-## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query`
+## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query`
 
 Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `id` defined by query `cell-querry` using rule `rule`; compared with entity
+   with id `id` defined by query `cell-query` using dashboard-template `dashboard-template`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`.
 
 ### PARAMS:
@@ -91,7 +91,7 @@ Return an automagic comparison dashboard for cell in automagic dashboard for ent
 
 *  **`prefix`** invalid value for prefix
 
-*  **`rule`** invalid value for rule name
+*  **`dashboard-template`** invalid value for dashboard template name
 
 *  **`show`** invalid show value
 
@@ -116,9 +116,9 @@ Return an automagic comparison dashboard for entity `entity` with id `id` compar
 
 *  **`comparison-entity-id-or-query`**
 
-## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:rule`
+## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template`
 
-Return an automagic dashboard for entity `entity` with id `id` using rule `rule`.
+Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`.
 
 ### PARAMS:
 
@@ -128,13 +128,13 @@ Return an automagic dashboard for entity `entity` with id `id` using rule `rule`
 
 *  **`prefix`** invalid value for prefix
 
-*  **`rule`** invalid value for rule name
+*  **`dashboard-template`** invalid value for dashboard template name
 
 *  **`show`** invalid show value
 
-## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query`
+## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query`
 
-Return an automagic comparison dashboard for entity `entity` with id `id` using rule `rule`;
+Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`.
 
 ### PARAMS:
@@ -145,7 +145,7 @@ Return an automagic comparison dashboard for entity `entity` with id `id` using 
 
 *  **`prefix`** invalid value for prefix
 
-*  **`rule`** invalid value for rule name
+*  **`dashboard-template`** invalid value for dashboard template name
 
 *  **`show`** invalid show value
 
@@ -160,6 +160,17 @@ Return a list of candidates for automagic dashboards orderd by interestingness.
 ### PARAMS:
 
 *  **`id`** value must be an integer greater than zero.
+
+## `GET /api/automagic-dashboards/model_index/:model-index-id/primary_key/:pk-id`
+
+Return an automagic dashboard for an entity detail specified by `entity`
+  with id `id` and a primary key of `indexed-value`.
+
+### PARAMS:
+
+*  **`model-index-id`** integer
+
+*  **`pk-id`** integer
 
 ---
 

@@ -11,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
@@ -49,7 +50,59 @@
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
 
-(def ^:private ^String changelog-file "liquibase.yaml")
+(def ^{:private true
+       :doc     "Liquibase setting used for upgrading instances running version < 45."}
+  ^String changelog-legacy-file "liquibase_legacy.yaml")
+
+(def ^{:private true
+       :doc     "Liquibase setting used for upgrading a fresh instance or instances running version >= 45."}
+  ^String changelog-file "liquibase.yaml")
+
+(defn changelog-table-name
+  "Return the proper changelog table name based on db type of the connection."
+  [^java.sql.Connection conn]
+  (if (= "PostgreSQL" (-> conn .getMetaData .getDatabaseProductName))
+    "databasechangelog"
+    "DATABASECHANGELOG"))
+
+(defn table-exists?
+  "Check if a table exists."
+  [table-name ^java.sql.Connection conn]
+  (-> (.getMetaData conn)
+      (.getTables  nil nil table-name (u/varargs String ["TABLE"]))
+      jdbc/metadata-query
+      seq
+      boolean))
+
+(defn- fresh-install?
+  [^java.sql.Connection conn]
+  (not (table-exists? (changelog-table-name conn) conn)))
+
+(defn- decide-liquibase-file
+  [^java.sql.Connection conn]
+  (if (fresh-install? conn)
+   changelog-file
+   (let [latest-migration (->> (jdbc/query {:connection conn}
+                                           [(format "select id from %s order by dateexecuted desc limit 1" (changelog-table-name conn))])
+                               first
+                               :id)]
+     (cond
+       (nil? latest-migration)
+       changelog-file
+
+       ;; post-44 installation downgraded to 45
+       (= latest-migration "v00.00-000")
+       changelog-file
+
+       ;; pre 42
+       (not (str/starts-with? latest-migration "v"))
+       changelog-legacy-file
+
+       (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
+       changelog-legacy-file
+
+       :else
+       changelog-file))))
 
 (defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]
   (JdbcConnection. jdbc-connection))
@@ -62,24 +115,27 @@
     (liquibase.h2/h2-database liquibase-conn)
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
-(defn- liquibase ^Liquibase [^Database database]
-  (Liquibase. changelog-file (ClassLoaderResourceAccessor. (classloader/the-classloader)) database))
+(defn- liquibase ^Liquibase [^java.sql.Connection conn ^Database database]
+  (Liquibase.
+   ^String (decide-liquibase-file conn)
+   (ClassLoaderResourceAccessor. (classloader/the-classloader))
+   database))
 
-(s/defn do-with-liquibase
+(mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
-  [conn-or-data-source :- (s/cond-pre java.sql.Connection javax.sql.DataSource)
-   f]
+  [conn-or-data-source :- [:or (ms/InstanceOfClass java.sql.Connection) (ms/InstanceOfClass javax.sql.DataSource)]
+   f                   :- fn?]
   ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
   (binding [t2.conn/*current-connectable* conn-or-data-source]
     (if (instance? java.sql.Connection conn-or-data-source)
-      (f (-> conn-or-data-source liquibase-connection database liquibase))
+      (f (->> conn-or-data-source liquibase-connection database (liquibase conn-or-data-source)))
       ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
       ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
       ;; it's safe to assume the caller is managing its lifecycle.
       (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
                   liquibase-conn (liquibase-connection conn)
                   database       (database liquibase-conn)]
-        (f (liquibase database))))))
+        (f (liquibase conn database))))))
 
 (defmacro with-liquibase
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
@@ -105,16 +161,16 @@
     (.update liquibase "" writer)
     (.toString writer)))
 
-(defn has-unrun-migrations?
-  "Does `liquibase` have migration change sets that haven't been run yet?
+(defn unrun-migrations
+  "Returns a list of unrun migrations.
 
   It's a good idea to check to make sure there's actually something to do before running `(migrate :up)` so we can
   skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
   using them.
 
   (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date)"
-  ^Boolean [^Liquibase liquibase]
-  (boolean (seq (.listUnrunChangeSets liquibase nil (LabelExpression.)))))
+  [^Liquibase liquibase]
+  (.listUnrunChangeSets liquibase nil (LabelExpression.)))
 
 (defn- migration-lock-exists?
   "Is a migration lock in place for `liquibase`?"
@@ -154,17 +210,22 @@
   "Run any unrun `liquibase` migrations, if needed."
   [^Liquibase liquibase]
   (log/info (trs "Checking if Database has unrun migrations..."))
-  (when (has-unrun-migrations? liquibase)
-    (log/info (trs "Database has unrun migrations. Waiting for migration lock to be cleared..."))
-    (wait-for-migration-lock-to-be-cleared liquibase)
+  (if (seq (unrun-migrations liquibase))
+    (do
+     (log/info (trs "Database has unrun migrations. Waiting for migration lock to be cleared..."))
+     (wait-for-migration-lock-to-be-cleared liquibase)
     ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
     ;; sure something still needs to be done...
-    (if (has-unrun-migrations? liquibase)
-      (do
-        (log/info (trs "Migration lock is cleared. Running migrations..."))
-        (let [^Contexts contexts nil] (.update liquibase contexts)))
-      (log/info
-        (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
+     (let [unrun-migrations-count (count (unrun-migrations liquibase))]
+       (if (pos? unrun-migrations-count)
+         (let [^Contexts contexts nil
+               start-time         (System/currentTimeMillis)]
+           (log/info (trs "Migration lock is cleared. Running {0} migrations ..." unrun-migrations-count))
+           (.update liquibase contexts)
+           (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time)))))
+         (log/info
+          (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
+    (log/info (trs "No unrun migrations found."))))
 
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
@@ -200,7 +261,7 @@
       liquibase
       #(.run ^ChangeLogIterator log-iterator update-visitor runtime-env)))))
 
-(s/defn force-migrate-up-if-needed!
+(mu/defn force-migrate-up-if-needed!
   "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:
 
   1.  This will force release the locks before start running
@@ -208,11 +269,11 @@
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
   #3295."
-  [liquibase :- Liquibase]
+  [^Liquibase liquibase :- (ms/InstanceOfClass Liquibase)]
   ;; have to do this before clear the checksums else it will wait for locks to be released
   (release-lock-if-needed! liquibase)
   (.clearCheckSums liquibase)
-  (when (has-unrun-migrations? liquibase)
+  (when (seq (unrun-migrations liquibase))
     (let [change-log     (.getDatabaseChangeLog liquibase)
           fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
                                (.getChangeSets change-log))
@@ -242,57 +303,47 @@
           (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
             (.setFailOnError change-set fail-on-error?)))))))
 
-(defn- changelog-table-name
-  "Returns case-sensitive database-specific name for Liquibase changelog table for db-type"
-  [db-type]
-  (if (#{:h2 :mysql} db-type)
-    "DATABASECHANGELOG"
-    "databasechangelog"))
 
-(s/defn consolidate-liquibase-changesets!
+(mu/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
 
   Previously migrations where stored in many small files which added seconds per file to the startup time because
   liquibase was checking the jar signature for each file. This function is required to correct the liquibase tables to
-  reflect that these migrations where moved to a single file.
+  reflect that these migrations were grouped into 2 files.
 
-  see https://github.com/metabase/metabase/issues/3715"
-  [db-type :- s/Keyword
-   conn    :- java.sql.Connection]
-  (let [liquibase-table-name (changelog-table-name db-type)
-        fresh-install?       (let [meta (.getMetaData conn)] ; don't migrate on fresh install
-                               (empty? (jdbc/metadata-query
-                                        (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
-        statement            (format "UPDATE %s SET FILENAME = ?" liquibase-table-name)]
-    (when-not fresh-install?
-      (jdbc/execute! {:connection conn} [statement "migrations/000_migrations.yaml"]))))
+  See https://github.com/metabase/metabase/issues/3715
+  Also see https://github.com/metabase/metabase/pull/34400"
+  [conn :- (ms/InstanceOfClass java.sql.Connection)]
+  (let [liquibase-table-name (changelog-table-name conn)
+        statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
+    (when-not (fresh-install? conn)
+      (jdbc/execute!
+       {:connection conn}
+       [statement
+        "v00.00-000" "migrations/001_update_migrations.yaml"
+        "v45.00-001" "migrations/000_legacy_migrations.yaml"
+        "migrations/001_update_migrations.yaml"]))))
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
   [s]
   (map #(Integer/parseInt %) (re-seq #"\d+" s)))
 
-(defn- current-major-version
-  "Returns the major version of the running Metabase JAR"
-  []
-  (second (extract-numbers (:tag config/mb-version-info))))
-
 (defn rollback-major-version
   "Roll back migrations later than given Metabase major version"
   ;; default rollback to previous version
   ([db-type conn liquibase]
    ;; get current major version of Metabase we are running
-   (rollback-major-version db-type conn liquibase (dec (current-major-version))))
+   (rollback-major-version db-type conn liquibase (dec (config/current-major-version))))
 
   ;; with explicit target version
-  ([db-type conn ^Liquibase liquibase target-version]
+  ([_db-type conn ^Liquibase liquibase target-version]
    (when (or (not (integer? target-version)) (< target-version 44))
      (throw (IllegalArgumentException.
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
-                     (current-major-version)))))
+                     (config/current-major-version)))))
    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
-   (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC"
-                                 (changelog-table-name db-type))
+   (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC" (changelog-table-name conn))
          changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
          ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]

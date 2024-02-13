@@ -3,63 +3,116 @@
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.audit-log :as audit-log]
+   [metabase.models.query.permissions :as query-perms]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [methodical.core :as m]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
-(defn record-view!
+(defn- record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
-  [model model-id user-id metadata]
-  (t2/insert! :model/ViewLog
-              :user_id  user-id
-              :model    (u/lower-case-en model)
-              :model_id model-id
-              :metadata metadata))
+  [view-or-views]
+  (span/with-span!
+    {:name "record-view!"}
+    (t2/insert! :model/ViewLog view-or-views)))
 
-(derive ::read-event :metabase/event)
-(derive :event/card-read ::read-event)
-(derive :event/dashboard-read ::read-event)
-(derive :event/table-read ::read-event)
+(defn- generate-view
+  "Generates a view, given an event map."
+  [{:keys [object user-id has-access]
+    :or   {has-access true}}]
+  {:model      (u/lower-case-en (audit-log/model-name object))
+   :user_id    (or user-id api/*current-user-id*)
+   :model_id   (u/id object)
+   :has_access has-access})
 
-(m/defmethod events/publish-event! ::read-event
-  "Handle processing for a single read event notification received on the view-log-channel"
-  [topic {object :object :as event}]
+(derive ::card-read-event :metabase/event)
+(derive :event/card-read ::card-read-event)
+
+(m/defmethod events/publish-event! ::card-read-event
+  "Handle processing for a generic read event notification"
+  [topic event]
+  (span/with-span!
+    {:name "view-log-card-read"
+     :topic topic
+     :user-id (:user-id event)}
+    (try
+      (-> event
+          generate-view
+          (assoc :context "question")
+          record-views!)
+      (catch Throwable e
+        (log/warnf e "Failed to process view_log event. %s" topic)))))
+
+(derive ::read-permission-failure :metabase/event)
+(derive :event/read-permission-failure ::read-permission-failure)
+
+(m/defmethod events/publish-event! ::read-permission-failure
+  "Handle processing for a generic read event notification"
+  [topic {:keys [object] :as event}]
   (try
-    (when object
-      (let [model    (events/topic->model topic)
-            model-id (events/object->model-id topic object)
-            user-id  (or (:user-id event) api/*current-user-id*)
-            ;; `:context` comes
-            ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
-            ;; and it should only be present for `:event/card-query`
-            metadata (events/object->metadata object)]
-        (record-view! model model-id user-id metadata)))
+    ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
+    ;; other models.
+    (when (#{:model/Card :model/Dashboard} (t2/model object))
+     (-> event
+         generate-view
+         record-views!))
     (catch Throwable e
-      (log/warnf e "Failed to process activity event. %s" topic))))
+      (log/warnf e "Failed to process view_log event. %s" topic))))
 
-(derive ::query-event :metabase/event)
-(derive :event/card-query ::query-event)
+(derive ::dashboard-read :metabase/event)
+(derive :event/dashboard-read ::dashboard-read)
 
-(m/defmethod events/publish-event! ::query-event
-  "Handle processing for a single read event notification received on the view-log-channel"
-  [topic {:keys [user-id card-id] :as event}]
-  (try
-    (when event
-      (let [model    "card"
-            model-id card-id
-            user-id  (or user-id api/*current-user-id*)
-            metadata (events/object->metadata event)]
-        (record-view! model model-id user-id metadata)))
-    (catch Throwable e
-      (log/warnf e "Failed to process activity event. %s" topic))))
+(defn- readable-dashcard?
+  "Returns true if the dashcard's card was readable by the current user, and false otherwise. Unreadable cards are
+  replaced with maps containing just the card's ID, so we can check for this to determine whether the card was readable"
+  [dashcard]
+  (let [card (:card dashcard)]
+    (not= (set (keys card)) #{:id})))
 
-(defsetting dismissed-custom-dashboard-toast
-  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
-  :user-local :only
-  :visibility :authenticated
-  :type       :boolean
-  :default    false
-  :audit      :never)
+(m/defmethod events/publish-event! ::dashboard-read
+  "Handle processing for the dashboard read event. Logs the dashboard view as well as card views for each card on the
+  dashboard."
+  [topic {:keys [object user-id] :as event}]
+  (span/with-span!
+    {:name "view-log-dashboard-read"
+     :topic topic
+     :user-id user-id}
+    (try
+      (let [dashcards (filter :card_id (:dashcards object)) ;; filter out link/text cards wtih no card_id
+            user-id   (or user-id api/*current-user-id*)
+            views     (map (fn [dashcard]
+                               {:model      "card"
+                                :model_id   (u/id (:card_id dashcard))
+                                :user_id    user-id
+                                :has_access (readable-dashcard? dashcard)
+                                :context    "dashboard"})
+                           dashcards)
+            dash-view (generate-view event)]
+        (record-views! (cons dash-view views)))
+      (catch Throwable e
+        (log/warnf e "Failed to process view_log event. %s" topic)))))
+
+(derive ::table-read :metabase/event)
+(derive :event/table-read ::table-read)
+
+(m/defmethod events/publish-event! ::table-read
+  "Handle processing for the table read event. Does a basic permissions check to see if the the user has data perms for
+  the table."
+  [topic {:keys [object user-id] :as event}]
+  (span/with-span!
+    {:name "view-log-table-read"
+     :topic topic
+     :user-id user-id}
+    (try
+      (let [table-id    (u/id object)
+            database-id (:db_id object)
+            has-access? (when (= api/*current-user-id* user-id)
+                          (query-perms/can-query-table? database-id table-id))]
+        (-> event
+            (assoc :has-access has-access?)
+            generate-view
+            record-views!))
+      (catch Throwable e
+        (log/warnf e "Failed to process view_log event. %s" topic)))))

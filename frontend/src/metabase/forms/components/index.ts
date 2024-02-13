@@ -7,4 +7,6 @@ export * from "./FormProvider";
 export * from "./FormRadioGroup";
 export * from "./FormSelect";
 export * from "./FormSubmitButton";
+export * from "./FormSwitch";
 export * from "./FormTextInput";
+export * from "./FormTextarea";

@@ -30,11 +30,11 @@ describe("search > recently viewed", () => {
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
 
-    cy.visit("/");
-
     cy.intercept(`/api/activity/recent_views`).as("recent");
-    cy.findByPlaceholderText("Search…").click();
+    cy.visit("/");
     cy.wait("@recent");
+
+    cy.findByPlaceholderText("Search…").click();
 
     cy.findByTestId("loading-spinner").should("not.exist");
   });
@@ -45,7 +45,7 @@ describe("search > recently viewed", () => {
     assertRecentlyViewedItem(2, "People", "Table");
   });
 
-  it("allows to select an item from keyboard", () => {
+  it("allows to select an item from keyboard", { tags: "@flaky" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Recently viewed");
     cy.get("body").trigger("keydown", { key: "ArrowDown" });

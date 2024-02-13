@@ -14,7 +14,6 @@
    [metabase-enterprise.content-verification.api.routes
     :as content-verification]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
-   [metabase-enterprise.serialization.api.routes :as serialization]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (compojure/defroutes ^{:doc "API routes only available when running Metabase® Enterprise Edition™."} routes
@@ -36,7 +35,4 @@
     (ee.api.common/+require-premium-feature :advanced-permissions (deferred-tru "Advanced Permissions") advanced-permissions/routes))
    (compojure/context
     "/logs" []
-    (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
-   (compojure/context
-    "/serialization" []
-    (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") serialization/routes))))
+    (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))))

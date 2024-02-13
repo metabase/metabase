@@ -3,11 +3,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.card-test :as api.card-test]
-   [metabase.models :refer [Card Collection Database PermissionsGroup PermissionsGroupMembership Table]]
+   [metabase.models :refer [Card Collection Database PermissionsGroup
+                            PermissionsGroupMembership Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest users-with-segmented-perms-test
   (testing "Users with segmented permissions should be able to save cards"
@@ -83,3 +86,11 @@
             (is (=? {:values          []
                      :has_more_values false}
                     (search :rasta)))))))))
+
+(deftest is-sandboxed-test
+  (testing "Adding a GTAP to the all users group to a table makes it such that is_sandboxed returns true."
+    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+      (t2.with-temp/with-temp [Card card {:database_id   (mt/id)
+                                          :table_id      (mt/id :categories)
+                                          :dataset_query (mt/mbql-query categories)}]
+        (is (get-in (qp/process-userland-query (:dataset_query card)) [:data :is_sandboxed]))))))

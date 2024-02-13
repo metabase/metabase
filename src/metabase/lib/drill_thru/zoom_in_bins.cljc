@@ -37,7 +37,6 @@
      options by 10."
   (:require
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
@@ -61,29 +60,26 @@
   (when (and column value)
     (when-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
       (when-let [binning (lib.binning/binning existing-breakout)]
-        (case (:strategy binning)
-          :num-bins
-          (when-let [{min-value :min, max-value :max, :as _number-fingerprint} (get-in column [:fingerprint :type :type/Number])]
-            (let [{:keys [num-bins]} binning
-                  bin-width (lib.binning.util/nicer-bin-width min-value max-value num-bins)]
-              {:lib/type    :metabase.lib.drill-thru/drill-thru
-               :type        :drill-thru/zoom-in.binning
-               :column      column
-               :min-value   value
-               :max-value   (+ value bin-width)
-               :new-binning {:strategy :default}}))
-
-          :bin-width
-          (let [{:keys [bin-width]} binning]
+        (when-let [{:keys [min-value max-value bin-width]} (lib.binning/resolve-bin-width column value)]
+          (case (:strategy binning)
+            :num-bins
             {:lib/type    :metabase.lib.drill-thru/drill-thru
              :type        :drill-thru/zoom-in.binning
              :column      column
              :min-value   value
              :max-value   (+ value bin-width)
-             :new-binning (update binning :bin-width #(double (/ % 10.0)))})
+             :new-binning {:strategy :default}}
 
-          :default
-          nil)))))
+            :bin-width
+            {:lib/type    :metabase.lib.drill-thru/drill-thru
+             :type        :drill-thru/zoom-in.binning
+             :column      column
+             :min-value   min-value
+             :max-value   max-value
+             :new-binning (update binning :bin-width #(double (/ % 10.0)))}
+
+            :default
+            nil))))))
 
 
 ;;;

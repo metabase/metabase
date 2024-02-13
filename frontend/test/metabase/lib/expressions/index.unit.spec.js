@@ -1,6 +1,6 @@
 import { quoteString, unquoteString } from "metabase-lib/expressions";
 
-describe("metabase-lib/expressions/format", () => {
+describe("metabase-lib/expressions", () => {
   // double- and single-quote
   const dq = str => quoteString(str, '"');
   const sq = str => quoteString(str, "'");

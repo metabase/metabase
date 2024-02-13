@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.events :as events]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
@@ -14,12 +15,11 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
-(defn- do-with-query-execution [query run]
+(defn do-with-query-execution [query run]
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
@@ -35,7 +35,7 @@
                 (:hash qe)         (update :hash (fn [^bytes a-hash]
                                                    (some-> a-hash codecs/bytes->hex)))))))))))
 
-(defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
+(defmacro with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
 
 (defn- process-userland-query
@@ -68,7 +68,7 @@
                :running_time           int?}
               (process-userland-query query))
           "Result should have query execution info")
-      (is (=? {:hash         "310be80813db561159a218a09fa84afb4bec04ae1f9e1a1d036c944dabcdbdb0"
+      (is (=? {:hash         "29f0bca06d6679e873b1f5a3a36dac18a5b4642c6545d24456ad34b1cad4ecc6"
                :database_id  nil
                :result_rows  0
                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
@@ -78,6 +78,7 @@
                :pulse_id     nil
                :card_id      nil
                :action_id    nil
+               :is_sandboxed false
                :context      nil
                :running_time true
                :cache_hit    false
@@ -112,8 +113,6 @@
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
-
-(derive :event/card-query ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [_topic _event]

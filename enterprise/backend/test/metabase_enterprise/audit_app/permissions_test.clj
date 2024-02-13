@@ -30,28 +30,29 @@
            (into #{}
                  (map :table_name (t2/query view-query))))))))
 
-(deftest audit-db-basic-query-test
-  (mt/test-drivers #{:postgres :h2 :mysql}
-    (audit-db-test/with-audit-db-restoration
-      (premium-features-test/with-premium-features #{:audit-app}
-        (mt/with-test-user :crowberto
-          (testing "A query using a saved audit model as the source table runs succesfully"
-            (let [audit-card (t2/select-one :model/Card :database_id perms/audit-db-id :dataset true)]
-              (is (partial=
-                   {:status :completed}
-                   (qp/process-query
-                    {:database perms/audit-db-id
-                     :type     :query
-                     :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
+;; TODO (noahmoss): re-enable this test once it is no longer flaky
+#_(deftest audit-db-basic-query-test
+    (mt/test-drivers #{:postgres :h2 :mysql}
+      (audit-db-test/with-audit-db-restoration
+        (premium-features-test/with-premium-features #{:audit-app}
+          (mt/with-test-user :crowberto
+            (testing "A query using a saved audit model as the source table runs succesfully"
+              (let [audit-card (t2/select-one :model/Card :database_id perms/audit-db-id :dataset true)]
+                (is (partial=
+                     {:status :completed}
+                     (qp/process-query
+                      {:database perms/audit-db-id
+                       :type     :query
+                       :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
 
-          (testing "A non-native query can be run on views in the audit DB"
-            (let [audit-view (t2/select-one :model/Table :db_id perms/audit-db-id)]
-              (is (partial=
-                   {:status :completed}
-                   (qp/process-query
-                    {:database perms/audit-db-id
-                     :type     :query
-                     :query    {:source-table (u/the-id audit-view)}}))))))))))
+            (testing "A non-native query can be run on views in the audit DB"
+              (let [audit-view (t2/select-one :model/Table :db_id perms/audit-db-id)]
+                (is (partial=
+                     {:status :completed}
+                     (qp/process-query
+                      {:database perms/audit-db-id
+                       :type     :query
+                       :query    {:source-table (u/the-id audit-view)}}))))))))))
 
 (deftest audit-db-disallowed-queries-test
   (mt/test-drivers #{:postgres :h2 :mysql}

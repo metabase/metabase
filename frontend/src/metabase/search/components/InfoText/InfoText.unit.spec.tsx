@@ -37,8 +37,7 @@ const MOCK_OTHER_USER = createMockUser({
 
 const CREATED_AT_TIME = "2022-01-01T00:00:00.000Z";
 const LAST_EDITED_TIME = "2023-01-01T00:00:00.000Z";
-const formatDuration = (timestamp: string) =>
-  moment.duration(moment().diff(moment(timestamp))).humanize();
+const formatDuration = (timestamp: string) => moment(timestamp).fromNow();
 
 const CREATED_AT_DURATION = formatDuration(CREATED_AT_TIME);
 const LAST_EDITED_DURATION = formatDuration(LAST_EDITED_TIME);
@@ -247,7 +246,7 @@ describe("InfoText", () => {
       await setup();
 
       expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
-        `Updated ${LAST_EDITED_DURATION} ago by ${MOCK_OTHER_USER.common_name}`,
+        `Updated ${LAST_EDITED_DURATION} by ${MOCK_OTHER_USER.common_name}`,
       );
     });
 
@@ -275,7 +274,7 @@ describe("InfoText", () => {
       });
 
       expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
-        `Created ${CREATED_AT_DURATION} ago`,
+        `Created ${CREATED_AT_DURATION}`,
       );
     });
 
@@ -288,7 +287,7 @@ describe("InfoText", () => {
       });
 
       expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
-        `Updated ${LAST_EDITED_DURATION} ago`,
+        `Updated ${LAST_EDITED_DURATION}`,
       );
     });
   });

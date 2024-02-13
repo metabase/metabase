@@ -13,13 +13,14 @@ import { updateSettings } from "metabase/admin/settings/settings";
 
 import type { State } from "metabase-types/store";
 
-import { Stack, Group } from "metabase/ui";
+import { Stack, Group, Text } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
 import Input from "metabase/core/components/Input";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
+import Alert from "metabase/core/components/Alert";
 
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";
@@ -163,10 +164,14 @@ export function UploadSettingsView({
     tablePrefix !== settings.uploads_table_prefix;
 
   const hasValidDatabases = databaseOptions.length > 0;
+  const isH2db = Boolean(
+    dbId && databases.find(db => db.id === dbId)?.engine === "h2",
+  );
 
   return (
     <PaddedForm aria-label={t`Upload Settings Form`}>
       <Header />
+      {isH2db && <H2PersistenceWarning />}
       <Group>
         <Stack>
           <SectionTitle>{t`Database to use for uploads`}</SectionTitle>
@@ -272,6 +277,16 @@ export function UploadSettingsView({
     </PaddedForm>
   );
 }
+
+const H2PersistenceWarning = () => (
+  <Stack my="md" maw={620}>
+    <Alert icon="warning" variant="warning">
+      <Text>
+        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database.`}
+      </Text>
+    </Alert>
+  </Stack>
+);
 
 const NoValidDatabasesMessage = () => (
   <>

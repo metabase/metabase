@@ -174,7 +174,12 @@
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
         (jdbc/execute! spec [set-timezone-sql])))
     (mt/with-database-timezone-id nil
-      (doseq [sql-args statements]
+      (doseq [sql-args statements
+              :let     [sql-args (if (string? sql-args)
+                                   [sql-args]
+                                   sql-args)]]
+        (assert (string? (first sql-args))
+                (format "Bad sql-args: %s" (pr-str sql-args)))
         (log/tracef "[insert] %s" (pr-str sql-args))
         (try
           ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?

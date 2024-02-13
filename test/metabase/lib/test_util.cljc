@@ -1,13 +1,14 @@
 (ns metabase.lib.test-util
   "Misc test utils for Metabase lib."
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -19,8 +20,7 @@
    [metabase.lib.test-util.metadata-providers.with-cards-for-queries :as providers.cards-for-queries]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.namespaces :as shared.ns]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli :as mu]))
 
 (comment providers.cards-for-queries/keep-me
          providers.merged-mock/keep-me
@@ -190,21 +190,6 @@
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
 
-(defn mock-card
-  "Given a `query`, returns a mock card with that query. Includes `:result-metadata` from calling
-  [[metabase.lib.metadata.calculation/returned-columns]]."
-  ([query] (mock-card query 1 "Mock card"))
-  ([query id title]
-   {:lib/type        :metadata/card
-    :id              id
-    :name            title
-    :database-id     (:id (lib.metadata/database query))
-    :dataset-query   (lib.convert/->legacy-MBQL query)
-    :result-metadata (->> query
-                          lib.metadata.calculation/returned-columns
-                          (sort-by :id)
-                          (mapv #(dissoc % :id :table-id)))}))
-
 (def mock-cards
   "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
 
@@ -235,7 +220,7 @@
                                   (->> (meta/fields table)
                                        (map (partial meta/field-metadata table))
                                        (sort-by :id)
-                                       (mapv #(dissoc % :id :table-id)))}))])))
+                                       (mapv #(if native? (dissoc % :table-id :id) %)))}))])))
         (meta/tables)))
 
 (defn metadata-provider-with-mock-card [card]
@@ -264,7 +249,9 @@
                        (throw (ex-info (str "No column named " (pr-str column-name) "; found: " (pr-str col-names))
                                        {:column column-name
                                         :found  col-names}))))]
-    (lib/ref metadata)))
+    (lib/ref (cond-> metadata
+               ;; This forces a string column in the presence of force-broken-id-refs
+               (::lib.card/force-broken-id-refs metadata) (dissoc :id)))))
 
 (mu/defn query-with-stage-metadata-from-card :- ::lib.schema/query
   "Convenience for creating a query that has `:lib/metadata` stage metadata attached to it from a Card. Note that this
@@ -279,7 +266,7 @@
   (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
                                   :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
                      metadata
-                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.util/->stage-metadata metadata)))]
+                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.util/->stage-metadata (mapv #(dissoc % :id :table-id) metadata))))]
     (lib.query/query metadata-providerable mbql-query)))
 
 (deftest ^:parallel card-source-query-test

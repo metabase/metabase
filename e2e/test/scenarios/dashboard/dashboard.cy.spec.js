@@ -976,6 +976,17 @@ describeWithSnowplow("scenarios > dashboard", () => {
     expectNoBadSnowplowEvents();
   });
 
+  it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    const newTitle = "New title";
+    cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
+    saveDashboard();
+    expectGoodSnowplowEvent({
+      event: "dashboard_saved",
+    });
+  });
+
   it("should allow users to add link cards to dashboards", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();

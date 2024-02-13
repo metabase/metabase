@@ -1,4 +1,9 @@
-import type { Bookmark, Collection } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
+} from "metabase-types/api";
 import {
   REGULAR_COLLECTION,
   COLLECTION_TYPES,
@@ -19,8 +24,12 @@ export function isRegularCollection({
 export function getCollectionType({
   authority_level,
   type,
-}: Partial<Collection>) {
-  return COLLECTION_TYPES[String(type || authority_level)];
+}: Partial<Collection>):
+  | CollectionAuthorityLevelConfig
+  | CollectionInstanceAnaltyicsConfig {
+  return (
+    COLLECTION_TYPES?.[String(type || authority_level)] ?? REGULAR_COLLECTION
+  );
 }
 
 export const getInstanceAnalyticsCustomCollection = (

@@ -124,7 +124,7 @@
       (is (=? {:definition_description nil}
               (t2/hydrate segment :definition_description))))))
 
-(deftest definition-description-test
+(deftest ^:parallel definition-description-test
   (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
                                             :definition (:query (mt/mbql-query venues
                                                                   {:filter

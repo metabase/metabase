@@ -18,24 +18,6 @@
   [topic event]
   (audit-log/record-event! topic event))
 
-(derive ::card-read-event :metabase/event)
-(derive :event/card-read ::card-read-event)
-
-(methodical/defmethod events/publish-event! ::card-read-event
-  [topic event]
-  (audit-log/record-event! topic event))
-
-(derive ::card-query-event ::event)
-(derive :event/card-query ::card-query-event)
-
-(methodical/defmethod events/publish-event! ::card-query-event
-  [topic {:keys [user-id card-id] :as object}]
-  (let [details (select-keys object [:cached :ignore_cache :context])]
-    (audit-log/record-event! topic {:details    details
-                                    :user-id    user-id
-                                    :model      :model/Card
-                                    :model-id   card-id})))
-
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-delete ::dashboard-event)
@@ -62,20 +44,13 @@
                                             (assoc :id id)
                                             (assoc :card_id card_id)))))]
     (audit-log/record-event! topic
-                               {:details  details
-                                :user-id  user-id
-                                :model    :model/Dashboard
-                                :model-id (u/id object)})))
+                             {:details  details
+                              :user-id  user-id
+                              :model    :model/Dashboard
+                              :model-id (u/id object)})))
 
-(derive ::dashboard-read-event ::event)
-(derive :event/dashboard-read ::dashboard-read-event)
-
-(methodical/defmethod events/publish-event! ::dashboard-read-event
-  [topic event]
-  (audit-log/record-event! topic event))
 
 (derive ::table-event ::event)
-(derive :event/table-read ::table-event)
 (derive :event/table-manual-scan ::table-event)
 
 (methodical/defmethod events/publish-event! ::table-event
@@ -215,5 +190,12 @@
 (derive :event/create-permission-failure ::permission-failure-event)
 
 (methodical/defmethod events/publish-event! ::permission-failure-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::settings-changed-event ::event)
+(derive :event/setting-update ::settings-changed-event)
+
+(methodical/defmethod events/publish-event! ::settings-changed-event
   [topic event]
   (audit-log/record-event! topic event))

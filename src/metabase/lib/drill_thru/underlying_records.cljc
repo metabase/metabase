@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
@@ -57,7 +58,17 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value        :- :any]
-  (lib.filter/filter query stage-number (lib.filter/= column value)))
+  (let [filter-clauses (or (when (lib.binning/binning column)
+                             (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width column value)]
+                               (let [unbinned-column (lib.binning/with-binning column nil)]
+                                 [(lib.filter/>= unbinned-column min-value)
+                                  (lib.filter/< unbinned-column max-value)])))
+                           [(lib.filter/= column value)])]
+    (reduce
+     (fn [query filter-clause]
+       (lib.filter/filter query stage-number filter-clause))
+     query
+     filter-clauses)))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
   [query _stage-number {:keys [column-ref dimensions]} & _]

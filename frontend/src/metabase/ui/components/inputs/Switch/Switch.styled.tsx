@@ -69,7 +69,6 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
         },
         label: {
           padding: 0,
-          fontWeight: 700,
           fontSize: getSize({ size, sizes: LABEL_FONT_SIZES }),
           lineHeight: getSize({ size, sizes: LABEL_LINE_HEIGHT }),
           color: theme.colors.text[2],

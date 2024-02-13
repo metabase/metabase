@@ -261,6 +261,45 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.findByText("463");
   });
 
+  it("should correctly apply breakout in query builder (metabase#14648)", () => {
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+
+    // canceled requests will still increment intercept counter
+    const NUMBER_OF_DATASET_REQUESTS = 8 * 2;
+    cy.intercept("POST", "/api/dataset").as("ordersDataset");
+
+    cy.log("wait for dashcard with 18,760 dataset");
+
+    waitForSatisfyingResponse(
+      "@ordersDataset",
+      { body: { data: { rows: [[18760]] } } },
+      NUMBER_OF_DATASET_REQUESTS,
+    );
+
+    getDashboardCards().contains("18,760").click();
+
+    popover().within(() => {
+      cy.findByText("Break out by…").click();
+      cy.findByText("Category").click();
+      cy.findByText("Source").click();
+    });
+
+    cy.url().should("contain", "/question");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findAllByTestId("chartsettings-field-picker")
+      .contains("User → Source")
+      .should("be.visible");
+
+    cy.get(".bar").should("have.length", 5);
+
+    cy.get(".bar").eq(0).realHover();
+    popover().within(() => {
+      cy.findByText("Affiliate").should("be.visible");
+      cy.findByText("3,520").should("be.visible");
+    });
+  });
+
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -292,3 +331,21 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       });
   });
 });
+
+function waitForSatisfyingResponse(
+  alias,
+  partialResponse,
+  maxRequests,
+  level = 0,
+) {
+  if (level === maxRequests) {
+    throw `${maxRequests} requests exceeded`; // fail the test
+  }
+
+  cy.wait(alias).then(interception => {
+    const isMatch = Cypress._.isMatch(interception.response, partialResponse);
+    if (!isMatch) {
+      waitForSatisfyingResponse(alias, partialResponse, maxRequests, level + 1);
+    }
+  });
+}

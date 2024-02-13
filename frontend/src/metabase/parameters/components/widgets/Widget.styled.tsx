@@ -34,5 +34,4 @@ UpdateButton.defaultProps = {
 
 export const TokenFieldWrapper = styled.div`
   margin: ${space(1)};
-  border: 1px solid ${color("border")};
 `;

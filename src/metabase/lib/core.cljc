@@ -111,13 +111,16 @@
   pivot-columns-for-type
   pivot-types]
  [lib.equality
-  find-column-for-legacy-ref]
+  find-column-for-legacy-ref
+  find-matching-column]
  [lib.expression
   expression
+  expression-name
   expressions
   expressions-metadata
   expressionable-columns
   expression-ref
+  with-expression-name
   +
   -
   *

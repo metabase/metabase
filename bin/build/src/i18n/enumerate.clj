@@ -16,7 +16,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private roots (into [] (map (partial str u/project-root-directory))
-                           ["/src" "/shared/src" "/enterprise/backend/src"
+                           ["/src"
+                            "/enterprise/backend/src"
                             "/modules/drivers/bigquery-cloud-sdk/src"
                             "/modules/drivers/druid/src"
                             "/modules/drivers/google/src"

@@ -211,8 +211,10 @@
 
 (defmethod rename-key-fn :field
   [_object-type]
-  {:source :lib/source
-   :unit   :metabase.lib.field/temporal-unit})
+  {:source          :lib/source
+   :unit            :metabase.lib.field/temporal-unit
+   :expression-name :lib/expression-name
+   :binning-info    :metabase.lib.field/binning})
 
 (defn- parse-field-id
   [id]
@@ -220,6 +222,20 @@
     ;; sometimes instead of an ID we get a field reference
     ;; with the name of the column in the second position
     (vector? id) second))
+
+(defn- parse-binning-info
+  [m]
+  (obj->clj
+   (map (fn [[k v]]
+          (let [k (keyword (u/->kebab-case-en k))
+                k (if (= k :binning-strategy)
+                    :strategy
+                    k)
+                v (if (= k :strategy)
+                    (keyword v)
+                    v)]
+            [k v])))
+   m))
 
 (defmethod parse-field-fn :field
   [_object-type]
@@ -240,6 +256,7 @@
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
+      :metabase.lib.field/binning       (parse-binning-info v)
       v)))
 
 (defmethod parse-objects :field

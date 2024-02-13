@@ -202,92 +202,119 @@ describe("scenarios > dashboard card resizing", () => {
     cy.signInAsAdmin();
   });
 
-  it("should display all visualization cards with their default sizes", () => {
-    TEST_QUESTIONS.forEach(question => {
-      cy.createQuestion(question);
-    });
-    cy.createDashboard().then(({ body: { id: dashId } }) => {
-      visitDashboard(dashId);
-
-      cy.findByTestId("dashboard-header").within(() => {
-        cy.findByLabelText("Edit dashboard").click();
-        cy.findByLabelText("Add questions").click();
-      });
-
+  it(
+    "should display all visualization cards with their default sizes",
+    { requestTimeout: 15000, tags: "@slow" },
+    () => {
       TEST_QUESTIONS.forEach(question => {
-        cy.findByLabelText(question.name).click();
+        cy.createQuestion(question);
       });
+      cy.createDashboard().then(({ body: { id: dashId } }) => {
+        visitDashboard(dashId);
 
-      saveDashboard();
-
-      cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-        body.dashcards.forEach(({ card, size_x, size_y }) => {
-          const { height, width } = getDefaultSize(card.display);
-          expect(size_x).to.equal(width);
-          expect(size_y).to.equal(height);
-        });
-      });
-    });
-  });
-
-  it(`should not allow cards to be resized smaller than min height`, () => {
-    const cardIds = [];
-    TEST_QUESTIONS.forEach(question => {
-      cy.createQuestion(question).then(({ body: { id } }) => {
-        cardIds.push(id);
-      });
-    });
-    cy.createDashboard().then(({ body: { id: dashId } }) => {
-      cy.request("PUT", `/api/dashboard/${dashId}`, {
-        dashcards: cardIds.map((cardId, index) => ({
-          id: index,
-          card_id: cardId,
-          row: index * 2,
-          col: 0,
-          size_x: 2,
-          size_y: 2,
-        })),
-      });
-      visitDashboard(dashId);
-      editDashboard();
-
-      cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-        const dashcards = body.dashcards;
-        dashcards.forEach(({ card }) => {
-          const dashcard = cy.contains(".DashCard", card.name);
-          resizeDashboardCard({
-            card: dashcard,
-            x: getDefaultSize(card.display).width * 100,
-            y: getDefaultSize(card.display).height * 100,
-          });
+        cy.findByTestId("dashboard-header").within(() => {
+          cy.findByLabelText("Edit dashboard").click();
+          cy.findByLabelText("Add questions").click();
         });
 
-        saveDashboard();
-        editDashboard();
+        /**
+         * Metabase sorts all questions in the sidebar alphabetically.
+         * It makes sense to sort them out here as well in order to avoid
+         * Cypress "jumping" up and down while clicking on them.
+         * It will go in order from top to the bottom, which scrolls the
+         * sidebar naturally. This prevents acting on an element that's not visible.
+         */
+        const sortedCards = TEST_QUESTIONS.sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
 
-        dashcards.forEach(({ card }) => {
-          const dashcard = cy.contains(".DashCard", card.name);
-          dashcard.within(() => {
-            resizeDashboardCard({
-              card: dashcard,
-              x: -getDefaultSize(card.display).width * 200,
-              y: -getDefaultSize(card.display).height * 200,
-            });
-          });
+        /**
+         * After each card is added to the dashboard from the sidebar, there is a
+         * request to load the card query. We need to wait for each of those before
+         * we attempt to add a new card. Otherwise the save dashboard might fail
+         * because Cypress is too fast.
+         */
+        cy.intercept("POST", "/api/card/**/query").as("cardQuery");
+        sortedCards.forEach(question => {
+          cy.findByLabelText(question.name).should("be.visible").click();
+          cy.wait("@cardQuery");
         });
 
         saveDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.dashcards.forEach(({ card, size_x, size_y }) => {
-            const { height, width } = getMinSize(card.display);
+            const { height, width } = getDefaultSize(card.display);
             expect(size_x).to.equal(width);
             expect(size_y).to.equal(height);
           });
         });
       });
-    });
-  });
+    },
+  );
+
+  it(
+    `should not allow cards to be resized smaller than min height`,
+    { requestTimeout: 15000, tags: "@slow" },
+    () => {
+      const cardIds = [];
+      TEST_QUESTIONS.forEach(question => {
+        cy.createQuestion(question).then(({ body: { id } }) => {
+          cardIds.push(id);
+        });
+      });
+      cy.createDashboard().then(({ body: { id: dashId } }) => {
+        cy.request("PUT", `/api/dashboard/${dashId}`, {
+          dashcards: cardIds.map((cardId, index) => ({
+            id: index,
+            card_id: cardId,
+            row: index * 2,
+            col: 0,
+            size_x: 2,
+            size_y: 2,
+          })),
+        });
+        visitDashboard(dashId);
+        editDashboard();
+
+        cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+          const dashcards = body.dashcards;
+          dashcards.forEach(({ card }) => {
+            const dashcard = cy.contains(".DashCard", card.name);
+            resizeDashboardCard({
+              card: dashcard,
+              x: getDefaultSize(card.display).width * 100,
+              y: getDefaultSize(card.display).height * 100,
+            });
+          });
+
+          saveDashboard();
+          editDashboard();
+
+          dashcards.forEach(({ card }) => {
+            const dashcard = cy.contains(".DashCard", card.name);
+            dashcard.within(() => {
+              resizeDashboardCard({
+                card: dashcard,
+                x: -getDefaultSize(card.display).width * 200,
+                y: -getDefaultSize(card.display).height * 200,
+              });
+            });
+          });
+
+          saveDashboard();
+
+          cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+            body.dashcards.forEach(({ card, size_x, size_y }) => {
+              const { height, width } = getMinSize(card.display);
+              expect(size_x).to.equal(width);
+              expect(size_y).to.equal(height);
+            });
+          });
+        });
+      });
+    },
+  );
 
   describe("metabase#31701 - preventing link dashboard card overflows", () => {
     viewports.forEach(([width, height]) => {

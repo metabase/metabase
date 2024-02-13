@@ -62,7 +62,7 @@ const userName = metadata
 const segment = metadata.segment(SEGMENT_ID).filterClause();
 const metric = metadata.metric(METRIC_ID).aggregationClause();
 
-const query = metadata.table(ORDERS_ID).query().addExpression("foo", 42);
+const legacyQuery = metadata.table(ORDERS_ID).query().addExpression("foo", 42);
 
 // shared test cases used in compile, formatter, and syntax tests:
 //
@@ -287,9 +287,9 @@ const filter = [
 ];
 
 export default [
-  ["expression", expression, { startRule: "expression", query }],
-  ["aggregation", aggregation, { startRule: "aggregation", query }],
-  ["filter", filter, { startRule: "boolean", query }],
+  ["expression", expression, { startRule: "expression", legacyQuery }],
+  ["aggregation", aggregation, { startRule: "aggregation", legacyQuery }],
+  ["filter", filter, { startRule: "boolean", legacyQuery }],
 ];
 
 /**
