@@ -32,6 +32,13 @@ export const groupModels = (
   const sortFunction = (a: SearchResult[], b: SearchResult[]) => {
     const collection1 = a[0].collection;
     const collection2 = b[0].collection;
+
+    const collection1AL = collection1.authority_level ?? "z";
+    const collection2AL = collection2.authority_level ?? "z";
+    if (collection1AL !== collection2AL) {
+      return collection1AL.localeCompare(collection2AL, locale);
+    }
+
     const name1 = getCollectionName(collection1);
     const name2 = getCollectionName(collection2);
     return name1.localeCompare(name2, locale);
@@ -39,3 +46,8 @@ export const groupModels = (
   groupsOfModels.sort(sortFunction);
   return groupsOfModels;
 };
+
+export type BrowseTabId = "models" | "databases";
+
+export const isValidBrowseTab = (value: unknown): value is BrowseTabId =>
+  value === "models" || value === "databases";

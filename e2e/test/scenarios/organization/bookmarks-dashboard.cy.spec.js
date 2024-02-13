@@ -17,9 +17,7 @@ describe("scenarios > dashboard > bookmarks", () => {
     openNavigationSidebar();
 
     // Add bookmark
-    cy.get("main header").within(() => {
-      cy.icon("bookmark").click();
-    });
+    cy.get("main header").icon("bookmark").click();
 
     navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard");
@@ -33,9 +31,7 @@ describe("scenarios > dashboard > bookmarks", () => {
     });
 
     // Remove bookmark
-    cy.get("main header").within(() => {
-      cy.icon("bookmark").click();
-    });
+    cy.get("main header").icon("bookmark_filled").click();
 
     navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard 2").should("not.exist");
