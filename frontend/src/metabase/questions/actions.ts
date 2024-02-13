@@ -21,9 +21,13 @@ const loadMetadata =
   (card: Card, options?: LoadMetadataOptions) =>
   (dispatch: Dispatch, getState: GetState) => {
     const question = new Question(card, getMetadata(getState()));
+    const queries =
+      question.type() === "question"
+        ? [question.query()]
+        : [question.query(), question.composeDataset().query()];
     const dependencies = [
       ...question.dependentMetadata(),
-      ...Lib.dependentMetadata(question.composeDataset().query()),
+      ...queries.flatMap(query => Lib.dependentMetadata(query)),
     ];
     return dispatch(loadMetadataForDependentItems(dependencies, options));
   };

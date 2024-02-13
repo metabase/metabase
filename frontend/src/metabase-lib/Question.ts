@@ -261,8 +261,8 @@ class Question {
     return this._card && this._card.dataset;
   }
 
-  type(): CardType | undefined {
-    return this._card && this._card.type;
+  type(): CardType {
+    return this._card?.type ?? "question";
   }
 
   /**
