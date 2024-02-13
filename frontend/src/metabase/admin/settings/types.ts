@@ -8,6 +8,7 @@ import type {
 
 export type SettingElement = {
   key?: SettingKey;
+  tab?: string;
   display_name?: string;
   type?: string;
   description?: string;

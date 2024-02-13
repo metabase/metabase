@@ -16,7 +16,7 @@ import {
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { Anchor } from "metabase/ui";
+import { Anchor, Text } from "metabase/ui";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import { LandingPageWidget } from "./components/LandingPageWidget";
@@ -38,11 +38,25 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     whitelabel: {
       name: t`Appearance`,
-      settings: [
+      tabs: [
         {
-          key: "application-name",
-          display_name: t`Application Name`,
-          type: "string",
+          name: t`Branding`,
+          key: "branding",
+        },
+        {
+          name: t`Conceal Metabase`,
+          key: "conceal-metabase",
+        },
+      ],
+      settings: [
+        // 1. Branding tab
+        {
+          key: "-branding-introduction",
+          widget: () => (
+            <Text>
+              Configure your instance to match your brand visuals and voice
+            </Text>
+          ),
         },
         {
           key: "application-font",
@@ -84,8 +98,52 @@ if (hasPremiumFeature("whitelabel")) {
           options: getLoadingMessageOptions(),
           defaultValue: "doing-science",
         },
+
+        // 2. Conceal Metabase tab
+        {
+          key: "-conceal-metabase-introduction",
+          tab: "conceal-metabase",
+          widget: () => (
+            <Text>
+              Hide or customize pieces of the Metabase product to tailor the
+              experience to your brand and needs
+            </Text>
+          ),
+        },
+        {
+          key: "application-name",
+          tab: "conceal-metabase",
+          display_name: t`Application Name`,
+          type: "string",
+        },
+        {
+          key: "show-lighthouse-illustration",
+          tab: "conceal-metabase",
+          display_name: t`Lighthouse illustration`,
+          description: null,
+          type: "boolean",
+          widget: LighthouseToggleWidget,
+          defaultValue: true,
+        },
+        {
+          key: "show-metabase-links",
+          tab: "conceal-metabase",
+          display_name: t`Documentation and references`,
+          description: <MetabaseLinksToggleDescription />,
+          widget: MetabaseLinksToggleWidget,
+        },
+        {
+          key: "show-metabot",
+          tab: "conceal-metabase",
+          display_name: t`Metabot greeting`,
+          description: null,
+          type: "boolean",
+          widget: MetabotToggleWidget,
+          defaultValue: true,
+        },
         {
           key: "help-link",
+          tab: "conceal-metabase",
           display_name: t`Help Link in the Settings menu`,
           description: (
             <p>
@@ -96,28 +154,6 @@ if (hasPremiumFeature("whitelabel")) {
           ),
           widget: HelpLinkSettings,
           defaultValue: "metabase",
-        },
-        {
-          key: "show-metabot",
-          display_name: t`Metabot greeting`,
-          description: null,
-          type: "boolean",
-          widget: MetabotToggleWidget,
-          defaultValue: true,
-        },
-        {
-          key: "show-lighthouse-illustration",
-          display_name: t`Lighthouse illustration`,
-          description: null,
-          type: "boolean",
-          widget: LighthouseToggleWidget,
-          defaultValue: true,
-        },
-        {
-          key: "show-metabase-links",
-          display_name: t`Documentation and references`,
-          description: <MetabaseLinksToggleDescription />,
-          widget: MetabaseLinksToggleWidget,
         },
       ],
     },
