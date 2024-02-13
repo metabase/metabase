@@ -10,8 +10,10 @@ export const BillingGoToStore = () => {
   return (
     <>
       <SectionHeader>{t`Billing`}</SectionHeader>
+      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
       <Text color="text-md">{t`Manage your Cloud account, including billing preferences, in your Metabase Store account.`}</Text>
       <StoreButtonLink href={url}>
+        {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
         {t`Go to the Metabase Store`}
       </StoreButtonLink>
     </>
