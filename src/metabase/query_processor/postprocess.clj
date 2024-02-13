@@ -74,21 +74,3 @@
         (throw (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
                         {:query preprocessed-query, :type qp.error-type/qp}
                         e))))))
-
-#_(mu/defn post-processing-rf :- fn?
-  [preprocessed-query :- :map
-   initial-metadata   :- [:map [:cols [:sequential :map]]]
-   rff                :- fn?]
-  (let [rff (post-processing-rff preprocessed-query rff)]
-    (rff initial-metadata)))
-
-#_(mu/defn post-process
-  [preprocessed-query :- :map
-   initial-metadata   :- [:map [:cols [:sequential :map]]]
-   rff                :- fn?
-   rows]
-  (let [rf (post-processing-rf preprocessed-query initial-metadata rff)]
-    (transduce
-     identity
-     rf
-     rows)))

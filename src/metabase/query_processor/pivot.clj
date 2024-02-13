@@ -12,6 +12,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -151,10 +152,10 @@
 
 (mu/defn ^:private process-query-append-results
   "Reduce the results of a single `query` using `rf` and initial value `init`."
-  [query :- map?
+  [query :- ::qp.schema/query
    rf    :- ifn?
    init  :- :any
-   info  :- map?]
+   info  :- [:maybe :map]]
   (if (qp.pipeline/canceled?)
     (ensure-reduced init)
     (let [rff (fn [_metadata]
@@ -170,9 +171,12 @@
           (log/error e (trs "Error processing additional pivot table query"))
           (throw e))))))
 
-(defn- process-queries-append-results
+(mu/defn ^:private process-queries-append-results
   "Reduce the results of a sequence of `queries` using `rf` and initial value `init`."
-  [init queries rf info]
+  [init
+   queries :- [:sequential ::qp.schema/query]
+   rf      :- ifn?
+   info    :- [:maybe :map]]
   (reduce
    (fn [acc query]
      (binding [*pivot-column-mapping* (*column-mapping-fn* query)]
@@ -180,9 +184,11 @@
    init
    queries))
 
-(defn- append-queries-rff-and-fns
+(mu/defn ^:private append-queries-rff-and-fns
   "RFF and QP pipeline functions to use when executing pivot queries."
-  [info rff more-queries]
+  [info         :- [:maybe :map]
+   rff          :- ::qp.schema/rff
+   more-queries :- [:sequential ::qp.schema/query]]
   (let [vrf (volatile! nil)]
     {:rff     (fn rff* [metadata]
                 (u/prog1 (rff metadata)
@@ -260,13 +266,14 @@
     {:pivot-rows pivot-rows
      :pivot-cols pivot-cols}))
 
-(defn run-pivot-query
+(mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
   ([query]
    (run-pivot-query query nil))
 
-  ([query rff]
+  ([query :- ::qp.schema/query
+    rff   :- [:maybe ::qp.schema/rff]]
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
        (let [rff                     (or rff qp.reducible/default-rff)
@@ -278,7 +285,7 @@
              col-determination-query (add-grouping-field query main-breakout 0)
              all-expected-cols       (qp.preprocess/query->expected-cols col-determination-query)
              all-queries             (generate-queries query pivot-options)]
-         (binding [ ;; this function needs to be executed at the start of every new query to
+         (binding [;; this function needs to be executed at the start of every new query to
                    ;; determine the mapping for maintaining query shape
                    *column-mapping-fn* (fn [query]
                                          (let [query-cols (map-indexed vector (qp.preprocess/query->expected-cols query))]
