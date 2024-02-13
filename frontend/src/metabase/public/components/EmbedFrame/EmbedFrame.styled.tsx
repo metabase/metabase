@@ -36,13 +36,11 @@ export const Root = styled.div<{
     `}
 `;
 
-export const ContentContainer = styled.div<{ hasScroll: boolean }>`
+export const ContentContainer = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
   position: relative;
-
-  overflow-y: ${props => props.hasScroll && "auto"};
 `;
 
 export const Header = styled.header`
@@ -104,6 +102,14 @@ const footerVariantStyles = {
 };
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)`
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 2;
+
+  background-color: ${color("white")};
+
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 `;

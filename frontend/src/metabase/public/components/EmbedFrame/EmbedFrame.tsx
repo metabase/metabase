@@ -155,7 +155,7 @@ function EmbedFrame({
       })}
       data-testid="embed-frame"
     >
-      <ContentContainer hasScroll={hasInnerScroll}>
+      <ContentContainer>
         {hasHeader && (
           <Header className="EmbedFrame-header">
             {finalName && (
@@ -183,33 +183,33 @@ function EmbedFrame({
               </DashboardTabsContainer>
             )}
             <Separator />
-            {hasParameters && (
-              <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
-                <ParametersFixedWidthContainer
-                  data-testid="fixed-width-filters"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  <SyncedParametersList
-                    question={question}
-                    dashboard={dashboard}
-                    parameters={getValuePopulatedParameters({
-                      parameters,
-                      values: _.isEmpty(draftParameterValues)
-                        ? parameterValues
-                        : draftParameterValues,
-                    })}
-                    setParameterValue={setParameterValue}
-                    hideParameters={hideParameters}
-                    setParameterValueToDefault={setParameterValueToDefault}
-                    enableParameterRequiredBehavior={
-                      enableParameterRequiredBehavior
-                    }
-                  />
-                  {dashboard && <FilterApplyButton />}
-                </ParametersFixedWidthContainer>
-              </ParametersWidgetContainer>
-            )}
           </Header>
+        )}
+        {hasParameters && (
+          <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
+            <ParametersFixedWidthContainer
+              data-testid="fixed-width-filters"
+              isFixedWidth={dashboard?.width === "fixed"}
+            >
+              <SyncedParametersList
+                question={question}
+                dashboard={dashboard}
+                parameters={getValuePopulatedParameters({
+                  parameters,
+                  values: _.isEmpty(draftParameterValues)
+                    ? parameterValues
+                    : draftParameterValues,
+                })}
+                setParameterValue={setParameterValue}
+                hideParameters={hideParameters}
+                setParameterValueToDefault={setParameterValueToDefault}
+                enableParameterRequiredBehavior={
+                  enableParameterRequiredBehavior
+                }
+              />
+              {dashboard && <FilterApplyButton />}
+            </ParametersFixedWidthContainer>
+          </ParametersWidgetContainer>
         )}
         <Body>{children}</Body>
       </ContentContainer>
