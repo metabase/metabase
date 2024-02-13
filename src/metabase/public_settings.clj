@@ -385,10 +385,7 @@
   :audit      :getter)
 
 (defsetting application-colors
-  (deferred-tru
-    (str "These are the primary colors used in charts and throughout {0}. "
-         "You might need to refresh your browser to see your changes take effect.")
-    (application-name-for-setting-descriptions))
+  (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You might need to refresh your browser to see your changes take effect.")
   :visibility :public
   :export?    true
   :type       :json
