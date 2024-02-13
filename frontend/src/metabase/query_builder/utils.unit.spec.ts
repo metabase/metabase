@@ -106,6 +106,11 @@ const getNativeQuestionLocations = (question: Question) => [
   createMockLocation({ pathname: `/question/${question.slug()}` }),
 ];
 
+const runModelLocation = createMockLocation({
+  pathname: "/model",
+  hash: `#${serializeCardForUrl(nativeModelCard)}`,
+});
+
 const runNewModelLocation = createMockLocation({
   pathname: "/model/query",
   hash: `#${serializeCardForUrl(nativeModelCard)}`,
@@ -159,6 +164,7 @@ describe("isNavigationAllowed", () => {
       ...getNativeQuestionLocations(nativeQuestion),
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
+      runModelLocation,
       runNewModelLocation,
       runQuestionLocation,
       runQuestionEditNotebookLocation,
@@ -185,6 +191,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
+        runModelLocation,
         runNewModelLocation,
         runQuestionLocation,
         runQuestionEditNotebookLocation,
@@ -217,6 +224,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
+        runModelLocation,
         runNewModelLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
@@ -295,6 +303,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
+        runModelLocation,
         runNewModelLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
@@ -365,6 +374,14 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
+    it("allows to run edited model", () => {
+      const destination = runModelLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
@@ -396,6 +413,14 @@ describe("isNavigationAllowed", () => {
 
     it("allows to run the model", () => {
       const destination = getRunModelLocation(nativeModelQuestion);
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    it("allows to run edited model", () => {
+      const destination = runModelLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
