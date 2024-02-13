@@ -185,6 +185,7 @@ export const getChartMeasurements = (
   rightAxisModel: YAxisModel | null,
   xAxisModel: XAxisModel,
   settings: ComputedVisualizationSettings,
+  chartWidth: number,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ): ChartMeasurements => {
@@ -200,7 +201,7 @@ export const getChartMeasurements = (
   const padding = getChartPadding(leftAxisModel, rightAxisModel, settings);
 
   const boundaryWidth =
-    0 - // width
+    chartWidth -
     padding.left -
     padding.right -
     ticksDimensions.yTicksWidthLeft -

@@ -50,6 +50,7 @@ export function useModelsAndOption({
         return getWaterfallChartModel(
           seriesToRender,
           settings,
+          width,
           hasTimelineEvents,
           renderingContext,
         );
@@ -57,6 +58,7 @@ export function useModelsAndOption({
         return getCartesianChartModel(
           seriesToRender,
           settings,
+          width,
           hasTimelineEvents,
           renderingContext,
         );
@@ -67,6 +69,7 @@ export function useModelsAndOption({
     settings,
     renderingContext,
     timelineEvents,
+    width,
   ]);
 
   const timelineEventsModel = useMemo(
@@ -74,11 +77,9 @@ export function useModelsAndOption({
       getTimelineEventsModel(
         chartModel,
         timelineEvents ?? [],
-        settings,
-        width,
         renderingContext,
       ),
-    [chartModel, timelineEvents, settings, width, renderingContext],
+    [chartModel, timelineEvents, renderingContext],
   );
 
   const option = useMemo(() => {

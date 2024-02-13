@@ -10,10 +10,7 @@ import type {
   DateRange,
   TimelineEventGroup,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+import type { RenderingContext } from "metabase/visualizations/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
@@ -49,18 +46,10 @@ const getDimensionRange = (
 const getDayWidth = (
   range: DateRange,
   chartMeasurements: ChartMeasurements,
-  width: number,
 ) => {
   const daysCount = Math.abs(dayjs(range[1]).diff(range[0], "day"));
 
-  const boundaryWidth =
-    width -
-    chartMeasurements.padding.left -
-    chartMeasurements.padding.right -
-    chartMeasurements.ticksDimensions.yTicksWidthLeft -
-    chartMeasurements.ticksDimensions.yTicksWidthRight;
-
-  return boundaryWidth / daysCount;
+  return chartMeasurements.boundaryWidth / daysCount;
 };
 
 const groupEventsByUnitStart = (
@@ -173,8 +162,6 @@ const getTimelineEventsInsideRange = (
 export const getTimelineEventsModel = (
   chartModel: CartesianChartModel,
   timelineEvents: TimelineEvent[],
-  settings: ComputedVisualizationSettings,
-  width: number,
   renderingContext: RenderingContext,
 ) => {
   if (timelineEvents.length === 0) {
@@ -201,11 +188,7 @@ export const getTimelineEventsModel = (
     chartModel.dimensionModel.column.unit ?? "day", // TODO: compute binning unit for native questions
   );
 
-  const dayWidth = getDayWidth(
-    dimensionRange,
-    chartModel.chartMeasurements,
-    width,
-  );
+  const dayWidth = getDayWidth(dimensionRange, chartModel.chartMeasurements);
   return mergeOverlappingTimelineEventGroups(
     timelineEventsByUnitStart,
     dayWidth,

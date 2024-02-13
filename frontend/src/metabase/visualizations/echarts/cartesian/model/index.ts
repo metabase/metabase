@@ -68,6 +68,7 @@ export const getCardsSeriesModels = (
 export const getCartesianChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  chartWidth: number,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ): CartesianChartModel => {
@@ -134,6 +135,7 @@ export const getCartesianChartModel = (
     rightAxisModel,
     xAxisModel,
     settings,
+    chartWidth,
     hasTimelineEvents,
     renderingContext,
   );
