@@ -369,12 +369,14 @@ describeWithSnowplow("scenarios > setup", () => {
     // 3 - setup/step_seen "welcome"
     expectGoodSnowplowEvent({
       event: "step_seen",
+      step_number: 0,
       step: "welcome",
     });
     skipWelcomePage();
     // 4 - setup/step_seen  "language"
     expectGoodSnowplowEvent({
       event: "step_seen",
+      step_number: 1,
       step: "language",
     });
     selectPreferredLanguageAndContinue();
@@ -382,6 +384,7 @@ describeWithSnowplow("scenarios > setup", () => {
     // 5 - setup/step_seen "user_info"
     expectGoodSnowplowEvent({
       event: "step_seen",
+      step_number: 2,
       step: "user_info",
     });
     cy.findByTestId("setup-forms").within(() => {
@@ -391,6 +394,7 @@ describeWithSnowplow("scenarios > setup", () => {
       // 6 - setup/step_seen "usage_question"
       expectGoodSnowplowEvent({
         event: "step_seen",
+        step_number: 3,
         step: "usage_question",
       });
       cy.button("Next").click();
@@ -403,6 +407,7 @@ describeWithSnowplow("scenarios > setup", () => {
       // 8 - setup/step_seen "db_connection"
       expectGoodSnowplowEvent({
         event: "step_seen",
+        step_number: 4,
         step: "db_connection",
       });
       cy.findByText("I'll add my data later").click();
@@ -413,11 +418,22 @@ describeWithSnowplow("scenarios > setup", () => {
       // 10 - setup/step_seen "data_usage"
       expectGoodSnowplowEvent({
         event: "step_seen",
+        step_number: 5,
         step: "data_usage",
+      });
+
+      cy.findByRole("button", { name: "Finish" }).click();
+      // 11 - new_user_created (from BE)
+
+      // 12- setup/step_seen "completed"
+      expectGoodSnowplowEvent({
+        event: "step_seen",
+        step_number: 6,
+        step: "completed",
       });
     });
 
-    expectGoodSnowplowEvents(10);
+    expectGoodSnowplowEvents(12);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
