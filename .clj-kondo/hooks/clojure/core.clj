@@ -21,7 +21,9 @@
      toucan2.core/delete!
      toucan2.core/update!
      toucan2.core/insert!
+     toucan2.core/insert-returning-instance!
      toucan2.core/insert-returning-instances!
+     toucan2.core/insert-returning-pk!
      toucan2.core/insert-returning-pks!
      clojure.core.async/<!!
      clojure.core.async/>!!
@@ -40,6 +42,9 @@
      methodical.core/add-aux-method-with-unique-key!
      methodical.core/remove-aux-method-with-unique-key!
      next.jdbc/execute!
+
+     ;; Definitely thread safe
+     metabase.test.util.dynamic-redefs/patch-vars!
 
      ;; TODO: most of these symbols shouldn't be here, we should go through them and
      ;; find the functions/macros that use them and make sure their names end with !

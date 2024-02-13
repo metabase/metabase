@@ -15,6 +15,7 @@ import type {
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
+  Dashboard,
   Dataset,
   Group,
   GroupPermissions,
@@ -128,8 +129,10 @@ export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
   getLoadingMessage: (_state: State) => t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
+  // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
+  getDashboardOverviewId: (_state: State) => undefined,
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
@@ -251,10 +254,12 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
+  auditInfo: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
+  auditInfo: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -322,4 +327,12 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
+};
+
+export const PLUGIN_DASHBOARD_HEADER = {
+  extraButtons: (_dashboard: Dashboard) => [],
+};
+
+export const PLUGIN_QUERY_BUILDER_HEADER = {
+  extraButtons: (_question: Question) => [],
 };

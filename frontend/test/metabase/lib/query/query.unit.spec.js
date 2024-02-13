@@ -93,20 +93,6 @@ describe("Query", () => {
         .toEqual({});
     });
   });
-  describe("clearAggregations", () => {
-    it("should remove all aggregations", () => {
-      expect(Query.clearAggregations({ aggregation: [["count"]] })).toEqual({});
-      expect(
-        Query.clearAggregations({
-          aggregation: [["count"], ["sum", ["field", 1, null]]],
-        }),
-      ).toEqual({});
-    });
-    it("should remove all aggregations for deprecated form", () => {
-      expect(Query.clearAggregations({ aggregation: ["count"] })) // deprecated
-        .toEqual({});
-    });
-  });
 
   describe("updateBreakout", () => {
     it("should update the field", () => {

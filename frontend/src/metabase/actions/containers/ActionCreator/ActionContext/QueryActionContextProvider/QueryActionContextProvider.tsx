@@ -59,6 +59,8 @@ function convertActionToQuestionCard(
 ): Card<NativeDatasetQuery> {
   return {
     id: action.id,
+    created_at: action.created_at,
+    updated_at: action.updated_at,
     name: action.name,
     description: action.description,
     dataset_query: action.dataset_query,
@@ -67,6 +69,7 @@ function convertActionToQuestionCard(
       action.visualization_settings as VisualizationSettings,
 
     dataset: false,
+    type: "question",
     can_write: true,
     public_uuid: null,
     collection_id: null,
@@ -76,6 +79,7 @@ function convertActionToQuestionCard(
     average_query_time: null,
     archived: false,
     enable_embedding: false,
+    initially_published_at: null,
   };
 }
 

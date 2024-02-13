@@ -765,6 +765,7 @@
                             (= col :table_id)          (mt/id :venues)
                             (= col :database_id)       (:id db)
                             (= col :query_type)        :native
+                            (= col :type)              "model"
                             (= col :dataset_query)     (mt/mbql-query users)
                             (= col :visualization_settings) {:text "now it's a text card"}
                             (int? value)               (inc value)

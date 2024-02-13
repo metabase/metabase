@@ -431,7 +431,8 @@
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                       clojure.core/let
   metabase.domain-entities.malli/defn                                                  schema.core/defn
   metabase.driver.mongo.query-processor/mongo-let                                      clojure.core/let
-  metabase.driver.mongo.util/with-mongo-connection                                     clojure.core/let
+  metabase.driver.mongo.connection/with-mongo-client                                   clojure.core/let
+  metabase.driver.mongo.connection/with-mongo-database                                 clojure.core/let
   metabase.driver.sql-jdbc.actions/with-jdbc-transaction                               clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection      clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                clojure.core/fn
@@ -464,6 +465,7 @@
   metabase.test/with-temp-empty-app-db                                                 clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
+  metabase.upload-test/with-upload-table!                                              clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.malli.defn/defn                                                        schema.core/defn
   metabase.util.malli.fn/fn                                                            schema.core/fn

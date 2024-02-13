@@ -54,18 +54,21 @@ describe("scenarios > organization > bookmarks > collection", () => {
     // Rename bookmarked collection
     cy.findByTestId("collection-name-heading").click().type(" 2").blur();
 
-    navigationSidebar().within(() => {
-      cy.findAllByText("First collection 2").should("have.length", 2);
-    });
+    navigationSidebar()
+      .findAllByText("First collection 2")
+      .should("have.length", 2);
 
     // Remove bookmark
-    cy.findByTestId("collection-menu").within(() => {
-      cy.icon("bookmark").click();
-    });
+    cy.findByTestId("collection-menu").icon("bookmark_filled").click();
 
-    navigationSidebar().within(() => {
-      cy.findAllByText("First collection 2").should("have.length", 1);
-    });
+    navigationSidebar()
+      .findAllByText("First collection 2")
+      .should("have.length", 1);
+
+    cy.findByTestId("collection-menu")
+      .icon("bookmark_filled")
+      .should("not.exist");
+    cy.findByTestId("collection-menu").icon("bookmark").should("exist");
   });
 
   it("can add/remove bookmark from unpinned Question in collection", () => {
@@ -100,7 +103,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.createQuestion({
       name: "Orders Model",
       query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
-      dataset: true,
+      type: "model",
     });
 
     addThenRemoveBookmarkTo("Orders Model");
@@ -118,10 +121,10 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.visit(`/collection/${ADMIN_PERSONAL_COLLECTION_ID}`);
 
     // Add bookmark
-    cy.icon("bookmark").click();
+    cy.findByTestId("collection-menu").icon("bookmark").click();
 
     navigationSidebar().within(() => {
-      cy.icon("bookmark").click({ force: true });
+      cy.icon("bookmark_filled").click({ force: true });
     });
 
     getSectionTitle(/Bookmarks/).should("not.exist");

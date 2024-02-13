@@ -16,12 +16,6 @@ export const SidebarHeader = styled.div`
   flex-shrink: 0;
 `;
 
-export const SidebarContent = styled.div`
-  flex-grow: 1;
-  padding: 1rem 0;
-  overflow: auto;
-`;
-
 export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
   color: ${color("text-light")};

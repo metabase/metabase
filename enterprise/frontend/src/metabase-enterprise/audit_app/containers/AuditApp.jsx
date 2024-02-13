@@ -39,6 +39,7 @@ const DeprecationSection = () => {
                   key="link"
                   to={`/collection/${auditCollection.id}`}
                 >
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
                   {t`Metabase Analytics Collection`}
                 </Link>
               )}

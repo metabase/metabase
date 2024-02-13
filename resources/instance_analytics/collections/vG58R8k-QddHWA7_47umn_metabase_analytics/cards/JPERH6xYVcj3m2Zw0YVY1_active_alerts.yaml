@@ -68,3 +68,4 @@ serdes/meta:
   label: active_alerts
   model: Card
 metabase_version: null
+type: question

@@ -26,18 +26,18 @@ import {
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
-import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
+  getDashcardParameterMappingOptions,
   getParameterTarget,
-  getParameterMappingOptions,
+  getQuestionByCard,
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
+import { getMappingOptionByTarget } from "../utils";
 import {
   Container,
   CardLabel,
@@ -63,8 +63,9 @@ function formatSelected({ name, sectionName }) {
 const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
-  mappingOptions: getParameterMappingOptions(state, props),
   metadata: getMetadata(state),
+  question: getQuestionByCard(state, props),
+  mappingOptions: getDashcardParameterMappingOptions(state, props),
 });
 
 const mapDispatchToProps = {
@@ -80,6 +81,7 @@ DashCardCardParameterMapper.propTypes = {
   metadata: PropTypes.object.isRequired,
   setParameterMapping: PropTypes.func.isRequired,
   isMobile: PropTypes.bool,
+  question: PropTypes.object,
 };
 
 export function DashCardCardParameterMapper({
@@ -87,18 +89,15 @@ export function DashCardCardParameterMapper({
   dashcard,
   editingParameter,
   target,
-  mappingOptions,
-  metadata,
   setParameterMapping,
   isMobile,
+  question,
+  mappingOptions,
 }) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const selectedMappingOption = _.find(mappingOptions, option =>
-    _.isEqual(normalize(option.target), normalize(target)),
-  );
 
   const handleChangeTarget = useCallback(
     target => {
@@ -111,6 +110,13 @@ export function DashCardCardParameterMapper({
   const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isNativeDashCard(dashcard);
 
+  const selectedMappingOption = getMappingOptionByTarget(
+    mappingOptions,
+    dashcard,
+    target,
+    question,
+  );
+
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {
       return true;
@@ -120,10 +126,9 @@ export function DashCardCardParameterMapper({
       return false;
     }
 
-    const question = new Question(card, metadata);
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     return isEditable;
-  }, [card, metadata, isVirtual]);
+  }, [isVirtual, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
     useMemo(() => {

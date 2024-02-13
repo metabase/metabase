@@ -16,7 +16,7 @@ import {
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
-describe("scenarios > embedding > questions ", () => {
+describe("scenarios > embedding > questions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

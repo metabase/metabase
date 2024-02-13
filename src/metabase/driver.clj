@@ -901,8 +901,10 @@
   :hierarchy #'hierarchy)
 
 (defmulti create-table!
-  "Create a table named `table-name`. If the table already exists it will throw an error."
-  {:added "0.47.0", :arglists '([driver db-id table-name col->type])}
+  "Create a table named `table-name`. If the table already exists it will throw an error.
+  `args` is an optional map with an optional entry `primary-key`. The `primary-key` value is a vector of column names
+  that make up the primary key."
+  {:added "0.47.0", :arglists '([driver database-id table-name column-definitions & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -929,8 +931,10 @@
   :hierarchy #'hierarchy)
 
 (defmulti add-columns!
-  "Add columns given by `col->type` to a table named `table-name`. If the table doesn't exist it will throw an error."
-  {:added "0.49.0", :arglists '([driver db-id table-name col->type])}
+  "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
+  `args` is an optional map with an optional key `primary-key`. The `primary-key` value is a vector of column names
+  that make up the primary key. Currently only a single primary key is supported."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -948,13 +952,23 @@
 
   - [:bigint]
   - [[:varchar 255]]
-  - [:generated-always :as :identity :primary-key]"
+  - [:generated-always :as :identity]"
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti create-auto-pk-with-append-csv?
+  "Returns true if the driver should create an auto-incrementing primary key column when appending CSV data to an existing
+  upload table. This is because we want to add auto-pk columns for drivers that supported uploads before auto-pk columns
+  were introduced by metabase#36249. It should return false if the driver supported the uploads feature in version 48 or later."
+  {:added "0.49.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod create-auto-pk-with-append-csv? ::driver [_] false)
+
 (defmulti current-user-table-privileges
-  "Returns the rows of data as arrays needed to populate the tabel_privileges table
+  "Returns the rows of data as arrays needed to populate the table_privileges table
    with the DB connection's current user privileges.
    The data contains the privileges that the user has on the given `database`.
    The privileges include select, insert, update, and delete.
@@ -970,7 +984,7 @@
 
    Either:
    (1) role is null, corresponding to the privileges of the DB connection's current user
-   (2) role is not null, corresponing to the privileges of the role"
-  {:added "0.48.0", :arglists '([driver database])}
+   (2) role is not null, corresponding to the privileges of the role"
+  {:added "0.48.0", :arglists '([driver database & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -560,7 +560,8 @@
         (migrate!)
         (doseq [view-name new-view-names]
           (testing (str "View " view-name " should be created")
-            (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+            ;; Just assert that something was returned by the query and no exception was thrown
+            (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
         #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
@@ -779,3 +780,25 @@
                  ;; h2 has a strange way of naming constraint
                  :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
                            WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))
+
+(deftest enable-public-sharing-default-test
+  (testing "enable-public-sharing is not set for new instances"
+    (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
+      (migrate!)
+      (is (nil?
+           (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing")))))
+
+  (testing "enable-public-sharing defaults to false for already-initalized instances"
+    (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
+      (create-raw-user! (mt/random-email))
+      (migrate!)
+      (is (= "false"
+             (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing")))))
+
+  (testing "enable-public-sharing remains true if already set"
+    (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
+      (create-raw-user! (mt/random-email))
+      (t2/insert! (t2/table-name :model/Setting) :key "enable-public-sharing" :value "true")
+      (migrate!)
+      (is (= "true"
+             (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing"))))))

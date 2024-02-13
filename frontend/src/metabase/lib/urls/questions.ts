@@ -15,8 +15,6 @@ type Card = Partial<SavedCard> & {
   model?: "card" | "dataset";
 };
 
-export const newQuestionFlow = () => "/question/new";
-
 export type QuestionUrlBuilderParams = {
   mode?: "view" | "notebook";
   hash?: Card | string;

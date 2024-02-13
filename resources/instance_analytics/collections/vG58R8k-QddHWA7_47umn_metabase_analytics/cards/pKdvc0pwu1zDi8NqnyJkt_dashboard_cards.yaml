@@ -297,3 +297,4 @@ serdes/meta:
   label: dashboard_cards
   model: Card
 metabase_version: null
+type: model

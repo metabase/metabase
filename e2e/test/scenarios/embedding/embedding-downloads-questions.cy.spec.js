@@ -109,7 +109,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         });
 
         cy.log("Disable downloads");
-        cy.findByLabelText("Enable users to download data from this embed")
+        cy.findByLabelText("Download data")
           .as("allow-download-toggle")
           .should("be.checked");
 

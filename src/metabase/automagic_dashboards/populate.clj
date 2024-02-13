@@ -111,20 +111,26 @@
         {:graph.colors (map-to-colors color-keys)}))))
 
 (defn- visualization-settings
-  [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
-  (let [[display visualization-settings] visualization]
+  [{:keys [metrics x_label y_label series_labels visualization
+           dimensions dimension-name->field metric-definition]
+    :as   card}]
+  (let [{:keys [aggregation]} metric-definition
+        [display visualization-settings] visualization
+        viz-dims (mapv
+                   (comp :name dimension-name->field ffirst)
+                   dimensions)]
     {:display                display
      :visualization_settings (-> visualization-settings
                                  (assoc :graph.series_labels (map :name metrics)
-                                        :graph.metrics       (map :op metrics)
-                                        :graph.dimensions    dimensions)
+                                        :graph.metrics (mapv first aggregation)
+                                        :graph.dimensions (seq viz-dims))
                                  (merge (colorize card))
                                  (cond->
-                                     series_labels (assoc :graph.series_labels series_labels)
+                                   series_labels (assoc :graph.series_labels series_labels)
 
-                                     x_label       (assoc :graph.x_axis.title_text x_label)
+                                   x_label (assoc :graph.x_axis.title_text x_label)
 
-                                     y_label       (assoc :graph.y_axis.title_text y_label)))}))
+                                   y_label (assoc :graph.y_axis.title_text y_label)))}))
 
 
 (defn card-defaults

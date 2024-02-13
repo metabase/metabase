@@ -77,10 +77,7 @@ describe("issue 22265", () => {
       cy.request("PUT", `/api/card/${invalidQuestionId}`, questionDetailUpdate);
     });
 
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-    });
-
+    visitDashboard("@dashboardId");
     editDashboard();
     cy.findByTestId("add-series-button").click({ force: true });
     cy.wait("@seriesQuery");

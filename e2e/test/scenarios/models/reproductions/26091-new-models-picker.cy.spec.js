@@ -7,7 +7,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 const modelDetails = {
   name: "Old model",
   query: { "source-table": PRODUCTS_ID },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 26091", () => {

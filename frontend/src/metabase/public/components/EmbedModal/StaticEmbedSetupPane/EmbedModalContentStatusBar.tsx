@@ -24,7 +24,13 @@ export const EmbedModalContentStatusBar = ({
   const [isUnpublishing, setIsUnpublishing] = useState(false);
 
   return (
-    <Paper withBorder shadow="sm" m="1.5rem 2rem" p="0.75rem 1rem">
+    <Paper
+      withBorder
+      shadow="sm"
+      m="1.5rem 2rem"
+      p="0.75rem 1rem"
+      data-testid="embed-modal-content-status-bar"
+    >
       <Flex w="100%" justify="space-between" align="center" gap="0.5rem">
         <Text fw="bold">
           {!isPublished
