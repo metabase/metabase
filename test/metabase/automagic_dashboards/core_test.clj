@@ -1765,3 +1765,19 @@
                           {:group-name (get-in dashcard [:visualization_settings :text])
                            :card-name  (get-in dashcard [:card :name])})
                         comparison-dashcards))))))))))
+
+(deftest source-fields-are-populated-for-aggregations-38618-test
+  (testing "X-ray aggregates (metrics) with source fields in external tables should properly fill in `:source-field` (#38618)"
+    (mt/dataset test-data
+      (let [dashcard  (->> (magic/automagic-analysis (t2/select-one Table :id (mt/id :reviews)) {:show :all})
+                           :dashcards
+                           (filter (fn [dashcard]
+                                     (= "Distinct Product ID"
+                                        (get-in dashcard [:card :name]))))
+                           first)
+            aggregate (get-in dashcard [:card :dataset_query :query :aggregation])]
+        (testing "Fields requiring a join should have :source-field populated in the aggregate."
+          (is (= [["distinct" [:field (mt/id :products :id)
+                               ;; This should be present vs. nil (value before issue)
+                               {:source-field (mt/id :reviews :product_id)}]]]
+                 aggregate)))))))

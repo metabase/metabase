@@ -1,4 +1,7 @@
-import type { ParameterTarget } from "metabase-types/api";
+import type {
+  ParameterTarget,
+  StructuredParameterDimensionTarget,
+} from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import * as Lib from "metabase-lib";
 import Dimension from "metabase-lib/Dimension";
@@ -45,8 +48,11 @@ export function buildColumnTarget(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-) {
-  return ["dimension", Lib.legacyRef(query, stageIndex, column)];
+): StructuredParameterDimensionTarget {
+  return [
+    "dimension",
+    Lib.legacyRef(query, stageIndex, column),
+  ] as StructuredParameterDimensionTarget;
 }
 
 export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {

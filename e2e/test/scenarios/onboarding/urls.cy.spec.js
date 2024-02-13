@@ -42,7 +42,7 @@ describe("URLs", () => {
     ].forEach(url => {
       it("should open 'Saved Questions' database correctly", () => {
         cy.visit(url);
-        cy.findByTestId("browse-data");
+        cy.findByTestId("browse-app");
         cy.location("pathname").should("eq", url);
       });
     });
