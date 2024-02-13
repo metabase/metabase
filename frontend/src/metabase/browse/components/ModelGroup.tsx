@@ -69,7 +69,18 @@ export const ModelGroup = ({
               belowFold.length &&
               `${aboveFold.length} of ${models.length}`}
             {belowFold.length && (
-              <ContainerExpandCollapseButton p="xs" onClick={toggle}>
+              <ContainerExpandCollapseButton
+                styles={{
+                  root: {
+                    top: 0,
+                    transform: "none",
+                    ":active": { transform: "none" },
+                  },
+                }}
+                lh="inherit"
+                p="0"
+                onClick={toggle}
+              >
                 {opened
                   ? c("For a button that collapses a list of models")
                       .t`Show less`
