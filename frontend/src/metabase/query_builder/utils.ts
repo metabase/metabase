@@ -83,11 +83,6 @@ export const isNavigationAllowed = ({
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  const runModelPathnames = !isNative
-    ? ["/model", "/model/notebook"]
-    : ["/model"];
-  const isRunningModel =
-    runModelPathnames.includes(pathname) && hash.length > 0;
   const validSlugs = [question.id(), question.slug()]
     .filter(Boolean)
     .map(String);
@@ -95,7 +90,7 @@ export const isNavigationAllowed = ({
   if (question.isDataset()) {
     if (isNewQuestion) {
       const allowedPathnames = ["/model/query", "/model/metadata"];
-      return isRunningModel || allowedPathnames.includes(pathname);
+      return allowedPathnames.includes(pathname);
     }
 
     const allowedPathnames = validSlugs.flatMap(slug => [
@@ -104,7 +99,7 @@ export const isNavigationAllowed = ({
       `/model/${slug}/metadata`,
     ]);
 
-    return isRunningModel || allowedPathnames.includes(pathname);
+    return allowedPathnames.includes(pathname);
   }
 
   if (isNative) {
@@ -125,9 +120,7 @@ export const isNavigationAllowed = ({
       `/question/${slug}/notebook`,
     ]);
 
-    return (
-      isRunningModel || isRunningQuestion || allowedPathnames.includes(pathname)
-    );
+    return isRunningQuestion || allowedPathnames.includes(pathname);
   }
 
   return true;

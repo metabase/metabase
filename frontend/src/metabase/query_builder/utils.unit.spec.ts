@@ -73,6 +73,12 @@ const newModelMetadataTabLocation = createMockLocation({
   pathname: "/model/metadata",
 });
 
+const getRunModelLocation = (question: Question) =>
+  createMockLocation({
+    pathname: `/model/${question.id()}/query`,
+    hash: `#${serializeCardForUrl(nativeModelCard)}`,
+  });
+
 const getModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.id()}` }),
   createMockLocation({ pathname: `/model/${model.slug()}` }),
@@ -80,6 +86,7 @@ const getModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.slug()}/query` }),
   createMockLocation({ pathname: `/model/${model.id()}/metadata` }),
   createMockLocation({ pathname: `/model/${model.slug()}/metadata` }),
+  getRunModelLocation(model),
 ];
 
 const getStructuredQuestionLocations = (question: Question) => [
@@ -94,8 +101,8 @@ const getNativeQuestionLocations = (question: Question) => [
   createMockLocation({ pathname: `/question/${question.slug()}` }),
 ];
 
-const runModelLocation = createMockLocation({
-  pathname: "/model",
+const runNewModelLocation = createMockLocation({
+  pathname: "/model/query",
   hash: `#${serializeCardForUrl(nativeModelCard)}`,
 });
 
@@ -152,7 +159,7 @@ describe("isNavigationAllowed", () => {
       ...getNativeQuestionLocations(nativeQuestion),
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
-      runModelLocation,
+      runNewModelLocation,
       runModelEditNotebookLocation,
       runQuestionLocation,
       runQuestionEditNotebookLocation,
@@ -179,7 +186,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
-        runModelLocation,
+        runNewModelLocation,
         runModelEditNotebookLocation,
         runQuestionLocation,
         runQuestionEditNotebookLocation,
@@ -212,7 +219,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
-        runModelLocation,
+        runNewModelLocation,
         runModelEditNotebookLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
@@ -291,7 +298,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
-        runModelLocation,
+        runNewModelLocation,
         runModelEditNotebookLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
@@ -318,15 +325,7 @@ describe("isNavigationAllowed", () => {
     });
 
     it("allows to run the model", () => {
-      const destination = runModelLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(true);
-    });
-
-    it("allows to run the model and then edit it again", () => {
-      const destination = runModelEditNotebookLocation;
+      const destination = runNewModelLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -363,15 +362,7 @@ describe("isNavigationAllowed", () => {
     });
 
     it("allows to run the model", () => {
-      const destination = runModelLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(true);
-    });
-
-    it("allows to run the model and then edit it again", () => {
-      const destination = runModelEditNotebookLocation;
+      const destination = getRunModelLocation(structuredModelQuestion);
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -408,7 +399,7 @@ describe("isNavigationAllowed", () => {
     });
 
     it("allows to run the model", () => {
-      const destination = runModelLocation;
+      const destination = getRunModelLocation(nativeModelQuestion);
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
