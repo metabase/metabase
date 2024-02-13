@@ -31,7 +31,8 @@ import {
   openDashboardMenu,
   openEmbedModalFromMenu,
   assertDashboardFixedWidth,
-  assertDashboardNotFixedWidth,
+  assertDashboardFullWidth,
+  createDashboardWithTabs,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -41,6 +42,11 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  createMockVirtualCard,
+  createMockVirtualDashCard,
+} from "metabase-types/api/mocks";
+import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -526,27 +532,48 @@ describe("scenarios > dashboard", () => {
     );
 
     it("should allow the creator to change the dashboard width to 'fixed' or 'full'", () => {
-      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-        const cards = [
-          getTextCardDetails({
-            row: 1,
-            size_x: 24,
-            size_y: 1,
-            text: "bottom",
-          }),
-          getTextCardDetails({
-            row: 0,
-            size_x: 24,
-            size_y: 1,
-            text: "top {{Name}}",
-          }),
-        ];
+      const TAB_1 = {
+        id: 1,
+        name: "Tab 1",
+      };
+      const TAB_2 = {
+        id: 2,
+        name: "Tab 2",
+      };
+      const DASHBOARD_TEXT_FILTER = {
+        id: "94f9e513",
+        name: "Text filter",
+        slug: "filter-text",
+        type: "string/contains",
+      };
 
-        updateDashboardCards({ dashboard_id, cards });
-
-        visitDashboard(dashboard_id);
-        addParameterToDashboard();
-      });
+      createDashboardWithTabs({
+        tabs: [TAB_1, TAB_2],
+        parameters: [{ ...DASHBOARD_TEXT_FILTER, default: "Example Input" }],
+        dashcards: [
+          createMockVirtualDashCard({
+            id: -1,
+            dashboard_tab_id: TAB_1.id,
+            size_x: GRID_WIDTH,
+            parameter_mappings: [
+              { parameter_id: "94f9e513", target: ["text-tag", "Name"] },
+            ],
+            card: createMockVirtualCard({ display: "text" }),
+            visualization_settings: {
+              text: "Top: {{Name}}",
+            },
+          }),
+          createMockVirtualDashCard({
+            id: -2,
+            size_x: GRID_WIDTH,
+            dashboard_tab_id: TAB_1.id,
+            card: createMockVirtualCard({ display: "text" }),
+            visualization_settings: {
+              text: "Bottom",
+            },
+          }),
+        ],
+      }).then(dashboard => visitDashboard(dashboard.id));
 
       // new dashboards should default to 'fixed' width
       assertDashboardFixedWidth();
@@ -557,13 +584,13 @@ describe("scenarios > dashboard", () => {
       cy.findByLabelText("Toggle width").click();
       popover().findByText("Full width").click();
 
-      assertDashboardNotFixedWidth();
+      assertDashboardFullWidth();
 
       // confirm it saves the state after saving and refreshing
       saveDashboard();
       cy.reload();
 
-      assertDashboardNotFixedWidth();
+      assertDashboardFullWidth();
     });
   });
 
@@ -1106,28 +1133,4 @@ function assertScrollBarExists() {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
-}
-
-function addParameterToDashboard() {
-  // edit dashboard
-  cy.icon("pencil").click();
-
-  // add Category > Dropdown "Name" filter
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Is").click();
-
-  cy.findByText("Select…").click();
-  popover().within(() => {
-    cy.findByText("Name").click();
-  });
-
-  // add default value to the above filter
-  cy.findByText("No default").click();
-  popover().find("input").type("Example Name");
-  popover().contains("Add filter").click();
-
-  cy.findByText("Save").click();
-  // wait for dashboard to save
-  cy.contains("You're editing this dashboard.").should("not.exist");
 }

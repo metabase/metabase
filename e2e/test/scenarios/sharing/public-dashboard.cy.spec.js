@@ -9,7 +9,7 @@ import {
   dashboardParametersContainer,
   goToTab,
   assertDashboardFixedWidth,
-  assertDashboardNotFixedWidth,
+  assertDashboardFullWidth,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -243,6 +243,6 @@ describe("scenarios > public > dashboard", () => {
       visitPublicDashboard(id);
     });
 
-    assertDashboardNotFixedWidth();
+    assertDashboardFullWidth();
   });
 });
