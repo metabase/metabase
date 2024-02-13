@@ -356,15 +356,15 @@
               ;; original is private so a var will pick up the redef'd. need contents of var before
               original (var-get #'api.table/sync-unhidden-tables)]
           (mt/with-dynamic-redefs [api.table/sync-unhidden-tables
-                        (fn [unhidden]
-                          (when (seq unhidden)
-                            (is (= (:id table)
-                                   (:id (first unhidden)))
-                                "Unhidden callback did not get correct tables.")
-                            (swap! called inc)
-                            (let [fut (original unhidden)]
-                              (when (future? fut)
-                                (deref fut)))))]
+                                   (fn [unhidden]
+                                     (when (seq unhidden)
+                                       (is (= (:id table)
+                                              (:id (first unhidden)))
+                                           "Unhidden callback did not get correct tables.")
+                                       (swap! called inc)
+                                       (let [fut (original unhidden)]
+                                         (when (future? fut)
+                                           (deref fut)))))]
             (letfn [(set-visibility! [state]
                       (testing (format "Set state => %s" (pr-str state))
                         (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))

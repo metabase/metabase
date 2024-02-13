@@ -87,7 +87,7 @@
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
     (mt/dataset test-data
       (mt/with-dynamic-redefs [api.tiles/create-tile (fn [_ points] points)
-                    api.tiles/tile->byte-array identity]
+                               api.tiles/tile->byte-array identity]
         (let [result (mt/user-http-request
                       :rasta :get 200 (format "tiles/7/30/49/%d/%d"
                                               (mt/id :people :latitude)

@@ -43,10 +43,10 @@
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
            (mt/with-dynamic-redefs [premium-features/fetch-token-status (fn [_x]
-                                                               {:valid    true
-                                                                :status   "fake"
-                                                                :features ["test" "fixture"]
-                                                                :trial    false})]
+                                                                          {:valid    true
+                                                                           :status   "fake"
+                                                                           :features ["test" "fixture"]
+                                                                           :trial    false})]
              (mt/with-temporary-setting-values [premium-embedding-token premium-features-test/random-fake-token]
               (is (= (embed/show-static-embed-terms) false))
               (embed/show-static-embed-terms! false)

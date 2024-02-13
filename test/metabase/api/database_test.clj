@@ -238,14 +238,14 @@
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (try
-     (let [{db-id :id, :as response} (mt/with-dynamic-redefs [driver/available?   (constantly true)
-                                                   driver/can-connect? (constantly true)]
-                                       (mt/user-http-request :crowberto :post 200 "database"
-                                                             (merge
-                                                              {:name    db-name
-                                                               :engine  (u/qualified-name ::test-driver)
-                                                               :details {:db "my_db"}}
-                                                              m)))]
+      (let [{db-id :id, :as response} (mt/with-dynamic-redefs [driver/available? (constantly true)
+                                                               driver/can-connect? (constantly true)]
+                                        (mt/user-http-request :crowberto :post 200 "database"
+                                                              (merge
+                                                               {:name    db-name
+                                                                :engine  (u/qualified-name ::test-driver)
+                                                                :details {:db "my_db"}}
+                                                               m)))]
        (is (malli= [:map [:id ::lib.schema.id/database]]
                    response))
        (t2/select-one Database :id db-id))
@@ -319,8 +319,8 @@
         (is (= {:errors  {:host "check your host settings"
                           :port "check your port settings"}
                 :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"}
-               (mt/with-dynamic-redefs [driver/available?   (constantly true)
-                             driver/can-connect? (fn [& _] (throw exception))]
+               (mt/with-dynamic-redefs [driver/available? (constantly true)
+                                        driver/can-connect? (fn [& _] (throw exception))]
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name    (mt/random-name)
                                         :engine  (u/qualified-name ::test-driver)
@@ -1131,7 +1131,7 @@
       (mt/with-premium-features #{:audit-app}
         (t2.with-temp/with-temp [Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
           (mt/with-dynamic-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
-                        analyze/analyze-db!             (deliver-when-db analyze-called? db)]
+                                   analyze/analyze-db! (deliver-when-db analyze-called? db)]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
             ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
             ;; however if something went wrong, don't hang forever, eventually timeout and fail
@@ -1173,6 +1173,7 @@
       (let [update-field-values-called? (promise)]
         (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
           (mt/with-dynamic-redefs [field-values/update-field-values! (fn [synced-db]
+
                                                             (when (= (u/the-id synced-db) (u/the-id db))
                                                               (deliver update-field-values-called? :sync-called)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))

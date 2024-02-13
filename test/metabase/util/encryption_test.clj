@@ -14,7 +14,7 @@
   (setting.cache/restore-cache!)
   (try
     (mt/with-dynamic-redefs [encryption/default-secret-key (when (seq secret-key)
-                                                  (encryption/secret-key->hash secret-key))]
+                                                             (encryption/secret-key->hash secret-key))]
       (thunk))
     (finally
       ;; reset the cache again so nothing that happened during the test is persisted.

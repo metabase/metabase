@@ -914,7 +914,7 @@
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
     (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
       (mt/with-dynamic-redefs [pulse-channel/validate-email-domains (fn [& _]
-                                                           (throw (ex-info "Nope!" {:status-code 403})))]
+                                                                      (throw (ex-info "Nope!" {:status-code 403})))]
         ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
         ;; technically allow either right now
         (doseq [channel [{:details {:emails ["test@metabase.com"]}}
@@ -1114,10 +1114,11 @@
             (is (some? body))))
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
-          (mt/with-dynamic-redefs [style/register-fonts-if-needed! (fn []
-                                                          (throw (ex-info "Can't register fonts!"
-                                                                          {}
-                                                                          (NullPointerException.))))]
+          (mt/with-dynamic-redefs [style/register-fonts-if-needed!
+                                   (fn []
+                                     (throw (ex-info "Can't register fonts!"
+                                                     {}
+                                                     (NullPointerException.))))]
             (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
               (is (= "application/json; charset=utf-8"
                      Content-Type))

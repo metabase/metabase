@@ -177,11 +177,11 @@
     (let [timezone (fn [result-row]
                      (let [db (mt/db)]
                        (mt/with-dynamic-redefs [jdbc/query (let [orig jdbc/query]
-                                                  (fn [spec sql-args & options]
-                                                    (if (and (string? sql-args)
-                                                             (str/includes? sql-args "GLOBAL.time_zone"))
-                                                      [result-row]
-                                                      (apply orig spec sql-args options))))]
+                                                             (fn [spec sql-args & options]
+                                                               (if (and (string? sql-args)
+                                                                        (str/includes? sql-args "GLOBAL.time_zone"))
+                                                                 [result-row]
+                                                                 (apply orig spec sql-args options))))]
                          (driver/db-default-timezone driver/*driver* db))))]
       (testing "Should use global timezone by default"
         (is (= "US/Pacific"

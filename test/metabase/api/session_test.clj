@@ -140,8 +140,8 @@
   (reset-throttlers!)
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
     (mt/with-dynamic-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
-                                                                            [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                                                                                       [:username :ip-address])
+                             public-settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -161,8 +161,8 @@
   (reset-throttlers!)
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
     (mt/with-dynamic-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
-                                                                            [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                                                                                       [:username :ip-address])
+                             public-settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -215,8 +215,8 @@
   (testing "POST /api/session/forgot_password"
     ;; deref forgot-password-impl for the tests since it returns a future
     (mt/with-dynamic-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                             (let [orig @#'api.session/forgot-password-impl]
+                               (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (testing "Test that we can initiate password reset"
         (mt/with-fake-inbox
           (letfn [(reset-fields-set? []
@@ -253,8 +253,8 @@
   (reset-throttlers!)
   (mt/with-premium-features #{:audit-app}
     (mt/with-dynamic-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                             (let [orig @#'api.session/forgot-password-impl]
+                               (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-model-cleanup [:model/User]
         (testing "Test that forgot password event is logged."
           (mt/user-http-request :rasta :post 204 "session/forgot_password"
@@ -272,8 +272,9 @@
   (testing "Test that email based throttling kicks in after the login failure threshold (3) has been reached"
     (letfn [(send-password-reset! [& [expected-status & _more]]
               (mt/client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
-      (mt/with-dynamic-redefs [api.session/forgot-password-throttlers (cleaned-throttlers #'api.session/forgot-password-throttlers
-                                                                               [:email :ip-address])]
+      (mt/with-dynamic-redefs [api.session/forgot-password-throttlers
+                               (cleaned-throttlers #'api.session/forgot-password-throttlers
+                                                   [:email :ip-address])]
         (dotimes [_ 3]
           (send-password-reset!))
         (let [error (fn []
@@ -460,23 +461,23 @@
       (testing "Google auth works with an active account"
         (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active true}]
           (mt/with-dynamic-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"first_name\":\"test\","
-                                                 "\"last_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+                                              {:status 200
+                                               :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                            "\"email_verified\":\"true\","
+                                                            "\"first_name\":\"test\","
+                                                            "\"last_name\":\"user\","
+                                                            "\"email\":\"test@metabase.com\"}")})]
             (is (malli= SessionResponse
                         (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
         (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active false}]
           (mt/with-dynamic-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"first_name\":\"test\","
-                                                 "\"last_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+                                              {:status 200
+                                               :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                            "\"email_verified\":\"true\","
+                                                            "\"first_name\":\"test\","
+                                                            "\"last_name\":\"user\","
+                                                            "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:account "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
 

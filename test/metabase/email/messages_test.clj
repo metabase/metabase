@@ -61,7 +61,7 @@
 
 (defmacro ^:private with-create-temp-failure [& body]
   `(mt/with-dynamic-redefs [messages/create-temp-file (fn [~'_]
-                                             (throw (IOException. "Failed to write file")))]
+                                                        (throw (IOException. "Failed to write file")))]
      ~@body))
 
 ;; Test that IOException bubbles up
@@ -131,7 +131,7 @@
   (testing "send email succeeds w/o retry"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (mt/with-dynamic-redefs [email/send-email! mt/fake-inbox-email-fn
-                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
+                               retry/decorate (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
@@ -160,11 +160,11 @@
                               :initial-interval-millis 1)
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (mt/with-dynamic-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
-                  (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                                     email-smtp-port 587]
-                      (mt/reset-inbox!)
-                      (#'email/send-email-retrying! test-email)
-                      (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
-                             (get-positive-retry-metrics test-retry)))
-                      (is (= 1 (count @mt/inbox))))))))
+                               retry/decorate (rt/test-retry-decorate-fn test-retry)]
+        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                           email-smtp-port 587]
+          (mt/reset-inbox!)
+          (#'email/send-email-retrying! test-email)
+          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry)))
+          (is (= 1 (count @mt/inbox))))))))

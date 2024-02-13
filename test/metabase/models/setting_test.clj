@@ -265,11 +265,11 @@
             calls (atom 0)]
         ;; allow the first Setting change to succeed, then throw an Exception after that
         (mt/with-dynamic-redefs [setting/set! (fn [& args]
-                                     (if (zero? @calls)
-                                       (do
-                                         (swap! calls inc)
-                                         (apply orig args))
-                                       (throw (ex-info "Oops!" {}))))]
+                                                (if (zero? @calls)
+                                                  (do
+                                                    (swap! calls inc)
+                                                    (apply orig args))
+                                                  (throw (ex-info "Oops!" {}))))]
           (is (thrown-with-msg?
                Throwable
                #"Oops"

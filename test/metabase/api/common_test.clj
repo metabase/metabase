@@ -107,9 +107,9 @@
   (try
     (binding [api/*current-user-id* 1]
       (mt/with-dynamic-redefs [mi/can-read? (constantly false)
-                    mi/can-write? (constantly false)
-                    mi/can-update? (constantly false)
-                    mi/can-create? (constantly false)]
+                               mi/can-write? (constantly false)
+                               mi/can-update? (constantly false)
+                               mi/can-create? (constantly false)]
         (mt/with-temp [:model/Card card {}]
           (testing "write-check"
             (binding [*events* (atom [])]

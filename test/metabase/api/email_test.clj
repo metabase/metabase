@@ -133,12 +133,13 @@
                                        email-reply-to      ["reply-to@metabase.com"]
                                        email-smtp-host     "www.test.com"
                                        email-smtp-password "preexisting"]
-      (mt/with-dynamic-redefs [email/test-smtp-connection (fn [settings]
-                                                 (let [obfuscated? (str/starts-with? (:pass settings) "****")]
-                                                   (is (not obfuscated?) "We received an obfuscated password!")
-                                                   (if obfuscated?
-                                                     {::email/error (ex-info "Sent obfuscated password" {})}
-                                                     settings)))]
+      (mt/with-dynamic-redefs [email/test-smtp-connection
+                               (fn [settings]
+                                 (let [obfuscated? (str/starts-with? (:pass settings) "****")]
+                                   (is (not obfuscated?) "We received an obfuscated password!")
+                                   (if obfuscated?
+                                     {::email/error (ex-info "Sent obfuscated password" {})}
+                                     settings)))]
         (testing "If we don't change the password we don't see the password"
           (let [payload  (-> (email-settings)
                              ;; user changes one property

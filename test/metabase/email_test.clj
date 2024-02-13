@@ -265,8 +265,8 @@
                                   :initial-interval-millis 1)
               test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
         (mt/with-dynamic-redefs [prometheus/inc    #(swap! calls conj %)
-                      retry/decorate    (rt/test-retry-decorate-fn test-retry)
-                      email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+                                 retry/decorate (rt/test-retry-decorate-fn test-retry)
+                                 email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
           (email/send-message!
            :subject      "101 Reasons to use Metabase"
            :recipients   ["test@test.com"]

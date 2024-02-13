@@ -868,9 +868,10 @@
     (testing "Updating other parts but not query does not update the metadata"
       (let [orig   qp.async/result-metadata-for-query-async
             called (atom 0)]
-        (mt/with-dynamic-redefs [qp.async/result-metadata-for-query-async (fn [q]
-                                                                 (swap! called inc)
-                                                                 (orig q))]
+        (mt/with-dynamic-redefs [qp.async/result-metadata-for-query-async
+                                 (fn [q]
+                                   (swap! called inc)
+                                   (orig q))]
           (mt/with-model-cleanup [:model/Card]
             (let [card (mt/user-http-request :rasta :post 200 "card"
                                              (card-with-name-and-query "card-name"
@@ -926,9 +927,9 @@
             (let [orig       sql-jdbc.execute/execute-statement!
                   sql-result (atom nil)]
               (mt/with-dynamic-redefs [sql-jdbc.execute/execute-statement!
-                            (fn [driver stmt sql]
-                              (reset! sql-result sql)
-                              (orig driver stmt sql))]
+                                       (fn [driver stmt sql]
+                                         (reset! sql-result sql)
+                                         (orig driver stmt sql))]
                 (mt/user-http-request
                  :rasta :post 200 "card"
                  (assoc (card-with-name-and-query card-name)
@@ -2270,10 +2271,10 @@
     (with-cards-in-readable-collection card
       (let [orig qp.card/run-query-for-card-async]
         (mt/with-dynamic-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
-                                                         (apply orig card-id export-format
-                                                                :run (fn [{:keys [constraints]} _]
-                                                                       {:constraints constraints})
-                                                                options))]
+                                                                    (apply orig card-id export-format
+                                                                           :run (fn [{:keys [constraints]} _]
+                                                                                  {:constraints constraints})
+                                                                           options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
