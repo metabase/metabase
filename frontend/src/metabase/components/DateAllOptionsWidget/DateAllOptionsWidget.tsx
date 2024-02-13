@@ -8,7 +8,7 @@ import {
   WidgetRoot,
 } from "metabase/parameters/components/widgets/Widget.styled";
 
-import { UpdateButton } from "metabase/parameters/components/widgets/UpdateButton";
+import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 // Use a placeholder value as field references are not used in dashboard filters

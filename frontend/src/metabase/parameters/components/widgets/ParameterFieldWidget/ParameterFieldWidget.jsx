@@ -10,6 +10,7 @@ import {
   Footer,
   UpdateButtonContainer,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import {
   getFilterArgumentFormatOptions,
@@ -17,7 +18,6 @@ import {
   isFuzzyOperator,
 } from "metabase-lib/operators/utils";
 
-import { UpdateButton } from "../UpdateButton";
 import { normalizeValue } from "./normalizeValue";
 
 const propTypes = {

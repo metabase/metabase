@@ -12,7 +12,7 @@ import {
   UpdateButtonContainer,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
-import { UpdateButton } from "../UpdateButton";
+import { UpdateButton } from "metabase/parameters/components/UpdateFilterButton";
 
 export type NumberInputWidgetProps = {
   value: number[] | undefined;
