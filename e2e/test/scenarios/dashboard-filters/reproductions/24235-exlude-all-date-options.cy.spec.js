@@ -43,13 +43,17 @@ describe("issue 24235", () => {
     );
 
     filterWidget().contains(parameter.name).click();
-
     popover().within(() => {
       cy.findByText("Exclude...").click();
       cy.findByText("Days of the week...").click();
       cy.findByText("Select none...").click();
-      cy.findByText("Select all...").click();
       cy.findByText("Add filter").click();
+    });
+
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Select all...").click();
+      cy.findByText("Update filter").click();
     });
 
     cy.wait("@getCardQuery");
