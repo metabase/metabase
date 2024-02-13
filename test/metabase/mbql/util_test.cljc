@@ -819,3 +819,9 @@
     ;; `:minute` doesn't make sense for a DATE
     (t/is (= [:field "t" {:base-type :type/Date}]
              (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))
+
+(t/deftest desugar-time-interval-expression-test
+  (t/is (= [:=
+            [:expression "Date" {:temporal-unit :quarter}]
+            [:relative-datetime 0 :quarter]]
+           (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
