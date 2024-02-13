@@ -65,6 +65,8 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
+  // const entity = entityForObject(model);
+
   return (
     <Link
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
