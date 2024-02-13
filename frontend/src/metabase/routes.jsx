@@ -208,7 +208,6 @@ export const getRoutes = store => {
               title={t`New Model`}
               component={NewModelOptions}
             />
-            <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />
