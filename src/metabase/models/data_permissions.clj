@@ -329,8 +329,7 @@
     (let [perm-values
           (->> (get-permissions user-id :perms/download-results database-id)
                (map (fn [{:keys [perm_value group_id]}]
-                      {:group_id group_id :value perm_value}))
-               first)
+                      {:group_id group_id :value perm_value})))
 
           value-by-group
           (-> (group-by :group_id perm-values)
