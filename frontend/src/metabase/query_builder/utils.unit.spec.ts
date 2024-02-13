@@ -25,12 +25,14 @@ const nativeCard = createMockCard({
 const structuredModelCard = createMockCard({
   id: getNextId(),
   name: "structured model",
+  type: "model",
   dataset: true,
 });
 
 const nativeModelCard = createMockCard({
   id: getNextId(),
   name: "native model",
+  type: "model",
   dataset: true,
   dataset_query: createMockNativeDatasetQuery(),
 });
