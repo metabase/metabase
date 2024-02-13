@@ -74,11 +74,6 @@ if (hasPremiumFeature("whitelabel")) {
           ),
         },
         {
-          key: "application-font",
-          display_name: t`Font`,
-          widget: FontWidget,
-        },
-        {
           key: "application-font-files",
           widget: FontFilesWidget,
           getHidden: settings => settings["application-font-files"] == null,
@@ -95,9 +90,9 @@ if (hasPremiumFeature("whitelabel")) {
           widget: LogoUpload,
         },
         {
-          key: "application-favicon-url",
-          display_name: t`Favicon`,
-          type: "string",
+          key: "application-font",
+          display_name: t`Font`,
+          widget: FontWidget,
         },
         {
           key: "landing-page",
@@ -112,6 +107,11 @@ if (hasPremiumFeature("whitelabel")) {
           type: "select",
           options: getLoadingMessageOptions(),
           defaultValue: "doing-science",
+        },
+        {
+          key: "application-favicon-url",
+          display_name: t`Favicon`,
+          type: "string",
         },
       ],
     },
