@@ -19,8 +19,8 @@ import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { TextWidget } from "metabase/components/TextWidget";
 import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
-import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
-import StringInputWidget from "metabase/parameters/components/widgets/StringInputWidget";
+import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
+import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import {
   getNumberParameterArity,
   getStringParameterArity,

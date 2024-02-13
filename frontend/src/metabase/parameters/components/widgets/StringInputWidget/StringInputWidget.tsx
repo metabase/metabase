@@ -21,12 +21,10 @@ type StringInputWidgetProps = {
   placeholder?: string;
   arity?: 1 | "n";
   label?: string;
-  parameter: Parameter;
+  parameter?: Partial<Pick<Parameter, "required" | "default">>;
 };
 
-const OPTIONS: any[] = [];
-
-function StringInputWidget({
+export function StringInputWidget({
   value,
   setValue,
   className,
@@ -34,7 +32,7 @@ function StringInputWidget({
   arity = 1,
   placeholder = t`Enter some text`,
   label,
-  parameter,
+  parameter = {},
 }: StringInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
@@ -58,7 +56,7 @@ function StringInputWidget({
           value={unsavedArrayValue}
           onChange={setUnsavedArrayValue}
           placeholder={placeholder}
-          options={OPTIONS}
+          options={[]}
           autoFocus={autoFocus}
           multi={multi}
           parseFreeformValue={parseStringValue}
@@ -80,9 +78,6 @@ function StringInputWidget({
     </WidgetRoot>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default StringInputWidget;
 
 function normalize(value: string[] | undefined): string[] {
   if (Array.isArray(value)) {

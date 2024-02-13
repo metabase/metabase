@@ -23,12 +23,10 @@ export type NumberInputWidgetProps = {
   autoFocus?: boolean;
   placeholder?: string;
   label?: string;
-  parameter: Parameter;
+  parameter?: Partial<Pick<Parameter, "required" | "default">>;
 };
 
-const OPTIONS: any[] = [];
-
-function NumberInputWidget({
+export function NumberInputWidget({
   value,
   setValue,
   className,
@@ -37,7 +35,7 @@ function NumberInputWidget({
   autoFocus,
   placeholder = t`Enter a number`,
   label,
-  parameter,
+  parameter = {},
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
@@ -73,7 +71,7 @@ function NumberInputWidget({
             onChange={newValue => {
               setUnsavedArrayValue(newValue);
             }}
-            options={OPTIONS}
+            options={[]}
             placeholder={placeholder}
           />
         </TokenFieldWrapper>
@@ -115,9 +113,6 @@ function NumberInputWidget({
     </WidgetRoot>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NumberInputWidget;
 
 function normalize(value: number[] | undefined): number[] {
   if (Array.isArray(value)) {
