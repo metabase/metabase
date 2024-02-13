@@ -633,6 +633,11 @@
 (defn- native-query-fields-edit-error []
   (i18n/tru "Fields cannot be adjusted on native queries. Either edit the native query, or save this question and edit the fields in a GUI question based on this one."))
 
+(defn- source-clauses-only-fields-edit-error []
+  (i18n/tru (str "Only source columns (those from a table, model, or saved question) can be adjusted on a query. "
+                 "Aggregations, breakouts and expressions are always returned, and must be removed from the query or "
+                 "hidden in the UI.")))
+
 (mu/defn add-field :- ::lib.schema/query
   "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
@@ -714,16 +719,20 @@
   (let [source (:lib/source column)]
     (-> (case source
           (:source/table-defaults
-            :source/fields
-            :source/breakouts
-            :source/aggregations
-            :source/expressions
-            :source/card
-            :source/previous-stage
-            :source/implicitly-joinable) (exclude-field query stage-number column)
+           :source/fields
+           :source/card
+           :source/previous-stage
+           :source/expressions
+           :source/implicitly-joinable) (exclude-field query stage-number column)
           :source/joins                 (remove-field-from-join query stage-number column)
           :source/native                (throw (ex-info (native-query-fields-edit-error)
-                                                        {:query query :stage stage-number}))
+                                                         {:query query :stage stage-number}))
+
+          (:source/breakouts
+           :source/aggregations)        (throw (ex-info (source-clauses-only-fields-edit-error)
+                                                        {:query  query
+                                                         :stage  stage-number
+                                                         :source source}))
           ;; Default case: do nothing and return the query unchaged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do
