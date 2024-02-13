@@ -154,6 +154,13 @@ if (hasPremiumFeature("whitelabel")) {
           type: "string",
         },
         {
+          key: "-toggle-group",
+          tab: "conceal-metabase",
+          display_name: t`Homepage, Documentation and References`,
+          description: t`Control the display of homepage visuals and greeting message plus other Metabase elements such as links to Metabase documentation and Metabase references in your instance.`,
+          widget: () => null,
+        },
+        {
           key: "show-lighthouse-illustration",
           tab: "conceal-metabase",
           display_name: t`Lighthouse illustration`,
