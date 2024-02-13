@@ -75,8 +75,11 @@ export function applyFilterByType(filter, value) {
  *
  * @param {string} value
  */
-export function addDefaultStringFilter(value) {
-  enterDefaultValue(value);
+export function addDefaultStringFilter(
+  value,
+  { buttonLabel = "Add filter" } = {},
+) {
+  enterDefaultValue(value, buttonLabel);
 }
 
 // FIELD FILTER NUMBER FILTERS
@@ -181,7 +184,11 @@ function enterDefaultValue(value, buttonLabel = "Add filter") {
  * @param {string} searchTerm
  * @param {string} result
  */
-export function pickDefaultValue(searchTerm, result) {
+export function pickDefaultValue(
+  searchTerm,
+  result,
+  { buttonLabel = "Add filter" } = {},
+) {
   cy.findByText("Enter a default value…").click();
   cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
 
@@ -195,7 +202,7 @@ export function pickDefaultValue(searchTerm, result) {
   //
   cy.findByTestId(`${result}-filter-value`).should("be.visible").click();
 
-  cy.button("Add filter").click();
+  cy.button(buttonLabel).click();
 }
 
 /**
