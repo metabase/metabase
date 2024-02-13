@@ -224,7 +224,8 @@ function SavedQuestionLeftSide(props) {
 
   const hasLastEditInfo = question.lastEditInfo() != null;
   const isDataset = question.isDataset();
-  const type = question.type() || "question";
+  const type = question.type();
+  const isModelOrMetric = isDataset || type === "metric";
 
   const onHeaderChange = useCallback(
     name => {
@@ -257,7 +258,7 @@ function SavedQuestionLeftSide(props) {
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
             parts={[
-              ...(isAdditionalInfoVisible && type !== "question"
+              ...(isAdditionalInfoVisible && isModelOrMetric
                 ? [
                     <HeaderCollectionBadge
                       key="collection"
