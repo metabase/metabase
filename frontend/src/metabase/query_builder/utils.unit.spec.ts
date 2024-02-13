@@ -106,11 +106,6 @@ const runNewModelLocation = createMockLocation({
   hash: `#${serializeCardForUrl(nativeModelCard)}`,
 });
 
-const runModelEditNotebookLocation = createMockLocation({
-  pathname: "/model/notebook",
-  hash: `#${serializeCardForUrl(nativeModelCard)}`,
-});
-
 const runQuestionLocation = createMockLocation({
   pathname: "/question",
   hash: `#${serializeCardForUrl(nativeCard)}`,
@@ -160,7 +155,6 @@ describe("isNavigationAllowed", () => {
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
       runNewModelLocation,
-      runModelEditNotebookLocation,
       runQuestionLocation,
       runQuestionEditNotebookLocation,
     ])("allows navigating away to `$pathname`", destination => {
@@ -187,7 +181,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runNewModelLocation,
-        runModelEditNotebookLocation,
         runQuestionLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
@@ -220,7 +213,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runNewModelLocation,
-        runModelEditNotebookLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -299,7 +291,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runNewModelLocation,
-        runModelEditNotebookLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -414,7 +405,6 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
-        runModelEditNotebookLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
