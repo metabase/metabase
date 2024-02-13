@@ -23,7 +23,7 @@ export const LineSeries = ({
 }: LineSeriesProps) => {
   return (
     <Group>
-      {multipleSeries.map((series, seriesIndex) => {
+      {multipleSeries.map(series => {
         const yScale =
           series.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
         if (!yScale) {

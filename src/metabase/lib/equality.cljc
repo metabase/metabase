@@ -15,7 +15,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:clj ([metabase.util.log :as log]))))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -178,7 +179,9 @@
           (when-not (next non-exprs)
             (first non-exprs))))
       ;; In all other cases, this is an ambiguous match.
-      (throw (ambiguous-match-error a-ref columns))))
+      #_(throw (ambiguous-match-error a-ref columns))
+      #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
+         :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
 (mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
   "Prefers table-default or explicitly joined columns over implicitly joinable ones."
@@ -217,7 +220,11 @@
       (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
         (if-not (next matches)
           (first matches)
-          (throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+          (#?(:cljs js/console.warn :clj log/warn)
+           "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+           {:ref     a-ref
+            :matches matches})
+          #_(throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
                           {:ref     a-ref
                            :matches matches}))))
       (disambiguate-matches-no-alias a-ref columns))))

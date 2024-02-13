@@ -288,7 +288,6 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
-      cy.wrap(response.body.tabs[0].id).as("firstTabId");
     });
 
     cy.intercept(
@@ -306,9 +305,8 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Visit first tab and confirm only first card was queried
-    cy.get("@firstTabId").then(firstTabId => {
-      visitDashboard(ORDERS_DASHBOARD_ID, { params: { tab: firstTabId } });
-    });
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 

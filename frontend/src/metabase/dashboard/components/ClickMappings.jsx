@@ -21,7 +21,7 @@ import {
 import Question from "metabase-lib/Question";
 import { TargetTrigger } from "./ClickMappings.styled";
 
-class ClickMappingsInner extends Component {
+class ClickMappings extends Component {
   render() {
     const { setTargets, unsetTargets } = this.props;
     const sourceOptions = {
@@ -116,7 +116,7 @@ class ClickMappingsInner extends Component {
   }
 }
 
-const ClickMappings = _.compose(
+export const ClickMappingsConnected = _.compose(
   loadQuestionMetadata((state, props) =>
     props.isDashboard ? null : props.object,
   ),
@@ -151,7 +151,7 @@ const ClickMappings = _.compose(
     };
     return { setTargets, unsetTargets, sourceOptions };
   }),
-)(ClickMappingsInner);
+)(ClickMappings);
 
 const getKeyForSource = o => (o.type == null ? null : `${o.type}-${o.id}`);
 const getSourceOption = {
@@ -339,5 +339,3 @@ export function clickTargetObjectType(object) {
     return "gui";
   }
 }
-
-export default ClickMappings;

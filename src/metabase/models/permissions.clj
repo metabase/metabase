@@ -1088,7 +1088,7 @@
 (defenterprise default-audit-collection
   "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db [] ::noop)
+  metabase-enterprise.audit-db [] nil)
 
 (defenterprise default-custom-reports-collection
   "OSS implementation of `audit-db/default-custom-reports-collection`, which is an enterprise feature, so does nothing in the OSS

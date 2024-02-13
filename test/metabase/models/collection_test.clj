@@ -1681,7 +1681,7 @@
 
 (deftest instance-analytics-collections-test
   (testing "Instance analytics and it's contents isn't writable, even for admins."
-    (t2.with-temp/with-temp [Collection audit-collection {:id perms/audit-db-id :type "instance-analytics"}
+    (t2.with-temp/with-temp [Collection audit-collection {:type "instance-analytics"}
                              Card       audit-card       {:collection_id (:id audit-collection)}
                              Dashboard  audit-dashboard  {:collection_id (:id audit-collection)}
                              Collection cr-collection    {}

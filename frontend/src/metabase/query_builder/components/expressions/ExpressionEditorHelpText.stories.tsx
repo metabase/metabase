@@ -12,7 +12,7 @@ export default {
   component: ExpressionEditorHelpText,
 };
 
-const Template: ComponentStory<typeof ExpressionEditorHelpText> = args => {
+const Template: ComponentStory<typeof ExpressionEditorHelpText> = () => {
   const target = useRef(null);
   const database = createMockDatabase();
   const metadata = createMockMetadata({ databases: [database] });

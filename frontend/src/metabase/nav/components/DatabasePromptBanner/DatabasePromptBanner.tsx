@@ -33,7 +33,7 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
       <CallToActions>
         <GetHelpButton
           href="https://metabase.com/help/connect"
-          onClickCapture={e => {
+          onClickCapture={() => {
             trackDatabasePromptBannerClicked("help");
           }}
         >{t`Get help connecting`}</GetHelpButton>

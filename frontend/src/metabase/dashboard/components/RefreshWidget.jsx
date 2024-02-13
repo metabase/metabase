@@ -24,7 +24,7 @@ const OPTIONS = [
   { name: t`60 minutes`, period: 60 * 60 },
 ];
 
-export default class RefreshWidget extends Component {
+export class RefreshWidget extends Component {
   constructor(props) {
     super(props);
 

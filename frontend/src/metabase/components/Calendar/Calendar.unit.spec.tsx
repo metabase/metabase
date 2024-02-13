@@ -76,7 +76,7 @@ describe("Calendar", () => {
       expect(
         screen
           .getAllByTestId("calendar-day-name")
-          .map((dayEl, index) => dayEl.textContent),
+          .map(dayEl => dayEl.textContent),
       ).toEqual(["We", "Th", "Fr", "Sa", "Su", "Mo", "Tu"]);
 
       // check that listed dates are correct and start with proper day-of-week

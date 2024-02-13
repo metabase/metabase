@@ -8,7 +8,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import DashboardApp from "metabase/dashboard/containers/DashboardApp";
+import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -83,7 +83,7 @@ async function setup({ dashboard }: Options = {}) {
     return (
       <main>
         <link rel="icon" />
-        <DashboardApp {...props} />
+        <DashboardAppConnected {...props} />
       </main>
     );
   };

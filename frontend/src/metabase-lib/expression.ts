@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
+  AggregationClause,
   ColumnMetadata,
   ExpressionArg,
   ExpressionClause,
@@ -73,7 +74,7 @@ export function expressionClauseForLegacyExpression(
 export function legacyExpressionForExpressionClause(
   query: Query,
   stageIndex: number,
-  expressionClause: ExpressionClause,
+  expressionClause: ExpressionClause | AggregationClause | FilterClause,
 ): any {
   return ML.legacy_expression_for_expression_clause(
     query,

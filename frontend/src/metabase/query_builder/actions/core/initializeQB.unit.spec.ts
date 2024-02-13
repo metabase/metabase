@@ -595,13 +595,11 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       type SnippetsSetupOpts = Omit<SetupOpts, "card"> & {
-        hasLoadedDatabase?: boolean;
         hasDatabaseWritePermission?: boolean;
         snippet?: unknown;
       };
 
       function setupSnippets({
-        hasLoadedDatabase = true,
         hasDatabaseWritePermission = true,
         snippet,
         ...opts

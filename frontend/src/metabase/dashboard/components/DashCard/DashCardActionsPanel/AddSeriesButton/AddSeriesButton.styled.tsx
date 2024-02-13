@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { DashCardActionButton } from "../DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
 export const ActionButton = styled(DashCardActionButton)`
   position: relative;

@@ -28,7 +28,7 @@ export const ModelIndexes = createEntity({
     getUrl: (entity: IndexedEntity) => `/model/${entity.model_id}/${entity.id}`,
     getIcon: () => ({ name: "beaker" }),
   },
-  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+  reducer: (state = {}) => {
     return state;
   },
 });

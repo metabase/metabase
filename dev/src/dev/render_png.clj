@@ -5,11 +5,13 @@
     [clojure.java.io :as io]
     [clojure.java.shell :as sh]
     [hiccup.core :as hiccup]
+    [metabase.models :refer [Card]]
     [metabase.models.card :as card]
     [metabase.pulse :as pulse]
     [metabase.pulse.render :as render]
     [metabase.pulse.render.test-util :as render.tu]
     [metabase.query-processor :as qp]
+    [metabase.test :as mt]
     [toucan2.core :as t2])
   (:import (java.io File)))
 
@@ -47,13 +49,16 @@
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
   [card-id]
-  (let [{:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
-        query-results                    (qp/process-query dataset_query)
-        png-bytes                        (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
-                                                                          card
-                                                                          query-results
-                                                                          1000)
-        tmp-file                         (File/createTempFile "card-png" ".png")]
+  (let [{:keys [dataset_query result_metadata dataset] :as card} (t2/select-one card/Card :id card-id)
+        query-results (qp/process-query
+                        (cond-> dataset_query
+                          dataset
+                          (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
+        png-bytes     (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
+                                                       card
+                                                       query-results
+                                                       1000)
+        tmp-file      (File/createTempFile "card-png" ".png")]
     (with-open [w (java.io.FileOutputStream. tmp-file)]
       (.write w ^bytes png-bytes))
     (.deleteOnExit tmp-file)
@@ -103,3 +108,45 @@
                                        :hidden-columns      {:hide [0 2]}})
       :viz-tree
       open-hiccup-as-html))
+
+(comment
+  ;; This form has 3 cards:
+  ;; - A plain old question
+  ;; - A model with user defined metadata
+  ;; - A question based on that model
+  ;;
+  ;; The expected rendered results should be:
+  ;; - The plain question will not have custom formatting applied
+  ;; - The model and derived query will have custom formatting applied
+  (mt/dataset sample-dataset
+    (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                            :type     :query
+                                                            :query    {:source-table (mt/id :orders)
+                                                                       :expressions  {"Tax Rate" [:/
+                                                                                                  [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                                  [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                       :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                      [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                      [:expression "Tax Rate"]]
+                                                                       :limit        10}}}
+                   Card {model-card-id :id} {:dataset         true
+                                             :dataset_query   {:type     :query
+                                                               :database (mt/id)
+                                                               :query    {:source-table (format "card__%s" base-card-id)}}
+                                             :result_metadata [{:name         "TAX"
+                                                                :display_name "Tax"
+                                                                :base_type    :type/Float}
+                                                               {:name         "TOTAL"
+                                                                :display_name "Total"
+                                                                :base_type    :type/Float}
+                                                               {:name          "Tax Rate"
+                                                                :display_name  "Tax Rate"
+                                                                :base_type     :type/Float
+                                                                :semantic_type :type/Percentage
+                                                                :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                   Card {question-card-id :id} {:dataset_query {:type     :query
+                                                                :database (mt/id)
+                                                                :query    {:source-table (format "card__%s" model-card-id)}}}]
+      (render-card-to-png base-card-id)
+      (render-card-to-png model-card-id)
+      (render-card-to-png question-card-id))))

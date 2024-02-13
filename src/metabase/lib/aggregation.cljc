@@ -224,7 +224,7 @@
   [aggregation-clause]
   aggregation-clause)
 
-(def ^:private Aggregatable
+(def ^:private Aggregable
   "Schema for something you can pass to [[aggregate]] to add to a query as an aggregation."
   [:or
    ::lib.schema.aggregation/aggregation
@@ -233,16 +233,16 @@
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
-  ([query aggregatable]
-   (aggregate query -1 aggregatable))
+  ([query aggregable]
+   (aggregate query -1 aggregable))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    aggregatable :- Aggregatable]
+    aggregable :- Aggregable]
    ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
-   (if (= (lib.dispatch/dispatch-value aggregatable) :metadata/metric)
-     (recur query stage-number (lib.ref/ref aggregatable))
-     (lib.util/add-summary-clause query stage-number :aggregation aggregatable))))
+   (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
+     (recur query stage-number (lib.ref/ref aggregable))
+     (lib.util/add-summary-clause query stage-number :aggregation aggregable))))
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
   "Get the aggregations in a given stage of a query."

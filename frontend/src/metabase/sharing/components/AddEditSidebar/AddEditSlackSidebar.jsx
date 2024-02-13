@@ -5,7 +5,7 @@ import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/core/components/Toggle";
 
 import { dashboardPulseIsValid } from "metabase/lib/pulse";

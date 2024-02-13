@@ -143,7 +143,7 @@ export function autoWireParametersToNewCard({
               targetDashcard,
               param.parameter_id,
               targetDashcard.card_id,
-              param.target,
+              opt.target,
             ),
           );
           processedParameterIds.add(param.parameter_id);

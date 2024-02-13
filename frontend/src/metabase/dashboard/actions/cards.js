@@ -69,7 +69,7 @@ export const addCardToDashboard =
     dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
 
-    dispatch(loadMetadataForDashboard([dashcard]));
+    await dispatch(loadMetadataForDashboard([dashcard]));
 
     dispatch(
       autoWireParametersToNewCard({

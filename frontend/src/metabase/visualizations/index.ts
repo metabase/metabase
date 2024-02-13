@@ -130,7 +130,7 @@ export const extractRemappedColumns = (data: DatasetData) => {
     remapping: col.remapped_to != null ? new Map() : undefined,
   }));
 
-  const rows = data.rows.map((row, rowIndex) =>
+  const rows = data.rows.map(row =>
     row.filter((value, colIndex) => {
       const col = cols[colIndex];
       if (col.remapped_from != null) {

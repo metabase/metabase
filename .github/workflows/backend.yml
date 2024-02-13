@@ -95,6 +95,10 @@ jobs:
       DOWNLOAD_URL: https://github.com/clj-kondo/clj-kondo/releases/download
     steps:
       - uses: actions/checkout@v3
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'kondo'
       - name: Install clj-kondo
         run: |
           curl -OL ${DOWNLOAD_URL}/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip

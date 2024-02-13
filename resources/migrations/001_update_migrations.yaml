@@ -4157,6 +4157,21 @@ databaseChangeLog:
               - column:
                   name: started_at
 
+  - changeSet:
+      id: v48.00-061
+      author: piranha
+      comment: 'Adds query_execution.cache_hash -> query_cache.query_hash'
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: cache_hash
+                  type: ${blob.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'Hash of normalized query, calculated in middleware.cache'
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 

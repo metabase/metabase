@@ -1,4 +1,4 @@
-import reducer from "./reducers";
+import { dashboardReducers as reducer } from "./reducers";
 import {
   INITIALIZE,
   SET_EDITING_DASHBOARD,

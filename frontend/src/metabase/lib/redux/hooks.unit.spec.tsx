@@ -43,7 +43,7 @@ describe("useDispatch", () => {
     it("should provide a `dispatch` method that can dispatch a thunk", () => {
       const funcInThunk = jest.fn();
 
-      setup({ thunk: () => (dispatch: any, getState: any) => funcInThunk() });
+      setup({ thunk: () => () => funcInThunk() });
       expect(funcInThunk).toHaveBeenCalled();
     });
 
@@ -52,7 +52,7 @@ describe("useDispatch", () => {
       const didNotFindEmailState = jest.fn();
 
       setup({
-        thunk: () => (dispatch: any, getState: () => State) => {
+        thunk: () => (_dispatch: any, getState: () => State) => {
           const email = getState().currentUser?.email;
           email ? foundEmailState() : didNotFindEmailState();
         },
@@ -63,11 +63,10 @@ describe("useDispatch", () => {
 
     it("should properly dispatch thunks that use `dispatch`", () => {
       const funcInNestedThunk = jest.fn();
-      const nestedThunk = () => (dispatch: any, getState: any) =>
-        funcInNestedThunk();
+      const nestedThunk = () => () => funcInNestedThunk();
 
       setup({
-        thunk: () => (dispatch: (thunk: any) => void, getState: any) =>
+        thunk: () => (dispatch: (thunk: any) => void) =>
           dispatch(nestedThunk()),
       });
       expect(funcInNestedThunk).toHaveBeenCalled();

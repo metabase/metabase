@@ -52,6 +52,7 @@ import {
   isCoordinate,
   isCurrency,
   isDateWithoutTime,
+  isPercentage,
 } from "metabase-lib/types/utils/isa";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
@@ -265,8 +266,17 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: t`Currency`, value: "currency" },
       ],
     },
-    getDefault: (column, settings) =>
-      isCurrency(column) && settings["currency"] ? "currency" : "decimal",
+    getDefault: (column, settings) => {
+      if (isCurrency(column) && settings["currency"]) {
+        return "currency";
+      }
+
+      if (isPercentage(column)) {
+        return "percent";
+      }
+
+      return "decimal";
+    },
     // hide this for currency
     getHidden: (column, settings) =>
       isCurrency(column) && settings["number_style"] === "currency",

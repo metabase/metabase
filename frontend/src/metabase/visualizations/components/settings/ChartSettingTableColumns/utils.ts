@@ -117,7 +117,7 @@ export const getAdditionalMetadataColumns = (
 ): Lib.ColumnMetadata[] => {
   const additionalColumns = new Set(metadataColumns);
 
-  columnSettingItems.forEach(({ enabled, metadataColumn }) => {
+  columnSettingItems.forEach(({ metadataColumn }) => {
     if (metadataColumn) {
       additionalColumns.delete(metadataColumn);
     }

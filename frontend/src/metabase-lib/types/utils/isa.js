@@ -181,6 +181,9 @@ export const isLongitude = field =>
 export const isCurrency = field =>
   field && isa(field.semantic_type, TYPE.Currency);
 
+export const isPercentage = field =>
+  field && isa(field.semantic_type, TYPE.Percentage);
+
 export const isDescription = field =>
   field && isa(field.semantic_type, TYPE.Description);
 

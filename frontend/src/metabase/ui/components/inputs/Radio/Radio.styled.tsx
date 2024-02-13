@@ -16,7 +16,7 @@ export const getRadioOverrides = (): MantineThemeOverride["components"] => ({
     },
     styles: (
       theme: MantineTheme,
-      { labelPosition }: RadioStylesParams,
+      { labelPosition: _labelPosition }: RadioStylesParams,
       { size = "md" },
     ) => ({
       root: {

@@ -4,7 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
+import { DashboardSharingEmbeddingModalConnected } from "../containers/DashboardSharingEmbeddingModal.jsx";
 import {
   FullScreenButtonIcon,
   NightModeButtonIcon,
@@ -79,7 +79,7 @@ export const getDashboardActions = (
 
     if (canShareDashboard) {
       buttons.push(
-        <DashboardSharingEmbeddingModal
+        <DashboardSharingEmbeddingModalConnected
           key="dashboard-embed"
           additionalClickActions={() => self.refs.popover.close()}
           dashboard={dashboard}

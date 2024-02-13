@@ -5,8 +5,8 @@ import { Divider, Menu } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { moveDashCardToTab } from "metabase/dashboard/actions";
-import { DashCardActionButton } from "../DashCardActionButton";
-import { MoveDashCardActionContainer } from "./DashCardTabMenu.styled";
+import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
+import { MoveDashCardActionStyled } from "./DashCardTabMenu.styled";
 
 interface DashCardTabMenuProps {
   dashCardId: DashCardId;
@@ -44,9 +44,9 @@ export function DashCardTabMenu({
     <>
       <Menu trigger="hover" onOpen={onOpen} onClose={onClose}>
         <Menu.Target>
-          <MoveDashCardActionContainer>
+          <MoveDashCardActionStyled>
             <DashCardActionButton.Icon name="move_card" />
-          </MoveDashCardActionContainer>
+          </MoveDashCardActionStyled>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{t`Move to tab`}</Menu.Label>

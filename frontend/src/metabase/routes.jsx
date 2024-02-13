@@ -19,8 +19,8 @@ import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
 
 /* Dashboards */
-import DashboardApp from "metabase/dashboard/containers/DashboardApp";
-import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
+import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
 
 /* Browse data */
 import BrowseApp from "metabase/browse/components/BrowseApp";
@@ -74,9 +74,9 @@ import { getRoutes as getModelRoutes } from "metabase/models/routes";
 
 import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
-import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
-import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
-import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
+import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
+import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
+import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import { HomePage } from "metabase/home/components/HomePage";
@@ -172,11 +172,11 @@ export const getRoutes = store => (
         <Route
           path="dashboard/:slug"
           title={t`Dashboard`}
-          component={DashboardApp}
+          component={DashboardAppConnected}
         >
-          <ModalRoute path="move" modal={DashboardMoveModal} />
-          <ModalRoute path="copy" modal={DashboardCopyModal} />
-          <ModalRoute path="archive" modal={ArchiveDashboardModal} />
+          <ModalRoute path="move" modal={DashboardMoveModalConnected} />
+          <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
+          <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
         </Route>
 
         <Route path="/question">
@@ -218,7 +218,10 @@ export const getRoutes = store => (
 
         {/* INDIVIDUAL DASHBOARDS */}
 
-        <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
+        <Route
+          path="/auto/dashboard/*"
+          component={AutomaticDashboardAppConnected}
+        />
 
         {/* REFERENCE */}
         <Route path="/reference" title={t`Data Reference`}>

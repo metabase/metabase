@@ -12,7 +12,7 @@ const propTypes = {
   "data-testid": PropTypes.string,
 };
 
-function Sidebar({
+export function Sidebar({
   closeIsDisabled,
   children,
   onClose,
@@ -57,5 +57,3 @@ function Sidebar({
 }
 
 Sidebar.propTypes = propTypes;
-
-export default Sidebar;

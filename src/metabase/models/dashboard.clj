@@ -52,7 +52,12 @@
 (defmethod mi/can-write? Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
-   (if (= (:collection_id instance) perms/audit-db-id)
+   (if (and
+        ;; We want to make sure there's an existing audit collection before doing the equality check below.
+        ;; If there is no audit collection, this will be nil:
+        (some? (:id (perms/default-audit-collection)))
+        ;; Is a direct descendant of audit collection
+        (= (:collection_id instance) (:id (perms/default-audit-collection))))
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]

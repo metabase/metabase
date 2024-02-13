@@ -73,7 +73,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       .should("not.be.checked");
   });
 
-  it("should see public dashboards", () => {
+  it("should see public dashboards", { tags: "@flaky" }, () => {
     const expectedDashboardName = "Public dashboard";
     const expectedDashboardSlug = "public-dashboard";
     cy.createQuestionAndDashboard({

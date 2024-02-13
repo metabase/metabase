@@ -109,13 +109,17 @@
        (add-object-to-cache! (if (map? result)
                                (m/dissoc-in result [:data :rows])
                                {}))
-       (let [duration-ms (- (System/currentTimeMillis) start-time)]
-         (log/info (trs "Query took {0} to run; minimum for cache eligibility is {1}"
-                        (u/format-milliseconds duration-ms) (u/format-milliseconds (min-duration-ms))))
-         (when (and @has-rows?
-                    (> duration-ms (min-duration-ms)))
+       (let [duration-ms (- (System/currentTimeMillis) start-time)
+             eligible?   (and @has-rows?
+                              (> duration-ms (min-duration-ms)))]
+         (log/infof "Query took %s to run; minimum for cache eligibility is %s; %s"
+                    (u/format-milliseconds duration-ms)
+                    (u/format-milliseconds (min-duration-ms))
+                    (if eligible? "eligible" "not eligible"))
+         (when eligible?
            (cache-results! query-hash)))
-       (rf result))
+       (rf (cond-> result
+             (map? result) (assoc-in [:cache/details :hash] query-hash))))
 
       ([acc row]
        (add-object-to-cache! row)
@@ -128,7 +132,7 @@
 (defn- cached-results-rff
   "Reducing function for cached results. Merges the final object in the cached results, the `final-metdata` map, with
   the reduced value assuming it is a normal metadata map."
-  [rff]
+  [rff query-hash]
   (fn [{:keys [last-ran], :as metadata}]
     (let [metadata       (dissoc metadata :last-ran :cache-version)
           rf             (rff metadata)
@@ -143,7 +147,7 @@
                result*        (-> (if normal-format?
                                     (merge-with merge @final-metadata (unreduced result))
                                     (unreduced result))
-                                  (assoc :cached true, :updated_at last-ran))]
+                                  (assoc :cache/details {:hash query-hash :cached true :updated_at last-ran}))]
            (rf (cond-> result*
                  (reduced? result) reduced))))
 
@@ -188,8 +192,9 @@
 (mu/defn ^:private run-query-with-cache :- :some
   [qp {:keys [cache-ttl middleware], :as query} :- ::qp.schema/query
    rff                                          :- ::qp.schema/rff]
-  ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
-  ;; because this is calculated after normalization, instead of before
+  ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
+  ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see
+  ;; #14388.
   (let [query-hash      (qp.util/query-hash query)
         [status result] (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff)]
     (case status

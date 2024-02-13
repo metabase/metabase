@@ -219,5 +219,5 @@ function TableSimple({
 
 export default ExplicitSize({
   refreshMode: props =>
-    props.isDashboard && !props.isEditing ? "debounce" : "throttle",
+    props.isDashboard && !props.isEditing ? "debounceLeading" : "throttle",
 })(TableSimple);

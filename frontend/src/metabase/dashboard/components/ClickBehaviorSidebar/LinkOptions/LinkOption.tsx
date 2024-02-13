@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/core/components/Icon";
 import { SidebarItem } from "../SidebarItem";
 
-const LinkOption = ({
+export const LinkOption = ({
   option,
   icon,
   onClick,
@@ -19,6 +19,3 @@ const LinkOption = ({
     </div>
   </SidebarItem>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LinkOption;

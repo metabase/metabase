@@ -115,7 +115,7 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
   );
 }
 
-export default _.compose(
+export const QuestionPickerConnected = _.compose(
   entityObjectLoader({
     id: () => "root",
     entityType: "collections",

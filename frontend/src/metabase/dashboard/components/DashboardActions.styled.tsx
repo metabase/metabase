@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
-import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
+import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 
 interface ShareButtonProps {

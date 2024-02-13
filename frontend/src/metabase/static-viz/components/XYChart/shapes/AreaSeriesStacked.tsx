@@ -20,7 +20,7 @@ export const AreaSeriesStacked = ({
 }: AreaSeriesProps) => {
   return (
     <Group>
-      {multipleSeries.map((series, seriesIndex) => {
+      {multipleSeries.map(series => {
         return (
           <LineArea
             key={series.name}

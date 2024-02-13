@@ -11,7 +11,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { DashCardActionButton } from "../DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
 interface Props {
   series: Series;
@@ -20,7 +20,7 @@ interface Props {
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 
-function ChartSettingsButton({
+export function ChartSettingsButton({
   series,
   dashboard,
   dashcard,
@@ -51,6 +51,3 @@ function ChartSettingsButton({
     </ModalWithTrigger>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ChartSettingsButton;

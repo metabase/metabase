@@ -142,17 +142,9 @@
   [_ {:keys [number-separators]}]
   (partial parse-number number-separators))
 
-(defmethod upload-type->parser :metabase.upload/int-pk
-  [_ {:keys [number-separators]}]
-  (partial parse-number number-separators))
-
 (defmethod upload-type->parser :metabase.upload/auto-incrementing-int-pk
   [_ {:keys [number-separators]}]
   (partial parse-number number-separators))
-
-(defmethod upload-type->parser :metabase.upload/string-pk
-  [_ _]
-  identity)
 
 (defmethod upload-type->parser :metabase.upload/boolean
   [_ _]

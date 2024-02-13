@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import DashboardData from "metabase/dashboard/hoc/DashboardData";
+import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 
 const DashboardWithData = DashboardData(Dashboard);
 

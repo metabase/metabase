@@ -15,7 +15,7 @@ const TICK_PERIOD = 1; // seconds
  *
  * @deprecated HOCs are deprecated
  */
-export default ComposedComponent =>
+export const DashboardControls = ComposedComponent =>
   connect(null, { replace })(
     class extends Component {
       static displayName =
@@ -168,11 +168,11 @@ export default ComposedComponent =>
         const { refreshPeriod } = this.state;
         if (refreshPeriod && this._refreshElapsed >= refreshPeriod) {
           this._refreshElapsed = 0;
-          await this.props.fetchDashboard(
-            this.props.dashboardId,
-            this.props.location.query,
-            { preserveParameters: true },
-          );
+          await this.props.fetchDashboard({
+            dashId: this.props.dashboardId,
+            queryParams: this.props.location.query,
+            options: { preserveParameters: true },
+          });
           this.props.fetchDashboardCardData({
             isRefreshing: true,
             reload: true,

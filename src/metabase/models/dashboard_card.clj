@@ -4,8 +4,6 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.action :as action]
-   [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -48,7 +46,7 @@
 (defmethod mi/perms-objects-set :model/DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
-                   (t2/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
+                   (t2/select-one [:model/Card :dataset_query] :id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
@@ -107,12 +105,6 @@
          dashcards)))
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
-
-(defn dashcard->action
-  "Get the action associated with a dashcard if exists, return `nil` otherwise."
-  [dashcard-or-dashcard-id]
-  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
-           (action/select-action :id)))
 
 (mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
@@ -380,9 +372,9 @@
   [dashcard]
   (-> dashcard
       (dissoc :serdes/meta)
-      (update :card_id                serdes/*import-fk* 'Card)
-      (update :action_id              serdes/*import-fk* 'Action)
-      (update :dashboard_id           serdes/*import-fk* 'Dashboard)
+      (update :card_id                serdes/*import-fk* :model/Card)
+      (update :action_id              serdes/*import-fk* :model/Action)
+      (update :dashboard_id           serdes/*import-fk* :model/Dashboard)
       (update :dashboard_tab_id       serdes/*import-fk* :model/DashboardTab)
       (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes/import-parameter-mappings)

@@ -11,7 +11,7 @@ import admin from "metabase/admin/admin";
 import { reducer as setup } from "metabase/setup/reducers";
 
 /* dashboards */
-import dashboard from "metabase/dashboard/reducers";
+import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
 
 /* parameters */
 import * as parameters from "metabase/parameters/reducers";

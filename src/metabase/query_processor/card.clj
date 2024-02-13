@@ -219,23 +219,26 @@
              ;; param `run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
              run         (process-query-for-card-default-run-fn qp export-format)}}]
-  {:pre [(u/maybe? sequential? parameters)]}
-  (let [card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
-                                              :dataset :result_metadata :visualization_settings]
-                                             :id card-id))
-        query (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                  (update :middleware (fn [middleware]
-                                        (merge
-                                         {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
-                                         middleware))))
-        info  (cond-> {:executed-by            api/*current-user-id*
-                       :context                context
-                       :card-id                card-id
-                       :card-name              (:name card)
-                       :dashboard-id           dashboard-id
-                       :visualization-settings (:visualization_settings card)}
-                (and (:dataset card) (seq (:result_metadata card)))
-                (assoc :metadata/dataset-metadata (:result_metadata card)))]
+  {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
+  (let [dash-viz (when (not= context :question)
+                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
+        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
+                                                 :dataset :result_metadata :visualization_settings]
+                                                :id card-id))
+        query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                     (update :viz-settings (fn [viz] (merge viz dash-viz)))
+                     (update :middleware (fn [middleware]
+                                           (merge
+                                            {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                            middleware))))
+        info     (cond-> {:executed-by            api/*current-user-id*
+                          :context                context
+                          :card-id                card-id
+                          :card-name              (:name card)
+                          :dashboard-id           dashboard-id
+                          :visualization-settings (:visualization_settings card)}
+                   (and (:dataset card) (seq (:result_metadata card)))
+                   (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))

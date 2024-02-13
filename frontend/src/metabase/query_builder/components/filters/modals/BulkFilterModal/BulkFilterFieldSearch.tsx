@@ -40,7 +40,7 @@ export const FieldSearch = ({
     <SearchContainer
       isActive={isExpanded}
       onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={e => shouldClose() && setIsExpanded(false)}
+      onMouseLeave={() => shouldClose() && setIsExpanded(false)}
     >
       <SearchIcon
         name="search"

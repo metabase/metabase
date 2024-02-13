@@ -8,7 +8,7 @@ import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { Icon } from "metabase/core/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
 import SchedulePicker from "metabase/containers/SchedulePicker";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SendTestPulse from "metabase/components/SendTestPulse";

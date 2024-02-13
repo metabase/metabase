@@ -18,7 +18,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
     },
     styles: (
       theme: MantineTheme,
-      { labelPosition }: CheckboxStylesParams,
+      { labelPosition: _labelPosition }: CheckboxStylesParams,
       { size = "md" },
     ) => ({
       root: {

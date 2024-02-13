@@ -1,7 +1,6 @@
 import {
   assertDescendantNotOverflowsContainer,
   assertIsEllipsified,
-  getBrokenUpTextMatcher,
   popover,
   restore,
 } from "e2e/support/helpers";
@@ -55,9 +54,7 @@ describe("issue 31340", function () {
 
       cy.wait("@search");
 
-      cy.findByText(
-        getBrokenUpTextMatcher(`No matching ${LONG_COLUMN_NAME} found.`),
-      )
+      cy.contains(`No matching ${LONG_COLUMN_NAME} found.`)
         .should("be.visible")
         .then($container => {
           cy.findByText(LONG_COLUMN_NAME).then(([columnTextEl]) => {

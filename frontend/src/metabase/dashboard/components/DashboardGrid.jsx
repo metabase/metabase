@@ -34,11 +34,11 @@ import {
 
 import { DashboardCard } from "./DashboardGrid.styled";
 
-import GridLayout from "./grid/GridLayout";
+import { GridLayout } from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 
-import { AddSeriesModal } from "./AddSeriesModal";
-import DashCard from "./DashCard";
+import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
+import { DashCard } from "./DashCard/DashCard";
 
 const mapDispatchToProps = { addUndo };
 
@@ -465,7 +465,7 @@ function isEditingTextOrHeadingCard(display, isEditing) {
   return isEditing && isTextOrHeadingCard;
 }
 
-export default _.compose(
+export const DashboardGridConnected = _.compose(
   ExplicitSize(),
   connect(null, mapDispatchToProps),
 )(DashboardGrid);

@@ -17,12 +17,10 @@ import {
 import PremiumEmbeddingLicensePage from "./PremiumEmbeddingLicensePage";
 
 interface SetupOpts {
-  token?: string;
   tokenStatus?: StoreTokenStatus;
 }
 
 const setup = async ({
-  token,
   tokenStatus = createMockStoreTokenStatus(),
 }: SetupOpts = {}) => {
   setupPropertiesEndpoints(createMockSettings());
@@ -50,7 +48,6 @@ describe("PremiumEmbeddingLicensePage", () => {
 
   it("should display a link to upgrade the license when the token is invalid", async () => {
     await setup({
-      token: "ABC",
       tokenStatus: createMockStoreTokenStatus({ status: "invalid" }),
     });
 

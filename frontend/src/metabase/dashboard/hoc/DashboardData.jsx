@@ -39,12 +39,12 @@ const mapDispatchToProps = {
 /**
  * @deprecated HOCs are deprecated
  */
-export default ComposedComponent =>
+export const DashboardData = ComposedComponent =>
   connect(
     mapStateToProps,
     mapDispatchToProps,
   )(
-    class DashboardContainer extends Component {
+    class DashboardDataInner extends Component {
       async load(props) {
         const {
           initialize,
@@ -58,10 +58,20 @@ export default ComposedComponent =>
 
         initialize({ clearCache: !isNavigatingBackToDashboard });
 
-        try {
-          await fetchDashboard(dashboardId, location && location.query, {
+        const result = await fetchDashboard({
+          dashId: dashboardId,
+          queryParams: location && location.query,
+          options: {
             clearCache: !isNavigatingBackToDashboard,
-          });
+          },
+        });
+
+        if (result.error) {
+          setErrorPage(result.payload);
+          return;
+        }
+
+        try {
           await fetchDashboardCardData({
             reload: false,
             clearCache: !isNavigatingBackToDashboard,

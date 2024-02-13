@@ -51,7 +51,8 @@
 
 (defn- compare-results [export-format query]
   (is (= (expected-results* export-format query)
-         (actual-results* export-format query))))
+         (cond-> (actual-results* export-format query)
+           (= export-format :api) (dissoc :cached)))))
 
 (deftest streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."

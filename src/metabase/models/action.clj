@@ -341,6 +341,12 @@
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
 
+(defn dashcard->action
+  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-or-dashcard-id]
+  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+           (select-action :id)))
+
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
 (defmethod serdes/extract-query "Action" [_model _opts]

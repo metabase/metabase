@@ -26,8 +26,7 @@ const DashActionButton = React.forwardRef<HTMLAnchorElement, Props>(
   },
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(DashActionButton, {
+export const DashCardActionButton = Object.assign(DashActionButton, {
   Icon: ActionIcon,
   ICON_SIZE: HEADER_ICON_SIZE,
 });

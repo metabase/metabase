@@ -11,7 +11,7 @@ import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
-import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
+import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
@@ -233,7 +233,7 @@ DashboardApp.propTypes = {
   route: PropTypes.object,
 };
 
-export default _.compose(
+export const DashboardAppConnected = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   favicon(({ pageFavicon }) => pageFavicon),
   title(({ dashboard, documentTitle }) => ({

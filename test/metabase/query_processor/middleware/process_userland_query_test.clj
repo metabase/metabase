@@ -65,7 +65,8 @@
                :json_query             query
                :average_execution_time nil
                :context                nil
-               :running_time           int?}
+               :running_time           int?
+               :cached                 false}
               (process-userland-query query))
           "Result should have query execution info")
       (is (=? {:hash         "29f0bca06d6679e873b1f5a3a36dac18a5b4642c6545d24456ad34b1cad4ecc6"
@@ -82,6 +83,7 @@
                :context      nil
                :running_time true
                :cache_hit    false
+               :cache_hash   nil ;; this is filled only for eligible queries
                :dashboard_id nil}
               (qe))
           "QueryExecution should be saved"))))

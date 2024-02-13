@@ -84,7 +84,7 @@ interface ColumnProps {
   onClick: () => void;
 }
 
-const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
+export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
       name={getIconForField(column) as unknown as IconName}
@@ -98,6 +98,3 @@ const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
     </div>
   </SidebarItem>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Column;

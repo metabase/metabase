@@ -13,6 +13,11 @@
   []
   (or (public-settings/notification-link-base-url) (public-settings/site-url)))
 
+(defn archive-url
+  "Return an appropriate URL to view the archive page."
+  []
+  (str (site-url) "/archive"))
+
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 
@@ -55,6 +60,7 @@
   "URL for the notification management page in account settings."
   []
   (str (site-url) "/account/notifications"))
+
 (defn unsubscribe-url
   "URL for nonusers to unsubscribe from alerts"
   []

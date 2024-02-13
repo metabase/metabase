@@ -69,8 +69,8 @@
               :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]
             (lib/available-segments (lib/query metadata-provider (meta/table-metadata :venues))))))
   (testing "Should return filter-positions"
-    (let [query (-> (lib/query metadata-provider (meta/table-metadata :venues))
-                    (lib/filter segment-clause))
+    (let [query              (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                                 (lib/filter segment-clause))
           available-segments (lib/available-segments query)]
       (is (=? [{:lib/type    :metadata/segment
                 :id          segment-id
@@ -86,7 +86,16 @@
                 :effective-type :type/Boolean,
                 :description "The ID is greater than 11 times the price and the name contains \"BBQ\".",
                 :filter-positions [0]}]
-              (map #(lib/display-info query %) available-segments)))))
+              (map #(lib/display-info query %) available-segments)))
+      (let [multi-stage-query (lib/append-stage query)]
+        (testing "not the first stage -- don't return Segments (#36196)"
+          (is (nil? (lib/available-segments multi-stage-query)))
+          (is (nil? (lib/available-segments multi-stage-query -1)))
+          (is (nil? (lib/available-segments multi-stage-query 1))))
+        (testing "explicitly choosing the first stage works"
+          (is (= available-segments
+                 (lib/available-segments multi-stage-query 0)
+                 (lib/available-segments multi-stage-query -2)))))))
   (testing "query with different Table -- don't return Segments"
     (is (nil? (lib/available-segments (lib/query metadata-provider (meta/table-metadata :orders)))))))
 

@@ -265,7 +265,7 @@
 
 (defn process-query-for-dashcard
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
-  [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
+  [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params middleware
              query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp          qp.card/process-query-for-card-default-qp}}]
@@ -281,7 +281,8 @@
      :parameters    parameters
      :qp            qp
      :context       :embedded-dashboard
-     :constraints   constraints)))
+     :constraints   constraints
+     :middleware    middleware)))
 
 
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------
@@ -389,7 +390,7 @@
 
   Returns a `StreamingResponse`."
   [token dashcard-id card-id export-format query-params
-   & {:keys [constraints qp]
+   & {:keys [constraints qp middleware]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp          qp.card/process-query-for-card-default-qp}}]
   (let [unsigned-token (embed/unsign token)
@@ -404,7 +405,8 @@
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :query-params     query-params
       :constraints      constraints
-      :qp               qp)))
+      :qp               qp
+      :middleware       middleware)))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
