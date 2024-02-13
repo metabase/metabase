@@ -16,12 +16,14 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -389,6 +391,18 @@
 (defmethod descendants :default [_ _]
   nil)
 
+(defmulti ascendants
+  "Return set of `[model-name database-id]` pairs for all entities containing this entity, required to successfully
+  load this entity in destination db. Notice that ascendants are searched recursively, but their descendants are not
+  analyzed.
+
+  Dispatched on model-name."
+  {:arglists '([model-name db-id])}
+  (fn [model-name _] model-name))
+
+(defmethod ascendants :default [_ _]
+  nil)
+
 ;;; # Import Process
 ;;; Deserialization is split into two stages, mirroring serialization. They are called *ingestion* and *loading*.
 ;;; Ingestion turns whatever serialized form was produced by storage (eg. a tree of YAML files) into Clojure maps with
@@ -507,15 +521,52 @@
   {:arglists '([ingested])}
   ingested-model)
 
+(def ^:private fields-for-table
+  "Given a table name, returns a map of column_name -> column_type"
+  (mdb.connection/memoize-for-application-db
+   (fn fields-for-table [table-name]
+     (u.conn/app-db-column-types mdb.connection/*application-db* table-name))))
+
+(defn- ->table-name
+  "Returns the table name that a particular ingested entity should finally be inserted into."
+  [ingested]
+  (->> ingested ingested-model (keyword "model") t2/table-name name))
+
+(defmulti ingested-model-columns
+  "Called by `drop-excess-keys` (which is in turn called by `load-xform-basics`) to determine the full set of keys that
+  should be on the map returned by `load-xform-basics`. The default implementation looks in the application DB for the
+  table associated with the ingested model and returns the set of keywordized columns, but for some models (e.g.
+  Actions) there is not a 1:1 relationship between a model and a table, so we need this multimethod to allow the
+  model to override when necessary."
+  ingested-model)
+
+(defmethod ingested-model-columns :default
+  ;; this works for most models - it just returns a set of keywordized column names from the database.
+  [ingested]
+  (->> ingested
+       ->table-name
+       fields-for-table
+       keys
+       (map (comp keyword u/lower-case-en))
+       set))
+
+(defn- drop-excess-keys
+  "Given an ingested entity, removes keys that will not 'fit' into the current schema, because the column no longer
+  exists. This can happen when serialization dumps generated on an earlier version of Metabase are loaded into a
+  later version of Metabase, when a column gets removed. (At the time of writing I am seeing this happen with
+  color on collections)."
+  [ingested]
+  (select-keys ingested (ingested-model-columns ingested)))
+
 (defn load-xform-basics
   "Performs the usual steps for an incoming entity:
-  - Drop :serdes/meta
+  - removes extraneous keys (e.g. `:serdes/meta`)
 
-  You should call this as a first step from any implementation of [[load-xform]].
+  You should call this as part of any implementation of [[load-xform]].
 
   This is a mirror (but not precise inverse) of [[extract-one-basics]]."
   [ingested]
-  (dissoc ingested :serdes/meta))
+  (drop-excess-keys ingested))
 
 (defmethod load-xform :default [ingested]
   (load-xform-basics ingested))
@@ -578,13 +629,18 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defmethod load-one! :default [ingested maybe-local]
+(defn default-load-one!
+  "Default implementation of `load-one!`"
+  [ingested maybe-local]
   (let [model    (ingested-model ingested)
         adjusted (load-xform ingested)]
     (binding [mi/*deserializing?* true]
       (if (nil? maybe-local)
         (load-insert! model adjusted)
         (load-update! model adjusted maybe-local)))))
+
+(defmethod load-one! :default [ingested maybe-local]
+  (default-load-one! ingested maybe-local))
 
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."

@@ -1,40 +1,57 @@
+name: Most active creators
 description: null
+entity_id: p-z74CSp1IOs1rXwAcwcS
+created_at: '2023-06-15T02:22:17.198967Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_audit_log
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Most active creators
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
-  type: query
   query:
     aggregation:
     - - count
-    order-by:
-    - - desc
-      - - aggregation
-        - 0
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+        join-alias: Question 1
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - user_id
+      - base-type: type/Integer
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - base-type: type/Text
+    - card-create
     joins:
-    - fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - full_name
-        - base-type: type/Text
-          join-alias: Question 1
-      alias: Question 1
+    - alias: Question 1
       condition:
       - =
       - - field
@@ -50,9 +67,16 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: Question 1
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - full_name
+        - base-type: type/Text
+          join-alias: Question 1
       source-table: 0wVIfjBJWclD0lKeABYYl
-    - fields: all
-      alias: Question 34
+    - alias: Question 34
       condition:
       - =
       - - field
@@ -68,44 +92,25 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: Question 34
+      fields: all
       source-table: lTp-ATFsCUFEr9I0fMEaO
-    breakout:
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - base-type: type/Text
-        join-alias: Question 1
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - user_id
-      - base-type: type/Integer
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
     source-table: -lNDM3tJmuL5ltGbX0oyT
-    filter:
-    - =
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - topic
-      - base-type: type/Text
-    - card-create
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: p-z74CSp1IOs1rXwAcwcS
-  label: most_active_creators
-display: table
-entity_id: p-z74CSp1IOs1rXwAcwcS
-collection_preview: true
+  type: query
+result_metadata: null
 visualization_settings:
-  table.pivot_column: end_timestamp
+  column_settings:
+    '["name","count"]':
+      column_title: Questions created
+      show_mini_bar: true
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+    : column_title: User
   table.cell_column: model_id
   table.columns:
-  - name: full_name
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -114,8 +119,8 @@ visualization_settings:
       - full_name
     - base-type: type/Text
       join-alias: Question 1
-    enabled: true
-  - name: user_id
+    name: full_name
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -123,20 +128,15 @@ visualization_settings:
       - v_audit_log
       - user_id
     - base-type: type/Integer
-    enabled: true
-  - name: count
+    name: user_id
+  - enabled: true
     fieldRef:
     - aggregation
     - 0
-    enabled: true
-  column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: User
-    '["name","count"]':
-      column_title: Questions created
-      show_mini_bar: true
+    name: count
+  table.pivot_column: end_timestamp
+serdes/meta:
+- id: p-z74CSp1IOs1rXwAcwcS
+  label: most_active_creators
+  model: Card
 metabase_version: null
-parameters: []
-dataset: false
-created_at: '2023-06-15T02:22:17.198967Z'
-public_uuid: null

@@ -49,19 +49,10 @@
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-     (into []
-           (keep (fn [[f step-name]]
-                   (when f
-                     (assoc (f database) :name step-name))))
-           [ ;; First make sure Tables, Fields, and FK information is up-to-date
-            [sync-metadata/sync-db-metadata! "metadata"]
-            ;; Next, run the 'analysis' step where we do things like scan values of fields and update semantic types
-            ;; accordingly
-            (when (= scan :full)
-              [analyze/analyze-db! "analyze"])
-            ;; Finally, update cached FieldValues
-            (when (= scan :full)
-              [field-values/update-field-values! "field-values"])]))))
+     (cond-> [(assoc (sync-metadata/sync-db-metadata! database) :name "metadata")]
+       (= scan :full)
+       (conj (assoc (analyze/analyze-db! database) :name "analyze")
+             (assoc (field-values/update-field-values! database) :name "field-values"))))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of

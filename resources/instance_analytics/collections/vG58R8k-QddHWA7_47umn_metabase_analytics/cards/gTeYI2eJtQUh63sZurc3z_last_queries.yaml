@@ -1,122 +1,30 @@
+name: Last queries
 description: Most recently run queries.
+entity_id: gTeYI2eJtQUh63sZurc3z
+created_at: '2023-11-01T01:13:52.012276Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_query_log
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Last queries
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
+  database: Internal Metabase Database
   query:
-    joins:
-    - fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - name
-        - base-type: type/Text
-          join-alias: Content - Card Qualified
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_id
-        - base-type: type/Integer
-          join-alias: Content - Card Qualified
-      strategy: left-join
-      alias: Content - Card Qualified
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_query_log
-          - card_qualified_id
-        - base-type: type/Text
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Card Qualified
-      source-table: AxSackBiyXVRUzM_TyyQY
-    - fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - name
-        - base-type: type/Text
-          join-alias: Content - Dashboard Qualified
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_id
-        - base-type: type/Integer
-          join-alias: Content - Dashboard Qualified
-      strategy: left-join
-      alias: Content - Dashboard Qualified
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_query_log
-          - dashboard_qualified_id
-        - base-type: type/Text
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Dashboard Qualified
-      source-table: AxSackBiyXVRUzM_TyyQY
-    - fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_databases
-          - entity_id
-        - base-type: type/Integer
-          join-alias: Databases - Database Qualified
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_databases
-          - name
-        - base-type: type/Text
-          join-alias: Databases - Database Qualified
-      strategy: left-join
-      alias: Databases - Database Qualified
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_query_log
-          - database_qualified_id
-        - base-type: type/Text
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_databases
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Databases - Database Qualified
-      source-table: -19557ZnrWiDgG4h4cKxF
     fields:
     - - field
       - - Internal Metabase Database
@@ -154,6 +62,107 @@ dataset_query:
         - v_query_log
         - error
       - base-type: type/Text
+    joins:
+    - alias: Content - Card Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - card_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Card Qualified
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - name
+        - base-type: type/Text
+          join-alias: Content - Card Qualified
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_id
+        - base-type: type/Integer
+          join-alias: Content - Card Qualified
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    - alias: Content - Dashboard Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - dashboard_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Dashboard Qualified
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - name
+        - base-type: type/Text
+          join-alias: Content - Dashboard Qualified
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_id
+        - base-type: type/Integer
+          join-alias: Content - Dashboard Qualified
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    - alias: Databases - Database Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - database_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_databases
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Databases - Database Qualified
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_databases
+          - entity_id
+        - base-type: type/Integer
+          join-alias: Databases - Database Qualified
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_databases
+          - name
+        - base-type: type/Text
+          join-alias: Databases - Database Qualified
+      source-table: -19557ZnrWiDgG4h4cKxF
+      strategy: left-join
+    limit: 200
     order-by:
     - - desc
       - - field
@@ -164,18 +173,31 @@ dataset_query:
         - base-type: type/DateTimeWithLocalTZ
     source-table: QOtZaiTLf2FDD4AT6Oinb
   type: query
-  database: Internal Metabase Database
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: gTeYI2eJtQUh63sZurc3z
-  label: last_queries
-display: table
-entity_id: gTeYI2eJtQUh63sZurc3z
-collection_preview: true
+result_metadata: null
 visualization_settings:
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
+    : column_title: Question ID
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
+    : column_title: Dashboard ID
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
+    : column_title: Question name
+      link_text: ''
+      link_url: /question/{{entity_id}}
+      view_as: link
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
+    : column_title: Dashboard name
+      link_url: /dashboard/{{entity_id_2}}
+      view_as: link
+    ? '["ref",["field",["Internal Metabase Database","public","v_databases","entity_id"],{"base-type":"type/Integer","join-alias":"Databases - Database Qualified"}]]'
+    : column_title: Database ID
+    ? '["ref",["field",["Internal Metabase Database","public","v_databases","name"],{"base-type":"type/Text","join-alias":"Databases - Database Qualified"}]]'
+    : column_title: Database name
+      link_url: /browse/{{entity_id_3}}
+      view_as: link
+  table.cell_column: running_time_seconds
   table.columns:
-  - name: started_at
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -184,8 +206,8 @@ visualization_settings:
       - started_at
     - base-type: type/DateTimeWithLocalTZ
       temporal-unit: default
-    enabled: true
-  - name: query_source
+    name: started_at
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -193,8 +215,8 @@ visualization_settings:
       - v_query_log
       - query_source
     - base-type: type/Text
-    enabled: true
-  - name: name
+    name: query_source
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -203,8 +225,8 @@ visualization_settings:
       - name
     - base-type: type/Text
       join-alias: Content - Card Qualified
-    enabled: true
-  - name: name_2
+    name: name
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -213,8 +235,8 @@ visualization_settings:
       - name
     - base-type: type/Text
       join-alias: Content - Dashboard Qualified
-    enabled: true
-  - name: name_3
+    name: name_2
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -223,8 +245,8 @@ visualization_settings:
       - name
     - base-type: type/Text
       join-alias: Databases - Database Qualified
-    enabled: true
-  - name: is_native
+    name: name_3
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -232,8 +254,8 @@ visualization_settings:
       - v_query_log
       - is_native
     - base-type: type/Boolean
-    enabled: true
-  - name: running_time_seconds
+    name: is_native
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -241,8 +263,8 @@ visualization_settings:
       - v_query_log
       - running_time_seconds
     - base-type: type/Float
-    enabled: true
-  - name: result_rows
+    name: running_time_seconds
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -250,8 +272,8 @@ visualization_settings:
       - v_query_log
       - result_rows
     - base-type: type/Integer
-    enabled: true
-  - name: entity_id
+    name: result_rows
+  - enabled: false
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -260,8 +282,8 @@ visualization_settings:
       - entity_id
     - base-type: type/Integer
       join-alias: Content - Card Qualified
-    enabled: true
-  - name: entity_id_2
+    name: entity_id
+  - enabled: false
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -270,8 +292,8 @@ visualization_settings:
       - entity_id
     - base-type: type/Integer
       join-alias: Content - Dashboard Qualified
-    enabled: true
-  - name: entity_id_3
+    name: entity_id_2
+  - enabled: false
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -280,8 +302,8 @@ visualization_settings:
       - entity_id
     - base-type: type/Integer
       join-alias: Databases - Database Qualified
-    enabled: true
-  - name: error
+    name: entity_id_3
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -289,24 +311,10 @@ visualization_settings:
       - v_query_log
       - error
     - base-type: type/Text
-    enabled: true
+    name: error
   table.pivot_column: error
-  table.cell_column: running_time_seconds
-  column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Question ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Question name
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
-    : column_title: Dashboard ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
-    : column_title: Dashboard name
-    ? '["ref",["field",["Internal Metabase Database","public","v_databases","entity_id"],{"base-type":"type/Integer","join-alias":"Databases - Database Qualified"}]]'
-    : column_title: Database ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_databases","name"],{"base-type":"type/Text","join-alias":"Databases - Database Qualified"}]]'
-    : column_title: Database name
+serdes/meta:
+- id: gTeYI2eJtQUh63sZurc3z
+  label: last_queries
+  model: Card
 metabase_version: vUNKNOWN (ad99d37)
-parameters: []
-dataset: false
-created_at: '2023-11-01T01:13:52.012276Z'
-public_uuid: null

@@ -111,6 +111,6 @@ const setupJwt = () => {
 };
 
 const enterJwtSettings = () => {
-  typeAndBlurUsingLabel("JWT Identity Provider URI", "https://example.test");
+  typeAndBlurUsingLabel(/JWT Identity Provider URI/, "https://example.test");
   cy.button("Generate key").click();
 };

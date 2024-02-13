@@ -12,7 +12,7 @@
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.driver.mongo.util :refer [with-mongo-connection]]
+   [metabase.driver.mongo.util :refer [with-mongo-connection] :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -55,10 +55,16 @@
 (defmethod driver/can-connect? :mongo
   [_ details]
   (with-mongo-connection [^DB conn, details]
-    (= (float (-> (cmd/db-stats conn)
-                  (m.conversion/from-db-object :keywordize)
-                  :ok))
-       1.0)))
+    (let [db-stats (-> (cmd/db-stats conn)
+                       (m.conversion/from-db-object :keywordize))
+          db-names (mg/get-db-names mongo.util/*mongo-client*)]
+      (and
+       ;; 1. check db.dbStats command completes successfully
+       (= (float (:ok db-stats))
+          1.0)
+       ;; 2. check the database is actually on the server
+       ;; (this is required because (1) is true even if the database doesn't exist)
+       (contains? db-names (:db db-stats))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo

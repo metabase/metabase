@@ -367,6 +367,9 @@
       (cond-> (= (:type action) "query")
         (update :database_id serdes/*import-fk-keyed* 'Database :name))))
 
+(defmethod serdes/ingested-model-columns "Action" [_ingested]
+  (into #{} (conj action-columns :database_id :dataset_query :kind :template :response_handle :error_handle :type)))
+
 (defmethod serdes/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
   (update! (assoc ingested :id (:id local)) local)

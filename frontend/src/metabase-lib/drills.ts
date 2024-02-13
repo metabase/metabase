@@ -5,6 +5,7 @@ import type {
   DataRow,
   Dimension,
   DrillThru,
+  FilterDrillDetails,
   Query,
 } from "./types";
 
@@ -36,4 +37,8 @@ export function drillThru(
   ...args: any[]
 ): Query {
   return ML.drill_thru(query, stageIndex, drillThru, ...args);
+}
+
+export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {
+  return ML.filter_drill_details(drillThru);
 }

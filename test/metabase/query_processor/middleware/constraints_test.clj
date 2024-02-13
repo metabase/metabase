@@ -18,8 +18,8 @@
   (testing "if it is *truthy* add the constraints"
     (is (= {:middleware  {:userland-query?                   true
                           :add-default-userland-constraints? true}
-            :constraints {:max-results           @#'qp.constraints/max-results
-                          :max-results-bare-rows @#'qp.constraints/default-max-results-bare-rows}}
+            :constraints {:max-results           @#'qp.constraints/default-max-aggregated-query-row-limit
+                          :max-results-bare-rows @#'qp.constraints/default-max-unaggregated-query-row-limit}}
            (add-default-userland-constraints
             {:middleware {:userland-query?                   true
                           :add-default-userland-constraints? true}})))))
@@ -36,7 +36,7 @@
   (testing "if it already has constraints, don't overwrite those!"
     (is (= {:middleware  {:userland-query?                   true
                           :add-default-userland-constraints? true}
-            :constraints {:max-results           @#'qp.constraints/max-results
+            :constraints {:max-results           @#'qp.constraints/default-max-aggregated-query-row-limit
                           :max-results-bare-rows 1}}
            (add-default-userland-constraints
             {:constraints {:max-results-bare-rows 1}

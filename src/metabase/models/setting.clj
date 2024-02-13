@@ -188,7 +188,8 @@
      humanization-strategy
      landing-page
      loading-message
-     max-results-bare-rows
+     max-aggregated-query-row-limit
+     max-unaggregated-query-row-limit
      native-query-autocomplete-match-style
      persisted-models-enabled
      report-timezone

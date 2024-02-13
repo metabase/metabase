@@ -9,7 +9,7 @@ import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils"
 import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
 import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
 
-import MappingEditor from "../MappingEditor";
+import { MappingEditor } from "../MappingEditor";
 
 interface AttributeMappingEditorProps {
   value: any;

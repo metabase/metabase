@@ -111,7 +111,6 @@ class ParameterValueWidget extends Component {
           ref={this.trigger}
           className={cx(S.parameter, S.noPopover, className, {
             [S.selected]: hasValue,
-            [S.isEditing]: isEditing,
           })}
         >
           {showTypeIcon && (

@@ -1,86 +1,86 @@
+name: Content with cobwebs
 description: Dashboards and questions that you could consider archiving.
+entity_id: BHyad8ZHCbeiBZpQxDwsP
+created_at: '2023-11-01T11:45:19.282195Z'
+creator_id: internal@metabase.com
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+auto_apply_filters: true
+cache_ttl: null
 collection_position: 8
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- default:
+  - 90
+  id: bdcf71b1
+  name: Days since last view (greater than)
+  sectionId: number
+  slug: days_since_last_view_(greater_than)
+  type: number/>=
+serdes/meta:
+- id: BHyad8ZHCbeiBZpQxDwsP
+  label: content_with_cobwebs
+  model: Dashboard
 dashcards:
-- size_x: 12
-  dashboard_tab_id: null
-  action_id: null
-  col: 0
-  parameter_mappings:
-  - parameter_id: bdcf71b1
-    card_id: -fFVxT-GLz6WO41bvw-Ar
-    target:
-    - dimension
-    - - expression
-      - Days since last view
+- entity_id: mO1Hmv7RPBY81C-HiGBVl
   card_id: -fFVxT-GLz6WO41bvw-Ar
-  entity_id: mO1Hmv7RPBY81C-HiGBVl
-  visualization_settings:
-    column_settings: null
-  size_y: 8
   created_at: '2023-11-01T11:53:04.927382Z'
   row: 0
-- size_x: 12
-  dashboard_tab_id: null
+  col: 0
+  size_x: 12
+  size_y: 8
   action_id: null
-  col: 12
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: bdcf71b1
-    card_id: UEK1JfYa3ZBp6W7F-Ui5i
+  - card_id: -fFVxT-GLz6WO41bvw-Ar
+    parameter_id: bdcf71b1
     target:
     - dimension
     - - expression
       - Days since last view
-  card_id: UEK1JfYa3ZBp6W7F-Ui5i
-  entity_id: mxTQVlyG8xLO1U3c0miCm
   visualization_settings:
     column_settings: null
-  size_y: 8
+- entity_id: mxTQVlyG8xLO1U3c0miCm
+  card_id: UEK1JfYa3ZBp6W7F-Ui5i
   created_at: '2023-11-01T11:54:12.111068Z'
   row: 0
-- size_x: 12
-  dashboard_tab_id: null
+  col: 12
+  size_x: 12
+  size_y: 8
   action_id: null
-  col: 0
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: bdcf71b1
-    card_id: YxCC6fQfHOPVvBtUkjFCN
+  - card_id: UEK1JfYa3ZBp6W7F-Ui5i
+    parameter_id: bdcf71b1
     target:
     - dimension
     - - expression
       - Days since last view
-  card_id: YxCC6fQfHOPVvBtUkjFCN
-  entity_id: LWnMbIRc4ei2M70S-ow37
   visualization_settings:
     column_settings: null
-  size_y: 8
+- entity_id: LWnMbIRc4ei2M70S-ow37
+  card_id: YxCC6fQfHOPVvBtUkjFCN
   created_at: '2023-11-01T11:56:53.296305Z'
   row: 8
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: YxCC6fQfHOPVvBtUkjFCN
+    parameter_id: bdcf71b1
+    target:
+    - dimension
+    - - expression
+      - Days since last view
+  visualization_settings:
+    column_settings: null
 tabs: []
-enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-show_in_getting_started: false
-name: Content with cobwebs
-caveats: null
-creator_id: internal@metabase.com
-made_public_by_id: null
-embedding_params: null
-cache_ttl: null
-serdes/meta:
-- model: Dashboard
-  id: BHyad8ZHCbeiBZpQxDwsP
-  label: content_with_cobwebs
-position: null
-entity_id: BHyad8ZHCbeiBZpQxDwsP
-parameters:
-- name: Days since last view (greater than)
-  slug: days_since_last_view_(greater_than)
-  id: bdcf71b1
-  type: number/>=
-  sectionId: number
-  default:
-  - 90
-auto_apply_filters: true
-created_at: '2023-11-01T11:45:19.282195Z'
-public_uuid: null
-points_of_interest: null

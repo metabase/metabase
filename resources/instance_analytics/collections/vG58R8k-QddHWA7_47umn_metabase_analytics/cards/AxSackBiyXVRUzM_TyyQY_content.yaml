@@ -1,474 +1,30 @@
+name: Content
 description: All Metabase content, including questions, models, dashboards, events, and collections.
+entity_id: AxSackBiyXVRUzM_TyyQY
+created_at: '2023-06-08T14:33:12.546414Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: 12
+query_type: query
+dataset: true
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_content
-result_metadata:
-- description: null
-  semantic_type: type/PK
-  coercion_strategy: null
-  name: entity_id
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_id
-  - base-type: type/Integer
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_id
-  visibility_type: normal
-  display_name: Entity ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/PK
-  coercion_strategy: null
-  name: entity_qualified_id
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_qualified_id
-  - base-type: type/Text
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_qualified_id
-  visibility_type: normal
-  display_name: Entity Qualified ID
-  base_type: type/Text
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: entity_type
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_type
-  - base-type: type/Text
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_type
-  visibility_type: normal
-  display_name: Entity Type
-  base_type: type/Text
-- description: null
-  semantic_type: type/CreationTimestamp
-  coercion_strategy: null
-  unit: default
-  name: created_at
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - created_at
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - created_at
-  visibility_type: normal
-  display_name: Created At
-  base_type: type/DateTimeWithLocalTZ
-- description: null
-  semantic_type: type/UpdatedTimestamp
-  coercion_strategy: null
-  unit: default
-  name: updated_at
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - updated_at
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - updated_at
-  visibility_type: normal
-  display_name: Updated At
-  base_type: type/DateTimeWithLocalTZ
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: creator_id
-  settings: null
-  fk_target_field_id: 739
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - creator_id
-  - base-type: type/Integer
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - creator_id
-  visibility_type: normal
-  display_name: Creator ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: name
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - name
-  - base-type: type/Text
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - name
-  visibility_type: normal
-  display_name: Name
-  base_type: type/Text
-- description: null
-  semantic_type: type/Description
-  coercion_strategy: null
-  name: description
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - description
-  - base-type: type/Text
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - description
-  visibility_type: normal
-  display_name: Description
-  base_type: type/Text
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: collection_id
-  settings: null
-  fk_target_field_id: 919
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - collection_id
-  - base-type: type/Integer
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - collection_id
-  visibility_type: normal
-  display_name: Collection ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: made_public_by_user
-  settings: null
-  fk_target_field_id: 739
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - made_public_by_user
-  - base-type: type/Integer
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - made_public_by_user
-  visibility_type: normal
-  display_name: Made Public By User
-  base_type: type/Integer
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: is_embedding_enabled
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - is_embedding_enabled
-  - base-type: type/Boolean
-  effective_type: type/Boolean
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - is_embedding_enabled
-  visibility_type: normal
-  display_name: Is Embedding Enabled
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/Enum
-  coercion_strategy: null
-  name: archived
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - archived
-  - base-type: type/Boolean
-  effective_type: type/Boolean
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - archived
-  visibility_type: normal
-  display_name: Archived
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: action_type
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - action_type
-  - base-type: type/Text
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - action_type
-  visibility_type: normal
-  display_name: Action Type
-  base_type: type/Text
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: action_model_id
-  settings: null
-  fk_target_field_id: 919
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - action_model_id
-  - base-type: type/Integer
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - action_model_id
-  visibility_type: normal
-  display_name: Action Model ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: collection_is_official
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - collection_is_official
-  - base-type: type/Boolean
-  effective_type: type/Boolean
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - collection_is_official
-  visibility_type: normal
-  display_name: Collection Is Official
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: collection_is_personal
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - collection_is_personal
-  - base-type: type/Boolean
-  effective_type: type/Boolean
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - collection_is_personal
-  visibility_type: normal
-  display_name: Collection Is Personal
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: question_viz_type
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - question_viz_type
-  - base-type: type/Text
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - question_viz_type
-  visibility_type: normal
-  display_name: Question Viz Type
-  base_type: type/Text
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: question_database_id
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - question_database_id
-  - base-type: type/Text
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - question_database_id
-  visibility_type: normal
-  display_name: Question Database ID
-  base_type: type/Text
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: question_is_native
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - question_is_native
-  - base-type: type/Boolean
-  effective_type: type/Boolean
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - question_is_native
-  visibility_type: normal
-  display_name: Question Is Native
-  base_type: type/Boolean
-- description: null
-  semantic_type: null
-  coercion_strategy: null
-  unit: default
-  name: event_timestamp
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - event_timestamp
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - event_timestamp
-  visibility_type: normal
-  display_name: Event Timestamp
-  base_type: type/DateTimeWithLocalTZ
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Content
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
-  type: query
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_content
     fields:
     - - field
       - - Internal Metabase Database
@@ -590,20 +146,464 @@ dataset_query:
         - v_content
         - event_timestamp
       - base-type: type/DateTimeWithLocalTZ
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: AxSackBiyXVRUzM_TyyQY
-  label: content
-display: table
-entity_id: AxSackBiyXVRUzM_TyyQY
-collection_preview: true
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_content
+  type: query
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - entity_id
+  - base-type: type/Integer
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_id
+  name: entity_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - entity_qualified_id
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
+  name: entity_qualified_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - entity_type
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_type
+  name: entity_type
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - created_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - created_at
+  name: created_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - updated_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - updated_at
+  name: updated_at
+  semantic_type: type/UpdatedTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Creator ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - creator_id
+  - base-type: type/Integer
+  fk_target_field_id: 739
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - creator_id
+  name: creator_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - name
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - name
+  name: name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Description
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - description
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - description
+  name: description
+  semantic_type: type/Description
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Collection ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - collection_id
+  - base-type: type/Integer
+  fk_target_field_id: 919
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - collection_id
+  name: collection_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Made Public By User
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - made_public_by_user
+  - base-type: type/Integer
+  fk_target_field_id: 739
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - made_public_by_user
+  name: made_public_by_user
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Embedding Enabled
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - is_embedding_enabled
+  - base-type: type/Boolean
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - is_embedding_enabled
+  name: is_embedding_enabled
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Archived
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - archived
+  - base-type: type/Boolean
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - archived
+  name: archived
+  semantic_type: type/Enum
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Action Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - action_type
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - action_type
+  name: action_type
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Action Model ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - action_model_id
+  - base-type: type/Integer
+  fk_target_field_id: 919
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - action_model_id
+  name: action_model_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Collection Is Official
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - collection_is_official
+  - base-type: type/Boolean
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - collection_is_official
+  name: collection_is_official
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Collection Is Personal
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - collection_is_personal
+  - base-type: type/Boolean
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - collection_is_personal
+  name: collection_is_personal
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Question Viz Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - question_viz_type
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - question_viz_type
+  name: question_viz_type
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Question Database ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - question_database_id
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - question_database_id
+  name: question_database_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Question Is Native
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - question_is_native
+  - base-type: type/Boolean
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - question_is_native
+  name: question_is_native
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Event Timestamp
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - event_timestamp
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - event_timestamp
+  name: event_timestamp
+  semantic_type: null
+  settings: null
+  unit: default
+  visibility_type: normal
 visualization_settings:
-  table.pivot_column: action_type
-  table.cell_column: event_timestamp
   column_settings: null
+  table.cell_column: event_timestamp
+  table.pivot_column: action_type
+serdes/meta:
+- id: AxSackBiyXVRUzM_TyyQY
+  label: content
+  model: Card
 metabase_version: null
-parameters: []
-dataset: true
-created_at: '2023-06-08T14:33:12.546414Z'
-public_uuid: null

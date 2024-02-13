@@ -14,12 +14,21 @@
               :type      :drill-thru/pk
               :column    column
               :object-id value
-              :many-pks? many-pks?}]
+              :many-pks? many-pks?}
+        mbql-stage? (lib.drill-thru.common/mbql-stage? query stage-number)]
     (cond
-      (and (lib.types.isa/primary-key? column) many-pks?) (assoc base :type :drill-thru/pk)
+      (and (lib.types.isa/primary-key? column)
+           many-pks?
+           mbql-stage?)
+      (assoc base :type :drill-thru/pk)
+
       ;; TODO: Figure out clicked.extraData and the dashboard flow.
-      (lib.types.isa/primary-key? column)                 (assoc base :type :drill-thru/zoom)
-      (lib.types.isa/foreign-key? column)                 (assoc base :type :drill-thru/fk-details)
+      (lib.types.isa/primary-key? column)
+      (assoc base :type :drill-thru/zoom)
+
+      (lib.types.isa/foreign-key? column)
+      (assoc base :type :drill-thru/fk-details)
+
       (and (not many-pks?)
            (not-empty row)
            (empty? (lib.aggregation/aggregations query stage-number)))
@@ -41,12 +50,12 @@
                                          ::lib.schema.drill-thru/drill-thru.fk-details]]
   "When clicking a foreign key or primary key value, drill through to the details for that specific object.
 
-  Contrast [[foreign-key-drill]], which filters this query to only those rows with a specific value for a FK column."
+  Contrast [[metabase.lib.drill-thru.fk-filter/fk-filter-drill]], which filters this query to only those rows with a
+  specific value for a FK column."
   [query                              :- ::lib.schema/query
    stage-number                       :- :int
    {:keys [column value] :as context} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
+  (when (and column
              (some? value))
     (object-detail-drill-for query stage-number context
                              (> (count (lib.metadata.calculation/primary-keys query)) 1))))

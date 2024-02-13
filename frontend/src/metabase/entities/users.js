@@ -10,7 +10,6 @@ import { UserApi, SessionApi } from "metabase/services";
 import { generatePassword } from "metabase/lib/security";
 
 import { GET } from "metabase/lib/api";
-import forms from "./users/forms";
 
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 export const REACTIVATE = "metabase/entities/users/REACTIVATE";
@@ -126,8 +125,6 @@ const Users = createEntity({
     }
     return state;
   },
-
-  forms,
 });
 
 export default Users;

@@ -11,6 +11,7 @@ import "zx/globals";
 import { $ } from "zx";
 $.verbose = false;
 
+import { latest } from "immer/dist/internal";
 import {
   isValidVersionString,
   hasBeenReleased,
@@ -47,7 +48,8 @@ const JAR_PATH = "../target/uberjar";
 const version = process.argv?.[2]?.trim();
 const commitHash = process.argv?.[3]?.trim();
 const step = process.argv?.[4]?.trim().replace("--", "");
-const edition = isEnterpriseVersion(version) ? "ee" : "oss";
+const isWithoutGithub = process.argv?.[5]?.trim() === "--without-github";
+let latestFlag: string | boolean | null = process.argv?.[6]?.trim();
 
 const log = (message, color = "blue") =>
   // eslint-disable-next-line no-console
@@ -57,6 +59,17 @@ function error(message) {
   log(`⚠️   ${message}`, "red");
   process.exit(1);
 }
+
+// need to force the user to set the latest tag from the command line if they are releasing without github
+if (isWithoutGithub) {
+  if (!latestFlag) {
+    error('If you are releasing without github you must pass --latest or --not-latest as the last argument');
+  }
+
+  latestFlag = (latestFlag === "--latest") ? true : false;
+}
+
+const edition = isEnterpriseVersion(version) ? "ee" : "oss";
 
 if (!isValidVersionString(version)) {
   error(
@@ -78,6 +91,10 @@ if (!step) {
 
 // mostly for type checking
 function getGithubCredentials() {
+  if (isWithoutGithub) {
+    return { GITHUB_TOKEN: '', GITHUB_OWNER: '', GITHUB_REPO: '' };
+  }
+
   if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
     error("You must provide all github environment variables in .env-template");
     process.exit(1);
@@ -234,7 +251,7 @@ async function s3() {
 
   await checkJar();
 
-  const isLatest = await isLatestRelease({
+  const isLatest = isWithoutGithub ? latestFlag : await isLatestRelease({
     github,
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
@@ -284,7 +301,7 @@ async function docker() {
 
   log(`✅ Published ${dockerTag} to DockerHub`);
 
-  const isLatest = await isLatestRelease({
+  const isLatest = isWithoutGithub ? latestFlag :await isLatestRelease({
     github,
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
@@ -388,6 +405,24 @@ async function updateMilestones() {
 
   if (step === "publish") {
     log(`🚀 Publishing ${edition} ${version} 🚀`);
+
+    if ( isWithoutGithub ) {
+      log(`⚠️   Skipping github steps because --without-github was passed   ⚠️`, "yellow");
+
+      await s3();
+      await docker();
+
+      const remainingSteps = [
+        "release notes were not published",
+        "version-info.json was not updated",
+        "no commit was tagged",
+        "no milestones were updated",
+      ].join("\n ❌  ");
+
+      log(`Because you released without github the following steps were not completed:\n ❌  ${remainingSteps}`);
+
+      return;
+    }
 
     await checkReleased();
     await s3();

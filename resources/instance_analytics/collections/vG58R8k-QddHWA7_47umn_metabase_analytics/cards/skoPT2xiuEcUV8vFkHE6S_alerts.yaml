@@ -1,17 +1,41 @@
+name: Alerts
 description: All alerts, both active and archived.
+entity_id: skoPT2xiuEcUV8vFkHE6S
+created_at: '2023-11-01T02:49:36.532503Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: 15
+query_type: query
+dataset: true
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_alerts
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_alerts
+  type: query
 result_metadata:
-- description: null
-  semantic_type: type/PK
+- base_type: type/Integer
   coercion_strategy: null
-  name: entity_id
-  settings: null
-  fk_target_field_id: null
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
   field_ref:
   - field
   - - Internal Metabase Database
@@ -19,21 +43,21 @@ result_metadata:
     - v_alerts
     - entity_id
   - null
-  effective_type: type/Integer
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - entity_id
-  visibility_type: normal
-  display_name: Entity ID
-  base_type: type/Integer
-- description: null
+  name: entity_id
   semantic_type: type/PK
-  coercion_strategy: null
-  name: entity_qualified_id
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Qualified ID
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -41,22 +65,21 @@ result_metadata:
     - v_alerts
     - entity_qualified_id
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - entity_qualified_id
-  visibility_type: normal
-  display_name: Entity Qualified ID
-  base_type: type/Text
-- description: null
-  semantic_type: type/CreationTimestamp
-  coercion_strategy: null
-  unit: default
-  name: created_at
+  name: entity_qualified_id
+  semantic_type: type/PK
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
   - - Internal Metabase Database
@@ -64,22 +87,22 @@ result_metadata:
     - v_alerts
     - created_at
   - temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - created_at
-  visibility_type: normal
-  display_name: Created At
-  base_type: type/DateTimeWithLocalTZ
-- description: null
-  semantic_type: type/UpdatedTimestamp
-  coercion_strategy: null
-  unit: default
-  name: updated_at
+  name: created_at
+  semantic_type: type/CreationTimestamp
   settings: null
-  fk_target_field_id: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
   - - Internal Metabase Database
@@ -87,21 +110,22 @@ result_metadata:
     - v_alerts
     - updated_at
   - temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - updated_at
-  visibility_type: normal
-  display_name: Updated At
-  base_type: type/DateTimeWithLocalTZ
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: creator_id
+  name: updated_at
+  semantic_type: type/UpdatedTimestamp
   settings: null
-  fk_target_field_id: 739
+  unit: default
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Creator ID
+  effective_type: type/Integer
   field_ref:
   - field
   - - Internal Metabase Database
@@ -109,21 +133,21 @@ result_metadata:
     - v_alerts
     - creator_id
   - null
-  effective_type: type/Integer
+  fk_target_field_id: 739
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - creator_id
-  visibility_type: normal
-  display_name: Creator ID
-  base_type: type/Integer
-- description: null
-  semantic_type: null
-  coercion_strategy: null
-  name: card_id
+  name: creator_id
+  semantic_type: type/FK
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Card ID
+  effective_type: type/Integer
   field_ref:
   - field
   - - Internal Metabase Database
@@ -131,21 +155,21 @@ result_metadata:
     - v_alerts
     - card_id
   - null
-  effective_type: type/Integer
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - card_id
-  visibility_type: normal
-  display_name: Card ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: card_qualified_id
+  name: card_id
+  semantic_type: null
   settings: null
-  fk_target_field_id: 1484
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Card Qualified ID
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -153,21 +177,21 @@ result_metadata:
     - v_alerts
     - card_qualified_id
   - null
-  effective_type: type/Text
+  fk_target_field_id: 1484
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - card_qualified_id
-  visibility_type: normal
-  display_name: Card Qualified ID
-  base_type: type/Text
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: alert_condition
+  name: card_qualified_id
+  semantic_type: type/FK
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Alert Condition
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -175,21 +199,21 @@ result_metadata:
     - v_alerts
     - alert_condition
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - alert_condition
-  visibility_type: normal
-  display_name: Alert Condition
-  base_type: type/Text
-- description: null
+  name: alert_condition
   semantic_type: type/Category
-  coercion_strategy: null
-  name: schedule_type
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Schedule Type
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -197,21 +221,21 @@ result_metadata:
     - v_alerts
     - schedule_type
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - schedule_type
-  visibility_type: normal
-  display_name: Schedule Type
-  base_type: type/Text
-- description: null
+  name: schedule_type
   semantic_type: type/Category
-  coercion_strategy: null
-  name: schedule_day
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Schedule Day
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -219,21 +243,21 @@ result_metadata:
     - v_alerts
     - schedule_day
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - schedule_day
-  visibility_type: normal
-  display_name: Schedule Day
-  base_type: type/Text
-- description: null
+  name: schedule_day
   semantic_type: type/Category
-  coercion_strategy: null
-  name: schedule_hour
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Schedule Hour
+  effective_type: type/Integer
   field_ref:
   - field
   - - Internal Metabase Database
@@ -241,21 +265,21 @@ result_metadata:
     - v_alerts
     - schedule_hour
   - null
-  effective_type: type/Integer
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - schedule_hour
-  visibility_type: normal
-  display_name: Schedule Hour
-  base_type: type/Integer
-- description: null
+  name: schedule_hour
   semantic_type: type/Category
-  coercion_strategy: null
-  name: archived
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Archived
+  effective_type: type/Boolean
   field_ref:
   - field
   - - Internal Metabase Database
@@ -263,21 +287,21 @@ result_metadata:
     - v_alerts
     - archived
   - null
-  effective_type: type/Boolean
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - archived
-  visibility_type: normal
-  display_name: Archived
-  base_type: type/Boolean
-- description: null
+  name: archived
   semantic_type: type/Category
-  coercion_strategy: null
-  name: recipient_type
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Recipient Type
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -285,21 +309,21 @@ result_metadata:
     - v_alerts
     - recipient_type
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - recipient_type
-  visibility_type: normal
-  display_name: Recipient Type
-  base_type: type/Text
-- description: null
+  name: recipient_type
   semantic_type: type/Category
-  coercion_strategy: null
-  name: recipients
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Recipients
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -307,21 +331,21 @@ result_metadata:
     - v_alerts
     - recipients
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - recipients
-  visibility_type: normal
-  display_name: Recipients
-  base_type: type/Text
-- description: null
+  name: recipients
   semantic_type: type/Category
-  coercion_strategy: null
-  name: recipient_external
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Recipient External
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -329,46 +353,22 @@ result_metadata:
     - v_alerts
     - recipient_external
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts
   - recipient_external
+  name: recipient_external
+  semantic_type: type/Category
+  settings: null
   visibility_type: normal
-  display_name: Recipient External
-  base_type: type/Text
-database_id: Internal Metabase Database
-enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Alerts
-creator_id: internal@metabase.com
-made_public_by_id: null
-embedding_params: null
-cache_ttl: null
-dataset_query:
-  database: Internal Metabase Database
-  type: query
-  query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_alerts
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: skoPT2xiuEcUV8vFkHE6S
-  label: alerts
-display: table
-entity_id: skoPT2xiuEcUV8vFkHE6S
-collection_preview: true
 visualization_settings:
-  table.pivot_column: schedule_day
-  table.cell_column: card_id
   column_settings: null
+  table.cell_column: card_id
+  table.pivot_column: schedule_day
+serdes/meta:
+- id: skoPT2xiuEcUV8vFkHE6S
+  label: alerts
+  model: Card
 metabase_version: vUNKNOWN (13e6090)
-parameters: []
-dataset: true
-created_at: '2023-11-01T02:49:36.532503Z'
-public_uuid: null

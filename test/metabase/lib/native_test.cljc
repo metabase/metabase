@@ -11,6 +11,8 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel variable-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
     #{"foo"} "SELECT * FROM table WHERE {{foo}} AND some_field IS NOT NULL"
@@ -148,9 +150,8 @@
 (deftest ^:parallel native-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :stages   [{:lib/type    :mbql.stage/native
-                       :lib/options {:lib/uuid string?}
-                       :native      "SELECT * FROM VENUES;"}]}
+           :stages   [{:lib/type :mbql.stage/native
+                       :native   "SELECT * FROM VENUES;"}]}
           (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" qp-results-metadata nil))))
 
 (deftest ^:parallel native-query-suggested-name-test

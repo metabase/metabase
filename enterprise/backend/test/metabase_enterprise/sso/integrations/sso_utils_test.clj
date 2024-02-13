@@ -20,3 +20,30 @@
        "//example.com"
        "not a url"
        "http://localhost:3000?a=not a param"))))
+
+(deftest create-new-sso-user-test
+  (mt/with-model-cleanup [:model/User]
+    (testing "create-new-sso-user! creates a new user with the given attributes"
+      (let [user-attributes {:first_name       "Test"
+                             :last_name        "User"
+                             :email            "create-new-sso-user-test@metabase.com"
+                             :sso_source       :jwt
+                             :login_attributes {:foo "bar"}}
+            new-user (sso-utils/create-new-sso-user! user-attributes)]
+        (is (partial=
+             {:first_name "Test"
+              :last_name "User"
+              :email "create-new-sso-user-test@metabase.com"}
+             new-user))))
+
+    (testing "If a user with the given email already exists, a generic exception is thrown"
+      (let [user-attributes {:first_name       "Test"
+                             :last_name        "User"
+                             :email            "create-new-sso-user-test@metabase.com"
+                             :sso_source       :jwt
+                             :login_attributes {:foo "bar"}}]
+        (is
+         (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Error creating new SSO user"
+          (sso-utils/create-new-sso-user! user-attributes)))))))

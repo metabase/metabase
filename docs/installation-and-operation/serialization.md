@@ -241,7 +241,8 @@ custom-geojson-enabled
 start-of-week
 custom-geojson
 available-timezones
-max-results-bare-rows
+max-unaggregated-query-row-limit
+max-aggregated-query-row-limit
 hide-embed-branding?
 search-typeahead-enabled
 enable-sandboxes?

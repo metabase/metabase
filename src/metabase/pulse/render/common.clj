@@ -73,7 +73,9 @@
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
-  [{:keys [effective_type base_type] col-id :id field-ref :field_ref col-name :name :as _column} viz-settings]
+  [{:keys [semantic_type effective_type base_type]
+    col-id :id field-ref :field_ref col-name :name :as _column}
+   viz-settings]
   (let [col-id (or col-id (second field-ref))
         column-settings (-> (get viz-settings ::mb.viz/column-settings)
                             (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
@@ -92,7 +94,7 @@
                                                                  (:type/Number global-settings)
                                                                  column-settings)
         integral?       (isa? (or effective_type base_type) :type/Integer)
-        percent?        (= number-style "percent")
+        percent?        (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
         scientific?     (= number-style "scientific")
         [decimal grouping] (or number-separators
                                (get-in (public-settings/custom-formatting) [:type/Number :number_separators])
@@ -106,14 +108,13 @@
       (if (number? value)
         (let [scaled-value (* value (or scale 1))
               percent-scaled-value (* 100 scaled-value)
-              decimals-in-value (digits-after-decimal (if (= number-style "percent")
-                                                        (* 100 scaled-value)
-                                                        scaled-value))
+              decimals-in-value (digits-after-decimal (if percent? (* 100 scaled-value) scaled-value))
               decimal-digits (cond
                                decimals decimals ;; if user ever specifies # of decimals, use that
                                integral? 0
                                currency? (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
                                (and percent? (> percent-scaled-value 100))   (min 2 decimals-in-value) ;; 5.5432 -> %554.32
+                               ;; This needs configuration. I don't see why we don't keep more significant digits.
                                (and percent? (> 100 percent-scaled-value 1)) (min 0 decimals-in-value) ;; 0.2555 -> %26
                                :else (if (>= scaled-value 1)
                                        (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
@@ -127,18 +128,18 @@
                         percent?    (str "%"))
               fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
           (map->NumericWrapper
-            {:num-value value
-             :num-str   (str (when prefix prefix)
-                             (when (and currency? (or (nil? currency-style)
-                                                      (= currency-style "symbol")))
-                               (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
-                             (when (and currency? (= currency-style "code"))
-                               (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-                             (cond-> (.format fmtr scaled-value)
-                               (not decimals) (strip-trailing-zeroes decimal))
-                             (when (and currency? (= currency-style "name"))
-                               (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-                             (when suffix suffix))}))
+           {:num-value value
+            :num-str   (str (when prefix prefix)
+                            (when (and currency? (or (nil? currency-style)
+                                                     (= currency-style "symbol")))
+                              (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
+                            (when (and currency? (= currency-style "code"))
+                              (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
+                            (cond-> (.format fmtr scaled-value)
+                              (not decimals) (strip-trailing-zeroes decimal))
+                            (when (and currency? (= currency-style "name"))
+                              (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
+                            (when suffix suffix))}))
         value))))
 
 (s/defn format-number :- NumericWrapper

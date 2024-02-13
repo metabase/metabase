@@ -1,61 +1,30 @@
+name: Most active viewers
 description: null
+entity_id: FUuJSuFo7wM6EoddmNsHf
+created_at: '2023-06-15T02:19:04.741672Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_view_log
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Most active viewers
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
-  type: query
   query:
-    joins:
-    - strategy: left-join
-      alias: People - User
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - user_id
-        - base-type: type/Integer
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - User
-      source-table: 0wVIfjBJWclD0lKeABYYl
-    - strategy: left-join
-      alias: Group Members - User
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - user_id
-        - base-type: type/Integer
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - base-type: type/Integer
-          join-alias: Group Members - User
-      source-table: lTp-ATFsCUFEr9I0fMEaO
     aggregation:
     - - count
     breakout:
@@ -72,11 +41,6 @@ dataset_query:
         - v_view_log
         - user_id
       - base-type: type/Integer
-    order-by:
-    - - desc
-      - - aggregation
-        - 0
-    source-table: P6Ityjj7igswKh4NgZZjz
     filter:
     - =
     - - field
@@ -86,15 +50,57 @@ dataset_query:
         - entity_type
       - base-type: type/Text
     - card
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: FUuJSuFo7wM6EoddmNsHf
-  label: most_active_viewers
-display: table
-entity_id: FUuJSuFo7wM6EoddmNsHf
-collection_preview: true
+    joins:
+    - alias: People - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - User
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
+    - alias: Group Members - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+      strategy: left-join
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
+    source-table: P6Ityjj7igswKh4NgZZjz
+  type: query
+result_metadata: null
 visualization_settings:
+  column_settings:
+    '["name","count"]':
+      column_title: Question views
+      show_mini_bar: true
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+    : column_title: User
   table.cell_column: model_id
   table.columns:
   - enabled: true
@@ -102,7 +108,7 @@ visualization_settings:
     - aggregation
     - 0
     name: count
-  - name: user_id_2
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -110,8 +116,8 @@ visualization_settings:
       - v_users
       - user_id
     - join-alias: People - User
-    enabled: true
-  - name: email
+    name: user_id_2
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -119,8 +125,8 @@ visualization_settings:
       - v_users
       - email
     - join-alias: People - User
-    enabled: true
-  - name: first_name
+    name: email
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -128,8 +134,8 @@ visualization_settings:
       - v_users
       - first_name
     - join-alias: People - User
-    enabled: true
-  - name: last_name
+    name: first_name
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -137,8 +143,8 @@ visualization_settings:
       - v_users
       - last_name
     - join-alias: People - User
-    enabled: true
-  - name: date_joined
+    name: last_name
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -146,8 +152,8 @@ visualization_settings:
       - v_users
       - date_joined
     - join-alias: People - User
-    enabled: true
-  - name: last_login
+    name: date_joined
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -155,8 +161,8 @@ visualization_settings:
       - v_users
       - last_login
     - join-alias: People - User
-    enabled: true
-  - name: updated_at
+    name: last_login
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -164,8 +170,8 @@ visualization_settings:
       - v_users
       - updated_at
     - join-alias: People - User
-    enabled: true
-  - name: is_admin
+    name: updated_at
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -173,8 +179,8 @@ visualization_settings:
       - v_users
       - is_admin
     - join-alias: People - User
-    enabled: true
-  - name: is_active
+    name: is_admin
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -182,8 +188,8 @@ visualization_settings:
       - v_users
       - is_active
     - join-alias: People - User
-    enabled: true
-  - name: sso_source
+    name: is_active
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -191,8 +197,8 @@ visualization_settings:
       - v_users
       - sso_source
     - join-alias: People - User
-    enabled: true
-  - name: locale
+    name: sso_source
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -200,8 +206,8 @@ visualization_settings:
       - v_users
       - locale
     - join-alias: People - User
-    enabled: true
-  - name: user_id_3
+    name: locale
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -209,8 +215,8 @@ visualization_settings:
       - v_group_members
       - user_id
     - join-alias: Group Members - User
-    enabled: true
-  - name: group_id
+    name: user_id_3
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -218,8 +224,8 @@ visualization_settings:
       - v_group_members
       - group_id
     - join-alias: Group Members - User
-    enabled: true
-  - name: group_name
+    name: group_id
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -227,8 +233,8 @@ visualization_settings:
       - v_group_members
       - group_name
     - join-alias: Group Members - User
-    enabled: true
-  - name: full_name
+    name: group_name
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -237,8 +243,8 @@ visualization_settings:
       - full_name
     - base-type: type/Text
       join-alias: People - User
-    enabled: true
-  - name: entity_id
+    name: full_name
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -246,16 +252,10 @@ visualization_settings:
       - v_view_log
       - entity_id
     - base-type: type/Integer
-    enabled: true
+    name: entity_id
   table.pivot_column: end_timestamp
-  column_settings:
-    '["name","count"]':
-      column_title: Question views
-      show_mini_bar: true
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: User
+serdes/meta:
+- id: FUuJSuFo7wM6EoddmNsHf
+  label: most_active_viewers
+  model: Card
 metabase_version: null
-parameters: []
-dataset: false
-created_at: '2023-06-15T02:19:04.741672Z'
-public_uuid: null

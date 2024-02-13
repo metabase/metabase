@@ -1,22 +1,29 @@
+name: Recent activity on dashboard
 description: null
+entity_id: xrgv7nzXe_v8ORWIbq839
+created_at: '2023-08-18T18:52:13.025952Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_audit_log
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Recent activity on dashboard
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
-  type: query
+  database: Internal Metabase Database
   query:
     fields:
     - - field
@@ -108,16 +115,12 @@ dataset_query:
           - timestamp
         - base-type: type/DateTimeWithLocalTZ
     source-table: -lNDM3tJmuL5ltGbX0oyT
-  database: Internal Metabase Database
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: xrgv7nzXe_v8ORWIbq839
-  label: recent_activity_on_dashboard
-display: table
-entity_id: xrgv7nzXe_v8ORWIbq839
-collection_preview: true
+  type: query
+result_metadata: null
 visualization_settings:
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+    : column_title: Person
   table.cell_column: model_id
   table.columns:
   - enabled: true
@@ -343,11 +346,8 @@ visualization_settings:
     - base-type: type/Text
     name: topic
   table.pivot_column: end_timestamp
-  column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: Person
+serdes/meta:
+- id: xrgv7nzXe_v8ORWIbq839
+  label: recent_activity_on_dashboard
+  model: Card
 metabase_version: null
-parameters: []
-dataset: false
-created_at: '2023-08-18T18:52:13.025952Z'
-public_uuid: null

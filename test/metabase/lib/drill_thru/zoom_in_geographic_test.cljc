@@ -256,13 +256,17 @@
 
 (deftest ^:parallel zoom-in-on-join-test
   (testing "#11210"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                    (lib/join (meta/table-metadata :people))
-                    (lib/aggregate (lib/count))
-                    (lib/breakout (lib/with-binning (meta/field-metadata :people :latitude)
-                                                    {:strategy :bin-width, :bin-width 10}))
-                    (lib/breakout (lib/with-binning (meta/field-metadata :people :longitude)
-                                                    {:strategy :bin-width, :bin-width 10})))]
+    (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/join (meta/table-metadata :people))
+                         (lib/aggregate (lib/count)))
+          join-alias (-> base :stages first :joins first :alias)
+          query      (-> base
+                         (lib/breakout (-> (meta/field-metadata :people :latitude)
+                                           (lib/with-binning {:strategy :bin-width, :bin-width 10})
+                                           (lib/with-join-alias join-alias)))
+                         (lib/breakout (-> (meta/field-metadata :people :longitude)
+                                           (lib/with-binning {:strategy :bin-width, :bin-width 10})
+                                           (lib/with-join-alias join-alias))))]
       (doseq [column ["LATITUDE" "LONGITUDE"]]
         (lib.drill-thru.tu/test-drill-application
          {:click-type     :cell

@@ -895,7 +895,7 @@
   :hierarchy #'hierarchy)
 
 (defmulti insert-into!
-  "Insert `values` into a table named `table-name`. `values` is a sequence of rows, where each row's order matches
+  "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
    `column-names`."
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
   dispatch-on-initialized-driver

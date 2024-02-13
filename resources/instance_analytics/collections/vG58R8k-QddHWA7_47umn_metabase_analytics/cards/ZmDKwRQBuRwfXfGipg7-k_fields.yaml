@@ -1,17 +1,41 @@
+name: Fields
 description: All fields from all connected data sources.
+entity_id: ZmDKwRQBuRwfXfGipg7-k
+created_at: '2023-10-31T21:45:31.793133Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: 18
+query_type: query
+dataset: true
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_fields
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_fields
+  type: query
 result_metadata:
-- description: null
-  semantic_type: type/PK
+- base_type: type/Integer
   coercion_strategy: null
-  name: entity_id
-  settings: null
-  fk_target_field_id: null
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
   field_ref:
   - field
   - - Internal Metabase Database
@@ -19,21 +43,21 @@ result_metadata:
     - v_fields
     - entity_id
   - null
-  effective_type: type/Integer
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - entity_id
-  visibility_type: normal
-  display_name: Entity ID
-  base_type: type/Integer
-- description: null
+  name: entity_id
   semantic_type: type/PK
-  coercion_strategy: null
-  name: entity_qualified_id
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Qualified ID
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -41,22 +65,21 @@ result_metadata:
     - v_fields
     - entity_qualified_id
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - entity_qualified_id
-  visibility_type: normal
-  display_name: Entity Qualified ID
-  base_type: type/Text
-- description: null
-  semantic_type: type/CreationTimestamp
-  coercion_strategy: null
-  unit: default
-  name: created_at
+  name: entity_qualified_id
+  semantic_type: type/PK
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
   - - Internal Metabase Database
@@ -64,22 +87,22 @@ result_metadata:
     - v_fields
     - created_at
   - temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - created_at
-  visibility_type: normal
-  display_name: Created At
-  base_type: type/DateTimeWithLocalTZ
-- description: null
-  semantic_type: type/UpdatedTimestamp
-  coercion_strategy: null
-  unit: default
-  name: updated_at
+  name: created_at
+  semantic_type: type/CreationTimestamp
   settings: null
-  fk_target_field_id: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
   - - Internal Metabase Database
@@ -87,21 +110,22 @@ result_metadata:
     - v_fields
     - updated_at
   - temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - updated_at
-  visibility_type: normal
-  display_name: Updated At
-  base_type: type/DateTimeWithLocalTZ
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: name
+  name: updated_at
+  semantic_type: type/UpdatedTimestamp
   settings: null
-  fk_target_field_id: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Name
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -109,21 +133,21 @@ result_metadata:
     - v_fields
     - name
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - name
-  visibility_type: normal
-  display_name: Name
-  base_type: type/Text
-- description: null
-  semantic_type: null
-  coercion_strategy: null
-  name: display_name
+  name: name
+  semantic_type: type/Name
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Display Name
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -131,21 +155,21 @@ result_metadata:
     - v_fields
     - display_name
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - display_name
-  visibility_type: normal
-  display_name: Display Name
-  base_type: type/Text
-- description: null
-  semantic_type: type/Description
-  coercion_strategy: null
-  name: description
+  name: display_name
+  semantic_type: null
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Description
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -153,21 +177,21 @@ result_metadata:
     - v_fields
     - description
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - description
-  visibility_type: normal
-  display_name: Description
-  base_type: type/Text
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: base_type
+  name: description
+  semantic_type: type/Description
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Base Type
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -175,21 +199,21 @@ result_metadata:
     - v_fields
     - base_type
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - base_type
-  visibility_type: normal
-  display_name: Base Type
-  base_type: type/Text
-- description: null
+  name: base_type
   semantic_type: type/Category
-  coercion_strategy: null
-  name: visibility_type
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Visibility Type
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -197,21 +221,21 @@ result_metadata:
     - v_fields
     - visibility_type
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - visibility_type
-  visibility_type: normal
-  display_name: Visibility Type
-  base_type: type/Text
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: fk_target_field_id
+  name: visibility_type
+  semantic_type: type/Category
   settings: null
-  fk_target_field_id: 1546
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Fk Target Field ID
+  effective_type: type/Integer
   field_ref:
   - field
   - - Internal Metabase Database
@@ -219,21 +243,21 @@ result_metadata:
     - v_fields
     - fk_target_field_id
   - null
-  effective_type: type/Integer
+  fk_target_field_id: 1546
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - fk_target_field_id
-  visibility_type: normal
-  display_name: Fk Target Field ID
-  base_type: type/Integer
-- description: null
-  semantic_type: null
-  coercion_strategy: null
-  name: has_field_values
+  name: fk_target_field_id
+  semantic_type: type/FK
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Has Field Values
+  effective_type: type/Text
   field_ref:
   - field
   - - Internal Metabase Database
@@ -241,21 +265,21 @@ result_metadata:
     - v_fields
     - has_field_values
   - null
-  effective_type: type/Text
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - has_field_values
-  visibility_type: normal
-  display_name: Has Field Values
-  base_type: type/Text
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: active
+  name: has_field_values
+  semantic_type: null
   settings: null
-  fk_target_field_id: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Active
+  effective_type: type/Boolean
   field_ref:
   - field
   - - Internal Metabase Database
@@ -263,21 +287,21 @@ result_metadata:
     - v_fields
     - active
   - null
-  effective_type: type/Boolean
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - active
-  visibility_type: normal
-  display_name: Active
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: table_id
+  name: active
+  semantic_type: type/Category
   settings: null
-  fk_target_field_id: 1534
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Table ID
+  effective_type: type/Integer
   field_ref:
   - field
   - - Internal Metabase Database
@@ -285,46 +309,22 @@ result_metadata:
     - v_fields
     - table_id
   - null
-  effective_type: type/Integer
+  fk_target_field_id: 1534
   id:
   - Internal Metabase Database
   - public
   - v_fields
   - table_id
+  name: table_id
+  semantic_type: type/FK
+  settings: null
   visibility_type: normal
-  display_name: Table ID
-  base_type: type/Integer
-database_id: Internal Metabase Database
-enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Fields
-creator_id: internal@metabase.com
-made_public_by_id: null
-embedding_params: null
-cache_ttl: null
-dataset_query:
-  database: Internal Metabase Database
-  type: query
-  query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_fields
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: ZmDKwRQBuRwfXfGipg7-k
-  label: fields
-display: table
-entity_id: ZmDKwRQBuRwfXfGipg7-k
-collection_preview: true
 visualization_settings:
-  table.pivot_column: visibility_type
-  table.cell_column: table_id
   column_settings: null
+  table.cell_column: table_id
+  table.pivot_column: visibility_type
+serdes/meta:
+- id: ZmDKwRQBuRwfXfGipg7-k
+  label: fields
+  model: Card
 metabase_version: vUNKNOWN (0e09ac7)
-parameters: []
-dataset: true
-created_at: '2023-10-31T21:45:31.793133Z'
-public_uuid: null

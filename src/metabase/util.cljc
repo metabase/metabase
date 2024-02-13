@@ -852,3 +852,23 @@
   [xs]
   (or (empty? xs)
       (apply distinct? xs)))
+
+(defn traverse
+  "Traverses a graph of nodes using a user-defined function.
+
+  `nodes`: A collection of initial nodes to start the traversal from.
+  `traverse-fn`: A function that, given a node, returns its directly connected nodes.
+
+  The function performs a breadth-first traversal starting from the initial nodes, applying
+  `traverse-fn` to each node to find connected nodes, and continues until all reachable nodes
+  have been visited. Returns a set of all traversed nodes."
+  [nodes traverse-fn]
+  (loop [to-traverse (set nodes)
+         traversed   #{}]
+    (let [item        (first to-traverse)
+          found       (traverse-fn item)
+          traversed   (conj traversed item)
+          to-traverse (set/union (disj to-traverse item) (set/difference found traversed))]
+      (if (empty? to-traverse)
+        traversed
+        (recur to-traverse traversed)))))

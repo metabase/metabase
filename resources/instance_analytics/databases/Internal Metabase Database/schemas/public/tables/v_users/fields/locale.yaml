@@ -1,39 +1,39 @@
+name: locale
+display_name: Locale
 description: null
-database_type: varchar
-semantic_type: null
+created_at: '2023-06-08T14:05:41.008036Z'
+active: true
+visibility_type: normal
 table_id:
 - Internal Metabase Database
 - public
 - v_users
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+semantic_type: null
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
 coercion_strategy: null
-name: locale
+preview_display: true
+position: 12
+custom_position: 0
+database_position: 12
 has_field_values: list
 settings: null
 caveats: null
-fk_target_field_id: null
-dimensions: []
-custom_position: 0
-effective_type: type/Text
-active: true
-nfc_path: null
-parent_id: null
-serdes/meta:
-- model: Database
-  id: Internal Metabase Database
-- model: Schema
-  id: public
-- model: Table
-  id: v_users
-- model: Field
-  id: locale
-database_is_auto_increment: false
-json_unfolding: false
-position: 12
-visibility_type: normal
-preview_display: true
-display_name: Locale
-database_position: 12
-database_required: false
-created_at: '2023-06-08T14:05:41.008036Z'
-base_type: type/Text
 points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_users
+  model: Table
+- id: locale
+  model: Field

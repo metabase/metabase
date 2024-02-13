@@ -1,23 +1,29 @@
+name: List of dashboards
 description: null
+entity_id: PkIueKBME3DfRFwBsYjuE
+created_at: '2023-11-01T01:37:47.173914Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_content
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: List of dashboards
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
-  type: query
   query:
     fields:
     - - field
@@ -38,7 +44,6 @@ dataset_query:
         - v_content
         - name
       - base-type: type/Text
-    source-table: AxSackBiyXVRUzM_TyyQY
     filter:
     - =
     - - field
@@ -48,19 +53,14 @@ dataset_query:
         - entity_type
       - base-type: type/Text
     - dashboard
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: PkIueKBME3DfRFwBsYjuE
-  label: list_of_dashboards
-display: table
-entity_id: PkIueKBME3DfRFwBsYjuE
-collection_preview: true
+    source-table: AxSackBiyXVRUzM_TyyQY
+  type: query
+result_metadata: null
 visualization_settings:
-  table.cell_column: entity_id
   column_settings: null
+  table.cell_column: entity_id
+serdes/meta:
+- id: PkIueKBME3DfRFwBsYjuE
+  label: list_of_dashboards
+  model: Card
 metabase_version: vUNKNOWN (ad99d37)
-parameters: []
-dataset: false
-created_at: '2023-11-01T01:37:47.173914Z'
-public_uuid: null

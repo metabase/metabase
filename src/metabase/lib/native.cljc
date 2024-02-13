@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
@@ -165,11 +164,10 @@
     native-extras :- [:maybe ::native-extras]]
    (let [tags (extract-template-tags inner-query)]
      (-> (lib.query/query-with-stages metadata-providerable
-                                      [(-> {:lib/type           :mbql.stage/native
-                                            :lib/stage-metadata results-metadata
-                                            :template-tags      tags
-                                            :native             inner-query}
-                                           lib.options/ensure-uuid)])
+                                      [{:lib/type           :mbql.stage/native
+                                        :lib/stage-metadata results-metadata
+                                        :template-tags      tags
+                                        :native             inner-query}])
          (with-native-extras native-extras)))))
 
 (mu/defn with-different-database :- ::lib.schema/query

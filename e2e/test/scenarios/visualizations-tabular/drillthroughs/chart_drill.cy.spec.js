@@ -1,9 +1,7 @@
 import {
   restore,
-  openProductsTable,
   openOrdersTable,
   popover,
-  sidebar,
   visitQuestionAdhoc,
   visualize,
   summarize,
@@ -613,31 +611,49 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
   describe("for an unsaved question", () => {
     beforeEach(() => {
-      // Build a question without saving
-      openProductsTable();
-      summarize();
-      sidebar().within(() => {
-        cy.contains("Category").click();
-      });
+      const questionDetails = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                {
+                  "base-type": "type/Text",
+                },
+              ],
+            ],
+          },
+        },
+      };
+
+      visitQuestionAdhoc(questionDetails);
 
       // Drill-through the last bar (Widget)
       cy.get(".bar").last().click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("See these Products").click();
+      popover().findByTextEnsureVisible("See these Products").click();
     });
 
-    // [quarantine] flaky
-    it.skip("should result in a correct query result", () => {
+    it("should result in a correct query result", () => {
       cy.log("Assert that the URL is correct");
       cy.url().should("include", "/question#");
 
       cy.log("Assert on the correct product category: Widget");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Category is Widget");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Gizmo").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Doohickey").should("not.exist");
+      cy.findByTestId("qb-filters-panel").findByText("Category is Widget");
+
+      cy.findByTestId("question-row-count").should(
+        "have.text",
+        "Showing 54 rows",
+      );
+
+      cy.findByTestId("visualization-root")
+        .should("contain", "Widget")
+        .and("not.contain", "Gizmo")
+        .and("not.contain", "Doohickey");
     });
   });
 

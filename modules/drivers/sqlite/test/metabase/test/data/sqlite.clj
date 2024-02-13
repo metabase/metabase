@@ -1,16 +1,22 @@
 (ns metabase.test.data.sqlite
-  (:require [metabase.test.data.interface :as tx]
+  (:require [clojure.java.io :as io]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :sqlite)
 
 (defmethod tx/supports-timestamptz-type? :sqlite [_driver] false)
 
+(defn- db-file-name [dbdef]
+  (str (tx/escaped-database-name dbdef) ".sqlite"))
+
 (defmethod tx/dbdef->connection-details :sqlite
   [_driver _context dbdef]
-  {:db (str (tx/escaped-database-name dbdef) ".sqlite")})
+  {:db (db-file-name dbdef)})
 
 (doseq [[base-type sql-type] {:type/BigInteger "BIGINT"
                               :type/Boolean    "BOOLEAN"
@@ -44,3 +50,9 @@
 (defmethod sql.tx/drop-db-if-exists-sql :sqlite [& _] nil)
 (defmethod sql.tx/create-db-sql         :sqlite [& _] nil)
 (defmethod sql.tx/add-fk-sql            :sqlite [& _] nil) ; TODO - fix me
+
+(defmethod tx/destroy-db! :sqlite
+  [_driver dbdef]
+  (let [file (io/file (db-file-name dbdef))]
+    (when (.exists file)
+      (.delete file))))

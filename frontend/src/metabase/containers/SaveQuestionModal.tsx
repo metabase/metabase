@@ -143,10 +143,10 @@ export const SaveQuestionModal = ({
   const instanceAnalyticsCollectionId =
     collections?.find(isInstanceAnalyticsCollection)?.id ?? "not found";
 
-  if (
-    collections &&
-    originalQuestion?.collectionId() === instanceAnalyticsCollectionId
-  ) {
+  const isInInstanceAnalyticsQuestion =
+    originalQuestion?.collectionId() === instanceAnalyticsCollectionId;
+
+  if (collections && isInInstanceAnalyticsQuestion) {
     const customCollection = getInstanceAnalyticsCustomCollection(collections);
     if (customCollection) {
       initialCollectionId = customCollection.id;
@@ -157,7 +157,9 @@ export const SaveQuestionModal = ({
     name: question.generateQueryDescription() || "",
     description: question.description() || "",
     collection_id:
-      question.collectionId() === undefined || isReadonly
+      question.collectionId() === undefined ||
+      isReadonly ||
+      isInInstanceAnalyticsQuestion
         ? initialCollectionId
         : question.collectionId(),
     saveType:

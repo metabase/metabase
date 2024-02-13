@@ -96,6 +96,8 @@ const addGroupsToMapping = (mappingName, groups) => {
         });
     });
   });
+
+  cy.realPress("{esc}");
 };
 
 const checkThatGroupHasNoMembers = name => {

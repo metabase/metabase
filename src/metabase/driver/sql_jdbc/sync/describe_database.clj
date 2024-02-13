@@ -95,7 +95,8 @@
       true
       (catch Throwable e
         (log/trace e "Assuming no SELECT privileges: caught exception")
-        (.rollback conn)
+        (when-not (.getAutoCommit conn)
+          (.rollback conn))
         false))))
 
 (defn- db-tables

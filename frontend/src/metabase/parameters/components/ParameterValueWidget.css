@@ -37,20 +37,26 @@
   border-color: var(--color-brand);
 }
 
+:local(.parameter) input {
+  flex-grow: 1;
+  border-radius: 0;
+}
+
 :local(.parameter.noPopover) input {
   width: 100%;
   font-size: 1em;
   font-weight: 600;
   border: none;
   background: none;
-}
 
-:local(.parameter.noPopover.isEditing) input {
-  width: 142px;
+  @media screen and (min-width: 440px) {
+    & {
+      padding: 0;
+    }
+  }
 }
 
 :local(.parameter.noPopover.selected) input {
-  width: 142px;
   font-weight: bold;
   color: var(--color-brand);
 }
@@ -58,7 +64,6 @@
 :local(.parameter.noPopover) input:focus {
   outline: none;
   color: var(--color-text-dark);
-  width: 142px;
 }
 :local(.parameter.noPopover) input::-webkit-input-placeholder {
   color: var(--color-text-medium);
@@ -119,12 +124,4 @@
 :local(.editNameIconContainer) > svg {
   position: absolute;
   top: -6px;
-}
-
-@media screen and (min-width: 440px) {
-  :local(.parameter.noPopover) input {
-    /* NOTE: Fixed with to circumvent issues with flexbox with container having a min-width */
-    width: 115px;
-    padding: 0;
-  }
 }

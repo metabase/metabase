@@ -4,6 +4,7 @@
   Drill-thrus are not part of MBQL; they are a set of actions one can take to transform a query.
   For example, adding a filter like `created_at < 2022-01-01`, or following a foreign key."
   (:require
+   [metabase.lib.schema :as-alias lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -79,11 +80,12 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type       [:= :drill-thru/quick-filter]]
-    [:operators  [:sequential ::drill-thru.quick-filter.operator]]
-    ;; whether applying this drill thru should introduce a new stage to the query. Filters on aggregate columns should
-    ;; introduce a new stage.
-    [:new-stage? :boolean]]])
+    [:type         [:= :drill-thru/quick-filter]]
+    [:operators    [:sequential ::drill-thru.quick-filter.operator]]
+    [:column       [:ref ::lib.schema.metadata/column]]
+    [:value        [:maybe :any]]
+    [:query        [:ref ::lib.schema/query]]
+    [:stage-number number?]]])
 
 (mr/def ::drill-thru.fk-filter
   [:merge
@@ -134,8 +136,11 @@
   [:merge
    ::drill-thru.common.with-column
    [:map
-    [:type       [:= :drill-thru/column-filter]]
-    [:initial-op [:maybe ::lib.schema.filter/operator]]]])
+    [:type         [:= :drill-thru/column-filter]]
+    [:initial-op   [:maybe ::lib.schema.filter/operator]]
+    [:column       [:ref ::lib.schema.metadata/column]]
+    [:query        [:ref ::lib.schema/query]]
+    [:stage-number number?]]])
 
 (mr/def ::drill-thru.underlying-records
   [:merge
