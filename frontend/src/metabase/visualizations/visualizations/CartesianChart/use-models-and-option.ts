@@ -53,7 +53,7 @@ export function useModelsAndOption({
         return getCartesianChartModel(
           seriesToRender,
           settings,
-          timelineEvents?.length !== 0,
+          timelineEvents ? timelineEvents.length !== 0 : false,
           renderingContext,
         );
     }
@@ -62,7 +62,7 @@ export function useModelsAndOption({
     seriesToRender,
     settings,
     renderingContext,
-    timelineEvents?.length,
+    timelineEvents,
   ]);
 
   const timelineEventsModel = useMemo(
