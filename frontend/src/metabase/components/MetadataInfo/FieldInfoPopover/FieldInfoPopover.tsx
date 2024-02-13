@@ -15,12 +15,12 @@ export const POPOVER_TRANSITION_DURATION = 150;
 // we don't closing immediatly but delay by a short amount to avoid flicker.
 export const POPOVER_CLOSE_DELAY = 25;
 
-export type FieldInfoPopoverProps = Omit<FieldInfoProps, "children"> &
+export type FieldInfoPopoverProps = FieldInfoProps &
   Pick<HoverCardProps, "children" | "position" | "disabled"> & {
-    delay: [number, number];
+    delay?: [number, number];
   };
 
-function FieldInfoPopover({
+export function FieldInfoPopover({
   position = "bottom-start",
   disabled,
   delay = POPOVER_DELAY,

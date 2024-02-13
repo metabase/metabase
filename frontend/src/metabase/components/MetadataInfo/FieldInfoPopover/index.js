@@ -1,1 +1,5 @@
-export { default } from "./FieldInfoPopover";
+export {
+  default,
+  FieldInfoPopoverProps,
+  FieldInfoPopover,
+} from "./FieldInfoPopover";
