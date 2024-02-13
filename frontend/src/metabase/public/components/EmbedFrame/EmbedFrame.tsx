@@ -27,7 +27,10 @@ import type { State } from "metabase-types/store";
 
 import { useDispatch } from "metabase/lib/redux";
 import { setOptions } from "metabase/redux/embed";
-import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import {
+  FixedWidthContainer,
+  ParametersFixedWidthContainer,
+} from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import type Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -42,6 +45,8 @@ import {
   Footer,
   ActionButtonsContainer,
   TitleAndDescriptionContainer,
+  Separator,
+  DashboardTabsContainer,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
 
@@ -155,17 +160,32 @@ function EmbedFrame({
           <Header className="EmbedFrame-header">
             {finalName && (
               <TitleAndDescriptionContainer>
-                <TitleAndDescription
-                  title={finalName}
-                  description={description}
-                  className="my2"
-                />
+                <FixedWidthContainer
+                  data-testid="fixed-width-dashboard-header"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <TitleAndDescription
+                    title={finalName}
+                    description={description}
+                    className="my2"
+                  />
+                </FixedWidthContainer>
               </TitleAndDescriptionContainer>
             )}
-            {dashboardTabs}
+            {dashboardTabs && (
+              <DashboardTabsContainer>
+                <FixedWidthContainer
+                  data-testid="fixed-width-dashboard-tabs"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  {dashboardTabs}
+                </FixedWidthContainer>
+              </DashboardTabsContainer>
+            )}
+            <Separator />
             {hasParameters && (
               <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
-                <FixedWidthContainer
+                <ParametersFixedWidthContainer
                   data-testid="fixed-width-filters"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
@@ -186,7 +206,7 @@ function EmbedFrame({
                     }
                   />
                   {dashboard && <FilterApplyButton />}
-                </FixedWidthContainer>
+                </ParametersFixedWidthContainer>
               </ParametersWidgetContainer>
             )}
           </Header>

@@ -8,6 +8,8 @@ import {
   createPublicDashboardLink,
   dashboardParametersContainer,
   goToTab,
+  assertDashboardFixedWidth,
+  assertDashboardFullWidth,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -230,7 +232,7 @@ describe("scenarios > public > dashboard", () => {
     });
 
     // new dashboards should default to 'fixed' width
-    cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
+    assertDashboardFixedWidth();
 
     // toggle full-width
     cy.get("@dashboardId").then(id => {
@@ -241,10 +243,6 @@ describe("scenarios > public > dashboard", () => {
       visitPublicDashboard(id);
     });
 
-    cy.findByTestId("dashboard-grid").should(
-      "not.have.css",
-      "max-width",
-      "1048px",
-    );
+    assertDashboardFullWidth();
   });
 });
