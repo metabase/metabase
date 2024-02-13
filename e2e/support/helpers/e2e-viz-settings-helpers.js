@@ -14,7 +14,7 @@ export function openSeriesSettings(field, isBreakout = false) {
       .find(".Icon-ellipsis")
       .click();
     popover().within(() => {
-      cy.findByRole("radiogroup").findByText("Style").click();
+      cy.findAllByRole("radiogroup").findByText("Style").click();
     });
   }
 }

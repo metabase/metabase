@@ -8,6 +8,7 @@ const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
   failureRedirectPath: "/setup",
   authSelector: state => ({ hasUserSetup: MetabaseSettings.hasUserSetup() }), // HACK
+  // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
   wrapperDisplayName: "MetabaseIsSetup",
   allowRedirectBack: false,
   redirectAction: routerActions.replace,
