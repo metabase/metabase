@@ -129,16 +129,18 @@
   (find-values field-values-id))
 
 (deftest implicit-deduplication-test
-  (let [now (t/zoned-date-time)
-        then (t/plus now (t/millis 1))]
-    (mt/with-temp [Database    {database-id :id} {}
-                   Table       {table-id :id}    {:db_id database-id}
-                   Field       {field-id :id}     {:table_id table-id}
-                   FieldValues _                 {:field_id field-id :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :updated_at now}
-                   FieldValues _                 {:field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :updated_at then}]
+  (let [before (t/zoned-date-time)
+        after  (t/plus before (t/millis 1))
+        later  (t/plus after (t/millis 1))]
+    (mt/with-temp [:model/Database    {database-id :id} {}
+                   :model/Table       {table-id :id}    {:db_id database-id}
+                   :model/Field       {field-id :id}     {:table_id table-id}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :created_at before :updated_at before}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
 
-      (testing "When we have two FieldValues rows in the database, "
-        (is (= 2 (count (t2/select FieldValues :field_id field-id :type :full :hash_key nil))))
+      (testing "When we have multiple FieldValues rows in the database, "
+        (is (= 3 (count (t2/select FieldValues :field_id field-id :type :full :hash_key nil))))
         (testing "we always return the most recently updated row"
           (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))
           (testing "... and older rows are implicitly deleted"
