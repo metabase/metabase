@@ -404,7 +404,8 @@
                                        "\n"
                                        "SELECT COUNT(1) FROM @TEMP\n")}
                           mt/native-query
-                          qp/process-userland-query
+                          qp/userland-query
+                          qp/process-query
                           mt/rows
                           ffirst))))))))
 

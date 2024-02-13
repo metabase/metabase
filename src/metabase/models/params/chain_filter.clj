@@ -79,6 +79,7 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -522,7 +523,7 @@
   "Check query permissions against the chain-filter-mbql-query (private #196)"
   [field-id constraints options]
   (->> (chain-filter-mbql-query field-id constraints options)
-       qp/preprocess
+       qp.preprocess/preprocess
        qp.perms/check-query-permissions*))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]

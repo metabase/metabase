@@ -212,7 +212,7 @@
   options."
   [card-id :- ::lib.schema.id/card
    export-format
-   & {:keys [parameters constraints context dashboard-id middleware qp run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              qp          process-query-for-card-default-qp

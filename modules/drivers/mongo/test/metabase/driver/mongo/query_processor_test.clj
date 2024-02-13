@@ -559,7 +559,7 @@
                                            :source-table $$people
                                            :condition [:= &People.people.id $orders.user_id]
                                            :fields :all}]}})
-           compiled (qp/compile query)
+           compiled (qp.compile/compile query)
            indices (reduce (fn [acc lookup-stage]
                              (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                    ;; Following expression ensures index is an integer.

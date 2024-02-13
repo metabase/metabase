@@ -1123,7 +1123,7 @@
                           "LIMIT"
                           "  1"]
                   :params nil}
-                 (-> (qp/compile query)
+                 (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :postgres %)))))))))))
 
 (deftest postgres-ssl-connectivity-test

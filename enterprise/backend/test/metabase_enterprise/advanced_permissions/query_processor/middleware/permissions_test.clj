@@ -128,7 +128,7 @@
 
         (testing "No exception is thrown for non-download queries"
           (let [query (dissoc (mbql-download-query 'venues) :info)]
-            (is (= query (check-download-permisions query))))))))
+            (is (= query (check-download-permisions query)))))))))
 
 (deftest check-download-permissions-test-2
   (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"

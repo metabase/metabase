@@ -174,7 +174,7 @@
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
                   (log/tracef "Reducing cached rows...")
-                  (let [result (qp.pipeline/*reduce* (cached-results-rff rff) metadata reducible-rows)]
+                  (let [result (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)]
                     (log/tracef "All cached rows reduced")
                     [::ok result]))))))
         [::miss nil])
