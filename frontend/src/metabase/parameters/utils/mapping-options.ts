@@ -29,7 +29,7 @@ import type Question from "metabase-lib/Question";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
 
-export type StructuredQuerySectionOptions = {
+export type StructuredQuerySectionOption = {
   sectionName: string;
   name: string;
   icon: string;
@@ -41,7 +41,7 @@ function buildStructuredQuerySectionOptions(
   query: Lib.Query,
   stageIndex: number,
   group: Lib.ColumnGroup,
-): StructuredQuerySectionOptions[] {
+): StructuredQuerySectionOption[] {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
   const columns = Lib.getColumnsFromColumnGroup(group);
 
@@ -60,7 +60,7 @@ function buildStructuredQuerySectionOptions(
 
 function buildNativeQuerySectionOptions(
   section: DimensionOptionsSection,
-): NativeParameterMappingOptions[] {
+): NativeParameterMappingOption[] {
   return section.items.map(({ dimension }) => ({
     name: dimension.displayName(),
     icon: dimension.icon() ?? "",
@@ -71,7 +71,7 @@ function buildNativeQuerySectionOptions(
 
 function buildVariableOption(
   variable: TemplateTagVariable,
-): NativeParameterMappingOptions {
+): NativeParameterMappingOption {
   return {
     name: variable.displayName() ?? "",
     icon: variable.icon() ?? "",
@@ -88,38 +88,38 @@ function buildTextTagOption(tagName: string) {
     target: buildTextTagTarget(tagName),
   };
 }
-type VirtualDashcardParameterMappingOptions = {
+type VirtualDashcardParameterMappingOption = {
   name: string;
   icon: string;
   isForeign: boolean;
   target: ParameterTarget;
 };
 
-type ActionDashcardParameterMappingOptions = WritebackParameter & {
+type ActionDashcardParameterMappingOption = WritebackParameter & {
   icon: string;
   isForeign: boolean;
   hasVariableTemplateTagTarget?: boolean;
 };
 
-type NativeParameterMappingOptions = {
+type NativeParameterMappingOption = {
   name: string;
   icon: string;
   isForeign: boolean;
   target: NativeParameterDimensionTarget | ParameterVariableTarget;
 };
 
-export type ParameterMappingOptions =
-  | VirtualDashcardParameterMappingOptions
-  | ActionDashcardParameterMappingOptions
-  | StructuredQuerySectionOptions
-  | NativeParameterMappingOptions;
+export type ParameterMappingOption =
+  | VirtualDashcardParameterMappingOption
+  | ActionDashcardParameterMappingOption
+  | StructuredQuerySectionOption
+  | NativeParameterMappingOption;
 
 export function getParameterMappingOptions(
   question: Question,
   parameter: Parameter | null | undefined = null,
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
-): ParameterMappingOptions[] {
+): ParameterMappingOption[] {
   if (
     dashcard &&
     isVirtualDashCard(dashcard) &&
@@ -165,7 +165,7 @@ export function getParameterMappingOptions(
   }
 
   const legacyQuery = question.legacyQuery();
-  const options: NativeParameterMappingOptions[] = [];
+  const options: NativeParameterMappingOption[] = [];
 
   options.push(
     ...legacyQuery

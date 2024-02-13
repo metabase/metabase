@@ -16,7 +16,7 @@ import type {
 } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
-import type { ParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import Question from "metabase-lib/Question";
 import { getMappingOptionByTarget } from "./utils";
 
@@ -25,7 +25,7 @@ describe("dashcard utils", () => {
     describe("virtual dashcard", () => {
       it("should find mapping option", () => {
         const headingCard = createMockHeadingDashboardCard();
-        const mappingOption: ParameterMappingOptions = {
+        const mappingOption: ParameterMappingOption = {
           name: "param",
           icon: "string",
           isForeign: false,
@@ -40,7 +40,7 @@ describe("dashcard utils", () => {
 
       it("should return undefined if option is not found", () => {
         const headingCard = createMockHeadingDashboardCard();
-        const mappingOption: ParameterMappingOptions = {
+        const mappingOption: ParameterMappingOption = {
           name: "param",
           icon: "string",
           isForeign: false,
@@ -57,7 +57,7 @@ describe("dashcard utils", () => {
     describe("action dashcard", () => {
       it("should return nothing as action has it's own settings", () => {
         const actionDashcard = createMockActionDashboardCard();
-        const mappingOptions: ParameterMappingOptions[] = [
+        const mappingOptions: ParameterMappingOption[] = [
           {
             icon: "variable",
             isForeign: false,
@@ -93,7 +93,7 @@ describe("dashcard utils", () => {
         });
         const dashcard = createMockDashboardCard({ card });
 
-        const mappingOption: ParameterMappingOptions = {
+        const mappingOption: ParameterMappingOption = {
           name: "Source",
           icon: "string",
           isForeign: false,
@@ -121,7 +121,7 @@ describe("dashcard utils", () => {
         });
         const dashcard = createMockDashboardCard({ card });
 
-        const mappingOption: ParameterMappingOptions = {
+        const mappingOption: ParameterMappingOption = {
           name: "Source",
           icon: "string",
           isForeign: false,
@@ -159,7 +159,7 @@ describe("dashcard utils", () => {
         dashcard = createMockDashboardCard({ card });
       });
       it("should find mapping option", () => {
-        const mappingOption: ParameterMappingOptions = {
+        const mappingOption: ParameterMappingOption = {
           sectionName: "User",
           name: "Name",
           icon: "string",
@@ -208,7 +208,7 @@ describe("dashcard utils", () => {
         const question = new Question(card, metadata);
         const dashcard = createMockDashboardCard({ card });
 
-        const mappingOption: ParameterMappingOptions = {
+        const mappingOption: ParameterMappingOption = {
           sectionName: "User",
           name: "Name",
           icon: "string",

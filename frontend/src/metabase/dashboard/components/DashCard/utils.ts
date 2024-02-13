@@ -13,8 +13,7 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import * as Lib from "metabase-lib";
-import type { ParameterMappingOptions as ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { isStructuredQuerySectionOption } from "metabase-types/guards";
+import type { ParameterMappingOption as ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import type Question from "metabase-lib/Question";
 
@@ -89,9 +88,7 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     query,
     stageIndex,
     columns,
-    mappingOptions
-      .filter(isStructuredQuerySectionOption)
-      .map(({ target }) => normalize(target[1])),
+    mappingOptions.map(({ target }) => normalize(target[1])),
   );
 
   const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);
