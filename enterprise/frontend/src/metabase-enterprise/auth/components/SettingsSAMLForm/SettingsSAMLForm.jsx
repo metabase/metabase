@@ -17,7 +17,6 @@ import {
 import { Stack } from "metabase/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-
 import { updateSamlSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import {
@@ -25,6 +24,7 @@ import {
   SAMLFormFooter,
   SAMLFormSection,
 } from "./SettingsSAMLForm.styled";
+import { SettingsUserProvisionToggle } from "../SettingsUserProvisionToggle";
 
 const propTypes = {
   elements: PropTypes.array,
@@ -79,7 +79,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               [t`SAML`],
             ]}
           />
-          <h2 className="mb3">{t`Set up SAML-based SSO`}</h2>
+          <h2 className="mb2">{t`Set up SAML-based SSO`}</h2>
           <SAMLFormCaption>
             {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
               <ExternalLink
@@ -87,6 +87,10 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               >{t`documentation`}</ExternalLink>
             )}.`}
           </SAMLFormCaption>
+          <SettingsUserProvisionToggle
+            field={fields["saml-user-provisioning-enabled?"]}
+            mb="2.5rem"
+          />
           <SAMLFormSection>
             <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
             {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
@@ -216,6 +220,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
 // 1) Our `settingValues` has settings unrelated to SAML, which was previously sifted by collecting only those matching inline field names in our form.
 // 2) Some values should be replaced by defaults.
 const IS_SAML_ATTR_DEFAULTABLE = {
+  "saml-user-provisioning-enabled?": true,
   "saml-attribute-email": true,
   "saml-attribute-firstname": true,
   "saml-attribute-lastname": true,

@@ -22,6 +22,7 @@ import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import type { SettingValue } from "metabase-types/api";
 import type { SettingElement } from "metabase/admin/settings/types";
+import { SettingsUserProvisionToggle } from "metabase-enterprise/auth/components/SettingsUserProvisionToggle";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
@@ -76,14 +77,15 @@ export const SettingsLdapFormView = ({
       placeholder: setting.is_env_setting
         ? t`Using ${setting.env_name}`
         : setting.placeholder || setting.default,
+      default: setting.default,
       required: setting.required,
       autoFocus: setting.autoFocus,
     }));
   }, [settings]);
 
   const attributeValues = useMemo(() => {
-    return getAttributeValues(settingValues);
-  }, [settingValues]);
+    return getAttributeValues(settings, settingValues);
+  }, [settings, settingValues]);
 
   const handleSubmit = useCallback(
     values => {
@@ -111,6 +113,11 @@ export const SettingsLdapFormView = ({
               [t`Authentication`, "/admin/settings/authentication"],
               [t`LDAP`],
             ]}
+          />
+          <SettingsUserProvisionToggle
+            field={fields["ldap-user-provisioning-enabled?"]}
+            mt="2.5rem"
+            mb="2.5rem"
           />
           <FormSection title={"Server Settings"}>
             <Stack spacing="md">
@@ -177,6 +184,9 @@ export const SettingsLdapFormView = ({
 };
 
 const LDAP_ATTRS = [
+  // User Provision Settings
+  "ldap-user-provisioning-enabled?",
+
   // Server Settings
   "ldap-host",
   "ldap-port",
@@ -200,8 +210,13 @@ const LDAP_ATTRS = [
   "ldap-sync-admin-group",
 ];
 
-const getAttributeValues = (values: SettingValues) => {
-  return Object.fromEntries(LDAP_ATTRS.map(key => [key, values[key]]));
+const getAttributeValues = (
+  settings: Record<string, LdapFormSettingElement>,
+  values: SettingValues,
+) => {
+  return Object.fromEntries(
+    LDAP_ATTRS.map(key => [key, values[key] ?? settings[key]?.default]),
+  );
 };
 
 const mapDispatchToProps = {

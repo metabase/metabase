@@ -17,6 +17,7 @@ import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import type { SettingValue } from "metabase-types/api";
 import type { SettingElement } from "metabase/admin/settings/types";
+import { SettingsUserProvisionToggle } from "../SettingsUserProvisionToggle";
 
 type SettingValues = { [key: string]: SettingValue };
 
@@ -52,14 +53,16 @@ export const SettingsJWTForm = ({
       placeholder: setting.is_env_setting
         ? t`Using ${setting.env_name}`
         : setting.placeholder || setting.default,
+      default: setting.default,
       required: setting.required,
       autoFocus: setting.autoFocus,
+      onChanged: setting.onChanged,
     }));
   }, [settings]);
 
   const attributeValues = useMemo(() => {
-    return getAttributeValues(settingValues);
-  }, [settingValues]);
+    return getAttributeValues(settings, settingValues);
+  }, [settings, settingValues]);
 
   const handleSubmit = useCallback(
     values => {
@@ -82,6 +85,10 @@ export const SettingsJWTForm = ({
               [t`Authentication`, "/admin/settings/authentication"],
               [t`JWT`],
             ]}
+          />
+          <SettingsUserProvisionToggle
+            field={fields["jwt-user-provisioning-enabled?"]}
+            m="2.5rem 0"
           />
           <FormSection title={"Server Settings"}>
             <Stack spacing="md">
@@ -132,6 +139,7 @@ export const SettingsJWTForm = ({
 };
 
 const JWT_ATTRS = [
+  "jwt-user-provisioning-enabled?",
   "jwt-identity-provider-uri",
   "jwt-shared-secret",
   "jwt-attribute-email",
@@ -140,8 +148,13 @@ const JWT_ATTRS = [
   "jwt-group-sync",
 ];
 
-const getAttributeValues = (values: SettingValues) => {
-  return Object.fromEntries(JWT_ATTRS.map(key => [key, values[key]]));
+const getAttributeValues = (
+  settings: Record<string, JWTFormSettingElement>,
+  values: SettingValues,
+) => {
+  return Object.fromEntries(
+    JWT_ATTRS.map(key => [key, values[key] ?? settings[key]?.default]),
+  );
 };
 
 const mapDispatchToProps = {
