@@ -16,7 +16,7 @@ import type { SDKConfigType } from "./config";
 import { METABASE_SDK_CONFIG, SDK_CONTEXT_CLASS_NAME } from "./config";
 
 import "./styles.css";
-import { useSessionToken, useInitData } from "./hooks";
+import { useInitData } from "./hooks";
 
 const MetabaseProviderInternal = ({
   children,
@@ -34,15 +34,11 @@ const MetabaseProviderInternal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.font]);
 
-  useSessionToken({
-    jwtProviderUri: config.jwtProviderUri,
-    dispatch: store.dispatch,
-  });
-
   const { isLoggedIn, isInitialized } = useInitData({
     apiUrl: config.metabaseInstanceUrl,
     dispatch: store.dispatch,
     store: store,
+    jwtUri: config.jwtProviderUri,
   });
 
   return (

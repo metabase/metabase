@@ -12,6 +12,15 @@ import type { SetupState } from "./setup";
 import type { FileUploadState } from "./upload";
 import type { AuthState } from "./auth";
 
+export type PublicTokenState = {
+  token: {
+    id: string;
+    exp: number;
+  };
+  loading: boolean;
+  error: any;
+} | null;
+
 export interface State {
   admin: AdminState;
   app: AppState;
@@ -26,11 +35,7 @@ export interface State {
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
-  public: {
-    token: {
-      id: string;
-    } | null;
-  };
+  public: PublicTokenState;
 }
 
 export type Dispatch<T = any> = (action: T) => void;

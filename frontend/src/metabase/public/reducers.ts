@@ -1,16 +1,40 @@
 /* eslint-disable */
 import { createReducer } from "@reduxjs/toolkit";
-import { createAsyncThunk } from "metabase/lib/redux/typed-utils";
+import {
+  createAsyncThunk,
+  createThunkAction,
+} from "metabase/lib/redux/typed-utils";
 import { createAction } from "metabase/lib/redux";
-import type { State } from "metabase-types/store";
+import type { PublicTokenState, State } from "metabase-types/store";
 
 // selector for the token
-export const getSessionToken = (state: State) => state.public.token?.id;
+export const getSessionToken = (state: State) => state.public;
+
+const GET_OR_REFRESH_SESSION = "metabase/public/GET_OR_REFRESH_SESSION";
+
+export const getOrRefreshSession = createThunkAction(
+  GET_OR_REFRESH_SESSION,
+  (url: string) => async (_dispatch, getState) => {
+    const state = getState().public;
+    const token = getState().public?.token;
+    console.log("getOrRefreshSession - start");
+
+    console.log(
+      "running refresh? ",
+      !state?.loading && (!token || token.exp * 1000 < Date.now()),
+    );
+    if (!state?.loading && (!token || token.exp * 1000 < Date.now())) {
+      _dispatch(refreshTokenAsync(url));
+    }
+    console.log("getOrRefreshSession - end", getState().public?.token);
+    return getState().public?.token;
+  },
+);
 
 const REFRESH_TOKEN = "metabase/public/REFRESH_TOKEN";
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
-  async (url: string, { dispatch }) => {
+  async (url: string) => {
     const response = await fetch(url, {
       method: "GET",
       credentials: "include",
@@ -26,13 +50,6 @@ const initialState = {
 };
 
 const tokenReducer = createReducer(initialState, {
-  // [GET_TOKEN]: (state, action) => {
-  //   No actual logic needed just to "get" the token, included for demonstration
-  // },
-  // [SET_TOKEN]: (state, action) => {
-  //   console.log("SET_TOKEN", action);
-  //   state.token = action.payload;
-  // },
   // @ts-ignore
   [refreshTokenAsync.pending]: (state, action) => {
     console.log("action pending", action);
