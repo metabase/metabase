@@ -139,7 +139,7 @@
 
       (testing "When we have two FieldValues rows in the database, "
         (is (= 2 (count (t2/select FieldValues :field_id field-id :type :full :hash_key nil))))
-        (testing "we always return the most recently inserted row"
+        (testing "we always return the most recently updated row"
           (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))
           (testing "... and older rows are implicitly deleted"
             (is (= 1 (count (t2/select FieldValues :field_id field-id :type :full))))
