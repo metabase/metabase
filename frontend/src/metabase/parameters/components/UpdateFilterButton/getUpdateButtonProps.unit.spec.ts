@@ -5,35 +5,35 @@ describe("getUpdateButtonProps", () => {
     it("without both value and unsaved, shows disabled add", () => {
       expect(getUpdateButtonProps([], [])).toStrictEqual({
         label: "Add filter",
-        disabled: true,
+        isDisabled: true,
       });
     });
 
     it("without a value, shows enabled add", () => {
       expect(getUpdateButtonProps([], ["a"])).toStrictEqual({
         label: "Add filter",
-        disabled: false,
+        isDisabled: false,
       });
     });
 
     it("with a different unsaved, shows enabled update", () => {
       expect(getUpdateButtonProps(["New"], ["Hello"])).toStrictEqual({
         label: "Update filter",
-        disabled: false,
+        isDisabled: false,
       });
     });
 
     it("when value is the same, shows disabled update", () => {
       expect(getUpdateButtonProps(["Value"], ["Value"])).toStrictEqual({
         label: "Update filter",
-        disabled: true,
+        isDisabled: true,
       });
     });
 
     it("when unsaved is empty, shows update", () => {
       expect(getUpdateButtonProps(["Value"], [])).toStrictEqual({
         label: "Update filter",
-        disabled: false,
+        isDisabled: false,
       });
     });
   });
@@ -42,7 +42,7 @@ describe("getUpdateButtonProps", () => {
     it("without both values, shows reset", () => {
       expect(getUpdateButtonProps([], [], ["CA", "WA"], true)).toStrictEqual({
         label: "Set to default",
-        disabled: false,
+        isDisabled: false,
       });
     });
 
@@ -51,7 +51,7 @@ describe("getUpdateButtonProps", () => {
         getUpdateButtonProps(["WA", "CA"], ["CA", "WA"], ["CA", "WA"], true),
       ).toStrictEqual({
         label: "Set to default",
-        disabled: true,
+        isDisabled: true,
       });
     });
 
@@ -60,7 +60,7 @@ describe("getUpdateButtonProps", () => {
         getUpdateButtonProps(["WA", "CA"], ["WA"], ["CA", "WA"], true),
       ).toStrictEqual({
         label: "Update filter",
-        disabled: false,
+        isDisabled: false,
       });
     });
 
@@ -69,7 +69,7 @@ describe("getUpdateButtonProps", () => {
         getUpdateButtonProps(["WA"], ["FL"], ["CA", "WA"], true),
       ).toStrictEqual({
         label: "Update filter",
-        disabled: false,
+        isDisabled: false,
       });
     });
 
@@ -78,7 +78,7 @@ describe("getUpdateButtonProps", () => {
         getUpdateButtonProps(["WA", "CA"], [], ["CA", "WA"], true),
       ).toStrictEqual({
         label: "Set to default",
-        disabled: false,
+        isDisabled: false,
       });
     });
 
@@ -87,7 +87,7 @@ describe("getUpdateButtonProps", () => {
         getUpdateButtonProps(["WA"], [], ["CA", "WA"], true),
       ).toStrictEqual({
         label: "Set to default",
-        disabled: false,
+        isDisabled: false,
       });
     });
   });
@@ -96,28 +96,28 @@ describe("getUpdateButtonProps", () => {
     it("without both values, shows disabled update", () => {
       expect(getUpdateButtonProps(null, null, "default")).toStrictEqual({
         label: "Update filter",
-        disabled: true,
+        isDisabled: true,
       });
     });
 
     it("with value not equal default and different unsaved, shows update", () => {
       expect(getUpdateButtonProps("old", "new", "default")).toStrictEqual({
         label: "Update filter",
-        disabled: false,
+        isDisabled: false,
       });
     });
 
     it("with no value and unsaved same as default, shows reset", () => {
       expect(getUpdateButtonProps(null, "default", "default")).toStrictEqual({
         label: "Set to default",
-        disabled: false,
+        isDisabled: false,
       });
     });
 
     it("when value and unsaved are samb but different from default, shows disabled update", () => {
       expect(getUpdateButtonProps("old", "old", "default")).toStrictEqual({
         label: "Update filter",
-        disabled: true,
+        isDisabled: true,
       });
     });
 
@@ -126,7 +126,7 @@ describe("getUpdateButtonProps", () => {
         getUpdateButtonProps("default", "default", "default"),
       ).toStrictEqual({
         label: "Set to default",
-        disabled: true,
+        isDisabled: true,
       });
     });
   });
