@@ -2,7 +2,6 @@ import type * as React from "react";
 import { memo, useEffect } from "react";
 import { Provider } from "react-redux";
 import styled from "@emotion/styled";
-import {useUnmount} from "react-use";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 import { getStore } from "metabase/store";
 import reducers from "metabase/reducers-main";
@@ -35,17 +34,15 @@ const MetabaseProviderInternal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.font]);
 
-  const { sessionToken, tokenExp, resetSessionToken } = useSessionToken({
+  useSessionToken({
     jwtProviderUri: config.jwtProviderUri,
-    dispatch: store.dispatch
+    dispatch: store.dispatch,
   });
-
-  useUnmount(resetSessionToken)
 
   const { isLoggedIn, isInitialized } = useInitData({
     apiUrl: config.metabaseInstanceUrl,
     dispatch: store.dispatch,
-    sessionToken,
+    store: store,
   });
 
   return (
@@ -54,14 +51,15 @@ const MetabaseProviderInternal = ({
         apiUrl: config.metabaseInstanceUrl,
         isInitialized,
         isLoggedIn,
-        sessionToken,
-        tokenExp
       }}
     >
       <Provider store={store}>
         <SdkEmotionCacheProvider>
           <ThemeProvider>
-            <ContentWrapper id={SDK_CONTEXT_CLASS_NAME} font={config.font ?? "Lato"}>
+            <ContentWrapper
+              id={SDK_CONTEXT_CLASS_NAME}
+              font={config.font ?? "Lato"}
+            >
               {!isInitialized ? <div>Initializing...</div> : children}
             </ContentWrapper>
           </ThemeProvider>
