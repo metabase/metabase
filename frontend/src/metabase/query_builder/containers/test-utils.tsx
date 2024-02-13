@@ -57,7 +57,6 @@ const TEST_DB = createSampleDatabase();
 export const TEST_CARD = createMockCard({
   id: 1,
   name: "Test card",
-  dataset: true,
   type: "model",
 });
 
@@ -114,7 +113,6 @@ export const TEST_MODEL_CARD = createMockCard({
       limit: 1,
     },
   },
-  dataset: true,
   type: "model",
   display: "scalar",
   description: "Test description",

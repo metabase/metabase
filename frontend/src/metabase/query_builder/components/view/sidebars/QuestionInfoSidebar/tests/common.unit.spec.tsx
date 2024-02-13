@@ -15,13 +15,11 @@ describe("QuestionInfoSidebar", () => {
       createMockCard({
         name: "Question",
         description: DESCRIPTION,
-        dataset: false,
         type: "question",
       }),
       createMockCard({
         name: "Model",
         description: DESCRIPTION,
-        dataset: true,
         type: "model",
       }),
     ])("should display description of a $name", async card => {
@@ -56,7 +54,6 @@ describe("QuestionInfoSidebar", () => {
     it("is shown for models", async () => {
       const card = createMockCard({
         name: "abc",
-        dataset: true,
         type: "model",
       });
       await setup({ card });

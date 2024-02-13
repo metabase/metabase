@@ -78,7 +78,6 @@ describe("getQuestion", () => {
   it("should return composed dataset when dataset is open", () => {
     const card = {
       id: 5,
-      dataset: true,
       type: "model",
       dataset_query: {
         database: 1,
@@ -99,7 +98,6 @@ describe("getQuestion", () => {
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
     const card = {
       id: 5,
-      dataset: true,
       type: "model",
       dataset_query: {
         database: 1,
@@ -316,7 +314,6 @@ describe("getIsResultDirty", () => {
     function getDataset(query) {
       return getBaseCard({
         id: 1,
-        dataset: true,
         type: "model",
         dataset_query: { type: "query", query },
       });

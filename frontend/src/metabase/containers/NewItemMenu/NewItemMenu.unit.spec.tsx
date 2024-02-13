@@ -46,7 +46,7 @@ function setup({
   databases = [SAMPLE_DATABASE, DB_WITH_ACTIONS],
   hasModels = true,
 }: SetupOpts = {}) {
-  const models = hasModels ? [createMockCard({ dataset: true })] : [];
+  const models = hasModels ? [createMockCard({ type: "model" })] : [];
 
   setupDatabasesEndpoints(databases);
 

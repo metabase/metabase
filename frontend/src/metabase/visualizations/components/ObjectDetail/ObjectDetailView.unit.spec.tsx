@@ -67,7 +67,6 @@ const databaseWithActionsDisabled = createMockDatabase({
 
 const mockDatasetCard = createMockCard({
   id: getNextId(),
-  dataset: true,
   type: "model",
   dataset_query: {
     type: "query",
@@ -80,7 +79,6 @@ const mockDatasetCard = createMockCard({
 
 const mockDatasetNoPkCard = createMockCard({
   id: getNextId(),
-  dataset: true,
   type: "model",
   dataset_query: {
     type: "query",
@@ -93,7 +91,6 @@ const mockDatasetNoPkCard = createMockCard({
 
 const mockDatasetMultiplePksCard = createMockCard({
   id: getNextId(),
-  dataset: true,
   type: "model",
   dataset_query: {
     type: "query",
@@ -106,7 +103,6 @@ const mockDatasetMultiplePksCard = createMockCard({
 
 const mockDatasetWithClausesCard = createMockCard({
   id: getNextId(),
-  dataset: true,
   type: "model",
   dataset_query: {
     type: "query",
@@ -126,7 +122,6 @@ const mockDatasetWithClausesCard = createMockCard({
 const mockDatasetNoWritePermissionCard = createMockCard({
   id: getNextId(),
   can_write: false,
-  dataset: true,
   type: "model",
   dataset_query: {
     type: "query",
