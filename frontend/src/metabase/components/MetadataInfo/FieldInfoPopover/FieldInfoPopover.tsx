@@ -1,8 +1,7 @@
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
-import type { DatasetColumn } from "metabase-types/api";
-import type Field from "metabase-lib/metadata/Field";
 
+import type { FieldInfoProps } from "../FieldInfo";
 import {
   WidthBoundFieldInfo,
   Dropdown,
@@ -16,22 +15,18 @@ export const POPOVER_TRANSITION_DURATION = 150;
 // we don't closing immediatly but delay by a short amount to avoid flicker.
 export const POPOVER_CLOSE_DELAY = 25;
 
-type Props = {
-  field: Field | DatasetColumn;
-  timezone?: string;
-  delay: [number, number];
-  showFingerprintInfo?: boolean;
-} & Pick<HoverCardProps, "children" | "position" | "disabled">;
+export type FieldInfoPopoverProps = Omit<FieldInfoProps, "children"> &
+  Pick<HoverCardProps, "children" | "position" | "disabled"> & {
+    delay: [number, number];
+  };
 
 function FieldInfoPopover({
-  field,
-  timezone,
   position = "bottom-start",
   disabled,
   delay = POPOVER_DELAY,
-  showFingerprintInfo,
   children,
-}: Props) {
+  ...rest
+}: FieldInfoPopoverProps) {
   const group = useDelayGroup();
 
   return (
@@ -51,11 +46,7 @@ function FieldInfoPopover({
         {/* HACK: adds an element between the target and the card */}
         {/* to avoid the card from disappearing */}
         <Target />
-        <WidthBoundFieldInfo
-          field={field}
-          timezone={timezone}
-          showFingerprintInfo={showFingerprintInfo}
-        />
+        <WidthBoundFieldInfo {...rest} />
       </Dropdown>
     </HoverCard>
   );
