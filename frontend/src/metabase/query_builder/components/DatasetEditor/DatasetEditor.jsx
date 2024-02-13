@@ -145,7 +145,9 @@ function getSidebar(
     );
   }
 
-  if (!dataset.isNative()) {
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+
+  if (!isNative) {
     return null;
   }
 

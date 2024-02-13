@@ -155,10 +155,12 @@ export function openEmbedModalFromMenu() {
  * @param {object} params
  * @param {("overview"|"parameters"|"appearance")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
+ * @param {boolean} [params.acceptTerms] - whether we need to go through the legalese step
  */
 export function openStaticEmbeddingModal({
   activeTab,
   previewMode,
+  acceptTerms = true,
   confirmSave,
 } = {}) {
   openEmbedModalFromMenu();
@@ -168,6 +170,10 @@ export function openStaticEmbeddingModal({
   }
 
   cy.findByTestId("sharing-pane-static-embed-button").click();
+
+  if (acceptTerms) {
+    cy.findByTestId("accept-legalese-terms-button").click();
+  }
 
   modal().within(() => {
     if (activeTab) {

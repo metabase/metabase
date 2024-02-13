@@ -8,6 +8,7 @@ import type {
   StructuredDatasetQuery,
   FieldId,
 } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import type Database from "metabase-lib/metadata/Database";
 import type Question from "metabase-lib/Question";
@@ -101,7 +102,9 @@ export function checkCanBeModel(question: Question) {
     return false;
   }
 
-  if (!question.isNative()) {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
+  if (!isNative) {
     return true;
   }
 

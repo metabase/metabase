@@ -617,13 +617,10 @@
               (is (= max-rows (count rows)))
               (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
 
-(defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (t2.with-temp/with-temp [Database db-filtered database]
-    (sync/sync-database! db-filtered {:scan :schema})
-    (let [tables (t2/select Table :db_id (u/the-id db-filtered))]
-      (assert (not-empty tables))
-      (doseq [table tables]
-        (assert-table-fn table)))))
+(defn- synced-tables [db-attributes]
+  (t2.with-temp/with-temp [Database db db-attributes]
+    (sync/sync-database! db {:scan :schema})
+    (t2/select Table :db_id (u/the-id db))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -638,33 +635,42 @@
                                                      (dissoc :dataset-filters-type
                                                              :dataset-filters-patterns)))
               dataset-ids (map #(.getDataset %) datasets)
-              ;; get the first 4 characters of each dataset-id
+              ;; get the first 4 characters of each dataset-id. The first 4 characters are used because the first 3 are
+              ;; often used for bigquery dataset names e.g. `v4_test_data`
               prefixes (->> dataset-ids
                             (map (fn [dataset-id]
                                    (apply str (take 4 dataset-id)))))
-              ;; inclusion-patterns selects the first dataset
-              ;; exclusion-patterns excludes almost everything else
               include-prefix (first prefixes)
+              exclude-prefixes (rest prefixes)
+              ;; inclusion-patterns selects the first dataset
               inclusion-patterns (str include-prefix "*")
-              exclusion-patterns (str/join "," (map #(str % "*") (set (rest prefixes))))]
+              ;; exclusion-patterns excludes every dataset with exclude prefixes. It would exclude all other datasets
+              ;; except ones that match the include-prefix, except there could be other tests creating new datasets for
+              ;; the same test DB while this test is running, so we can't guarantee that the include-prefix will match all the
+              ;; datasets
+              exclusion-patterns (str/join "," (map #(str % "*") (set exclude-prefixes)))]
           (testing " with an inclusion filter"
-            (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
-                                              :engine  :bigquery-cloud-sdk
-                                              :details (-> (mt/db)
-                                                           :details
-                                                           (assoc :dataset-filters-type "inclusion"
-                                                                  :dataset-filters-patterns inclusion-patterns))}
-                                             (fn [{dataset-id :schema}]
-                                               (is (str/starts-with? dataset-id include-prefix)))))
+            (let [tables (synced-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                         :engine  :bigquery-cloud-sdk
+                                         :details (-> (mt/db)
+                                                      :details
+                                                      (assoc :dataset-filters-type "inclusion"
+                                                             :dataset-filters-patterns inclusion-patterns))})]
+              (is (seq tables))
+              (doseq [{dataset-id :schema} tables]
+                (is (str/starts-with? dataset-id include-prefix)))))
           (testing " with an exclusion filter"
-            (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
-                                              :engine  :bigquery-cloud-sdk
-                                              :details (-> (mt/db)
-                                                           :details
-                                                           (assoc :dataset-filters-type "exclusion"
-                                                                  :dataset-filters-patterns exclusion-patterns))}
-                                             (fn [{dataset-id :schema}]
-                                               (is (str/starts-with? dataset-id include-prefix))))))))))
+            (let [tables (synced-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                         :engine  :bigquery-cloud-sdk
+                                         :details (-> (mt/db)
+                                                      :details
+                                                      (assoc :dataset-filters-type "exclusion"
+                                                             :dataset-filters-patterns exclusion-patterns))})]
+              (testing "\ncheck that all synced tables do not start with any of the exclude prefixes"
+                (doseq [{dataset-id :schema} tables]
+                  (is (not (some #(str/starts-with? dataset-id %) exclude-prefixes)))))
+              (testing "\ncheck that the dataset with the include prefix is not excluded"
+                (is (some #(str/starts-with? (:schema %) include-prefix) tables))))))))))
 
 (deftest normalize-away-dataset-id-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -706,7 +712,7 @@
               (is (= ["my-dataset" "my-dataset"]
                      (t2/select-fn-vec :schema Table :id [:in [(u/the-id table1) (u/the-id table2)]]))))))))))
 
-(deftest ^:parallel query-drive-external-tables
+(deftest query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Google Sheets external tables can be queried via BigQuery (#4179)"
       ;; link to the underlying Google sheet, which everyone in the Google domain should have edit permission on

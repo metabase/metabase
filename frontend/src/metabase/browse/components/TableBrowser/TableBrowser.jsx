@@ -14,7 +14,7 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 
 import { ANALYTICS_CONTEXT } from "../../constants";
-import BrowseHeader from "../BrowseHeader";
+import { BrowseHeader } from "../BrowseHeader";
 import {
   TableActionLink,
   TableCard,

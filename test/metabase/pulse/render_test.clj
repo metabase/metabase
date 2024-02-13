@@ -225,7 +225,7 @@
   (testing "the title of the card should be an <a> tag so you can click on title using old outlook clients (#12901)"
     (mt/with-temp [Card card {:name          "A Card"
                               :dataset_query (mt/mbql-query venues {:limit 1})}]
-      (mt/with-temp-env-var-value [mb-site-url "https://mb.com"]
+      (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
         (let [rendered-card-content (:content (binding [render/*include-title* true]
                                                 (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil (qp/process-query (:dataset_query card)))))]
           (is (some? (mbql.u/match-one rendered-card-content

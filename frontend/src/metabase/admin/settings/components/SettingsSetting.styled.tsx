@@ -3,6 +3,10 @@ import { color } from "metabase/lib/colors";
 
 export const SettingRoot = styled.li`
   margin: 1rem 1rem 2rem;
+
+  &:first-child {
+    margin-top: 0;
+  }
 `;
 
 export const SettingContent = styled.div`

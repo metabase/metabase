@@ -602,15 +602,15 @@
 
 (deftest user-defaults-test
   (testing "with no user defaults configured"
-    (mt/with-temp-env-var-value [mb-user-defaults nil]
+    (mt/with-temp-env-var-value! [mb-user-defaults nil]
       (is (= "Not found." (client/client :get "setup/user_defaults")))))
 
   (testing "with defaults containing no token"
-    (mt/with-temp-env-var-value [mb-user-defaults "{}"]
+    (mt/with-temp-env-var-value! [mb-user-defaults "{}"]
       (is (= "Not found." (client/client :get "setup/user_defaults")))))
 
   (testing "with valid configuration"
-    (mt/with-temp-env-var-value [mb-user-defaults "{\"token\":\"123456\",\"email\":\"john.doe@example.com\"}"]
+    (mt/with-temp-env-var-value! [mb-user-defaults "{\"token\":\"123456\",\"email\":\"john.doe@example.com\"}"]
       (testing "with mismatched token"
         (is (= "You don't have permissions to do that." (client/client :get "setup/user_defaults?token=987654"))))
       (testing "with valid token"

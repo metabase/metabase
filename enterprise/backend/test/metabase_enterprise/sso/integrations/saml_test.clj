@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.integrations.saml :as saml.mt]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
@@ -636,3 +637,16 @@
                        (is (successful-login? response))
                        (is (= (str "http://localhost:3001/path" redirect-url)
                               (get-in response [:headers "Location"])))))))))))))))
+
+(deftest create-new-saml-user-no-user-provisioning-test
+  (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
+    (with-saml-default-setup
+    (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
+                  public-settings/site-name (constantly "test")]
+        (is
+         (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
+          (#'saml.mt/fetch-or-create-user! {:first-name "Test"
+                                            :last-name  "user"
+                                            :email      "test1234@metabsae.com"})))))))

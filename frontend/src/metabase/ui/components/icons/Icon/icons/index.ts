@@ -1093,3 +1093,6 @@ export const Icons = {
 export type IconName = keyof typeof Icons;
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];
+
+export const isValidIconName = (name: unknown): name is IconName =>
+  iconNames.includes(name as IconName);

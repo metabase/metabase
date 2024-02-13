@@ -542,7 +542,7 @@
 
 (deftest session-timeout-env-var-validation-test
   (let [set-and-get (fn [timeout]
-                      (mt/with-temp-env-var-value [mb-session-timeout (json/generate-string timeout)]
+                      (mt/with-temp-env-var-value! [mb-session-timeout (json/generate-string timeout)]
                         (mw.session/session-timeout)))]
     (testing "Setting the session timeout with env var should work with valid timeouts"
       (doseq [timeout [{:unit "hours", :amount 1}

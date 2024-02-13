@@ -98,7 +98,7 @@
     (t2.with-temp/with-temp [User {user-id :id}]
       (mt/with-fake-inbox
         ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
-        (mt/with-temp-env-var-value [mb-send-email-on-first-login-from-new-device "FALSE"]
+        (mt/with-temp-env-var-value! [mb-send-email-on-first-login-from-new-device "FALSE"]
           (mt/with-temp [LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}
                          LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}]
             (is (= {}

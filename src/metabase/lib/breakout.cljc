@@ -135,3 +135,12 @@
       (lib.remove-replace/remove-clause query stage-number a-breakout))
     query
     (existing-breakouts query stage-number column))))
+
+(mu/defn breakout-column :- ::lib.schema.metadata/column
+  "Returns the input column used for this breakout."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   breakout-ref :- ::lib.schema.ref/ref]
+  (->> (lib.util/query-stage query stage-number)
+       (lib.metadata.calculation/visible-columns query stage-number)
+       (lib.equality/find-matching-column breakout-ref)))

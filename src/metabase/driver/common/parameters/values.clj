@@ -133,9 +133,9 @@
                                          (nil? (:value param)))
                                        matching-params))]
     (cond
-      ;; if we have matching parameter(s) that all have actual values, return those.
-      (and (seq matching-params) (every? :value matching-params))
-      (normalize-params matching-params)
+      ;; if we have matching parameter(s) with at least one actual value, return them.
+      (and (seq matching-params) (some :value matching-params))
+      (normalize-params (filter :value matching-params))
       ;; If a FieldFilter has value=nil, return a [[params/no-value]]
       ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
       (and (not (:required tag)) nil-value?)

@@ -41,6 +41,7 @@ export function getTemplateTagParameter(
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
+    required: tag.required,
     options: tag.options,
     values_query_type: config?.values_query_type,
     values_source_type: config?.values_source_type,

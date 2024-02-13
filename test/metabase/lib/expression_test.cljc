@@ -359,13 +359,16 @@
         (is (empty? (lib/expressions dropped)))))))
 
 (deftest ^:parallel with-expression-name-test
-  (let [query       (-> lib.tu/venues-query
-                        (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                        (lib/aggregate (lib/count)))
-        [orig-expr] (lib/expressions query)
-        expr        (lib/with-expression-name orig-expr "newly-named-expression")
-        [orig-agg]  (lib/aggregations query)
-        agg         (lib/with-expression-name orig-agg "my count")]
+  (let [query         (-> lib.tu/venues-query
+                          (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+                          (lib/aggregate (lib/count))
+                          (lib/filter (lib/< (meta/field-metadata :venues :price) 4)))
+        [orig-expr]   (lib/expressions query)
+        expr          (lib/with-expression-name orig-expr "newly-named-expression")
+        [orig-agg]    (lib/aggregations query)
+        agg           (lib/with-expression-name orig-agg "my count")
+        [orig-filter] (lib/filters query)
+        new-filter    (lib/with-expression-name orig-filter "my filter")]
     (testing "expressions should include the original expression name"
       (is (=? [{:name         "expr"
                 :display-name "expr"}]
@@ -401,9 +404,27 @@
       (is (= "my count"
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
-                (lib.options/uuid agg))))))
+                (lib.options/uuid agg))))
+    (testing "filter expressions can be renamed"
+      (is (= "my filter"
+             (lib/display-name query new-filter)))
+      (is (nil? (:lib/expression-name (lib.options/options new-filter))))
+      (is (=? {:display-name "Price is less than 4"
+               :named? (symbol "nil #_\"key is not present.\"")}
+              (lib/display-info query orig-filter)))
+      (is (= "Price is less than 4"
+             (lib/display-name query orig-filter)))
+      (is (=? {:display-name "my filter"
+               :named? true}
+              (lib/display-info query new-filter)))
+      (is (= "my filter"
+             (lib/display-name query new-filter)))
+      (is (not= (lib.options/uuid orig-filter)
+                (lib.options/uuid new-filter))))))
 
 (deftest ^:parallel simple-value-with-expression-name-test
   (testing "simple values can be named (#36459)"
-    (is (=? [:value {:name "zero", :display-name "zero", :effective-type :type/Integer} 0]
-            (lib/with-expression-name 0 "zero")))))
+    (let [expr (lib/with-expression-name 0 "zero")]
+      (is (=? [:value {:name "zero", :display-name "zero", :effective-type :type/Integer} 0]
+              expr))
+      (is (= "zero" (lib/display-name lib.tu/venues-query expr))))))

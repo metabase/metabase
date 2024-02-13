@@ -176,21 +176,22 @@
 
 (deftest ^:parallel short-name-display-info-test
   (let [query lib.tu/venues-query]
-    (is (= #{"minute"
-             "hour"
-             "day"
-             "week"
-             "month"
-             "quarter"
-             "year"
-             "minute-of-hour"
-             "hour-of-day"
-             "day-of-week"
-             "day-of-month"
-             "day-of-year"
-             "week-of-year"
-             "month-of-year"
-             "quarter-of-year"}
-           (into #{}
-                 (map #(:short-name (lib/display-info query -1 %)))
+    (is (= {"minute"          false
+            "hour"            false
+            "day"             false
+            "week"            false
+            "month"           false
+            "quarter"         false
+            "year"            true
+            "minute-of-hour"  true
+            "hour-of-day"     true
+            "day-of-week"     true
+            "day-of-month"    true
+            "day-of-year"     true
+            "week-of-year"    true
+            "month-of-year"   true
+            "quarter-of-year" true}
+           (into {}
+                 (comp (map #(lib/display-info query -1 %))
+                       (map (juxt :short-name :is-temporal-extraction)))
                  (lib.temporal-bucket/available-temporal-buckets query (meta/field-metadata :products :created-at)))))))

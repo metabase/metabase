@@ -102,6 +102,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   /* Query superclass methods */
+
+  /**
+   * @deprecated use MLv2
+   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -155,13 +159,6 @@ export default class NativeQuery extends AtomicQuery {
   engine(): string | null | undefined {
     const database = this._database();
     return database && database.engine;
-  }
-
-  // Whether the user can modify and run this query
-  // Determined based on availability of database metadata and native database permissions
-  isEditable(): boolean {
-    const database = this._database();
-    return database != null && database.native_permissions === "write";
   }
 
   /* Methods unique to this query type */

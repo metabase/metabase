@@ -2684,13 +2684,13 @@
     redux-thunk "^2.4.2"
     reselect "^4.1.7"
 
-"@replayio/cypress@^1.7.11":
-  version "1.7.11"
-  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.7.11.tgz#bbe5747bd3477477ab17e02ad27c27949b6c4137"
-  integrity sha512-G86CTTwsiUwpni0pojXOfCJZttp2sS2neEDaoD4wT2xU+8/Jl+g5O6mDZx6WrEHceiOaDxYdpVLuJyIOT8RZpA==
+"@replayio/cypress@^1.7.15":
+  version "1.7.15"
+  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.7.15.tgz#66ec22e3b34e7fe9ee6d76d6f4918bbdde8097f7"
+  integrity sha512-+HhZu30hvVky4ijQpYBc1FX0igBOGmh2AK3V4n+hjJbL1c53ptPliOe2ZUmzHIMympYQIUTG8KMK5lMkFQVb6A==
   dependencies:
-    "@replayio/replay" "^0.20.1"
-    "@replayio/test-utils" "^1.3.8"
+    "@replayio/replay" "^0.21.1"
+    "@replayio/test-utils" "^1.3.12"
     chalk "^4.1.2"
     debug "^4.3.4"
     semver "^7.5.2"
@@ -2699,10 +2699,10 @@
     uuid "^8.3.2"
     ws "^8.14.2"
 
-"@replayio/replay@^0.20.1":
-  version "0.20.1"
-  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.20.1.tgz#d88945482bfbff53e44ed04d02e519f782e2bfa6"
-  integrity sha512-sgbH7iDApXRQkdv6bcDVDACNQ0GQ9IUcZcMo/72g6hGe8YZG1JQbsUDd71EWMEfbjpoJI7bpkKe0VuS8vPybNw==
+"@replayio/replay@^0.21.1":
+  version "0.21.1"
+  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.21.1.tgz#ed8bc1f3f4a7ea31056f9785b9b8ec02f8230949"
+  integrity sha512-b5n8oSExpurBePNueCBrFhtQafG8OM+ZuHItUsReQwRY4SyntOnBBlKzcc1Ecb2Vn+VuPw28PU+/BzFzYJVwUQ==
   dependencies:
     "@replayio/sourcemap-upload" "^1.1.1"
     "@types/semver" "^7.5.6"
@@ -2729,12 +2729,12 @@
     node-fetch "^2.6.1"
     string.prototype.matchall "^4.0.5"
 
-"@replayio/test-utils@^1.3.8":
-  version "1.3.8"
-  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-1.3.8.tgz#ba3307b0fe103670b46c4e04f3de5d846db117dd"
-  integrity sha512-gzLWLxgzzqJU5l0Z+2K2eRusl7vhd+mAkiSdvI5kCxkw3l/3+n4R6vc2Kq5VIc1x8KlPf3oeTziW1Eojwuh8bQ==
+"@replayio/test-utils@^1.3.12":
+  version "1.3.12"
+  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-1.3.12.tgz#8a2b7bf8a9790dd8f46910190241012da601b559"
+  integrity sha512-a3vU7XhbWDd8iHHAt81AtfEc19DloshrgexRuAAZNVtKM+EtI9HzXoz34Es8Fq0DH301mswEct6XttjnAMROqw==
   dependencies:
-    "@replayio/replay" "^0.20.1"
+    "@replayio/replay" "^0.21.1"
     debug "^4.3.4"
     node-fetch "^2.6.7"
     uuid "^8.3.2"
@@ -4758,10 +4758,10 @@
   dependencies:
     "@types/node" "*"
 
-"@types/jsrsasign@^8.0.13":
-  version "8.0.13"
-  resolved "https://registry.yarnpkg.com/@types/jsrsasign/-/jsrsasign-8.0.13.tgz#770c1e429107dfb0cc4f5b78b472584511a55a28"
-  integrity sha512-+0Ij59D6NXP48KkeLhPXeQKOyLjvA9CD7zacc0Svy2IWHdl62BmDeTvGSIwKaGZSoamLJOo+on1AG/wPRLsd7A==
+"@types/jsrsasign@^10.5.12":
+  version "10.5.12"
+  resolved "https://registry.yarnpkg.com/@types/jsrsasign/-/jsrsasign-10.5.12.tgz#39ca12e576249f1a5494943d1c0c49c9087bf13d"
+  integrity sha512-sOA+eVnHU+FziThpMhuqs/tjFKe5gHVJKIS7g1BzhXP+e2FS8OvtzM0K3IzFxVksDOr98Gz5FJiZVxZ9uFoHhw==
 
 "@types/leaflet-draw@^0.4.14":
   version "0.4.14"
@@ -14306,10 +14306,10 @@ jsprim@^2.0.2:
     json-schema "0.4.0"
     verror "1.10.0"
 
-jsrsasign@^10.5.25:
-  version "10.5.25"
-  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-10.5.25.tgz#8eb3f943718d73f2dd3d85f587f241a5316b835a"
-  integrity sha512-N7zxHaCwYvFlXsybq4p4RxRwn4AbEq3cEiyjbCrWmwA7g8aS4LTKDJ9AJmsXxwtYesYx0imJ+ITtkyyxLCgeIg==
+jsrsasign@^11.0.0:
+  version "11.0.0"
+  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-11.0.0.tgz#766570c21f87d68075a142f5188f7e583cee9d70"
+  integrity sha512-BtRwVKS+5dsgPpAtzJcpo5OoWjSs1/zllSBG0+8o8/aV0Ki76m6iZwHnwnsqoTdhfFZDN1XIdcaZr5ZkP+H2gg==
 
 "jsx-ast-utils@^2.4.1 || ^3.0.0":
   version "3.2.0"
@@ -19838,10 +19838,10 @@ shadow-cljs-jar@1.3.4:
   resolved "https://registry.yarnpkg.com/shadow-cljs-jar/-/shadow-cljs-jar-1.3.4.tgz#0939d91c468b4bc5eab5a958f79e7ef5696fdf62"
   integrity sha512-cZB2pzVXBnhpJ6PQdsjO+j/MksR28mv4QD/hP/2y1fsIa9Z9RutYgh3N34FZ8Ktl4puAXaIGlct+gMCJ5BmwmA==
 
-shadow-cljs@2.25.7:
-  version "2.25.7"
-  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.25.7.tgz#b672ebc26c4fd2073932d5cb377977b4749d7581"
-  integrity sha512-5ZYxrabzGblKnAs4C4/L7zDRr+gBPiyxYc1oYbSzd6B31p341vBMaAWZffohSooci8txzXTpe2rVhAsLtCmiOg==
+shadow-cljs@2.26.5:
+  version "2.26.5"
+  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.26.5.tgz#978335510faeea81c32f70e8fe911ff5b0287a1b"
+  integrity sha512-3mWQefe1va6hjGxIIfLliw3N1ylJxH/qQLw5P3oJS40GO/6cRELXJT3pB9vSKr8SoRdt5mnfUMh1JkG2MGmrhw==
   dependencies:
     node-libs-browser "^2.2.1"
     readline-sync "^1.4.7"

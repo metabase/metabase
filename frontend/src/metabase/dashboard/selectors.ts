@@ -179,7 +179,7 @@ export const getDraftParameterValues = (state: State) =>
 
 export const getIsAutoApplyFilters = createSelector(
   [getDashboard],
-  dashboard => dashboard?.auto_apply_filters,
+  dashboard => !!dashboard?.auto_apply_filters,
 );
 export const getHasUnappliedParameterValues = createSelector(
   [getParameterValues, getDraftParameterValues],
@@ -329,12 +329,12 @@ export const getParameterMappingOptions = createSelector(
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+  (isEmbedded, embedOptions) => !isEmbedded || !!embedOptions.header,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
+  (isEmbedded, embedOptions) => !isEmbedded || !!embedOptions.additional_info,
 );
 
 export const getTabs = createSelector([getDashboard], dashboard => {

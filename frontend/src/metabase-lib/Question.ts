@@ -184,7 +184,7 @@ class Question {
     }
 
     const isVirtualDashcard = !this._card.id;
-    // `dataset_query` is null for questions on a dashboard the user don't have access to
+    // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
     !isVirtualDashcard &&
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
@@ -203,16 +203,12 @@ class Question {
     return query;
   }
 
-  isNative(): boolean {
-    return (
-      this.legacyQuery({ useStructuredQuery: true }) instanceof NativeQuery
-    );
-  }
-
+  /**
+   * @deprecated use MLv2
+   */
   isStructured(): boolean {
-    return (
-      this.legacyQuery({ useStructuredQuery: true }) instanceof StructuredQuery
-    );
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+    return !isNative;
   }
 
   /**
@@ -490,7 +486,6 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
-    const legacyQuery = this.legacyQuery({ useStructuredQuery: true });
     const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
@@ -500,17 +495,12 @@ class Question {
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return this.isStructured() && !legacyQuery.hasAnyClauses() && hasSinglePk;
+    return this.isStructured() && !Lib.hasClauses(query, -1) && hasSinglePk;
   }
 
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
-  }
-
-  isQueryEditable(): boolean {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-    return query ? query.isEditable() : false;
   }
 
   /**
@@ -996,14 +986,13 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean
-      ? this.legacyQuery({ useStructuredQuery: true }).clean()
-      : this.legacyQuery({ useStructuredQuery: true });
+    const query = clean ? Lib.dropStageIfEmpty(this.query()) : this.query();
+
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
       collection_id: this._card.collection_id,
-      dataset_query: query.datasetQuery(),
+      dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
       dataset: this._card.dataset,
@@ -1057,7 +1046,7 @@ class Question {
   }
 
   query(metadata = this._metadata): Query {
-    const databaseId = this.datasetQuery().database;
+    const databaseId = this.datasetQuery()?.database;
 
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
@@ -1114,13 +1103,14 @@ class Question {
    */
   canExploreResults() {
     const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
+    const { isNative, isEditable } = Lib.queryDisplayInfo(this.query());
 
     return (
-      this.isNative() &&
+      isNative &&
       this.isSaved() &&
       this.parameters().length === 0 &&
       canNest &&
-      this.isQueryEditable() // originally "canRunAdhocQuery"
+      isEditable // originally "canRunAdhocQuery"
     );
   }
 

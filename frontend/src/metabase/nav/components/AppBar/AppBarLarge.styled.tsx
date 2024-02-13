@@ -18,19 +18,11 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   transition: border-bottom-color 200ms ease;
 `;
 
-export interface AppBarLeftContainerProps {
-  isNavBarEnabled?: boolean;
-  isLogoVisible?: boolean;
-}
-
-export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
+export const AppBarLeftContainer = styled.div`
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   min-width: 5rem;
-
-  padding-left: ${({ isLogoVisible, isNavBarEnabled }) =>
-    !isLogoVisible && !isNavBarEnabled && "1rem"};
 `;
 
 export const AppBarRightContainer = styled.div`

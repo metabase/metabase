@@ -578,35 +578,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it(
-    "should apply filters to the series selecting area range",
-    { tags: "@flaky" },
-    () => {
-      cy.viewport(1280, 800);
-
-      visitQuestionAdhoc({
-        dataset_query: testQuery,
-        display: "line",
-      });
-
-      cy.get(".Visualization")
-        .trigger("mousedown", 100, 200)
-        .trigger("mousemove", 230, 200)
-        .trigger("mouseup", 230, 200);
-
-      cy.wait("@dataset");
-
-      cy.findByTestId("filter-pill").should("contain.text", "Created At is");
-
-      const X_AXIS_VALUE = "June 2022";
-      cy.get(".CardVisualization").within(() => {
-        cy.get(".x-axis-label").should("have.text", "Created At");
-        cy.findByText(X_AXIS_VALUE);
-      });
-    },
-  );
-
-  it("should apply filters to the series selecting area range when axis is a number", () => {
+  it("should apply brush filters to the series selecting area range when axis is a number", () => {
     const testQuery = {
       type: "query",
       query: {

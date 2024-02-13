@@ -88,10 +88,6 @@
   (cider-default-cljs-repl . shadow-select)
   (cider-shadow-default-options . "app"))
 
- ("shared"
-  (clojure-mode
-   (cider-preferred-build-tool . shadow-cljs)))
-
  ("bin"
   (clojure-mode
    (cider-clojure-cli-aliases . "dev:drivers:build:build-dev"))))

@@ -29,7 +29,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   it("should allow brush date filter", { tags: "@flaky" }, () => {
     cy.createQuestion(
       {
-        name: "Brush Date Filter",
+        name: "Brush Date Temporal Filter",
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
@@ -80,9 +80,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
   ["month", "month-of-year"].forEach(granularity => {
     it(`brush filter should work post-aggregation for ${granularity} granularity (metabase#18011)`, () => {
-      // TODO: Remove this line when the issue is fixed!
-      cy.skipOn(granularity === "month-of-year");
-
       cy.intercept("POST", "/api/dataset").as("dataset");
 
       const questionDetails = {

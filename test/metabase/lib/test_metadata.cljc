@@ -2058,7 +2058,7 @@
   [_table-name _field-name]
   {:description                nil
    :database-type              "CHARACTER VARYING"
-   :semantic-type              nil
+   :semantic-type              :type/Description
    :table-id                   (id :reviews)
    :coercion-strategy          nil
    :name                       "BODY"

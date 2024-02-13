@@ -9,10 +9,9 @@ import { t } from "ttag";
 import type { Log } from "metabase-types/api";
 
 import { UtilApi } from "metabase/services";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import Select, { Option } from "metabase/core/components/Select";
-import { LogsContainer } from "./Logs.styled";
+import { LogsContainer, LogsContent } from "./Logs.styled";
 
 const MAX_LOGS = 50000;
 
@@ -52,7 +51,9 @@ export class Logs extends Component<LogsProps, LogsState> {
   }
 
   timer: NodeJS.Timeout | null = null;
+  scrollRef: React.RefObject<HTMLDivElement> = React.createRef();
   unmounted = false;
+  shouldTail = true;
 
   componentDidMount() {
     this.fetchLogs();
@@ -69,15 +70,31 @@ export class Logs extends Component<LogsProps, LogsState> {
   fetchLogs = async () => {
     try {
       const logs = await UtilApi.logs();
-      !this.unmounted &&
+      if (!this.unmounted) {
         this.setState({
           loaded: true,
           logs: mergeLogs(this.state.logs, logs.reverse()),
         });
+        this.maybeTail();
+      }
     } catch (err: any) {
       console.error(err);
       const msg = err?.data?.message ?? err.messsage ?? t`An error occurred.`;
       !this.unmounted && this.setState({ error: msg });
+    }
+  };
+
+  _onScroll = () => {
+    const elem = this.scrollRef.current;
+    if (elem) {
+      this.shouldTail = elem.scrollTop >= elem.scrollHeight - elem.offsetHeight;
+    }
+  };
+
+  maybeTail = () => {
+    const elem = this.scrollRef.current;
+    if (this.shouldTail && elem) {
+      elem.scrollTop = elem.scrollHeight;
     }
   };
 
@@ -107,35 +124,44 @@ export class Logs extends Component<LogsProps, LogsState> {
       : renderedLogs.join("\n");
 
     return (
-      <div>
-        {processUUIDs.length > 1 && (
-          <div className="pb1">
-            <label>{t`Select Metabase process:`}</label>
-            <Select
-              defaultValue="ALL"
-              value={this.state.selectedProcessUUID}
-              onChange={(e: { target: { value: string } }) =>
-                this.setState({ selectedProcessUUID: e.target.value })
-              }
-              className="inline-block ml1"
-              width={400}
-            >
-              <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
-              {processUUIDs.map(uuid => (
-                <Option key={uuid} value={uuid}>
-                  <code>{uuid}</code>
-                </Option>
-              ))}
-            </Select>
-          </div>
-        )}
+      <LogsContainer loading={!loaded} error={error}>
+        {() => (
+          <>
+            {processUUIDs.length > 1 && (
+              <div className="pb1">
+                <label>{t`Select Metabase process:`}</label>
+                <Select
+                  defaultValue="ALL"
+                  value={this.state.selectedProcessUUID}
+                  onChange={(e: { target: { value: string } }) =>
+                    this.setState({ selectedProcessUUID: e.target.value })
+                  }
+                  className="inline-block ml1"
+                  width={400}
+                >
+                  <Option
+                    value="ALL"
+                    key="ALL"
+                  >{t`All Metabase processes`}</Option>
+                  {processUUIDs.map(uuid => (
+                    <Option key={uuid} value={uuid}>
+                      <code>{uuid}</code>
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            )}
 
-        <LoadingAndErrorWrapper loading={!loaded} error={error}>
-          {() => (
-            <LogsContainer>{reactAnsiStyle(React, resultText)}</LogsContainer>
-          )}
-        </LoadingAndErrorWrapper>
-      </div>
+            <LogsContent
+              id="logs-content"
+              ref={this.scrollRef}
+              onScroll={this._onScroll}
+            >
+              {reactAnsiStyle(React, resultText)}
+            </LogsContent>
+          </>
+        )}
+      </LogsContainer>
     );
   }
 }

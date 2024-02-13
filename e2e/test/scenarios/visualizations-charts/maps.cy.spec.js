@@ -257,6 +257,7 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.wait("@dataset");
 
+    cy.get(".CardVisualization").should("exist");
     // selecting area at the map provides different filter values, so the simplified assertion is used
     cy.findByTestId("filter-pill").should("have.length", 1);
   });

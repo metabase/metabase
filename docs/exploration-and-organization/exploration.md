@@ -20,11 +20,11 @@ To learn more, see [Exploring data with Metabase's data browser](https://www.met
 
 ## Exploring collections
 
-[Collections][collections] in Metabase are a lot like folders. They're where all your team's dashboards and charts are kept. To explore a collection, just click on one in the **Our analytics** section of the home page, or click on `Browse all items` to see everything.
+[Collections][collections] in Metabase are a lot like folders. They're where Metabase keeps all your team's dashboards and charts.
 
 ![A collection](./images/collection-detail.png)
 
-If your teammates are cool, they'll have pinned some important dashboards or questions within your collections; if so, those important or useful items will show up in a different color at the top of a collection. Any dashboards that are pinned in the top-level, **Our Analytics** collection will also show up on the Metabase homepage.
+If your teammates are cool, they'll have pinned some important dashboards or questions within your collections; if so, those pinned items will show up as cards at the top of the collection.
 
 Collections have a list of any other items that are saved within them, and you can see what other collections are saved inside of the current one by checking out the navigation sidebar.
 

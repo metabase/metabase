@@ -5,6 +5,8 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
@@ -15,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -65,6 +68,11 @@
   :type       :boolean
   :setter     :none
   :getter     (constantly true))
+
+(defsetting test-setting-custom-init
+  "Test setting - this only shows up in dev (0)"
+  :type       :string
+  :init       (comp str random-uuid))
 
 (def ^:private ^:dynamic *enabled?* false)
 
@@ -142,13 +150,54 @@
     (is (= true
            (test-setting-calculated-getter)))
     (is (= true
-           (setting/user-facing-value :test-setting-calculated-getter)))))
+           (setting/user-facing-value :test-setting-calculated-getter))))
+
+  (testing "`user-facing-value` will initialize pending values"
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (is (some? (setting/user-facing-value :test-setting-custom-init))))))
 
 (deftest do-not-define-setter-function-for-setter-none-test
   (testing "Settings with `:setter` `:none` should not have a setter function defined"
     (testing "Sanity check: getter should be defined"
       (is (some? (resolve `test-setting-calculated-getter))))
     (is (not (resolve `test-setting-calculated-getter!)))))
+
+;; TODO: I suspect we're seeing stale values in CI due to parallel tests or state persisting between runs
+;;  We should at least make this an error when running locally without parallelism.
+(defn- clear-setting-if-leak! []
+  (when-let [existing-value (some? (#'setting/read-setting :test-setting-custom-init))]
+    (log/warn "Test environment corrupted, perhaps due to parallel tests or state kept between runs" existing-value)
+    (setting/set! :test-setting-custom-init nil :bypass-read-only? true)))
+
+(deftest setting-initialization-test
+  (testing "The value will be initialized and saved"
+    (clear-setting-if-leak!)
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (let [val (setting/get :test-setting-custom-init)]
+        (is (some? val))
+        (is (= val (test-setting-custom-init)))
+        (is (= val (#'setting/read-setting :test-setting-custom-init)))))))
+
+(deftest validate-without-initialization-test
+  (testing "Validation does not initialize the setting"
+    (clear-setting-if-leak!)
+    (setting/validate-settings-formatting!)
+    (is (= nil (#'setting/read-setting :test-setting-custom-init)))))
+
+(deftest init-requires-db-test
+  (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
+    (mt/discard-setting-changes [:test-setting-custom-init]
+      (clear-setting-if-leak!)
+      (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
+        (is (= false (mdb/db-is-set-up?)))
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Cannot initialize setting before the db is set up"
+              (test-setting-custom-init)))
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Cannot initialize setting before the db is set up"
+              (setting/get :test-setting-custom-init)))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
@@ -234,7 +283,7 @@
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (tu/do-with-temporary-setting-value setting db-value
     (fn []
-      (tu/do-with-temp-env-var-value
+      (tu/do-with-temp-env-var-value!
        (setting/setting-env-map-name (keyword setting))
        env-var-value
        (fn []
@@ -717,7 +766,7 @@
                                                (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
-                                         (tu/do-with-temp-env-var-value
+                                         (tu/do-with-temp-env-var-value!
                                           (setting/setting-env-map-name setting-name)
                                           site-wide-value
                                           thunk))]]
@@ -1222,45 +1271,186 @@
               #"^Surprise!$"
               (#'setting/realize x)))))))
 
-(deftest valid-json-setting-test
-  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2]"]
-    (is (nil? (setting/validate-settings-formatting!)))))
+(defn- validation-setting-symbol [format]
+  (symbol (str "test-" (name format) "-validation-setting")))
 
-(defn- get-parse-exception [raw-value]
-  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" raw-value]
-    (try
-      (setting/validate-settings-formatting!)
-      (throw (java.lang.RuntimeException. "This code should never be reached."))
-      (catch java.lang.Exception e e))))
+(defmacro define-setting-for-type [format]
+  `(defsetting ~(validation-setting-symbol format)
+     "Setting to test validation of this format - this only shows up in dev"
+     :type ~(keyword (name format))))
 
-(defn- assert-parser-exception! [ex cause-message]
-  (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
+(defmacro get-parse-exception [format raw-value]
+  `(mt/with-temp-env-var-value! [~(symbol (str "mb-" (validation-setting-symbol format))) ~raw-value]
+     (try
+       (setting/validate-settings-formatting!)
+       nil
+       (catch java.lang.Exception e# e#))))
+
+(defn- assert-parser-exception! [format-type ex cause-message]
+  (is (= (format "Invalid %s configuration for setting: %s"
+                 (u/upper-case-en (name format-type))
+                 (validation-setting-symbol format-type))
+         (ex-message ex)))
   (is (= cause-message (ex-message (ex-cause ex)))))
+
+(define-setting-for-type :json)
+
+(deftest valid-json-setting-test
+  (testing "Validation is a no-op if the JSON is valid"
+    (is (nil? (get-parse-exception :json "[1, 2]")))))
 
 (deftest invalid-json-setting-test
   (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
-    (let [ex (get-parse-exception "[1, 2,")]
+    (let [ex (get-parse-exception :json "[1, 2,")]
       (assert-parser-exception!
+        :json ex
         ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
         #_(str "Unexpected end-of-input within/between Array entries\n"
                " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
-        ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+        "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest sensitive-data-redacted-test
   (testing "The exception thrown by validation will not contain sensitive info from the config"
     (let [password "$ekr3t"
-          ex (get-parse-exception (str "[" password))]
+          ex (get-parse-exception :json (str "[" password))]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-        ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+        :json ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest safe-exceptions-not-redacted-test
   (testing "An exception known not to contain sensitive info will not be redacted"
     (let [password "123abc"
-          ex (get-parse-exception "{\"a\": \"123abc\", \"b\": 2")]
+          ex (get-parse-exception :json "{\"a\": \"123abc\", \"b\": 2")]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-        ex
+        :json ex
         (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
              " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
              " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
+
+(define-setting-for-type :csv)
+
+(deftest valid-csv-setting-test
+  (testing "Validation is a no-op if the CSV is valid"
+    (is (nil? (get-parse-exception :csv "1, 2")))))
+
+(deftest invalid-csv-setting-eof-test
+  (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
+    (let [ex (get-parse-exception :csv "1,2,2,\",,")]
+      (assert-parser-exception!
+        :csv ex "CSV error (unexpected end of file)"))))
+
+(deftest invalid-csv-setting-char-test
+  (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
+    (let [ex (get-parse-exception :csv "\"1\"$ekr3t")]
+      (assert-parser-exception!
+        :csv ex
+        ;; we don't expose the raw exception here, as it would give away the first character of the secret
+        #_"CSV error (unexpected character: $)"
+        "Error of type class java.lang.Exception thrown while parsing a setting"))))
+
+(define-setting-for-type :boolean)
+
+(deftest valid-boolean-setting-test
+  (testing "Validation is a no-op if the string represents a boolean"
+    (is (nil? (get-parse-exception :boolean "")))
+    (is (nil? (get-parse-exception :boolean "true")))
+    (is (nil? (get-parse-exception :boolean "false")))))
+
+(deftest invalid-boolean-setting-test
+  (doseq [raw-value ["0" "1" "2" "a" ":b" "[true]"]]
+    (testing (format "Validation will throw an exception when trying to parse %s as a boolean" raw-value)
+      (let [ex (get-parse-exception :boolean raw-value)]
+        (assert-parser-exception!
+          :boolean ex "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
+
+(define-setting-for-type :double)
+
+(deftest valid-double-setting-test
+  (testing "Validation is a no-op if the string represents a double"
+    (is (nil? (get-parse-exception :double "1")))
+    (is (nil? (get-parse-exception :double "-1")))
+    (is (nil? (get-parse-exception :double "2.4")))
+    (is (nil? (get-parse-exception :double "1e9")))))
+
+(deftest invalid-double-setting-test
+  (doseq [raw-value ["a" "1.2.3" "0x3" "[2]"]]
+    (testing (format "Validation will throw an exception when trying to parse %s as a double" raw-value)
+      (let [ex (get-parse-exception :double raw-value)]
+        (assert-parser-exception!
+          #_"For input string: \"{raw-value}\""
+          :double ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+
+(define-setting-for-type :keyword)
+
+(deftest valid-keyword-setting-test
+  (testing "Validation is a no-op if the string represents a keyword"
+    (is (nil? (get-parse-exception :keyword "1")))
+    (is (nil? (get-parse-exception :keyword "a")))
+    (is (nil? (get-parse-exception :keyword "a/b")))
+    ;; [[keyword]] actually accepts any string without complaint, there is no way to have a parse failure
+    (is (nil? (get-parse-exception :keyword ":a/b")))
+    (is (nil? (get-parse-exception :keyword "a/b/c")))
+    (is (nil? (get-parse-exception :keyword "\"")))))
+
+(define-setting-for-type :integer)
+
+(deftest valid-integer-setting-test
+  (testing "Validation is a no-op if the string represents a integer"
+    (is (nil? (get-parse-exception :integer "1")))
+    (is (nil? (get-parse-exception :integer "-1")))))
+
+(deftest invalid-integer-setting-test
+  (doseq [raw-value ["a" "2.4" "1e9" "1.2.3" "0x3" "[2]"]]
+    (testing (format "Validation will throw an exception when trying to parse %s as a integer" raw-value)
+      (let [ex (get-parse-exception :integer raw-value)]
+        (assert-parser-exception!
+          #_"For input string: \"{raw-value}\""
+          :integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+
+(define-setting-for-type :positive-integer)
+
+(deftest valid-positive-integer-setting-test
+  (testing "Validation is a no-op if the string represents a positive-integer"
+    (is (nil? (get-parse-exception :positive-integer "1")))
+    ;; somewhat un-intuitively this is legal input, and parses to nil
+    (is (nil? (get-parse-exception :positive-integer "-1")))))
+
+(deftest invalid-positive-integer-setting-test
+  (doseq [raw-value ["a" "2.4" "1e9" "1.2.3" "0x3" "[2]"]]
+    (testing (format "Validation will throw an exception when trying to parse %s as a positive-integer" raw-value)
+      (let [ex (get-parse-exception :positive-integer raw-value)]
+        (assert-parser-exception!
+          #_"For input string: \"{raw-value}\""
+          :positive-integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+
+(define-setting-for-type :timestamp)
+
+(deftest valid-timestamp-setting-test
+  (testing "Validation is a no-op if the string represents a timestamp"
+    (is (nil? (get-parse-exception :timestamp "2024-01-01")))))
+
+(deftest invalid-timestamp-setting-test
+  (testing "Validation will throw an exception when trying to parse an invalid timestamp"
+    (let [ex (get-parse-exception :timestamp "2024-01-48")]
+      (assert-parser-exception!
+        #_"Text '{raw-value}' could not be parsed, unparsed text found at index 0"
+        :timestamp ex "Error of type class java.time.format.DateTimeParseException thrown while parsing a setting"))))
+
+(defn ns-validation-setting-symbol [format]
+  (symbol "metabase.models.setting-test" (name (validation-setting-symbol format))))
+
+(deftest validation-completeness-test
+  (let [string-formats #{:string :metabase.public-settings/uuid-nonce}
+        formats-to-check (remove string-formats (keys (methods setting/get-value-of-type)))]
+
+    (testing "Every settings format has its redaction predicate defined"
+      (doseq [format formats-to-check]
+        (testing (format "We have defined a redaction multimethod for the %s format" format)
+          (is (some? (format (methods setting/may-contain-raw-token?)))))))
+
+    (testing "Every settings format has tests for its validation"
+      (doseq [format formats-to-check]
+        ;; We operate on trust that tests are added along with this var
+        (testing (format "We have defined a setting for the %s validation tests" format)
+          (is (var? (resolve (ns-validation-setting-symbol format)))))))))

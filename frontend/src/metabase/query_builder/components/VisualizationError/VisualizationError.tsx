@@ -2,6 +2,7 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import cx from "classnames";
 
+import * as Lib from "metabase-lib";
 import MetabaseSettings from "metabase/lib/settings";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { ErrorMessage } from "metabase/components/ErrorMessage";
@@ -49,6 +50,7 @@ export function VisualizationError({
   className,
 }: VisualizationErrorProps) {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
   if (error && typeof error.status === "number") {
     // Assume if the request took more than 15 seconds it was due to a timeout
     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
@@ -83,7 +85,7 @@ export function VisualizationError({
         </div>
       </div>
     );
-  } else if (question?.isNative()) {
+  } else if (isNative) {
     // always show errors for native queries
     let processedError = error;
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);

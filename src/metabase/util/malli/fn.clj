@@ -150,7 +150,9 @@
 (defn- validate [error-context schema value error-type]
   (when *enforce*
     (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)
+      (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
+                                                  [{:keys [value message]}]
+                                                  (str message ", got: " (pr-str value)))})
             details   (merge
                         {:type      error-type
                          :error     error

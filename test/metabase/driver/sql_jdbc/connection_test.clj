@@ -209,6 +209,6 @@
 
 (deftest unreturned-connection-timeout-test
   (testing "We should be able to set jdbc-data-warehouse-unreturned-connection-timeout-seconds via env var (#33646)"
-    (mt/with-temp-env-var-value [mb-jdbc-data-warehouse-unreturned-connection-timeout-seconds "20"]
+    (mt/with-temp-env-var-value! [mb-jdbc-data-warehouse-unreturned-connection-timeout-seconds "20"]
       (is (= 20
              (sql-jdbc.conn/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))

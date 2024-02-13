@@ -62,7 +62,7 @@ If you just want to organize _your_ favorite items, you should [bookmark them](.
 
 ## Moving items from collection to collection
 
-To move a question, dashboard, or pulse into a collection, or from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the question and pick the Move action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
+To move an item from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the item and pick the **Move** action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
 
 ![Selecting questions](./images/question-checkbox.png)
 

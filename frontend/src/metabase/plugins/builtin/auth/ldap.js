@@ -19,6 +19,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
         description: null,
         noHeader: true,
         widget: LdapAuthCard,
+        forceRenderWidget: true,
       },
     ]),
   sections => ({

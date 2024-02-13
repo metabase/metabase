@@ -113,6 +113,7 @@ export type BucketDisplayInfo = {
   displayName: string;
   default?: boolean;
   selected?: boolean;
+  isTemporalExtraction?: boolean;
 };
 
 export type TableDisplayInfo = {
@@ -188,7 +189,9 @@ export type ClauseDisplayInfo = Pick<
 
 export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
-export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
+export type BreakoutClauseDisplayInfo = ClauseDisplayInfo & {
+  isTemporalExtraction?: boolean;
+};
 
 export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;

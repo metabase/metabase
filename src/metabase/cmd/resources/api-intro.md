@@ -19,6 +19,10 @@ clojure -M:ee:run api-documentation
 
 Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
 
+## API keys
+
+Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
+
 ## API endpoints
 
 _* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._

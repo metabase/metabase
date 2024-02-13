@@ -2,6 +2,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import type { QueryBuilderMode } from "metabase-types/store";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import { HeaderButton } from "./ViewHeader.styled";
 
@@ -42,9 +43,13 @@ FilterHeaderButton.shouldRender = ({
   queryBuilderMode,
   isObjectDetail,
   isActionListVisible,
-}: RenderCheckOpts) =>
-  queryBuilderMode === "view" &&
-  question.isStructured() &&
-  question.isQueryEditable() &&
-  !isObjectDetail &&
-  isActionListVisible;
+}: RenderCheckOpts) => {
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  return (
+    queryBuilderMode === "view" &&
+    question.isStructured() &&
+    isEditable &&
+    !isObjectDetail &&
+    isActionListVisible
+  );
+};

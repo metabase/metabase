@@ -20,7 +20,7 @@ describe("parameters/utils/cards", () => {
       expect(getTemplateTags(card)).toEqual([]);
     });
 
-    it("should return an empty array for a non-parametrized query", () => {
+    it("should return an empty array for a non-parameterized query", () => {
       const card = {
         dataset_query: {
           type: "query",

@@ -804,6 +804,20 @@
       1 [:count {}]
       2 nil)))
 
+(deftest ^:parallel aggregation-column-test
+  (let [query      (-> lib.tu/venues-query
+                       (lib/breakout  (meta/field-metadata :venues :category-id))
+                       (lib/aggregate (lib/count))
+                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
+        price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
+        aggs       (lib/aggregations query)]
+    (is (= (count aggs) 2))
+    (testing "aggregations like COUNT have no column"
+      (is (nil? (lib.aggregation/aggregation-column query -1 (first aggs)))))
+    (testing "aggregations like SUM return the column of interest"
+      (is (=? price
+              (lib.aggregation/aggregation-column query -1 (second aggs)))))))
+
 (deftest ^:parallel aggregation-operators-update-after-join
   (testing "available operators includes avg and sum once numeric fields are present (#31384)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))]
