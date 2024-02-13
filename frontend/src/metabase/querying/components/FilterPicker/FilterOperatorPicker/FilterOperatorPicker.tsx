@@ -36,6 +36,7 @@ export function FilterOperatorPicker<T extends string>({
     <Select
       data={data}
       value={value}
+      miw="14rem"
       aria-label={t`Filter operator`}
       onChange={handleChange}
     />

@@ -16,14 +16,18 @@
    :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
    :filter       [:= [:field (meta/id :venues :price) nil] 4]})
 
+(def ^:private metrics-db
+  {:metrics [{:id          metric-id
+              :name        "Sum of Cans"
+              :table-id    (meta/id :venues)
+              :definition  metric-definition
+              :description "Number of toucans plus number of pelicans"}]})
+
 (def ^:private metadata-provider
-  (lib.tu/mock-metadata-provider
-   meta/metadata-provider
-   {:metrics [{:id          metric-id
-               :name        "Sum of Cans"
-               :table-id    (meta/id :venues)
-               :definition  metric-definition
-               :description "Number of toucans plus number of pelicans"}]}))
+  (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db))
+
+(def ^:private metadata-provider-with-cards
+  (lib.tu/mock-metadata-provider lib.tu/metadata-provider-with-mock-cards metrics-db))
 
 (def ^:private metric-clause
   [:metric {:lib/uuid (str (random-uuid))} metric-id])
@@ -119,7 +123,22 @@
                   (map #(lib/display-info query-with-metric %)
                        metrics)))))))
   (testing "query with different Table -- don't return Metrics"
-    (is (nil? (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :orders)))))))
+    (is (nil? (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :orders))))))
+  (testing "for subsequent stages -- don't return Metrics (#37173)"
+    (let [query (lib/append-stage (lib/query metadata-provider (meta/table-metadata :venues)))]
+      (is (nil? (lib/available-metrics query)))
+      (are [stage-number] (nil? (lib/available-metrics query stage-number))
+        1 -1)))
+  (testing "query with different source table joining the metrics table -- don't return Metrics"
+    (let [query (-> (lib/query metadata-provider (meta/table-metadata :categories))
+                    (lib/join (-> (lib/join-clause (lib/query metadata-provider (meta/table-metadata :venues))
+                                                   [(lib/= (meta/field-metadata :venues :price) 4)])
+                                  (lib/with-join-fields :all))))]
+      (is (nil? (lib/available-metrics query)))))
+  (testing "query based on a card -- don't return Metrics"
+    (doseq [card-key [:venues :venues/native]]
+      (let [query (lib/query metadata-provider-with-cards (card-key lib.tu/mock-cards))]
+        (is (nil? (lib/available-metrics (lib/append-stage query))))))))
 
 (deftest ^:parallel aggregate-with-metric-test
   (testing "Should be able to pass a Metric metadata to `aggregate`"

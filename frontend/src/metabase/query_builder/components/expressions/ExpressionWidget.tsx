@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { isNotNull } from "metabase/lib/types";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
-import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
@@ -18,12 +17,11 @@ import {
   FieldLabel,
   FieldWrapper,
   Footer,
-  InfoLink,
   RemoveLink,
-  StyledFieldTitleIcon,
 } from "./ExpressionWidget.styled";
+import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
 
-const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
+export const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
   "questions/query-builder/expressions",
 );
 
@@ -44,6 +42,7 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   startRule?: string;
   reportTimezone?: string;
   header?: ReactNode;
+  expressionPosition?: number;
 
   onChangeExpression?: (name: string, expression: Expression) => void;
   onChangeClause?: (
@@ -67,6 +66,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     startRule,
     reportTimezone,
     header,
+    expressionPosition,
     onChangeExpression,
     onChangeClause,
     onRemoveExpression,
@@ -129,24 +129,13 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
       <ExpressionFieldWrapper>
         <FieldLabel htmlFor="expression-content">
           {t`Expression`}
-          <Tooltip
-            tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
-            placement="right"
-            maxWidth={332}
-          >
-            <InfoLink
-              target="_blank"
-              href={EXPRESSIONS_DOCUMENTATION_URL}
-              aria-label={t`Open expressions documentation`}
-            >
-              <StyledFieldTitleIcon name="info" />
-            </InfoLink>
-          </Tooltip>
+          <ExpressionWidgetInfo />
         </FieldLabel>
         <div ref={helpTextTargetRef}>
           <ExpressionEditorTextfield
             helpTextTarget={helpTextTargetRef.current}
             expression={expression}
+            expressionPosition={expressionPosition}
             clause={clause}
             startRule={startRule}
             name={name}

@@ -6768,11 +6768,6 @@ assign-symbols@^1.0.0:
   resolved "https://registry.yarnpkg.com/assign-symbols/-/assign-symbols-1.0.0.tgz#59667f41fadd4f20ccbc2bb96b8d4f7f78ec0367"
   integrity sha1-WWZ/QfrdTyDMvCu5a41Pf3jsA2c=
 
-ast-types@0.13.3:
-  version "0.13.3"
-  resolved "https://registry.yarnpkg.com/ast-types/-/ast-types-0.13.3.tgz#50da3f28d17bdbc7969a3a2d83a0e4a72ae755a7"
-  integrity sha512-XTZ7xGML849LkQP86sWdQzfhwbt3YwIO6MqbX9mUNYY98VKaaVZP7YNNm70IpwecbkkxmfC5IYAzOQ/2p29zRA==
-
 ast-types@0.9.6:
   version "0.9.6"
   resolved "https://registry.yarnpkg.com/ast-types/-/ast-types-0.9.6.tgz#102c9e9e9005d3e7e3829bf0c4fa24ee862ee9b9"
@@ -6782,6 +6777,13 @@ ast-types@^0.14.2:
   version "0.14.2"
   resolved "https://registry.yarnpkg.com/ast-types/-/ast-types-0.14.2.tgz#600b882df8583e3cd4f2df5fa20fa83759d4bdfd"
   integrity sha512-O0yuUDnZeQDL+ncNGlJ78BiO4jnYI3bvMsD5prT0/nsgijG/LpNBIr63gTjVTNsiGkgQhiyCShTgxt8oXOrklA==
+  dependencies:
+    tslib "^2.0.1"
+
+ast-types@^0.16.1:
+  version "0.16.1"
+  resolved "https://registry.yarnpkg.com/ast-types/-/ast-types-0.16.1.tgz#7a9da1617c9081bc121faafe91711b4c8bb81da2"
+  integrity sha512-6t10qk83GOG8p0vKmaCr8eiilZwO171AvbROMtvvNiwrTly62t+7XkA8RdIIVbpMhCASAsxgAzdRSwh6nw/5Dg==
   dependencies:
     tslib "^2.0.1"
 
@@ -17825,7 +17827,7 @@ printj@~1.3.0, printj@~1.3.1:
   resolved "https://registry.yarnpkg.com/printj/-/printj-1.3.1.tgz#9af6b1d55647a1587ac44f4c1654a4b95b8e12cb"
   integrity sha512-GA3TdL8szPK4AQ2YnOe/b+Y1jUFwmmGMMK/qbY7VcE3Z7FU8JstbKiKRzO6CIiAKPhTO8m01NoQ0V5f3jc4OGg==
 
-private@^0.1.6, private@^0.1.8, private@~0.1.5:
+private@^0.1.6, private@~0.1.5:
   version "0.1.8"
   resolved "https://registry.yarnpkg.com/private/-/private-0.1.8.tgz#2381edb3689f7a53d653190060fcf822d2f368ff"
   integrity sha512-VvivMrbvd2nKkiG38qjULzlc+4Vx4wm/whI9pQD35YrARNnhxeiRktSOhSukRLFNlzg6Br/cJPet5J/u19r/mg==
@@ -18781,15 +18783,16 @@ recast@^0.11.17:
     private "~0.1.5"
     source-map "~0.5.0"
 
-recast@^0.18.7:
-  version "0.18.10"
-  resolved "https://registry.yarnpkg.com/recast/-/recast-0.18.10.tgz#605ebbe621511eb89b6356a7e224bff66ed91478"
-  integrity sha512-XNvYvkfdAN9QewbrxeTOjgINkdY/odTgTS56ZNEWL9Ml0weT4T3sFtvnTuF+Gxyu46ANcRm1ntrF6F5LAJPAaQ==
+recast@^0.23.3:
+  version "0.23.4"
+  resolved "https://registry.yarnpkg.com/recast/-/recast-0.23.4.tgz#ca1bac7bfd3011ea5a28dfecb5df678559fb1ddf"
+  integrity sha512-qtEDqIZGVcSZCHniWwZWbRy79Dc6Wp3kT/UmDA2RJKBPg7+7k51aQBZirHmUGn5uvHf2rg8DkjizrN26k61ATw==
   dependencies:
-    ast-types "0.13.3"
+    assert "^2.0.0"
+    ast-types "^0.16.1"
     esprima "~4.0.0"
-    private "^0.1.8"
     source-map "~0.6.1"
+    tslib "^2.0.1"
 
 rechoir@^0.8.0:
   version "0.8.0"
@@ -18909,10 +18912,10 @@ regenerate@^1.4.2:
   resolved "https://registry.yarnpkg.com/regenerate/-/regenerate-1.4.2.tgz#b9346d8827e8f5a32f7ba29637d398b69014848a"
   integrity sha512-zrceR/XhGYU/d/opr2EKO7aRHUeiBI8qjtfHqADTwZd6Szfy16la6kqD0MIUs5z5hx6AaKa+PixpPrR289+I0A==
 
-regenerator-preset@^0.13.2:
-  version "0.13.2"
-  resolved "https://registry.yarnpkg.com/regenerator-preset/-/regenerator-preset-0.13.2.tgz#98006b7de35860850270707c31f20a63ed5a7535"
-  integrity sha512-oPYBaPZx5VbkK1kxtImXNzfBwOQG25CIFm+vCKCSspAc8wSpts8aXWRKQTtcJtZ06ZvCYeMB9VFiOfpxLzSjcw==
+regenerator-preset@^0.14.1:
+  version "0.14.1"
+  resolved "https://registry.yarnpkg.com/regenerator-preset/-/regenerator-preset-0.14.1.tgz#41d8230e67631108db763bcd1f8ed89bad11e571"
+  integrity sha512-7zEo8AK6N87TvOtFXEGec+LAGvCjgZyP/pbxm5NYAoWsmQCCd/IUKBwBqoOffiIhr1UOlgCGsRtwlR71Hl3Ewg==
   dependencies:
     "@babel/plugin-proposal-function-sent" "^7.8.3"
     "@babel/plugin-syntax-async-generators" "^7.8.4"
@@ -18920,7 +18923,7 @@ regenerator-preset@^0.13.2:
     "@babel/plugin-transform-block-scoping" "^7.8.3"
     "@babel/plugin-transform-classes" "^7.8.3"
     "@babel/plugin-transform-for-of" "^7.8.4"
-    regenerator-transform "^0.14.2"
+    regenerator-transform "^0.15.0"
 
 regenerator-runtime@^0.13.4:
   version "0.13.10"
@@ -18937,34 +18940,31 @@ regenerator-runtime@^0.14.0:
   resolved "https://registry.yarnpkg.com/regenerator-runtime/-/regenerator-runtime-0.14.0.tgz#5e19d68eb12d486f797e15a3c6a918f7cec5eb45"
   integrity sha512-srw17NI0TUWHuGa5CFGGmhfNIeja30WMBfbslPNhf6JrqQlLN5gcrvig1oqPxiVaXb0oW0XRKtH6Nngs5lKCIA==
 
-regenerator-transform@^0.14.2, regenerator-transform@^0.14.5:
-  version "0.14.5"
-  resolved "https://registry.yarnpkg.com/regenerator-transform/-/regenerator-transform-0.14.5.tgz#c98da154683671c9c4dcb16ece736517e1b7feb4"
-  integrity sha512-eOf6vka5IO151Jfsw2NO9WpGX58W6wWmefK3I1zEGr0lOD0u8rwPaNqQL1aRxUaxLeKO3ArNh3VYg1KbaD+FFw==
-  dependencies:
-    "@babel/runtime" "^7.8.4"
+regenerator-runtime@^0.14.1:
+  version "0.14.1"
+  resolved "https://registry.yarnpkg.com/regenerator-runtime/-/regenerator-runtime-0.14.1.tgz#356ade10263f685dda125100cd862c1db895327f"
+  integrity sha512-dYnhHh0nJoMfnkZs6GmmhFknAGRrLznOu5nc9ML+EJxGvrx6H7teuevqVqCuPcPK//3eDrrjQhehXVx9cnkGdw==
 
-regenerator-transform@^0.15.2:
+regenerator-transform@^0.15.0, regenerator-transform@^0.15.2:
   version "0.15.2"
   resolved "https://registry.yarnpkg.com/regenerator-transform/-/regenerator-transform-0.15.2.tgz#5bbae58b522098ebdf09bca2f83838929001c7a4"
   integrity sha512-hfMp2BoF0qOk3uc5V20ALGDS2ddjQaLrdl7xrGXvAIow7qeWRM2VA2HuCHkUKk9slq3VwEwLNK3DFBqDfPGYtg==
   dependencies:
     "@babel/runtime" "^7.8.4"
 
-regenerator@^0.14.1:
-  version "0.14.7"
-  resolved "https://registry.yarnpkg.com/regenerator/-/regenerator-0.14.7.tgz#72ddf334269d7929b9f99ea1fd46853ffa4215bf"
-  integrity sha512-UK9DqORI8wtNG5nXAKeDcqae1ZYDRzjMpEfS8LFiXxFzcaGL3e+3RFgLet0qLPU9OKUfVK5T49VQ0iBpg9VYQg==
+regenerator@^0.14.12:
+  version "0.14.12"
+  resolved "https://registry.yarnpkg.com/regenerator/-/regenerator-0.14.12.tgz#5ece4962d8852a0d94eebd813d00ac149e80ec3b"
+  integrity sha512-qw2Pejh0USihBPLXru8No5P3krtGj8lOrkr1sfeTm9bd/arcl4a2eXBVsAnQaa27B74oFe5LNKvKjHFWBjawYQ==
   dependencies:
     "@babel/core" "^7.8.4"
     "@babel/runtime" "^7.8.4"
     "@babel/types" "^7.8.3"
     commoner "^0.10.8"
-    private "^0.1.8"
-    recast "^0.18.7"
-    regenerator-preset "^0.13.2"
-    regenerator-runtime "^0.13.7"
-    regenerator-transform "^0.14.5"
+    recast "^0.23.3"
+    regenerator-preset "^0.14.1"
+    regenerator-runtime "^0.14.1"
+    regenerator-transform "^0.15.2"
     through "^2.3.8"
 
 regex-not@^1.0.0, regex-not@^1.0.2:

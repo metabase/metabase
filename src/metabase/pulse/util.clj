@@ -18,28 +18,30 @@
   {:pre [(integer? pulse-creator-id)]}
   (let [card-id (u/the-id card-or-id)]
     (try
-      (when-let [{query :dataset_query, dataset? :dataset, metadata :result_metadata, :as card}
-                 (t2/select-one :model/Card :id card-id, :archived false)]
-        (when (seq query)
-          (let [process-query (^:once fn* []
-                               (binding [qp.perms/*card-id* card-id]
-                                 (qp/process-query
-                                  (qp/userland-query-with-default-constraints
-                                   (assoc query :middleware {:process-viz-settings? true
-                                                             :js-int-to-string?     false})
-                                   (merge (cond->
-                                              {:executed-by               pulse-creator-id
-                                               :context                   :pulse
-                                               :card-id                   card-id}
-                                              dataset?
-                                              (assoc :metadata/dataset-metadata metadata))
-                                          options)))))
-                result        (if pulse-creator-id
-                                (mw.session/with-current-user pulse-creator-id
-                                  (process-query))
-                                (process-query))]
-            {:card   card
-             :result result})))
+      (when-let [{query :dataset_query
+                  :keys [dataset result_metadata]
+                  :as card} (t2/select-one :model/Card :id card-id, :archived false)]
+        (let [query         (assoc query :async? false)
+              process-query (fn []
+                              (binding [qp.perms/*card-id* card-id]
+                                (qp/process-query
+                                 (qp/userland-query-with-default-constraints
+                                  (assoc query :middleware {:skip-results-metadata? true
+                                                            :process-viz-settings?  true
+                                                            :js-int-to-string?      false})
+                                  (merge (cond->
+                                           {:executed-by               pulse-creator-id
+                                            :context                   :pulse
+                                            :card-id                   card-id}
+                                           dataset
+                                           (assoc :metadata/dataset-metadata result_metadata))
+                                         options)))))
+              result        (if pulse-creator-id
+                              (mw.session/with-current-user pulse-creator-id
+                                (process-query))
+                              (process-query))]
+          {:card   card
+           :result result}))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 

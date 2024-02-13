@@ -159,3 +159,15 @@
                                   "Rasta" "Toucan" "rasta@sf-toucannery.com")))
             (finally
               (t2/delete! User :email "rasta@sf-toucannery.com"))))))))
+
+(deftest google-auth-fetch-or-create-user!-updated-name-test
+  (testing "test that a exisitng user gets an updated name when calling google-auth-fetch-or-create-user!"
+    (mt/with-model-cleanup [:model/User]
+      (et/with-fake-inbox
+        (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+                                           admin-email                             "rasta@toucans.com"]
+          (#'google/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
+          (#'google/google-auth-fetch-or-create-user! "Basta" "Boucan" "rasta@sf-toucannery.com")
+          (let [user (t2/select-one [User :first_name :last_name] :email "rasta@sf-toucannery.com")]
+            (is (= "Basta" (:first_name user)))
+            (is (= "Boucan" (:last_name user)))))))))

@@ -2,6 +2,7 @@ import {
   getApplicationName,
   getCanWhitelabel,
   getIsWhiteLabeling,
+  getShowMetabaseLinks,
   getWhiteLabeledLoadingMessage,
 } from "..";
 import type { SetupOpts } from "./setup";
@@ -64,5 +65,19 @@ describe("getCanWhitelabel (EE without token)", () => {
     const { getState } = setup();
 
     expect(getCanWhitelabel(getState())).toBe(false);
+  });
+});
+
+describe("getShowMetabaseLinks (EE without token)", () => {
+  it("should return true when show-metabase-links is true", () => {
+    const { getState } = setup({ showMetabaseLinks: true });
+
+    expect(getShowMetabaseLinks(getState())).toBe(true);
+  });
+
+  it("should return true when show-metabase-links is false", () => {
+    const { getState } = setup({ showMetabaseLinks: false });
+
+    expect(getShowMetabaseLinks(getState())).toBe(true);
   });
 });

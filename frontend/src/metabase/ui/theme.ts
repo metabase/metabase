@@ -2,6 +2,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 import {
   getAccordionOverrides,
+  getActionIconOverrides,
   getAnchorOverrides,
   getAutocompleteOverrides,
   getButtonOverrides,
@@ -91,6 +92,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   },
   components: {
     ...getAccordionOverrides(),
+    ...getActionIconOverrides(),
     ...getAnchorOverrides(),
     ...getAutocompleteOverrides(),
     ...getButtonOverrides(),

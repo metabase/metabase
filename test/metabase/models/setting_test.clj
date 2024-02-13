@@ -1190,6 +1190,24 @@
                             :new-value      "AUDIT ME"}}
                  (mt/latest-audit-log-entry :setting-update))))))))
 
+(defsetting exported-setting
+  "This setting would be serialized"
+  :export? true
+  ;; make sure it's internal so it doesn't interfere with export test
+  :visibility :internal)
+
+(defsetting non-exported-setting
+  "This setting would not be serialized"
+  :export? false)
+
+(deftest export?-test
+  (testing "The :export? property is exposed"
+    (is (#'setting/export? :exported-setting))
+    (is (not (#'setting/export? :non-exported-setting))))
+
+  (testing "By default settings are not exported"
+    (is (not (#'setting/export? :test-setting-1)))))
+
 (deftest realize-throwing-test
   (testing "The realize function ensures all nested lazy values are calculated"
     (let [ok (lazy-seq (cons 1 (lazy-seq (list 2))))

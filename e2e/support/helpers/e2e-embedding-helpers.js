@@ -156,8 +156,16 @@ export function openEmbedModalFromMenu() {
  * @param {("overview"|"parameters"|"appearance")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
  */
-export function openStaticEmbeddingModal({ activeTab, previewMode } = {}) {
+export function openStaticEmbeddingModal({
+  activeTab,
+  previewMode,
+  confirmSave,
+} = {}) {
   openEmbedModalFromMenu();
+
+  if (confirmSave) {
+    cy.findByRole("button", { name: "Save" }).click();
+  }
 
   cy.findByTestId("sharing-pane-static-embed-button").click();
 
@@ -203,9 +211,9 @@ export function openNewPublicLinkDropdown(resourceType) {
 }
 
 export function createPublicQuestionLink(questionId) {
-  cy.request("POST", `/api/card/${questionId}/public_link`, {});
+  return cy.request("POST", `/api/card/${questionId}/public_link`, {});
 }
 
 export function createPublicDashboardLink(dashboardId) {
-  cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
+  return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }

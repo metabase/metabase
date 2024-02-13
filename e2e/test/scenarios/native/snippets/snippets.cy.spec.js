@@ -24,8 +24,7 @@ describe("scenarios > question > snippets", () => {
 
     // Add a snippet of that text
     cy.icon("snippet").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
     modal().within(() => {
       cy.findByLabelText("Give your snippet a name").type("stuff-snippet");

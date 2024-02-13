@@ -17,6 +17,8 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getQuestionUrl } from "../utils";
@@ -28,7 +30,7 @@ import {
   getTable,
 } from "../selectors";
 
-const emptyStateData = table => {
+const emptyStateData = (table, metadata) => {
   return {
     message: t`Questions about this table will appear here as they're added`,
     icon: "folder",
@@ -36,6 +38,7 @@ const emptyStateData = table => {
     link: getQuestionUrl({
       dbId: table.db_id,
       tableId: table.id,
+      metadata,
     }),
   };
 };
@@ -45,6 +48,7 @@ const mapStateToProps = (state, props) => ({
   entities: getTableQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {
@@ -54,6 +58,7 @@ const mapDispatchToProps = {
 class TableQuestions extends Component {
   static propTypes = {
     table: PropTypes.object.isRequired,
+    metadata: PropTypes.object.isRequired,
     style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     loading: PropTypes.bool,
@@ -61,7 +66,8 @@ class TableQuestions extends Component {
   };
 
   render() {
-    const { entities, style, loadingError, loading } = this.props;
+    const { entities, style, loadingError, loading, table, metadata } =
+      this.props;
 
     return (
       <div style={style} className="full">
@@ -98,7 +104,7 @@ class TableQuestions extends Component {
               </div>
             ) : (
               <div className={S.empty}>
-                <AdminAwareEmptyState {...emptyStateData(this.props.table)} />
+                <AdminAwareEmptyState {...emptyStateData(table, metadata)} />
               </div>
             )
           }

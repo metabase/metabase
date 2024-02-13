@@ -12,7 +12,6 @@ import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
 import { openNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getUserIsAdmin } from "metabase/selectors/user";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { Button } from "metabase/ui";
@@ -37,7 +36,6 @@ const ROW_HEIGHT = 68;
 export function ArchiveApp() {
   const dispatch = useDispatch();
   const isNavbarOpen = useSelector(getIsNavbarOpen);
-  const isAdmin = useSelector(getUserIsAdmin);
   const mainElement = getMainElement();
 
   useEffect(() => {
@@ -98,7 +96,6 @@ export function ArchiveApp() {
                   name={Search.objectSelectors.getName(item)}
                   icon={Search.objectSelectors.getIcon(item).name}
                   color={Search.objectSelectors.getColor(item)}
-                  isAdmin={isAdmin}
                   onUnarchive={() => {
                     dispatch(Search.actions.setArchived(item, false));
                   }}

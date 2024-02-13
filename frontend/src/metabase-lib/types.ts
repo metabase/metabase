@@ -138,6 +138,8 @@ export type ColumnDisplayInfo = {
   isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  isAggregation: boolean;
+  isBreakout: boolean;
   table?: TableInlineDisplayInfo;
 
   breakoutPosition?: number;
@@ -505,3 +507,8 @@ export interface FieldValuesSearchInfo {
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }
+
+export type QueryDisplayInfo = {
+  isNative: boolean;
+  isEditable: boolean;
+};

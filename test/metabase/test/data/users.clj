@@ -162,7 +162,7 @@
                           {:user username}
                           e)))
         (clear-cached-session-tokens!)
-        (binding [*retrying-authentication*  true]
+        (binding [*retrying-authentication* true]
           (apply client-fn the-client username args))))))
 
 (defn- user-request

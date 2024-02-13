@@ -27,13 +27,22 @@ import { HomeContent } from "../HomeContent";
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
 export const HomePage = (): JSX.Element => {
-  const { databases, models, isMetabotEnabled, isLoading, error } =
-    useMetabot();
+  const {
+    databases,
+    models,
+    isMetabotEnabled,
+    isLoading: isLoadingMetabot,
+    error,
+  } = useMetabot();
   useNavbar();
-  useDashboardPage();
+  const { isLoadingDash } = useDashboardPage();
 
-  if ((isLoading || error) && isMetabotEnabled) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if ((isLoadingMetabot || error) && isMetabotEnabled) {
+    return <LoadingAndErrorWrapper loading={isLoadingMetabot} error={error} />;
+  }
+
+  if (isLoadingDash) {
+    return <LoadingAndErrorWrapper loading={isLoadingDash} error={error} />;
   }
 
   return (
@@ -128,4 +137,8 @@ const useDashboardPage = () => {
     isLoadingDash,
     dashboard?.archived,
   ]);
+
+  return {
+    isLoadingDash: isLoadingDash || isLoadingSettings,
+  };
 };

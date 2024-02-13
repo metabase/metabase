@@ -27,18 +27,14 @@ function translateErrorMessage(message: string) {
 export function validateCronExpression(
   cronExpression: string,
 ): string | undefined {
-  const result = isValidCronExpression(cronExpression, { error: true });
+  const result = isValidCronExpression<boolean>(cronExpression, {
+    error: true,
+  });
 
-  // cron-expression-validator's typing is not exactly correct
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   if (result === true) {
     return;
   }
 
-  // cron-expression-validator's typing is not exactly correct
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   if (result === false) {
     return t`Invalid cron expression`;
   }

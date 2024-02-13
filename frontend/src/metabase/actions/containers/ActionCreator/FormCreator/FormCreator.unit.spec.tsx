@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { renderWithProviders, screen } from "__support__/ui";
 import type {
   ActionFormSettings,
   FieldSettings,
@@ -50,7 +50,7 @@ type SetupOpts = {
 const setup = ({ parameters, formSettings, actionType }: SetupOpts) => {
   const onChange = jest.fn();
 
-  render(
+  renderWithProviders(
     <FormCreator
       parameters={parameters}
       formSettings={formSettings}

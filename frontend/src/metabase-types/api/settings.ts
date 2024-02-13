@@ -258,6 +258,7 @@ export interface Settings {
   "show-homepage-pin-message": boolean;
   "show-homepage-xrays": boolean;
   "show-lighthouse-illustration": boolean;
+  "show-metabase-links": boolean;
   "show-metabot": boolean;
   "site-locale": string;
   "site-uuid": string;

@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.test.util.random :as tu.random]
+   [metabase.util.random :as u.random]
    [potemkin :as p]
    [pretty.core :as pretty]))
 
@@ -34,7 +34,7 @@
 (deftest jdbc-spec-test
   (let [data-source (->ClojureJDBCSpecDataSource
                      {:subprotocol "h2"
-                      :subname     (format "mem:%s" (tu.random/random-name))
+                      :subname     (format "mem:%s" (u.random/random-name))
                       :classname   "org.h2.Driver"})]
     (with-open [conn (.getConnection data-source)]
       (is (= [{:one 1}]

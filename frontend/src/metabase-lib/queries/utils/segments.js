@@ -13,11 +13,16 @@ export function getDefaultSegmentOrMetricQuestion(table, metadata) {
     const dateField = table.fields.find(f => f.name === "ga:date");
     if (dateField) {
       return question
+        .legacyQuery({ useStructuredQuery: true })
         .filter(["time-interval", ["field", dateField.id, null], -365, "day"])
-        .aggregate(["metric", "ga:users"]);
+        .aggregate(["metric", "ga:users"])
+        .question();
     }
   } else {
-    return question.aggregate(["count"]);
+    return question
+      .legacyQuery({ useStructuredQuery: true })
+      .aggregate(["count"])
+      .question();
   }
 
   return null;

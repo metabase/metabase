@@ -9,12 +9,12 @@ import type { IconName } from "metabase/ui";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {
-  value: ClickBehaviorType | "menu";
+  value: ClickBehaviorType;
   icon: IconName;
 };
 
 export const clickBehaviorOptions: ClickBehaviorOption[] = [
-  { value: "menu", icon: "popover" },
+  { value: "actionMenu", icon: "popover" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
 ];

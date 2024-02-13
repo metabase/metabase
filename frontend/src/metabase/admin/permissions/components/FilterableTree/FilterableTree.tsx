@@ -73,8 +73,6 @@ export const FilterableTree = ({
             TreeNode={AdminTreeNode}
             emptyState={
               <EmptyStateContainer>
-                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-                {/* @ts-ignore */}
                 <EmptyState
                   message={emptyState?.text ?? t`Nothing here`}
                   icon={emptyState?.icon ?? "folder"}

@@ -129,6 +129,7 @@ export const PLUGIN_SELECTORS = {
   getLoadingMessage: (_state: State) => t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   getApplicationName: (_state: State) => "Metabase",
+  getShowMetabaseLinks: (_state: State) => true,
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};

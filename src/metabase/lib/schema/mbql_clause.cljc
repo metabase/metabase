@@ -108,7 +108,9 @@
 
 ;;;; Even more convenient functions!
 
-(defn- define-mbql-clause-with-schema-fn [schema-fn tag & args]
+(defn define-mbql-clause-with-schema-fn
+  "Helper. Combines [[define-mbql-clause]] and the result of applying `schema-fn` to `tag` and `args`."
+  [schema-fn tag & args]
   (let [[return-type & args] (if (= (first args) :-)
                                (cons (second args) (drop 2 args))
                                (cons nil args))

@@ -253,7 +253,7 @@ export default class Dimension {
    * Does this dimension have the same underlying base dimension, typically a field
    */
   isSameBaseDimension(
-    other: Dimension | null | undefined | ConcreteFieldReference,
+    other: Dimension | null | undefined | FieldReference,
   ): boolean {
     if (other == null) {
       return false;

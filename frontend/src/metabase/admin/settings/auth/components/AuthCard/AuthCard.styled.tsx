@@ -14,7 +14,7 @@ export const CardRoot = styled.div`
 export const CardHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
   margin-bottom: 1rem;
 `;
 
@@ -39,7 +39,7 @@ interface CardBadgeProps {
 export const CardBadge = styled.div<CardBadgeProps>`
   color: ${props => color(props.isEnabled ? "brand" : "danger")};
   background-color: ${props =>
-    color(props.isEnabled ? "brand-light" : "bg-light")};
+    color(props.isEnabled ? "brand-lighter" : "bg-light")};
   padding: 0.25rem 0.375rem;
   border-radius: 0.25rem;
   font-weight: bold;

@@ -428,7 +428,7 @@
             column  (m/find-first #(= (:name %) "count")
                                   (lib/returned-columns orders-count-aggregation-breakout-on-created-at-by-month-query))
             _       (assert column)
-            context (merge (basic-context column "2018-05")
+            context (merge (basic-context column 10)
                            {:row [(basic-context (meta/field-metadata :orders :created-at) "2018-05")
                                   (basic-context column 10)]})]
         (testing (str "\ncontext =\n" (u/pprint-to-str context))

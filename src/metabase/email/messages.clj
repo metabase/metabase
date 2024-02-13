@@ -126,10 +126,10 @@
                                                   :logoHeader    true
                                                   :sentFromSetup sent-from-setup?}))]
     (email/send-message!
-     :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
-     :recipients   [(:email invited)]
-     :message-type :html
-     :message      message-body)))
+     {:subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
+      :recipients   [(:email invited)]
+      :message-type :html
+      :message      message-body})))
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
@@ -147,20 +147,20 @@
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (email/send-message!
-     :subject      (str (if google-auth?
-                          (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
-                          (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
-     :recipients   recipients
-     :message-type :html
-     :message      (stencil/render-file "metabase/email/user_joined_notification"
-                                        (merge (common-context)
-                                               {:logoHeader        true
-                                                :joinedUserName    (or (:first_name new-user) (:email new-user))
-                                                :joinedViaSSO      google-auth?
-                                                :joinedUserEmail   (:email new-user)
-                                                :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
-                                                :adminEmail        (first recipients)
-                                                :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")})))))
+     {:subject      (str (if google-auth?
+                           (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
+                           (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
+      :recipients   recipients
+      :message-type :html
+      :message      (stencil/render-file "metabase/email/user_joined_notification"
+                                         (merge (common-context)
+                                                {:logoHeader        true
+                                                 :joinedUserName    (or (:first_name new-user) (:email new-user))
+                                                 :joinedViaSSO      google-auth?
+                                                 :joinedUserEmail   (:email new-user)
+                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                                                 :adminEmail        (first recipients)
+                                                 :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
@@ -180,10 +180,10 @@
                               :adminEmail       (public-settings/admin-email)
                               :adminEmailSet    (boolean (public-settings/admin-email))}))]
     (email/send-message!
-     :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
+     {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
+      :recipients   [email]
+      :message-type :html
+      :message      message-body})))
 
 (mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
@@ -202,10 +202,10 @@
         message-body (stencil/render-file "metabase/email/login_from_new_device"
                                           context)]
     (email/send-message!
-     :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
-     :recipients   [(:email user-info)]
-     :message-type :html
-     :message      message-body)))
+     {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
+      :recipients   [(:email user-info)]
+      :message-type :html
+      :message      message-body})))
 
 (defn- admin-or-ee-monitoring-details-emails
   "Find emails for users that have an interest in monitoring the database.
@@ -270,10 +270,10 @@
                                           (merge (common-context) context))]
     (when (seq emails)
       (email/send-message!
-        :subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
-        :recipients   (vec emails)
-        :message-type :html
-        :message      message-body))))
+        {:subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
+         :recipients   (vec emails)
+         :message-type :html
+         :message      message-body}))))
 
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
@@ -608,7 +608,7 @@
   [user subject template-path template-context]
   (future
     (try
-      (email/send-message-or-throw!
+      (email/send-email-retrying!
        {:recipients   [(:email user)]
         :message-type :html
         :subject      subject

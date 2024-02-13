@@ -125,7 +125,10 @@ export function ClickBehaviorSidebar({
         });
       }
 
-      const changedType = nextClickBehavior.type !== clickBehavior?.type;
+      // nextClickBehavior is `undefined` for drill-through menu
+      const changedType =
+        !!nextClickBehavior && nextClickBehavior.type !== clickBehavior?.type;
+
       if (changedType) {
         // move to next screen
         setTypeSelectorVisible(false);

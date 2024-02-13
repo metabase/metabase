@@ -75,7 +75,7 @@
                                            {}
                                            {:cols [{:base_type :type/Number}]
                                             :rows [[6]]})))
-    (is (= :smartscalar
+    (is (= :javascript_visualization
            (render/detect-pulse-chart-type {:display :smartscalar}
                                            {}
                                            {:cols     [{:base_type :type/Temporal

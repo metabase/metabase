@@ -29,6 +29,10 @@ export interface AdminState {
     originalCollectionPermissions: CollectionPermissions;
     saveError?: string;
     isHelpReferenceOpen: boolean;
+    hasRevisionChanged: {
+      revision: number | null;
+      hasChanged: boolean;
+    };
   };
   settings: {
     settings: SettingDefinition[];

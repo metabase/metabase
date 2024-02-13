@@ -149,7 +149,7 @@
                        :value        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])}
       :drill-args     ["<"]
       :expected-query {:stages [{:filters [[:< {}
-                                            [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                            [:field {} (meta/id :orders :created-at)]
                                             (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])]]}]}})))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-3

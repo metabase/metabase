@@ -167,55 +167,12 @@
   [_setting]
   [:key])
 
-(def ^:private exported-settings
-  '#{application-colors
-     application-favicon-url
-     application-font
-     application-font-files
-     application-logo-url
-     application-name
-     available-fonts
-     available-locales
-     available-timezones
-     breakout-bins-num
-     custom-formatting
-     custom-geojson
-     custom-geojson-enabled
-     enable-embedding
-     enable-nested-queries
-     enable-sandboxes?
-     enable-whitelabeling?
-     enable-xrays
-     hide-embed-branding?
-     humanization-strategy
-     landing-page
-     loading-message
-     aggregated-query-row-limit
-     unaggregated-query-row-limit
-     native-query-autocomplete-match-style
-     persisted-models-enabled
-     report-timezone
-     report-timezone-long
-     report-timezone-short
-     search-typeahead-enabled
-     show-homepage-data
-     show-homepage-pin-message
-     show-homepage-xrays
-     show-lighthouse-illustration
-     show-metabot
-     site-locale
-     site-name
-     source-address-header
-     start-of-week
-     subscription-allowed-domains
-     uploads-enabled
-     uploads-database-id
-     uploads-schema-name})
+(declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
                              :getter (partial get-value-of-type :string))
-        :when (contains? exported-settings (symbol key))]
+        :when (export? key)]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
@@ -298,6 +255,7 @@
    :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
+   :export?     s/Bool           ; should this setting be serialized?
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
    :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
 
@@ -929,6 +887,7 @@
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
+                 :export?        false
                  :sensitive?     false
                  :cache?         true
                  :feature        nil
@@ -1095,6 +1054,10 @@
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
 
+  ###### `:export?`
+
+  Whether this Setting is included when producing a serializing settings export.
+
   ###### `:getter`
 
   A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in turn call functions
@@ -1246,6 +1209,9 @@
 (defn- set-via-env-var? [setting]
   (some? (env-var-value setting)))
 
+(defn- export? [setting-name]
+  (:export? (core/get @registered-settings (keyword setting-name))))
+
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
   (let [from-env? (set-via-env-var? setting)]
@@ -1281,6 +1247,15 @@
                (when api/*is-superuser?*
                  [:admin]))))
 
+(defn- user-facing-settings-matching
+  "Returns the user facing view of the registered settings satisfying the given predicate"
+  [pred options]
+  (into
+    []
+    (comp (filter pred)
+          (map #(m/mapply user-facing-info % options)))
+    (sort-by :name (vals @registered-settings))))
+
 (defn writable-settings
   "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
@@ -1297,13 +1272,11 @@
   ;; ignore Database-local values, but not User-local values
   (let [writable-visibilities (current-user-writable-visibilities)]
     (binding [*database-local-values* nil]
-      (into
-       []
-       (comp (filter (fn [setting]
-                       (and (contains? writable-visibilities (:visibility setting))
-                            (not= (:database-local setting) :only))))
-             (map #(m/mapply user-facing-info % options)))
-       (sort-by :name (vals @registered-settings))))))
+      (user-facing-settings-matching
+        (fn [setting]
+          (and (contains? writable-visibilities (:visibility setting))
+               (not= (:database-local setting) :only)))
+        options))))
 
 (defn admin-writable-site-wide-settings
   "Returns a sequence of site-wide Settings maps, similar to [[writable-settings]]. However, this function
@@ -1317,13 +1290,11 @@
   ;; ignore User-local and Database-local values
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
-    (into
-     []
-     (comp (filter (fn [setting]
-                     (and (not= (:visibility setting) :internal)
-                          (allows-site-wide-values? setting))))
-           (map #(m/mapply user-facing-info % options)))
-     (sort-by :name (vals @registered-settings)))))
+    (user-facing-settings-matching
+      (fn [setting]
+        (and (not= (:visibility setting) :internal)
+             (allows-site-wide-values? setting)))
+      options)))
 
 (defn can-read-setting?
   "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.

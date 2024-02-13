@@ -5,10 +5,7 @@ import {
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
-import {
-  fieldRefForColumn,
-  findColumnForColumnSetting,
-} from "metabase-lib/queries/utils/dataset";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -178,24 +175,6 @@ describe("metabase/util/dataset", () => {
           enabled: true,
         }),
       ]);
-    });
-  });
-
-  describe("findColumnForColumnSetting", () => {
-    const columns = [
-      { name: "bar", field_ref: ["field", 42, null] },
-      { name: "foo", field_ref: ["field", 1, { "source-field": 2 }] },
-      { name: "baz", field_ref: ["field", 43, null] },
-    ];
-    it("should find column with name", () => {
-      const column = findColumnForColumnSetting(columns, { name: "foo" });
-      expect(column).toBe(columns[1]);
-    });
-    it("should find column with normalized fieldRef", () => {
-      const column = findColumnForColumnSetting(columns, {
-        fieldRef: ["field", 1, { "source-field": 2 }],
-      });
-      expect(column).toBe(columns[1]);
     });
   });
 });

@@ -40,6 +40,17 @@
   [query stage-number x style]
   (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number) style))
 
+(mu/defn native? :- :boolean
+  "Given a query, return whether it is a native query."
+  [query :- ::lib.schema/query]
+  (let [stage (lib.util/query-stage query 0)]
+    (= (:lib/type stage) :mbql.stage/native)))
+
+(defmethod lib.metadata.calculation/display-info-method :mbql/query
+  [_query _stage-number query]
+  {:is-native   (native? query)
+   :is-editable (lib.metadata/editable? query)})
+
 (mu/defn stage-count :- ::lib.schema.common/int-greater-than-or-equal-to-zero
   "Returns the count of stages in query"
   [query :- ::lib.schema/query]

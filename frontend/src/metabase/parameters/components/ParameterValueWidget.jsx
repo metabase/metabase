@@ -17,7 +17,7 @@ import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { TextWidget } from "metabase/components/TextWidget";
-import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
+import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
 import StringInputWidget from "metabase/parameters/components/widgets/StringInputWidget";
@@ -52,7 +52,6 @@ class ParameterValueWidget extends Component {
     setValue: PropTypes.func.isRequired,
     placeholder: PropTypes.string,
     isEditing: PropTypes.bool,
-    noReset: PropTypes.bool,
     commitImmediately: PropTypes.bool,
     focusChanged: PropTypes.func,
     isFullscreen: PropTypes.bool,
@@ -96,12 +95,11 @@ class ParameterValueWidget extends Component {
       isEditing,
       placeholder,
       isFullscreen,
-      noReset,
       className,
     } = this.props;
     const { isFocused } = this.state;
     const hasValue = value != null;
-    const { noPopover } = getWidgetDefinition(parameter);
+    const noPopover = hasNoPopover(parameter);
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
@@ -129,8 +127,7 @@ class ParameterValueWidget extends Component {
           <WidgetStatusIcon
             isFullscreen={isFullscreen}
             hasValue={hasValue}
-            noReset={noReset}
-            noPopover={!!noPopover}
+            noPopover={noPopover}
             isFocused={isFocused}
             setValue={setValue}
           />
@@ -173,8 +170,7 @@ class ParameterValueWidget extends Component {
               <WidgetStatusIcon
                 isFullscreen={isFullscreen}
                 hasValue={hasValue}
-                noReset={noReset}
-                noPopover={!!noPopover}
+                noPopover={noPopover}
                 isFocused={isFocused}
                 setValue={setValue}
               />
@@ -293,18 +289,13 @@ Widget.propTypes = {
   onFocusChanged: PropTypes.func.isRequired,
 };
 
-function getWidgetDefinition(parameter) {
-  if (DATE_WIDGETS[parameter.type]) {
-    return DATE_WIDGETS[parameter.type];
-  } else if (isTextWidget(parameter)) {
-    return TextWidget;
-  } else if (isNumberParameter(parameter)) {
-    return NumberInputWidget;
-  } else if (isFieldWidget(parameter)) {
-    return ParameterFieldWidget;
-  } else {
-    return StringInputWidget;
+function hasNoPopover(parameter) {
+  // This is needed because isTextWidget check isn't complete,
+  // and returns true for dates too.
+  if (isDateParameter(parameter)) {
+    return false;
   }
+  return isTextWidget(parameter);
 }
 
 function isTextWidget(parameter) {

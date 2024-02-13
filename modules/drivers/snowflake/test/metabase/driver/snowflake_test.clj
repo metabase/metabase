@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.snowflake :as driver.snowflake]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -52,7 +53,40 @@
     (is (= [100]
            (mt/first-row
             (mt/run-mbql-query venues
-              {:aggregation [[:count]]}))))))
+                               {:aggregation [[:count]]}))))))
+
+(deftest ^:parallel quote-name-test
+  (is (nil? (#'driver.snowflake/quote-name nil)))
+  (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
+  (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
+
+(deftest ^:parallel connection-details->spec-test
+  (let [details {:role nil
+                 :warehouse "COMPUTE_WH"
+                 :additional-options nil
+                 :db "v3_sample-dataset"
+                 :password "passwd"
+                 :quote-db-name false
+                 :let-user-control-scheduling false
+                 :private-key-options "uploaded"
+                 :private-key-source nil
+                 :port nil
+                 :advanced-options true
+                 :private-key-id 1
+                 :schema-filters-type "all"
+                 :account "ls10467.us-east-2.aws"
+                 :private-key-value nil
+                 :tunnel-enabled false
+                 :engine :snowflake
+                 :private-key-creator-id 3
+                 :user "SNOWFLAKE_DEVELOPER"
+                 :private-key-created-at "2024-01-05T19:10:30.861839Z"}]
+    (testing "Database name is quoted iff quoting is requested (#27856)"
+      (are [quote? result] (=? {:db result}
+                               (let [details (assoc details :quote-db-name quote?)]
+                                 (sql-jdbc.conn/connection-details->spec :snowflake details)))
+        true "\"v3_sample-dataset\""
+        false "v3_sample-dataset"))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"

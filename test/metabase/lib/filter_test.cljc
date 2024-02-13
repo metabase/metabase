@@ -319,10 +319,11 @@
     (doseq [col (lib/filterable-columns query)
             op (lib/filterable-column-operators col)
             :let [filter-clause (case (:short op)
-                                  :between (lib/filter-clause op col 123 456)
+                                  :between (lib/filter-clause op col col col)
                                   (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
                                   (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
                                   :inside (lib/filter-clause op col 12 34 56 78 90)
+                                  (:< :>) (lib/filter-clause op col col)
                                   (lib/filter-clause op col 123))]]
       (testing (str (:short op) " with " (lib.types.isa/field-type col))
         (is (= op

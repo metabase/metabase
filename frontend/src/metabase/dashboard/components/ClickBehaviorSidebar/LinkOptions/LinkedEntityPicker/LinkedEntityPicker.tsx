@@ -175,9 +175,7 @@ export function LinkedEntityPicker({
   const handleResetLinkTargetType = useCallback(() => {
     updateSettings({
       type: clickBehavior.type,
-
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // @ts-expect-error allow resetting
       linkType: null,
     });
   }, [clickBehavior, updateSettings]);
@@ -246,7 +244,7 @@ export function LinkedEntityPicker({
   );
 
   const dashboard = useSelector(getDashboard);
-  const dashboardCollection = dashboard.collection ?? ROOT_COLLECTION;
+  const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;
   const filterPersonalCollections = isPublicCollection(dashboardCollection)
     ? "exclude"
     : undefined;
@@ -268,8 +266,7 @@ export function LinkedEntityPicker({
               title={getModalTitle()}
               onClose={hasSelectedTarget ? onClose : undefined}
             >
-              {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-              {/* @ts-ignore */}
+              {/* TODO: drop maxHeight when PickerComponent is migrated to TS */}
               <PickerComponent
                 filterPersonalCollections={filterPersonalCollections}
                 value={clickBehavior.targetId}
@@ -277,6 +274,7 @@ export function LinkedEntityPicker({
                   handleSelectLinkTargetEntityId(targetId);
                   onClose();
                 }}
+                maxHeight={undefined}
               />
             </ModalContent>
           )}

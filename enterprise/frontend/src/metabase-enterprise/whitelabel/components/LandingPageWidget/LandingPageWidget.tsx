@@ -42,7 +42,7 @@ export function LandingPageWidget({ onChangeSetting, settingValues }: Props) {
   return (
     <div>
       {error && (
-        <Text size="md" color="error.0" data-testid="landing-page-error">
+        <Text size="md" color="error" data-testid="landing-page-error">
           {error}
         </Text>
       )}

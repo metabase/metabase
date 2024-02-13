@@ -263,24 +263,6 @@
   font-size: inherit;
 }
 
-.AutomaticDashboard.AutomaticDashboard--withSidebar #SmartScalar-PreviousValue {
-  display: none !important;
-}
-
-@media screen and (min-width: 1280px) {
-  .AutomaticDashboard.AutomaticDashboard--withSidebar
-    #SmartScalar-PreviousValue {
-    display: none;
-  }
-}
-
-@media screen and (min-width: 1540px) {
-  .AutomaticDashboard.AutomaticDashboard--withSidebar
-    #SmartScalar-PreviousValue {
-    display: inherit;
-  }
-}
-
 /*
  * Override d3 styles so the chart axis labels are selectable. See issue #17613
  */

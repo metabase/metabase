@@ -25,3 +25,7 @@ export const getIsWhiteLabeling = (state: EnterpriseState) =>
 export function getApplicationName(state: EnterpriseState) {
   return getSetting(state, "application-name");
 }
+
+export function getShowMetabaseLinks(state: EnterpriseState) {
+  return getSetting(state, "show-metabase-links");
+}

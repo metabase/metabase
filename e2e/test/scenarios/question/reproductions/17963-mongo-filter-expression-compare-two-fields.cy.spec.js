@@ -1,5 +1,11 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { restore, popover, visualize, openTable } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visualize,
+  openTable,
+  getNotebookStep,
+} from "e2e/support/helpers";
 
 describe("issue 17963", { tags: "@mongo" }, () => {
   beforeEach(() => {
@@ -18,28 +24,21 @@ describe("issue 17963", { tags: "@mongo" }, () => {
 
   it("should be able to compare two fields using filter expression (metabase#17963)", () => {
     cy.findByRole("button", { name: "Filter" }).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filters to narrow your answer").click();
 
     popover().contains("Custom Expression").click();
 
     typeAndSelect([
       { string: "dis", field: "Discount" },
-      { string: "> qu", field: "Quantity" },
+      { string: "> quan", field: "Quantity" },
     ]);
-    cy.get(".ace_text-input").blur();
 
+    cy.get(".ace_text-input").blur();
     cy.button("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discount is greater than Quantity");
+    getNotebookStep("filter").findByText("Discount is greater than Quantity");
 
     cy.findByRole("button", { name: "Summarize" }).click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick the metric you want to see").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
+    popover().findByText("Count of rows").click();
 
     visualize();
 

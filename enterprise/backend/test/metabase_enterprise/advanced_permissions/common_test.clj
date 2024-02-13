@@ -1,6 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.common-test
   (:require
-   [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -519,11 +518,11 @@
                        Field {field-2-id :id} {:table_id table-id}]
           (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
             (mt/user-http-request :rasta :put 403 (format "table/%d/fields/order" table-id)
-                                  {:request-options {:body (json/encode [field-2-id field-1-id])}}))
+                                  [field-2-id field-1-id]))
 
           (with-all-users-data-perms! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
             (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
-                                  {:request-options {:body (json/encode [field-2-id field-1-id])}})))))))
+                                  [field-2-id field-1-id])))))))
 
 (deftest audit-log-generated-when-table-manual-scan
   (t2.with-temp/with-temp [Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]

@@ -112,7 +112,7 @@ export function usePopover(options: UsePopoverOptions) {
 
   return {
     floating,
-    controlled: options.opened !== null,
+    controlled: typeof options.opened === "boolean",
     opened: _opened,
     onClose,
     onToggle,
