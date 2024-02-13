@@ -49,9 +49,7 @@ export const BrowseApp = ({
   const databasesResult = useDatabaseListQuery();
 
   useEffect(() => {
-    if (isValidBrowseTab(tab)) {
-      localStorage.setItem("defaultBrowseTab", tab);
-    }
+    localStorage.setItem("defaultBrowseTab", tab);
   }, [tab]);
 
   const getInitialModelFilters = () => {
@@ -97,10 +95,6 @@ export const BrowseApp = ({
     },
     [setActualModelFilters],
   );
-
-  if (!isValidBrowseTab(tab)) {
-    return <LoadingAndErrorWrapper error />;
-  }
 
   return (
     <BrowseAppRoot data-testid="browse-app">
