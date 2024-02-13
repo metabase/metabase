@@ -111,12 +111,6 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   }
 };
 
-// function formatDimensionAxisLabel(
-//   chartModel: CartesianChartModel,
-//   settings: ComputedVisualizationSettings,
-//   formatter: AxisFormatter,
-// ) {}
-
 export const buildDimensionAxis = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,

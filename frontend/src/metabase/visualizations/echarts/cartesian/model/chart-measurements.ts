@@ -61,29 +61,6 @@ const getYAxisTicksWidth = (
   return Math.max(...measuredValues);
 };
 
-const getXAxisTicksWidth = (
-  dataset: ChartDataset,
-  formatter: AxisFormatter,
-  settings: ComputedVisualizationSettings,
-  { measureText, fontFamily }: RenderingContext,
-): number => {
-  const fontStyle = {
-    ...CHART_STYLE.axisTicks,
-    family: fontFamily,
-  };
-
-  // TODO make sure this uses "(empty)" for null
-  const measuredValues = dataset.map(datum => {
-    const formattedValue = formatter(datum[X_AXIS_DATA_KEY]);
-
-    return measureText(formattedValue, fontStyle);
-  });
-
-  // TODO account for rotation and other settings
-
-  return Math.max(...measuredValues);
-};
-
 const getXAxisTicksHeight = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
@@ -135,7 +112,6 @@ export const getTicksDimensions = (
     yTicksWidthLeft: 0,
     yTicksWidthRight: 0,
     xTicksHeight: 0,
-    xTicksWidth: 0,
   };
 
   if (leftAxisModel) {
@@ -161,13 +137,6 @@ export const getTicksDimensions = (
       ) +
       CHART_STYLE.axisTicksMarginX +
       (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0);
-
-    ticksDimensions.xTicksWidth = getXAxisTicksWidth(
-      dataset,
-      xAxisModel.formatter,
-      settings,
-      renderingContext,
-    );
   }
 
   return ticksDimensions;
