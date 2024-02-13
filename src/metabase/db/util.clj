@@ -70,12 +70,23 @@
   ([expr type-keyword]
    [:in expr (type-keyword->descendants type-keyword)]))
 
+(defmacro ^:private with-conflict-retry
+  "Retry a database mutation a single time if it fails due to concurrent insertions . May retry for other reasons."
+  [& body]
+  `(try
+     ~@body
+     (catch ExceptionInfo e#
+       ;; The causal exception thrown by the database driver is typically opaque, so we treat any exception as a
+       ;; possible database conflict due to a concurrent insert.
+       ~@body)))
+
+
 (defmacro idempotent-insert!
   "Create or update some database state, typically a single row, atomically.
 
-   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, in that it can be used for multiple
-   entities, e.g. where we also upsert some parent resources. It is also useful if we want to avoid calculating the
-   data to insert, e.g. because it is expensive. This can not be done when sending a single SQL command.
+   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and t also  avoids calculating the
+
+   It also allows us to avoid expensive or side-effecting calculations only needed when inserting new values.
 
    The usage is just like the naive pattern `(or select-expr insert-expr)`, just papering over a number of sharp edges.
    One should be careful about side-effects in `select-expr`, as the expression could be executed up to 3 times.
@@ -102,3 +113,14 @@
                              {:select-expr '~select-expr :insert-expr '~insert-expr}
                              ;; Expose the exception - it might not be due to a concurrent modification.
                              e#)))))))
+
+(defmacro idempotent-upsert!
+  "sdfsdf"
+  [model select-map update-fn]
+  (with-conflict-retry
+   `(let [select-map# ~select-map
+          select-kvs# (mapcat identity select-map#)]
+      (if-let [entity# (apply t2/select-one ~model select-kvs#)]
+        (t2/update! ~model (mapv entity# (t2/primary-keys ~model)) (~update-fn entity#))
+        ;; TODO delete any duplicates left behind
+        (t2/insert! ~model (merge (~update-fn nil) select-map#))))))

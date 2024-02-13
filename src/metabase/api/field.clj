@@ -298,12 +298,6 @@
       [400 "If remapped values are specified, they must be specified for all field values"])
     has-human-readable-values?))
 
-(defn- update-field-values! [field-value-id update-map]
-  (api/check-500 (pos? (t2/update! FieldValues field-value-id update-map))))
-
-(defn- create-field-values! [field-or-id update-map]
-  (t2/insert! FieldValues (assoc update-map :type :full :field_id (u/the-id field-or-id))))
-
 (api/defendpoint POST "/:id/values"
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
@@ -317,11 +311,11 @@
     (let [human-readable-values? (validate-human-readable-pairs value-pairs)
           update-map             {:values                (map first value-pairs)
                                   :human_readable_values (when human-readable-values?
-                                                           (map second value-pairs))}]
-      (mdb.u/idempotent-insert!
-        (when-let [field-values-id (:id (field-values/get-latest-full-field-values id))]
-          (update-field-values! field-values-id update-map))
-        (create-field-values! field update-map))))
+                                                           (map second value-pairs))}
+          updated-entity         (mdb.u/idempotent-upsert! FieldValues
+                                   {:field_id (u/the-id field), :type :full}
+                                   (constantly update-map))]
+      (api/check-500 (pos? (:id updated-entity)))))
   {:status :success})
 
 (api/defendpoint POST "/:id/rescan_values"
