@@ -17,6 +17,7 @@ import {
 import MetabaseSettings from "metabase/lib/settings";
 
 import { Anchor, Text } from "metabase/ui";
+import RedirectWidget from "metabase/admin/settings/components/widgets/RedirectWidget";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import { LandingPageWidget } from "./components/LandingPageWidget";
@@ -38,14 +39,28 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     whitelabel: {
       name: t`Appearance`,
+      key: "-redirect-to-branding",
+      settings: [
+        {
+          key: "-redirect-to-branding",
+          widget: () => (
+            <RedirectWidget to="/admin/settings/whitelabel/branding" />
+          ),
+        },
+      ],
+    },
+    "whitelabel/branding": {
       tabs: [
         {
           name: t`Branding`,
           key: "branding",
+          to: "/admin/settings/whitelabel/branding",
+          isActive: true,
         },
         {
           name: t`Conceal Metabase`,
           key: "conceal-metabase",
+          to: "/admin/settings/whitelabel/conceal-metabase",
         },
       ],
       settings: [
@@ -98,7 +113,23 @@ if (hasPremiumFeature("whitelabel")) {
           options: getLoadingMessageOptions(),
           defaultValue: "doing-science",
         },
-
+      ],
+    },
+    "whitelabel/conceal-metabase": {
+      tabs: [
+        {
+          name: t`Branding`,
+          key: "branding",
+          to: "/admin/settings/whitelabel/branding",
+        },
+        {
+          name: t`Conceal Metabase`,
+          key: "conceal-metabase",
+          to: "/admin/settings/whitelabel/conceal-metabase",
+          isActive: true,
+        },
+      ],
+      settings: [
         // 2. Conceal Metabase tab
         {
           key: "-conceal-metabase-introduction",

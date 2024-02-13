@@ -1,11 +1,15 @@
+import { push } from "react-router-redux";
 import { Tabs } from "metabase/ui";
 import type { SettingKey, SettingValue, Settings } from "metabase-types/api";
 import type { SettingElement } from "metabase/admin/settings/types";
 import SettingsSetting from "metabase/admin/settings/components/SettingsSetting";
+import { useDispatch } from "metabase/lib/redux";
 
 interface Tab {
   name: string;
   key: string;
+  to: string;
+  isActive: boolean;
 }
 
 interface SettingsSectionProps {
@@ -30,16 +34,24 @@ export function SettingsSection({
   onChangeSetting,
   reloadSettings,
 }: SettingsSectionProps) {
+  const dispatch = useDispatch();
+
   if (tabs) {
-    const firstTabKey = tabs[0].key;
+    const activeTab = tabs.find(tab => tab.isActive);
     return (
-      <Tabs defaultValue={firstTabKey}>
+      <Tabs value={activeTab?.key}>
         <Tabs.List mx="1rem" mb="1rem">
-          {tabs.map(tab => (
-            <Tabs.Tab key={tab.key} value={tab.key}>
-              {tab.name}
-            </Tabs.Tab>
-          ))}
+          {tabs.map(tab => {
+            return (
+              <Tabs.Tab
+                key={tab.key}
+                value={tab.key}
+                onClick={() => dispatch(push(tab.to))}
+              >
+                {tab.name}
+              </Tabs.Tab>
+            );
+          })}
         </Tabs.List>
         {tabs.map((tab, index) => {
           const isFirstTab = index === 0;
