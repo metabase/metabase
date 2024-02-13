@@ -187,6 +187,8 @@ export interface OpenAiModel {
   owned_by: string;
 }
 
+export type HelpLinkSetting = "metabase" | "hidden" | "custom";
+
 export interface Settings {
   "active-users-count"?: number;
   "admin-email": string;
@@ -223,6 +225,8 @@ export interface Settings {
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
   "hide-embed-branding?": boolean;
+  "help-link": HelpLinkSetting;
+  "help-link-custom-destination": string;
   "is-hosted?": boolean;
   "is-metabot-enabled": boolean;
   "jwt-enabled"?: boolean;

@@ -85,7 +85,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content").contains("Year").click();
+      cy.findByTestId("timeseries-bucket-button").contains("Year").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
@@ -154,7 +154,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content").contains("Year").click();
+      cy.findByTestId("timeseries-bucket-button").contains("Year").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
@@ -224,7 +224,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.get("circle");
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content").contains("Month").click();
+      cy.findByTestId("timeseries-bucket-button").contains("Month").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 

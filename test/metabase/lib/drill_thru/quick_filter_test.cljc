@@ -1,9 +1,14 @@
 (ns metabase.lib.drill-thru.quick-filter-test
   "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
-   [clojure.test :refer [deftest testing]]
+   [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel returns-quick-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -163,3 +168,36 @@
       :drill-args     ["≠"]
       :expected-query {:stages [{}
                                 {:filters [[:not-null {} [:field {} "max"]]]}]}})))
+
+(deftest ^:parallel contains-does-not-contain-test
+  (testing "Should return :contains/:does-not-contain for text columns (#33560)"
+    (let [query   (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+          context {:column     (meta/field-metadata :reviews :body)
+                   :column-ref (lib/ref (meta/field-metadata :reviews :body))
+                   :value      "text"
+                   :row        [{:column     (meta/field-metadata :reviews :body),
+                                 :column-ref (lib/ref (meta/field-metadata :reviews :body))
+                                 :value      "text"}]}
+          drill   (m/find-first #(= (:type %) :drill-thru/quick-filter)
+                                (lib/available-drill-thrus query -1 context))]
+      (is (=? {:lib/type  :metabase.lib.drill-thru/drill-thru
+               :type      :drill-thru/quick-filter
+               :operators [{:name "="}
+                           {:name "≠"}
+                           {:name "contains"}
+                           {:name "does-not-contain"}]
+               :value     "text"
+               :column    {:name "BODY"}}
+              drill))
+      (testing "Should include :value in the display info (#33560)"
+        (is (=? {:type      :drill-thru/quick-filter
+                 :operators ["=" "≠" "contains" "does-not-contain"]
+                 :value     "text"}
+                (lib/display-info query drill))))
+      (testing "apply drills"
+        (testing :contains
+          (is (=? {:stages [{:filters [[:contains {} [:field {} (meta/id :reviews :body)] "text"]]}]}
+                  (lib/drill-thru query -1 drill "contains"))))
+        (testing :does-not-contain
+          (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} (meta/id :reviews :body)] "text"]]}]}
+                  (lib/drill-thru query -1 drill "does-not-contain"))))))))

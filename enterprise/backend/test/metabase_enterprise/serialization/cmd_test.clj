@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase.cmd :as cmd]
    [metabase.models :refer [Card Dashboard DashboardCard Database User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -140,7 +141,7 @@
 
 (deftest premium-features-test
   (testing "without a premium token"
-    (let [dump-dir (ts/random-dump-dir "serdes-")]
+    (ts/with-random-dump-dir [dump-dir "serdes-"]
       (testing "dump should fail"
         (is (thrown-with-msg? Exception #"Please upgrade"
                               (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
@@ -151,3 +152,14 @@
                                 (cmd/load dump-dir
                                           "--mode"     "update"
                                           "--on-error" "abort"))))))))
+
+(deftest dump-readonly-dir-test
+  (testing "command exits early when destination is not writable"
+    (premium-features-test/with-premium-features #{:serialization}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (.mkdirs (io/file dump-dir))
+        (.setWritable (io/file dump-dir) false)
+        (with-redefs [v2.extract/extract (fn [& _args]
+                                           (throw (ex-info "Do not call me!" {})))]
+          (is (thrown-with-msg? Exception #"Destination path is not writeable: "
+                                (cmd/export dump-dir))))))))

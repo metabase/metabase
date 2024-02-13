@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata
   (:require
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -208,3 +209,18 @@
   (if-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
     (card metadata-providerable card-id)
     (table metadata-providerable table-id)))
+
+(mu/defn editable? :- :boolean
+  "Given a query, returns whether it is considered editable.
+
+  There's no editable flag! Instead, a query is **not** editable if:
+  - Database is missing from the metadata (no permissions at all);
+  - Database is present but tables (at least the `:source-table`) are missing (missing table permissions); or
+  - Similarly, the card specified by `:source-card` is missing from the metadata.
+  If metadata for the `:source-table` or `:source-card` can be found, then the query is editable."
+  [query :- ::lib.schema/query]
+  (let [{:keys [source-table source-card] :as stage0} (lib.util/query-stage query 0)]
+    (boolean (and (database query)
+                  (or (and source-table (table query source-table))
+                      (and source-card  (card  query source-card))
+                      (= (:lib/type stage0) :mbql.stage/native))))))

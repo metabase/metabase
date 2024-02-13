@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: visualization_settings
   model: Field
+database_indexed: null

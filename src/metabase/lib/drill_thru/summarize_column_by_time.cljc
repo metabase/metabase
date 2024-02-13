@@ -1,4 +1,29 @@
 (ns metabase.lib.drill-thru.summarize-column-by-time
+  "Adds a `sum` aggregation clause for the selected column and a breakout on the first available date column.
+
+  Entry points:
+
+  - Column header
+
+  Requirements:
+
+  - No aggregation or breakout clauses in the query
+
+  - The selected column is `Summable`, i.e. compatible with `sum` operator
+
+  - There are date columns available for the breakout clause
+
+  Query transformation:
+
+  - Add aggregation clause for the selected column
+
+  - Add a breakout on the first available date column. Use the default temporal unit available for this column. This
+    unit is computed based on `fingerprint`
+    https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/metadata/Field.ts#L397
+
+  Question transformation:
+
+  - Set default display"
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]

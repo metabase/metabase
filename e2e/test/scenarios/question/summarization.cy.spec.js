@@ -158,12 +158,15 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize({ mode: "notebook" });
     popover().contains("Custom Expression").click();
     popover().within(() => {
-      enterCustomColumnDetails({ formula: "2 * Max([Total])" });
-      cy.findByPlaceholderText("Something nice and descriptive").type(
-        "twice max total",
-      );
+      enterCustomColumnDetails({
+        formula: "2 * Max([Total])",
+        name: "twice max total",
+      });
       cy.findByText("Done").click();
     });
+    cy.findByTestId("aggregate-step")
+      .contains("twice max total")
+      .should("exist");
 
     visualize();
 

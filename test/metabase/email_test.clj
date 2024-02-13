@@ -194,9 +194,11 @@
                 @inbox)))
 
 (defn email-to
-  "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
-  ([user-kwd & [email-map]]
-   (let [{:keys [email]} (test.users/fetch-user user-kwd)
+  "Creates a default email map for `user-or-user-kwd`, as would be returned by `with-fake-inbox`."
+  ([user-or-user-kwd & [email-map]]
+   (let [{:keys [email]} (if (keyword? user-or-user-kwd)
+                           (test.users/fetch-user user-or-user-kwd)
+                           user-or-user-kwd)
          to-type         (if (:bcc? email-map) :bcc :to)
          email-map       (dissoc email-map :bcc?)]
      {email [(merge {:from   (if-let [from-name (email/email-from-name)]

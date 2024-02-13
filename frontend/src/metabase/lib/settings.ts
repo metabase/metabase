@@ -415,11 +415,5 @@ const initValues =
 
 const settings = new MetabaseSettings(initValues);
 
-if (typeof window !== "undefined") {
-  (
-    window as Window & { __metabaseSettings?: MetabaseSettings }
-  ).__metabaseSettings = settings;
-}
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default settings;

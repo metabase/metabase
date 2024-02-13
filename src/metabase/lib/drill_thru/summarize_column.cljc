@@ -1,4 +1,24 @@
 (ns metabase.lib.drill-thru.summarize-column
+  "Adds an aggregation clause based on the selected column. Could be either `sum`, `avg`, or `distinct`.
+
+  Entry points:
+
+  - Column header
+
+  Requirements:
+
+  - No aggregation or breakout clauses in the query
+
+  - Return operators that are compatible with the column. For `Summable` columns, all 3 are supported. For other
+    columns only `distinct`.
+
+  Query transformation:
+
+  - Add an aggregation clause with the selected operator
+
+  Question transformation:
+
+  - Set default display"
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]

@@ -255,6 +255,22 @@
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
+(defn get-linked-field-ids
+  "Retrieve a map relating paramater ids to field ids."
+  [dashcards]
+  (letfn [(targets [params card]
+            (into {}
+                  (for [param params
+                        :let  [clause (param-target->field-clause (:target param)
+                                                                  card)
+                               ids (mbql.u/match clause
+                                     [:field (id :guard integer?) _]
+                                     id)]
+                        :when (seq ids)]
+                    [(:parameter_id param) (set ids)])))]
+    (->> dashcards
+         (mapv (fn [{params :parameter_mappings card :card}] (targets params card)))
+         (apply merge-with into {}))))
 
 (defn- dashboard->param-field-values
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,

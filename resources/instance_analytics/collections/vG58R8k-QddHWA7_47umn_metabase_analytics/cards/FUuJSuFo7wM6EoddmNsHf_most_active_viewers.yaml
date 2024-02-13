@@ -99,141 +99,12 @@ visualization_settings:
     '["name","count"]':
       column_title: Question views
       show_mini_bar: true
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
+    : column_title: Person Name
     ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
     : column_title: User
   table.cell_column: model_id
   table.columns:
-  - enabled: true
-    fieldRef:
-    - aggregation
-    - 0
-    name: count
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - user_id
-    - join-alias: People - User
-    name: user_id_2
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - email
-    - join-alias: People - User
-    name: email
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - first_name
-    - join-alias: People - User
-    name: first_name
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - last_name
-    - join-alias: People - User
-    name: last_name
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - date_joined
-    - join-alias: People - User
-    name: date_joined
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - last_login
-    - join-alias: People - User
-    name: last_login
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - updated_at
-    - join-alias: People - User
-    name: updated_at
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - is_admin
-    - join-alias: People - User
-    name: is_admin
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - is_active
-    - join-alias: People - User
-    name: is_active
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - sso_source
-    - join-alias: People - User
-    name: sso_source
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - locale
-    - join-alias: People - User
-    name: locale
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - user_id
-    - join-alias: Group Members - User
-    name: user_id_3
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - group_id
-    - join-alias: Group Members - User
-    name: group_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - group_name
-    - join-alias: Group Members - User
-    name: group_name
   - enabled: true
     fieldRef:
     - field
@@ -244,15 +115,20 @@ visualization_settings:
     - base-type: type/Text
       join-alias: People - User
     name: full_name
-  - enabled: true
+  - enabled: false
     fieldRef:
     - field
     - - Internal Metabase Database
       - public
       - v_view_log
-      - entity_id
+      - user_id
     - base-type: type/Integer
-    name: entity_id
+    name: user_id
+  - enabled: true
+    fieldRef:
+    - aggregation
+    - 0
+    name: count
   table.pivot_column: end_timestamp
 serdes/meta:
 - id: FUuJSuFo7wM6EoddmNsHf

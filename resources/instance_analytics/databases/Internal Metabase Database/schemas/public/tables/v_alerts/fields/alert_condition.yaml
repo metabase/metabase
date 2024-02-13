@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: alert_condition
   model: Field
+database_indexed: null

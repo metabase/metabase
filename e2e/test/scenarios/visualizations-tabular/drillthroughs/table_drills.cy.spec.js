@@ -179,9 +179,9 @@ describe("scenarios > visualizations > drillthroughs > table_drills", function (
       cy.findByText(`≠`).should("be.visible");
     });
 
-    cy.findByTestId("time-series-mode-footer").within(() => {
+    cy.findByTestId("timeseries-chrome").within(() => {
       cy.findByText(`View`).should("be.visible");
-      cy.findByText(`All Time`).should("be.visible");
+      cy.findByText(`All time`).should("be.visible");
       cy.findByText(`by`).should("be.visible");
       cy.findByText(`Month`).should("be.visible");
     });

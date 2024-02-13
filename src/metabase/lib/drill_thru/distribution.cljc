@@ -1,4 +1,30 @@
 (ns metabase.lib.drill-thru.distribution
+  "Raw data with a breakout based on the selected column.
+
+  For date columns, sets \"Month\" as a temporal unit. For numeric columns, uses the default binning strategy. Other
+  columns are not changed.
+
+  Entry points:
+
+  - Column header
+
+  Requirements:
+
+  - No aggregation or breakout clauses in the query
+  - Column not `type/PK`, `type/SerializedJSON`, `type/Description`, `type/Comment`
+
+  Query transformation (last stage only):
+
+  - Remove all aggregation, breakout, orderBy, limit clauses
+
+  - Aggregate by \"count\" operator
+
+  - Breakout by the selected column. If the column is a date column, add \"Month\" temporal unit. If the column is a
+    numeric column, apply the default binning strategy. Otherwise use the column as it is.
+
+  Question transformation:
+
+  - Set \"bar\" display"
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]

@@ -1,5 +1,5 @@
-import type { StoryObj } from "@storybook/react";
-import styled from "@emotion/styled";
+import { useState } from "react";
+import { Box, TextInput, Stack } from "metabase/ui";
 import { Icon } from "./Icon";
 import { iconNames } from "./icons";
 
@@ -8,25 +8,31 @@ export default {
   component: Icon,
 };
 
-type Story = StoryObj<typeof Icon>;
+const Template = () => {
+  const [searchQuery, setSearchQuery] = useState("");
 
-export const Default: Story = {
-  render: () => (
-    <div>
-      {iconNames.map(icon => (
-        <IconBlock key={icon}>
-          <p>{icon}</p>
-          <Icon name={icon} />
-        </IconBlock>
-      ))}
-    </div>
-  ),
+  const filteredIconNames = iconNames.filter(name =>
+    name.includes(searchQuery.toLowerCase()),
+  );
+
+  return (
+    <Stack>
+      <TextInput
+        value={searchQuery}
+        type="search"
+        placeholder="Search"
+        onChange={e => setSearchQuery(e.target.value)}
+      />
+      <Box>
+        {filteredIconNames.map(icon => (
+          <Box key={icon} display="inline-block" w="100px" m="20px" ta="center">
+            <p>{icon}</p>
+            <Icon name={icon} />
+          </Box>
+        ))}
+      </Box>
+    </Stack>
+  );
 };
 
-const IconBlock = styled.div`
-  display: inline-block;
-  width: 100px;
-  margin: 20px;
-
-  text-align: center;
-`;
+export const Default = Template.bind({});

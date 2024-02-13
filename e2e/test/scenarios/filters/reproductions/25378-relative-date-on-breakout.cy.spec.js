@@ -28,30 +28,22 @@ describe("issue 25378", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    visitQuestionAdhoc(questionDetails);
+    visitQuestionAdhoc(questionDetails, { mode: "notebook" });
   });
 
   it("should be able to use relative date filter on a breakout after the aggregation (metabase#25378)", () => {
-    cy.icon("notebook").click();
+    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    popover().contains("Created At").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^Relative dates/).click();
-    // Change `days` to `months`
-    cy.findAllByTestId("select-button-content").contains("days").click();
-    popover().last().contains("months").click();
-    // Add "Starting from..." but it doesn't matter how many months ago we select
     popover().within(() => {
-      cy.icon("ellipsis").click();
+      cy.findByText("Created At: Month").click();
+      cy.findByText("Relative dates…").click();
+      cy.findByDisplayValue("days").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^Starting from/).click();
+    cy.findByRole("listbox").findByText("months").click();
+    popover().findByLabelText("Options").click();
+    popover().last().findByText("Starting from…").click();
 
-    cy.button("Add filter").click();
+    popover().button("Add filter").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;

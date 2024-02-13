@@ -17,7 +17,12 @@ import { AggregationDimension } from "../../Dimension";
 import MBQLClause from "./MBQLClause";
 
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
-const ORIGINAL_FIELD_TYPE_AGGREGATIONS = new Set(["min", "max"]);
+const ORIGINAL_FIELD_TYPE_AGGREGATIONS = new Set([
+  "sum",
+  "cum-sum",
+  "min",
+  "max",
+]);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Aggregation extends MBQLClause {

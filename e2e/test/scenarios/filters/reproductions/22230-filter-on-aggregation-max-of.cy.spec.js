@@ -1,8 +1,10 @@
 import {
+  assertQueryBuilderRowCount,
   restore,
   visitQuestionAdhoc,
   popover,
   visualize,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -27,26 +29,29 @@ describe("issue 22230", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
     visitQuestionAdhoc(questionDetails, { mode: "notebook" });
   });
 
   it("should be able to filter on an aggregation (metabase#22230)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    popover().contains("Max of Name").click();
-    cy.findByTestId("select-button").click();
-    cy.findByRole("option", { name: "Starts with" }).click();
+    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    cy.findByPlaceholderText("Enter some text").type("Zo").blur();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByText("Max of Name").click();
+      cy.findByDisplayValue("Is").click();
+    });
+    cy.findByRole("listbox").findByText("Starts with").click();
+
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter some text").type("Zo").blur();
+      cy.button("Add filter").click();
+    });
 
     visualize();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 2 rows").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Zora Schamberger").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Zoie Kozey").should("be.visible");
+
+    assertQueryBuilderRowCount(2);
+    queryBuilderMain(() => {
+      cy.findByText("Zora Schamberger").should("be.visible");
+      cy.findByText("Zoie Kozey").should("be.visible");
+    });
   });
 });

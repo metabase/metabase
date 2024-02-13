@@ -56,7 +56,7 @@
 
     ;; Differing types with a common base type that is more specific than `:type/*`
     (case-expr 1 1.1)
-    :type/Number))
+    :type/Float))
 
 (deftest ^:parallel coalesce-test
   (is (mc/validate

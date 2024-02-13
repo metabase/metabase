@@ -8,7 +8,7 @@ import type {
   ClickBehavior,
 } from "metabase-types/api";
 
-import { Heading } from "../ClickBehaviorSidebar.styled";
+import { Label } from "./CustomLinkText.styled";
 
 interface Props {
   clickBehavior: ArbitraryCustomDestinationClickBehavior;
@@ -28,8 +28,9 @@ export const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
 
   return (
     <div className="mt2 mb1">
-      <Heading>{t`Customize link text (optional)`}</Heading>
+      <Label htmlFor="link-text-template">{t`Customize link text (optional)`}</Label>
       <InputBlurChange
+        id="link-text-template"
         className="block full"
         placeholder={t`E.x. Details for {{Column Name}}`}
         value={clickBehavior.linkTextTemplate}

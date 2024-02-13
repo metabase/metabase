@@ -1560,3 +1560,69 @@ export const createProductsTableDatasetColumns = () => [
   createProductsRatingDatasetColumn(),
   createProductsCreatedAtDatasetColumn(),
 ];
+
+export const createPeopleStateDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createPeopleStateField(),
+    id: PEOPLE.STATE,
+    source: "fields",
+    field_ref: ["field", PEOPLE.STATE, null],
+    ...opts,
+  });
+
+export const createPeopleCityDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createPeopleCityField(),
+    id: PEOPLE.CITY,
+    source: "fields",
+    field_ref: ["field", PEOPLE.CITY, null],
+    ...opts,
+  });
+
+export const createPeopleLatitudeDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createPeopleLatitudeField(),
+    id: PEOPLE.LATITUDE,
+    source: "fields",
+    field_ref: ["field", PEOPLE.LATITUDE, null],
+    ...opts,
+  });
+
+export const createPeopleLongitudeDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createPeopleLongitudeField(),
+    id: PEOPLE.LONGITUDE,
+    source: "fields",
+    field_ref: ["field", PEOPLE.LONGITUDE, null],
+    ...opts,
+  });
+
+export const createReviewsReviewerDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createReviewsReviewerField(),
+    id: REVIEWS.REVIEWER,
+    source: "fields",
+    field_ref: ["field", REVIEWS.REVIEWER, null],
+    ...opts,
+  });
+
+export const createReviewsBodyDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createReviewsBodyField(),
+    id: REVIEWS.BODY,
+    source: "fields",
+    field_ref: ["field", REVIEWS.BODY, null],
+    ...opts,
+  });

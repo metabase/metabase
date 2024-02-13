@@ -3,7 +3,6 @@
    [clojure.math :as math]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.binning :as lib.schema.binning]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
@@ -30,8 +29,8 @@
   [:tuple
    [:enum :bin-width :num-bins]
    [:map
-    [:bin-width number?]
-    [:num-bins ::lib.schema.common/positive-int]]])
+    [:bin-width ::lib.schema.binning/bin-width]
+    [:num-bins  ::lib.schema.binning/num-bins]]])
 
 (mu/defn ^:private resolve-default-strategy :- ResolvedStrategy
   "Determine the approprate strategy & options to use when `:default` strategy was specified."

@@ -139,7 +139,8 @@
    :slack_configured     (slack/slack-configured?)
    :sso_configured       (google/google-auth-enabled)
    :instance_started     (snowplow/instance-creation)
-   :has_sample_data      (t2/exists? Database, :is_sample true)})
+   :has_sample_data      (t2/exists? Database, :is_sample true)
+   :help_link            (public-settings/help-link)})
 
 (defn- user-metrics
   "Get metrics based on user records.

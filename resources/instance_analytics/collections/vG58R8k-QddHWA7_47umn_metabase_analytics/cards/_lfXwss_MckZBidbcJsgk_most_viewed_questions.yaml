@@ -144,6 +144,32 @@ visualization_settings:
   - count
   graph.show_values: true
   table.cell_column: count
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    name: name
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    name: entity_id
+  - enabled: true
+    fieldRef:
+    - aggregation
+    - 0
+    name: count
 serdes/meta:
 - id: _lfXwss_MckZBidbcJsgk
   label: most_viewed_questions

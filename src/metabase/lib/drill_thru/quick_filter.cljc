@@ -1,4 +1,40 @@
 (ns metabase.lib.drill-thru.quick-filter
+  "Adds a filter clause with simple operators like `<`, `>`, `=`, `≠`, `contains`, does-not-contain`.
+
+  Entry points:
+
+  - Cell
+
+  Requirements:
+
+  - Column not `type/PK`, `type/FK`, or `type/Structured`
+
+  - Column can be filtered upon (exists in `filterableColumns`)
+
+  - For `null` value, allow only `=` and `≠` operators, which map to `is-null` and `not-null` filter operators
+
+  - For date and numeric columns, allow `<`, `>`, `=`, `≠` operators
+
+  - For string columns which have `type/Comment` or `type/Description` semantic type, allow `contains` and
+    `does-not-contain` operators.
+
+  - For other cases, including string columns, allow only `=` and `≠` operators.
+
+  - Return raw `value` in `displayInfo` for the drill. Is it used to show `Is ${value}` for string column operators.
+
+  Query transformation:
+
+  - Add a filter clause based on the selected column, value, and the operator
+
+  - Append a query stage if the selected column is coming from an aggregation or breakout clause.
+
+  Question transformation:
+
+  - None
+
+  There is a separate function `filterDrillDetails` which returns `query` and `column` used for the `FilterPicker`. It
+  should automatically append a query stage and find the corresponding _filterable_ column in this stage. It is used
+  for `contains` and `does-not-contain` operators."
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
@@ -21,20 +57,35 @@
    value]
   (let [field-ref (lib.ref/ref column)]
     (cond
-      (lib.types.isa/structured? column)    []
-      (= value :null)                       [{:name "=" :filter (operator :is-null  field-ref)}
-                                             {:name "≠" :filter (operator :not-null field-ref)}]
+      (lib.types.isa/structured? column)
+      []
+
+      (= value :null)
+      [{:name "=" :filter (operator :is-null  field-ref)}
+       {:name "≠" :filter (operator :not-null field-ref)}]
+
       (or (lib.types.isa/numeric? column)
-          (lib.types.isa/temporal? column)) (for [[op label] [[:<  "<"]
-                                                              [:>  ">"]
-                                                              [:=  "="]
-                                                              [:!= "≠"]]]
-                                              {:name   label
-                                               :filter (operator op field-ref value)})
-      :else                                 (for [[op label] [[:=  "="]
-                                                              [:!= "≠"]]]
-                                              {:name   label
-                                               :filter (operator op field-ref value)}))))
+          (lib.types.isa/temporal? column))
+      (for [[op label] [[:<  "<"]
+                        [:>  ">"]
+                        [:=  "="]
+                        [:!= "≠"]]]
+        {:name   label
+         :filter (operator op field-ref value)})
+
+      (lib.types.isa/string? column)
+      (for [[op label] [[:=  "="]
+                        [:!= "≠"]
+                        [:contains "contains"]
+                        [:does-not-contain "does-not-contain"]]]
+        {:name   label
+         :filter (operator op field-ref value)})
+
+      :else
+      (for [[op label] [[:=  "="]
+                        [:!= "≠"]]]
+        {:name   label
+         :filter (operator op field-ref value)}))))
 
 (mu/defn quick-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.quick-filter]
   "Filter the current query based on the value clicked.
@@ -46,11 +97,10 @@
 
   Note that this returns a single `::drill-thru` value with 1 or more `:operators`; these are rendered as a set of small
   buttons in a single row of the drop-down."
-  [query                  :- ::lib.schema/query
-   stage-number           :- :int
-   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  [query                                :- ::lib.schema/query
+   stage-number                         :- :int
+   {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             ;; (editable? query stage-number)
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
              (not (lib.types.isa/primary-key? column))
@@ -66,8 +116,9 @@
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]
-  {:type      (:type drill-thru)
-   :operators (map :name (:operators drill-thru))})
+  (-> (select-keys drill-thru [:type :operators :value])
+      (update :operators (fn [operators]
+                           (mapv :name operators)))))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/quick-filter :- ::lib.schema/query
   [_query                      :- ::lib.schema/query

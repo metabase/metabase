@@ -861,6 +861,13 @@
        post-process-graph
        add-impersonations-to-permissions-graph))
 
+(defn ->v1-paths
+  "keep v1 paths, implicitly remove v2"
+  [group-id->permissions]
+  (m/map-vals (fn [paths]
+                (filter (fn [path] (mc/validate [:re path-regex-v1] path)) paths))
+              group-id->permissions))
+
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code. Keeps v1 paths, hence implictly removes v2 paths.
@@ -880,13 +887,24 @@
         group-id->v1-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (h2x/literal "/")]
                                                            [:like :object (h2x/literal "%/db/%")]])
-                                ;;  keep v1 paths, implicitly remove v2
-                                (m/map-vals (fn [paths]
-                                              (filter (fn [path]
-                                                        (mc/validate [:re path-regex-v1] path))
-                                                      paths))))]
+                                ->v1-paths)]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v1-paths)}))
+
+(defn data-graph-for-db
+  "Efficiently returns a data permissions graph, which has all the permissions info for `db-id`."
+  [db-id]
+  (let [group-id->permissions (permissions-by-group-ids [:like :object (h2x/literal (str "%/db/" db-id "/%"))])
+        group-id->v1-paths (->v1-paths group-id->permissions)]
+    (generate-graph [db-id] group-id->v1-paths)))
+
+(defn data-graph-for-group
+  "Efficiently returns a data permissions graph, which has all the permissions info for the permission group at `group-id`."
+  [group-id]
+  (let [db-ids (t2/select-pks-set :model/Database)
+        group-id->permissions (permissions-by-group-ids [:= :group_id group-id])
+        group-id->paths (select-keys (->v1-paths group-id->permissions) [group-id])]
+    (generate-graph db-ids group-id->paths)))
 
 (defn data-perms-graph-v2
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.

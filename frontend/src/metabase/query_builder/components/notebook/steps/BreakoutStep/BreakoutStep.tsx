@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
-import ClauseStep from "../ClauseStep";
+import { ClauseStep } from "../ClauseStep";
 
 const breakoutTetherOptions = {
   attachment: "top left",
@@ -66,18 +66,19 @@ function BreakoutStep({
       isLastOpened={isLastOpened}
       tetherOptions={breakoutTetherOptions}
       renderName={renderBreakoutName}
-      renderPopover={(breakout, breakoutIndex) => (
+      renderPopover={({ item: breakout, index }) => (
         <BreakoutPopover
           query={topLevelQuery}
           stageIndex={stageIndex}
           breakout={breakout}
-          breakoutIndex={breakoutIndex}
+          breakoutIndex={index}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
         />
       )}
       onRemove={handleRemoveBreakout}
       data-testid="breakout-step"
+      withLegacyPopover
     />
   );
 }

@@ -121,6 +121,7 @@ export function DashCardActionsPanel({
       buttons.push(
         <DashCardActionButton
           key="click-behavior-tooltip"
+          aria-label={t`Click behavior`}
           tooltip={t`Click behavior`}
           analyticsEvent="Dashboard;Open Click Behavior Sidebar"
           onClick={showClickBehaviorSidebar}

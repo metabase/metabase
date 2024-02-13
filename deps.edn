@@ -217,7 +217,7 @@
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.46.0"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:sha "9c97bcb6d4de116325e651b40973fd0a75b7ae21"}
+    io.github.metabase/hawk      {:sha "539eefaa31a43d52d7c9b5731f471bb6742e7131"}
     jonase/eastwood              {:mvn/version "1.4.0"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}

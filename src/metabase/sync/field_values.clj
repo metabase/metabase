@@ -9,7 +9,6 @@
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -28,8 +27,8 @@
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
   (let [field-values (t2/select-one FieldValues :field_id (u/the-id field) :type :full)]
     (if (field-values/inactive? field-values)
-      (log/debug (trs "Field {0} has not been used since {1}. Skipping..."
-                      (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values)))))
+      (log/debugf "Field %s has not been used since %s. Skipping..."
+                  (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
       (field-values/create-or-update-full-field-values! field))))
 
 (defn- update-field-value-stats-count [counts-map result]
@@ -67,11 +66,11 @@
   (apply merge-with + (map update-field-values-for-table! tables)))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
-  (trs "Updated {0} field value sets, created {1}, deleted {2} with {3} errors"
+  (format "Updated %d field value sets, created %d, deleted %d with %d errors"
        updated created deleted errors))
 
 (defn- delete-expired-advanced-field-values-summary [{:keys [deleted]}]
-  (trs "Deleted {0} expired advanced fieldvalues" deleted))
+  (format "Deleted %d expired advanced fieldvalues" deleted))
 
 (defn- delete-expired-advanced-field-values-for-field!
   [field]

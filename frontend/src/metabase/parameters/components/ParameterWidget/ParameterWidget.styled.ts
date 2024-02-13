@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import FieldSet from "metabase/components/FieldSet";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
 interface ParameterFieldSetProps {
@@ -43,11 +44,16 @@ export const ParameterContainer = styled.div<ParameterContainerProps>`
   border-radius: 0.5rem;
   cursor: pointer;
   font-weight: bold;
-  width: 170px;
+  min-width: 170px;
   margin-right: 0.5rem;
   margin-bottom: 0.5rem;
   padding: 0.5rem;
   color: ${props => props.isEditingParameter && color("white")};
   background-color: ${props =>
     props.isEditingParameter ? color("brand") : color("white")};
+`;
+
+export const SettingsIcon = styled(Icon)`
+  margin-left: auto;
+  padding-left: 1rem;
 `;

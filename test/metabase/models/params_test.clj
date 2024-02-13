@@ -127,3 +127,35 @@
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
              (params/card->template-tag-field-ids card))))))
+
+(deftest get-linked-field-ids-test
+  (testing "get-linked-field-ids basic test"
+    (is (= {"foo" #{256}
+            "bar" #{267}}
+           (params/get-linked-field-ids
+            [{:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}]))))
+  (testing "get-linked-field-ids multiple fields to one param test"
+    (is (= {"foo" #{256 10}
+            "bar" #{267}}
+           (params/get-linked-field-ids
+            [{:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
+             {:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}]))))
+  (testing "get-linked-field-ids-test misc fields"
+    (is (= {"1" #{1} "2" #{2} "3" #{3} "4" #{4} "5" #{5}}
+           (params/get-linked-field-ids
+            [{:parameter_mappings
+              [{:parameter_id "1" :target [:dimension [:field 1 {}]]}
+               {:parameter_id "2" :target [:dimension [:field 2 {:x true}]]}
+               {:parameter_id "wow" :target [:dimension [:field "wow" {:base-type :type/Integer}]]}
+               {:parameter_id "3" :target [:dimension [:field 3 {:source-field 1}]]}
+               {:parameter_id "4" :target [:dimension [:field 4 {:binning {:strategy :num-bins, :num-bins 1}}]]}
+               {:parameter_id "5" :target [:dimension [:field 5]]}]}]))))
+  (testing "get-linked-field-ids-test no fields"
+    (is (= {}
+           (params/get-linked-field-ids
+            [{:parameter_mappings []}])))))

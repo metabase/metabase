@@ -10,6 +10,7 @@ import {
   leftSidebar,
   main,
   modal,
+  getIframeBody,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -122,9 +123,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("See these Orders").click();
     // filters are applied
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Source is Affiliate");
+    cy.findByText("User → Source is Affiliate");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category is Doohickey");
+    cy.findByText("Product → Category is Doohickey");
     // data loads
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("45.04");
@@ -139,7 +140,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     popover().within(() => cy.findByText("=").click());
     // filter is applied
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category is Doohickey");
+    cy.findByText("Product → Category is Doohickey");
     // filter out affiliate as a source
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Affiliate").click();
@@ -147,7 +148,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     popover().within(() => cy.findByText("≠").click());
     // filter is applied and value is gone from the left header
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Source is not Affiliate");
+    cy.findByText("User → Source is not Affiliate");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Affiliate").should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -619,7 +620,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       popover().within(() => cy.findByText("=").click()); // drill with additional filter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Source is Google"); // filter was added
+      cy.findByText("User → Source is Google"); // filter was added
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row totals"); // it's still a pivot table
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1239,16 +1240,6 @@ function dragColumnHeader(el, xDistance = 50) {
       })
       .trigger("mouseup");
   });
-}
-
-function getIframeBody(selector = "iframe") {
-  return cy
-    .get(selector)
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.null")
-    .then(cy.wrap);
 }
 
 function openColumnSettings(columnName) {

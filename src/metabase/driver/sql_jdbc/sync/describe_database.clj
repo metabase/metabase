@@ -99,13 +99,13 @@
           (.rollback conn))
         false))))
 
-(defn- db-tables
+(defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
   schema. Returns a reducible sequence of results."
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   (with-open [rset (.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
                                (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
-                                                   "EXTERNAL TABLE"]))]
+                                                   "EXTERNAL TABLE" "DYNAMIC_TABLE"]))]
     (loop [acc []]
       (if-not (.next rset)
         acc
@@ -127,7 +127,7 @@
     (eduction
      (comp (mapcat (fn [schema]
                      (db-tables driver metadata schema db-name-or-nil)))
-           (filter (fn [{table-schema :schema, table-name :name}]
+           (filter (fn [{table-schema :schema table-name :name}]
                      (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name))))
      (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
                                                         schema-inclusion-filters schema-exclusion-filters))))

@@ -7,6 +7,7 @@ import type {
   MetadataProvider,
   MetricMetadata,
   Query,
+  SegmentMetadata,
 } from "./types";
 import type LegacyMetadata from "./metadata/Metadata";
 
@@ -30,6 +31,10 @@ export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
 }
 
+export function stageCount(query: Query): number {
+  return ML.stage_count(query);
+}
+
 export function appendStage(query: Query): Query {
   return ML.append_stage(query);
 }
@@ -50,7 +55,7 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause: Clause | ColumnMetadata | MetricMetadata | Join,
+  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }

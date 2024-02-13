@@ -6,7 +6,7 @@
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
    [metabase.sync.interface :as i]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -28,7 +28,7 @@
       (try
         (t/zone-id zone-id)
         (catch Throwable e
-          (throw (ex-info (i18n/trs "Invalid timezone {0}: {1}" (pr-str zone-id) (ex-message e))
+          (throw (ex-info (trs "Invalid timezone {0}: {1}" (pr-str zone-id) (ex-message e))
                           {:zone-id zone-id}
                           e)))))
     zone-id))
@@ -39,7 +39,7 @@
   [database :- i/DatabaseInstance]
   (let [driver  (driver.u/database->driver database)
         zone-id (driver/db-default-timezone driver database)]
-    (log/infof (i18n/trs "{0} database {1} default timezone is {2}" driver (pr-str (:id database)) (pr-str zone-id)))
+    (log/infof "%s database %s default timezone is %s" driver (pr-str (:id database)) (pr-str zone-id))
     (validate-zone-id driver zone-id)
     (let [zone-id (some-> zone-id str)
           zone-id (if (= zone-id "Z") "UTC" zone-id)]

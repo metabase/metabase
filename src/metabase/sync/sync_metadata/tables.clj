@@ -14,7 +14,6 @@
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]
@@ -90,7 +89,7 @@
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
-  (log/info (trs "Found new version for DB: {0}" (:version db-metadata)))
+  (log/infof "Found new version for DB: %s" (:version db-metadata))
   (t2/update! Database (u/the-id database)
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
@@ -128,7 +127,7 @@
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
    new-tables :- [:set i/DatabaseMetadataTable]]
-  (log/info (trs "Found new tables:")
+  (log/info "Found new tables:"
             (for [table new-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [table new-tables]
@@ -138,7 +137,7 @@
   "Mark any `old-tables` belonging to `database` as inactive."
   [database   :- i/DatabaseInstance
    old-tables :- [:set i/DatabaseMetadataTable]]
-  (log/info (trs "Marking tables as inactive:")
+  (log/info "Marking tables as inactive:"
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, :as _table} old-tables]
@@ -152,7 +151,7 @@
   "Update description for any `changed-tables` belonging to `database`."
   [database       :- i/DatabaseInstance
    changed-tables :- [:set i/DatabaseMetadataTable]]
-  (log/info (trs "Updating description for tables:")
+  (log/info "Updating description for tables:"
             (for [table changed-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, description :description} changed-tables]

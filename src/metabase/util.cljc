@@ -156,18 +156,20 @@
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
   conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
-  ^String [^CharSequence s]
-  #?(:clj  (.. s toString (toLowerCase (Locale/US)))
-     :cljs (.toLowerCase s)))
+  ^String [s]
+  (when s
+    #?(:clj  (.toLowerCase (str s) (Locale/US))
+       :cljs (.toLowerCase (str s)))))
 
 (defn upper-case-en
   "Locale-agnostic version of `clojure.string/upper-case`.
   `clojure.string/upper-case` uses the default locale in conversions, turning
   `id` into `İD`, in the Turkish locale. This function always uses the
   `en-US` locale."
-  ^String [^CharSequence s]
-  #?(:clj  (.. s toString (toUpperCase (Locale/US)))
-     :cljs (.toUpperCase s)))
+  ^String [s]
+  (when s
+    #?(:clj  (.toUpperCase (str s) (Locale/US))
+       :cljs (.toUpperCase (str s)))))
 
 (defn capitalize-en
   "Locale-agnostic version of [[clojure.string/capitalize]]."

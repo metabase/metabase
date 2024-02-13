@@ -4,6 +4,10 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.49.0
+- A new driver method has been added [[driver/describe-table-indexes]] along with a new feature `:index-info`.
+  This method is used to get a set of column names that are indexed or are the first columns in a composite index.
+
 ## Metabase 0.48.0
 
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
@@ -77,6 +81,9 @@ title: Driver interface changelog
 
 - The multimethod `metabase.driver.sql-jdbc.execute/inject-remark` has been added. It allows JDBC-based drivers to
   override the default behavior of how SQL query remarks are added to queries (prepending them as a comment).
+
+- The arity of multimethod `metabase.driver.sql-jdbc.sync.interface/fallback-metadata-query` has been updated from 3 to 4,
+  it now takes an additional `db` argument. The new function arguments are: `[driver db-name-or-nil schema table]`.
 
 ## Metabase 0.47.0
 

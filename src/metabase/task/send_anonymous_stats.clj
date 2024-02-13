@@ -7,19 +7,18 @@
    [metabase.analytics.stats :as stats]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (jobs/defjob ^{:doc "If we can collect usage data, do so and send it home"} SendAnonymousUsageStats [_]
   (when (public-settings/anon-tracking-enabled)
-    (log/debug (trs "Sending anonymous usage stats."))
+    (log/debug "Sending anonymous usage stats.")
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
       (stats/phone-home-stats!)
       (catch Throwable e
-        (log/error e (trs "Error sending anonymous usage stats"))))))
+        (log/error e "Error sending anonymous usage stats")))))
 
 (def ^:private job-key     "metabase.task.anonymous-stats.job")
 (def ^:private trigger-key "metabase.task.anonymous-stats.trigger")

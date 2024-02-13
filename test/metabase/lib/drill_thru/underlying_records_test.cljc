@@ -5,12 +5,17 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
-       :clj  ([java-time.api :as jt]))))
+       :clj  ([java-time.api :as jt]
+              [metabase.util.malli.fn :as mu.fn]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel returns-underlying-records-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -36,6 +41,20 @@
     :column-name "max"
     :expected    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}}))
 
+(deftest ^:parallel returns-underlying-records-test-4-table-name-correct-for-nested-query
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/underlying-records
+    :click-type   :cell
+    :query-type   :aggregated
+    :column-name  "count"
+    :custom-query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :orders))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
+                                                        (meta/id :orders :created-at))))
+    :custom-row   {"CREATED_AT" "2023-12-01"
+                   "count"      9}
+    :expected     {:type :drill-thru/underlying-records, :row-count 9, :table-name "Mock orders card"}}))
+
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "underlying-records should only get shown once for aggregated query (#34439)"
     (let [test-case           {:click-type  :cell
@@ -52,9 +71,7 @@
                                   drills))))))))))
 
 
-#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
-
-(def last-month
+(def ^:private last-month
   #?(:cljs (let [now    (js/Date.)
                  year   (.getFullYear now)
                  month  (.getMonth now)]
@@ -80,7 +97,11 @@
                            :column-ref (lib/ref breakout)
                            :value      value})
           context       (merge agg-dim
-                               {:row        (cons agg-dim breakout-dims)
+                               ;; rows aren't supposed to use `:null`, so change them to `nil` instead.
+                               {:row        (for [value (cons agg-dim breakout-dims)]
+                                              (update value :value (fn [v]
+                                                                     (when-not (= v :null)
+                                                                       v))))
                                 :dimensions breakout-dims})]
       (is (=? {:lib/type :mbql/query
                :stages [{:filters     (exp-filters-fn agg-dim breakout-dims)
@@ -252,3 +273,143 @@
                                       (meta/id :orders :quantity)]
                                      30.0]]}]}
               query')))))
+
+(deftest ^:parallel chart-legend-click-test
+  (testing "chart legend clicks have no `column` set, but should still work (#35343)"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (meta/field-metadata :products :category))
+                       (lib/breakout (meta/field-metadata :orders :created-at)))
+          columns  (lib/returned-columns query)
+          category (m/find-first #(= (:name %) "CATEGORY") columns)
+          context  {:column     nil
+                    :column-ref nil
+                    :value      nil
+                    :dimensions [{:column     category
+                                  :column-ref (lib/ref category)
+                                  :value      "Gadget"}]}
+          drills   (lib.drill-thru/available-drill-thrus query context)
+          drill    (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                 drills)]
+      (is (=? {:type       :drill-thru/underlying-records
+               :row-count  2
+               :table-name "Orders"
+               :dimensions [{}]}
+              drill))
+      (is (=? {:lib/type :mbql/query
+               :stages [{:filters     [[:= {} [:field {} (meta/id :products :category)] "Gadget"]]
+                         :aggregation (symbol "nil #_\"key is not present.\"")
+                         :breakout    (symbol "nil #_\"key is not present.\"")
+                         :fields      (symbol "nil #_\"key is not present.\"")}]}
+              (lib.drill-thru/drill-thru query -1 drill))))))
+
+(deftest ^:parallel preserve-temporal-bucket-test
+  (testing "preserve the temporal bucket on a breakout column in the previous stage (#13504 #36582)"
+    (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                             (lib/aggregate (lib/count))
+                             (lib/filter (lib/> (meta/field-metadata :orders :total) 50))
+                             (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                               (lib/with-temporal-bucket :month)))
+                             lib/append-stage)
+          count-col      (m/find-first #(= (:name %) "count")
+                                       (lib/returned-columns base-query))
+          _              (is (some? count-col))
+          query          (lib/filter base-query (lib/> count-col 100))
+          created-at-col (m/find-first #(= (:name %) "CREATED_AT")
+                                       (lib/returned-columns query))
+          context        {:column     count-col
+                          :column-ref (lib/ref count-col)
+                          :value      127
+                          :row        [{:column     created-at-col,
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-03-01T00:00:00Z"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      127}]
+                          :dimensions [{:column     created-at-col
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-03-01T00:00:00Z"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      127}]}
+          drill          (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                       (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? {:stages [{:filters [[:> {}
+                                    [:field {} (meta/id :orders :total)]
+                                    50]
+                                   [:= {}
+                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    "2023-03-01T00:00:00Z"]]}]}
+              (lib/drill-thru query drill))))))
+
+(deftest ^:parallel negative-aggregation-values-display-info-test
+  (testing "should use the default row count for aggregations with negative values (#36143)"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
+                                                          (meta/id :orders :created-at))))
+          count-col (m/find-first #(= (:name %) "count")
+                                  (lib/returned-columns query))
+          _         (is (some? count-col))
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      -10,
+                     :row        [{:column     (meta/field-metadata :orders :created-at)
+                                   :column-ref (lib/ref (meta/field-metadata :orders :created-at))
+                                   :value      "2020-01-01"}
+                                  {:column     count-col
+                                   :column-ref (lib/ref count-col)
+                                   :value      -10}]
+                     :dimensions [{:column     (meta/field-metadata :orders :created-at)
+                                   :column-ref (lib/ref (meta/field-metadata :orders :created-at)),
+                                   :value      "2020-01-01"}]}
+          drill     (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                  (lib/available-drill-thrus query -1 context))]
+      (is (=? {:lib/type   :metabase.lib.drill-thru/drill-thru
+               :type       :drill-thru/underlying-records
+               :row-count  2
+               :table-name "Orders"
+               :dimensions [{:column     {:name "CREATED_AT"}
+                             :column-ref [:field {} (meta/id :orders :created-at)]
+                             :value      "2020-01-01"}]
+               :column-ref [:aggregation {} string?]}
+              drill))
+      ;; display info currently doesn't include a `display-name` for drill thrus... we can fix this later.
+      (binding #?(:clj [mu.fn/*enforce* false] :cljs [])
+        (is (=? {:type       :drill-thru/underlying-records
+                 :row-count  2
+                 :table-name "Orders"}
+                (lib/display-info query -1 drill)))))))
+
+(deftest ^:parallel nil-aggregation-value-test
+  (testing "nil dimension value for binned column should return a valid query (#11345 #36581)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (-> (meta/field-metadata :orders :discount)
+                                             (lib/with-binning {:strategy :default}))))
+          count-col    (m/find-first #(= (:name %) "count")
+                                     (lib/returned-columns query))
+          _            (is (some? count-col))
+          discount-col (m/find-first #(= (:name %) "DISCOUNT")
+                                     (lib/returned-columns query))
+          _            (is (some? discount-col))
+          context      {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value      16845
+                        :row        [{:column     discount-col
+                                      :column-ref (lib/ref discount-col)
+                                      :value      nil}
+                                     {:column     count-col
+                                      :column-ref (lib/ref count-col)
+                                      :value      16845}]
+                        :dimensions [{:column     discount-col
+                                      :column-ref (lib/ref discount-col)
+                                      :value      nil}]}
+          drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                              (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? {:stages [{:filters [[:is-null
+                                    {}
+                                    [:field {:binning (symbol "nil #_\"key is not present.\"")} (meta/id :orders :discount)]]]}]}
+              (lib/drill-thru query drill))))))

@@ -6,9 +6,9 @@ import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import {
   ClickActionButtonIcon,
+  ClickActionButtonTextIcon,
   FormattingControl,
   HorizontalClickActionButton,
-  IconWrapper,
   InfoControl,
   SortControl,
   TokenActionButton,
@@ -82,14 +82,12 @@ export const ClickActionControl = ({
         <HorizontalClickActionButton
           small
           icon={
-            action.icon ? (
-              typeof action.icon === "string" ? (
-                <ClickActionButtonIcon
-                  name={action.icon as unknown as IconName}
-                />
-              ) : (
-                <IconWrapper>{action.icon}</IconWrapper>
-              )
+            action.iconText ? (
+              <ClickActionButtonTextIcon>
+                {action.iconText}
+              </ClickActionButtonTextIcon>
+            ) : action.icon ? (
+              <ClickActionButtonIcon name={action.icon} />
             ) : null
           }
           iconColor={color("brand")}

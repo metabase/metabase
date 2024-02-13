@@ -106,18 +106,6 @@ describe("URLs", () => {
       cy.location("pathname").should("eq", "/collection/users");
     });
 
-    it("should slugify users' personal collection URLs", () => {
-      cy.visit("/collection/users");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(getFullName(normal)).click();
-      cy.location("pathname").should(
-        "eq",
-        `/collection/${NORMAL_PERSONAL_COLLECTION_ID}-${getUsersPersonalCollectionSlug(
-          normal,
-        )}`,
-      );
-    });
-
     it("should open slugified URLs correctly", () => {
       cy.visit(`/collection/${FIRST_COLLECTION_ID}-first-collection`);
       cy.findByTestId("collection-name-heading").should(

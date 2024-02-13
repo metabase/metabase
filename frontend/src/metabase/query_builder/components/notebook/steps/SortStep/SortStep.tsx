@@ -4,7 +4,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
-import ClauseStep from "../ClauseStep";
+import { ClauseStep } from "../ClauseStep";
 import { SortDirectionButton } from "./SortStep.styled";
 
 function SortStep({
@@ -62,17 +62,18 @@ function SortStep({
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
-      renderPopover={(orderBy, orderByIndex) => (
+      renderPopover={({ item: orderBy, index }) => (
         <SortPopover
           query={topLevelQuery}
           stageIndex={stageIndex}
           orderBy={orderBy}
-          orderByIndex={orderByIndex}
+          orderByIndex={index}
           onAddOrderBy={handleAddOrderBy}
           onUpdateOrderByColumn={handleUpdateOrderByColumn}
         />
       )}
       onRemove={handleRemoveOrderBy}
+      withLegacyPopover
     />
   );
 }

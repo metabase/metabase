@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: is_admin
   model: Field
+database_indexed: null

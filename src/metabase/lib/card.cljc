@@ -6,6 +6,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -69,7 +70,7 @@
    (->card-metadata-column metadata-providerable nil col))
 
   ([metadata-providerable :- lib.metadata/MetadataProviderable
-    card-or-id            :- [:maybe [:or ::lib.schema.id/card lib.metadata/CardMetadata]]
+    card-or-id            :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     col                   :- :map]
    (let [col (-> col
                  (update-keys u/->kebab-case-en)
@@ -89,7 +90,13 @@
        :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)}
       (when card-or-id
         {:lib/card-id (u/the-id card-or-id)})
-      (when *force-broken-card-refs*
+      (when (and *force-broken-card-refs*
+                 ;; never force broken refs for datasets, because datasets can have give columns with completely
+                 ;; different names the Field ID of a different column, somehow. See #22715
+                 (or
+                  ;; we can only do this check if `card-or-id` is passed in.
+                  (not card-or-id)
+                  (not (:dataset (lib.metadata/card metadata-providerable (u/the-id card-or-id))))))
         {::force-broken-id-refs true}
         #_(when-let [legacy-join-alias (:source-alias col)]
             {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))}))))))

@@ -1,15 +1,16 @@
 import { t } from "ttag";
-import { combineReducers, handleActions } from "metabase/lib/redux";
+import { createReducer } from "@reduxjs/toolkit";
+import { combineReducers } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_ADMIN_NAV_ITEMS,
   PLUGIN_ADMIN_TOOLS,
 } from "metabase/plugins";
-import { REFRESH_CURRENT_USER } from "metabase/redux/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";
 import { isNotNull } from "metabase/lib/types";
-import { DISABLE_ADMIN_PATH, DISABLE_NOTICE } from "./actions";
+import { disableNotice } from "./actions";
 
 const getAdminPaths: () => AdminPath[] = () => {
   const items: AdminPath[] = [
@@ -59,46 +60,35 @@ const getAdminPaths: () => AdminPath[] = () => {
   return items;
 };
 
-const paths = handleActions(
-  {
-    [DISABLE_ADMIN_PATH]: {
-      next: (state: AdminPath[], { payload: pathKey }: { payload: any }) => {
-        return state.filter(path => path.key !== pathKey);
-      },
-    },
-    [REFRESH_CURRENT_USER]: {
-      next: (state: AdminPath[], { payload: user }: { payload: any }) => {
-        if (user.is_superuser) {
-          return state;
-        }
+const paths = createReducer(getAdminPaths(), builder => {
+  builder.addCase(refreshCurrentUser.fulfilled, (state, { payload: user }) => {
+    if (user?.is_superuser) {
+      return state;
+    }
 
-        const allowedPaths = PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.map(getter => {
-          return getter(user);
-        })
-          .flat()
-          .reduce((acc, pathKey) => {
-            acc.add(pathKey);
-            return acc;
-          }, new Set<AdminPathKey>());
+    const allowedPaths = PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.map(getter => {
+      return getter(user);
+    })
+      .flat()
+      .reduce((acc, pathKey) => {
+        acc.add(pathKey);
+        return acc;
+      }, new Set<AdminPathKey>());
 
-        return state
-          .filter(path => (allowedPaths.has(path.key) ? path : null))
-          .filter(isNotNull);
-      },
-    },
-  },
-  getAdminPaths(),
-);
+    return state
+      .filter(path => (allowedPaths.has(path.key) ? path : null))
+      .filter(isNotNull);
+  });
+});
 
-const isNoticeEnabled = handleActions(
-  {
-    [DISABLE_NOTICE]: { next: () => false },
-  },
+const isNoticeEnabled = createReducer(
   Settings.deprecationNoticeEnabled(),
+  builder => {
+    builder.addCase(disableNotice.fulfilled, () => false);
+  },
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default combineReducers({
+export const appReducer = combineReducers({
   isNoticeEnabled,
   paths,
-} as any);
+});

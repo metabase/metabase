@@ -305,6 +305,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           className="MB-Select"
           alwaysExpanded
           width={width}
+          role="listbox"
           itemIsSelected={this.itemIsSelected}
           itemIsClickable={this.itemIsClickable}
           renderItemName={this.props.optionNameFn}

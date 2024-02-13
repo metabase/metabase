@@ -110,3 +110,29 @@ export async function publishRelease({
 
   return github.rest.repos.createRelease(payload);
 }
+
+export async function getChangelog({
+  version,
+  owner,
+  repo,
+  github,
+}: ReleaseProps) {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+  const issues = await getMilestoneIssues({ version, github, owner, repo });
+
+  const bugFixes = issues.filter(isBugIssue);
+  const enhancements = issues.filter(issue => !isBugIssue(issue));
+
+  const notes = `
+## Enhancements
+${enhancements?.map(formatIssue).join("\n") ?? ""}
+
+
+## Bug fixes
+${bugFixes?.map(formatIssue).join("\n") ?? ""}
+`;
+
+  return notes;
+}

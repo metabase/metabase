@@ -4,7 +4,7 @@ import type {
   ColumnMetadata,
   ExpressionArg,
   ExpressionClause,
-  ExpressionOperator,
+  ExpressionOperatorName,
   ExpressionOptions,
   ExpressionParts,
   FilterClause,
@@ -21,14 +21,9 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
-export function expressionName(clause: ExpressionClause): string {
-  return ML.expression_name(clause);
-}
-
-export function withExpressionName(
-  clause: ExpressionClause,
-  newName: string,
-): ExpressionClause {
+export function withExpressionName<
+  Clause extends AggregationClause | ExpressionClause,
+>(clause: Clause, newName: string): Clause {
   return ML.with_expression_name(clause, newName);
 }
 
@@ -56,7 +51,7 @@ export function expressionParts(
 }
 
 export function expressionClause(
-  operator: ExpressionOperator,
+  operator: ExpressionOperatorName,
   args: (ExpressionArg | ExpressionClause)[],
   options: ExpressionOptions | null = null,
 ): ExpressionClause {

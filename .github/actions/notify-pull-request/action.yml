@@ -27,7 +27,7 @@ runs:
           }
 
           github.rest.issues.createComment({
-            issue_number: context.payload.number,
+            issue_number: context.payload.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
             body,

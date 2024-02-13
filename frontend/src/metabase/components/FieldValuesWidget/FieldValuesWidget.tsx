@@ -78,6 +78,8 @@ export interface IFieldValuesWidgetProps {
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
+
+  containerWidth?: number | string;
   maxWidth?: number;
   minWidth?: number;
 
@@ -115,6 +117,7 @@ export function FieldValuesWidgetInner({
   alwaysShowOptions = true,
   style = {},
   formatOptions = {},
+  containerWidth,
   maxWidth = 500,
   minWidth,
   expand,
@@ -429,7 +432,7 @@ export function FieldValuesWidgetInner({
       <div
         data-testid="field-values-widget"
         style={{
-          width: expand ? maxWidth : undefined,
+          width: expand ? maxWidth : containerWidth,
           minWidth: minWidth,
           maxWidth: maxWidth,
         }}

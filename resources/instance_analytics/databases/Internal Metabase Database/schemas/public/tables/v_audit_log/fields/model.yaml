@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: model
   model: Field
+database_indexed: null

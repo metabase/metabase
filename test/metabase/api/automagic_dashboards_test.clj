@@ -362,9 +362,9 @@
                                                    :linked-field-id %reviews.product_id}
                                                   {:linked-table-id $$orders
                                                    :linked-field-id %orders.product_id}])})]
-          (is (=? [{:id   #hawk/malli Tab-Id-Schema
+          (is (=? [{:id   (mt/malli=? Tab-Id-Schema)
                     :name "A look at Reviews" :position 0}
-                   {:id   #hawk/malli Tab-Id-Schema
+                   {:id   (mt/malli=? Tab-Id-Schema)
                     :name "A look at Orders" :position 1}]
                   (:tabs dash)))
           (testing "The first card for each tab is a linked model card to the source model"
@@ -432,9 +432,9 @@
                                                         :linked-field-id %reviews.product_id}
                                                        {:linked-table-id $$orders
                                                         :linked-field-id %orders.product_id}])})]
-              (is (=? [{:id   #hawk/malli Tab-Id-Schema
+              (is (=? [{:id   (mt/malli=? Tab-Id-Schema)
                         :name "A look at Reviews" :position 0}
-                       {:id   #hawk/malli Tab-Id-Schema
+                       {:id   (mt/malli=? Tab-Id-Schema)
                         :name "A look at Orders" :position 1}]
                       (:tabs dash)))
               (testing "All query cards have the correct filters"

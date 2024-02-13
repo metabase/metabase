@@ -32,7 +32,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
     cy.button("Done").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discount > Quantity");
+    cy.findByText("Discount is greater than Quantity");
 
     cy.findByRole("button", { name: "Summarize" }).click();
 

@@ -11,14 +11,10 @@ table_id:
 database_type: int4
 base_type: type/Integer
 effective_type: type/Integer
-semantic_type: type/FK
+semantic_type: null
 database_is_auto_increment: false
 database_required: false
-fk_target_field_id:
-- Internal Metabase Database
-- public
-- v_content
-- id
+fk_target_field_id: null
 dimensions: []
 json_unfolding: false
 parent_id: null
@@ -41,3 +37,4 @@ serdes/meta:
   model: Table
 - id: action_model_id
   model: Field
+database_indexed: null

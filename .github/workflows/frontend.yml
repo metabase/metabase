@@ -72,6 +72,9 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: buildjet-2vcpu-ubuntu-2204
     timeout-minutes: 60
+    env:
+      JEST_JUNIT_OUTPUT_DIR: ./target/junit
+      JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
@@ -92,6 +95,16 @@ jobs:
         with:
           files: ./coverage/lcov.info
           flags: front-end
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit
+          output-name: frontend-unit
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
 
   fe-tests-timezones:
     needs: files-changed

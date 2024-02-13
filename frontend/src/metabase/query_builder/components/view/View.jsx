@@ -10,11 +10,12 @@ import QueryValidationError from "metabase/query_builder/components/QueryValidat
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
+import { TimeseriesChrome } from "metabase/querying";
 
 import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import AggregationPopover from "../AggregationPopover";
 import BreakoutPopover from "../BreakoutPopover";
 import DatasetEditor from "../DatasetEditor";
@@ -24,20 +25,20 @@ import DataReference from "../dataref/DataReference";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
-import QueryModals from "../QueryModals";
 
+import QueryModals from "../QueryModals";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
-import TimelineSidebar from "./sidebars/TimelineSidebar";
 
+import TimelineSidebar from "./sidebars/TimelineSidebar";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import NewQuestionView from "./View/NewQuestionView";
-import QueryViewNotebook from "./View/QueryViewNotebook";
 
+import QueryViewNotebook from "./View/QueryViewNotebook";
 import {
   BorderedViewTitleHeader,
   NativeQueryEditorContainer,
@@ -332,7 +333,6 @@ class View extends Component {
       this.props;
 
     const queryMode = mode && mode.queryMode();
-    const ModeFooter = queryMode && queryMode.ModeFooter;
     const isStructured = query instanceof StructuredQuery;
     const isNative = query instanceof NativeQuery;
 
@@ -381,11 +381,7 @@ class View extends Component {
             />
           </StyledDebouncedFrame>
         )}
-
-        {ModeFooter && (
-          <ModeFooter {...this.props} className="flex-no-shrink" />
-        )}
-
+        <TimeseriesChrome {...this.props} className="flex-no-shrink" />
         <ViewFooter {...this.props} className="flex-no-shrink" />
       </QueryBuilderMain>
     );

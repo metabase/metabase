@@ -1,4 +1,5 @@
 import { useState } from "react";
+import dayjs from "dayjs";
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "__support__/ui";
 import { TimeInput } from "./TimeInput";
@@ -63,5 +64,15 @@ describe("TimeInput", () => {
     expect(time.getHours()).toBe(10);
     expect(time.getMinutes()).toBe(20);
     expect(input).toHaveValue("10:20");
+  });
+
+  it("should handle an invalid value", () => {
+    const { onChange } = setup();
+
+    const input = screen.getByLabelText("Time");
+    userEvent.type(input, "32:71");
+
+    expect(input).toHaveValue("03:59");
+    expect(onChange).toHaveBeenCalledWith(dayjs("03:59", "HH:mm").toDate());
   });
 });

@@ -16,13 +16,11 @@ const GROUPS = [
 
 const elements = [
   {
-    // placeholder: false,
     key: "jwt-enabled",
     value: null,
     is_env_setting: false,
     env_name: "MB_JWT_ENABLED",
     description: "Is JWT authentication configured and enabled?",
-    default: false,
     originalValue: null,
     display_name: "JWT Authentication",
     type: "boolean",
@@ -34,7 +32,6 @@ const elements = [
     is_env_setting: false,
     env_name: "MB_JWT_IDENTITY_PROVIDER_URI",
     description: "URL of JWT based login page",
-    default: null,
     originalValue: null,
     display_name: "JWT Identity Provider URI",
     type: "string",
@@ -42,14 +39,12 @@ const elements = [
     autoFocus: true,
   },
   {
-    // placeholder: null,
     key: "jwt-shared-secret",
     value: null,
     is_env_setting: false,
     env_name: "MB_JWT_SHARED_SECRET",
     description:
       "String used to seed the private key used to validate JWT messages. A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended.",
-    default: null,
     originalValue: null,
     display_name: "String used by the JWT signing key",
     type: "text",
@@ -92,24 +87,19 @@ const elements = [
     type: "string",
   },
   {
-    // placeholder: false,
     key: "jwt-group-sync",
     value: null,
     is_env_setting: false,
     env_name: "MB_JWT_GROUP_SYNC",
-    // description: null,
-    default: false,
     originalValue: null,
     display_name: "Synchronize group memberships",
   },
   {
-    // placeholder: {},
     key: "jwt-group-mappings",
     value: null,
     is_env_setting: false,
     env_name: "MB_JWT_GROUP_MAPPINGS",
     description: "JSON containing JWT to Metabase group mappings.",
-    default: {},
     originalValue: null,
   },
 ];
@@ -174,9 +164,9 @@ describe("SettingsJWTForm", () => {
       await screen.findByRole("textbox", { name: /Last name attribute/ }),
       ATTRS["jwt-attribute-lastname"],
     );
-    userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+    userEvent.click(screen.getByRole("checkbox")); // checkbox for "jwt-group-sync"
 
-    userEvent.click(screen.getByRole("checkbox")); // checkbox for "jwt-enabled"
+    userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(ATTRS);

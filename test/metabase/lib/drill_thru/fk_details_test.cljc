@@ -118,3 +118,15 @@
                                           [:field {} (meta/id :people :id)]
                                           1]]}]}
                     (lib/drill-thru query -1 fk-details-drill)))))))))
+
+(deftest ^:parallel do-not-return-fk-details-for-nil-test
+  (testing "do not return fk-details drills for nil cell values (#36133)"
+    (let [query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          context {:column     (meta/field-metadata :orders :product-id)
+                   :column-ref (lib/ref (meta/field-metadata :orders :product-id))
+                   :value      :null
+                   :row        [{:column     (meta/field-metadata :orders :product-id)
+                                 :column-ref (lib/ref (meta/field-metadata :orders :product-id))
+                                 :value      nil}]}]
+      (is (not (m/find-first #(= (:type %) :drill-thru/fk-details)
+                             (lib/available-drill-thrus query -1 context)))))))

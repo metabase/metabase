@@ -241,6 +241,11 @@ const config = (module.exports = {
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),
+    // https://github.com/metabase/metabase/issues/35374
+    new webpack.NormalModuleReplacementPlugin(
+      /.\/use-popover.js/,
+      `${SRC_PATH}/ui/components/overlays/Popover/use-popover`,
+    ),
   ],
 });
 

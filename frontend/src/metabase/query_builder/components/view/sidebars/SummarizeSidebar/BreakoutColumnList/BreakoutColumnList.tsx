@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
-import { singularize } from "metabase/lib/formatting";
+import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import * as Lib from "metabase-lib";
@@ -166,12 +166,6 @@ export function BreakoutColumnList({
   );
 }
 
-function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  const columnInfo = groupInfo as Lib.ColumnDisplayInfo;
-  const tableInfo = groupInfo as Lib.TableDisplayInfo;
-  return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
-}
-
 function getColumnListItem(
   query: Lib.Query,
   breakouts: Lib.BreakoutClause[],
@@ -213,7 +207,7 @@ function getColumnSections(
     );
 
     return {
-      name: getGroupName(groupInfo),
+      name: getColumnGroupName(groupInfo),
       items,
     };
   });

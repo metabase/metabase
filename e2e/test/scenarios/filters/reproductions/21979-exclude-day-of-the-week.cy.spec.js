@@ -1,56 +1,59 @@
-import { restore, openProductsTable, popover } from "e2e/support/helpers";
+import {
+  filter,
+  openProductsTable,
+  restore,
+  popover,
+  getNotebookStep,
+  visualize,
+  queryBuilderMain,
+} from "e2e/support/helpers";
 
 describe("issue 21979", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    openProductsTable({ mode: "notebook" });
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("exclude 'day of the week' should show the correct day reference in the UI (metabase#21979)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click();
+    openProductsTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclude...").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Days of the week...").click();
-
+    filter({ mode: "notebook" });
     popover().within(() => {
-      cy.findByText("Monday").click();
+      cy.findByText("Created At").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Days of the week…").click();
+      cy.findByLabelText("Monday").click();
       cy.button("Add filter").click();
     });
 
-    cy.log("Make sure the filter references correct day in the UI");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At excludes Monday").should("be.visible");
+    getNotebookStep("filter")
+      .findByText("Created At excludes Mondays")
+      .should("be.visible");
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
-    // One of the products created on Monday
-    cy.log("Make sure the query is correct");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Enormous Marble Wallet").should("not.exist");
+    // Make sure the query is correct
+    // (a product called "Enormous Marble Wallet" is created on Monday)
+    queryBuilderMain().findByText("Enormous Marble Wallet").should("not.exist");
 
-    cy.log("Make sure we can re-enable the excluded filter");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At excludes Monday").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At excludes Mondays")
+      .click();
 
     popover().within(() => {
-      cy.findByText("Monday").click();
-      cy.findByText("Thursday").click();
-
+      cy.findByLabelText("Monday").click();
+      cy.findByLabelText("Thursday").click();
       cy.button("Update filter").click();
-      cy.wait("@dataset");
     });
+    cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At excludes Thursday").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Enormous Marble Wallet").should("be.visible");
+    queryBuilderMain()
+      .findByText("Enormous Marble Wallet")
+      .should("be.visible");
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At excludes Thursdays")
+      .should("be.visible");
   });
 });

@@ -12,6 +12,7 @@ import {
   setActionsEnabledForDB,
   setTokenFeatures,
   summarize,
+  assertIsEllipsified,
 } from "e2e/support/helpers";
 import {
   ADMIN_USER_ID,
@@ -173,6 +174,38 @@ describe("scenarios > search", () => {
       );
 
       cy.get("@search.all").should("have.length", 1);
+    });
+
+    it("should render a preview of markdown descriptions", () => {
+      cy.createQuestion({
+        name: "Description Test",
+        query: { "source-table": ORDERS_ID },
+        description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
+
+        Lorem ipsum dolor sit amet.
+        
+        ----
+        
+        ## Heading 1
+        
+        This is a [link](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg).
+        
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
+      }).then(() => {
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        getSearchBar().type("Test");
+      });
+
+      //Enseure that text is ellipsified
+      cy.findByTestId("result-description")
+        .findByText(/Lorem ipsum dolor sit amet./)
+        .then(el => assertIsEllipsified(el[0]));
+
+      //Ensure that images are not being rendered in the descriptions
+      cy.findByTestId("result-description")
+        .findByRole("img")
+        .should("not.exist");
     });
   });
   describe("accessing full page search with `Enter`", () => {

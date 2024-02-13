@@ -39,13 +39,17 @@ export function fieldableColumns(
 
 /**
  * This should only be used to get field IDs when it is necessary, like interacting with backend API parameters.
- * For most purposes, you should be use columnMetadata objects and not access field ids directly
+ * For most purposes, you should be use ColumnMetadata objects and not access field ids directly
  *
  * @param {ColumnMetadata} column
- * @returns {number|null} field id
+ * @returns {number|string|null} field id
  */
-export function _fieldId(column: ColumnMetadata): number | null {
+export function _fieldId(column: ColumnMetadata): number | string | null {
   return ML.field_id(column);
+}
+
+export function _cardOrTableId(column: ColumnMetadata): number | string | null {
+  return ML.legacy_card_or_table_id(column);
 }
 
 // TODO: This should be removed and usage replaced with calls to `visibleColumns` and `findColumnIndexesFromLegacyRefs`.

@@ -1,13 +1,12 @@
 (ns metabase.driver.common-test
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.util :as driver.u]
    [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]))
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel base-type-inference-test
   (is (= :type/Text
@@ -55,16 +54,15 @@
 
 (deftest cloud-ip-address-info-test
   (testing "The cloud-ip-address-info field is correctly resolved when fetching driver connection properties"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
-      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
-      ;; make sure Postgres driver is initialized before trying to get its connection properties.
-      (driver/the-initialized-driver :postgres)
-      (let [connection-props (-> (driver.u/available-drivers-info)
-                                 :postgres
-                                 :details-fields)
-            ip-address-field (first
-                              (filter #(= (:name %) "cloud-ip-address-info") connection-props))]
-        (is (re-find #"If your database is behind a firewall" (:placeholder ip-address-field)))))))
+    (mt/with-temp-env-var-value [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
+      (with-redefs [premium-features/is-hosted? (constantly true)]
+        ;; make sure Postgres driver is initialized before trying to get its connection properties.
+        (driver/the-initialized-driver :postgres)
+        (let [connection-props (-> (driver.u/available-drivers-info)
+                                   :postgres
+                                   :details-fields)
+              ip-address-field (first (filter #(= (:name %) "cloud-ip-address-info") connection-props))]
+          (is (re-find #"If your database is behind a firewall" (:placeholder ip-address-field))))))))
 
 (deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"

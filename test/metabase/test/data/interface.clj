@@ -58,6 +58,8 @@
     ;; default is nullable
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
+   ;; should we create an index for this field?
+   [:indexed?          {:optional true} [:maybe :boolean]]
    [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
    [:effective-type    {:optional true} [:maybe ms/FieldType]]
    [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]

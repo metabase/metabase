@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: event_timestamp
   model: Field
+database_indexed: null

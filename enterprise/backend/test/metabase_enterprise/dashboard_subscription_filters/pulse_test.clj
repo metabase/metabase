@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase.pulse.parameters :as params]))
+   [metabase.pulse.parameters :as pulse-params]))
 
 (deftest parameters-test
   (testing "Get params from both pulse and dashboard if :dashboard-subscription-filters feature is enabled"
@@ -10,7 +10,7 @@
      (is (= [{:id "1" :v "a"}
              {:id "2" :v "b"}
              {:id "3" :v "yes"}]
-            (params/the-parameters
+            (pulse-params/the-parameters
              {:parameters [{:id "1" :v "a"} {:id "2" :v "b"}]}
              {:parameters [{:id "1" :v "no, since it's trumped by the pulse"} {:id "3" :v "yes"}]})))))
 
@@ -18,6 +18,6 @@
     (premium-features-test/with-premium-features #{}
       (is (= [{:id "1" :v "no, since it's trumped by the pulse"}
               {:id "3" :v "yes"}]
-             (params/the-parameters
+             (pulse-params/the-parameters
               {:parameters [{:id "1" :v "a"} {:id "2" :v "b"}]}
               {:parameters [{:id "1" :v "no, since it's trumped by the pulse"} {:id "3" :v "yes"}]}))))))

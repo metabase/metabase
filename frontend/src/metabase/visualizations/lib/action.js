@@ -17,7 +17,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
       open(url, {
-        openInSameOrigin: (url, location) => {
+        openInSameOrigin: location => {
           dispatch(push(location));
           dispatch(setParameterValuesFromQueryParams(location.query));
         },

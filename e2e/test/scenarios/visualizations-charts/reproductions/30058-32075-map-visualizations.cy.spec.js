@@ -116,11 +116,11 @@ const addCountGreaterThan2Filter = () => {
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
   popover().within(() => {
     cy.findByText("Count").click();
-    cy.icon("chevrondown").click();
+    cy.findByDisplayValue("Equal to").click();
   });
-  cy.findByTestId("operator-select-list").findByText("Greater than").click();
+  cy.findByRole("listbox").findByText("Greater than").click();
   popover().within(() => {
     cy.findByPlaceholderText("Enter a number").type("2");
-    cy.findByText("Add filter").click();
+    cy.button("Add filter").click();
   });
 };

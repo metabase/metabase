@@ -31,6 +31,7 @@ export const createMockUserListResult = (
   last_name: "Tableton",
   common_name: "Testy Tableton",
   email: "user@metabase.test",
+  personal_collection_id: 2,
   ...opts,
 });
 

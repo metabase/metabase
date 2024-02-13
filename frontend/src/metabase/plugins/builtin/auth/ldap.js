@@ -6,7 +6,7 @@ import {
   PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 
-import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
+import { SettingsLdapForm } from "metabase/admin/settings/components/SettingsLdapForm";
 import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 

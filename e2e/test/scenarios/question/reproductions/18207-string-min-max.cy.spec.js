@@ -71,12 +71,14 @@ describe("issue 18207", () => {
   it("should be possible to group by a string expression (metabase#18207)", () => {
     popover().contains("Custom Expression").click();
     popover().within(() => {
-      enterCustomColumnDetails({ formula: "Max([Vendor])" });
-      cy.findByPlaceholderText("Something nice and descriptive").type(
-        "LastVendor",
-      );
+      enterCustomColumnDetails({
+        formula: "Max([Vendor])",
+        name: "LastVendor",
+      });
       cy.findByText("Done").click();
     });
+
+    cy.findByTestId("aggregate-step").contains("LastVendor").should("exist");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Pick a column to group by").click();

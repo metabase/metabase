@@ -91,22 +91,28 @@ describe(
     it("shouldn't be possible to save a non-numeric port (#13313)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
+      cy.findByLabelText("LDAP Port").parent().parent().as("portSection");
+
       enterLdapSettings();
       enterLdapPort("asd");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("That's not a valid port number").should("exist");
+      cy.get("@portSection")
+        .findByText("That's not a valid port number")
+        .should("exist");
 
       enterLdapPort("21.3");
+      cy.get("@portSection")
+        .findByText("That's not a valid port number")
+        .should("exist");
+
+      enterLdapPort("389 ");
+      cy.get("@portSection")
+        .findByText("That's not a valid port number")
+        .should("not.exist");
+
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText('For input string: "21.3"').should("exist");
-
-      enterLdapPort("123 ");
-      cy.button("Save failed").click();
-      cy.wait("@updateLdapSettings");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText('For input string: "123 "').should("exist");
+      cy.findByText("Success").should("exist");
     });
 
     it("should allow user login on OSS when LDAP is enabled", () => {
@@ -211,9 +217,9 @@ const enterLdapPort = value => {
 };
 
 const enterLdapSettings = () => {
-  typeAndBlurUsingLabel("LDAP Host", "localhost");
+  typeAndBlurUsingLabel(/LDAP Host/, "localhost");
   typeAndBlurUsingLabel("LDAP Port", "389");
   typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
   typeAndBlurUsingLabel("Password", "adminpass");
-  typeAndBlurUsingLabel("User search base", "ou=users,dc=example,dc=org");
+  typeAndBlurUsingLabel(/User search base/, "ou=users,dc=example,dc=org");
 };

@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: cache_field_values_schedule
   model: Field
+database_indexed: null

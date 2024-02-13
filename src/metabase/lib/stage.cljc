@@ -360,8 +360,15 @@
   (update query :stages conj {:lib/type :mbql.stage/mbql}))
 
 (mu/defn drop-stage :- ::lib.schema/query
-  "Drops the final stage in the pipeline"
+  "Drops the final stage in the pipeline, will no-op if it is the only stage"
   [query]
-  (when (= 1 (count (:stages query)))
-    (throw (ex-info (i18n/tru "Cannot drop the only stage") {:stages (:stages query)})))
-  (update query :stages (comp vec butlast)))
+  (if (= 1 (count (:stages query)))
+    query
+    (update query :stages pop)))
+
+(mu/defn drop-stage-if-empty :- ::lib.schema/query
+  "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
+  [query :- ::lib.schema/query]
+  (if (empty? (dissoc (lib.util/query-stage query -1) :lib/type))
+    (drop-stage query)
+    query))

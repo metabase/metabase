@@ -31,13 +31,17 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
     cy.findByPlaceholderText("Something nice and descriptive")
-      .as("description")
+      .as("name")
       .click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Function Percentile expects 1 argument").should("not.exist");
-    cy.get("@description").type("A");
+    cy.get("@name").type("Expression name");
     cy.button("Done").should("not.be.disabled").click();
     // Todo: Add positive assertions once this is fixed
+
+    cy.findByTestId("aggregate-step")
+      .contains("Expression name")
+      .should("exist");
   });
 });

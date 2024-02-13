@@ -256,7 +256,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     // confirm parameter filter is applied as filter in query builder
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("State is GA");
+    cy.findByText("User → State is GA");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("463");
   });

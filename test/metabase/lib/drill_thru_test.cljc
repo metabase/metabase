@@ -92,16 +92,13 @@
          :drill-thru/pivot
          (log/warn "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
 
-         :drill-thru/underlying-records
-         (log/warn "drill-thru-method is not yet implemented for :drill-thru/underlying-records (#34233)")
-
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
                        "\nargs =\n" (u/pprint-to-str args))
            (try
              (let [query' (apply lib/drill-thru query -1 drill args)]
                (is (not (me/humanize (mc/validate ::lib.schema/query query'))))
-               (when (< depth test-drill-applications-max-depth)
+               (when (< (inc depth) test-drill-applications-max-depth)
                  (testing (str "\n\nDEPTH = " (inc depth) "\n\nquery =\n" (u/pprint-to-str query'))
                    (test-drill-applications query' context (inc depth)))))
              (catch #?(:clj Throwable :cljs :default) e
@@ -284,7 +281,9 @@
                  {:lib/type  :metabase.lib.drill-thru/drill-thru
                   :type      :drill-thru/quick-filter
                   :operators (for [[op label] [[:=  "="]
-                                               [:!= "≠"]]]
+                                               [:!= "≠"]
+                                               [:contains "contains"]
+                                               [:does-not-contain "does-not-contain"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
                                          [:field {:lib/uuid string?} (meta/id :products :category)]
@@ -305,7 +304,9 @@
                  {:lib/type  :metabase.lib.drill-thru/drill-thru
                   :type      :drill-thru/quick-filter
                   :operators (for [[op label] [[:=  "="]
-                                               [:!= "≠"]]]
+                                               [:!= "≠"]
+                                               [:contains "contains"]
+                                               [:does-not-contain "does-not-contain"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
                                          [:field {:lib/uuid string?} (meta/id :products :vendor)]
@@ -374,7 +375,14 @@
             _                 (assert created-at-column)
             row               [(basic-context created-at-column "2018-05-01T00:00:00Z")
                                (basic-context count-column 457)]
-            expected-drills   {:quick-filter       {:lib/type  :metabase.lib.drill-thru/drill-thru
+            expected-drills   {:automatic-insights {:lib/type   :metabase.lib.drill-thru/drill-thru
+                                                    :type       :drill-thru/automatic-insights
+                                                    :column-ref some?
+                                                    :dimensions [{:column     {:name                     "CREATED_AT"
+                                                                               ::lib.field/temporal-unit :month}
+                                                                  :column-ref some?
+                                                                  :value      "2018-05-01T00:00:00Z"}]}
+                               :quick-filter       {:lib/type  :metabase.lib.drill-thru/drill-thru
                                                     :type      :drill-thru/quick-filter
                                                     :operators [{:name "<"}
                                                                 {:name ">"}
@@ -408,7 +416,8 @@
                                {:row        row
                                 :dimensions [(basic-context created-at-column "2018-05-01T00:00:00Z")]})]
             (testing (str "\ncontext =\n" (u/pprint-to-str context))
-              (is (=? (map expected-drills [:pivot :quick-filter :underlying-records :zoom-in.timeseries])
+              (is (=? (map expected-drills [:automatic-insights :pivot :quick-filter :underlying-records
+                                            :zoom-in.timeseries])
                       (lib/available-drill-thrus query -1 context)))
               (test-drill-applications query context))))))))
 
@@ -504,6 +513,10 @@
                                 {:row   [breakout-dim sum-dim]
                                  :dimensions [breakout-dim]})]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
+                  :type       :drill-thru/automatic-insights
+                  :dimensions [breakout-dim]
+                  :column-ref (:column-ref sum-dim)}
+                 {:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/pivot
                   :pivots     {:category (repeat 5 {})
                                :location (repeat 3 {})}}
@@ -669,7 +682,10 @@
    {:click-type  :cell
     :query-type  :aggregated
     :column-name "count"
-    :expected    [{:type      :drill-thru/quick-filter
+    :expected    [{:type :drill-thru/automatic-insights
+                   :dimensions [{:column {:name "PRODUCT_ID"}}
+                                {:column {:name "CREATED_AT"}}]}
+                  {:type      :drill-thru/quick-filter
                    :operators [{:name "<"}
                                {:name ">"}
                                {:name "="}
@@ -688,7 +704,10 @@
      {:click-type  :cell
       :query-type  :aggregated
       :column-name "max"
-      :expected    [{:type :drill-thru/quick-filter, :operators [{:name "="}
+      :expected    [{:type :drill-thru/automatic-insights
+                     :dimensions [{:column {:name "PRODUCT_ID"}}
+                                  {:column {:name "CREATED_AT"}}]}
+                    {:type :drill-thru/quick-filter, :operators [{:name "="}
                                                                  {:name "≠"}]}
                     {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}
                     {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]})))
