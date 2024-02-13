@@ -4,7 +4,7 @@ import type Field from "metabase-lib/metadata/Field";
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
 import {
   InfoContainer,
-  FieldSemanticTypeLabel,
+  SemanticTypeLabel,
   FieldFingerprintInfo,
 } from "./FieldInfo.styled";
 
@@ -30,7 +30,7 @@ export function FieldInfo({
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <FieldSemanticTypeLabel field={field} />
+      <SemanticTypeLabel semanticType={field.semantic_type} />
       {showFingerprintInfo && (
         <FieldFingerprintInfo
           field={field}
