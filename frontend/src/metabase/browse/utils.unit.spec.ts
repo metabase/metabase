@@ -1,35 +1,11 @@
-import fetchMock from "fetch-mock";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockModelResult,
-  createMockSettingDefinition,
-  createMockSettings,
 } from "metabase-types/api/mocks";
-import { createMockSetupState } from "metabase-types/store/mocks";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { BrowseModels } from "./BrowseModels";
-
-const renderBrowseModels = (modelCount: number) => {
-  const models = mockModels.slice(0, modelCount);
-  return renderWithProviders(
-    <BrowseModels
-      modelsResult={{ data: models, isLoading: false, error: false }}
-    />,
-    {
-      storeInitialState: {
-        setup: createMockSetupState({
-          locale: { name: "English", code: "en" },
-        }),
-      },
-    },
-  );
-};
+import type { ActualModelFilters, AvailableModelFilters } from "./utils";
+import { filterModels, groupModels } from "./utils";
 
 const collectionAlpha = createMockCollection({ id: 0, name: "Alpha" });
 const collectionBeta = createMockCollection({ id: 1, name: "Beta" });
@@ -203,64 +179,102 @@ const mockModels: SearchResult[] = [
   },
 ].map(model => createMockModelResult(model));
 
-describe("BrowseModels", () => {
-  beforeEach(() => {
-    setupPropertiesEndpoints(createMockSettings());
-    setupSettingsEndpoints([createMockSettingDefinition()]);
-    fetchMock.put("path:/api/setting/default-browse-tab", 200);
+describe("Browse utils", () => {
+  it("include a function that groups models by collection, sorting the collections alphabetically when English is the locale", () => {
+    const groupedModels = groupModels(mockModels, "en-US");
+    expect(groupedModels[0][0].collection.name).toEqual("Alpha");
+    expect(groupedModels[0]).toHaveLength(3);
+    expect(groupedModels[1][0].collection.name).toEqual("Ångström");
+    expect(groupedModels[1]).toHaveLength(3);
+    expect(groupedModels[2][0].collection.name).toEqual("Beta");
+    expect(groupedModels[2]).toHaveLength(3);
+    expect(groupedModels[3][0].collection.name).toEqual("Charlie");
+    expect(groupedModels[3]).toHaveLength(3);
+    expect(groupedModels[4][0].collection.name).toEqual("Delta");
+    expect(groupedModels[4]).toHaveLength(3);
+    expect(groupedModels[5][0].collection.name).toEqual("Our analytics");
+    expect(groupedModels[5]).toHaveLength(2);
+    expect(groupedModels[6][0].collection.name).toEqual("Özgür");
+    expect(groupedModels[6]).toHaveLength(3);
+    expect(groupedModels[7][0].collection.name).toEqual("Zulu");
+    expect(groupedModels[7]).toHaveLength(3);
   });
-  it("displays models", async () => {
-    renderBrowseModels(10);
-    for (let i = 0; i < 10; i++) {
-      expect(await screen.findByText(`Model ${i}`)).toBeInTheDocument();
-    }
+
+  it("include a function that groups models by collection, sorting the collections alphabetically when Swedish is the locale", () => {
+    const groupedModels = groupModels(mockModels, "sv-SV");
+    expect(groupedModels[0][0].collection.name).toEqual("Alpha");
+    expect(groupedModels[0]).toHaveLength(3);
+    expect(groupedModels[1][0].collection.name).toEqual("Beta");
+    expect(groupedModels[1]).toHaveLength(3);
+    expect(groupedModels[2][0].collection.name).toEqual("Charlie");
+    expect(groupedModels[2]).toHaveLength(3);
+    expect(groupedModels[3][0].collection.name).toEqual("Delta");
+    expect(groupedModels[3]).toHaveLength(3);
+    expect(groupedModels[4][0].collection.name).toEqual("Our analytics");
+    expect(groupedModels[4]).toHaveLength(2);
+    expect(groupedModels[5][0].collection.name).toEqual("Zulu");
+    expect(groupedModels[5]).toHaveLength(3);
+    expect(groupedModels[6][0].collection.name).toEqual("Ångström");
+    expect(groupedModels[6]).toHaveLength(3);
+    expect(groupedModels[7][0].collection.name).toEqual("Özgür");
+    expect(groupedModels[7]).toHaveLength(3);
   });
-  it("displays a 'no models' message in the Models tab when no models exist", async () => {
-    renderBrowseModels(0);
-    expect(await screen.findByText("No models here yet")).toBeInTheDocument();
-  });
-  it("displays models, organized by parent collection", async () => {
-    renderBrowseModels(10);
-    // Three <a> tags representing models have aria-labelledby="collection-1 model-$id",
-    // and "collection-1" is the id of an element containing text 'Collection 1',
-    // so the following line finds those <a> tags.
-    const modelsInCollection1 = await screen.findAllByLabelText("Alpha");
-    expect(modelsInCollection1).toHaveLength(3);
-    const modelsInCollection2 = await screen.findAllByLabelText("Beta");
-    expect(modelsInCollection2).toHaveLength(3);
-  });
-  it("displays the Our Analytics collection if it has a model", async () => {
-    renderBrowseModels(23);
-    const modelsInOurAnalytics = await screen.findAllByLabelText(
-      "Our analytics",
+
+  const diverseModels = mockModels.map((model, index) => ({
+    ...model,
+    name: index % 2 === 0 ? `red ${index}` : `blue ${index}`,
+    moderated_status: index % 3 === 0 ? `good ${index}` : `bad ${index}`,
+  }));
+  const availableModelFilters: AvailableModelFilters = {
+    onlyRed: {
+      predicate: (model: SearchResult) => model.name.startsWith("red"),
+      activeByDefault: false,
+    },
+    onlyGood: {
+      predicate: (model: SearchResult) =>
+        Boolean(model.moderated_status?.startsWith("good")),
+      activeByDefault: false,
+    },
+    onlyBig: {
+      predicate: (model: SearchResult) =>
+        Boolean(model.description?.startsWith("big")),
+      activeByDefault: true,
+    },
+  };
+
+  it("include a function that filters models, based on the object provided", () => {
+    const onlyRedAndGood: ActualModelFilters = {
+      onlyRed: true,
+      onlyGood: true,
+      onlyBig: false,
+    };
+    const onlyRedAndGoodModels = filterModels(
+      diverseModels,
+      onlyRedAndGood,
+      availableModelFilters,
     );
-    expect(modelsInOurAnalytics).toHaveLength(2);
+    const everySixthModel = diverseModels.reduce<SearchResult[]>(
+      (acc, model, index) => {
+        return index % 6 === 0 ? [...acc, model] : acc;
+      },
+      [],
+    );
+    // Since every other model is red and every third model is good,
+    // we expect every sixth model to be both red and good
+    expect(onlyRedAndGoodModels).toEqual(everySixthModel);
   });
-  it("displays last edited information about models", async () => {
-    jest.useFakeTimers().setSystemTime(new Date("2024-12-15T12:00:00.000Z"));
 
-    renderBrowseModels(12);
-    const howLongAgo = /\d+(min|h|d|mo|yr)/;
-    const findWhenModelWasEdited = async (modelName: string) =>
-      (
-        await within(await screen.findByLabelText(modelName)).findByText(
-          howLongAgo,
-        )
-      )?.textContent?.match(howLongAgo)?.[0];
-
-    expect(await findWhenModelWasEdited("Model 0")).toBe("1min");
-    expect(await findWhenModelWasEdited("Model 1")).toBe("1min");
-    expect(await findWhenModelWasEdited("Model 2")).toBe("1min");
-    expect(await findWhenModelWasEdited("Model 3")).toBe("10min");
-    expect(await findWhenModelWasEdited("Model 4")).toBe("1h");
-    expect(await findWhenModelWasEdited("Model 5")).toBe("14h");
-    expect(await findWhenModelWasEdited("Model 6")).toBe("1d");
-    expect(await findWhenModelWasEdited("Model 7")).toBe("5d");
-    expect(await findWhenModelWasEdited("Model 8")).toBe("1mo");
-    expect(await findWhenModelWasEdited("Model 9")).toBe("10mo");
-    expect(await findWhenModelWasEdited("Model 10")).toBe("1yr");
-    expect(await findWhenModelWasEdited("Model 11")).toBe("5yr");
-
-    jest.useRealTimers();
+  it("filterModels does not filter out models if no filters are active", () => {
+    const noActiveFilters: ActualModelFilters = {
+      onlyRed: false,
+      onlyGood: false,
+      onlyBig: false,
+    };
+    const filteredModels = filterModels(
+      diverseModels,
+      noActiveFilters,
+      availableModelFilters,
+    );
+    expect(filteredModels).toEqual(diverseModels);
   });
 });
