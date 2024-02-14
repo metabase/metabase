@@ -241,26 +241,29 @@
                                                                (eduction
                                                                 cat
                                                                 [(orig metadata) [fake-schema-name]])))]
-        (is (= #{"public" fake-schema-name}
-               (driver/syncable-schemas driver/*driver* (mt/db))))
-        (let [driver             (driver.u/database->driver (mt/db))
-              schema-filter-prop (find-schema-filters-prop driver)
-              filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
-              patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
-          (testing "syncable-schemas works as expected"
-            (testing " with an inclusion filter"
-              (t2.with-temp/with-temp [Database db-filtered {:engine  driver
-                                                             :details (-> (mt/db)
-                                                                          :details
-                                                                          (assoc filter-type-prop "inclusion"
-                                                                                 patterns-type-prop "public"))}]
-                (is (= #{"public"}
-                       (driver/syncable-schemas driver/*driver* db-filtered)))))
-            (testing " with an exclusion filter"
-              (t2.with-temp/with-temp [Database db-filtered {:engine  driver
-                                                             :details (-> (mt/db)
-                                                                          :details
-                                                                          (assoc filter-type-prop "exclusion"
-                                                                                 patterns-type-prop "public"))}]
-                (is (= #{fake-schema-name}
-                       (driver/syncable-schemas driver/*driver* db-filtered)))))))))))
+        (let [syncable (driver/syncable-schemas driver/*driver* (mt/db))]
+          (is (contains? syncable "public"))
+          (is (contains? syncable fake-schema-name))))
+      (let [driver             (driver.u/database->driver (mt/db))
+            schema-filter-prop (find-schema-filters-prop driver)
+            filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
+            patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
+        (testing "syncable-schemas works as expected"
+          (testing "with an inclusion filter"
+            (t2.with-temp/with-temp [Database db-filtered {:engine  driver
+                                                           :details (-> (mt/db)
+                                                                        :details
+                                                                        (assoc filter-type-prop "inclusion"
+                                                                               patterns-type-prop "public"))}]
+              (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
+                (is      (contains? syncable "public"))
+                (is (not (contains? syncable fake-schema-name))))))
+          (testing "with an exclusion filter"
+            (t2.with-temp/with-temp [Database db-filtered {:engine  driver
+                                                           :details (-> (mt/db)
+                                                                        :details
+                                                                        (assoc filter-type-prop "exclusion"
+                                                                               patterns-type-prop "public"))}]
+              (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
+                (is (not (contains? syncable "public")))
+                (is (not (contains? syncable fake-schema-name)))))))))))

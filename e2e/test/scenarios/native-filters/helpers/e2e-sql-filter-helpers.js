@@ -1,4 +1,4 @@
-import { filterWidget, popover } from "e2e/support/helpers";
+import { filterWidget, focusNativeEditor, popover } from "e2e/support/helpers";
 
 // FILTER TYPES
 
@@ -92,6 +92,7 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
+  focusNativeEditor();
   cy.get("@editor").type(query, {
     parseSpecialCharSequences: false,
     ...options,

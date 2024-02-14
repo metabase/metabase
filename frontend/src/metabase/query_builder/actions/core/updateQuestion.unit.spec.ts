@@ -36,9 +36,10 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  PRODUCTS_ID,
   PEOPLE,
   SAMPLE_DB_ID,
+  REVIEWS,
+  REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockState,
@@ -175,14 +176,14 @@ async function setup({
   return { question, dispatch, result };
 }
 
-const PRODUCTS_JOIN_CLAUSE: Join = {
+const REVIEW_JOIN_CLAUSE: Join = {
   alias: "Products",
   condition: [
     "=",
-    ["field", ORDERS.PRODUCT_ID, null],
-    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+    ["field", ORDERS.ID, null],
+    ["field", REVIEWS.ID, { "join-alias": "Reviews" }],
   ],
-  "source-table": PRODUCTS_ID,
+  "source-table": REVIEWS_ID,
 };
 
 const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteFieldReference = [
@@ -533,7 +534,7 @@ describe("QB Actions > updateQuestion", () => {
               ...originalQuery,
               query: createMockStructuredQuery({
                 ...originalQuery.query,
-                joins: [PRODUCTS_JOIN_CLAUSE],
+                joins: [REVIEW_JOIN_CLAUSE],
               }),
             }),
           };
@@ -581,7 +582,7 @@ describe("QB Actions > updateQuestion", () => {
               ...originalQuery,
               query: createMockStructuredQuery({
                 ...originalQuery.query,
-                joins: [PRODUCTS_JOIN_CLAUSE],
+                joins: [REVIEW_JOIN_CLAUSE],
               }),
             }),
           };

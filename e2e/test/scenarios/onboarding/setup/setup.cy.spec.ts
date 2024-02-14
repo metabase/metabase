@@ -1,6 +1,7 @@
 import {
   blockSnowplow,
   describeWithSnowplow,
+  expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   main,
@@ -35,27 +36,17 @@ describe("scenarios > setup", () => {
         });
         cy.location("pathname").should("eq", "/setup");
 
-        cy.findByTestId("welcome-page").within(() => {
-          cy.findByText("Welcome to Metabase");
-          cy.findByTextEnsureVisible("Let's get started").click();
-        });
+        skipWelcomePage();
 
         cy.findByTestId("setup-forms").within(() => {
-          // ========
-          // Language
-          // ========
-          cy.findByText("What's your preferred language?");
-          cy.findByLabelText("English");
-          cy.findByText("Next").click();
+          selectPreferredLanguageAndContinue();
 
           // ====
           // User
           // ====
 
           // "Next" should be disabled on the blank form
-          // NOTE: unclear why cy.findByText("Next", { selector: "button" }) doesn't work
-          // alternative: cy.contains("Next").should("be.disabled");
-          cy.findByText("Next").closest("button").should("be.disabled");
+          cy.findByRole("button", { name: "Next" }).should("be.disabled");
           cy.findByLabelText("First name").type("Testy");
           cy.findByLabelText("Last name").type("McTestface");
           cy.findByLabelText("Email").type("testy@metabase.test");
@@ -67,7 +58,7 @@ describe("scenarios > setup", () => {
 
           // the form shouldn't be valid yet and we should display an error
           cy.findByText("must include one number", { exact: false });
-          cy.findByText("Next").closest("button").should("be.disabled");
+          cy.findByRole("button", { name: "Next" }).should("be.disabled");
 
           // now try a strong password that doesn't match
           const strongPassword = "QJbHYJN3tPW[";
@@ -80,7 +71,7 @@ describe("scenarios > setup", () => {
             .blur();
 
           // tell the user about the mismatch after clicking "Next"
-          cy.findByText("Next").closest("button").should("be.disabled");
+          cy.findByRole("button", { name: "Next" }).should("be.disabled");
           cy.findByText("passwords do not match", { exact: false });
 
           // fix that mismatch
@@ -175,24 +166,19 @@ describe("scenarios > setup", () => {
     cy.visit("/");
 
     cy.location("pathname").should("eq", "/setup");
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+
+    skipWelcomePage();
 
     cy.findByTestId("setup-forms").within(() => {
-      // Language
-      cy.findByText("What's your preferred language?");
-      cy.findByText("English").click();
-      cy.button("Next").click();
+      selectPreferredLanguageAndContinue();
 
       // User
-      cy.findByText("What should we call you?");
-      cy.findByLabelText("Email").type(admin.email);
-      cy.findByLabelText("Company or team name").type("Epic Team");
-      cy.findByLabelText("Create a password").type(admin.password);
-      cy.findByLabelText("Confirm your password").type(admin.password);
-      cy.button("Next").click();
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+        first_name: null,
+        last_name: null,
+      });
 
       cy.findByText("Hi. Nice to meet you!");
 
@@ -227,17 +213,11 @@ describe("scenarios > setup", () => {
   it("should allow pre-filling user details", () => {
     cy.visit(`/setup#123456`);
 
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+    skipWelcomePage();
+
+    selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByText("What's your preferred language?");
-      cy.findByLabelText("English");
-
-      cy.findByText("Next").click();
-
       cy.findByLabelText("First name").should("have.value", "Testy");
       cy.findByLabelText("Last name").should("have.value", "McTestface");
       cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
@@ -256,17 +236,11 @@ describe("scenarios > setup", () => {
 
     cy.visit(`/setup#123456`);
 
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+    skipWelcomePage();
+
+    selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByText("What's your preferred language?");
-      cy.findByLabelText("English");
-
-      cy.findByText("Next").click();
-
       const strongPassword = "QJbHYJN3tPW[";
       cy.findByLabelText(/^Create a password/)
         .clear()
@@ -315,24 +289,19 @@ describe("scenarios > setup", () => {
     cy.visit("/setup");
 
     cy.location("pathname").should("eq", "/setup");
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+
+    skipWelcomePage();
+
+    selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
-      // Language
-      cy.findByText("What's your preferred language?");
-      cy.findByText("English").click();
-      cy.button("Next").click();
-
       // User
-      cy.findByText("What should we call you?");
-      cy.findByLabelText("Email").type(admin.email);
-      cy.findByLabelText("Company or team name").type("Epic Team");
-      cy.findByLabelText("Create a password").type(admin.password);
-      cy.findByLabelText("Confirm your password").type(admin.password);
-      cy.button("Next").click();
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+        first_name: null,
+        last_name: null,
+      });
 
       cy.findByText("Hi. Nice to meet you!");
 
@@ -406,44 +375,133 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit(`/setup`);
 
     // 3 - setup/step_seen "welcome"
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
+    expectGoodSnowplowEvent({
+      event: "step_seen",
+      step_number: 0,
+      step: "welcome",
     });
+    skipWelcomePage();
+    // 4 - setup/step_seen  "language"
+    expectGoodSnowplowEvent({
+      event: "step_seen",
+      step_number: 1,
+      step: "language",
+    });
+    selectPreferredLanguageAndContinue();
 
+    // 5 - setup/step_seen "user_info"
+    expectGoodSnowplowEvent({
+      event: "step_seen",
+      step_number: 2,
+      step: "user_info",
+    });
     cy.findByTestId("setup-forms").within(() => {
-      // 4 - setup/step_seen  "language"
-      cy.findByText("What's your preferred language?");
-      cy.findByText("Next").click();
-
-      // 5 - setup/step_seen "user_info"
-      cy.findByText("What should we call you?");
-      cy.findByLabelText("Email").type(admin.email);
-      cy.findByLabelText("Company or team name").type("Epic Team");
-      cy.findByLabelText("Create a password").type(admin.password);
-      cy.findByLabelText("Confirm your password").type(admin.password);
-      cy.button("Next").click();
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+      });
 
       cy.findByText("What will you use Metabase for?").should("exist");
       // 6 - setup/step_seen "usage_question"
-
+      expectGoodSnowplowEvent({
+        event: "step_seen",
+        step_number: 3,
+        step: "usage_question",
+      });
       cy.button("Next").click();
 
-      // 7 setup/usage_reason_selected
-      // 8 setup/step_seen "database"
+      // 7 - setup/usage_reason_selected
+      expectGoodSnowplowEvent({
+        event: "usage_reason_selected",
+        usage_reason: "self-service-analytics",
+      });
+      // 8 - setup/step_seen "db_connection"
+      expectGoodSnowplowEvent({
+        event: "step_seen",
+        step_number: 4,
+        step: "db_connection",
+      });
+      cy.findByText("I'll add my data later").click();
+      // 9 - setup/add_data_later_clicked
+      expectGoodSnowplowEvent({
+        event: "add_data_later_clicked",
+      });
+      // 10 - setup/step_seen "data_usage"
+      expectGoodSnowplowEvent({
+        event: "step_seen",
+        step_number: 5,
+        step: "data_usage",
+      });
+
+      cy.findByRole("button", { name: "Finish" }).click();
+      // 11 - new_user_created (from BE)
+
+      // 12- setup/step_seen "completed"
+      expectGoodSnowplowEvent({
+        event: "step_seen",
+        step_number: 6,
+        step: "completed",
+      });
     });
 
-    expectGoodSnowplowEvents(8);
+    expectGoodSnowplowEvents(12);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
     blockSnowplow();
     cy.visit(`/setup`);
-    cy.findByTestId("welcome-page").within(() => {
-      cy.findByText("Welcome to Metabase");
-      cy.findByTextEnsureVisible("Let's get started").click();
-    });
+    skipWelcomePage();
 
+    // 1 event is sent from the BE, which isn't blocked by blockSnoplow()
     expectGoodSnowplowEvents(1);
   });
 });
+
+const skipWelcomePage = () => {
+  cy.findByTestId("welcome-page").within(() => {
+    cy.findByText("Welcome to Metabase");
+    cy.findByText("Let's get started").click();
+  });
+};
+
+const selectPreferredLanguageAndContinue = () => {
+  cy.findByText("What's your preferred language?");
+  cy.findByLabelText("English");
+  cy.findByText("Next").click();
+};
+
+const fillUserAndContinue = ({
+  email,
+  first_name,
+  last_name,
+  password,
+  company_name,
+}: {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  password?: string | null;
+  company_name?: string | null;
+}) => {
+  cy.findByText("What should we call you?");
+
+  if (first_name) {
+    cy.findByLabelText("First name").type(first_name);
+  }
+  if (last_name) {
+    cy.findByLabelText("Last name").type(last_name);
+  }
+  if (email) {
+    cy.findByLabelText("Email").type(email);
+  }
+  if (company_name) {
+    cy.findByLabelText("Company or team name").type(company_name);
+  }
+  if (password) {
+    cy.findByLabelText("Create a password").type(password);
+  }
+  if (password) {
+    cy.findByLabelText("Confirm your password").type(password);
+  }
+  cy.button("Next").click();
+};
