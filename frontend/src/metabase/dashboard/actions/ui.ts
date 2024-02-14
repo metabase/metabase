@@ -1,13 +1,20 @@
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import type { DashCardId } from "metabase-types/api";
+import type { DashCardId, DashboardWidth } from "metabase-types/api";
 import type {
   DashboardSidebarName,
   Dispatch,
   GetState,
 } from "metabase-types/store";
-import { getSidebar } from "../selectors";
+import { getDashboardId, getSidebar } from "../selectors";
 import { closeAutoApplyFiltersToast } from "./parameters";
+import { setDashboardAttributes } from "./core";
+
+export const setDashboardWidth =
+  (width: DashboardWidth) => (dispatch: Dispatch, getState: GetState) => {
+    const id = getDashboardId(getState());
+    dispatch(setDashboardAttributes({ id, attributes: { width } }));
+  };
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const setSidebar = createAction(SET_SIDEBAR);
