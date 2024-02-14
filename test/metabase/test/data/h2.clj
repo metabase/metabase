@@ -132,3 +132,5 @@
 (defmethod sql.tx/standalone-table-comment-sql :h2
   [& args]
   (apply sql.tx/standard-standalone-table-comment-sql args))
+
+(defmethod sql.tx/session-schema :h2 [_driver] "PUBLIC")
