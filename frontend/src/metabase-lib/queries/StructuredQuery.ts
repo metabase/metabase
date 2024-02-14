@@ -426,10 +426,6 @@ class StructuredQuery extends AtomicQuery {
     return this.breakoutOptions().count > 0;
   }
 
-  canNest(): boolean {
-    return Boolean(this._database()?.hasFeature("nested-queries"));
-  }
-
   /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Breakout} added.
    */
@@ -756,13 +752,6 @@ class StructuredQuery extends AtomicQuery {
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
-  }
-
-  // NESTING
-  nest(): StructuredQuery {
-    return this._updateQuery(query => ({
-      "source-query": query,
-    }));
   }
 
   queries() {
