@@ -355,3 +355,21 @@
     (is (thrown-with-msg? ExceptionInfo
                           #"Invalid query - Advanced FieldValues must have a hash_key"
                           (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key nil)))))
+
+(deftest select-safety-filter-test
+  (testing "We do not modify queries that omit type"
+    ;; We could push down a WHERE clause to filter mismatched rows, but for performance reasons we do not.
+    (is (= {} (#'field-values/add-mismatched-hash-filter {})))
+    ;; Is there really a use-case for reading all these values?
+    ;; Perhaps we should require a type/hash combo - we would need to be careful it doesn't break any existing queries.
+    (is (= {:field_id 1} (#'field-values/add-mismatched-hash-filter {:field_id 1}))))
+
+  ;; There's an argument to be made that we should only query on these "identity" fields if the field-id is present,
+  ;; but perhaps there are use cases that I haven't considered.
+  (testing "Queries that fully specify the identity are not mangled"
+    (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full, :hash_key nil})))
+    (is (= {:type :sandbox, :hash_key "random-hash"} (#'field-values/add-mismatched-hash-filter {:type :sandbox, :hash_key "random-hash"}))))
+
+  (testing "Ambiguous queries are upgraded to ensure invalid rows are filtered"
+    (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full})))
+    (is (= {:type :sandbox, :hash_key [:not= nil]} (#'field-values/add-mismatched-hash-filter {:type :sandbox})))))
