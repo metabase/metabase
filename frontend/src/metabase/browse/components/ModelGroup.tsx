@@ -13,9 +13,9 @@ import { useDispatch } from "metabase/lib/redux";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
-import { getCollectionName, sortModels } from "../utils";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import { entityForObject } from "metabase/lib/schema";
+import { getCollectionName, sortModels } from "../utils";
 import {
   CollectionHeaderContainer,
   CollectionHeaderGroup,
@@ -69,6 +69,9 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
   const entity = entityForObject(model);
+
+  // dummy data
+  entity.setCollection = () => void 0;
 
   return (
     <Link
