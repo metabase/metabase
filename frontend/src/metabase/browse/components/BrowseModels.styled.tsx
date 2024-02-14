@@ -112,4 +112,7 @@ export const CollectionHeaderToggle = styled(Button)<
   padding: 0;
   border: none;
   background-color: transparent;
+  &:hover div {
+    color: ${color("brand")};
+  }
 `;
