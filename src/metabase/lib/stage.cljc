@@ -346,22 +346,15 @@
     query
     (update query :stages pop)))
 
-(defn- remove-stage
-  "Removes the stage at `stage-number` from `query`.
-  This might result in a broken query, so it's expected to used on empty stages."
-  [query stage-number]
-  (update query :stages (fn [stages]
-                          (let [[prefix suffix] (split-at stage-number stages)]
-                            (into (vec prefix) (next suffix))))))
-
 (mu/defn drop-empty-stages :- ::lib.schema/query
   "Drops all empty stages in the pipeline."
   [query :- ::lib.schema/query]
-  (reduce (fn [query stage-number]
-            (cond-> query
-              (not (has-clauses? query stage-number)) (remove-stage stage-number)))
-          query
-          (range (lib.util/canonical-stage-index query -1) 0 -1)))
+  (update query :stages (fn [stages]
+                          (keep-indexed (fn [stage-number stage]
+                                          (when (or (zero? stage-number)
+                                                    (has-clauses? query stage-number))
+                                            stage))
+                                        stages))))
 
 (mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]
   "Given a query and current stage, returns a tuple of `[query next-stage-number]`.
