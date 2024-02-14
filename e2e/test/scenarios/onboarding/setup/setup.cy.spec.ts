@@ -441,6 +441,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit(`/setup`);
     skipWelcomePage();
 
+    // 1 event is sent from the BE, which isn't blocked by blockSnoplow()
     expectGoodSnowplowEvents(1);
   });
 });
