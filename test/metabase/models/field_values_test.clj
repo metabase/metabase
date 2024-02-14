@@ -278,34 +278,41 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest insert-field-values-hook-test
-  (testing "The model hooks prevent us inserting invalid type / hash_key combination")
-  (let [field-id (mt/id :venues :id)]
-    (try
-      (is (thrown-with-msg? Exception
-                            #"Full FieldValues shouldnt have hash_key"
-                            (t2/insert! :model/FieldValues :field_id field-id :hash_key "12345")))
-      (is (thrown-with-msg? Exception
-                            #"Full FieldValues shouldnt have hash_key"
-                            (t2/insert! :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
-      (is (thrown-with-msg? ExceptionInfo
-                            #"Advanced FieldValues requires a hash_key"
-                            (t2/insert! :model/FieldValues :field_id field-id :type :sandbox)))
-      (finally
-        (t2/delete! :model/FieldValues :field_id field-id)))))
+  (testing "The model hooks prevent us inserting invalid type / hash_key combination"
+    (let [field-id (mt/id :venues :id)]
+      (try
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Full FieldValues shouldnt have hash_key"
+                              (t2/insert! :model/FieldValues :field_id field-id :hash_key "12345")))
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Full FieldValues shouldnt have hash_key"
+                              (t2/insert! :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Advanced FieldValues requires a hash_key"
+                              (t2/insert! :model/FieldValues :field_id field-id :type :sandbox)))
+        (finally
+          ;; Clean up in case there were any failed assertions, and we ended up inserting values
+          (t2/delete! :model/FieldValues :field_id field-id))))))
 
 (deftest update-field-values-hook-test
-  (testing "The model hooks prevent us inserting invalid type / hash_key combination")
-  (let [field-id (mt/id :venues :id)
-        fv-id    (t2/insert-returning-pk! :model/FieldValues :field_id field-id :type :sandbox  :hash_key "12345")]
-    (try
-      (is (thrown-with-msg? Exception
+  (testing "The model hooks prevent us changing the intrinsic identity of a field values"
+    (let [field-id (mt/id :venues :id)
+          fv-id    (t2/insert-returning-pk! :model/FieldValues :field_id field-id :type :sandbox :hash_key "12345")]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Cant update field_id for a FieldValues."
+                            (t2/update! :model/FieldValues fv-id {:field_id 1})))
+      (is (thrown-with-msg? ExceptionInfo
                             #"Cant update type or hash_key for a FieldValues."
                             (t2/update! :model/FieldValues fv-id {:type :full})))
-      (is (thrown-with-msg? Exception
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Cant update type or hash_key for a FieldValues."
+                            (t2/update! :model/FieldValues fv-id {:type nil})))
+      (is (thrown-with-msg? ExceptionInfo
                             #"Cant update type or hash_key for a FieldValues."
                             (t2/update! :model/FieldValues fv-id {:hash_key "54321"})))
-      (finally
-        (t2/delete! :model/FieldValues :field_id field-id)))))
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Cant update type or hash_key for a FieldValues."
+                            (t2/update! :model/FieldValues fv-id {:hash_key nil}))))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp [FieldValues sandbox-fv {:field_id (mt/id :venues :id)
@@ -333,3 +340,17 @@
       (is (= "6f5bb4ba"
              (serdes/raw-hash [(serdes/identity-hash field)])
              (serdes/identity-hash fv))))))
+
+(deftest select-coherence-test
+  (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
+    (is (t2/select :model/FieldValues :field_id 1))
+    (is (t2/select :model/FieldValues :field_id 1 :type :full))
+    (is (thrown-with-msg? ExceptionInfo
+                          #"Invalid query - :full FieldValues cannot have a hash_key"""
+                          (t2/select :model/FieldValues :field_id 1 :type :full :hash_key "12345")))
+
+    (is (t2/select :model/FieldValues :field_id 1 :type :sandbox))
+    (is (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key "12345"))
+    (is (thrown-with-msg? ExceptionInfo
+                          #"Invalid query - Advanced FieldValues must have a hash_key"
+                          (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key nil)))))

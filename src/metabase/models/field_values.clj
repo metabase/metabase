@@ -107,7 +107,7 @@
 (defn- assert-valid-type-hash-combo
   "If type is present, ensure that it is valid, and that a hash_key is provided iff this is an advanced field type."
   [{:keys [type hash_key] :as _field-values}]
-  (when type
+  (let [type (or type :full)]
     (when-not (contains? field-values-types type)
       (throw (ex-info (tru "Invalid field-values type.")
                       {:type        type
@@ -126,6 +126,20 @@
                       {:type        type
                        :status-code 400})))))
 
+(defn- assert-no-identity-changes [field-values]
+  (let [{:keys [field_id] :as changes} (t2/changes field-values)]
+    (when (some #(contains? changes %) [:type :hash_key])
+      (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
+                      {:id          (:id field-values)
+                       :type        (:type changes)
+                       :hash_key    (:hash_key changes)
+                       :status-code 400})))
+    (when (some? field_id)
+      (throw (ex-info (tru "Can't update field_id for a FieldValues.")
+                      {:id          (:id field-values)
+                       :field_id    field_id
+                       :status-code 400})))))
+
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
@@ -139,33 +153,36 @@
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
-  (u/prog1 (merge {:type :full}
-                  field-values)
+  (u/prog1 (merge {:type :full} field-values)
     (assert-valid-human-readable-values field-values)
-    ;; Take into account that :type has a default value in the database
-    (assert-valid-type-hash-combo (update field-values :type #(or % :full)))
+    (assert-valid-type-hash-combo field-values)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
     (when (= (:type <>) :full)
       (clear-advanced-field-values-for-field! field_id))))
 
 (t2/define-before-update :model/FieldValues
   [field-values]
-  (let [{:keys [type hash_key]} (t2/changes field-values)]
-    (u/prog1 field-values
-      (assert-valid-human-readable-values field-values)
-      (when (or (some? type) (some? hash_key))
-        (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
-                        {:type        type
-                         :hash_key    hash_key
-                         :status-code 400})))
-      ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-      (when (and (contains? field-values :values) (= :full (:type field-values)))
-        (clear-advanced-field-values-for-field! (:field_id field-values))))))
+  (u/prog1 field-values
+    (assert-no-identity-changes field-values)
+    (assert-valid-human-readable-values field-values)
+    ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
+    (when (and (contains? field-values :values) (= :full (:type field-values)))
+      (clear-advanced-field-values-for-field! (:field_id field-values)))))
+
+(defn- assert-coherent-query [{:keys [type hash_key] :or {type :full} :as field-values}]
+  (if (= :full type)
+    (when (some? hash_key)
+      (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
+                      {:field-values field-values})))
+    (when (and (contains? field-values :hash_key)
+               (nil? hash_key))
+      (throw (ex-info "Invalid query - Advanced FieldValues must have a hash_key"
+                      {:field-values field-values})))))
 
 (t2/define-before-select :model/FieldValues
-  [field-values]
-  (assert-valid-type-hash-combo field-values)
-  field-values)
+  [query]
+  (u/prog1 query
+    (assert-coherent-query (:kv-args query))))
 
 (t2/define-after-select :model/FieldValues
   [field-values]
