@@ -179,7 +179,7 @@
       (throw (ex-info "Invalid query - Advanced FieldValues must have a hash_key"
                       {:field-values field-values})))))
 
-(defn- add-defensive-type-mismatch-filter [{:keys [type] :as field-values}]
+(defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]
   (cond
     (= :full type) (assoc field-values :hash_key nil)
     (some? type)   (update field-values :hash_key #(or % [:not= nil]))
@@ -188,8 +188,7 @@
 (t2/define-before-select :model/FieldValues
   [{:keys [kv-args] :as query}]
   (assert-coherent-query kv-args)
-  ;; Ensure that query filters out invalid rows
-  (update query :kv-args add-defensive-type-mismatch-filter))
+  (update query :kv-args add-mismatched-hash-filter))
 
 (t2/define-after-select :model/FieldValues
   [field-values]
