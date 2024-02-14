@@ -192,7 +192,7 @@ function visitAndEditDashboard(id) {
 
 function openRevisionHistory() {
   cy.intercept("GET", "/api/revision*").as("revisionHistory");
-  cy.get("main header").within(() => {
+  cy.findByTestId("dashboard-header").within(() => {
     cy.icon("info").click();
   });
   cy.wait("@revisionHistory");

@@ -312,7 +312,10 @@ describe("question and dashboard links", () => {
 
       cy.wait("@collection");
 
-      cy.findByDisplayValue("Dashboard overview").should("exist");
+      cy.findByTestId("dashboard-header").within(() => {
+        cy.findByText("Loading...").should("not.exist");
+        cy.findByDisplayValue("Dashboard overview").should("be.visible");
+      });
 
       cy.findByRole("button", { name: /Dashboard ID/ }).should(
         "contain.text",

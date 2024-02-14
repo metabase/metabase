@@ -331,6 +331,7 @@ describeEE("formatting > whitelabel", () => {
 
       cy.findByTestId("landing-page-error").should("not.exist");
       cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.wait("@getSettings");
       cy.url().should("include", "/test-1");
     });
 
