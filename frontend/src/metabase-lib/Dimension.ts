@@ -107,7 +107,7 @@ export default class Dimension {
       const dimension = D.parseMBQL(mbql, metadata, query);
 
       if (dimension != null) {
-        return Object.freeze(dimension);
+        return dimension;
       }
     }
 
@@ -688,6 +688,7 @@ export class FieldDimension extends Dimension {
     query = null,
     additionalProperties = null,
   ) {
+    console.log("freeze");
     super(
       null,
       [fieldIdOrName, options],
@@ -703,6 +704,7 @@ export class FieldDimension extends Dimension {
       });
     }
 
+    console.log("freeze");
     Object.freeze(this);
   }
 
@@ -1133,6 +1135,7 @@ export class ExpressionDimension extends Dimension {
     query = null,
     additionalProperties = null,
   ) {
+    console.log("freeze");
     super(
       null,
       [expressionName, options],
@@ -1148,6 +1151,7 @@ export class ExpressionDimension extends Dimension {
       });
     }
 
+    console.log("freeze");
     Object.freeze(this);
   }
 
@@ -1416,6 +1420,7 @@ export class AggregationDimension extends Dimension {
     query = null,
     additionalProperties = null,
   ) {
+    console.log("freeze");
     super(
       null,
       [aggregationIndex, options],
@@ -1430,7 +1435,7 @@ export class AggregationDimension extends Dimension {
         this[k] = additionalProperties[k];
       });
     }
-
+    console.log("freeze");
     Object.freeze(this);
   }
 
@@ -1556,6 +1561,7 @@ export class TemplateTagDimension extends FieldDimension {
     metadata: Metadata = null,
     query: NativeQuery = null,
   ): FieldDimension | null | undefined {
+    console.log("freeze");
     return isTemplateTagReference(mbql)
       ? Object.freeze(new TemplateTagDimension(mbql[1], metadata, query))
       : null;
