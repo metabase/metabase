@@ -368,12 +368,11 @@ function areComposedEntitiesEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
-  if (
-    !lastRunQuestion ||
-    !currentQuestion ||
-    originalQuestion?.type() !== "model" ||
-    originalQuestion?.type() !== "metric"
-  ) {
+  const isModelOrMetric =
+    originalQuestion?.type() === "model" ||
+    originalQuestion?.type() === "metric";
+
+  if (!lastRunQuestion || !currentQuestion || !isModelOrMetric) {
     return false;
   }
 
