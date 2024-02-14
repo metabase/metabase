@@ -104,7 +104,8 @@
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
 
-(defn- assert-valid-field-values-type
+(defn- assert-valid-type-hash-combo
+  "If type is present, ensure that it is valid, and that a hash_key is provided iff this is an advanced field type."
   [{:keys [type hash_key] :as _field-values}]
   (when type
     (when-not (contains? field-values-types type)
@@ -141,25 +142,30 @@
   (u/prog1 (merge {:type :full}
                   field-values)
     (assert-valid-human-readable-values field-values)
-    (assert-valid-field-values-type field-values)
-    ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field is deleted
+    (assert-valid-type-hash-combo field-values)
+    ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
     (when (= (:type <>) :full)
       (clear-advanced-field-values-for-field! field_id))))
 
 (t2/define-before-update :model/FieldValues
   [field-values]
-  (let [{:keys [type values hash_key]} (t2/changes field-values)]
+  (let [{:keys [type hash_key]} (t2/changes field-values)]
     (u/prog1 field-values
       (assert-valid-human-readable-values field-values)
-      (when (or type hash_key)
+      (when (or (some? type) (some? hash_key))
         (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
                         {:type        type
                          :hash_key    hash_key
                          :status-code 400})))
       ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-      (when (and values
-                 (= (:type field-values) :full))
+      (when (and (contains? field-values :values)
+                 (= :full (:type (t2/select-one FieldValues (:id field-values)))))
         (clear-advanced-field-values-for-field! (:field_id field-values))))))
+
+(t2/define-before-select :model/FieldValues
+  [field-values]
+  (assert-valid-type-hash-combo field-values)
+  field-values)
 
 (t2/define-after-select :model/FieldValues
   [field-values]
