@@ -76,6 +76,20 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     getSamlCard().findByText("Set up").should("exist");
   });
 
+  it("should allow the user to enable/disable user provisioning", () => {
+    setupSaml();
+    cy.visit("/admin/settings/authentication/saml");
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.findByText("User Provisioning").click();
+    });
+
+    cy.button("Save changes").click();
+    cy.wait("@updateSamlSettings");
+
+    cy.findByText("Success").should("exist");
+  });
+
   describe("Group Mappings Widget", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/setting").as("getSettings");

@@ -64,6 +64,21 @@ describe(
       getLdapCard().findByText("Active").should("exist");
     });
 
+    it("should allow the user to enable/disable user provisioning", () => {
+      setupLdap();
+      cy.visit("/admin/settings/authentication/ldap");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText("User Provisioning").click();
+      });
+      enterLdapPort("389"); // api response fails without changing the port
+
+      cy.button("Save changes").click();
+      cy.wait("@updateLdapSettings");
+
+      cy.findByText("Success").should("exist");
+    });
+
     it("should allow to reset ldap settings", () => {
       setupLdap();
       cy.visit("/admin/settings/authentication");

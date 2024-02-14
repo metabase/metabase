@@ -47,6 +47,20 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     getJwtCard().findByText("Active").should("exist");
   });
 
+  it("should allow the user to enable/disable user provisioning", () => {
+    setupJwt();
+    cy.visit("/admin/settings/authentication/jwt");
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.findByText("User Provisioning").click();
+    });
+
+    cy.button("Save changes").click();
+    cy.wait("@updateSettings");
+
+    cy.findByText("Success").should("exist");
+  });
+
   it("should allow to reset jwt settings", () => {
     setupJwt();
     cy.visit("/admin/settings/authentication");
