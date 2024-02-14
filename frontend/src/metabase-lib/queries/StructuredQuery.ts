@@ -11,7 +11,6 @@ import type {
   Breakout,
   DatabaseId,
   DatasetQuery,
-  DependentMetadataItem,
   ExpressionClause,
   Filter,
   Join,
@@ -24,10 +23,7 @@ import {
   format as formatExpression,
   DISPLAY_QUOTES,
 } from "metabase-lib/expressions/format";
-import {
-  isVirtualCardId,
-  getQuestionIdFromVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   getAggregationOperators,
   isCompatibleAggregationOperatorForField,
@@ -1067,65 +1063,6 @@ class StructuredQuery extends AtomicQuery {
 
   getQueryStageIndex() {
     return this.queries().length - 1;
-  }
-
-  /**
-   * Metadata this query needs to display correctly
-   */
-  dependentMetadata({ foreignTables = true } = {}): DependentMetadataItem[] {
-    const dependencies = [];
-
-    function addDependency(dep) {
-      const existing = _.findWhere(dependencies, _.pick(dep, "type", "id"));
-
-      if (existing) {
-        Object.assign(existing, dep);
-      } else {
-        dependencies.push(dep);
-      }
-    }
-
-    const dbId = this._databaseId();
-    if (dbId) {
-      addDependency({
-        type: "schema",
-        id: dbId,
-      });
-    }
-
-    const tableId = this._sourceTableId();
-    if (tableId) {
-      addDependency({
-        type: "table",
-        id: tableId,
-        foreignTables,
-      });
-
-      if (isVirtualCardId(tableId)) {
-        addDependency({
-          type: "question",
-          id: getQuestionIdFromVirtualTableId(tableId),
-        });
-      }
-    }
-
-    // any explicitly joined tables
-    for (const join of this.joins()) {
-      join.dependentMetadata().forEach(addDependency);
-    }
-
-    // parent query's table IDs
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery) {
-      sourceQuery
-        .dependentMetadata({
-          foreignTables,
-        })
-        .forEach(addDependency);
-    }
-
-    return dependencies;
   }
 
   // INTERNAL

@@ -1,12 +1,13 @@
 import { createMockLocation } from "__support__/location";
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/lib/types";
 import { serializeCardForUrl } from "metabase/lib/card";
+import { checkNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/Question";
 
 import { isNavigationAllowed } from "./utils";
@@ -25,17 +26,19 @@ const nativeCard = createMockCard({
 const structuredModelCard = createMockCard({
   id: getNextId(),
   name: "structured model",
+  type: "model",
   dataset: true,
 });
 
 const nativeModelCard = createMockCard({
   id: getNextId(),
   name: "native model",
+  type: "model",
   dataset: true,
   dataset_query: createMockNativeDatasetQuery(),
 });
 
-const cards = [
+const cards: Card[] = [
   structuredCard,
   nativeCard,
   structuredModelCard,
@@ -54,7 +57,7 @@ const structuredModelQuestion = checkNotNull(
 
 const nativeModelQuestion = checkNotNull(metadata.question(nativeModelCard.id));
 
-const questions = [
+const questions: Question[] = [
   structuredQuestion,
   nativeQuestion,
   structuredModelQuestion,
@@ -73,6 +76,12 @@ const newModelMetadataTabLocation = createMockLocation({
   pathname: "/model/metadata",
 });
 
+const getRunModelLocation = (question: Question) =>
+  createMockLocation({
+    pathname: `/model/${question.id()}/query`,
+    hash: `#${serializeCardForUrl(nativeModelCard)}`,
+  });
+
 const getModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.id()}` }),
   createMockLocation({ pathname: `/model/${model.slug()}` }),
@@ -80,6 +89,9 @@ const getModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.slug()}/query` }),
   createMockLocation({ pathname: `/model/${model.id()}/metadata` }),
   createMockLocation({ pathname: `/model/${model.slug()}/metadata` }),
+  createMockLocation({ pathname: `/model/${model.id()}/notebook` }),
+  createMockLocation({ pathname: `/model/${model.slug()}/notebook` }),
+  getRunModelLocation(model),
 ];
 
 const getStructuredQuestionLocations = (question: Question) => [
@@ -99,8 +111,8 @@ const runModelLocation = createMockLocation({
   hash: `#${serializeCardForUrl(nativeModelCard)}`,
 });
 
-const runModelEditNotebookLocation = createMockLocation({
-  pathname: "/model/notebook",
+const runNewModelLocation = createMockLocation({
+  pathname: "/model/query",
   hash: `#${serializeCardForUrl(nativeModelCard)}`,
 });
 
@@ -153,7 +165,7 @@ describe("isNavigationAllowed", () => {
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
       runModelLocation,
-      runModelEditNotebookLocation,
+      runNewModelLocation,
       runQuestionLocation,
       runQuestionEditNotebookLocation,
     ])("allows navigating away to `$pathname`", destination => {
@@ -180,7 +192,7 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
-        runModelEditNotebookLocation,
+        runNewModelLocation,
         runQuestionLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
@@ -213,7 +225,7 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
-        runModelEditNotebookLocation,
+        runNewModelLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -237,14 +249,6 @@ describe("isNavigationAllowed", () => {
 
     it("allows to run the question and then edit it again", () => {
       const destination = runQuestionEditNotebookLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(true);
-    });
-
-    it("allows to run a model", () => {
-      const destination = runModelLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -300,7 +304,7 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
-        runModelEditNotebookLocation,
+        runNewModelLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -326,15 +330,7 @@ describe("isNavigationAllowed", () => {
     });
 
     it("allows to run the model", () => {
-      const destination = runModelLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(true);
-    });
-
-    it("allows to run the model and then edit it again", () => {
-      const destination = runModelEditNotebookLocation;
+      const destination = runNewModelLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -378,8 +374,8 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
-    it("allows to run the model and then edit it again", () => {
-      const destination = runModelEditNotebookLocation;
+    it("allows to run edited model", () => {
+      const destination = getRunModelLocation(structuredModelQuestion);
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -423,6 +419,14 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
+    it("allows to run edited model", () => {
+      const destination = getRunModelLocation(nativeModelQuestion);
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
@@ -431,7 +435,6 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
-        runModelEditNotebookLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
