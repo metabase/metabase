@@ -36,6 +36,7 @@ const MetabaseProviderInternal = ({
 
   const { isLoggedIn, isInitialized } = useInitData({
     apiUrl: config.metabaseInstanceUrl,
+    apiKey: config.apiKey,
     dispatch: store.dispatch,
     store: store,
     jwtUri: config.jwtProviderUri,

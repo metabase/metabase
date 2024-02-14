@@ -13,6 +13,7 @@ type InitDataLoaderProps = {
   dispatch: ReturnType<typeof useDispatch>;
   store: any;
   jwtUri: SDKConfigType["jwtProviderUri"];
+  apiKey?: string;
 };
 
 export const useInitData = ({
@@ -20,6 +21,7 @@ export const useInitData = ({
   dispatch,
   store,
   jwtUri,
+  apiKey,
 }: InitDataLoaderProps): {
   isLoggedIn: boolean;
   isInitialized: boolean;
@@ -56,10 +58,17 @@ export const useInitData = ({
       api.onBeforeRequest = () => dispatch(getOrRefreshSession(jwtUri));
     }
 
-    if (sessionToken?.token?.id && apiUrl) {
+    if (apiUrl) {
       api.basename = apiUrl;
-      api.sessionToken = sessionToken.token?.id;
+    }
 
+    if (sessionToken?.token?.id) {
+      api.sessionToken = sessionToken.token?.id;
+    } else if (apiKey) {
+      api.apiKey = apiKey;
+    }
+
+    if ((sessionToken?.token?.id || apiKey) && apiUrl) {
       Promise.all([
         dispatch(refreshCurrentUser()),
         dispatch(reloadSettings()),
@@ -70,7 +79,7 @@ export const useInitData = ({
     } else {
       setIsLoggedIn(false);
     }
-  }, [apiUrl, dispatch, jwtUri, sessionToken]);
+  }, [apiKey, apiUrl, dispatch, jwtUri, sessionToken]);
 
   return {
     isLoggedIn,

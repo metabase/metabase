@@ -4,10 +4,10 @@ export type SDKConfigType = {
   metabaseInstanceUrl: string;
   jwtProviderUri?: string;
   font?: string;
+  apiKey?: string;
 };
 
 export const METABASE_SDK_CONFIG: SDKConfigType = {
   metabaseInstanceUrl: "http://localhost:3000",
   font: "Lato",
-  jwtProviderUri: "http://localhost:8081/sso/metabase",
 };
