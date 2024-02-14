@@ -137,8 +137,7 @@
        ;; If it's expired, delete then try to re-create it
        (field-values/advanced-field-values-expired? fv)
        (do
-         ;; Since we already closed our transaction, it's possible another process has already recalculated
-         ;; the field values. This spurious recalculation should not cause issues, but we could fix it.
+         ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
          (t2/delete! FieldValues :id (:id fv))
          (recur fv-type field constraints))
 

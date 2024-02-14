@@ -312,9 +312,9 @@
           update-map             {:values                (map first value-pairs)
                                   :human_readable_values (when human-readable-values?
                                                            (map second value-pairs))}
-          updated-pks            (mdb.u/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+          updated-pk             (mdb.u/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
                                    (constantly update-map))]
-      (api/check-500 (pos? updated-pks))))
+      (api/check-500 (pos? updated-pk))))
   {:status :success})
 
 (api/defendpoint POST "/:id/rescan_values"
