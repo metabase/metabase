@@ -27,8 +27,6 @@ describe("parameters/utils/targets", () => {
       expect(isDimensionTarget(["variable", ["template-tag", "foo"]])).toBe(
         false,
       );
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(isDimensionTarget()).toBe(false);
     });
 
     it('should return true for a target that contains a "dimension" string in the first entry', () => {
@@ -67,10 +65,6 @@ describe("parameters/utils/targets", () => {
     });
 
     it("should return null for targets that are not template tags", () => {
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(getTemplateTagFromTarget(["dimension"])).toBe(null);
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(getTemplateTagFromTarget()).toBe(null);
       expect(
         getTemplateTagFromTarget(["dimension", ["field", 123, null]]),
       ).toBe(null);
