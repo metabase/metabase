@@ -82,8 +82,6 @@ export const EntityNameLink = styled(Link)`
   color: ${color("admin-navbar")};
 `;
 
-export const PermissionTableHeaderRow = styled.tr``;
-
 export const HintIcon = styled(Icon)`
   color: ${color("text-light")};
   margin-left: 0.375rem;

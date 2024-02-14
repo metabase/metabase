@@ -13,7 +13,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { GTAPApi } from "metabase/services";
 
-import { loadMetadataForQuery } from "metabase/redux/metadata";
+import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -292,11 +292,10 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       fetch() {
-        const { question, loadMetadataForQuery } = this.props;
+        const { question, loadMetadataForDependentItems } = this.props;
         if (question) {
-          loadMetadataForQuery(
-            question.legacyQuery({ useStructuredQuery: true }),
-          );
+          const dependentItems = Lib.dependentMetadata(question.query());
+          loadMetadataForDependentItems(dependentItems);
         }
       }
 
@@ -310,7 +309,7 @@ function loadQuestionMetadata(getQuestion) {
       (state, props) => ({
         question: getQuestion && getQuestion(state, props),
       }),
-      { loadMetadataForQuery },
+      { loadMetadataForDependentItems },
     )(MetadataLoader);
   };
 }

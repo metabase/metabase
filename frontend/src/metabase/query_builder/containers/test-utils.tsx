@@ -46,6 +46,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import NewItemMenu from "metabase/containers/NewItemMenu";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -253,7 +254,7 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const { history } = renderWithProviders(
+  const { container, history } = renderWithProviders(
     <Route>
       <Route path="/" component={TestHome} />
       <Route path="/model">
@@ -282,6 +283,7 @@ export const setup = async ({
   await waitForLoaderToBeRemoved();
 
   return {
+    container,
     history: checkNotNull(history),
     mockEventListener,
   };
@@ -302,7 +304,7 @@ export const startNewNotebookModel = async () => {
 };
 
 export const triggerNativeQueryChange = async () => {
-  await waitForNativeQueryEditoReady();
+  await waitForNativeQueryEditorReady();
 
   const inputArea = within(
     screen.getByTestId("mock-native-query-editor"),
@@ -381,8 +383,15 @@ export const waitForSaveToBeEnabled = async () => {
   });
 };
 
-export const waitForNativeQueryEditoReady = async () => {
+export const waitForNativeQueryEditorReady = async () => {
   await waitFor(() => {
     expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
+  });
+};
+
+export const waitForFaviconReady = async (container: HTMLElement) => {
+  await waitFor(() => {
+    const faviconLink = container.querySelector("link[rel=icon]");
+    expect(faviconLink).toHaveAttribute("href", LOAD_COMPLETE_FAVICON);
   });
 };

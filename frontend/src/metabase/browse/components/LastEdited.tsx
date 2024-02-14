@@ -65,7 +65,7 @@ export const LastEdited = ({
   ).jt`Last edited by ${editorFullName}${(<br key="br" />)}${time}`;
 
   return (
-    <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
+    <Tooltip label={tooltipLabel} disabled={!timeLabel}>
       <Text role="note" size="small">
         {editorFullName}
         {editorFullName && timePassed && (

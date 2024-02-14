@@ -150,18 +150,6 @@ class Join extends MBQLObjectClause {
       count: dimensions.length,
     });
   }
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  dependentMetadata() {
-    const joinedQuery = this.joinedQuery();
-    return joinedQuery
-      ? joinedQuery.dependentMetadata({
-          foreignTables: false,
-        })
-      : [];
-  }
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

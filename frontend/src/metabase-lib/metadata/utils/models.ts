@@ -124,7 +124,18 @@ export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
   const isSelfReferencing =
     query["source-table"] === getQuestionVirtualTableId(originalCard.id);
 
-  return isModel && isSameCard && isSelfReferencing;
+  // TEMPORARY HACK to unblock #38554 and #38664!
+  // Once those two PRs are merged, an immediate proper solution will follow.
+  // Why is this a hack?
+  //   1. We need to make this helper work with both models and metrics
+  //   2. Helper consolidation is needed
+  //   3. We need to extract the helper to a different namespace
+  //   4. `isAdHocModelQuestionCard` is only used in TableInteractive.jsx
+  //   5. Ideally, we should have only one helper that accepts question instead of a card
+  const isMetric = card.type === "metric" || originalCard.type === "metric";
+  const isModelOrMetric = isModel || isMetric;
+
+  return isModelOrMetric && isSameCard && isSelfReferencing;
 }
 
 export function isAdHocModelQuestion(

@@ -28,7 +28,6 @@ import type {
   DatabaseId,
   DatasetQuery,
   DatasetData,
-  DependentMetadataItem,
   TableId,
   Parameter as ParameterObject,
   ParameterValues,
@@ -264,7 +263,7 @@ class Question {
   }
 
   type(): CardType {
-    return this._card?.type || "question";
+    return this._card?.type ?? "question";
   }
 
   /**
@@ -497,18 +496,30 @@ class Question {
     }
   }
 
+  /**
+   * The name is somewhat misleading because this method applies not only
+   * for models (datasets) but also for metrics. When opening either one,
+   * we swap its `dataset_query` with a clean ad-hoc query to enable features
+   * that are available in the "simple mode".
+   * This query is "nested" by default because we use the underlying model's
+   * or metric's ID as the source table.
+   */
   composeDataset(): Question {
-    if (this.type() !== "model" || !this.isSaved()) {
+    const type = this.type() || "question";
+
+    if (type === "question" || !this.isSaved()) {
       return this;
     }
 
-    return this.setDatasetQuery({
+    const adHocQuery = {
       type: "query",
       database: this.databaseId(),
       query: {
         "source-table": getQuestionVirtualTableId(this.id()),
       },
-    });
+    };
+
+    return this.setDatasetQuery(adHocQuery);
   }
 
   private _syncStructuredQueryColumnsAndSettings(previousQuestion: Question) {
@@ -776,7 +787,7 @@ class Question {
     return this.card().result_metadata ?? [];
   }
 
-  dependentMetadata(): DependentMetadataItem[] {
+  dependentMetadata(): Lib.DependentItem[] {
     const dependencies = [];
 
     // we frequently treat dataset/model questions like they are already nested

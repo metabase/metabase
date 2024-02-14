@@ -223,16 +223,12 @@ export const updateQuestion = (
     const currentDependencies = currentQuestion
       ? [
           ...currentQuestion.dependentMetadata(),
-          ...currentQuestion
-            .legacyQuery({ useStructuredQuery: true })
-            .dependentMetadata(),
+          ...Lib.dependentMetadata(currentQuestion.query()),
         ]
       : [];
     const nextDependencies = [
       ...newQuestion.dependentMetadata(),
-      ...newQuestion
-        .legacyQuery({ useStructuredQuery: true })
-        .dependentMetadata(),
+      ...Lib.dependentMetadata(newQuestion.query()),
     ];
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
