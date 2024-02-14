@@ -350,11 +350,12 @@
   "Drops all empty stages in the pipeline."
   [query :- ::lib.schema/query]
   (update query :stages (fn [stages]
-                          (keep-indexed (fn [stage-number stage]
-                                          (when (or (zero? stage-number)
-                                                    (has-clauses? query stage-number))
-                                            stage))
-                                        stages))))
+                          (into []
+                                (keep-indexed (fn [stage-number stage]
+                                                (when (or (zero? stage-number)
+                                                          (has-clauses? query stage-number))
+                                                  stage)))
+                                stages))))
 
 (mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]
   "Given a query and current stage, returns a tuple of `[query next-stage-number]`.
