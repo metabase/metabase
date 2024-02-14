@@ -371,8 +371,8 @@ function areComposedEntitiesEquivalent({
   if (
     !lastRunQuestion ||
     !currentQuestion ||
-    originalQuestion.type() !== "model" ||
-    originalQuestion.type() !== "metric"
+    originalQuestion?.type() !== "model" ||
+    originalQuestion?.type() !== "metric"
   ) {
     return false;
   }
