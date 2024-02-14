@@ -85,15 +85,15 @@ function DateTimeFingerprint({
 }
 
 /**
- * @param {(number|null|undefined)} num - a number value from the type/Number fingerprint; might not be a number
- * @returns {[boolean, string]} - a tuple, [isFormattedNumber, formattedNumber]
+ * @param num - a number value from the type/Number fingerprint; might not be a number
+ * @returns - a tuple, [isFormattedNumber, formattedNumber]
  */
-function roundNumber(num: number | null) {
+function roundNumber(num: number | null | undefined): [boolean, string] {
   if (num == null) {
     return [false, ""];
   }
 
-  return [true, Number.isInteger(num) ? num : num.toFixed(2)];
+  return [true, Number.isInteger(num) ? num.toString() : num.toFixed(2)];
 }
 
 function NumberFingerprint({ className, field }: FieldFingerprintInfoProps) {
