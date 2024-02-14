@@ -233,7 +233,8 @@ class TagEditorParamInner extends Component<Props> {
     const hasNoDefaultValue = !tag.default;
     const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
 
-    // We want to remove "default" so that it doesn't show up in the update button
+    // We want to remove "default" and "required" so that it
+    // doesn't show up in the default value input update button
     const defaultParameterInputValue = _.omit(
       tag.type === "text" || tag.type === "dimension"
         ? parameter || {
@@ -249,6 +250,7 @@ class TagEditorParamInner extends Component<Props> {
               (tag.type === "date" ? "date/single" : null),
           },
       "default",
+      "required",
     );
 
     return (
