@@ -1,4 +1,3 @@
-import { createMockLocation } from "__support__/location";
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import type { Card } from "metabase-types/api";
@@ -6,6 +5,7 @@ import {
   createMockCard,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
+import { createMockLocation } from "metabase-types/store/mocks";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/Question";
@@ -38,11 +38,18 @@ const nativeModelCard = createMockCard({
   dataset_query: createMockNativeDatasetQuery(),
 });
 
+const structuredMetricCard = createMockCard({
+  id: getNextId(),
+  name: "structured metric",
+  type: "metric",
+});
+
 const cards: Card[] = [
   structuredCard,
   nativeCard,
   structuredModelCard,
   nativeModelCard,
+  structuredMetricCard,
 ];
 
 const metadata = createMockMetadata({ questions: cards });
@@ -57,11 +64,16 @@ const structuredModelQuestion = checkNotNull(
 
 const nativeModelQuestion = checkNotNull(metadata.question(nativeModelCard.id));
 
+const structuredMetricQuestion = checkNotNull(
+  metadata.question(structuredMetricCard.id),
+);
+
 const questions: Question[] = [
   structuredQuestion,
   nativeQuestion,
   structuredModelQuestion,
   nativeModelQuestion,
+  structuredMetricQuestion,
 ];
 
 const anyLocation = createMockLocation({
@@ -76,9 +88,17 @@ const newModelMetadataTabLocation = createMockLocation({
   pathname: "/model/metadata",
 });
 
-const getRunModelLocation = (question: Question) =>
+const newMetricQueryTabLocation = createMockLocation({
+  pathname: "/metric/query",
+});
+
+const newMetricMetadataTabLocation = createMockLocation({
+  pathname: "/metric/metadata",
+});
+
+const getRunModelLocation = (model: Question) =>
   createMockLocation({
-    pathname: `/model/${question.id()}/query`,
+    pathname: `/model/${model.id()}/query`,
     hash: `#${serializeCardForUrl(nativeModelCard)}`,
   });
 
@@ -92,6 +112,24 @@ const getModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.id()}/notebook` }),
   createMockLocation({ pathname: `/model/${model.slug()}/notebook` }),
   getRunModelLocation(model),
+];
+
+const getRunMetricLocation = (metric: Question) =>
+  createMockLocation({
+    pathname: `/metric/${metric.id()}/query`,
+    hash: `#${serializeCardForUrl(structuredMetricCard)}`,
+  });
+
+const getMetricLocations = (metric: Question) => [
+  createMockLocation({ pathname: `/metric/${metric.id()}` }),
+  createMockLocation({ pathname: `/metric/${metric.slug()}` }),
+  createMockLocation({ pathname: `/metric/${metric.id()}/query` }),
+  createMockLocation({ pathname: `/metric/${metric.slug()}/query` }),
+  createMockLocation({ pathname: `/metric/${metric.id()}/metadata` }),
+  createMockLocation({ pathname: `/metric/${metric.slug()}/metadata` }),
+  createMockLocation({ pathname: `/metric/${metric.id()}/notebook` }),
+  createMockLocation({ pathname: `/metric/${metric.slug()}/notebook` }),
+  getRunMetricLocation(metric),
 ];
 
 const getStructuredQuestionLocations = (question: Question) => [
@@ -114,6 +152,16 @@ const runModelLocation = createMockLocation({
 const runNewModelLocation = createMockLocation({
   pathname: "/model/query",
   hash: `#${serializeCardForUrl(nativeModelCard)}`,
+});
+
+const runMetricLocation = createMockLocation({
+  pathname: "/metric",
+  hash: `#${serializeCardForUrl(structuredMetricCard)}`,
+});
+
+const runNewMetricLocation = createMockLocation({
+  pathname: "/metric/query",
+  hash: `#${serializeCardForUrl(structuredMetricCard)}`,
 });
 
 const runQuestionLocation = createMockLocation({
@@ -160,12 +208,17 @@ describe("isNavigationAllowed", () => {
       anyLocation,
       ...getModelLocations(structuredModelQuestion),
       ...getModelLocations(nativeModelQuestion),
+      ...getMetricLocations(structuredMetricQuestion),
       ...getStructuredQuestionLocations(structuredQuestion),
       ...getNativeQuestionLocations(nativeQuestion),
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
+      newMetricQueryTabLocation,
+      newMetricMetadataTabLocation,
       runModelLocation,
       runNewModelLocation,
+      runMetricLocation,
+      runNewMetricLocation,
       runQuestionLocation,
       runQuestionEditNotebookLocation,
     ])("allows navigating away to `$pathname`", destination => {
@@ -187,12 +240,17 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
+        ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
+        newMetricQueryTabLocation,
+        newMetricMetadataTabLocation,
         runModelLocation,
         runNewModelLocation,
+        runMetricLocation,
+        runNewMetricLocation,
         runQuestionLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
@@ -220,12 +278,17 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
+        ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
+        newMetricQueryTabLocation,
+        newMetricMetadataTabLocation,
         runModelLocation,
         runNewModelLocation,
+        runMetricLocation,
+        runNewMetricLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -271,9 +334,12 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
+        ...getMetricLocations(structuredMetricQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
+        newMetricQueryTabLocation,
+        newMetricMetadataTabLocation,
       ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -299,12 +365,17 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
+        ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
+        newMetricQueryTabLocation,
+        newMetricMetadataTabLocation,
         runModelLocation,
         runNewModelLocation,
+        runMetricLocation,
+        runNewMetricLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -342,6 +413,7 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
+        ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         runQuestionLocation,
@@ -386,10 +458,15 @@ describe("isNavigationAllowed", () => {
       it.each([
         anyLocation,
         ...getModelLocations(nativeModelQuestion),
+        ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
-        newModelMetadataTabLocation,
         newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+        newMetricQueryTabLocation,
+        newMetricMetadataTabLocation,
+        runMetricLocation,
+        runNewMetricLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -431,10 +508,104 @@ describe("isNavigationAllowed", () => {
       it.each([
         anyLocation,
         ...getModelLocations(structuredModelQuestion),
+        ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
-        newModelMetadataTabLocation,
         newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+        newMetricQueryTabLocation,
+        newMetricMetadataTabLocation,
+        runMetricLocation,
+        runNewMetricLocation,
+        runQuestionEditNotebookLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
+    });
+  });
+
+  describe("when creating new metric", () => {
+    const isNewQuestion = true;
+    const question = structuredMetricQuestion;
+
+    describe("allows navigating between metric query & metadata tabs", () => {
+      it.each([newMetricQueryTabLocation, newMetricMetadataTabLocation])(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
+    });
+
+    it("allows to run the metric", () => {
+      const destination = runNewMetricLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(structuredModelQuestion),
+        ...getModelLocations(nativeModelQuestion),
+        ...getMetricLocations(structuredMetricQuestion),
+        ...getStructuredQuestionLocations(structuredQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        runQuestionLocation,
+        runQuestionEditNotebookLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
+    });
+  });
+
+  describe("when editing structured metric", () => {
+    const isNewQuestion = false;
+    const question = structuredMetricQuestion;
+
+    describe("allows navigating between metric query & metadata tabs", () => {
+      it.each(getMetricLocations(question))("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      });
+    });
+
+    it("allows to run the metric", () => {
+      const destination = runMetricLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    it("allows to run edited metric", () => {
+      const destination = getRunMetricLocation(structuredMetricQuestion);
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(structuredModelQuestion),
+        ...getModelLocations(nativeModelQuestion),
+        ...getStructuredQuestionLocations(structuredQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+        newMetricQueryTabLocation,
+        newMetricMetadataTabLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
