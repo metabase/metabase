@@ -104,5 +104,15 @@ describe("SettingInput", () => {
       input.blur();
       expect(onChange).toHaveBeenCalledWith(2);
     });
+
+    it("should not call onChange when blurring without changing anything", () => {
+      const value = "/";
+      const { onChange } = setup({ setting, value, type: "text", normalize });
+
+      const input = screen.getByDisplayValue(value);
+      input.focus();
+      input.blur();
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 });
