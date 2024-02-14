@@ -13,7 +13,7 @@ import {
   CollectionExpandCollapseContainer,
   CollectionHeaderContainer,
   CollectionHeaderGroup,
-  CollectionHeaderLink,
+  CollectionHeaderToggle,
   ContainerExpandCollapseButton,
   ModelCard,
   MultilineEllipsified,
@@ -37,7 +37,10 @@ export const ModelGroup = ({
   const aboveFold = sortedModels.slice(0, collapsedSize);
   const belowFold = sortedModels.slice(collapsedSize);
 
-  const [opened, { toggle }] = useDisclosure(false);
+  const [someModelsShown, { toggle: toggleSomeModelShown }] =
+    useDisclosure(true);
+  const [allModelsShown, { toggle: toggleAllModelsShown }] =
+    useDisclosure(false);
 
   return (
     <>
@@ -45,51 +48,49 @@ export const ModelGroup = ({
         collection={collection}
         key={collectionHtmlId}
         id={collectionHtmlId}
+        toggleSomeModelShown={toggleSomeModelShown}
       />
-      {aboveFold.map(model => (
-        <ModelCell
-          model={model}
-          collectionHtmlId={collectionHtmlId}
-          key={`model-${model.id}`}
-        />
-      ))}
-      {belowFold.length > 0 && (
-        <>
-          <CollectionCollapse in={opened} transitionDuration={0}>
-            {belowFold.map(model => (
-              <ModelCell
-                model={model}
-                collectionHtmlId={collectionHtmlId}
-                key={`model-${model.id}`}
-              />
-            ))}
-          </CollectionCollapse>
-          <CollectionExpandCollapseContainer>
-            {!opened &&
-              belowFold.length &&
-              `${aboveFold.length} of ${models.length}`}
-            {belowFold.length && (
-              <ContainerExpandCollapseButton
-                styles={{
-                  root: {
-                    top: 0,
-                    transform: "none",
-                    ":active": { transform: "none" },
-                  },
-                }}
-                lh="inherit"
-                p="0"
-                onClick={toggle}
-              >
-                {opened
-                  ? c("For a button that collapses a list of models")
-                      .t`Show less`
-                  : c("For a button that expands a list of models").t`Show all`}
-              </ContainerExpandCollapseButton>
-            )}
-          </CollectionExpandCollapseContainer>
-        </>
-      )}
+      <CollectionCollapse in={someModelsShown} transitionDuration={0}>
+        {aboveFold.map(model => (
+          <ModelCell
+            model={model}
+            collectionHtmlId={collectionHtmlId}
+            key={`model-${model.id}`}
+          />
+        ))}
+        {belowFold.length > 0 && (
+          <>
+            <CollectionCollapse in={allModelsShown} transitionDuration={0}>
+              {belowFold.map(model => (
+                <ModelCell
+                  model={model}
+                  collectionHtmlId={collectionHtmlId}
+                  key={`model-${model.id}`}
+                />
+              ))}
+            </CollectionCollapse>
+            <CollectionExpandCollapseContainer>
+              {!allModelsShown &&
+                belowFold.length &&
+                `${aboveFold.length} of ${models.length}`}
+              {belowFold.length && (
+                <ContainerExpandCollapseButton
+                  styles={noTransform}
+                  lh="inherit"
+                  p="0"
+                  onClick={toggleAllModelsShown}
+                >
+                  {allModelsShown
+                    ? c("For a button that collapses a list of models")
+                        .t`Show less`
+                    : c("For a button that expands a list of models")
+                        .t`Show all`}
+                </ContainerExpandCollapseButton>
+              )}
+            </CollectionExpandCollapseContainer>
+          </>
+        )}
+      </CollectionCollapse>
     </>
   );
 };
@@ -130,9 +131,11 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
 const CollectionHeader = ({
   collection,
   id,
+  toggleSomeModelShown,
 }: {
   collection: CollectionEssentials;
   id: string;
+  toggleSomeModelShown: () => void;
 }) => {
   const dispatch = useDispatch();
   const wrappable = { ...collection, model: "collection" };
@@ -148,15 +151,26 @@ const CollectionHeader = ({
       align="center"
     >
       <CollectionHeaderGroup grow noWrap>
-        <CollectionHeaderLink to={Urls.collection(collection)}>
+        <CollectionHeaderToggle
+          styles={noTransform}
+          onClick={toggleSomeModelShown}
+        >
           <Group spacing=".25rem">
             <Icon {...icon} />
             <Text weight="bold" color="text-dark">
               {getCollectionName(collection)}
             </Text>
           </Group>
-        </CollectionHeaderLink>
+        </CollectionHeaderToggle>
       </CollectionHeaderGroup>
     </CollectionHeaderContainer>
   );
+};
+
+const noTransform = {
+  root: {
+    top: 0,
+    transform: "none",
+    ":active": { transform: "none" },
+  },
 };

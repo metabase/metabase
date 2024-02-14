@@ -105,3 +105,11 @@ export const CollectionExpandCollapseContainer = styled(Flex)`
   align-items: center;
   grid-column: 1 / -1;
 `;
+
+export const CollectionHeaderToggle = styled(Button)<
+  ButtonProps & HTMLAttributes<HTMLButtonElement>
+>`
+  padding: 0;
+  border: none;
+  background-color: transparent;
+`;
