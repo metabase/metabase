@@ -449,7 +449,7 @@ describeWithSnowplow("scenarios > setup", () => {
 const skipWelcomePage = () => {
   cy.findByTestId("welcome-page").within(() => {
     cy.findByText("Welcome to Metabase");
-    cy.findByTextEnsureVisible("Let's get started").click();
+    cy.findByText("Let's get started").click();
   });
 };
 
