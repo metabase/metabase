@@ -82,16 +82,17 @@
        ~@body)))
 
 (defmacro select-or-insert!
-  "Create or update some database state, typically a single row, atomically.
+  "Return a database record if it exists, otherwise create it.
 
-   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and t also  avoids calculating the
+   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
+   calculating initial values that may be expensive, or require side effects.
 
-   It also allows us to avoid expensive or side-effecting calculations only needed when inserting new values.
+   In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
+   rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
+   This may result in `insert-fn` being called a second time.
 
-   The usage is just like the naive pattern `(or select-expr insert-expr)`, just papering over a number of sharp edges.
-   One should be careful about side-effects in `select-expr`, as the expression could be executed up to 3 times.
-
-   The mechanism is agnostic whether there is an underlying db constraint to prevent duplicates."
+   In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
+   To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   {:style/indent 2}
   [model select-map insert-fn]
   `(with-conflict-retry
@@ -106,7 +107,17 @@
           (t2/insert-returning-instance! ~model (validate# (~insert-fn)))))))
 
 (defmacro update-or-insert!
-  "sdfsdf. Returns the primary key."
+  "Update a database record, if it exists, otherwise create it.
+
+   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
+   calculating initial values that may be expensive, or require side effects.
+
+   In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
+   rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
+   This may result in `insert-fn` being called a second time.
+
+   In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
+   To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   {:style/indent 2}
   [model select-map update-fn]
   `(with-conflict-retry
