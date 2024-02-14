@@ -27,7 +27,7 @@ type FieldFingerprintInfoProps = {
     }
 );
 
-function FieldFingerprintInfo({
+export function FieldFingerprintInfo({
   className,
   timezone,
   showAllFieldValues,
