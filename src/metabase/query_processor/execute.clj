@@ -62,9 +62,4 @@
                       [:native :map]]
    rff            :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
-    (try
-      (execute* compiled-query rff)
-      (catch Throwable e
-        (throw (ex-info (i18n/tru "Error executing query: {0}" (or (ex-message e) (.getCanonicalName (class e))))
-                        {:query compiled-query, :type qp.error-type/db}
-                        e))))))
+    (execute* compiled-query rff)))

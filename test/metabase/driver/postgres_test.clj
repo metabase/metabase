@@ -963,7 +963,7 @@
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
-(deftest exception-test
+(deftest ^:parallel exception-test
   (mt/test-driver :postgres
     (testing (str "If the DB throws an exception, is it properly returned by the query processor? Is it status "
                   ":failed? (#9942)")
@@ -982,11 +982,11 @@
         (catch Throwable e
           (is (= "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"
                  (try
-                   (.. e getCause getMessage)
+                   (-> e ex-cause ex-message)
                    (catch Throwable e
                      e)))))))))
 
-(deftest pgobject-test
+(deftest ^:parallel pgobject-test
   (mt/test-driver :postgres
     (testing "Make sure PGobjects are decoded correctly"
       (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.1) AS sleep;"}))]
@@ -1002,7 +1002,7 @@
                    :name         "sleep"}]
                  (mt/cols results))))))))
 
-(deftest id-field-parameter-test
+(deftest ^:parallel id-field-parameter-test
   (mt/test-driver :postgres
     (testing "We should be able to filter a PK column with a String value -- should get parsed automatically (#13263)"
       (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
