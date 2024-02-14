@@ -211,7 +211,7 @@ const Questions = createEntity({
   forms,
 });
 
-const getCardLabel = card => {
+function getCardLabel(card) {
   if (card.type === "model" || card.model === "dataset") {
     return t`model`;
   }
@@ -221,9 +221,9 @@ const getCardLabel = card => {
   }
 
   return t`question`;
-};
+}
 
-const getCardIcon = card => {
+function getCardIcon(card) {
   if (card.type === "model" || card.model === "dataset") {
     return { name: "model" };
   }
@@ -238,6 +238,6 @@ const getCardIcon = card => {
   return {
     name: visualization?.iconName ?? "beaker",
   };
-};
+}
 
 export default Questions;

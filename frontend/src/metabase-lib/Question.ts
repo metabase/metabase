@@ -59,7 +59,6 @@ import type { Query } from "./types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
-  dataset?: boolean;
   cardType?: CardType;
   tableId?: TableId;
   collectionId?: CollectionId;
