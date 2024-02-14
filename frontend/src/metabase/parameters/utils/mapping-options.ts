@@ -28,6 +28,7 @@ import {
 import type Question from "metabase-lib/Question";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
+import { TemplateTagDimension } from "metabase-lib/Dimension";
 
 export type StructuredQuerySectionOption = {
   sectionName: string;
@@ -61,12 +62,16 @@ function buildStructuredQuerySectionOptions(
 function buildNativeQuerySectionOptions(
   section: DimensionOptionsSection,
 ): NativeParameterMappingOption[] {
-  return section.items.map(({ dimension }) => ({
-    name: dimension.displayName(),
-    icon: dimension.icon() ?? "",
-    isForeign: false,
-    target: buildDimensionTarget(dimension),
-  }));
+  return section.items
+    .flatMap(({ dimension }) =>
+      dimension instanceof TemplateTagDimension ? [dimension] : [],
+    )
+    .map(dimension => ({
+      name: dimension.displayName(),
+      icon: dimension.icon() ?? "",
+      isForeign: false,
+      target: buildDimensionTarget(dimension),
+    }));
 }
 
 function buildVariableOption(

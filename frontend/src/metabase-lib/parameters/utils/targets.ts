@@ -1,20 +1,31 @@
 import type {
-  DimensionReference,
+  FieldReference,
+  LocalFieldReference,
   NativeParameterDimensionTarget,
   ParameterTarget,
+  ParameterTextTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import * as Lib from "metabase-lib";
+import type { TemplateTagDimension } from "metabase-lib/Dimension";
 import Dimension from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
-export function isVariableTarget(target: ParameterTarget) {
+export function isParameterVariableTarget(
+  target: ParameterTarget,
+): target is ParameterVariableTarget {
   return target?.[0] === "variable";
+}
+
+function isLocalFieldReference(
+  reference: FieldReference,
+): reference is LocalFieldReference {
+  return reference?.[0] === "field" && typeof reference[1] === "number";
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
@@ -44,12 +55,9 @@ export function getParameterTargetField(
 }
 
 export function buildDimensionTarget(
-  dimension: Dimension,
+  dimension: TemplateTagDimension,
 ): NativeParameterDimensionTarget {
-  return [
-    "dimension",
-    dimension.mbql() as DimensionReference,
-  ] as NativeParameterDimensionTarget;
+  return ["dimension", dimension.mbql()];
 }
 
 export function buildColumnTarget(
@@ -57,19 +65,22 @@ export function buildColumnTarget(
   stageIndex: number,
   column: Lib.ColumnMetadata,
 ): StructuredParameterDimensionTarget {
-  return [
-    "dimension",
-    Lib.legacyRef(query, stageIndex, column),
-  ] as StructuredParameterDimensionTarget;
+  const fieldRef = Lib.legacyRef(query, stageIndex, column);
+
+  if (!isLocalFieldReference(fieldRef)) {
+    throw new Error("Cannot build column target for non-local field ref");
+  }
+
+  return ["dimension", fieldRef];
 }
 
 export function buildTemplateTagVariableTarget(
   variable: TemplateTagVariable,
 ): ParameterVariableTarget {
-  return ["variable", variable.mbql()] as ParameterVariableTarget;
+  return ["variable", variable.mbql()];
 }
 
-export function buildTextTagTarget(tagName: string): ["text-tag", string] {
+export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
 }
 

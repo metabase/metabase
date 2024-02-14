@@ -11,7 +11,7 @@ import {
 import type Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
-  isVariableTarget,
+  isParameterVariableTarget,
   getTemplateTagFromTarget,
 } from "metabase-lib/parameters/utils/targets";
 
@@ -41,18 +41,20 @@ describe("parameters/utils/targets", () => {
 
   describe("isVariableTarget", () => {
     it("should return false for non-variable targets", () => {
-      expect(isVariableTarget(["dimension", ["field", 1, null]])).toBe(false);
-      expect(isVariableTarget(["dimension", ["template-tag", "foo"]])).toBe(
+      expect(isParameterVariableTarget(["dimension", ["field", 1, null]])).toBe(
         false,
       );
+      expect(
+        isParameterVariableTarget(["dimension", ["template-tag", "foo"]]),
+      ).toBe(false);
       // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(isVariableTarget()).toBe(false);
+      expect(isParameterVariableTarget()).toBe(false);
     });
 
     it("should return true for a variable target", () => {
-      expect(isVariableTarget(["variable", ["template-tag", "foo"]])).toBe(
-        true,
-      );
+      expect(
+        isParameterVariableTarget(["variable", ["template-tag", "foo"]]),
+      ).toBe(true);
     });
   });
 

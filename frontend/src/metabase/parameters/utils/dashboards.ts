@@ -21,7 +21,7 @@ import type {
 } from "metabase-lib/parameters/types";
 import {
   getParameterTargetField,
-  isVariableTarget,
+  isParameterVariableTarget,
 } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Field from "metabase-lib/metadata/Field";
@@ -95,7 +95,7 @@ export function isDashboardParameterWithoutMapping(
 }
 
 function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
-  return dashcards.flatMap(dashcard => {
+  const extendedParameterMappings = dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
     const extendedParameterMappings = (parameter_mappings || [])
@@ -113,6 +113,8 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
 
     return extendedParameterMappings;
   });
+
+  return extendedParameterMappings;
 }
 
 export function getDashboardUiParameters(
@@ -182,7 +184,7 @@ function buildFieldFilterUiParameter(
   });
 
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
-    return isVariableTarget(mapping.target);
+    return isParameterVariableTarget(mapping.target);
   });
 
   const fields = mappedFields

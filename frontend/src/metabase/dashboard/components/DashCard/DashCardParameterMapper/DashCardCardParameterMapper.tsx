@@ -37,7 +37,7 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
+import { isParameterVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 import type Question from "metabase-lib/Question";
@@ -325,7 +325,7 @@ export function DashCardCardParameterMapper({
           </Tooltip>
         </>
       )}
-      {target && isVariableTarget(target) && (
+      {target && isParameterVariableTarget(target) && (
         <Warning>
           {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
             ? t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
