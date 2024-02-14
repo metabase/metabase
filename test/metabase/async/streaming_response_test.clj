@@ -81,7 +81,8 @@
       (a/go
         (when (a/<! canceled-chan)
           (reset! canceled? ::canceled-chan-message)
-          (future-cancel futur))))))
+          (future-cancel futur))))
+    (u/deref-with-timeout futur 5000)))
 
 (defmethod driver/connection-properties ::test-driver
   [& _]

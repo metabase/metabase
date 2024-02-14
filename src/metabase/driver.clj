@@ -411,6 +411,8 @@
 
   You can use [[metabase.query-processor.reducible/reducible-rows]] to create reducible, streaming results.
 
+  `respond` MUST BE CALLED SYNCHRONOUSLY!!!
+
   Example impl:
 
     (defmethod reducible-query :my-driver

@@ -180,5 +180,4 @@
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]
                 (assert (:status result))
-                (qp.pipeline/*result* result)
-                result))))))))
+                (qp.pipeline/*result* result)))))))))

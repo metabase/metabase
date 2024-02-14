@@ -159,7 +159,8 @@
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
-                  (add-and-save-execution-info-xform! execution-info (rff metadata)))]
+                  (let [result (rff metadata)]
+                    (add-and-save-execution-info-xform! execution-info result)))]
           (try
             (qp query rff*)
             (catch Throwable e

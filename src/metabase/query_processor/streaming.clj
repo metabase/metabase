@@ -172,6 +172,8 @@
                      (catch Throwable e
                        e))]
         (assert (some? result) "QP unexpectedly returned nil.")
+        ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
+        ;; question to return a response directly instead of a core.async channel
         (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
         (when (or (instance? Throwable result)
                   (= (:status result) :failed))

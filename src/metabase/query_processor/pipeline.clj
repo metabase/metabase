@@ -17,12 +17,15 @@
   nil)
 
 (defn canceled?
-  "Whether the current query execution has been canceled."
+  "Whether the current query execution has been canceled. This is usually triggered by an HTTP connection closing when
+  running queries from the REST API; you should check this before or while doing something expensive (such as before
+  running the query against a data warehouse) to avoid doing work for queries that have been canceled."
   []
   (some-> *canceled-chan* a/poll!))
 
 (defn ^:dynamic *result*
-  "Called exactly once with the final result, which is the result of either [[reducef]] or [[raisef]]."
+  "Called exactly once with the final result, which is the result of either [[*reduce*]] (if query completed
+  successfully), or an Exception (if it did not)."
   [result]
   (if (instance? Throwable result)
     (throw result)
@@ -34,10 +37,12 @@
 
     (respond results-metadata reducible-rows)
 
-  The implementation of [[executef]] should call `respond` with this information once it is available. The result of
-  this function is ignored."
+  The implementation should call `respond` with this information once it is available. `response` MUST BE CALLED
+  SYNCHRONOUSLY, and [[*execute*]] should ultimately return whatever it returns."
   [driver query respond]
   (when-not (canceled?)
+    ;; the context map that gets passed to [[driver/execute-reducible-query]] is for backwards compatibility for
+    ;; pre-#35465 code
     (let [context {:canceled-chan *canceled-chan*}]
       (driver/execute-reducible-query driver query context respond))))
 
