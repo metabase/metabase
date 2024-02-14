@@ -13,7 +13,6 @@ import type {
   DatasetQuery,
   ExpressionClause,
   Filter,
-  Join,
   TableId,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
@@ -23,7 +22,6 @@ import {
   format as formatExpression,
   DISPLAY_QUOTES,
 } from "metabase-lib/expressions/format";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   getAggregationOperators,
   isCompatibleAggregationOperatorForField,
@@ -53,7 +51,6 @@ import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
-import JoinWrapper from "./structured/Join";
 
 import { getStructuredQueryTable } from "./utils/structured-query-table";
 
@@ -87,10 +84,6 @@ export interface SegmentOption {
   filter: ["segment", number];
   icon: string;
   query: StructuredQuery;
-}
-
-function unwrapJoin(join: Join | JoinWrapper): Join {
-  return join instanceof JoinWrapper ? join.raw() : join;
 }
 
 /**
@@ -248,24 +241,6 @@ class StructuredQuery extends AtomicQuery {
     return this.addFilter(filter);
   }
 
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  join(join) {
-    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
-  }
-
-  // JOINS
-
-  /**
-   * @deprecated use metabase-lib v2 to manage joins
-   */
-  joins = _.once((): JoinWrapper[] => {
-    return Q.getJoins(this.legacyQuery({ useStructuredQuery: true })).map(
-      (join, index) => new JoinWrapper(join, index, this),
-    );
-  });
-
   // AGGREGATIONS
 
   /**
@@ -420,13 +395,11 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @param includedBreakout The breakout to include in the options even if it's already used. If true, include all options.
    * @param fieldFilter An option @type {Field} predicate to filter out options
-   * @param isValidation Temporary flag to ensure MLv1 and MLv2 compat during query clean phase
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
   breakoutOptions(
     includedBreakout?: any,
     fieldFilter: FieldFilterFn = () => true,
-    isValidation = false,
   ): DimensionOptions {
     // the collection of field dimensions
     const breakoutDimensions =
@@ -445,9 +418,7 @@ class StructuredQuery extends AtomicQuery {
       );
     }
 
-    return isValidation
-      ? this._dimensionOptionsForValidation(filter)
-      : this.dimensionOptions(filter);
+    return this.dimensionOptions(filter);
   }
 
   /**
@@ -673,25 +644,6 @@ class StructuredQuery extends AtomicQuery {
     return null;
   }
 
-  _getExplicitJoinsSet(joins) {
-    const joinDimensionPairs = joins.map(join => {
-      const dimensionPairs = join.getDimensions();
-      return dimensionPairs.map(pair => {
-        const [parentDimension, joinDimension] = pair;
-        return this._keyForFK(
-          parentDimension && parentDimension.field(),
-          joinDimension && joinDimension.field(),
-        );
-      });
-    });
-
-    const flatJoinDimensions = _.flatten(joinDimensionPairs);
-
-    const explicitJoins = new Set(flatJoinDimensions);
-    explicitJoins.delete(null);
-    return explicitJoins;
-  }
-
   dimensionOptions(
     dimensionFilter: DimensionFilterFn = _dimension => true,
   ): DimensionOptions {
@@ -700,16 +652,6 @@ class StructuredQuery extends AtomicQuery {
       fks: [],
       dimensions: [],
     };
-    const joins = this.joins();
-
-    for (const join of joins) {
-      const joinedDimensionOptions =
-        join.joinedDimensionOptions(dimensionFilter);
-      if (joinedDimensionOptions.count > 0) {
-        dimensionOptions.count += joinedDimensionOptions.count;
-        dimensionOptions.fks.push(joinedDimensionOptions);
-      }
-    }
 
     const table = this.table();
 
@@ -721,28 +663,11 @@ class StructuredQuery extends AtomicQuery {
         dimensionOptions.dimensions.push(dimension);
       }
 
-      // de-duplicate explicit and implicit joined tables
-      const explicitJoins = this._getExplicitJoinsSet(joins);
-
       const dimensionIsFKReference = dimension => dimension.field?.().isFK();
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
 
       for (const dimension of fkDimensions) {
         const field = dimension.field();
-
-        const queryHasExplicitJoin =
-          field && explicitJoins.has(this._keyForFK(field, field.target));
-        const isNestedCardTable = table?.isVirtualCard();
-        const tableHasExplicitJoin =
-          isNestedCardTable &&
-          table.fields.find(
-            tableField => tableField.id === field.fk_target_field_id,
-          );
-
-        if (queryHasExplicitJoin || tableHasExplicitJoin) {
-          continue;
-        }
-
         const fkDimensions = dimension
           .dimensions([FieldDimension])
           .filter(dimensionFilter);
@@ -759,55 +684,6 @@ class StructuredQuery extends AtomicQuery {
     }
 
     return new DimensionOptions(dimensionOptions);
-  }
-
-  /**
-   * An extension of dimensionOptions that includes MLv2 friendly dimensions.
-   * MLv1 and MLv2 can produce different field references for the same field.
-   *
-   * Example: if a question is started from another question or model,
-   * MLv2 will always use field literals like [ "field", "TOTAL", { "base-type": "type/Float" } ],
-   * but MLv1 could trace it to a concrete field like [ "field", 1, null ].
-   *
-   * Because dimensionOptions is an MLv1 concept, in will only include concrete field refs in a case like that.
-   * This method will add a field literal for each concrete field ref in the question, so MLv1 will treat them as valid.
-   *
-   * ⚠️ Should ONLY be used for clauses' `isValid` checks.
-   */
-  _dimensionOptionsForValidation(
-    dimensionFilter: DimensionFilter = _dimension => true,
-  ): DimensionOptions {
-    const baseOptions = this.dimensionOptions(dimensionFilter);
-
-    const mlv2FriendlyDimensions: Dimension[] = [];
-
-    baseOptions.dimensions.forEach(dimension => {
-      if (dimension instanceof FieldDimension) {
-        const field = dimension.field();
-        const options = dimension.getOptions();
-
-        // MLv1 picks up join-alias from parent questions/models.
-        // They won't be available in MLv2's field literals,
-        // so we need to remove them.
-        const mlv2Options = _.omit(options, "join-alias");
-        mlv2Options["base-type"] = field.base_type;
-
-        if (isVirtualCardId(field.table_id)) {
-          const mlv2Dimension = Dimension.parseMBQL([
-            "field",
-            field.name,
-            mlv2Options,
-          ]);
-          mlv2FriendlyDimensions.push(mlv2Dimension);
-        }
-      }
-    });
-
-    return new DimensionOptions({
-      count: baseOptions.count + mlv2FriendlyDimensions.length,
-      dimensions: [...baseOptions.dimensions, ...mlv2FriendlyDimensions],
-      fks: baseOptions.fks,
-    });
   }
 
   // FIELD OPTIONS
@@ -847,13 +723,6 @@ class StructuredQuery extends AtomicQuery {
     );
   });
 
-  /**
-   * @deprecated use metabase-lib v2' to manage joins
-   */
-  private joinedDimensions = _.once((): Dimension[] => {
-    return [].concat(...this.joins().map(join => join.fieldsDimensions()));
-  });
-
   breakoutDimensions = _.once(() => {
     return this.breakouts().map(breakout => this.parseFieldReference(breakout));
   });
@@ -878,12 +747,9 @@ class StructuredQuery extends AtomicQuery {
       const breakouts = this.breakoutDimensions();
       return [...breakouts, ...aggregations];
     } else if (this._hasFields()) {
-      const fields = this.fieldDimensions();
-      const joined = this.joinedDimensions();
-      return [...fields, ...joined];
+      return this.fieldDimensions();
     } else {
       const expressions = this.expressionDimensions();
-      const joined = this.joinedDimensions();
       const table = this.tableDimensions();
 
       const sorted = _.chain(table)
@@ -904,7 +770,7 @@ class StructuredQuery extends AtomicQuery {
         .sortBy(d => d.field().position)
         .value();
 
-      return [...sorted, ...expressions, ...joined];
+      return [...sorted, ...expressions];
     }
   });
 
