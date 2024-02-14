@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import type { DatasetColumn } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import {
@@ -11,7 +10,9 @@ import {
 } from "metabase-lib/types/utils/isa";
 import type Field from "metabase-lib/metadata/Field";
 import { Table } from "../MetadataInfo.styled";
+
 import CategoryFingerprint from "./CategoryFingerprint";
+import { DateTimeFingerprint } from "./DateTimeFingerprint";
 
 type FieldFingerprintInfoProps = {
   className?: string;
@@ -88,47 +89,6 @@ function FieldFingerprintInfo({
   }
 
   return null;
-}
-
-type DateTimeFingerprintProps = {
-  className?: string;
-  fingerprintTypeInfo?: Lib.DateTimeFingerprintDisplayInfo | null;
-  timezone?: string;
-};
-
-function DateTimeFingerprint({
-  className,
-  fingerprintTypeInfo,
-  timezone,
-}: DateTimeFingerprintProps) {
-  if (!fingerprintTypeInfo) {
-    return null;
-  }
-
-  const { earliest, latest } = fingerprintTypeInfo;
-  const formattedEarliest = formatDateTimeWithUnit(earliest, "minute");
-  const formattedLatest = formatDateTimeWithUnit(latest, "minute");
-
-  return (
-    <Table className={className}>
-      <tbody>
-        {timezone && (
-          <tr>
-            <th>{t`Timezone`}</th>
-            <td>{timezone}</td>
-          </tr>
-        )}
-        <tr>
-          <th>{t`Earliest date`}</th>
-          <td>{formattedEarliest}</td>
-        </tr>
-        <tr>
-          <th>{t`Latest date`}</th>
-          <td>{formattedLatest}</td>
-        </tr>
-      </tbody>
-    </Table>
-  );
 }
 
 /**
