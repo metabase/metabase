@@ -12,7 +12,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Group, Icon, Text, Title } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
-import { getCollectionName } from "../utils";
+import { getCollectionName, sortModels } from "../utils";
 import {
   CollectionHeaderContainer,
   CollectionHeaderGroup,
@@ -29,20 +29,7 @@ export const ModelGroup = ({
   models: SearchResult[];
   localeCode: string | undefined;
 }) => {
-  const sortedModels = models.sort((a, b) => {
-    if (!a.name && b.name) {
-      return 1;
-    }
-    if (a.name && !b.name) {
-      return -1;
-    }
-    if (!a.name && !b.name) {
-      return 0;
-    }
-    const nameA = a.name.toLowerCase();
-    const nameB = b.name.toLowerCase();
-    return nameA.localeCompare(nameB, localeCode);
-  });
+  const sortedModels = models.sort((a, b) => sortModels(a, b, localeCode));
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
