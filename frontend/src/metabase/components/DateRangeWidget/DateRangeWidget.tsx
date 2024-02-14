@@ -18,7 +18,7 @@ export const DateRangeWidget = ({ value, ...props }: DateRangeWidgetProps) => {
     <DateAllOptionsWidget
       {...props}
       value={value}
-      initalValue={initialValue}
+      initialValue={initialValue}
       disableOperatorSelection
     />
   );

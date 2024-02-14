@@ -15,7 +15,7 @@ interface DateAllOptionsWidgetProps {
   setValue: (value: string | null) => void;
   value?: string;
   defaultValue?: string;
-  initalValue?: string;
+  initialValue?: string;
   required?: boolean;
   onClose: () => void;
   disableOperatorSelection?: boolean;
@@ -27,12 +27,12 @@ export const DateAllOptionsWidget = ({
   disableOperatorSelection,
   value,
   defaultValue,
-  initalValue,
+  initialValue,
   required = false,
 }: DateAllOptionsWidgetProps) => {
   const [filter, setFilter] = useState(
-    initalValue != null
-      ? dateParameterValueToMBQL(initalValue, noopRef) || []
+    initialValue != null
+      ? dateParameterValueToMBQL(initialValue, noopRef) || []
       : [],
   );
 

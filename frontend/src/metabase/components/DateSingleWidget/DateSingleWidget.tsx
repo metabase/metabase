@@ -18,7 +18,7 @@ export const DateSingleWidget = ({
     <DateAllOptionsWidget
       {...props}
       value={value}
-      initalValue={initialValue}
+      initialValue={initialValue}
       disableOperatorSelection
     />
   );
