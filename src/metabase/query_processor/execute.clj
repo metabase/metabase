@@ -42,7 +42,7 @@
                                (fn [qp middleware-fn]
                                  (u/prog1 (middleware-fn qp)
                                    (assert (ifn? <>) (format "%s did not return a valid function" middleware-fn))))
-                               qp.pipeline/*run*
+                               #'qp.pipeline/*run*
                                middleware))))
 
 (rebuild-execute-fn!)
