@@ -6,7 +6,7 @@ import {
 import type { SetupStep } from "metabase/setup/types";
 import { setupErrorSetupEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { PreferencesStep } from "./PreferencesStep";
+import { DataUsageStep } from "./DataUsageStep";
 
 interface SetupOpts {
   step?: SetupStep;
@@ -20,12 +20,12 @@ const setup = ({ step = "data_usage" }: SetupOpts = {}) => {
   });
 
   setupErrorSetupEndpoints();
-  renderWithProviders(<PreferencesStep stepLabel={0} />, {
+  renderWithProviders(<DataUsageStep stepLabel={0} />, {
     storeInitialState: state,
   });
 };
 
-describe("PreferencesStep", () => {
+describe("DataUsageStep", () => {
   it("should render in inactive state", () => {
     setup({ step: "user_info" });
 
