@@ -48,8 +48,6 @@ export type PublicDatasetQuery =
   | PublicNativeDatasetQuery;
 
 export const dateTimeAbsoluteUnits = [
-  "ms",
-  "second",
   "minute",
   "hour",
   "day",

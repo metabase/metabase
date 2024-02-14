@@ -490,22 +490,20 @@ export function getXAxisModel(
     ? settings["graph.x_axis.title_text"]
     : undefined;
 
-  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
-
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
       column: dimensionModel.column,
       ...(settings.column?.(dimensionModel.column) ?? {}),
-      noRange: isHistogram,
+      noRange: settings["graph.x_axis.scale"] === "histogram",
     });
 
   const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
 
-  const timeSeriesInterval = getTimeSeriesXAxisInterval(
-    xValues,
-    rawSeries,
-    dimensionModel,
-  );
+  const timeSeriesInterval =
+    settings["graph.x_axis.scale"] === "timeseries"
+      ? getTimeSeriesXAxisInterval(xValues, rawSeries, dimensionModel)
+      : undefined;
+
   const numericInterval = getNumericXAxisInterval(
     xValues,
     dimensionModel,

@@ -1,0 +1,363 @@
+[
+  {
+    "card": {
+      "displayIsLocked": true,
+      "collection_id": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "bookmark": false,
+      "database_id": 1,
+      "pk_ref": null,
+      "table_schema": null,
+      "collection_authority_level": null,
+      "creator_id": 1,
+      "updated_at": "2024-02-14T01:47:57.692028Z",
+      "moderated_status": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "cum-sum",
+              [
+                "field",
+                42,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "hour-of-day"
+              }
+            ]
+          ]
+        }
+      },
+      "model_index_id": null,
+      "model_id": null,
+      "last_editor_id": 1,
+      "model_name": null,
+      "last_edited_at": "2024-02-11T18:50:57.605838Z",
+      "table_description": null,
+      "dashboardcard_count": 0,
+      "context": null,
+      "scores": [
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "pinned"
+        },
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "bookmarked"
+        },
+        {
+          "weight": 1.5,
+          "score": 1,
+          "name": "recency"
+        },
+        {
+          "weight": 1,
+          "score": 0,
+          "name": "dashboard"
+        },
+        {
+          "weight": 0.5,
+          "score": 0.5,
+          "name": "model"
+        },
+        {
+          "score": 1,
+          "name": "text-consecutivity",
+          "weight": 3.333333333333333,
+          "match": "waterfall_relative",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@e93e576",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-total-occurrences",
+          "weight": 3.333333333333333,
+          "match": "waterfall_relative",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@49d7f644",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-fullness",
+          "weight": 1.666666666666667,
+          "match": "waterfall_relative",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@191551f2",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-prefix",
+          "weight": 1.666666666666667,
+          "match": "waterfall_relative",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@6b66dbb",
+          "column": "name"
+        }
+      ],
+      "initial_sync_status": null,
+      "table_name": null,
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "created_at": "2024-02-11T18:50:57.585705Z",
+      "model": "card",
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "hour-of-day",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "hour-of-day"
+            }
+          ],
+          "effective_type": "type/Integer",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/Integer"
+        },
+        {
+          "display_name": "Cumulative sum of Total",
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 24,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 62789.41020657467,
+                "q1": 405296.71511617076,
+                "q3": 1164261.199135944,
+                "max": 1510621.6830506313,
+                "sd": 445553.1737191378,
+                "avg": 785067.643579269
+              }
+            }
+          }
+        }
+      ],
+      "can_write": true,
+      "enable_embedding": false,
+      "query_type": "query",
+      "last_query_start": "2024-02-14T01:47:57.627968Z",
+      "dashboard_count": 0,
+      "average_query_time": 70.02985074626865,
+      "moderation_reviews": [],
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "parameter_mappings": [],
+      "display": "waterfall",
+      "entity_id": "Ff2kaVyUrXVykE2X-spQf",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.show_values": true,
+        "graph.label_value_frequency": "fit",
+        "graph.metrics": ["sum"],
+        "graph.y_axis.scale": "log"
+      },
+      "metabase_version": "v0.48.1-SNAPSHOT (c375960)",
+      "parameters": [],
+      "dataset": false,
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "original_card_id": 5
+    },
+    "data": {
+      "rows": [
+        [0, 62789.41020657467],
+        [1, 126184.14460363043],
+        [2, 187167.70141080147],
+        [3, 250948.4247003386],
+        [4, 313380.820115691],
+        [5, 373403.3428901922],
+        [6, 437190.08734214935],
+        [7, 502190.8521043303],
+        [8, 559948.4353869461],
+        [9, 624701.2935999573],
+        [10, 685518.376989541],
+        [11, 753020.6919235534],
+        [12, 819805.8339469046],
+        [13, 878939.1648214556],
+        [14, 941420.2822215783],
+        [15, 1007653.6816841662],
+        [16, 1069187.6733147139],
+        [17, 1131750.199432086],
+        [18, 1196772.198839802],
+        [19, 1258715.0987716366],
+        [20, 1322549.159783363],
+        [21, 1381467.8792337629],
+        [22, 1446297.0095286523],
+        [23, 1510621.6830506313]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "hour-of-day",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "hour-of-day"
+            }
+          ],
+          "effective_type": "type/Integer",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/Integer"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Cumulative sum of Total",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT CAST(extract(hour from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS integer) AS \"CREATED_AT\", SUM(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"sum\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY CAST(extract(hour from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS integer) ORDER BY CAST(extract(hour from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS integer) ASC",
+        "params": null
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "hour-of-day",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "hour-of-day"
+              }
+            ],
+            "effective_type": "type/Integer",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/Integer"
+          },
+          {
+            "display_name": "Cumulative sum of Total",
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 24,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 62789.41020657467,
+                  "q1": 405296.71511617076,
+                  "q3": 1164261.199135944,
+                  "max": 1510621.6830506313,
+                  "sd": 445553.1737191378,
+                  "avg": 785067.643579269
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

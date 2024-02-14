@@ -19,8 +19,8 @@ import { WATERFALL_END_KEY } from "../constants";
 import {
   extendOriginalDatasetWithTotalDatum,
   getWaterfallDataset,
-  getWaterfallXAxisModel,
 } from "./dataset";
+import { getWaterfallXAxisModel } from "./axis";
 
 export const getWaterfallChartModel = (
   rawSeries: RawSeries,

@@ -1,16 +1,12 @@
 import { t } from "ttag";
 import dayjs from "dayjs";
-import type { RawSeries, RowValue } from "metabase-types/api";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+import type { RowValue } from "metabase-types/api";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   DataKey,
   ChartDataset,
   XAxisModel,
   Datum,
-  DimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   applySquareRootScaling,
@@ -30,7 +26,6 @@ import {
 import { isNotNull, isNumber } from "metabase/lib/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
-import { getXAxisModel } from "../../model/axis";
 
 const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
   let hasZeros = false;
@@ -171,52 +166,4 @@ export const extendOriginalDatasetWithTotalDatum = (
   };
 
   return [...dataset, totalDatum];
-};
-
-export const getWaterfallXAxisModel = (
-  dimensionModel: DimensionModel,
-  rawSeries: RawSeries,
-  dataset: ChartDataset,
-  settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
-) => {
-  const xAxisModel = getXAxisModel(
-    dimensionModel,
-    rawSeries,
-    dataset,
-    settings,
-    renderingContext,
-  );
-
-  // Avoid using numeric scales due to issues with them. Numeric x-axis issues will be tackled separately which will make this unnecessary.
-  const axisType = !["category", "time"].includes(xAxisModel.axisType)
-    ? "category"
-    : xAxisModel.axisType;
-
-  const waterfallFormatter = (value: RowValue) => {
-    const hasTotal = !!settings["waterfall.show_total"];
-    const lastXValue = dataset[dataset.length - 1][X_AXIS_DATA_KEY];
-    const areBooleanXValues =
-      typeof lastXValue === "boolean" || typeof value === "boolean";
-
-    if (
-      !hasTotal ||
-      settings["graph.x_axis.scale"] !== "timeseries" ||
-      areBooleanXValues
-    ) {
-      return xAxisModel.formatter(value);
-    }
-
-    if (dayjs(value).isAfter(dayjs(lastXValue))) {
-      return t`Total`;
-    }
-
-    return xAxisModel.formatter(value);
-  };
-
-  return {
-    ...xAxisModel,
-    axisType,
-    formatter: waterfallFormatter,
-  };
 };
