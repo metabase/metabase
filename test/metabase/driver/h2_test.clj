@@ -320,8 +320,6 @@
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (mt/db))))))))
 
-(is (= [1 2] #{1 2}))
-
 (deftest syncable-audit-db-test
   (mt/test-driver :h2
     (when config/ee-available?
