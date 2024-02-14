@@ -108,7 +108,7 @@
             (catch Throwable e
               (log/error "Problem sending creator sentiment email:" e))))))))
 
-(jobs/defjob ^{:doc "Sends out a general 2 week email follow up email"} CreatorSentimentEmail [_]
+(jobs/defjob ^{:doc "Sends out a monthly survey to a portion of the creators."} CreatorSentimentEmail [_]
   (send-creator-sentiment-emails!))
 
 (def ^:private creator-sentiment-emails-job-key     "metabase.task.creator-sentiment-emails.job")

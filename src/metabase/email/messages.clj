@@ -320,15 +320,6 @@
                  :message      (stencil/render-file "metabase/email/creator_sentiment_email" context)}]
     (email/send-message! message)))
 
-(let [creator {:id 1,
-               :email "t@t.com",
-               :created_at "2024-01-30T21:30:01.325410Z",
-               :first_name "Jerry",
-               :num_dashboards 1,
-               :num_questions 5,
-               :num_models 0}]
-  (send-creator-sentiment-email! creator true))
-
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
    :content-id   content-id
