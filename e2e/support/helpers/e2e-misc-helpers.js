@@ -37,9 +37,12 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
+  return focusNativeEditor().as(alias);
+}
+
+export function focusNativeEditor() {
   return cy
     .findByTestId("native-query-editor")
-    .as(alias)
     .should("be.visible")
     .should("have.class", "ace_editor")
     .click()
