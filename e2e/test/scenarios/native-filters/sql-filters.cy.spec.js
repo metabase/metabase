@@ -188,7 +188,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       filterWidget().click();
       // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
 
       popover().within(() => {
         cy.findByText("15").click();
