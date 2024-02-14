@@ -20,19 +20,19 @@ import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable
 export function isParameterVariableTarget(
   target: ParameterTarget,
 ): target is ParameterVariableTarget {
-  return target?.[0] === "variable";
+  return target[0] === "variable";
 }
 
 function isConcreteFieldReference(
   reference: FieldReference,
 ): reference is LocalFieldReference {
-  return reference?.[0] === "field";
+  return reference[0] === "field";
 }
 
 function isExpressionReference(
   reference: FieldReference,
 ): reference is ExpressionReference {
-  return reference?.[0] === "expression";
+  return reference[0] === "expression";
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
