@@ -481,26 +481,6 @@ class StructuredQuery extends AtomicQuery {
     });
   }
 
-  topLevelFilterFieldOptionSections(
-    filter = null,
-    stages = 2,
-    includeAppliedSegments = false,
-  ): FilterSection[] {
-    const queries = this.queries().slice(-stages);
-
-    // allow post-aggregation filtering
-    if (queries.length < stages && this.canNest() && this.hasBreakouts()) {
-      queries.push(queries[queries.length - 1].nest());
-    }
-
-    queries.reverse();
-    return [].concat(
-      ...queries.map(q =>
-        q.filterFieldOptionSections(filter, undefined, includeAppliedSegments),
-      ),
-    );
-  }
-
   /**
    * @returns @type {DimensionOptions} that can be used in filters.
    */
@@ -785,32 +765,8 @@ class StructuredQuery extends AtomicQuery {
     }));
   }
 
-  /**
-   * Returns the "first" of the nested queries, or this query it not nested
-   */
-  rootQuery(): StructuredQuery {
-    return this;
-  }
-
-  /**
-   * returns the original Table object at the beginning of the nested queries
-   */
-  rootTable = _.once((): Table => {
-    const question = this.question();
-    const questionTableId = question?.tableId();
-    if (questionTableId != null) {
-      return this.metadata().table(questionTableId);
-    }
-
-    return this.rootQuery().table();
-  });
-
   queries() {
     return [this];
-  }
-
-  getQueryStageIndex() {
-    return 0;
   }
 
   // INTERNAL
