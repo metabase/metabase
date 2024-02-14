@@ -64,9 +64,9 @@
   (qp.setup/with-qp-setup [preprocessed-query preprocessed-query]
     (try
       (reduce
-       (fn [rff middleware]
+       (fn [rff middleware-fn]
          (u/prog1 (cond->> rff
-                    middleware (middleware preprocessed-query))
+                    middleware-fn (middleware-fn preprocessed-query))
            (assert (fn? <>) (format "%s did not return a valid function" (pr-str middleware)))))
        rff
        middleware)
