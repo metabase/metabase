@@ -86,8 +86,6 @@ export { getFilterClause } from "./filter";
 // JOIN
 
 export const getJoins = query => J.getJoins(query.joins);
-export const addJoin = (query, join) =>
-  setJoinClause(query, J.addJoin(query.joins, join));
 
 // ORDER_BY
 
@@ -100,23 +98,12 @@ const clearOrderBy = query =>
   setOrderByClause(query, O.clearOrderBy(query["order-by"]));
 
 // FIELD
-export const addField = (query, field) =>
-  setFieldsClause(query, FIELD.addField(query.fields, field));
-export const updateField = (query, index, field) =>
-  setFieldsClause(query, FIELD.updateField(query.fields, index, field));
-export const removeField = (query, index) =>
-  setFieldsClause(query, FIELD.removeField(query.fields, index));
 export const clearFields = query =>
   setFieldsClause(query, FIELD.clearFields(query.fields));
 
 // EXPRESSIONS
 
 export const getExpressions = query => E.getExpressions(query.expressions);
-export const addExpression = (query, name, expression) =>
-  setExpressionClause(
-    query,
-    E.addExpression(query.expressions, name, expression),
-  );
 
 // we can enforce various constraints in these functions:
 
@@ -166,20 +153,11 @@ function setBreakoutClause(query, breakoutClause) {
 function setFilterClause(query, filterClause) {
   return setClause("filter", query, filterClause);
 }
-function setJoinClause(query, joinClause) {
-  return setClause("joins", query, joinClause);
-}
 function setOrderByClause(query, orderByClause) {
   return setClause("order-by", query, orderByClause);
 }
 function setFieldsClause(query, fieldsClause) {
   return setClause("fields", query, fieldsClause);
-}
-function setExpressionClause(query, expressionClause) {
-  if (expressionClause && Object.keys(expressionClause).length === 0) {
-    expressionClause = null;
-  }
-  return setClause("expressions", query, expressionClause);
 }
 
 function setClause(clauseName, query, clause) {

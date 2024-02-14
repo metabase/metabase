@@ -27,7 +27,6 @@ import {
 } from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
 import { isSegment } from "metabase-lib/queries/utils/filter";
-import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
 import { createLookupByProperty } from "metabase-lib/utils";
 import Dimension, {
@@ -549,20 +548,6 @@ class StructuredQuery extends AtomicQuery {
   expressions = _.once((): ExpressionClause => {
     return Q.getExpressions(this.legacyQuery({ useStructuredQuery: true }));
   });
-
-  addExpression(name, expression) {
-    const uniqueName = getUniqueExpressionName(this.expressions(), name);
-
-    let query = this._updateQuery(Q.addExpression, [uniqueName, expression]);
-
-    // extra logic for adding expressions in fields clause
-    // TODO: push into query/expression?
-    if (query._hasFields() && query.isRaw()) {
-      query = query.addField(["expression", uniqueName]);
-    }
-
-    return query;
-  }
 
   // FIELDS
   fields() {

@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { add, update, remove, clear } from "./util";
+import { clear } from "./util";
 
 // returns canonical list of Fields, with nulls removed
 function getFields(fields) {
@@ -15,16 +15,6 @@ function getFieldClause(fields) {
   } else {
     return fields;
   }
-}
-
-export function addField(fields, newField) {
-  return getFieldClause(add(getFields(fields), newField));
-}
-export function updateField(fields, index, updatedField) {
-  return getFieldClause(update(getFields(fields), index, updatedField));
-}
-export function removeField(fields, index) {
-  return getFieldClause(remove(getFields(fields), index));
 }
 export function clearFields(fields) {
   return getFieldClause(clear());

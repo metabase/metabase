@@ -4,10 +4,6 @@ export function getExpressions(expressions = {}) {
   return expressions;
 }
 
-export function addExpression(expressions = {}, name, expression) {
-  return { ...expressions, [name]: expression };
-}
-
 /**
  * Ensures expression's name uniqueness
  *
