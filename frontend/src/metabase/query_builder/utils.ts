@@ -115,27 +115,24 @@ export const isNavigationAllowed = ({
     return isRunningMetric || allowedPathnames.includes(pathname);
   }
 
-  if (question.type() === "question") {
-    if (isNative) {
-      const isRunningQuestion = pathname === "/question" && hash.length > 0;
-      return isRunningQuestion;
-    }
+  if (isNative) {
+    const isRunningQuestion = pathname === "/question" && hash.length > 0;
+    return isRunningQuestion;
+  }
 
-    /**
-     * New structured questions will be handled in
-     * https://github.com/metabase/metabase/issues/34686
-     */
-    if (!isNewQuestion) {
-      const isRunningQuestion =
-        ["/question", "/question/notebook"].includes(pathname) &&
-        hash.length > 0;
-      const allowedPathnames = validSlugs.flatMap(slug => [
-        `/question/${slug}`,
-        `/question/${slug}/notebook`,
-      ]);
+  /**
+   * New structured questions will be handled in
+   * https://github.com/metabase/metabase/issues/34686
+   */
+  if (!isNewQuestion) {
+    const isRunningQuestion =
+      ["/question", "/question/notebook"].includes(pathname) && hash.length > 0;
+    const allowedPathnames = validSlugs.flatMap(slug => [
+      `/question/${slug}`,
+      `/question/${slug}/notebook`,
+    ]);
 
-      return isRunningQuestion || allowedPathnames.includes(pathname);
-    }
+    return isRunningQuestion || allowedPathnames.includes(pathname);
   }
 
   return true;
