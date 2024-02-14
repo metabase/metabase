@@ -46,9 +46,7 @@ describe("scenarios > setup", () => {
           // ====
 
           // "Next" should be disabled on the blank form
-          // NOTE: unclear why cy.findByText("Next", { selector: "button" }) doesn't work
-          // alternative: cy.contains("Next").should("be.disabled");
-          cy.findByText("Next").closest("button").should("be.disabled");
+          cy.findByRole("button", { name: "Next" }).should("be.disabled");
           cy.findByLabelText("First name").type("Testy");
           cy.findByLabelText("Last name").type("McTestface");
           cy.findByLabelText("Email").type("testy@metabase.test");
@@ -60,7 +58,7 @@ describe("scenarios > setup", () => {
 
           // the form shouldn't be valid yet and we should display an error
           cy.findByText("must include one number", { exact: false });
-          cy.findByText("Next").closest("button").should("be.disabled");
+          cy.findByRole("button", { name: "Next" }).should("be.disabled");
 
           // now try a strong password that doesn't match
           const strongPassword = "QJbHYJN3tPW[";
@@ -73,7 +71,7 @@ describe("scenarios > setup", () => {
             .blur();
 
           // tell the user about the mismatch after clicking "Next"
-          cy.findByText("Next").closest("button").should("be.disabled");
+          cy.findByRole("button", { name: "Next" }).should("be.disabled");
           cy.findByText("passwords do not match", { exact: false });
 
           // fix that mismatch
