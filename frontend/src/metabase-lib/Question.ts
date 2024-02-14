@@ -266,18 +266,8 @@ class Question {
     return this._card?.type ?? "question";
   }
 
-  /**
-   * @deprecated Use Question.prototype.setType instead
-   */
-  private _setDataset(dataset: boolean) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
-  }
-
   setType(type: CardType) {
-    const dataset = type === "model";
-    // _setDataset is still called for backwards compatibility
-    // as we're migrating "dataset" -> "type" incrementally
-    return this.setCard(assoc(this.card(), "type", type))._setDataset(dataset);
+    return this.setCard(assoc(this.card(), "type", type));
   }
 
   isPersisted() {
