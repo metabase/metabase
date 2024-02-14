@@ -26,6 +26,22 @@ function mapStateToProps(state: State) {
   };
 }
 
+const getTitle = ({ type }: Card) => {
+  if (type === "model") {
+    return t`Add this model to a dashboard`;
+  }
+
+  if (type === "metric") {
+    return t`Add this metric to a dashboard`;
+  }
+
+  if (type === "question") {
+    return t`Add this question to a dashboard`;
+  }
+
+  throw new Error(`Unknown card.type: ${type}`);
+};
+
 interface AddToDashSelectDashModalProps {
   card: Card;
   onChangeLocation: (location: string) => void;
@@ -113,11 +129,7 @@ const AddToDashSelectDashModal = ({
   return (
     <ModalContent
       id="AddToDashSelectDashModal"
-      title={
-        card.dataset
-          ? t`Add this model to a dashboard`
-          : t`Add this question to a dashboard`
-      }
+      title={getTitle(card)}
       onClose={onClose}
     >
       <DashboardPicker
