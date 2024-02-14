@@ -778,27 +778,28 @@
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-model-cleanup [:model/Table]
         (let [schema-name (sql.tx/session-schema driver/*driver*)]
-          (upload-test/with-upload-table!
-            [table (upload-test/create-upload-table! :schema-name schema-name)]
+          (upload-test/with-upload-table! [table (upload-test/create-upload-table! :schema-name schema-name)]
             (let [db-id (u/the-id (mt/db))]
-              (mt/with-temporary-setting-values [uploads-enabled      true
-                                                 uploads-database-id  db-id
-                                                 uploads-schema-name  schema-name
-                                                 uploads-table-prefix "uploaded_magic_"]
-                (doseq [[schema-perms can-upload?] {:all            true
-                                                    :none           false
-                                                    {(:id table) :all} false}]
-                  (testing (format "can_upload should be %s if the user has %s access to the upload schema"
-                                   can-upload? schema-perms)
-                    (with-all-users-data-perms! {db-id {:data {:native :none
-                                                               :schemas {"some_schema" :all
-                                                                         schema-name   schema-perms}}}}
-                      (testing "GET /api/database"
-                        (let [result (->> (mt/user-http-request :rasta :get 200 "database")
-                                          :data
-                                          (filter #(= (:id %) db-id))
-                                          first)]
-                          (is (= can-upload? (:can_upload result)))))
-                      (testing "GET /api/database/:id"
-                        (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-                          (is (= can-upload? (:can_upload result))))))))))))))))
+              (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}]
+                (mt/with-temporary-setting-values [uploads-enabled      true
+                                                   uploads-database-id  db-id
+                                                   uploads-schema-name  schema-name
+                                                   uploads-table-prefix "uploaded_magic_"]
+                  (doseq [[schema-perms can-upload?] {:all            true
+                                                      :none           false
+                                                      {(:id table) :all} false}]
+                    (testing (format "can_upload should be %s if the user has %s access to the upload schema"
+                                     can-upload? schema-perms)
+                      (with-all-users-data-perms! {db-id {:data {:native :none
+                                                                 :schemas {"some_schema" :all
+                                                                           schema-name   schema-perms}}}}
+                        (testing "GET /api/database"
+                          (let [result (->> (mt/user-http-request :rasta :get 200 "database")
+                                            :data
+                                            (filter #(= (:id %) db-id))
+                                            first)]
+                            (def res (mt/user-http-request :rasta :get 200 "database"))
+                            (is (= can-upload? (:can_upload result)))))
+                        (testing "GET /api/database/:id"
+                          (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+                            (is (= can-upload? (:can_upload result)))))))))))))))))
