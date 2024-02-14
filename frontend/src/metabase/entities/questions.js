@@ -95,30 +95,22 @@ const Questions = createEntity({
       }),
 
   objectActions: {
-    setArchived: ({ id, dataset, model }, archived, opts) =>
+    setArchived: (card, archived, opts) =>
       Questions.actions.update(
-        { id },
+        { id: card.id },
         { archived },
-        undo(
-          opts,
-          dataset || model === "dataset" ? t`model` : t`question`,
-          archived ? t`archived` : t`unarchived`,
-        ),
+        undo(opts, getCardLabel(card), archived ? t`archived` : t`unarchived`),
       ),
 
-    setCollection: ({ id, dataset, model }, collection, opts) => {
+    setCollection: (card, collection, opts) => {
       return async dispatch => {
         const result = await dispatch(
           Questions.actions.update(
-            { id },
+            { id: card.id },
             {
               collection_id: canonicalCollectionId(collection && collection.id),
             },
-            undo(
-              opts,
-              dataset || model === "dataset" ? t`model` : t`question`,
-              t`moved`,
-            ),
+            undo(opts, getCardLabel(card), t`moved`),
           ),
         );
         dispatch(
@@ -131,8 +123,8 @@ const Questions = createEntity({
           ),
         );
 
-        const card = result?.payload?.question;
-        if (card) {
+        const updatedCard = result?.payload?.question;
+        if (updatedCard) {
           dispatch({ type: API_UPDATE_QUESTION, payload: card });
         }
 
@@ -173,7 +165,7 @@ const Questions = createEntity({
     getColor: () => color("text-medium"),
     getCollection: question =>
       question && normalizedCollection(question.collection),
-    getIcon,
+    getCardIcon,
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -195,7 +187,6 @@ const Questions = createEntity({
   writableProperties: [
     "name",
     "cache_ttl",
-    "dataset",
     "type",
     "dataset_query",
     "display",
@@ -220,16 +211,33 @@ const Questions = createEntity({
   forms,
 });
 
-export function getIcon(question) {
-  if (question.dataset || question.model === "dataset") {
+const getCardLabel = card => {
+  if (card.type === "model" || card.model === "dataset") {
+    return t`model`;
+  }
+
+  if (card.type === "metric") {
+    return t`metric`;
+  }
+
+  return t`question`;
+};
+
+const getCardIcon = card => {
+  if (card.type === "model" || card.model === "dataset") {
     return { name: "model" };
   }
+
+  if (card.type === "metric") {
+    return { name: "metric" };
+  }
+
   const visualization = require("metabase/visualizations").default.get(
-    question.display,
+    card.display,
   );
   return {
     name: visualization?.iconName ?? "beaker",
   };
-}
+};
 
 export default Questions;

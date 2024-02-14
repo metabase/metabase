@@ -921,7 +921,6 @@ class Question {
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
-      dataset: this._card.dataset,
       type: this._card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
@@ -1051,7 +1050,6 @@ class Question {
     name,
     display = "table",
     visualization_settings = {},
-    dataset,
     cardType,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
@@ -1062,7 +1060,6 @@ class Question {
       collection_id: collectionId,
       display,
       visualization_settings,
-      dataset,
       dataset_query,
       type: cardType,
     };
