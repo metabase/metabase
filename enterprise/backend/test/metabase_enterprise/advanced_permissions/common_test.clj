@@ -707,7 +707,7 @@
                                                                 :schema-name       (:schema table)
                                                                 :table-prefix      "uploaded_magic_"}))]
             (doseq [[schema-perms can-upload? description]
-                    [[:all            true  "Data permissions on schema should succeed"]
+                    [[:all               true  "Data permissions on schema should succeed"]
                      [{(:id table) :all} false "Data permissions on table should fail"]]]
               (testing description
                (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {"some_schema" :all
