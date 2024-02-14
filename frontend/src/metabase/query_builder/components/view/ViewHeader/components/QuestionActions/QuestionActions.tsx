@@ -92,6 +92,7 @@ export const QuestionActions = ({
     : undefined;
 
   const isModel = question.type() === "model";
+  const isMetric = question.type() === "metric";
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
@@ -148,7 +149,7 @@ export const QuestionActions = ({
     ),
   );
 
-  if (canWrite && isModel) {
+  if (canWrite && (isModel || isMetric)) {
     extraButtons.push(
       {
         title: t`Edit query definition`,
