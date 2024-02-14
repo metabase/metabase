@@ -2,10 +2,14 @@
 import { Component } from "react";
 
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
-import { Icon } from "metabase/ui";
+import { Icon, Box } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import {
+  SaveStatusLoading,
+  SaveStatusSuccess,
+  SaveStatusError,
+} from "./SaveStatus.styled";
 
 export default class SaveStatus extends Component {
   constructor(props, context) {
@@ -48,30 +52,27 @@ export default class SaveStatus extends Component {
 
   render() {
     const { className } = this.props;
+    const statusProps = { className, "data-testid": "save-status" };
 
     if (this.state.saving) {
       return (
-        <div className={cx(className, "SaveStatus border-right")}>
-          <LoadingSpinner size={24} />
-        </div>
+        <SaveStatusLoading {...statusProps}>
+          <LoadingSpinner size={20} />
+          <Box ml="0.5rem">{t`Saving...`}</Box>
+        </SaveStatusLoading>
       );
     } else if (this.state.error) {
       return (
-        <div className={cx(className, "SaveStatus border-right text-error")}>
+        <SaveStatusError {...statusProps}>
           {t`Error:`} {String(this.state.error.message || this.state.error)}
-        </div>
+        </SaveStatusError>
       );
     } else if (this.state.recentlySavedTimeout != null) {
       return (
-        <div
-          className={cx(
-            className,
-            "SaveStatus border-right flex align-center text-success",
-          )}
-        >
+        <SaveStatusSuccess {...statusProps}>
           <Icon name="check" size={16} />
-          <div className="ml1 h3 text-bold">{t`Saved`}</div>
-        </div>
+          <Box ml="0.5rem">{t`Saved`}</Box>
+        </SaveStatusSuccess>
       );
     } else {
       return null;
