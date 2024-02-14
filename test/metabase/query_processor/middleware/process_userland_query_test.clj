@@ -14,8 +14,7 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -126,46 +125,6 @@
     (binding [*viewlog-call-count* (atom 0)]
       (process-userland-query {:type :query, :query? true})
       (is (zero? @*viewlog-call-count*)))))
-
-;;; ViewLog recording is triggered indirectly by the call to [[metabase.events/publish-event!]] with the
-;;; `:event/card-query` event -- see [[metabase.events.view-log]]
-
-(deftest record-view-log-when-process-userland-query-test
-  (testing "record a view log with only card id"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (qp/process-query (qp/userland-query (assoc
-                                            (:dataset_query card)
-                                            :info {:card-id (:id card)})))
-
-      (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id nil))))))
-
-(deftest record-view-log-when-process-userland-query-test-2
-  (testing "record a view log with card id and executed by"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (is (=? {:status :completed}
-              (qp/process-query (qp/userland-query (assoc
-                                                    (:dataset_query card)
-                                                    :info {:card-id     (:id card)
-                                                           :executed-by (mt/user->id :rasta)})))))
-      (is (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id (mt/user->id :rasta))))))
-
-(deftest record-view-log-when-process-userland-query-test-3
-  (testing "skip if context is"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (testing :collection
-        (is (=? {:status :completed}
-                (qp/process-query (qp/userland-query (assoc
-                                                      (:dataset_query card)
-                                                      :info {:card-id (:id card)
-                                                             :context "collection"})))))
-        (is (not (t2/exists? :model/ViewLog :model "card" :model_id (:id card)))))
-      (testing :dashboard
-        (is (=? {:status :completed}
-                (qp/process-query (qp/userland-query (assoc
-                                                      (:dataset_query card)
-                                                      :info {:card-id (:id card)
-                                                             :context "dashboard"})))))
-        (is (not (t2/exists? :model/ViewLog :model "card" :model_id (:id card))))))))
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]

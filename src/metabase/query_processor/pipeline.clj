@@ -67,6 +67,12 @@
         ::success (*result* result)
         ::error   (throw result)))))
 
+(defn- interrupted-exception?
+  "If Throwable `e` is an InterruptedException or one of its causes is."
+  [e]
+  (or (instance? InterruptedException e)
+      (some-> (ex-cause e) interrupted-exception?)))
+
 (defn ^:dynamic *run*
   "Function for running the query. Calls [[*execute*]], then [[*reduce*]] on the results."
   [query rff]
@@ -75,8 +81,15 @@
               (*reduce* rff metadata reducible-rows))]
       (try
         (*execute* driver/*driver* query respond)
-        (catch InterruptedException e
+        (catch Throwable e
+          ;; rethrow e if it's not an InterruptedException, we're not interested in it.
+          (when-not (interrupted-exception? e)
+            (throw e))
+          ;; ok, at this point we know it's an InterruptedException.
           (log/tracef e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
+          ;; just to be extra safe and sure that the canceled chan has gotten a message. It's a promise channel so
+          ;; duplicate messages don't matter
+          (some-> *canceled-chan* (a/>!! ::cancel))
           ::cancel)))))
 
 (def ^:dynamic ^Long *query-timeout-ms*
