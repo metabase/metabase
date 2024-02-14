@@ -296,23 +296,24 @@
 
 (deftest update-field-values-hook-test
   (testing "The model hooks prevent us changing the intrinsic identity of a field values"
-    (let [field-id (mt/id :venues :id)
-          fv-id    (t2/insert-returning-pk! :model/FieldValues :field_id field-id :type :sandbox :hash_key "12345")]
+    (t2.with-temp/with-temp [FieldValues {:keys [id]} {:field_id (mt/id :venues :id)
+                                                       :type     :sandbox
+                                                       :hash_key "random-hash"}]
       (is (thrown-with-msg? ExceptionInfo
                             #"Cant update field_id for a FieldValues."
-                            (t2/update! :model/FieldValues fv-id {:field_id 1})))
+                            (t2/update! :model/FieldValues id {:field_id 1})))
       (is (thrown-with-msg? ExceptionInfo
                             #"Cant update type or hash_key for a FieldValues."
-                            (t2/update! :model/FieldValues fv-id {:type :full})))
+                            (t2/update! :model/FieldValues id {:type :full})))
       (is (thrown-with-msg? ExceptionInfo
                             #"Cant update type or hash_key for a FieldValues."
-                            (t2/update! :model/FieldValues fv-id {:type nil})))
+                            (t2/update! :model/FieldValues id {:type nil})))
       (is (thrown-with-msg? ExceptionInfo
                             #"Cant update type or hash_key for a FieldValues."
-                            (t2/update! :model/FieldValues fv-id {:hash_key "54321"})))
+                            (t2/update! :model/FieldValues id {:hash_key "54321"})))
       (is (thrown-with-msg? ExceptionInfo
                             #"Cant update type or hash_key for a FieldValues."
-                            (t2/update! :model/FieldValues fv-id {:hash_key nil}))))))
+                            (t2/update! :model/FieldValues id {:hash_key nil}))))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp [FieldValues sandbox-fv {:field_id (mt/id :venues :id)
@@ -343,14 +344,14 @@
 
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
-    (is (t2/select :model/FieldValues :field_id 1))
-    (is (t2/select :model/FieldValues :field_id 1 :type :full))
+    (t2/select :model/FieldValues :field_id 1)
+    (t2/select :model/FieldValues :field_id 1 :type :full)
     (is (thrown-with-msg? ExceptionInfo
                           #"Invalid query - :full FieldValues cannot have a hash_key"""
                           (t2/select :model/FieldValues :field_id 1 :type :full :hash_key "12345")))
 
-    (is (t2/select :model/FieldValues :field_id 1 :type :sandbox))
-    (is (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key "12345"))
+    (t2/select :model/FieldValues :field_id 1 :type :sandbox)
+    (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key "12345")
     (is (thrown-with-msg? ExceptionInfo
                           #"Invalid query - Advanced FieldValues must have a hash_key"
                           (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key nil)))))
