@@ -160,11 +160,10 @@ const Questions = createEntity({
   },
 
   objectSelectors: {
-    getName: question => question && question.name,
-    getUrl: (question, opts) => question && Urls.question(question, opts),
+    getName: card => card && card.name,
+    getUrl: (card, opts) => card && Urls.question(card, opts),
     getColor: () => color("text-medium"),
-    getCollection: question =>
-      question && normalizedCollection(question.collection),
+    getCollection: card => card && normalizedCollection(card.collection),
     getCardIcon,
   },
 
@@ -223,7 +222,7 @@ function getCardLabel(card) {
   return t`question`;
 }
 
-function getCardIcon(card) {
+export function getCardIcon(card) {
   if (card.type === "model" || card.model === "dataset") {
     return { name: "model" };
   }

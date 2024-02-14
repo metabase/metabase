@@ -47,7 +47,7 @@ export function question(
     query = "?" + query;
   }
 
-  const isModel = card?.dataset || card?.model === "dataset";
+  const isModel = card?.type === "model" || card?.model === "dataset";
   const fallbackPath = isModel ? "model" : "question";
   let path: string = card?.type ?? fallbackPath;
 

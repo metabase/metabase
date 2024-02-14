@@ -295,8 +295,17 @@ async function handleQBInit(
 
   if (
     isSavedCard(card) &&
-    !card?.dataset &&
+    card.type !== "model" &&
     location.pathname?.startsWith("/model")
+  ) {
+    dispatch(setErrorPage(NOT_FOUND_ERROR));
+    return;
+  }
+
+  if (
+    isSavedCard(card) &&
+    card.type !== "metric" &&
+    location.pathname?.startsWith("/metric")
   ) {
     dispatch(setErrorPage(NOT_FOUND_ERROR));
     return;
