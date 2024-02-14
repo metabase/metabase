@@ -41,11 +41,9 @@ export function FieldInfoField({
   showFingerprintInfo,
 }: FieldInfoFieldProps) {
   return (
-    <FieldInfoBase
-      className={className}
-      description={field.description}
-      semanticType={field.semantic_type}
-    >
+    <InfoContainer className={className}>
+      <ColumnDescription description={field.description} />
+      <SemanticTypeLabel semanticType={field.semantic_type} />
       {showFingerprintInfo && (
         <FieldFingerprintInfo
           field={field}
@@ -53,7 +51,7 @@ export function FieldInfoField({
           showAllFieldValues={showAllFieldValues}
         />
       )}
-    </FieldInfoBase>
+    </InfoContainer>
   );
 }
 
@@ -84,11 +82,9 @@ export function FieldInfoQuery({
   );
 
   return (
-    <FieldInfoBase
-      className={className}
-      description={description}
-      semanticType={semanticType}
-    >
+    <InfoContainer className={className}>
+      <ColumnDescription description={description} />
+      <SemanticTypeLabel semanticType={semanticType} />
       {showFingerprintInfo && (
         <FieldFingerprintInfo
           query={query}
@@ -98,7 +94,7 @@ export function FieldInfoQuery({
           showAllFieldValues={showAllFieldValues}
         />
       )}
-    </FieldInfoBase>
+    </InfoContainer>
   );
 }
 
@@ -111,26 +107,4 @@ function ColumnDescription({ description }: ColumnDescriptionProps) {
     return <EmptyDescription>{t`No description`}</EmptyDescription>;
   }
   return <Description>{description}</Description>;
-}
-
-type BaseProps = {
-  className?: string;
-  description?: string | null;
-  semanticType?: string | null;
-  children?: React.ReactNode;
-};
-
-function FieldInfoBase({
-  className,
-  description,
-  semanticType,
-  children,
-}: BaseProps) {
-  return (
-    <InfoContainer className={className}>
-      <ColumnDescription description={description} />
-      <SemanticTypeLabel semanticType={semanticType} />
-      {children}
-    </InfoContainer>
-  );
 }
