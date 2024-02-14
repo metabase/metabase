@@ -394,7 +394,7 @@ export default class Dimension {
   }
 
   sourceDimension() {
-    return this._query && this._query.dimensionForSourceQuery(this);
+    return null;
   }
 
   getOptions() {

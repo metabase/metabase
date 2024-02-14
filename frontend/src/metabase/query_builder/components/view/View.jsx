@@ -202,13 +202,9 @@ class View extends Component {
   renderHeader = () => {
     const { question } = this.props;
     const query = question.query();
-    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
     const { isNative } = Lib.queryDisplayInfo(query);
 
-    const isNewQuestion =
-      !isNative &&
-      Lib.sourceTableOrCardId(query) === null &&
-      !legacyQuery.sourceQuery();
+    const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
 
     return (
       <Motion
@@ -332,13 +328,9 @@ class View extends Component {
     }
 
     const query = question.query();
-    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
-    const isNewQuestion =
-      !isNative &&
-      Lib.sourceTableOrCardId(query) === null &&
-      !legacyQuery.sourceQuery();
+    const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
 
     if (isNewQuestion && queryBuilderMode === "view") {
       return (

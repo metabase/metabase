@@ -50,24 +50,6 @@ describe("StructuredQuery nesting", () => {
       });
     });
 
-    it("should be able to modify the source question", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery();
-      expect(
-        q
-          .nest()
-          .sourceQuery()
-          .filter(["=", ["field", ORDERS.TOTAL, null], 42])
-          .parentQuery()
-          .legacyQuery(),
-      ).toEqual({
-        "source-query": {
-          "source-table": ORDERS_ID,
-          filter: ["=", ["field", ORDERS.TOTAL, null], 42],
-        },
-      });
-    });
-
     it("should return a table with correct dimensions", () => {
       const { ordersTable } = setup();
       const q = ordersTable
