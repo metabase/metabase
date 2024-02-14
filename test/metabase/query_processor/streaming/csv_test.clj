@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
@@ -86,21 +87,23 @@
 
 (defn- csv-export
   "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
-  [rows]
-  (driver/with-driver :h2
-    (mt/with-metadata-provider (mt/id)
-      (with-open [bos (ByteArrayOutputStream.)
-                  os  (BufferedOutputStream. bos)]
-        (let [results-writer (qp.si/streaming-results-writer :csv os)]
-          (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}
-                                                              {:base_type :type/*}
-                                                              {:base_type :type/*}]}} {})
-          (doall (map-indexed
-                  (fn [i row] (qp.si/write-row! results-writer row i [] {}))
-                  rows))
-          (qp.si/finish! results-writer {:row_count (count rows)}))
-        (let [bytea (.toByteArray bos)]
-          (rest (csv/read-csv (String. bytea))))))))
+  ([rows]
+   (csv-export {} (comp rest csv/read-csv) rows))
+  ([opts process-result-fn rows]
+   (driver/with-driver :h2
+     (mt/with-metadata-provider (mt/id)
+       (with-open [bos (ByteArrayOutputStream.)
+                   os  (BufferedOutputStream. bos)]
+         (let [results-writer (qp.si/streaming-results-writer :csv os opts)]
+           (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}
+                                                               {:base_type :type/*}
+                                                               {:base_type :type/*}]}} {})
+           (doall (map-indexed
+                   (fn [i row] (qp.si/write-row! results-writer row i [] {}))
+                   rows))
+           (qp.si/finish! results-writer {:row_count (count rows)}))
+         (let [bytea (.toByteArray bos)]
+           (process-result-fn (String. bytea))))))))
 
 (deftest lazy-seq-realized-test
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
@@ -118,3 +121,26 @@
           results (qp/process-query (assoc (mt/native-query {:query query}) :middleware {:format-rows? false}))]
       (is (= [["2020-06-03" "2020-06-03T23:41:23"]]
              (csv-export (mt/rows results)))))))
+
+(deftest custom-csv-opts-test
+  (letfn [(split [x] (rest (str/split x #"\n")))]
+    (testing "CSV export with custom separator symbol"
+      (is (= ["1;2;3"
+              "4;5;6"]
+             (csv-export {:separator \;}
+                         split
+                         [[1 2 3]
+                          [4 5 6]])))
+      (is (= ["1;\"2;\";3"
+              "4;5;6"]
+             (csv-export {:separator \;}
+                         split
+                         [[1 "2;" 3]
+                          [4 5 6]]))))
+    (testing "CSV export with custom quote symbol"
+      (is (= ["1,'2,',3"
+              "4,5,6"]
+             (csv-export {:quote \'}
+                         split
+                         [[1 "2," 3]
+                          [4 5 6]]))))))

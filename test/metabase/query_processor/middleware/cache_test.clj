@@ -381,7 +381,7 @@
                          :cache-ttl 100)]
         (with-open [os (java.io.ByteArrayOutputStream.)]
           (qp.streaming/do-with-streaming-rff
-           :csv os
+           :csv os {}
            (fn [rff]
              (qp/process-query query rff)))
           (mt/wait-for-result save-chan))
@@ -392,7 +392,7 @@
                                            istream (java.io.PipedInputStream. ostream)
                                            reader  (java.io.InputStreamReader. istream)]
                                  (qp.streaming/do-with-streaming-rff
-                                  :csv ostream
+                                  :csv ostream {}
                                   (fn [rff]
                                     (qp/process-query (dissoc query :cache-ttl) rff)))
                                  (vec (csv/read-csv reader)))]
@@ -402,7 +402,7 @@
                         istream (java.io.PipedInputStream. ostream)
                         reader  (java.io.InputStreamReader. istream)]
               (qp.streaming/do-with-streaming-rff
-               :csv ostream
+               :csv ostream {}
                (fn [rff]
                  (qp/process-query query rff)))
               (is (= uncached-results
@@ -420,7 +420,7 @@
         (let [query (assoc query :cache-ttl 100)]
           (with-open [os (java.io.ByteArrayOutputStream.)]
             (qp.streaming/do-with-streaming-rff
-             :csv os
+             :csv os {}
              (fn [rff]
                (is (= false
                      (boolean (:cached (qp/process-query query rff))))

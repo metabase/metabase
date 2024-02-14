@@ -403,13 +403,13 @@
   point in the future; for now, this function is a stopgap.
 
   Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
-  [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  [export-format ^OutputStream os opts {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-metadata-provider database-id
       (binding [qp.xlsx/*parse-temporal-string-values* true]
-        (let [w                           (qp.si/streaming-results-writer export-format os)
+        (let [w                           (qp.si/streaming-results-writer export-format os opts)
               cols                        (-> results :data :cols)
               viz-settings                (-> results :data :viz-settings)
               [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
@@ -425,17 +425,18 @@
           (qp.si/finish! w results))))))
 
 (defn- result-attachment
-  [{{card-name :name :as card} :card {{:keys [rows]} :data :as result} :result}]
+  [{{card-name :name csv_delimiter :csv_delimiter csv_quote :csv_quote :as card} :card
+    {{:keys [rows]} :data :as result} :result}]
   (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv os result))
+         (stream-api-results-to-export-format :csv os {:separator csv_delimiter :quote csv_quote} result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx os result))
+         (stream-api-results-to-export-format :xlsx os {} result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- part-attachments [parts]
@@ -518,7 +519,7 @@
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :csv_delimiter :csv_quote]))
       result)))
 
 (defn render-pulse-email

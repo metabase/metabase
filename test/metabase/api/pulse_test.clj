@@ -43,7 +43,7 @@
       (update :collection_id boolean)
       ;; why? these fields in this last assoc are from the PulseCard model and this function takes the Card model
       ;; because PulseCard is somewhat hidden behind the scenes
-      (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil,
+      (assoc :include_csv false, :include_xls false, :csv_delimiter nil, :csv_quote nil, :dashboard_card_id nil, :dashboard_id nil,
              :parameter_mappings nil)))
 
 (defn- pulse-channel-details [channel]
@@ -111,8 +111,8 @@
   {:errors
    {:cards (str "one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
-                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, `csv_delimiter`, `csv_quote` and `dashboard_card_id`., "
+                "or value must be a map with the keys `include_csv`, `include_xls`, `csv_delimiter`, `csv_quote` and `dashboard_card_id`.")}})
 
 (deftest create-pulse-validation-test
   (doseq [[input expected-error]
@@ -132,19 +132,19 @@
            default-post-card-ref-validation-error
 
            {:name  "abc"
-            :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
-                    {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]}
+            :cards [{:id 100, :include_csv false, :include_xls false, :csv_delimiter nil, :csv_quote nil, :dashboard_card_id nil}
+                    {:id 200, :include_csv false, :include_xls false, :csv_delimiter nil, :csv_quote nil, :dashboard_card_id nil}]}
            {:errors {:channels "one or more map"}}
 
            {:name     "abc"
-            :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
-                       {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
+            :cards    [{:id 100, :include_csv false, :include_xls false, :csv_delimiter nil, :csv_quote nil, :dashboard_card_id nil}
+                       {:id 200, :include_csv false, :include_xls false, :csv_delimiter nil, :csv_quote nil, :dashboard_card_id nil}]
             :channels "foobar"}
            {:errors {:channels "one or more map"}}
 
            {:name     "abc"
-            :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
-                       {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
+            :cards    [{:id 100, :include_csv false, :include_xls false, :csv_delimiter nil, :csv_quote nil, :dashboard_card_id nil}
+                       {:id 200, :include_csv false, :include_xls false, :csv_delimiter nil, :csv_quote nil, :dashboard_card_id nil}]
             :channels ["abc"]}
            {:errors {:channels "one or more map"}}}]
     (testing (pr-str input)
@@ -329,10 +329,14 @@
                                                                            :cards         [{:id                (u/the-id card-1)
                                                                                             :include_csv       true
                                                                                             :include_xls       true
+                                                                                            :csv_delimiter     nil
+                                                                                            :csv_quote         nil
                                                                                             :dashboard_card_id nil}
                                                                                            {:id                (u/the-id card-2)
                                                                                             :include_csv       false
                                                                                             :include_xls       false
+                                                                                            :csv_delimiter     nil
+                                                                                            :csv_quote         nil
                                                                                             :dashboard_card_id nil}]
                                                                            :channels      [daily-email-channel]
                                                                            :skip_if_empty false})
@@ -383,8 +387,8 @@
   {:errors
    {:cards (str "nullable one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
-                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, `csv_delimiter`, `csv_quote` and `dashboard_card_id`., "
+                "or value must be a map with the keys `include_csv`, `include_xls`, `csv_delimiter`, `csv_quote` and `dashboard_card_id`.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"
@@ -484,6 +488,8 @@
                                                                [{:id                (u/the-id card-2)
                                                                  :include_csv       false
                                                                  :include_xls       false
+                                                                 :csv_delimiter     nil
+                                                                 :csv_quote         nil
                                                                  :dashboard_card_id nil}])})
                          pulse-response
                          (update :channels remove-extra-channels-fields)))))))))))

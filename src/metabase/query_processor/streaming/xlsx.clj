@@ -447,7 +447,7 @@
     (.createFreezePane ^SXSSFSheet sheet 0 1)))
 
 (defmethod qp.si/streaming-results-writer :xlsx
-  [_ ^OutputStream os]
+  [_ ^OutputStream os _opts]
   (let [workbook    (SXSSFWorkbook.)
         sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))
         data-format (. workbook createDataFormat)

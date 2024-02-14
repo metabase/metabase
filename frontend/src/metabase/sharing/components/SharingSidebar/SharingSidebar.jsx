@@ -79,6 +79,8 @@ const cardsToPulseCards = (cards, pulseCards) => {
       ...card,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
+      csv_delimiter: pulseCard.csv_delimiter,
+      csv_quote: pulseCard.csv_quote,
     };
   });
 };

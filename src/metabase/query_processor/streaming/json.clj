@@ -26,7 +26,7 @@
                                                  (u.date/format (t/zoned-date-time)))}}))
 
 (defmethod qp.si/streaming-results-writer :json
-  [_ ^OutputStream os]
+  [_ ^OutputStream os _opts]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         col-names          (volatile! nil)
         ordered-formatters (volatile! nil)]
@@ -81,7 +81,7 @@
       (.substring s 1 (dec (count s))))))
 
 (defmethod qp.si/streaming-results-writer :api
-  [_ ^OutputStream os]
+  [_ ^OutputStream os _opts]
   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ _ _]

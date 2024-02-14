@@ -26,8 +26,8 @@
 
   ([format-settings col]
    (let [viz-settings (common/viz-settings-for-col
-                        (assoc col :field_ref [:field 1])
-                        {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
+                       (assoc col :field_ref [:field 1])
+                       {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
          format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col)]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
@@ -410,7 +410,7 @@
   ([ordered-cols viz-settings rows parse-fn]
    (with-open [bos (ByteArrayOutputStream.)
                os  (BufferedOutputStream. bos)]
-     (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
+     (let [results-writer (qp.si/streaming-results-writer :xlsx os {})]
        (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
        (doall (map-indexed
                (fn [i row] (qp.si/write-row! results-writer row i ordered-cols viz-settings))
@@ -693,7 +693,7 @@
           ;; TODO -- shouldn't these be using `with-open`?!
           bos                     (ByteArrayOutputStream.)
           os                      (BufferedOutputStream. bos)
-          results-writer          (qp.si/streaming-results-writer :xlsx os)]
+          results-writer          (qp.si/streaming-results-writer :xlsx os {})]
       (.close os)
       (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
       (qp.si/finish! results-writer {:row_count 0})

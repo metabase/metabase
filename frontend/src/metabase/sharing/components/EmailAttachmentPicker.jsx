@@ -3,11 +3,33 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import styled from "@emotion/styled";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import Label from "metabase/components/type/Label";
 import CheckBox from "metabase/core/components/CheckBox";
 import Toggle from "metabase/core/components/Toggle";
+import { Select } from "metabase/ui";
+
+const CSV_DELIMITER_OPTIONS = [
+  { value: null, label: "Comma (,)" }, // Used by default (when the value is nil)
+  { value: ";", label: "Semicolon (;)" },
+  { value: "\t", label: "Tab" },
+  { value: " ", label: "Space" },
+];
+
+const CSV_QUOTE_OPTIONS = [
+  { value: null, label: 'Double quote (")' }, // Used by default (when the value is nil)
+  { value: "'", label: "Single quote (')" },
+];
+
+const DELIMITER_FIELD = "csv_delimiter";
+
+const QUOTE_FIELD = "csv_quote";
+
+const StyledSelect = styled(Select)`
+  max-width: 180px;
+`;
 
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
@@ -15,6 +37,8 @@ export default class EmailAttachmentPicker extends Component {
   state = {
     isEnabled: false,
     selectedAttachmentType: this.DEFAULT_ATTACHMENT_TYPE,
+    [DELIMITER_FIELD]: null,
+    [QUOTE_FIELD]: null,
     selectedCardIds: new Set(),
   };
 
@@ -52,6 +76,11 @@ export default class EmailAttachmentPicker extends Component {
       selectedAttachmentType:
         this.attachmentTypeFor(selectedCards) || this.DEFAULT_ATTACHMENT_TYPE,
       selectedCardIds: new Set(selectedCards.map(card => card.id)),
+      [DELIMITER_FIELD]: this.csvOptionsForCards(
+        DELIMITER_FIELD,
+        selectedCards,
+      ),
+      [QUOTE_FIELD]: this.csvOptionsForCards(QUOTE_FIELD, selectedCards),
     };
   }
 
@@ -63,14 +92,22 @@ export default class EmailAttachmentPicker extends Component {
     );
   }
 
+  isCsv(attachmentType) {
+    return attachmentType === "csv";
+  }
+
+  isXls(attachmentType) {
+    return attachmentType === "xls";
+  }
+
   /*
    * Reaches into the parent component (via setPulse) to update its pulsecard's include_{csv,xls} values
    * based on this component's state.
    */
   updatePulseCards(attachmentType, selectedCardIds) {
     const { pulse, setPulse } = this.props;
-    const isXls = attachmentType === "xls",
-      isCsv = attachmentType === "csv";
+    const isXls = this.isXls(attachmentType);
+    const isCsv = this.isCsv(attachmentType);
 
     this.setState({ selectedAttachmentType: attachmentType });
 
@@ -79,6 +116,27 @@ export default class EmailAttachmentPicker extends Component {
       cards: pulse.cards.map(card => {
         card.include_csv = selectedCardIds.has(card.id) && isCsv;
         card.include_xls = selectedCardIds.has(card.id) && isXls;
+        return card;
+      }),
+    });
+  }
+
+  /*
+   * Updates the pulse cards csv options (quote and delimiter symbols)
+   * The options is one of: 'csv_delimiter' or 'csv_quote'
+   */
+  updatePulseCardsCsvOption(option, value) {
+    const { pulse, setPulse } = this.props;
+    const { selectedAttachmentType, selectedCardIds } = this.state;
+
+    if (!this.isCsv(selectedAttachmentType)) {
+      return;
+    }
+
+    setPulse({
+      ...pulse,
+      cards: pulse.cards.map(card => {
+        card[option] = selectedCardIds.has(card.id) ? value : card[option];
         return card;
       }),
     });
@@ -105,10 +163,43 @@ export default class EmailAttachmentPicker extends Component {
   }
 
   /*
+   * Gets the csv options (quote and delimiter symbols) from pulse cards
+   * The options is one of: 'csv_delimiter' or 'csv_quote'
+   */
+  csvOptionsForCards(option, cards) {
+    const csvCards = cards.filter(c => c.include_csv);
+    const res = csvCards[0]?.[option] ?? null;
+    return res;
+  }
+
+  /*
    * Called when the attachment type toggle (csv/xls) is clicked
    */
   setAttachmentType = newAttachmentType => {
     this.updatePulseCards(newAttachmentType, this.state.selectedCardIds);
+  };
+
+  /*
+   * Should be called when a csv option is updated
+   * The options is one of: 'csv_delimiter' or 'csv_quote'
+   */
+  setCsvOption = (option, value) => {
+    this.setState({ [option]: value });
+    this.updatePulseCardsCsvOption(option, value);
+  };
+
+  /*
+   * Called when the csv delimiter has changed
+   */
+  setCsvDelimiter = newDelimiter => {
+    this.setCsvOption(DELIMITER_FIELD, newDelimiter);
+  };
+
+  /*
+   * Called when the csv quote has changed
+   */
+  setCsvQuote = newQuote => {
+    this.setCsvOption(QUOTE_FIELD, newQuote);
   };
 
   /*
@@ -180,6 +271,10 @@ export default class EmailAttachmentPicker extends Component {
   render() {
     const { cards } = this.props;
     const { isEnabled, selectedAttachmentType, selectedCardIds } = this.state;
+    const csvDelimiter = this.state[DELIMITER_FIELD];
+    const csvQuote = this.state[QUOTE_FIELD];
+
+    const isCsv = this.isCsv(selectedAttachmentType);
 
     return (
       <div>
@@ -203,6 +298,28 @@ export default class EmailAttachmentPicker extends Component {
                 fullWidth
               />
             </div>
+            {isCsv && (
+              <>
+                <div className="text-bold pt1 flex justify-between align-center">
+                  <Label className="pt1">{t`Delimiter symbol`}</Label>
+                  <StyledSelect
+                    aria-label={t`Delimiter symbol`}
+                    value={csvDelimiter}
+                    data={CSV_DELIMITER_OPTIONS}
+                    onChange={this.setCsvDelimiter}
+                  />
+                </div>
+                <div className="text-bold pt1 pb2 flex justify-between align-center">
+                  <Label className="pt1">{t`Quote symbol`}</Label>
+                  <StyledSelect
+                    aria-label={t`Quote symbol`}
+                    value={csvQuote}
+                    data={CSV_QUOTE_OPTIONS}
+                    onChange={this.setCsvQuote}
+                  />
+                </div>
+              </>
+            )}
             <div className="text-bold pt1 pb2 flex justify-between align-center">
               <ul className="full">
                 <li className="mb2 pb1 flex align-center cursor-pointer border-bottom">

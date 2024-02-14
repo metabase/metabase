@@ -18,6 +18,9 @@
            {:schema        ms/PositiveNum
             :failed-cases  [0 "1"]
             :success-cases [1.5 2]}
+           {:schema        ms/SingleCharString
+            :failed-cases  [0 "11" nil :kw]
+            :success-cases ["a"]}
            {:schema        ms/KeywordOrString
             :failed-cases  [1 [1] {:a 1}]
             :success-cases [:a "a"]}

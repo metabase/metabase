@@ -1,5 +1,6 @@
 import { render, fireEvent, screen } from "@testing-library/react";
 
+import userEvent from "@testing-library/user-event";
 import EmailAttachmentPicker from "./EmailAttachmentPicker";
 
 function setup({ pulse = createPulse(), hasAttachments = false } = {}) {
@@ -52,6 +53,92 @@ describe("EmailAttachmentPicker", () => {
       const card2Checkbox = screen.getByLabelText("card2");
       expect(card2Checkbox).not.toBeChecked();
     });
+
+    describe("when csv file format is selected", () => {
+      it("should display csv options", () => {
+        setup();
+
+        const toggle = screen.getByLabelText("Attach results");
+        fireEvent.click(toggle);
+
+        const csvFormatInput = screen.getByLabelText(".csv");
+        fireEvent.click(csvFormatInput);
+
+        const csvDelimiterSelect = screen.getByLabelText("Delimiter symbol");
+        expect(csvDelimiterSelect).toBeInTheDocument();
+
+        const csvQuoteSelect = screen.getByLabelText("Quote symbol");
+        expect(csvQuoteSelect).toBeInTheDocument();
+      });
+
+      it("should call setPulse when picking delimiter symbol", () => {
+        const { setPulse } = setup();
+
+        const toggle = screen.getByLabelText("Attach results");
+        fireEvent.click(toggle);
+
+        const csvFormatInput = screen.getByLabelText(".csv");
+        fireEvent.click(csvFormatInput);
+
+        const toggleAllCheckbox = screen.getByLabelText("Questions to attach");
+        fireEvent.click(toggleAllCheckbox);
+
+        const csvDelimiterSelect = screen.getByLabelText("Delimiter symbol");
+        userEvent.click(csvDelimiterSelect);
+        userEvent.click(screen.getByText(/;/));
+
+        expect(setPulse).toHaveBeenCalledWith(
+          expect.objectContaining({
+            cards: expect.arrayContaining([
+              expect.objectContaining({ csv_delimiter: ";" }),
+            ]),
+          }),
+        );
+      });
+
+      it("should call setPulse when picking quote symbol", () => {
+        const { setPulse } = setup();
+
+        const toggle = screen.getByLabelText("Attach results");
+        fireEvent.click(toggle);
+
+        const csvFormatInput = screen.getByLabelText(".csv");
+        fireEvent.click(csvFormatInput);
+
+        const toggleAllCheckbox = screen.getByLabelText("Questions to attach");
+        fireEvent.click(toggleAllCheckbox);
+
+        const csvDelimiterSelect = screen.getByLabelText("Quote symbol");
+        userEvent.click(csvDelimiterSelect);
+        userEvent.click(screen.getByText(/\'/));
+
+        expect(setPulse).toHaveBeenCalledWith(
+          expect.objectContaining({
+            cards: expect.arrayContaining([
+              expect.objectContaining({ csv_quote: "'" }),
+            ]),
+          }),
+        );
+      });
+    });
+
+    describe("when xlsx file format is selected", () => {
+      it("should not display csv options", () => {
+        setup();
+
+        const toggle = screen.getByLabelText("Attach results");
+        fireEvent.click(toggle);
+
+        const csvFormatInput = screen.getByLabelText(".xlsx");
+        fireEvent.click(csvFormatInput);
+
+        const csvDelimiterSelect = screen.queryByLabelText("Delimiter symbol");
+        expect(csvDelimiterSelect).not.toBeInTheDocument();
+
+        const csvQuoteSelect = screen.queryByLabelText("Quote symbol");
+        expect(csvQuoteSelect).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe("when instantiated with cards with attachments", () => {
@@ -62,7 +149,7 @@ describe("EmailAttachmentPicker", () => {
       expect(toggle).toBeChecked();
     });
 
-    it("should have selected the xlsv format", () => {
+    it("should have selected the xlsx format", () => {
       setup({ hasAttachments: true });
       const csvFormatInput = screen.getByLabelText(".csv");
       expect(csvFormatInput).not.toBeChecked();

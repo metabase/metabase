@@ -91,6 +91,12 @@
     [:and number? pos?]
     (deferred-tru "value must be a number greater than zero.")))
 
+(def SingleCharString
+  "Schema representing a single character string."
+  (mu/with-api-error-message
+    [:and string? [:fn #(= 1 (count %))]]
+    (deferred-tru "value must be a single character")))
+
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (mu/with-api-error-message

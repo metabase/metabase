@@ -34,8 +34,8 @@
       (select-keys [:name :description :display])
       (update :display name)
       (update :collection_id boolean)
-      (assoc :id true, :include_csv false, :include_xls false, :dashboard_card_id false,
-             :dashboard_id false, :parameter_mappings nil)))
+      (assoc :id true, :include_csv false, :include_xls false, :csv_delimiter nil :csv_quote nil
+             :dashboard_card_id false :dashboard_id false, :parameter_mappings nil)))
 
 (defn- recipient-details [user-kwd]
   (-> user-kwd
@@ -221,10 +221,10 @@
           :rasta :post 400 "alert" {:alert_condition "rows"})))
 
   (is (= {:errors
-           {:card "value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}
+           {:card "value must be a map with the keys `id`, `include_csv`, `include_xls`, `csv_delimiter`, `csv_quote` and `dashboard_card_id`."}
            :specific-errors
            {:card
-            ["value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., received: nil"]}}
+            ["value must be a map with the keys `include_csv`, `include_xls`, `csv_delimiter`, `csv_quote` and `dashboard_card_id`., received: nil"]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false})))
@@ -429,10 +429,10 @@
           :rasta :put 400 "alert/1" {:alert_first_only 1000})))
 
   (is (= {:errors
-           {:card "nullable value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}
+           {:card "nullable value must be a map with the keys `id`, `include_csv`, `include_xls`, `csv_delimiter`, `csv_quote` and `dashboard_card_id`."}
            :specific-errors
            {:card
-            ["value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., received: \"foobar\""]}}
+            ["value must be a map with the keys `include_csv`, `include_xls`, `csv_delimiter`, `csv_quote` and `dashboard_card_id`., received: \"foobar\""]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition  "rows"
                                      :alert_first_only false

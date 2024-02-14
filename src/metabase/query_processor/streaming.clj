@@ -154,8 +154,8 @@
        :csv os
        (fn [rff]
          (qp/process-query query rff))))"
-  [export-format os f]
-  (let [results-writer (qp.si/streaming-results-writer export-format os)
+  [export-format os opts f]
+  (let [results-writer (qp.si/streaming-results-writer export-format os opts)
         rff            (streaming-rff results-writer)]
     (binding [qp.pipeline/*result* (streaming-result-fn results-writer os)]
       (f rff))))
@@ -165,7 +165,7 @@
   ^StreamingResponse [export-format filename-prefix f]
   (streaming-response/streaming-response (qp.si/stream-options export-format filename-prefix) [os canceled-chan]
     (do-with-streaming-rff
-     export-format os
+     export-format os {}
      (^:once fn* [rff]
       (let [result (try
                      (f rff)

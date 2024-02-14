@@ -24,17 +24,26 @@
                                                               (u.date/format (t/zoned-date-time)))}
     :write-keepalive-newlines? false}))
 
+(defn- coerce-to-char
+  [string-or-char]
+  (cond
+    (char?   string-or-char) string-or-char
+    (string? string-or-char) (first string-or-char)
+    :else                    nil))
+
 (defmethod qp.si/streaming-results-writer :csv
-  [_ ^OutputStream os]
+  [_ ^OutputStream os opts]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-        ordered-formatters (volatile! nil)]
+        ordered-formatters (volatile! nil)
+        separator (coerce-to-char (:separator opts))
+        quote (coerce-to-char (:quote opts))]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
         (let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings))]
           (vreset! ordered-formatters (mapv (fn [col]
                                               (formatter/create-formatter results_timezone col viz-settings))
                                             ordered-cols))
-          (csv/write-csv writer [col-names])
+          (csv/write-csv writer [col-names] :separator separator :quote quote)
           (.flush writer)))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
@@ -44,7 +53,9 @@
                             row)]
           (csv/write-csv writer [(map (fn [formatter r]
                                         (formatter (common/format-value r)))
-                                      @ordered-formatters ordered-row)])
+                                      @ordered-formatters ordered-row)]
+                         :separator separator
+                         :quote quote)
           (.flush writer)))
 
       (finish! [_ _]

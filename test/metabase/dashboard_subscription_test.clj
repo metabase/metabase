@@ -1,5 +1,6 @@
 (ns metabase.dashboard-subscription-test
   (:require
+   [clojure.data.csv :as csv]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.email.messages :as messages]
@@ -891,7 +892,7 @@
   (when (seq rows)
     [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
        (with-open [os baos]
-         (#'messages/stream-api-results-to-export-format :csv os result)
+         (#'messages/stream-api-results-to-export-format :csv os {} result)
          (let [output-string (.toString baos "UTF-8")]
            {:type         :attachment
             :content-type :csv
@@ -934,4 +935,34 @@
                          str/split-lines
                          (->> (mapv #(str/split % #",")))
                          first
-                         count))))))))))
+                         count)))))))))
+
+  (testing "Dashboard subscription attachments should respect CSV options"
+    (let [mock-calls (atom [])
+          mock-write-csv (fn [writer data & options]
+                            (swap! mock-calls conj {:writer writer
+                                                    :data data
+                                                    :options options}))]
+      (mt/with-fake-inbox
+        (mt/with-temp [Card                  {card-id :id}        (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                       Dashboard             {dash-id :id}              {:name "just dash"}
+                       DashboardCard         {dash-card-id :id}         {:dashboard_id dash-id
+                                                                         :card_id      card-id}
+                       Pulse                 {pulse-id :id, :as pulse}  {:name         "just pulse"
+                                                                         :dashboard_id dash-id}
+                       PulseCard             _                          {:pulse_id          pulse-id
+                                                                         :card_id           card-id
+                                                                         :position          0
+                                                                         :dashboard_card_id dash-card-id
+                                                                         :include_csv       true
+                                                                         :csv_delimiter     ";"
+                                                                         :csv_quote         "'"}
+                       PulseChannel          {pc-id :id}                {:pulse_id pulse-id}
+                       PulseChannelRecipient _                          {:user_id          (pulse.test-util/rasta-id)
+                                                                         :pulse_channel_id pc-id}]
+          (with-redefs [csv/write-csv mock-write-csv]
+            (metabase.pulse/send-pulse! pulse)
+            (is (true?
+                 (apply = (map :options @mock-calls))))
+            (is (= [:separator \; :quote \']
+                   (:options (first @mock-calls))))))))))
