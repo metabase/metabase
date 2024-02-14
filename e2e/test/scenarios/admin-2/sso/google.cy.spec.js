@@ -41,7 +41,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.wait("@updateSetting");
     getGoogleCard().findByText("Paused").should("exist");
 
-    getGoogleCard().icon("ellipsis").click();
+    getGoogleCard().icon("ellipsis").click({ timeout: 6000 }); // save status appears over icon for 5 seconds
     popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getGoogleCard().findByText("Active").should("exist");
