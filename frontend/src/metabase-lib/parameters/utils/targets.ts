@@ -22,10 +22,10 @@ export function isParameterVariableTarget(
   return target?.[0] === "variable";
 }
 
-function isLocalFieldReference(
+function isConcreteFieldReference(
   reference: FieldReference,
 ): reference is LocalFieldReference {
-  return reference?.[0] === "field" && typeof reference[1] === "number";
+  return reference?.[0] === "field";
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
@@ -67,7 +67,7 @@ export function buildColumnTarget(
 ): StructuredParameterDimensionTarget {
   const fieldRef = Lib.legacyRef(query, stageIndex, column);
 
-  if (!isLocalFieldReference(fieldRef)) {
+  if (!isConcreteFieldReference(fieldRef)) {
     throw new Error("Cannot build column target for non-local field ref");
   }
 
