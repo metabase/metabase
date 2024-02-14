@@ -7,6 +7,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import cx from "classnames";
 import { Grid, ScrollSync } from "react-virtualized";
+import * as Lib from "metabase-lib";
 
 import "./TableInteractive.css";
 
@@ -32,6 +33,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { FieldInfoPopover } from "metabase/components/MetadataInfo/FieldInfoPopover";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import Question from "metabase-lib/Question";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
@@ -699,6 +701,9 @@ class TableInteractive extends Component {
     const isAscending = sortDirection === "asc";
 
     const fieldInfoPopoverTestId = "field-info-popover";
+    const question = new Question(this.props.card, this.props.metadata);
+    const query = question.query();
+    const stageIndex = -1;
 
     return (
       <TableDraggable
@@ -784,7 +789,9 @@ class TableInteractive extends Component {
         >
           <FieldInfoPopover
             placement="bottom-start"
-            field={column}
+            query={query}
+            stageIndex={-1}
+            column={Lib.fromLegacyColumn(query, stageIndex, column)}
             timezone={data.results_timezone}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
             showFingerprintInfo
