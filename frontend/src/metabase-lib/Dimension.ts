@@ -1636,7 +1636,7 @@ export class TemplateTagDimension extends FieldDimension {
     return (tag && tag["display-name"]) || super.displayName();
   }
 
-  mbql() {
+  mbql(): VariableTarget {
     return ["template-tag", this.tagName()];
   }
 

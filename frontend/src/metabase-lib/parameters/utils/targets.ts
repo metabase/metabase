@@ -1,14 +1,38 @@
-import type { ParameterTarget } from "metabase-types/api";
+import type {
+  ExpressionReference,
+  FieldReference,
+  LocalFieldReference,
+  NativeParameterDimensionTarget,
+  ParameterTarget,
+  ParameterTextTarget,
+  ParameterVariableTarget,
+  StructuredParameterDimensionTarget,
+} from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import * as Lib from "metabase-lib";
+import type { TemplateTagDimension } from "metabase-lib/Dimension";
 import Dimension from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
-export function isVariableTarget(target: ParameterTarget) {
-  return target?.[0] === "variable";
+export function isParameterVariableTarget(
+  target: ParameterTarget,
+): target is ParameterVariableTarget {
+  return target[0] === "variable";
+}
+
+function isConcreteFieldReference(
+  reference: FieldReference,
+): reference is LocalFieldReference {
+  return reference[0] === "field";
+}
+
+function isExpressionReference(
+  reference: FieldReference,
+): reference is ExpressionReference {
+  return reference[0] === "expression";
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
@@ -37,7 +61,9 @@ export function getParameterTargetField(
   return null;
 }
 
-export function buildDimensionTarget(dimension: Dimension) {
+export function buildDimensionTarget(
+  dimension: TemplateTagDimension,
+): NativeParameterDimensionTarget {
   return ["dimension", dimension.mbql()];
 }
 
@@ -45,15 +71,23 @@ export function buildColumnTarget(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-) {
-  return ["dimension", Lib.legacyRef(query, stageIndex, column)];
+): StructuredParameterDimensionTarget {
+  const fieldRef = Lib.legacyRef(query, stageIndex, column);
+
+  if (!isConcreteFieldReference(fieldRef) && !isExpressionReference(fieldRef)) {
+    throw new Error(`Cannot build column target field reference: ${fieldRef}`);
+  }
+
+  return ["dimension", fieldRef];
 }
 
-export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
+export function buildTemplateTagVariableTarget(
+  variable: TemplateTagVariable,
+): ParameterVariableTarget {
   return ["variable", variable.mbql()];
 }
 
-export function buildTextTagTarget(tagName: string): ["text-tag", string] {
+export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
 }
 
