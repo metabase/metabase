@@ -80,6 +80,10 @@
        ;; possible database conflict due to a concurrent insert.
        ~@body)))
 
+(defn- latest-or-own [->pks our-row all-rows]
+  (let [our-pks (->pks our-row)]
+    ;; The typical convention is to have an :updated_at field, but not all models have this
+    (sort-by (juxt :updated_at (comp #{our-pks} ->pks)) u/reverse-compare all-rows)))
 
 (defmacro idempotent-insert!
   "Create or update some database state, typically a single row, atomically.
@@ -115,12 +119,17 @@
                              e#)))))))
 
 (defmacro idempotent-upsert!
-  "sdfsdf"
+  "sdfsdf. Returns the primary key."
   [model select-map update-fn]
   (with-conflict-retry
    `(let [select-map# ~select-map
-          select-kvs# (mapcat identity select-map#)]
+          select-kvs# (mapcat identity select-map#)
+          pks (t2/primary-keys ~model)
+          ->pks #(mapv % pks)]
       (if-let [entity# (apply t2/select-one ~model select-kvs#)]
-        (t2/update! ~model (mapv entity# (t2/primary-keys ~model)) (~update-fn entity#))
-        ;; TODO delete any duplicates left behind
-        (t2/insert! ~model (merge (~update-fn nil) select-map#))))))
+        (t2/update-returning-pks! ~model (->pks entity#) (~update-fn entity#))
+        (let [inserted (t2/insert-returning-instance! ~model (merge (~update-fn nil) select-map#))
+              existing (apply t2/select-all ~model select-kvs#)
+              [to-keep & to-delete] (latest-or-own ->pks inserted existing)]
+          (t2/delete! model (map ->pks to-delete))
+          (->pks to-keep))))))
