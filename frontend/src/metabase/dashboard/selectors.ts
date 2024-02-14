@@ -383,14 +383,13 @@ const getDashcardsByDashboardMemoized = createDeepEqualSelector(
 
 export const getParameters = createSelector(
   [
-    getDashboard,
-    getMetadata,
     getDashcardsByDashboardMemoized,
     getDashboardParameters,
+    getMetadata,
     getQuestionsMemoized,
   ],
-  (dashboard, metadata, dashcards, parameters, questions) => {
-    if (!dashboard || !metadata) {
+  (dashcards, parameters, metadata, questions) => {
+    if (!metadata) {
       return [];
     }
 
