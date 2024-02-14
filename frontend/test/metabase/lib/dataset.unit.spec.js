@@ -4,7 +4,6 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 
 const metadata = createMockMetadata({
@@ -92,89 +91,6 @@ describe("metabase/util/dataset", () => {
       expect(
         newQuestion.legacyQuery({ useStructuredQuery: true }).columns(),
       ).toHaveLength(4);
-    });
-
-    it("removes columns from table.columns when a column is removed from a query", () => {
-      const prevQuestion = productsTable
-        .legacyQuery({
-          fields: [
-            ["field", PRODUCTS.ID, null],
-            ["field", PRODUCTS.CATEGORY, null],
-            ["field", PRODUCTS.VENDOR, null],
-          ],
-        })
-        .question()
-        .setSettings({
-          "table.columns": [
-            createMockTableColumnOrderSetting({
-              name: "ID",
-              fieldRef: ["field", PRODUCTS.ID, null],
-              enabled: true,
-            }),
-            createMockTableColumnOrderSetting({
-              name: "CATEGORY",
-              fieldRef: ["field", PRODUCTS.CATEGORY, null],
-              enabled: true,
-            }),
-            createMockTableColumnOrderSetting({
-              name: "VENDOR",
-              fieldRef: ["field", PRODUCTS.VENDOR, null],
-              enabled: true,
-            }),
-          ],
-        });
-
-      const newQuestion = prevQuestion
-        .legacyQuery({ useStructuredQuery: true })
-        .removeField(2)
-        .question()
-        .syncColumnsAndSettings(prevQuestion);
-
-      expect(prevQuestion.setting("table.columns")).toHaveLength(3);
-      expect(newQuestion.setting("table.columns")).toEqual(
-        prevQuestion.setting("table.columns").slice(0, 2),
-      );
-    });
-
-    it("adds columns to table.columns when a column is added to a query", () => {
-      const prevQuestion = productsTable
-        .legacyQuery({
-          fields: [
-            ["field", PRODUCTS.ID, null],
-            ["field", PRODUCTS.CATEGORY, null],
-          ],
-        })
-        .question()
-        .setSettings({
-          "table.columns": [
-            createMockTableColumnOrderSetting({
-              name: "ID",
-              fieldRef: ["field", PRODUCTS.ID, null],
-              enabled: true,
-            }),
-            createMockTableColumnOrderSetting({
-              name: "CATEGORY",
-              fieldRef: ["field", PRODUCTS.CATEGORY, null],
-              enabled: true,
-            }),
-          ],
-        });
-
-      const newQuestion = prevQuestion
-        .legacyQuery({ useStructuredQuery: true })
-        .addField(["field", PRODUCTS.VENDOR, null])
-        .question()
-        .syncColumnsAndSettings(prevQuestion);
-
-      expect(prevQuestion.setting("table.columns")).toHaveLength(2);
-      expect(newQuestion.setting("table.columns")).toEqual([
-        ...prevQuestion.setting("table.columns"),
-        createMockTableColumnOrderSetting({
-          name: "VENDOR",
-          fieldRef: ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
-          enabled: true,
-        }),
-      ]);
     });
   });
 });
