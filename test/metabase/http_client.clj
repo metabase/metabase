@@ -268,10 +268,10 @@
   (update resp :body
           (fn [body]
             (cond
-             ;; read the text response
-             (instance? InputStream body)
-             (with-open [r (io/reader body)]
-               (slurp r))
+              ;; read the text response
+              (instance? InputStream body)
+              (with-open [r (io/reader body)]
+                (slurp r))
 
               ;; read byte array stuffs like image
               (instance? (Class/forName "[B") body)

@@ -109,9 +109,8 @@
 
 (mu/defn ^:private maybe-attach-metadata-provider-to-query :- ::qp.schema/query
   [query :- ::qp.schema/query]
-  (if (= (:lib/type query) :mbql/query)
-    (assoc query :lib/metadata (qp.store/metadata-provider))
-    query))
+  (cond-> query
+    (= (:lib/type query) :mbql/query) (assoc :lib/metadata (qp.store/metadata-provider))))
 
 (mu/defn ^:private do-with-metadata-provider :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
@@ -189,8 +188,8 @@
 
 (def ^:private ^:dynamic *has-setup*
   "This is here so we can skip calling the setup middleware if it's already done. Not super important, since the setup
-  middleware should all no-op, but it keeps the stacktraces tider to not have a bunch of calls that don't do anything
-  there."
+  middleware should all no-op, but it keeps the stacktraces tidier so we do not have a bunch of calls that don't do
+  anything in them."
   false)
 
 (mu/defn do-with-qp-setup

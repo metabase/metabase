@@ -43,7 +43,7 @@
 
 (defn ^:dynamic *reduce*
   "Called by [[*run*]] (inside the `respond` callback provided by it) to reduce results of query. Reduces results, then
-  calls [[*result*]] with the reduced results. results."
+  calls [[*result*]] with the reduced results."
   [rff metadata reducible-rows]
   (when-not (canceled?)
     (let [[status rf-or-e] (try
