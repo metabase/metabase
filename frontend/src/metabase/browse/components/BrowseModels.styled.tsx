@@ -87,16 +87,20 @@ export const BannerCloseButton = styled(IconButtonWrapper)`
   margin-left: auto;
 `;
 
-export const ContainerCollapse = styled(Collapse)`
+export const CollectionCollapse = styled(Collapse)`
   display: contents;
 `;
 
 export const ContainerExpandCollapseButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`
-  grid-column: 1 / -1;
   border: 0;
   background-color: inherit;
-  max-width: 50rem;
-  justify-self: center;
+`;
+
+export const CollectionExpandCollapseContainer = styled(Flex)`
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  grid-column: 1 / -1;
 `;

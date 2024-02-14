@@ -1,9 +1,5 @@
-import Link from "metabase/core/components/Link";
-import Search from "metabase/entities/search";
-import { color } from "metabase/lib/colors";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
+import { c } from "ttag";
+import { useDisclosure } from "@mantine/hooks";
 import type {
   Card,
   CollectionEssentials,
@@ -13,9 +9,12 @@ import type {
 import { getCollectionName, sortModels } from "../utils";
 
 import {
+  CollectionCollapse,
+  CollectionExpandCollapseContainer,
   CollectionHeaderContainer,
   CollectionHeaderGroup,
   CollectionHeaderLink,
+  ContainerExpandCollapseButton,
   ModelCard,
   MultilineEllipsified,
 } from "./BrowseModels.styled";
@@ -34,6 +33,12 @@ export const ModelGroup = ({
   /** This id is used by aria-labelledby */
   const collectionHtmlId = `collection-${collection.id}`;
 
+  const collapsedSize = 6;
+  const aboveFold = sortedModels.slice(0, collapsedSize);
+  const belowFold = sortedModels.slice(collapsedSize);
+
+  const [opened, { toggle }] = useDisclosure(false);
+
   return (
     <>
       <CollectionHeader
@@ -41,13 +46,39 @@ export const ModelGroup = ({
         key={collectionHtmlId}
         id={collectionHtmlId}
       />
-      {sortedModels.map(model => (
+      {aboveFold.map(model => (
         <ModelCell
           model={model}
           collectionHtmlId={collectionHtmlId}
           key={`model-${model.id}`}
         />
       ))}
+      {belowFold.length > 0 && (
+        <>
+          <CollectionCollapse in={opened} transitionDuration={0}>
+            {belowFold.map(model => (
+              <ModelCell
+                model={model}
+                collectionHtmlId={collectionHtmlId}
+                key={`model-${model.id}`}
+              />
+            ))}
+          </CollectionCollapse>
+          <CollectionExpandCollapseContainer>
+            {!opened &&
+              belowFold.length &&
+              `${aboveFold.length} of ${models.length}`}
+            {belowFold.length && (
+              <ContainerExpandCollapseButton p="xs" onClick={toggle}>
+                {opened
+                  ? c("For a button that collapses a list of models")
+                      .t`Show less`
+                  : c("For a button that expands a list of models").t`Show all`}
+              </ContainerExpandCollapseButton>
+            )}
+          </CollectionExpandCollapseContainer>
+        </>
+      )}
     </>
   );
 };
