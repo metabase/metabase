@@ -10,8 +10,8 @@ import {
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { Icon } from "metabase/ui";
-import DateSingleWidget from "metabase/components/DateSingleWidget";
-import DateRangeWidget from "metabase/components/DateRangeWidget";
+import { DateSingleWidget } from "metabase/components/DateSingleWidget";
+import { DateRangeWidget } from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
