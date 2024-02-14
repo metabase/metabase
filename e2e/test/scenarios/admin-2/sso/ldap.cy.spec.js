@@ -12,6 +12,7 @@ import {
   crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
 } from "./shared/group-mappings-widget";
+import { getUserProvisioningInput, getSuccessUi } from "./shared/helpers";
 
 describe(
   "scenarios > admin > settings > SSO > LDAP",
@@ -68,15 +69,12 @@ describe(
       setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
-      cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByText("User Provisioning").click();
-      });
+      getUserProvisioningInput().click();
       enterLdapPort("389"); // api response fails without changing the port
-
       cy.button("Save changes").click();
       cy.wait("@updateLdapSettings");
 
-      cy.findByText("Success").should("exist");
+      getSuccessUi().should("exist");
     });
 
     it("should allow to reset ldap settings", () => {
