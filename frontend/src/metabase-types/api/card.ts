@@ -16,10 +16,6 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   updated_at: string;
   name: string;
   description: string | null;
-  /**
-   * @deprecated Use "type" instead
-   */
-  dataset: boolean;
   type: CardType;
   public_uuid: string | null;
 
