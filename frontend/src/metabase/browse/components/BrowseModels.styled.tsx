@@ -100,6 +100,7 @@ export const ContainerExpandCollapseButton = styled(Button)<
 
 export const CollectionExpandCollapseContainer = styled(Flex)`
   display: flex;
+  gap: 0.25rem;
   justify-content: flex-start;
   align-items: center;
   grid-column: 1 / -1;
