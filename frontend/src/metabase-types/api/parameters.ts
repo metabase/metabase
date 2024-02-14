@@ -74,10 +74,15 @@ export type ParameterTarget =
   | ParameterDimensionTarget
   | ParameterTextTarget;
 
-type DimensionTarget = LocalFieldReference;
-export type ParameterDimensionTarget = [
+export type ParameterDimensionTarget =
+  | NativeParameterDimensionTarget
+  | StructuredParameterDimensionTarget;
+
+export type NativeParameterDimensionTarget = ["dimension", VariableTarget];
+
+export type StructuredParameterDimensionTarget = [
   "dimension",
-  DimensionTarget | VariableTarget,
+  LocalFieldReference,
 ];
 
 export type ParameterValueOrArray = string | number | Array<any>;

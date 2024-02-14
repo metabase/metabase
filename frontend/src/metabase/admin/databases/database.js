@@ -16,9 +16,6 @@ import { updateSetting } from "metabase/admin/settings/settings";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
-// Default schedules for db sync and deep analysis
-export const DB_EDIT_FORM_CONNECTION_TAB = "connection";
-
 export const RESET = "metabase/admin/databases/RESET";
 export const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
 export const INITIALIZE_DATABASE =
