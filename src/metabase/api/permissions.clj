@@ -97,17 +97,17 @@
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]
-     (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
-     (let [sandbox-updates        (:sandboxes graph)
-           sandboxes              (when sandbox-updates
-                                    (upsert-sandboxes! sandbox-updates))
-           impersonation-updates  (:impersonations graph)
-           impersonations         (when impersonation-updates
-                                    (insert-impersonations! impersonation-updates))]
-       (merge {:revision (perms-revision/latest-id)}
-              (when-not skip-graph {:groups (:groups (data-perms.graph/db-graph->api-graph {}))})
-              (when sandboxes {:sandboxes sandboxes})
-              (when impersonations {:impersonations impersonations}))))))
+      (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
+      (let [sandbox-updates        (:sandboxes graph)
+            sandboxes              (when sandbox-updates
+                                     (upsert-sandboxes! sandbox-updates))
+            impersonation-updates  (:impersonations graph)
+            impersonations         (when impersonation-updates
+                                     (insert-impersonations! impersonation-updates))]
+        (merge {:revision (perms-revision/latest-id)}
+               (when-not skip-graph {:groups (:groups (data-perms.graph/db-graph->api-graph {}))})
+               (when sandboxes {:sandboxes sandboxes})
+               (when impersonations {:impersonations impersonations}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |

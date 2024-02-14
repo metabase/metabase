@@ -39,15 +39,13 @@
   group and database before creating new ones."
   :feature :advanced-permissions
   [impersonations]
-  (doall
-   (for [impersonation impersonations]
-
-     (do
-       (t2/delete! :model/ConnectionImpersonation
-                   :group_id (:group_id impersonation)
-                   :db_id (:db_id impersonation))
-       (-> (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)
-           first)))))
+  (doseq [impersonation impersonations]
+    (do
+      (t2/delete! :model/ConnectionImpersonation
+                  :group_id (:group_id impersonation)
+                  :db_id (:db_id impersonation))
+      (-> (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)
+          first))))
 
 (defn- delete-impersonations-for-group-database! [{:keys [group-id database-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonations for Group %d for Database %d. Graph changes: %s"

@@ -144,7 +144,7 @@
   if this does not exist, the sandbox will not be created."
   :feature :sandboxes
   [sandboxes]
-  (for [sandbox sandboxes]
+  (doseq [sandbox sandboxes]
     (if-let [id (:id sandbox)]
       ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
       ;; This allows existing values to be "cleared" by being set to nil
