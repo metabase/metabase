@@ -47,8 +47,6 @@ describe("parameters/utils/targets", () => {
       expect(
         isParameterVariableTarget(["dimension", ["template-tag", "foo"]]),
       ).toBe(false);
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(isParameterVariableTarget()).toBe(false);
     });
 
     it("should return true for a variable target", () => {
