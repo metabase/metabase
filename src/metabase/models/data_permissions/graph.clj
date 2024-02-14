@@ -1,19 +1,22 @@
 (ns metabase.models.data-permissions.graph
   "Code involving reading and writing the API-style data permission graph. This is the graph which we use to represent
   permissions when communicating with the frontend, which has different keys and a slightly different structure
-  from the one returned by `metabase.models.permissions-v2/data-permissions-graph`, which is based directly on the
-  keys and values stored in the `permissions_v2` table.
-  Essentially, this is a translation layer between the graph used by the v1 permissions system and the v2 permissions
-  system."
+  from the one returned by `metabase.models.data-permissions/data-permissions-graph`, which is based directly on the
+  keys and values stored in the `data_permissions` table.
+
+  Essentially, this is a translation layer between the graph used by the v1 permissions schema and the v2 permissions
+  schema."
   (:require
    [medley.core :as m]
    [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [toucan2.core :as db]))
+   [toucan2.core :as t2]))
 
 ;; See also: [[data-perms/Permissions]]
 (def ^:private ->api-keys
@@ -120,16 +123,17 @@
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
   For every db in the incoming graph, adds on admin permissions."
   [api-graph {:keys [db-id group-id]}]
-  (cond-> api-graph
-    (= group-id (:id (perms-group/admin)))
-    ((fn [api-graph]
-       (let [{admin-group-id :id} (perms-group/admin)
-             dbs (if db-id
-                   [db-id]
-                   (:db-ids (get-dbs-and-groups api-graph)))]
-         (assoc api-graph
-                admin-group-id
-                (zipmap dbs (repeat legacy-admin-perms))))))))
+  (let [admin-group-id (u/the-id (perms-group/admin))]
+    (if (and group-id (not= group-id admin-group-id))
+      ;; Don't add admin perms when we're fetching the perms for a specific non-admin group
+      api-graph
+      (reduce
+       (fn [api-graph db-id]
+         (assoc-in api-graph [admin-group-id db-id] legacy-admin-perms))
+       api-graph
+       (if db-id
+         [db-id]
+         (t2/select-pks-vec :model/Database {:where [:not= :id config/audit-db-id]}))))))
 
 (mu/defn db-graph->api-graph :- api.permission-graph/StrictData
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
@@ -137,8 +141,7 @@
   - Converts DB key names to API key names
   - Converts DB value names to API value names
   - Nesting: see [[rename-perms]] to see which keys in `graph` affect which paths in the api permission-graph
-  - Adds sandboxed entries, and impersonations to graph
- "
+  - Adds sandboxed entries, and impersonations to graph"
   [& {:as opts} :- [:map
                     [:group-id {:optional true} [:maybe pos-int?]]
                     [:db-id {:optional true} [:maybe pos-int?]]
@@ -170,7 +173,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-metadata-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
       (when (seq tables)
         (case new-schema-perms
           :all
@@ -208,7 +211,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-download-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
       (when (seq tables)
         (case new-schema-perms
           :full
@@ -268,7 +271,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-data-access-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
       (when (seq tables)
         (case new-schema-perms
           :all

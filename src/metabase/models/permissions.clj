@@ -628,18 +628,6 @@
             {}
             permissions)))
 
-(defenterprise add-impersonations-to-permissions-graph
-  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.advanced-permissions.models.connection-impersonation
-  [graph]
-  graph)
-
-(defenterprise add-sandboxes-to-permissions-graph
-  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.sandbox.models.group-table-access-policy
-  [graph]
-  graph)
-
 (defn- post-process-graph [graph]
   (->>
    graph
@@ -657,8 +645,8 @@
               (all-permissions db-ids)
               (:db permissions-graph)))))
        post-process-graph
-       add-sandboxes-to-permissions-graph
-       add-impersonations-to-permissions-graph))
+       data-perms.graph/add-sandboxes-to-permissions-graph
+       data-perms.graph/add-impersonations-to-permissions-graph))
 
 (defn ->v1-paths
   "keep v1 paths, implicitly remove v2"
@@ -669,43 +657,22 @@
 
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
-  See [[metabase.models.collection.graph]] for the Collection permissions graph code. Keeps v1 paths, hence implictly removes v2 paths.
-
-  What are v1 and v2 permissions? see: [[classify-path]]. In summary:
-
-         v1 permissions
-  |--------------------------------|
-  |                                |
-  v1-data, block | all-other-paths | v2-data, v2-query
-                 |                                   |
-                 |-----------------------------------|
-                           v2 permissions
-  "
+  See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [db-ids             (delay (t2/select-pks-set 'Database))
-        group-id->v1-paths (->> (permissions-by-group-ids [:or
-                                                           [:= :object (h2x/literal "/")]
-                                                           [:like :object (h2x/literal "%/db/%")]])
-                                ->v1-paths)]
-    {:revision (perms-revision/latest-id)
-     :groups   (generate-graph @db-ids group-id->v1-paths)}))
+  {:revision (perms-revision/latest-id)
+   :groups   (data-perms.graph/db-graph->api-graph {})})
 
 (defn data-graph-for-db
   "Efficiently returns a data permissions graph, which has all the permissions info for `db-id`."
   [db-id]
-  (let [group-id->permissions (permissions-by-group-ids [:like :object (h2x/literal (str "%/db/" db-id "/%"))])
-        group-id->v1-paths (->v1-paths group-id->permissions)]
-    {:revision (perms-revision/latest-id)
-     :groups (generate-graph [db-id] group-id->v1-paths)}))
+  {:revision (perms-revision/latest-id)
+   :groups (data-perms.graph/db-graph->api-graph {:db-id db-id})})
 
 (defn data-graph-for-group
   "Efficiently returns a data permissions graph, which has all the permissions info for the permission group at `group-id`."
   [group-id]
-  (let [db-ids (t2/select-pks-set :model/Database)
-        group-id->permissions (permissions-by-group-ids [:= :group_id group-id])
-        group-id->paths (select-keys (->v1-paths group-id->permissions) [group-id])]
-    {:revision (perms-revision/latest-id)
-     :groups (generate-graph db-ids group-id->paths)}))
+  {:revision (perms-revision/latest-id)
+   :groups (data-perms.graph/db-graph->api-graph {:group-id group-id})})
 
 (defn data-perms-graph-v2
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
@@ -1285,7 +1252,7 @@
 
   Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
   ([new-graph :- api.permission-graph/StrictData]
-   (let [old-graph (data-perms-graph)
+   (let [old-graph (data-perms.graph/db-graph->api-graph {})
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})
          new       (or new {})]
