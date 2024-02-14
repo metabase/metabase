@@ -1,7 +1,6 @@
 import type {
-  ExpressionReference,
+  ConcreteFieldReference,
   FieldReference,
-  LocalFieldReference,
   NativeParameterDimensionTarget,
   ParameterTarget,
   ParameterTextTarget,
@@ -25,14 +24,8 @@ export function isParameterVariableTarget(
 
 function isConcreteFieldReference(
   reference: FieldReference,
-): reference is LocalFieldReference {
-  return reference[0] === "field";
-}
-
-function isExpressionReference(
-  reference: FieldReference,
-): reference is ExpressionReference {
-  return reference[0] === "expression";
+): reference is ConcreteFieldReference {
+  return reference[0] === "field" || reference[0] === "expression";
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
@@ -74,7 +67,7 @@ export function buildColumnTarget(
 ): StructuredParameterDimensionTarget {
   const fieldRef = Lib.legacyRef(query, stageIndex, column);
 
-  if (!isConcreteFieldReference(fieldRef) && !isExpressionReference(fieldRef)) {
+  if (!isConcreteFieldReference(fieldRef)) {
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
   }
 
