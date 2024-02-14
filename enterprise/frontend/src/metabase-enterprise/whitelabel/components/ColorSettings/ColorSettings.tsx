@@ -53,7 +53,7 @@ const ColorSettings = ({
       <ChartColorSection>
         <SettingTitle hasDescription>{t`Chart colors`}</SettingTitle>
         <SettingDescription>
-          {t`You can choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
+          {t`Choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
         </SettingDescription>
         <SectionContent>
           <ChartColorSettings

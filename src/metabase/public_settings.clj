@@ -435,7 +435,7 @@
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
-  (deferred-tru "Upload the image that you want to use as the favicon.")
+  (deferred-tru "Upload a file to use as the favicon.")
   :visibility :public
   :export?    true
   :type       :string
