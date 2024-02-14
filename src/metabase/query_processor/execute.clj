@@ -1,7 +1,6 @@
 (ns metabase.query-processor.execute
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -9,7 +8,6 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -55,7 +53,7 @@
                              (rebuild-execute-fn!))))
 
 ;;; TODO -- consider whether this should return an `IReduceInit` that we can reduce as a separate step.
-(mu/defn execute :- :some
+(mu/defn execute :- some?
   "Execute a compiled query, then reduce the results."
   [compiled-query :- [:map
                       [:database ::lib.schema.id/database]

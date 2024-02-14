@@ -11,6 +11,7 @@
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -21,7 +22,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (com.google.cloud.bigquery BigQuery)))
+   (com.google.cloud.bigquery BigQuery DatasetId)))
 
 (set! *warn-on-reflection* true)
 
@@ -593,13 +594,17 @@
           (try
             ;; there's a race. Some data might be processed, and if so we get the partial result
             (mt/dataset test-data
-              (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
+              (let [query     (mt/query orders)
+                    rows      (mt/rows
+                               (binding [qp.pipeline/*canceled-chan* canceled-chan]
+                                 (mt/process-query query)))
                     row-count (count rows)]
                 (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
                 (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
                   (is (< 0 row-count 10000)))))
             (catch clojure.lang.ExceptionInfo e
-              (is (= (ex-message e) "Query cancelled")))))))))
+              (is (= "Query cancelled"
+                     (ex-message e))))))))))
 
 ;; TODO Temporarily disabling due to flakiness (#33140)
 #_
@@ -634,7 +639,7 @@
                                                      :details
                                                      (dissoc :dataset-filters-type
                                                              :dataset-filters-patterns)))
-              dataset-ids (map #(.getDataset %) datasets)
+              dataset-ids (map #(.getDataset ^DatasetId %) datasets)
               ;; get the first 4 characters of each dataset-id. The first 4 characters are used because the first 3 are
               ;; often used for bigquery dataset names e.g. `v4_test_data`
               prefixes (->> dataset-ids
