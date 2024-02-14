@@ -117,7 +117,7 @@ export const buildDimensionAxis = (
   formatter: AxisFormatter,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
-): CartesianAxisOption => {
+) => {
   const { getColor } = renderingContext;
   const axisType = getXAxisType(settings);
 
@@ -131,7 +131,12 @@ export const buildDimensionAxis = (
   );
   const valueGetter = getDimensionDisplayValueGetter(chartModel, settings);
 
-  return {
+  let firstDimensionLabel: string | undefined = undefined;
+  let firstDimensionLabelDataIndex: number | undefined = undefined;
+  let lastDimensionLabel: string | undefined = undefined;
+  let lastDimensionLabelDataIndex: number | undefined = undefined;
+
+  const xAxis: CartesianAxisOption = {
     ...getAxisNameDefaultOption(
       renderingContext,
       nameGap,
@@ -154,8 +159,17 @@ export const buildDimensionAxis = (
       show: !!settings["graph.x_axis.axis_enabled"],
       rotate: getRotateAngle(settings),
       ...getTicksDefaultOption(renderingContext),
-      // Value is always converted to a string by ECharts
-      formatter: (value: string) => ` ${formatter(valueGetter(value))} `, // spaces force padding between ticks
+      formatter: (value: string, index: number) => {
+        const label = ` ${formatter(valueGetter(value))} `; // spaces force padding between ticks
+        if (firstDimensionLabel === undefined) {
+          firstDimensionLabel = label;
+          firstDimensionLabelDataIndex = index;
+        }
+        lastDimensionLabel = label;
+        lastDimensionLabelDataIndex = index;
+
+        return label;
+      },
     },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
@@ -163,6 +177,14 @@ export const buildDimensionAxis = (
         color: getColor("border"),
       },
     },
+  };
+
+  return {
+    xAxis,
+    firstDimensionLabel,
+    firstDimensionLabelDataIndex,
+    lastDimensionLabel,
+    lastDimensionLabelDataIndex,
   };
 };
 
@@ -258,7 +280,7 @@ export const buildAxes = (
   renderingContext: RenderingContext,
 ) => {
   return {
-    xAxis: buildDimensionAxis(
+    ...buildDimensionAxis(
       chartModel,
       settings,
       chartModel.xAxisModel.formatter,

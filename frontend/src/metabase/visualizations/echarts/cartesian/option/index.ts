@@ -17,6 +17,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLineOptionsAndDatasets } from "./trend-line";
+import { getChartSidePadding } from "./padding";
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
@@ -70,6 +71,24 @@ export const getCartesianChartOption = (
     ...(trendDatasets ?? []),
   ];
 
+  const {
+    xAxis,
+    yAxis,
+    firstDimensionLabel,
+    firstDimensionLabelDataIndex,
+    lastDimensionLabel,
+    lastDimensionLabelDataIndex,
+  } = buildAxes(chartModel, settings, hasTimelineEvents, renderingContext);
+
+  getChartSidePadding(
+    chartModel,
+    chartWidth,
+    firstDimensionLabel,
+    firstDimensionLabelDataIndex,
+    lastDimensionLabel,
+    lastDimensionLabelDataIndex,
+  );
+
   return {
     animation: true,
     animationDuration: 0,
@@ -88,6 +107,7 @@ export const getCartesianChartOption = (
     },
     dataset: echartsDataset,
     series: seriesOption,
-    ...buildAxes(chartModel, settings, hasTimelineEvents, renderingContext),
+    xAxis,
+    yAxis,
   } as EChartsOption;
 };

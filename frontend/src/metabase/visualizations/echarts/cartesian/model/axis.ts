@@ -26,6 +26,7 @@ import {
   getMetricDisplayValueGetter,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { getObjectEntries, getObjectKeys } from "metabase/lib/objects";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -449,6 +450,7 @@ export function getYAxesModels(
 }
 
 export function getXAxisModel(
+  dataset: ChartDataset,
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
@@ -459,6 +461,8 @@ export function getXAxisModel(
 
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
 
+  const extent = getDatasetExtents([X_AXIS_DATA_KEY], dataset)[0]; // TODO don't compute for categorical axis
+
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
       column,
@@ -467,7 +471,8 @@ export function getXAxisModel(
     });
 
   return {
-    formatter,
     label,
+    extent,
+    formatter,
   };
 }
