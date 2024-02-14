@@ -7,8 +7,7 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model])
   (:import
-   (clojure.lang ExceptionInfo)
-   (java.sql Connection)))
+   (clojure.lang ExceptionInfo)))
 
 (defn toucan-model?
   "Check if `model` is a toucan model."
@@ -70,22 +69,19 @@
   ([expr type-keyword]
    [:in expr (type-keyword->descendants type-keyword)]))
 
-(defmacro ^:private with-conflict-retry
-  "Retry a database mutation a single time if it fails due to concurrent insertions . May retry for other reasons."
+(defmacro with-conflict-retry
+  "Retry a database mutation a single time if it fails due to concurrent insertions.
+   May retry for other reasons."
   [& body]
   `(try
      ~@body
      (catch ExceptionInfo e#
-       ;; The causal exception thrown by the database driver is typically opaque, so we treat any exception as a
-       ;; possible database conflict due to a concurrent insert.
+       ;; The underlying exception thrown by the driver is database specific and opaque, so we treat any exception as a
+       ;; possible database conflict due to a concurrent insert. If we want to be more conservative, we would need
+       ;; a per-driver or driver agnostic way to test the exception.
        ~@body)))
 
-(defn- latest-or-own [->pks our-row all-rows]
-  (let [our-pks (->pks our-row)]
-    ;; The typical convention is to have an :updated_at field, but not all models have this
-    (sort-by (juxt :updated_at (comp #{our-pks} ->pks)) u/reverse-compare all-rows)))
-
-(defmacro idempotent-insert!
+(defmacro select-or-insert!
   "Create or update some database state, typically a single row, atomically.
 
    This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and t also  avoids calculating the
@@ -96,40 +92,39 @@
    One should be careful about side-effects in `select-expr`, as the expression could be executed up to 3 times.
 
    The mechanism is agnostic whether there is an underlying db constraint to prevent duplicates."
-  [select-expr insert-expr]
-  ;; First attempt the select without a serializable transaction, since those are expensive.
-  `(or ~select-expr
-       (try
-         (t2/with-connection [conn#]
-           (.setTransactionIsolation ^Connection conn# Connection/TRANSACTION_SERIALIZABLE)
-           (t2/with-transaction [~'_conn]
-             ;; We need to try select the row again now that we're in the transaction to track the dependency.
-             (u/or-with some?
-                      ~select-expr
-                      ;; ... and then we can execute the (potentially expensive) mutating branch.
-                      ~insert-expr)))
-         (catch ExceptionInfo e#
-           ;; We cannot introspect the exception cause definitively, as it will be driver specific and typically opaque,
-           ;; but we should find a result now if we try selecting again after a concurrent modification exception.
-           (u/or-with some?
-             ~select-expr
-             (throw (ex-info "Unable to find element after attempting an idempotent-insert!"
-                             {:select-expr '~select-expr :insert-expr '~insert-expr}
-                             ;; Expose the exception - it might not be due to a concurrent modification.
-                             e#)))))))
-
-(defmacro idempotent-upsert!
-  "sdfsdf. Returns the primary key."
-  [model select-map update-fn]
-  (with-conflict-retry
-   `(let [select-map# ~select-map
+  {:style/indent 2}
+  [model select-map insert-fn]
+  `(with-conflict-retry
+    (let [select-map# ~select-map
           select-kvs# (mapcat identity select-map#)
-          pks (t2/primary-keys ~model)
-          ->pks #(mapv % pks)]
+          validate#   (fn [updated#]
+                        (assert (= select-map# (merge select-map# (select-keys updated# (keys select-map#))))
+                                "This macro should not change any of the identifying values")
+                        ;; For convenience, we allow the insert-fn to omit fields in the search-map
+                        (merge updated# select-map#))]
+      (or (apply t2/select-one ~model select-kvs#)
+          (t2/insert-returning-instance! ~model (validate# (~insert-fn)))))))
+
+(defmacro update-or-insert!
+  "sdfsdf. Returns the primary key."
+  {:style/indent 2}
+  [model select-map update-fn]
+  `(with-conflict-retry
+    (let [select-map# ~select-map
+          update-fn#  ~update-fn
+          select-kvs# (mapcat identity select-map#)
+          pks#        (t2/primary-keys ~model)
+          _#          (assert (= 1 (count pks#)) "This macro does not currently support compound keys")
+          pk-key#     (keyword (first pks#))
+          validate#   (fn [updated#]
+                        (assert (= select-map# (merge select-map# (select-keys updated# (keys select-map#))))
+                                "This macro should not change any of the identifying values")
+                        ;; For convenience, we allow the update-fn to omit fields in the search-map
+                        (merge updated# select-map#))]
       (if-let [entity# (apply t2/select-one ~model select-kvs#)]
-        (t2/update-returning-pks! ~model (->pks entity#) (~update-fn entity#))
-        (let [inserted (t2/insert-returning-instance! ~model (merge (~update-fn nil) select-map#))
-              existing (apply t2/select-all ~model select-kvs#)
-              [to-keep & to-delete] (latest-or-own ->pks inserted existing)]
-          (t2/delete! model (map ->pks to-delete))
-          (->pks to-keep))))))
+        (let [pk# (pk-key# entity#)
+              updated# (validate# (update-fn# entity#))]
+          (t2/update! ~model pk# (validate# (update-fn# entity#)))
+          ;; we allow this operation to change the private key
+          (pk-key# updated#))
+        (t2/insert-returning-pk! ~model (validate# (update-fn# nil)))))))
