@@ -543,7 +543,10 @@ DatasetEditor.propTypes = propTypes;
 
 export default _.compose(
   modelIndexes.loadList({
-    query: (_state, props) => ({ model_id: props?.question?.id() }),
+    query: (_state, props) => ({
+      model_id: props?.question?.id(),
+      type: props?.question?.type(),
+    }),
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
