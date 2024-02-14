@@ -291,6 +291,44 @@
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
 
+(defn send-creator-sentiment-email!
+  "Format and send an email to the system admin following up on the installation."
+  [{:keys [email created_at first_name num_dashboards num_questions num_models]} instance-data]
+  {:pre [(u/email? email)]}
+  (let [blob (-> {:instance instance-data
+                  :user {:created_at created_at
+                         :num_dashboards num_dashboards
+                         :num_questions num_questions
+                         :num_models num_models}}
+                 json/generate-string
+                 .getBytes
+                 codecs/bytes->b64-str)
+        context (merge (common-context)
+                       {:emailType  "notification"
+                        :logoHeader true
+                        :first-name first_name}
+                       (if (public-settings/anon-tracking-enabled)
+                         {:link (str "https://metabase.com/feedback/creator?context=" blob)}
+                         {:link "https://metabase.com/feedback/creator"})
+                       (when-not (premium-features/is-hosted?)
+                         {:self-hosted (str "(This email is sent directly from "
+                                            (public-settings/site-url)
+                                            ", it doesn't go through any external services)")}))
+        message {:subject      "Metabase would love your take on something"
+                 :recipients   [email]
+                 :message-type :html
+                 :message      (stencil/render-file "metabase/email/creator_sentiment_email" context)}]
+    (email/send-message! message)))
+
+(let [creator {:id 1,
+               :email "t@t.com",
+               :created_at "2024-01-30T21:30:01.325410Z",
+               :first_name "Jerry",
+               :num_dashboards 1,
+               :num_questions 5,
+               :num_models 0}]
+  (send-creator-sentiment-email! creator true))
+
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
    :content-id   content-id
