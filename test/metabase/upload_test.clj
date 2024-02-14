@@ -1261,7 +1261,7 @@
     (testing "Happy path"
       (is (= {:row-count 2}
              (append-csv-with-defaults!))))
-    (testing "Even if the uploads database, schema and table prefix is not set, appends succeed"
+    (testing "Even if the uploads database, schema and table prefix are not set, appends succeed"
       (mt/with-temporary-setting-values [uploads-database-id nil
                                          uploads-schema-name nil
                                          uploads-table-prefix nil]
