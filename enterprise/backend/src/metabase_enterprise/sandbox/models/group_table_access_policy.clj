@@ -77,27 +77,41 @@
                          :expected    table-col-base-type
                          :actual      (:base_type col)}))))))
 
+(defn- merge-sandbox-into-graph
+  "Merges a single sandboxing policy into the permissions graph. If perms were previously set at the DB-level, we need
+to make sure that perms for all other tables in that DB are set at the table-level in the updated graph."
+  [graph group-id table-id db-id schema]
+  (let [db-perm        (get-in graph [group-id db-id :data :schemas])
+        tables        (when (keyword? db-perm)
+                        (t2/select [:model/Table :id :db_id :schema]
+                                   {:where [:= :db_id db-id]}))
+        granular-graph (if tables
+                         (reduce
+                          (fn [g {:keys [id schema]}]
+                            (assoc-in g [group-id db-id :data :schemas (or schema "") id] db-perm))
+                          (m/dissoc-in graph [group-id db-id :data :schemas])
+                          tables)
+                         graph)]
+    (assoc-in granular-graph
+              [group-id db-id :data :schemas (or schema "") table-id]
+              {:query :segmented, :read :all})))
+
 (defenterprise add-sandboxes-to-permissions-graph
   "Augment a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
   [graph & {:keys [group-id db-id audit?]}]
-  (m/deep-merge
-   graph
-   (let [sandboxes (t2/select :model/GroupTableAccessPolicy
-                              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
-                               :from [[:sandboxes :s]]
-                               :join [[:metabase_table :t] [:= :s.table_id :t.id]]
-                               :where [:and
-                                       (when group-id [:= :s.group_id group-id])
-                                       (when db-id [:= :t.db_id db-id])
-                                       (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
-     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
-               (assoc-in acc
-                         [group_id db_id :data :schemas (or schema "") table_id]
-                         {:query :segmented
-                          :read :all}))
-             {}
-             sandboxes))))
+  (let [sandboxes (t2/select :model/GroupTableAccessPolicy
+                             {:select [:s.group_id :s.table_id :t.db_id :t.schema]
+                              :from [[:sandboxes :s]]
+                              :join [[:metabase_table :t] [:= :s.table_id :t.id]]
+                              :where [:and
+                                      (when group-id [:= :s.group_id group-id])
+                                      (when db-id [:= :t.db_id db-id])
+                                      (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
+    (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
+              (merge-sandbox-into-graph acc group_id table_id db_id schema))
+            graph
+            sandboxes)))
 
 (mu/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
