@@ -134,5 +134,5 @@
              updated (validate (update-fn entity))]
          (t2/update! model pk (validate (update-fn entity)))
          ;; we allow this operation to change the private key
-         (pk-key updated))
+         (pk-key updated pk))
        (t2/insert-returning-pk! model (validate (update-fn nil)))))))
