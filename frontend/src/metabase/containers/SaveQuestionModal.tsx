@@ -184,7 +184,7 @@ export const SaveQuestionModal = ({
         : question.collectionId(),
     saveType:
       originalQuestion &&
-      !originalQuestion.isDataset() &&
+      originalQuestion.type() === "question" &&
       originalQuestion.canWrite()
         ? "overwrite"
         : "create",
