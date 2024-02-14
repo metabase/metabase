@@ -97,10 +97,12 @@ export const getRawSeries = createSelector(
             .card()
         : question.card();
 
-      return question.atomicQueries().map((_, index) => ({
-        card,
-        data: results[index]?.data,
-      }));
+      return [
+        {
+          card,
+          data: results[0]?.data,
+        },
+      ];
     }
   },
 );

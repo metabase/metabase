@@ -12,7 +12,7 @@ import StructuredQuery, {
 import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/queries/NativeQuery";
-import AtomicQuery from "metabase-lib/queries/AtomicQuery";
+import type AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
 import type BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
@@ -222,19 +222,6 @@ class Question {
   }
 
   /**
-   * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
-   */
-  atomicQueries(): AtomicQuery[] {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-
-    if (query instanceof AtomicQuery) {
-      return [query];
-    }
-
-    return [];
-  }
-
-  /**
    * The visualization type of the question
    */
   display(): string {
@@ -350,10 +337,6 @@ class Question {
     const { display, settings = {} } = Lib.defaultDisplay(query);
 
     return this.setDisplay(display).updateSettings(settings);
-  }
-
-  setDefaultQuery() {
-    return this.legacyQuery({ useStructuredQuery: true }).question();
   }
 
   settings(): VisualizationSettings {
