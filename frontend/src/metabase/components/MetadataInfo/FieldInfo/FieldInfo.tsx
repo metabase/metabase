@@ -102,6 +102,17 @@ export function FieldInfoQuery({
   );
 }
 
+type ColumnDescriptionProps = {
+  description?: string | null;
+};
+
+function ColumnDescription({ description }: ColumnDescriptionProps) {
+  if (!description) {
+    return <EmptyDescription>{t`No description`}</EmptyDescription>;
+  }
+  return <Description>{description}</Description>;
+}
+
 type BaseProps = {
   className?: string;
   description?: string | null;
@@ -117,11 +128,7 @@ function FieldInfoBase({
 }: BaseProps) {
   return (
     <InfoContainer className={className}>
-      {description ? (
-        <Description>{description}</Description>
-      ) : (
-        <EmptyDescription>{t`No description`}</EmptyDescription>
-      )}
+      <ColumnDescription description={description} />
       <SemanticTypeLabel semanticType={semanticType} />
       {children}
     </InfoContainer>
