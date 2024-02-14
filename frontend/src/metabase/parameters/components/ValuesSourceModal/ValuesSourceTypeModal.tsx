@@ -322,9 +322,7 @@ const CardSourceModal = ({
               </Select>
             ) : (
               <ModalErrorMessage>
-                {question.isDataset()
-                  ? t`This model doesn’t have any text columns.`
-                  : t`This question doesn’t have any text columns.`}{" "}
+                {getErrorMessage(question)}{" "}
                 {t`Please pick a different model or question.`}
               </ModalErrorMessage>
             )}
@@ -344,6 +342,20 @@ const CardSourceModal = ({
       </ModalMain>
     </ModalBodyWithPane>
   );
+};
+
+const getErrorMessage = (question: Question) => {
+  const type = question.type();
+
+  if (type === "question") {
+    return t`This question doesn’t have any text columns.`;
+  }
+
+  if (type === "model") {
+    return t`This model doesn’t have any text columns.`;
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
 };
 
 interface ListSourceModalProps {
