@@ -1040,8 +1040,8 @@
                                     (thunk))]
           (testing "Happy path with schema, and without table-prefix"
             ;; make sure the schema exists
-            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* (:details db))
-                           (format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.tx/qualify-and-quote driver/*driver* schema-name)))
+            (let [sql (format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.tx/qualify-and-quote driver/*driver* schema-name))]
+              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db) sql))
             (with-upload-table!
               [new-table (card->table (upload-example-csv! :schema-name schema-name :sync-synchronously? false))]
               (is (=? {:display          :table
