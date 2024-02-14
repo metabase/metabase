@@ -4,7 +4,10 @@ import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/metadata/Field";
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
 import { SemanticTypeLabel } from "../SemanticTypeLabel";
-import { FieldFingerprintInfo } from "../FieldFingerprintInfo";
+import {
+  QueryColumnFingerprintInfo,
+  TableColumnFingerprintInfo,
+} from "../ColumnFingerprintInfo";
 
 import { InfoContainer, Small } from "./ColumnInfo.styled";
 
@@ -32,7 +35,7 @@ export function TableColumnInfo({
       <Small>
         <SemanticTypeLabel semanticType={field.semantic_type} />
         {showFingerprintInfo && (
-          <FieldFingerprintInfo
+          <TableColumnFingerprintInfo
             field={field}
             timezone={timezone}
             showAllFieldValues={showAllFieldValues}
@@ -74,7 +77,7 @@ export function QueryColumnInfo({
       <Small>
         <SemanticTypeLabel semanticType={semanticType} />
         {showFingerprintInfo && (
-          <FieldFingerprintInfo
+          <QueryColumnFingerprintInfo
             query={query}
             stageIndex={stageIndex}
             column={column}
