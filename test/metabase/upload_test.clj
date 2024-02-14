@@ -1083,8 +1083,7 @@
               java.lang.Exception
               #"^A schema has not been set."
               (upload-example-csv! :table-prefix "uploaded_magic_" :schema-name nil)))
-        (with-upload-table!
-          [table (card->table (upload-example-csv! :table-prefix "uploaded_magic_"))]
+        (with-upload-table! [table (card->table (upload-example-csv! :table-prefix "uploaded_magic_"))]
           (is (=? {:name #"(?i)example csv file(.*)"}
                   (table->card table)))
           (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
@@ -1094,8 +1093,7 @@
 (deftest create-csv-upload!-auto-pk-column-display-name-test
   (testing "The auto-generated column display_name should be the same as its name"
    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-     (with-upload-table!
-       [table (card->table (upload-example-csv!))]
+     (with-upload-table! [table (card->table (upload-example-csv!))]
        (let [new-field (t2/select-one Field :table_id (:id table) :name "_mb_row_id")]
          (is (= "_mb_row_id"
                 (:name new-field)
