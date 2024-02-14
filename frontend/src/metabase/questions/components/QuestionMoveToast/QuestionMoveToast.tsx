@@ -17,7 +17,7 @@ interface QuestionMoveToastProps {
 }
 
 const getMessage = (question: Question, collectionLink: JSX.Element) => {
-  const type = question.type() ?? "question";
+  const type = question.type();
 
   if (type === "question") {
     return jt`Question moved to ${collectionLink}`;

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type Question from "metabase-lib/Question";
 
 export const getVerifyQuestionTitle = (question: Question): string => {
-  const type = question.type() ?? "question";
+  const type = question.type();
 
   if (type === "question") {
     return t`Verify this question`;

@@ -505,7 +505,7 @@ class Question {
    * or metric's ID as the source table.
    */
   composeDataset(): Question {
-    const type = this.type() || "question";
+    const type = this.type();
 
     if (type === "question" || !this.isSaved()) {
       return this;

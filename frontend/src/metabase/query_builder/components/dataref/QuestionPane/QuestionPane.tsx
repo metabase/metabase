@@ -35,7 +35,7 @@ interface QuestionPaneProps {
 }
 
 const getIcon = (question: Question): IconName => {
-  const type = question.type() ?? "question";
+  const type = question.type();
 
   if (type === "question") {
     return "table";

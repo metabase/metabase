@@ -337,7 +337,7 @@ export const getQuestion = createSelector(
       return question.lockDisplay();
     }
 
-    const type = question.type() || "question";
+    const type = question.type();
     const { isEditable } = Lib.queryDisplayInfo(question.query());
 
     // When opening a model or a metric, we construct a question
