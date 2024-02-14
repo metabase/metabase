@@ -54,7 +54,7 @@ export function FieldFingerprintInfo({
       return (
         <CategoryFingerprint
           className={className}
-          field={field}
+          fieldId={field.id}
           showAllFieldValues={showAllFieldValues}
         />
       );
@@ -81,8 +81,15 @@ export function FieldFingerprintInfo({
         />
       );
     } else if (Lib.isCategory(column)) {
-      // TODO: Support category fingerprints
-      return null;
+      const info = Lib.fieldValuesSearchInfo(query, column);
+
+      return (
+        <CategoryFingerprint
+          className={className}
+          fieldId={info.fieldId}
+          showAllFieldValues={showAllFieldValues}
+        />
+      );
     }
   }
 

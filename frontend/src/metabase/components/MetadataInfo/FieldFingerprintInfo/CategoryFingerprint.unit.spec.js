@@ -20,7 +20,7 @@ const state = createMockState({
 function setup({ field }) {
   setupFieldValuesEndpoints(PRODUCT_CATEGORY_VALUES);
 
-  renderWithProviders(<CategoryFingerprint field={field} />, {
+  renderWithProviders(<CategoryFingerprint fieldId={field.id} />, {
     storeInitialState: state,
   });
 }
