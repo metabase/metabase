@@ -13,8 +13,6 @@ import { Box } from "metabase/ui";
 import { getLocale } from "metabase/setup/selectors";
 import { groupModels } from "../utils";
 
-
-
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import { GridContainer } from "./BrowseModels.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
