@@ -1226,23 +1226,20 @@
                              "Darth Vader"]
                             (mt/random-name))
            is-upload       true}}]
-  (try
-    (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
-      (mt/with-current-user user-id
-        (mt/with-model-cleanup [:model/Table]
-          (let [new-table (when (nil? table-id)
-                            (create-upload-table!))
-                table-id (or table-id (:id new-table))]
-            (t2/update! :model/Table table-id {:is_upload is-upload})
-            (try (append-csv! {:table-id table-id
-                               :file     file})
-                 (finally
-                   (when new-table
-                     (driver/drop-table! driver/*driver*
-                                         (mt/id)
-                                         (#'upload/table-identifier new-table)))))))))
-    (finally
-      (io/delete-file file))))
+  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
+    (mt/with-current-user user-id
+      (mt/with-model-cleanup [:model/Table]
+        (let [new-table (when (nil? table-id)
+                          (create-upload-table!))
+              table-id (or table-id (:id new-table))]
+          (t2/update! :model/Table table-id {:is_upload is-upload})
+          (try (append-csv! {:table-id table-id
+                             :file     file})
+               (finally
+                 (when new-table
+                   (driver/drop-table! driver/*driver*
+                                       (mt/id)
+                                       (#'upload/table-identifier new-table))))))))))
 
 (defn catch-ex-info* [f]
   (try
