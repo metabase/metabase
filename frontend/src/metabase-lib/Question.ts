@@ -899,7 +899,7 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropStageIfEmpty(this.query()) : this.query();
+    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
 
     const cardCopy = {
       name: this._card.name,

@@ -86,41 +86,49 @@
     (testing "Dropping with 1 stage should no-op"
       (is (= query (lib/drop-stage query))))))
 
-(deftest ^:parallel drop-stage-if-empty-test
+(deftest ^:parallel drop-empty-stages-test
   (let [query (lib/append-stage lib.tu/venues-query)]
     (testing "Dropping new stage works"
-      (is (= lib.tu/venues-query (lib/drop-stage-if-empty query))))
+      (is (= lib.tu/venues-query (lib/drop-empty-stages query))))
     (testing "Dropping only stage is idempotent"
-      (is (= lib.tu/venues-query (lib/drop-stage-if-empty (lib/drop-stage-if-empty query)))))
+      (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/drop-empty-stages query)))))
     (testing "Can drop stage after removing the last"
       (testing "breakout"
         (let [query (lib/breakout query (first (lib/visible-columns query)))]
-          (is (= 2 (lib/stage-count (lib/drop-stage-if-empty query))))
-          (is (= lib.tu/venues-query (lib/drop-stage-if-empty (lib/remove-clause query (first (lib/breakouts query))))))))
+          (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
+          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/breakouts query))))))))
       (testing "aggregation"
         (let [query (lib/aggregate query (lib/count))]
-          (is (= 2 (lib/stage-count (lib/drop-stage-if-empty query))))
-          (is (= lib.tu/venues-query (lib/drop-stage-if-empty (lib/remove-clause query (first (lib/aggregations query))))))))
+          (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
+          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/aggregations query))))))))
       (testing "join"
         (let [query (lib/join query (meta/table-metadata :categories))]
-          (is (= 2 (lib/stage-count (lib/drop-stage-if-empty query))))
-          (is (= lib.tu/venues-query (lib/drop-stage-if-empty (lib/remove-clause query (first (lib/joins query))))))))
+          (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
+          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/joins query))))))))
       (testing "field"
         (let [query (lib/with-fields query [(meta/field-metadata :venues :id)])]
-          (is (= 2 (lib/stage-count (lib/drop-stage-if-empty query))))
-          (is (= lib.tu/venues-query (lib/drop-stage-if-empty (lib/remove-clause query (first (lib/fields query))))))))
+          (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
+          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/fields query))))))))
       (testing "expression"
         (let [query (lib/expression query "foobar" (lib/+ 1 1))]
-          (is (= 2 (lib/stage-count (lib/drop-stage-if-empty query))))
-          (is (= lib.tu/venues-query (lib/drop-stage-if-empty (lib/remove-clause query (first (lib/expressions query))))))))
+          (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
+          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/expressions query))))))))
       (testing "filter"
         (let [query (lib/filter query (lib/= 1 1))]
-          (is (= 2 (lib/stage-count (lib/drop-stage-if-empty query))))
-          (is (= lib.tu/venues-query (lib/drop-stage-if-empty (lib/remove-clause query (first (lib/filters query))))))))
+          (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
+          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/filters query))))))))
       (testing "order-by"
         (let [query (lib/order-by query (meta/field-metadata :venues :id))]
-          (is (= 2 (lib/stage-count (lib/drop-stage-if-empty query))))
-          (is (= lib.tu/venues-query (lib/drop-stage-if-empty (lib/remove-clause query (first (lib/order-bys query)))))))))))
+          (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
+          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/order-bys query))))))))
+      (testing "multiple empty stages"
+        (let [query (-> query
+                        (lib/append-stage)
+                        (lib/append-stage)
+                        (lib/aggregate (lib/count))
+                        (lib/append-stage))]
+          (is (= 5 (lib/stage-count query)))
+          (is (= 2 (lib/stage-count (lib/drop-empty-stages query)))))))))
 
 (defn- query-with-expressions []
   (let [query (-> lib.tu/venues-query
