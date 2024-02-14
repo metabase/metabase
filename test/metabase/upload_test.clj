@@ -484,7 +484,7 @@
   (try (thunk table)
        (finally
          (driver/drop-table! driver/*driver*
-                             (mt/id)
+                             (:db_id table)
                              (#'upload/table-identifier table)))))
 
 (defn- table->card [table]
