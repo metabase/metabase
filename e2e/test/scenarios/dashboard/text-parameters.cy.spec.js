@@ -199,7 +199,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
         .click();
       popover().within(() => {
         cy.findByRole("textbox").click().clear().type("07/19/2023").blur();
-        cy.button("Update filter").click();
+        cy.button("Add filter").click();
       });
 
       // Question should be filtered appropriately

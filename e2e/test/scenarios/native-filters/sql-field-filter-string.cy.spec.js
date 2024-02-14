@@ -67,12 +67,8 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
         FieldFilter.openEntryForm({ isFilterRequired: true });
 
         searchTerm
-          ? FieldFilter.pickDefaultValue(searchTerm, value, {
-              buttonLabel: "Update filter",
-            })
-          : FieldFilter.addDefaultStringFilter(value, {
-              buttonLabel: "Update filter",
-            });
+          ? FieldFilter.pickDefaultValue(searchTerm, value)
+          : FieldFilter.addDefaultStringFilter(value);
 
         SQLFilter.runQuery();
 

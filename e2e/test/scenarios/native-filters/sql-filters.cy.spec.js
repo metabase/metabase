@@ -189,9 +189,11 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("15").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update filter").click();
+
+      popover().within(() => {
+        cy.findByText("15").click();
+        cy.findByText("Add filter").click();
+      });
 
       SQLFilter.runQuery();
 
@@ -205,10 +207,10 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Select a default value…").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("15").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update filter").click();
+      popover().within(() => {
+        cy.findByText("15").click();
+        cy.findByText("Add filter").click();
+      });
 
       SQLFilter.runQuery();
 
@@ -223,7 +225,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         .click();
       popover().within(() => {
         DateFilter.setSingleDate(`${month}/${day}/${year}`);
-        cy.findByText("Update filter").click();
+        cy.findByText("Add filter").click();
       });
     }
 

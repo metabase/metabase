@@ -221,12 +221,12 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
       DateFilter.setTime({ hours: 11, minutes: 0 });
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Relative Date":

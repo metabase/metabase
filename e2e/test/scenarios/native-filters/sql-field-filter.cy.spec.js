@@ -58,7 +58,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         'The "Filter" variable requires a default value but none was provided.',
       );
 
-      setDefaultFieldValue(4, { buttonLabel: "Update filter" });
+      setDefaultFieldValue(4);
 
       SQLFilter.getRunQueryButton().should("not.be.disabled");
       SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");

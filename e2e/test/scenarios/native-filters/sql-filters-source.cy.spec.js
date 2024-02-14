@@ -73,7 +73,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
       FieldFilter.selectFilterValueFromList("Gadget", {
-        buttonLabel: "Update filter",
+        buttonLabel: "Add filter",
       });
     });
 
@@ -99,7 +99,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
       FieldFilter.selectFilterValueFromList("Gadget", {
-        buttonLabel: "Update filter",
+        buttonLabel: "Add filter",
       });
     });
 
