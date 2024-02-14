@@ -107,7 +107,7 @@
 (defn- assert-valid-type-hash-combo
   "If type is present, ensure that it is valid, and that a hash_key is provided iff this is an advanced field type."
   [{:keys [type hash_key] :as _field-values}]
-  (let [type (or type :full)]
+  (let [type (keyword (or type :full))]
     (when-not (contains? field-values-types type)
       (throw (ex-info (tru "Invalid field-values type.")
                       {:type        type
@@ -157,7 +157,7 @@
     (assert-valid-human-readable-values field-values)
     (assert-valid-type-hash-combo field-values)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
-    (when (= (:type <>) :full)
+    (when (= :full (keyword (:type <>)))
       (clear-advanced-field-values-for-field! field_id))))
 
 (t2/define-before-update :model/FieldValues
@@ -166,11 +166,11 @@
     (assert-no-identity-changes field-values)
     (assert-valid-human-readable-values field-values)
     ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-    (when (and (contains? field-values :values) (= :full (:type field-values)))
+    (when (and (contains? field-values :values) (= :full (keyword (:type field-values))))
       (clear-advanced-field-values-for-field! (:field_id field-values)))))
 
 (defn- assert-coherent-query [{:keys [type hash_key] :or {type :full} :as field-values}]
-  (if (= :full type)
+  (if (= :full (keyword type))
     (when (some? hash_key)
       (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
                       {:field-values field-values})))
@@ -181,9 +181,9 @@
 
 (defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]
   (cond
-    (= :full type) (assoc field-values :hash_key nil)
-    (some? type)   (update field-values :hash_key #(or % [:not= nil]))
-    :else          field-values))
+    (= :full (keyword type)) (assoc field-values :hash_key nil)
+    (some? type)             (update field-values :hash_key #(or % [:not= nil]))
+    :else                    field-values))
 
 (t2/define-before-select :model/FieldValues
   [{:keys [kv-args] :as query}]
