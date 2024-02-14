@@ -81,7 +81,7 @@
        ;; a per-driver or driver agnostic way to test the exception.
        ~@body)))
 
-(defmacro select-or-insert!
+(defn select-or-insert!
   "Return a database record if it exists, otherwise create it.
 
    This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
@@ -95,18 +95,17 @@
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   {:style/indent 2}
   [model select-map insert-fn]
-  `(with-conflict-retry
-    (let [select-map# ~select-map
-          select-kvs# (mapcat identity select-map#)
-          validate#   (fn [updated#]
-                        (assert (= select-map# (merge select-map# (select-keys updated# (keys select-map#))))
-                                "This macro should not change any of the identifying values")
-                        ;; For convenience, we allow the insert-fn to omit fields in the search-map
-                        (merge updated# select-map#))]
-      (or (apply t2/select-one ~model select-kvs#)
-          (t2/insert-returning-instance! ~model (validate# (~insert-fn)))))))
+  (with-conflict-retry
+   (let [select-kvs (mapcat identity select-map)
+         validate   (fn [updated#]
+                      (assert (= select-map (merge select-map (select-keys updated# (keys select-map))))
+                              "This should not be used to change any of the identifying values")
+                      ;; For convenience, we allow the insert-fn to omit fields in the search-map
+                      (merge updated# select-map))]
+     (or (apply t2/select-one model select-kvs)
+         (t2/insert-returning-instance! model (validate (insert-fn)))))))
 
-(defmacro update-or-insert!
+(defn update-or-insert!
   "Update a database record, if it exists, otherwise create it.
 
    This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
@@ -120,22 +119,20 @@
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   {:style/indent 2}
   [model select-map update-fn]
-  `(with-conflict-retry
-    (let [select-map# ~select-map
-          update-fn#  ~update-fn
-          select-kvs# (mapcat identity select-map#)
-          pks#        (t2/primary-keys ~model)
-          _#          (assert (= 1 (count pks#)) "This macro does not currently support compound keys")
-          pk-key#     (keyword (first pks#))
-          validate#   (fn [updated#]
-                        (assert (= select-map# (merge select-map# (select-keys updated# (keys select-map#))))
-                                "This macro should not change any of the identifying values")
-                        ;; For convenience, we allow the update-fn to omit fields in the search-map
-                        (merge updated# select-map#))]
-      (if-let [entity# (apply t2/select-one ~model select-kvs#)]
-        (let [pk# (pk-key# entity#)
-              updated# (validate# (update-fn# entity#))]
-          (t2/update! ~model pk# (validate# (update-fn# entity#)))
-          ;; we allow this operation to change the private key
-          (pk-key# updated#))
-        (t2/insert-returning-pk! ~model (validate# (update-fn# nil)))))))
+  (with-conflict-retry
+   (let [select-kvs (mapcat identity select-map)
+         pks        (t2/primary-keys model)
+         _          (assert (= 1 (count pks)) "This helper does not currently support compound keys")
+         pk-key     (keyword (first pks))
+         validate   (fn [updated]
+                      (assert (= select-map (merge select-map (select-keys updated (keys select-map))))
+                              "This should not be used to change any of the identifying values")
+                      ;; For convenience, we allow the update-fn to omit fields in the search-map
+                      (merge updated select-map))]
+     (if-let [entity (apply t2/select-one model select-kvs)]
+       (let [pk      (pk-key entity)
+             updated (validate (update-fn entity))]
+         (t2/update! model pk (validate (update-fn entity)))
+         ;; we allow this operation to change the private key
+         (pk-key updated))
+       (t2/insert-returning-pk! model (validate (update-fn nil)))))))
