@@ -221,8 +221,7 @@
                    (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156}
-                    (qp.pivot/run-pivot-query query {:visualization-settings viz-settings})))))))))
-
+                    (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz-settings}))))))))))
 
 (deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
@@ -383,7 +382,37 @@
                 (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
                   (is (=? {:status "completed"}
                           result))
-                  (is (= (mt/rows (qp.pivot/run-pivot-query query))
+                  (is (= [["Doohickey" "Affiliate" 0 783]
+                          ["Doohickey" "Facebook" 0 816]
+                          ["Doohickey" "Google" 0 844]
+                          ["Doohickey" "Organic" 0 738]
+                          ["Doohickey" "Twitter" 0 795]
+                          ["Gadget" "Affiliate" 0 899]
+                          ["Gadget" "Facebook" 0 1041]
+                          ["Gadget" "Google" 0 971]
+                          ["Gadget" "Organic" 0 1038]
+                          ["Gadget" "Twitter" 0 990]
+                          ["Gizmo" "Affiliate" 0 876]
+                          ["Gizmo" "Facebook" 0 994]
+                          ["Gizmo" "Google" 0 956]
+                          ["Gizmo" "Organic" 0 972]
+                          ["Gizmo" "Twitter" 0 986]
+                          ["Widget" "Affiliate" 0 962]
+                          ["Widget" "Facebook" 0 1055]
+                          ["Widget" "Google" 0 1027]
+                          ["Widget" "Organic" 0 1016]
+                          ["Widget" "Twitter" 0 1001]
+                          [nil "Affiliate" 1 3520]
+                          [nil "Facebook" 1 3906]
+                          [nil "Google" 1 3798]
+                          [nil "Organic" 1 3764]
+                          [nil "Twitter" 1 3772]
+                          ["Doohickey" nil 2 3976]
+                          ["Gadget" nil 2 4939]
+                          ["Gizmo" nil 2 4784]
+                          ["Widget" nil 2 5061]
+                          [nil nil 3 18760]]
+                         (mt/rows (qp.pivot/run-pivot-query query))
                          (mt/rows result))))))))))))
 
 (deftest ^:parallel pivot-with-order-by-test
