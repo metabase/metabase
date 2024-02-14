@@ -238,14 +238,14 @@
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (try
-      (let [{db-id :id, :as response} (mt/with-dynamic-redefs [driver/available? (constantly true)
-                                                               driver/can-connect? (constantly true)]
-                                        (mt/user-http-request :crowberto :post 200 "database"
-                                                              (merge
-                                                               {:name    db-name
-                                                                :engine  (u/qualified-name ::test-driver)
-                                                                :details {:db "my_db"}}
-                                                               m)))]
+     (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
+                                                   driver/can-connect? (constantly true)]
+                                       (mt/user-http-request :crowberto :post 200 "database"
+                                                             (merge
+                                                              {:name    db-name
+                                                               :engine  (u/qualified-name ::test-driver)
+                                                               :details {:db "my_db"}}
+                                                              m)))]
        (is (malli= [:map [:id ::lib.schema.id/database]]
                    response))
        (t2/select-one Database :id db-id))
@@ -305,7 +305,7 @@
             exception (Exception. (format "FATAL: database \"%s\" does not exist" dbname))]
         (is (= {:errors {:dbname "check your database name settings"},
                 :message "Looks like the Database name is incorrect."}
-               (mt/with-dynamic-redefs [driver/can-connect? (fn [& _] (throw exception))]
+               (with-redefs [driver/can-connect? (fn [& _] (throw exception))]
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name         dbname
                                         :engine       "postgres"
@@ -319,8 +319,8 @@
         (is (= {:errors  {:host "check your host settings"
                           :port "check your port settings"}
                 :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"}
-               (mt/with-dynamic-redefs [driver/available? (constantly true)
-                                        driver/can-connect? (fn [& _] (throw exception))]
+               (with-redefs [driver/available?   (constantly true)
+                             driver/can-connect? (fn [& _] (throw exception))]
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name    (mt/random-name)
                                         :engine  (u/qualified-name ::test-driver)
@@ -329,7 +329,7 @@
 (deftest create-db-test-7
   (testing "POST /api/database"
     (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
-      (mt/with-dynamic-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (mt/user-http-request :crowberto :post 402 "database"
                               {:name      (mt/random-name)
                                :engine    (u/qualified-name ::test-driver)
@@ -339,7 +339,7 @@
 (deftest create-db-test-8
   (testing "POST /api/database"
     (testing "should allow setting `cache_ttl` on EE"
-      (mt/with-dynamic-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
 
@@ -368,7 +368,7 @@
   (testing "POST /api/database"
     (testing "The id captured in the database-create event matches the new db's id"
       (mt/with-premium-features #{:audit-app}
-        (mt/with-dynamic-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
           (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
                 audit-entry (mt/latest-audit-log-entry "database-create")]
             (is (= id (-> audit-entry :model_id)))
@@ -407,7 +407,7 @@
                         normalize)))))))))
 
 (defn- api-update-database! [expected-status-code db-or-id changes]
-  (mt/with-dynamic-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [h2/*allow-testing-h2-connections* true]
     (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" (u/the-id db-or-id))
                           changes)))
 
@@ -425,7 +425,7 @@
             (is (=? {:errors {:db "check your connection string"}}
                     (update! 400))))
           (testing "If connection details are valid, we should be able to update the Database"
-            (mt/with-dynamic-redefs [driver/can-connect? (constantly true)]
+            (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
               (let [curr-db (t2/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
@@ -449,7 +449,7 @@
                  (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
 
     (testing "should not be able to modify `cache_ttl` in OSS"
-      (mt/with-dynamic-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates {:cache_ttl 13}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
@@ -457,7 +457,7 @@
                  (t2/select-one-fn :cache_ttl Database, :id db-id))))))
 
     (testing "should be able to set and unset `cache_ttl` in EE"
-      (mt/with-dynamic-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates1 {:cache_ttl 1337}
                 updates2 {:cache_ttl nil}
@@ -474,7 +474,7 @@
   (testing "Check that we get audit log entries that match the db when updating a Database"
     (mt/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [Database {db-id :id}]
-        (mt/with-dynamic-redefs [driver/can-connect? (constantly true)]
+        (with-redefs [driver/can-connect? (constantly true)]
           (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
               "A db update occured")
           (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
@@ -986,7 +986,7 @@
 (deftest databases-list-include-saved-questions-tables-test-6
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should work when there are no DBs that support nested queries"
-      (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
+      (with-redefs [driver/database-supports? (constantly false)]
         (is (nil? (fetch-virtual-database)))))))
 
 (deftest databases-list-include-saved-questions-tables-test-7
@@ -1028,7 +1028,7 @@
 (deftest db-metadata-saved-questions-db-test-2
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
-      (mt/with-dynamic-redefs [api.database/cards-virtual-tables (constantly [])]
+      (with-redefs [api.database/cards-virtual-tables (constantly [])]
         (is (= {:name               "Saved Questions"
                 :id                 lib.schema.id/saved-questions-virtual-database-id
                 :features           ["basic-aggregations"]
@@ -1059,7 +1059,7 @@
 (deftest create-new-db-with-custom-schedules-test
   (testing "Can we create a NEW database and give it custom schedules?"
     (let [db-name (mt/random-name)]
-      (try (let [db (mt/with-dynamic-redefs [driver/available? (constantly true)]
+      (try (let [db (with-redefs [driver/available? (constantly true)]
                       (mt/user-http-request :crowberto :post 200 "database"
                                             {:name      db-name
                                              :engine    (u/qualified-name ::test-driver)
@@ -1130,8 +1130,8 @@
           analyze-called? (promise)]
       (mt/with-premium-features #{:audit-app}
         (t2.with-temp/with-temp [Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
-          (mt/with-dynamic-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
-                                   analyze/analyze-db!             (deliver-when-db analyze-called? db)]
+          (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
+                        analyze/analyze-db!             (deliver-when-db analyze-called? db)]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
             ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
             ;; however if something went wrong, don't hang forever, eventually timeout and fail
@@ -1172,10 +1172,9 @@
     (mt/with-premium-features #{:audit-app}
       (let [update-field-values-called? (promise)]
         (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
-          (mt/with-dynamic-redefs [field-values/update-field-values!
-                                   (fn [synced-db]
-                                     (when (= (u/the-id synced-db) (u/the-id db))
-                                       (deliver update-field-values-called? :sync-called)))]
+          (with-redefs [field-values/update-field-values! (fn [synced-db]
+                                                            (when (= (u/the-id synced-db) (u/the-id db))
+                                                              (deliver update-field-values-called? :sync-called)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
             (is (= :sync-called
                    (deref update-field-values-called? long-timeout :sync-never-called)))
@@ -1226,11 +1225,11 @@
      :or   {expected-status-code 200
             user                 :crowberto}}
     request-body]
-   (mt/with-dynamic-redefs [h2/*allow-testing-h2-connections* true]
+   (with-redefs [h2/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
 (defn- test-connection-details [engine details]
-  (mt/with-dynamic-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [h2/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
 (deftest validate-database-test
@@ -1264,10 +1263,10 @@
     (let [call-count (atom 0)
           ssl-values (atom [])
           valid?     (atom false)]
-      (mt/with-dynamic-redefs [api.database/test-database-connection (fn [_ details & _]
-                                                                       (swap! call-count inc)
-                                                                       (swap! ssl-values conj (:ssl details))
-                                                                       (if @valid? nil {:valid false}))]
+      (with-redefs [api.database/test-database-connection (fn [_ details & _]
+                                                            (swap! call-count inc)
+                                                            (swap! ssl-values conj (:ssl details))
+                                                            (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
           (#'api.database/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
@@ -1343,7 +1342,7 @@
   (testing "GET /api/database/:id/syncable_schemas"
     (testing "Multiple schemas are ordered by name"
       ;; We need to redef driver/syncable-schemas here because different databases might have different schemas
-      (mt/with-dynamic-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+      (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
         (is (= ["PUBLIC"]
                (mt/user-http-request :crowberto :get 200 (format "database/%d/syncable_schemas" (mt/id)))))
         (testing "Non-admins don't have permission to see syncable schemas"
@@ -1819,7 +1818,7 @@
       (letfn [(settings []
                 (t2/select-one-fn :settings Database :id (mt/id)))
               (set-settings! [m]
-                (mt/with-dynamic-redefs [h2/*allow-testing-h2-connections* true]
+                (with-redefs [h2/*allow-testing-h2-connections* true]
                   (u/prog1 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
                                                  {:settings m})
                     (is (=? {:id (mt/id)}

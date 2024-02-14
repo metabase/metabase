@@ -182,7 +182,7 @@
                                         ;; unix is an integer->Temporal conversion
                                         {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))
       (testing "Refingerprints field when updated"
-        (mt/with-dynamic-redefs [sync.concurrent/submit-task (fn [task] (task))]
+        (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
           (mt/dataset integer-coerceable
             (sync/sync-database! (t2/select-one Database :id (mt/id)))
             (let [field-id      (mt/id :t :f)

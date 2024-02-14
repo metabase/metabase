@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.domain-entities.core :as de]
    [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
+   [metabase.models.table :as table :refer [Table]]
    [metabase.test.data :as data]
    [metabase.test.domain-entities :as test.de]
    [toucan2.core :as t2]))

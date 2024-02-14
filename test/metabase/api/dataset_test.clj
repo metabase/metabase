@@ -216,7 +216,7 @@
   (testing "POST /api/dataset/:format"
     (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
       ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-      (mt/with-dynamic-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
         (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                            :query (json/generate-string
                                                    {:database (mt/id)
@@ -251,8 +251,8 @@
 
 (deftest non--download--queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
-                "(this also is a sanity check to make sure the `mt/with-dynamic-redefs` in the test above actually works)")
-    (mt/with-dynamic-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+                "(this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)")
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (let [{row-count :row_count, :as result}
             (mt/user-http-request :rasta :post 202 "dataset"
                                   {:database (mt/id)
@@ -533,7 +533,7 @@
     (testing "fallback to field-values"
       (let [mock-default-result {:values          [["field-values"]]
                                  :has_more_values false}]
-        (mt/with-dynamic-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
+        (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
           (testing "if value-field not found in source card"
             (t2.with-temp/with-temp [Card {source-card-id :id}]
               (is (= mock-default-result

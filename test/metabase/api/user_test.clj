@@ -231,7 +231,7 @@
                             (map :email))))
 
                (testing "But returns self if the user is sandboxed"
-                 (mt/with-dynamic-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+                 (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
                    (is (= [rasta]
                           (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                                (map :email)))))))))

@@ -58,7 +58,7 @@
           nil
           (fn [^java.sql.Connection conn]
             ;; We have to mock this to make it work with all DBs
-            (mt/with-dynamic-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
+            (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
               (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
                    (map :name)
                    sort)))))))
@@ -94,9 +94,9 @@
         resultsets          (atom [])]
     ;; swap out `jdbc/result-set-seq` which is what ultimately gets called on result sets with a function that will
     ;; stash the ResultSet object in an atom so we can check whether its closed later
-    (mt/with-dynamic-redefs [jdbc/result-set-seq (fn [^ResultSet rs & more]
-                                                   (swap! resultsets conj rs)
-                                                   (apply orig-result-set-seq rs more))]
+    (with-redefs [jdbc/result-set-seq (fn [^ResultSet rs & more]
+                                        (swap! resultsets conj rs)
+                                        (apply orig-result-set-seq rs more))]
       ;; taking advantage of the fact that `sql-jdbc.describe-database/describe-database` can accept JBDC connections
       ;; instead of databases; by doing this we can keep the connection open and check whether resultsets are still
       ;; open before they would normally get closed
@@ -124,7 +124,7 @@
     (sync/sync-database! (mt/db))
     (is (= 1 (count-active-tables-in-db (mt/id))))
     ;; We have to mock this as H2 doesn't have the notion of a user connecting to it
-    (mt/with-dynamic-redefs [sql-jdbc.sync.interface/have-select-privilege? (constantly false)]
+    (with-redefs [sql-jdbc.sync.interface/have-select-privilege? (constantly false)]
       (sync/sync-database! (mt/db))
       (is (= 0 (count-active-tables-in-db (mt/id)))
           "We shouldn't sync tables for which we don't have select privilege"))))

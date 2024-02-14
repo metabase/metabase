@@ -266,7 +266,7 @@
                (search-request-data :crowberto :q "test"))))))
   (testing "It prioritizes exact matches"
     (with-search-items-in-root-collection "test"
-      (mt/with-dynamic-redefs [search.config/*db-max-results* 1]
+      (with-redefs [search.config/*db-max-results* 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
   (testing "It limits matches properly"
@@ -673,7 +673,7 @@
                            (search! "rom" :rasta))))))
 
           (testing "Sandboxed users do not see indexed entities in search"
-            (mt/with-dynamic-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+            (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
               (is (= #{}
                      (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 

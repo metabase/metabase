@@ -42,8 +42,8 @@
 
 (defn- test-start-of-week-offset
   [db-start-of-week target-start-of-week]
-  (mt/with-dynamic-redefs [driver/db-start-of-week   (constantly db-start-of-week)
-                           setting/get-value-of-type (constantly target-start-of-week)]
+  (with-redefs [driver/db-start-of-week   (constantly db-start-of-week)
+                setting/get-value-of-type (constantly target-start-of-week)]
     (driver.common/start-of-week-offset :sql)))
 
 (deftest start-of-week-offset-test
@@ -55,7 +55,7 @@
 (deftest cloud-ip-address-info-test
   (testing "The cloud-ip-address-info field is correctly resolved when fetching driver connection properties"
     (mt/with-temp-env-var-value! [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
-      (mt/with-dynamic-redefs [premium-features/is-hosted? (constantly true)]
+      (with-redefs [premium-features/is-hosted? (constantly true)]
         ;; make sure Postgres driver is initialized before trying to get its connection properties.
         (driver/the-initialized-driver :postgres)
         (let [connection-props (-> (driver.u/available-drivers-info)

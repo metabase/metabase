@@ -234,11 +234,11 @@
                               :when  (driver.u/find-schema-filters-prop driver)]
                           driver))
     (let [fake-schema-name (u/qualified-name ::fake-schema)]
-      (mt/with-dynamic-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
-                                                                        (fn [metadata]
-                                                                          (eduction
-                                                                           cat
-                                                                           [(orig metadata) [fake-schema-name]])))]
+      (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
+                                                             (fn [metadata]
+                                                               (eduction
+                                                                cat
+                                                                [(orig metadata) [fake-schema-name]])))]
         (is (= #{"public" fake-schema-name}
                (driver/syncable-schemas driver/*driver* (mt/db))))
         (let [driver             (driver.u/database->driver (mt/db))

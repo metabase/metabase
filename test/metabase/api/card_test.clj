@@ -868,10 +868,9 @@
     (testing "Updating other parts but not query does not update the metadata"
       (let [orig   qp.async/result-metadata-for-query-async
             called (atom 0)]
-        (mt/with-dynamic-redefs [qp.async/result-metadata-for-query-async
-                                 (fn [q]
-                                   (swap! called inc)
-                                   (orig q))]
+        (with-redefs [qp.async/result-metadata-for-query-async (fn [q]
+                                                                 (swap! called inc)
+                                                                 (orig q))]
           (mt/with-model-cleanup [:model/Card]
             (let [card (mt/user-http-request :rasta :post 200 "card"
                                              (card-with-name-and-query "card-name"
@@ -926,10 +925,10 @@
             ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
             (let [orig       sql-jdbc.execute/execute-statement!
                   sql-result (atom nil)]
-              (mt/with-dynamic-redefs [sql-jdbc.execute/execute-statement!
-                                       (fn [driver stmt sql]
-                                         (reset! sql-result sql)
-                                         (orig driver stmt sql))]
+              (with-redefs [sql-jdbc.execute/execute-statement!
+                            (fn [driver stmt sql]
+                              (reset! sql-result sql)
+                              (orig driver stmt sql))]
                 (mt/user-http-request
                  :rasta :post 200 "card"
                  (assoc (card-with-name-and-query card-name)
@@ -2270,15 +2269,15 @@
                                                                           :userland-query?                   true}}}]
     (with-cards-in-readable-collection card
       (let [orig qp.card/run-query-for-card-async]
-        (mt/with-dynamic-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
-                                                                    (apply orig card-id export-format
-                                                                           :run (fn [{:keys [constraints]} _]
-                                                                                  {:constraints constraints})
-                                                                           options))]
+        (with-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
+                                                         (apply orig card-id export-format
+                                                                :run (fn [{:keys [constraints]} _]
+                                                                       {:constraints constraints})
+                                                                options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-          (mt/with-dynamic-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+          (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
@@ -2286,7 +2285,7 @@
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
 
             (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
-                          "check to make sure the `mt/with-dynamic-redefs` in the test above actually works)")
+                          "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
 
@@ -2899,7 +2898,7 @@
                                        (.setProperty "org.quartz.threadPool.threadCount" "6")
                                        (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
     ;; a binding won't work since we need to cross thread boundaries
-    (mt/with-dynamic-redefs [task/scheduler (constantly sched)]
+    (with-redefs [task/scheduler (constantly sched)]
       (try
         (qs/standby sched)
         (#'task.persist-refresh/job-init!)
@@ -3073,7 +3072,7 @@
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
-      (mt/with-dynamic-redefs [api.card/mapping->field-values (constantly mock-default-result)]
+      (with-redefs [api.card/mapping->field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp
             [:model/Card {source-card-id :id} {}

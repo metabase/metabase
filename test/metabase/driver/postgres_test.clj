@@ -820,7 +820,7 @@
             "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null)."))))
 
   (testing "violate unique constraint"
-    (mt/with-dynamic-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
+    (with-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
       (is (= {:type :metabase.actions.error/violate-unique-constraint,
               :message "Ranking already exists.",
               :errors {"ranking" "This Ranking value already exists."}}
@@ -1059,7 +1059,7 @@
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :postgres
       (drop-if-exists-and-create-db! "composite-pks-test")
-      (mt/with-dynamic-redefs [metadata-queries/nested-field-sample-limit 4]
+      (with-redefs [metadata-queries/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
           (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
@@ -1165,9 +1165,9 @@
 
 (deftest can-set-ssl-key-via-gui
   (testing "ssl key can be set via the gui (#20319)"
-    (mt/with-dynamic-redefs [secret/value->file!
-                             (fn [{:keys [connection-property-name value] :as _secret} & [_driver? _ext?]]
-                               (str "file:" connection-property-name "=" value))]
+    (with-redefs [secret/value->file!
+                  (fn [{:keys [connection-property-name value] :as _secret} & [_driver? _ext?]]
+                    (str "file:" connection-property-name "=" value))]
       (is (= "file:ssl-key=/clientkey.pkcs12"
              (:sslkey
               (#'postgres/ssl-params
@@ -1239,7 +1239,7 @@
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                  [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
-                                 (mt/with-dynamic-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                 (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                    (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
            (jdbc/execute! conn-spec (str

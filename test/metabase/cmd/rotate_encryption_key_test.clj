@@ -35,7 +35,7 @@
                                 "select value from setting where setting.key=?;") keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
-  (mt/with-dynamic-redefs [rotate-encryption-key! #(throw (Exception. "err"))
+  (with-redefs [rotate-encryption-key! #(throw (Exception. "err"))
                 cmd/system-exit! identity]
     (is (= 1 (cmd/rotate-encryption-key
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
@@ -57,8 +57,8 @@
           ;; `database.details` use mi/transform-encrypted-json as transformation
           ;; the original definition of mi/transform-encrypted-json has a cached version of out transform
           ;; in this test we change they key multiple times and we don't want the value to be cached when key change
-          (mt/with-dynamic-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
-                                                                :out #'mi/encrypted-json-out}]
+          (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
+                                                     :out #'mi/encrypted-json-out}]
             (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
                       ;; at this point, all the state switching craziness that happens for
                       ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has

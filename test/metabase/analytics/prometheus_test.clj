@@ -7,7 +7,6 @@
    [iapetos.operations :as ops]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures])
   (:import
    (io.prometheus.client Collector GaugeMetricFamily)
@@ -105,7 +104,7 @@
          (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
          server#  ^Server (.web-server ~system)
          ~port   (.. server# getURI getPort)]
-     (mt/with-dynamic-redefs [prometheus/system ~system]
+     (with-redefs [prometheus/system ~system]
        (try ~@body
             (finally (prometheus/stop-web-server ~system))))))
 

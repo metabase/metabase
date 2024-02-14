@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
-   [metabase.test :as mt]
    [metabase.test.util.async :as tu.async]
    [metabase.util :as u])
   (:import
@@ -31,11 +30,11 @@
     ;; until the namespace has completed loading.
     (tu.async/with-open-channels [started-loading-chan (a/promise-chan)]
       (let [finished-loading (atom false)]
-        (mt/with-dynamic-redefs [driver.impl/require-driver-ns (fn [_]
-                                                                 (driver/register! ::race-condition-test)
-                                                                 (a/>!! started-loading-chan :start)
-                                                                 (Thread/sleep 100)
-                                                                 (reset! finished-loading true))]
+        (with-redefs [driver.impl/require-driver-ns (fn [_]
+                                                      (driver/register! ::race-condition-test)
+                                                      (a/>!! started-loading-chan :start)
+                                                      (Thread/sleep 100)
+                                                      (reset! finished-loading true))]
           ;; fire off a separate thread that will start loading the driver
           (future (driver/the-initialized-driver ::race-condition-test))
           (tu.async/wait-for-result started-loading-chan 500)
@@ -52,12 +51,12 @@
   version 0.42.0 onwards, as prior to this version, this information was stored at github wiki. Output has a following
   shape {\"0.47.0\" \"...insert-into!...\" ...}."
   []
-  (let [changelog (slurp (io/file "docs/developers-guide/driver-changelog.md"))
-        parser    (.build (Parser/builder))
-        document  (.parse ^Parser parser ^String changelog)]
+  (let [changelog     (slurp (io/file "docs/developers-guide/driver-changelog.md"))
+        parser        (.build (Parser/builder))
+        document      (.parse ^Parser parser ^String changelog)]
     (loop [[child & children] (.getChildren ^Document document)
-           version->text {}
-           last-version  nil]
+           version->text      {}
+           last-version       nil]
       (cond (nil? child)
             version->text
 

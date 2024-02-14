@@ -36,7 +36,7 @@
 (deftest force-migration-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
-      (mt/with-dynamic-redefs [liquibase/changelog-file "force-migration.yaml"]
+      (with-redefs [liquibase/changelog-file "force-migration.yaml"]
         (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
               database (->> (if (instance? java.sql.Connection conn)
                               conn

@@ -66,8 +66,8 @@
     (do-with-setup!*
      request-body
      (fn []
-       (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                                h2/*allow-testing-h2-connections*                       true]
+       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
+                     h2/*allow-testing-h2-connections*                       true]
          (testing "API response should return a Session UUID"
            (is (=? {:id mt/is-uuid-string?}
                    (client/client :post 200 "setup" request-body))))
@@ -239,8 +239,8 @@
     (testing "error conditions"
       (testing "should throw Exception if driver is invalid"
         (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
-               (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                                        h2/*allow-testing-h2-connections*                       true]
+               (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
+                             h2/*allow-testing-h2-connections*                       true]
                  (client/client :post 400 "setup" (assoc (default-setup-input)
                                                          :database {:engine  "my-fake-driver"
                                                                     :name    (mt/random-name)
@@ -308,7 +308,7 @@
                 (setup! assoc-in [:prefs :site_locale] "en-EN")))))
 
     (testing "user"
-      (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
+      (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
         (testing "first name may be nil"
           (is (:id (setup! 200 m/dissoc-in [:user :first_name])))
           (is (:id (setup! 200 assoc-in [:user :first_name] nil))))
@@ -364,7 +364,7 @@
                                     :email      (mt/random-email)
                                     :password   "p@ssword1"}}
             has-user-setup (atom false)]
-        (mt/with-dynamic-redefs [setup/has-user-setup (fn [] @has-user-setup)]
+        (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
           (is (not (setup/has-user-setup)))
           (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
             (is (malli= [:map {:closed true} [:id ms/NonBlankString]]
@@ -397,12 +397,12 @@
         (do-with-setup!*
          body
          (fn []
-           (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                                    h2/*allow-testing-h2-connections*                       true
-                                    api.setup/setup-set-settings!                           (let [orig @#'api.setup/setup-set-settings!]
-                                                                                              (fn [& args]
-                                                                                                (apply orig args)
-                                                                                                (throw (ex-info "Oops!" {}))))]
+           (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
+                         h2/*allow-testing-h2-connections*                       true
+                         api.setup/setup-set-settings! (let [orig @#'api.setup/setup-set-settings!]
+                                                         (fn [& args]
+                                                           (apply orig args)
+                                                           (throw (ex-info "Oops!" {}))))]
              (is (=? {:message "Oops!"}
                      (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
@@ -428,7 +428,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- api-validate [expected-status-code request-body]
-  (mt/with-dynamic-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [h2/*allow-testing-h2-connections* true]
     (client/client :post expected-status-code "setup/validate" request-body)))
 
 (deftest validate-setup-test
@@ -493,7 +493,7 @@
 
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
-    (mt/with-dynamic-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
+    (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
       (is (partial= [{:name  "Get connected"
                       :tasks [{:title        "Add a database"
                                :completed    true
@@ -533,14 +533,14 @@
                                     (update :title str)))}))))
     (testing "info about switching to postgres or mysql"
       (testing "is included when h2 and not hosted"
-        (mt/with-dynamic-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
+        (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (= ["Get connected" "Productionize" "Curate your data"]
                    (map :name checklist))))))
       (testing "is omitted if hosted"
-        (mt/with-dynamic-redefs [api.setup/state-for-checklist (constantly
-                                                                (merge default-checklist-state
-                                                                       {:hosted? true}))]
+        (with-redefs [api.setup/state-for-checklist (constantly
+                                                     (merge default-checklist-state
+                                                            {:hosted? true}))]
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (= ["Get connected" "Curate your data"]
                    (map :name checklist)))))))

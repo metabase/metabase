@@ -56,8 +56,8 @@
 
 (defn- do-with-mocked-settings-manager-access
   [f]
-  (mt/with-dynamic-redefs [setting/has-advanced-setting-access?        (constantly true)
-                           validation/check-has-application-permission (constantly true)]
+  (with-redefs [setting/has-advanced-setting-access?        (constantly true)
+                validation/check-has-application-permission (constantly true)]
     (f)))
 
 (defmacro ^:private with-mocked-settings-manager-access

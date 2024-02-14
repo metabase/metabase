@@ -31,7 +31,7 @@
           file-contents {tmp-h2-db    "Not really an H2 DB"
                          tmp-h2-db-mv "Not really another H2 DB"}]
       ;; 1. Don't actually run the copy steps themselves
-      (mt/with-dynamic-redefs [copy/copy! (constantly nil)]
+      (with-redefs [copy/copy! (constantly nil)]
         (try
           (doseq [[filename contents] file-contents]
             (spit filename contents))
@@ -48,8 +48,8 @@
                 (io/delete-file file)))))))))
 
 (deftest cmd-dump-to-h2-returns-code-from-dump-test
-  (mt/with-dynamic-redefs [dump-to-h2/dump-to-h2! #(throw (Exception. "err"))
-                           cmd/system-exit! identity]
+  (with-redefs [dump-to-h2/dump-to-h2! #(throw (Exception. "err"))
+                cmd/system-exit! identity]
     (is (= 1 (cmd/dump-to-h2 "file1")))))
 
 (defn persistent-data-source
@@ -71,7 +71,7 @@
                           h2-file-enc         (format "out-%s.db" (mt/random-name))
                           h2-file-default-enc (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
-          (mt/with-dynamic-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+          (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [setting/*disable-cache*         true
                       mdb.connection/*application-db* (mdb.connection/application-db
                                                        driver/*driver*

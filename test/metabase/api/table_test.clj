@@ -355,16 +355,16 @@
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
               original (var-get #'api.table/sync-unhidden-tables)]
-          (mt/with-dynamic-redefs [api.table/sync-unhidden-tables
-                                   (fn [unhidden]
-                                     (when (seq unhidden)
-                                       (is (= (:id table)
-                                              (:id (first unhidden)))
-                                           "Unhidden callback did not get correct tables.")
-                                       (swap! called inc)
-                                       (let [fut (original unhidden)]
-                                         (when (future? fut)
-                                           (deref fut)))))]
+          (with-redefs [api.table/sync-unhidden-tables
+                        (fn [unhidden]
+                          (when (seq unhidden)
+                            (is (= (:id table)
+                                   (:id (first unhidden)))
+                                "Unhidden callback did not get correct tables.")
+                            (swap! called inc)
+                            (let [fut (original unhidden)]
+                              (when (future? fut)
+                                (deref fut)))))]
             (letfn [(set-visibility! [state]
                       (testing (format "Set state => %s" (pr-str state))
                         (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
@@ -399,7 +399,7 @@
     (let [unhidden-ids (atom #{})]
       (mt/with-temp [Table {id-1 :id} {}
                      Table {id-2 :id} {:visibility_type "hidden"}]
-        (mt/with-dynamic-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
+        (with-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
           (letfn [(set-many-vis! [ids state]
                     (reset! unhidden-ids #{})
                     (testing (format "Set visibility type => %s" (pr-str state))

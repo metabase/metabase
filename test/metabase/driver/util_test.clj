@@ -146,7 +146,7 @@
                                     true]]]
       (testing (str " with is-hosted? " is-hosted?)
         ;; TODO: create capability to temporarily override token-features for testing
-        (mt/with-dynamic-redefs [premium-features/is-hosted? (constantly is-hosted?)]
+        (with-redefs [premium-features/is-hosted? (constantly is-hosted?)]
           (let [client-conn-props (-> (driver.u/available-drivers-info) ; this calls connection-props-server->client
                                       :secret-test-driver
                                       :details-fields)]

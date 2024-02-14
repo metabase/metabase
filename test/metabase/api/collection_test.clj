@@ -279,7 +279,7 @@
           (is (= expected-lucky-tree
                  (collection-tree-view ids response-lucky))))
         (testing "Mocking having one user still returns a correct result"
-          (mt/with-dynamic-redefs [t2/select-fn-set (constantly nil)]
+          (with-redefs [t2/select-fn-set (constantly nil)]
             (let [response (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)]
               (is (= expected-lucky-tree
                      (collection-tree-view ids response))))))))))
