@@ -135,7 +135,7 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 - **Move a card within a tab**: click and drag the card. Other cards will move out of the way.
 - **Resize a card**: click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
 - **Remove a card**: hover over the card and click the X icon in the top right corner.
-- **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card.
+- **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card. You can only replace a question with another question, not another type of card (like a text card).
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
 
@@ -145,7 +145,7 @@ To speed up card arrangement, you can add **sections** to your dashboards.
 
 ![Add section](./images/add-section.png)
 
-Sections are templates with headings and pre-arranged cards. Once you add a section to a dashboard, you can pick questions for each card, and make any other changes you like.
+Sections are templates with headings and pre-arranged cards. Once you add a section to a dashboard, you can pick questions for each card, and make any other changes you like. You can only pick questions for cards, not another type of card (like a text card).
 
 If you forget to set a question for a card, the dashboard will simply render a blank card.
 
