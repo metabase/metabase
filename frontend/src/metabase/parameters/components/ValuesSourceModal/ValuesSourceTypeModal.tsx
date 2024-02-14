@@ -355,7 +355,7 @@ const getErrorMessage = (question: Question) => {
     return t`This model doesn’t have any text columns.`;
   }
 
-  throw new Error(`Unknown question.type(): ${type}`);
+  throw new Error(`Unsupported or unknown question.type(): ${type}`);
 };
 
 interface ListSourceModalProps {
