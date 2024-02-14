@@ -668,6 +668,18 @@ class StructuredQuery extends AtomicQuery {
 
       for (const dimension of fkDimensions) {
         const field = dimension.field();
+
+        const isNestedCardTable = table?.isVirtualCard();
+        const tableHasExplicitJoin =
+          isNestedCardTable &&
+          table.fields.find(
+            tableField => tableField.id === field.fk_target_field_id,
+          );
+
+        if (tableHasExplicitJoin) {
+          continue;
+        }
+
         const fkDimensions = dimension
           .dimensions([FieldDimension])
           .filter(dimensionFilter);
