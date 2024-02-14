@@ -62,7 +62,7 @@ describe("scenarios > admin > settings", () => {
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
     cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
-    cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
+    cy.findByTestId("save-status").contains(/^Error: Invalid site URL/);
   });
 
   it("should save a setting", () => {

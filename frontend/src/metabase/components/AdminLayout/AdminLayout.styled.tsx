@@ -18,14 +18,6 @@ export const AdminNotifications = styled.div`
   position: absolute;
   top: 2rem;
   right: 2rem;
-
-  ${breakpointMaxMedium} {
-    position: relative;
-    top: 0;
-    right: 0;
-    display: flex;
-    justify-content: flex-end;
-  }
 `;
 
 export const AdminSaveStatus = styled(SaveStatus)`

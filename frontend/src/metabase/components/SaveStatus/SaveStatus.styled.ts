@@ -13,6 +13,7 @@ const SaveStatusBase = styled.div`
 
 export const SaveStatusLoading = styled(SaveStatusBase)`
   color: ${color("text-medium")};
+  background: white;
 `;
 
 export const SaveStatusSuccess = styled(SaveStatusBase)`
