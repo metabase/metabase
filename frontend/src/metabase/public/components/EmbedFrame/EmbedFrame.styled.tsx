@@ -108,7 +108,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 2;
+  z-index: 3;
 
   background-color: ${color("white")};
 
