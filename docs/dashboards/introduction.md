@@ -147,6 +147,8 @@ To speed up card arrangement, you can add **sections** to your dashboards.
 
 Sections are templates with headings and pre-arranged cards. Once you add a section to a dashboard, you can pick questions for each card, and make any other changes you like.
 
+If you forget to set a question for a card, the dashboard will simply render a blank card.
+
 Sections include:
 
 **KPI Grid**
@@ -167,8 +169,8 @@ You change the width of a dashboard.
 
 ![Change dashboard width](./images/toggle-width.png)
 
+- **Fixed width** (default). Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
 - **Full width**. The layout and cards will expand to take up the full width of the screen.
-- **Fixed width**. Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
 
 ## Changing a card's visualization settings
 
