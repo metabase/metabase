@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import type { Location } from "history";
+import type { Location, LocationDescriptor } from "history";
 
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
@@ -73,9 +73,9 @@ import type {
   State,
 } from "metabase-types/store";
 
+import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
-import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import { SectionLayoutPreview } from "./SectionLayoutPreview";
@@ -162,7 +162,7 @@ interface DispatchProps {
   deleteBookmark: (args: { id: DashboardId }) => void;
   fetchPulseFormInput: () => void;
   toggleSidebar: (sidebarName: DashboardSidebarName) => void;
-  onChangeLocation: (location: Location) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
   addActionToDashboard: (
     opts: NewDashCardOpts & {
       action: Partial<WritebackAction>;
@@ -323,21 +323,23 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       >
         {t`Cancel`}
       </Button>,
-      <DashboardButtonTooltip
-        disabled={!isSaveDisabled}
-        label={disabledSaveTooltip}
+      <Tooltip
         key="save"
+        label={disabledSaveTooltip}
+        disabled={!isSaveDisabled}
       >
-        <ActionButton
-          actionFn={() => this.onSave()}
-          className="Button Button--primary Button--small"
-          normalText={t`Save`}
-          activeText={t`Saving…`}
-          failedText={t`Save failed`}
-          successText={t`Saved`}
-          disabled={isSaveDisabled}
-        />
-      </DashboardButtonTooltip>,
+        <span>
+          <ActionButton
+            actionFn={() => this.onSave()}
+            className="Button Button--primary Button--small"
+            normalText={t`Save`}
+            activeText={t`Saving…`}
+            failedText={t`Save failed`}
+            successText={t`Saved`}
+            disabled={isSaveDisabled}
+          />
+        </span>
+      </Tooltip>,
     ];
   }
 
@@ -384,53 +386,52 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           : t`Add questions`;
 
       buttons.push(
-        <DashboardButtonTooltip
-          key="add-question-element"
-          label={addQuestionButtonHint}
-        >
+        <Tooltip key="add-question-element" label={addQuestionButtonHint}>
           <DashboardHeaderButton
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             aria-label={t`Add questions`}
           />
-        </DashboardButtonTooltip>,
+        </Tooltip>,
       );
 
       // Text/Headers
       buttons.push(
-        <DashboardButtonTooltip
+        <Tooltip
           key="dashboard-add-heading-or-text-button"
           label={t`Add a heading or text`}
         >
-          <TextOptionsButton
-            onAddMarkdown={() => this.onAddMarkdownBox()}
-            onAddHeading={() => this.onAddHeading()}
-          />
-        </DashboardButtonTooltip>,
+          <span>
+            <TextOptionsButton
+              onAddMarkdown={() => this.onAddMarkdownBox()}
+              onAddHeading={() => this.onAddHeading()}
+            />
+          </span>
+        </Tooltip>,
       );
 
       // Add link card button
       buttons.push(
-        <DashboardButtonTooltip key="add-link-card" label={t`Add link card`}>
+        <Tooltip key="add-link-card" label={t`Add link card`}>
           <DashboardHeaderButton
             aria-label={t`Add link card`}
             onClick={() => this.onAddLinkCard()}
           >
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
-        </DashboardButtonTooltip>,
+        </Tooltip>,
       );
 
       buttons.push(
         <Menu key="add-section" position="bottom-end">
           <Menu.Target>
             <span>
-              <DashboardButtonTooltip label={t`Add section`}>
+              <Tooltip label={t`Add section`}>
                 <DashboardHeaderButton aria-label={t`Add section`}>
                   <Icon name="section" size={18} />
                 </DashboardHeaderButton>
-              </DashboardButtonTooltip>
+              </Tooltip>
             </span>
           </Menu.Target>
           <Menu.Dropdown>
@@ -476,7 +477,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             }
           >
             <div>
-              <DashboardButtonTooltip label={t`Add a filter`}>
+              <Tooltip label={t`Add a filter`}>
                 <DashboardHeaderButton
                   key="parameters"
                   onClick={showAddParameterPopover}
@@ -484,7 +485,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
                 >
                   <Icon name="filter" />
                 </DashboardHeaderButton>
-              </DashboardButtonTooltip>
+              </Tooltip>
             </div>
           </TippyPopover>
         </span>,
@@ -494,17 +495,14 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         buttons.push(
           <Fragment key="add-action-element">
             <DashboardHeaderActionDivider />
-            <DashboardButtonTooltip
-              key="add-action-button"
-              label={t`Add action button`}
-            >
+            <Tooltip key="add-action-button" label={t`Add action button`}>
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
                 aria-label={t`Add action`}
               >
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>
-            </DashboardButtonTooltip>
+            </Tooltip>
           </Fragment>,
         );
       }
@@ -538,7 +536,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
-        <DashboardButtonTooltip key="edit-dashboard" label={t`Edit dashboard`}>
+        <Tooltip key="edit-dashboard" label={t`Edit dashboard`}>
           <DashboardHeaderButton
             visibleOnSmallScreen={false}
             key="edit"
@@ -546,7 +544,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             icon="pencil"
             onClick={() => this.handleEdit(dashboard)}
           />
-        </DashboardButtonTooltip>,
+        </Tooltip>,
       );
     }
 
@@ -591,6 +589,8 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
+
+        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
       }
     }
 
@@ -607,10 +607,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          <DashboardButtonTooltip
-            key="dashboard-info-button"
-            label={t`More info`}
-          >
+          <Tooltip key="dashboard-info-button" label={t`More info`}>
             <DashboardHeaderButton
               icon="info"
               isActive={isShowingDashboardInfoSidebar}
@@ -620,7 +617,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
                   : setSidebar({ name: SIDEBAR_NAME.info })
               }
             />
-          </DashboardButtonTooltip>,
+          </Tooltip>,
         ].filter(Boolean),
       );
 

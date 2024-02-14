@@ -54,7 +54,7 @@ describe("scenarios > question > bookmarks", () => {
     });
 
     // Remove bookmark
-    toggleBookmark();
+    toggleBookmark({ wasSelected: true });
 
     navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/).should("not.exist");
@@ -63,9 +63,10 @@ describe("scenarios > question > bookmarks", () => {
   });
 });
 
-function toggleBookmark() {
+function toggleBookmark({ wasSelected = false } = {}) {
+  const iconName = wasSelected ? "bookmark_filled" : "bookmark";
   cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon("bookmark").click();
+    cy.icon(iconName).click();
   });
   cy.wait("@toggleBookmark");
 }

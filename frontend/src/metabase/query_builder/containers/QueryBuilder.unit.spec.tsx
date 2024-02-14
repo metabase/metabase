@@ -14,6 +14,7 @@ import {
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   setup,
+  waitForFaviconReady,
 } from "./test-utils";
 
 registerVisualizations();
@@ -115,10 +116,12 @@ describe("QueryBuilder", () => {
         `path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
         {},
       );
-      await setup({
+      const { container } = await setup({
         card: TEST_NATIVE_CARD,
         dataset: TEST_NATIVE_CARD_DATASET,
       });
+
+      await waitForFaviconReady(container);
 
       const inputArea = within(
         screen.getByTestId("mock-native-query-editor"),
@@ -134,10 +137,12 @@ describe("QueryBuilder", () => {
 
     it("should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)", async () => {
       const mockDownloadEndpoint = fetchMock.post("path:/api/dataset/csv", {});
-      await setup({
+      const { container } = await setup({
         card: TEST_NATIVE_CARD,
         dataset: TEST_NATIVE_CARD_DATASET,
       });
+
+      await waitForFaviconReady(container);
 
       const inputArea = within(
         screen.getByTestId("mock-native-query-editor"),

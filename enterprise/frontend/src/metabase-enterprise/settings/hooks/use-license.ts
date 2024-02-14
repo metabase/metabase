@@ -5,19 +5,20 @@ import { SettingsApi, StoreApi } from "metabase/services";
 export const LICENSE_ACCEPTED_URL_HASH = "#activated";
 
 const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
+// eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
 const UNABLE_TO_VALIDATE_TOKEN = t`We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.`;
 
 export type TokenStatus = {
   validUntil: Date;
   isValid: boolean;
   isTrial: boolean;
-  features: string[];
+  features: Set<string>;
   status: string;
 };
 
 export const useLicense = (onActivated?: () => void) => {
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>();
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -58,7 +59,7 @@ export const useLicense = (onActivated?: () => void) => {
           validUntil: new Date(response["valid-thru"]),
           isValid: response.valid,
           isTrial: response.trial,
-          features: response.features,
+          features: new Set(response.features),
           status: response.status,
         });
       } catch (e) {
@@ -66,7 +67,7 @@ export const useLicense = (onActivated?: () => void) => {
           setError(UNABLE_TO_VALIDATE_TOKEN);
         }
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -77,7 +78,7 @@ export const useLicense = (onActivated?: () => void) => {
     isUpdating,
     error,
     tokenStatus,
-    isLoading,
+    loading,
     updateToken,
   };
 };

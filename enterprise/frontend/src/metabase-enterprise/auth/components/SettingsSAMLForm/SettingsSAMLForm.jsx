@@ -89,6 +89,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormCaption>
           <SAMLFormSection>
             <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
+            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
 
             <FormTextInput
@@ -123,7 +124,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormSection>
 
           <SAMLFormSection>
+            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             <h3 className="mb0">{t`Tell Metabase about your identity provider`}</h3>
+            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             <p className="mb4 mt1 text-medium">{t`Metabase will need the following info about your provider.`}</p>
             <Stack gap="md">
               <FormTextInput
@@ -173,6 +176,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <SAMLFormSection wide>
             <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
             <p className="mb4 mt1 text-medium">
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
                be added to based on the SSO group they're in.`}
             </p>

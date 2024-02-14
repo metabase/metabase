@@ -293,35 +293,29 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuery = (query, extraDependencies) =>
-  loadMetadataForQueries([query], extraDependencies);
+export const loadMetadataForDependentItems =
+  (dependentItems, options) => dispatch => {
+    const uniqueDependentItems = _.uniq(
+      dependentItems,
+      false,
+      ({ type, id }) => type + id,
+    );
+    const promises = uniqueDependentItems.flatMap(({ type, id }) => {
+      switch (type) {
+        case "schema":
+          return [Schemas.actions.fetchList({ dbId: id }, options)];
+        case "table":
+          return [
+            Tables.actions.fetchMetadataAndForeignTables({ id }, options),
+          ];
+        case "field":
+          return [Fields.actions.fetch({ id }, options)];
+        default:
+          return [];
+      }
+    });
 
-export const loadMetadataForQueries =
-  (queries, extraDependencies, options) => dispatch => {
-    const dependencies = _.chain(queries)
-      .map(q => q.dependentMetadata())
-      .push(...(extraDependencies ?? []))
-      .flatten()
-      .uniq(false, dep => dep.type + dep.id)
-      .map(({ type, id, foreignTables }) => {
-        if (type === "table") {
-          return (
-            foreignTables
-              ? Tables.actions.fetchMetadataAndForeignTables
-              : Tables.actions.fetchMetadata
-          )({ id }, options);
-        } else if (type === "field") {
-          return Fields.actions.fetch({ id }, options);
-        } else if (type === "schema") {
-          return Schemas.actions.fetchList({ dbId: id }, options);
-        } else {
-          console.warn(`loadMetadataForQueries: type ${type} not implemented`);
-        }
-      })
-      .filter(Boolean)
-      .value();
-
-    return Promise.all(dependencies.map(dispatch)).catch(e =>
-      console.error("Failed loading metadata for query", e),
+    return Promise.all(promises.map(dispatch)).catch(e =>
+      console.error("Failed loading metadata", e),
     );
   };

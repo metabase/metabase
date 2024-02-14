@@ -12,16 +12,17 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.upload :as upload]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -216,6 +217,34 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
+(defn- use-server-side-relative-datetime?
+  "Check whether server side :relative-datetime clause should be computed server side.
+   Units are [[metabase.util.date-2/add-units]] greater or equal to day."
+  [unit]
+  (contains? #{:day :week :month :quarter :year} unit))
+
+(defn- server-side-relative-datetime-honeysql-form
+  "Compute `:relative-datetime` clause value server-side. Value is sql formatted (and not passed as date time) to avoid
+   jdbc driver's timezone adjustments. Use of `qp.timezone/now` ensures correct timezone is used for the calculation.
+   For details see the [[metabase.driver.redshift-test/server-side-relative-datetime-truncation-test]]. Use of
+   server-side generated values instead of `getdate` Redshift function enables caching."
+  [amount unit]
+  [:cast
+   (-> (qp.timezone/now)
+       (u.date/truncate unit)
+       (u.date/add unit amount)
+       (u.date/format-sql))
+   :timestamp])
+
+(defmethod sql.qp/->honeysql [:redshift :relative-datetime]
+  [driver [_ amount unit]]
+  (if (use-server-side-relative-datetime? unit)
+    (server-side-relative-datetime-honeysql-form amount unit)
+    (let [now-hsql (sql.qp/current-datetime-honeysql-form driver)]
+      (sql.qp/date driver unit (if (zero? amount)
+                                 now-hsql
+                                 (sql.qp/add-interval-honeysql-form driver now-hsql amount unit))))))
+
 (defmethod sql.qp/datetime-diff [:redshift :year]
   [driver _unit x y]
   (h2x// (sql.qp/datetime-diff driver :month x y) 12))
@@ -399,14 +428,13 @@
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
 
-(defmethod driver/current-user-table-privileges :redshift
-  [_driver database]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
-    ;; result in an operation not supported error
-    (->> (jdbc/query
-          conn-spec
-          (str/join
+(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
+  [_driver conn-spec & {:as _options}]
+  ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
+  ;; result in an operation not supported error
+  (->> (jdbc/query
+         conn-spec
+         (str/join
            "\n"
            ["with table_privileges as ("
             " select"
@@ -428,7 +456,7 @@
             ")"
             "select t.*"
             "from table_privileges t"]))
-         (filter #(or (:select %) (:update %) (:delete %) (:update %))))))
+         (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 
 ;;; ----------------------------------------------- Connection Impersonation ------------------------------------------

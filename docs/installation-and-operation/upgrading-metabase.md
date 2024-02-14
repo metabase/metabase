@@ -18,18 +18,6 @@ See [Backing up Metabase application data](backing-up-metabase-application-data.
 
 Steps differ depending on whether you're running the JAR or a Docker image.
 
-- [Upgrading Metabase](#upgrading-metabase)
-  - [Backing up your application database](#backing-up-your-application-database)
-  - [Swapping in the new Metabase version](#swapping-in-the-new-metabase-version)
-    - [Upgrading a JAR running locally](#upgrading-a-jar-running-locally)
-    - [Upgrading a JAR running in production as a service](#upgrading-a-jar-running-in-production-as-a-service)
-    - [Upgrading the Docker image](#upgrading-the-docker-image)
-  - [Upgrading from older versions of Metabase](#upgrading-from-older-versions-of-metabase)
-  - [Upgrading Metabase Cloud](#upgrading-metabase-cloud)
-  - [Upgrading Metabase on other platforms](#upgrading-metabase-on-other-platforms)
-  - [Rolling back an upgrade](#rolling-back-an-upgrade)
-    - [Using the migrate down command](#using-the-migrate-down-command)
-
 ### Upgrading a JAR running locally
 
 If you're running the JVM Jar file directly:

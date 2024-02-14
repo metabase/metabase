@@ -399,3 +399,60 @@ export const getNextUnsavedDashboardCardId = (() => {
   let id = 0;
   return () => --id;
 })();
+
+const MAX_WIDTH = "1048px";
+export function assertDashboardFixedWidth() {
+  cy.findByTestId("fixed-width-dashboard-header").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-dashboard-tabs").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-filters").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("dashboard-grid").should("have.css", "max-width", MAX_WIDTH);
+}
+
+export function assertDashboardFullWidth() {
+  cy.findByTestId("fixed-width-dashboard-header").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-dashboard-tabs").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-filters").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("dashboard-grid").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+}
+
+export function createDashboardWithTabs({
+  dashcards,
+  tabs,
+  ...dashboardDetails
+}) {
+  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+      dashcards,
+      tabs,
+    }).then(({ body: dashboard }) => cy.wrap(dashboard));
+  });
+}

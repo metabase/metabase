@@ -368,19 +368,6 @@ type ExpressionOperand =
 
 type FieldsClause = ConcreteFieldReference[];
 
-type DependentTable = {
-  id: number | string;
-  type: "table";
-  foreignTables?: boolean;
-};
-
-type DependentField = {
-  id: number;
-  type: "field";
-};
-
-export type DependentMetadataItem = DependentTable | DependentField;
-
 export type TagName = string;
 export type TemplateTagReference = ["template-tag", TagName];
 

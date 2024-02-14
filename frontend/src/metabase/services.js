@@ -43,6 +43,7 @@ export const GTAPApi = {
 
 export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
+  billingInfo: GET("/api/ee/billing"),
 };
 
 // Pivot tables need extra data beyond what's described in the MBQL query itself.

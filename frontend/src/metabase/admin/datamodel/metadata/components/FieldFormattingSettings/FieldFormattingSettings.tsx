@@ -50,6 +50,7 @@ const FieldFormattingSettings = ({
         denylist={denyList}
         inheritedSettings={inheritedSettings}
         onChange={handleChangeSettings}
+        extraData={{ forAdminSettings: true }}
       />
     </MetadataSection>
   );
