@@ -566,20 +566,7 @@ class StructuredQuery extends AtomicQuery {
 
   // FIELDS
   fields() {
-    // FIMXE: implement field functions in query lib
-    return this.legacyQuery({ useStructuredQuery: true }).fields || [];
-  }
-
-  addField(_name, _expression) {
-    return this._updateQuery(Q.addField, arguments);
-  }
-
-  updateField(_index, _field) {
-    return this._updateQuery(Q.updateField, arguments);
-  }
-
-  removeField(_name) {
-    return this._updateQuery(Q.removeField, arguments);
+    return this.legacyQuery().fields || [];
   }
 
   dimensionOptions(
