@@ -52,8 +52,6 @@ import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 
-import { getStructuredQueryTable } from "./utils/structured-query-table";
-
 type DimensionFilterFn = (dimension: Dimension) => boolean;
 export type FieldFilterFn = (filter: Field) => boolean;
 
@@ -195,7 +193,9 @@ class StructuredQuery extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {
-    return getStructuredQueryTable(this.question(), this);
+    // The query's table is a concrete table, assuming one exists in `metadata`.
+    // Failure to find a table at this point indicates that there is a bug.
+    return this.metadata().table(this._sourceTableId());
   });
 
   hasAggregations() {
@@ -635,15 +635,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeField, arguments);
   }
 
-  // DIMENSION OPTIONS
-  _keyForFK(source, destination) {
-    if (source && destination) {
-      return `${source.id},${destination.id}`;
-    }
-
-    return null;
-  }
-
   dimensionOptions(
     dimensionFilter: DimensionFilterFn = _dimension => true,
   ): DimensionOptions {
@@ -858,18 +849,6 @@ class StructuredQuery extends AtomicQuery {
     } else {
       const sourceQuery = this.sourceQuery();
       return sourceQuery ? sourceQuery.lastSummarizedQuery() : null;
-    }
-  });
-
-  /**
-   * Returns the "last" nested query that is already summarized, or the query itself.
-   * Used in "view mode" to effectively ignore post-aggregation filter stages
-   */
-  topLevelQuery = _.once((): StructuredQuery => {
-    if (!this.canNest()) {
-      return this;
-    } else {
-      return this.lastSummarizedQuery() || this;
     }
   });
 

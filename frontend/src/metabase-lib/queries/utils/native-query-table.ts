@@ -3,16 +3,9 @@ import _ from "underscore";
 import type Table from "metabase-lib/metadata/Table";
 
 import type NativeQuery from "../NativeQuery";
-import { getDatasetTable } from "./nested-card-query-table";
 
 export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {
   const question = nativeQuery.question();
-  const isDataset = question.isDataset() && question.isSaved();
-
-  if (isDataset) {
-    return getDatasetTable(nativeQuery);
-  }
-
   const database = question.database();
   const collection = nativeQuery.collection();
   if (database && collection) {
