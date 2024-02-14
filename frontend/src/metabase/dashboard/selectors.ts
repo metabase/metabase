@@ -353,19 +353,48 @@ const getQuestionsMemoized = createDeepEqualSelector(
   },
 );
 
+const getDashboardParameters = createSelector([getDashboard], dashboard => {
+  if (!dashboard) {
+    return [];
+  }
+
+  return dashboard.parameters;
+});
+
+const getDashcardsByDashboard = createSelector(
+  [getDashboard, getDashcards],
+  (dashboard, dashcardsById) => {
+    if (!dashboard) {
+      return [];
+    }
+
+    return dashboard.dashcards.map(
+      (dashcardId: number) => dashcardsById[dashcardId],
+    );
+  },
+);
+
+const getDashcardsByDashboardMemoized = createDeepEqualSelector(
+  [getDashcardsByDashboard],
+  dashcards => {
+    return dashcards;
+  },
+);
+
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestionsMemoized],
-  (dashboard, metadata, questions) => {
+  [
+    getDashboard,
+    getMetadata,
+    getDashcardsByDashboardMemoized,
+    getDashboardParameters,
+    getQuestionsMemoized,
+  ],
+  (dashboard, metadata, dashcards, parameters, questions) => {
     if (!dashboard || !metadata) {
       return [];
     }
 
-    return getDashboardUiParameters(
-      dashboard.dashcards,
-      dashboard.parameters,
-      metadata,
-      questions,
-    );
+    return getDashboardUiParameters(dashcards, parameters, metadata, questions);
   },
 );
 
