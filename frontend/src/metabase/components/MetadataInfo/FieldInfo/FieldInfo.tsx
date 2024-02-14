@@ -62,6 +62,9 @@ type FieldInfoQueryProps = {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
+  timezone?: string;
+  showAllFieldValues?: boolean;
+  showFingerprintInfo?: boolean;
 };
 
 // TODO: support fingerprint info
@@ -70,6 +73,9 @@ export function FieldInfoQuery({
   query,
   stageIndex,
   column,
+  showAllFieldValues,
+  showFingerprintInfo,
+  timezone,
 }: FieldInfoQueryProps) {
   const { description, semanticType } = Lib.displayInfo(
     query,
@@ -82,7 +88,17 @@ export function FieldInfoQuery({
       className={className}
       description={description}
       semanticType={semanticType}
-    />
+    >
+      {showFingerprintInfo && (
+        <FieldFingerprintInfo
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          timezone={timezone}
+          showAllFieldValues={showAllFieldValues}
+        />
+      )}
+    </FieldInfoBase>
   );
 }
 
