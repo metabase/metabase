@@ -41,7 +41,9 @@ export function openNativeEditor({
     .findByTestId("native-query-editor")
     .as(alias)
     .should("be.visible")
-    .should("have.class", "ace_editor");
+    .should("have.class", "ace_editor")
+    .click()
+    .should("have.class", "ace_focus");
 }
 
 /**
