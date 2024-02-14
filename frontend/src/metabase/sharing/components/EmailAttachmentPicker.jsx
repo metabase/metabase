@@ -14,13 +14,16 @@ import { Select } from "metabase/ui";
 const CSV_DELIMITER_OPTIONS = [
   { value: null, label: "Comma (,)" }, // Used by default (when the value is nil)
   { value: ";", label: "Semicolon (;)" },
+  { value: ":", label: "Colon (:)" },
   { value: "\t", label: "Tab" },
   { value: " ", label: "Space" },
+  { value: "|", label: "Pipe (|)" },
 ];
 
 const CSV_QUOTE_OPTIONS = [
   { value: null, label: 'Double quote (")' }, // Used by default (when the value is nil)
   { value: "'", label: "Single quote (')" },
+  { value: "`", label: "Backtick (`)" },
 ];
 
 const DELIMITER_FIELD = "csv_delimiter";
