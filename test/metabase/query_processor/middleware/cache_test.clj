@@ -424,8 +424,9 @@
             (qp.streaming/do-with-streaming-rff
              :csv os
              (fn [rff]
-               (is (false? (:cached (qp/process-query query rff)))
-                   "Query shouldn't be cached after first run with the mock cache in place")))
+               (is (= false
+                     (boolean (:cached (qp/process-query query rff))))
+                  "Query shouldn't be cached after first run with the mock cache in place")))
             (mt/wait-for-result save-chan))
           (is (= (-> (assoc normal-results :cache/details {:cached true})
                      (m/dissoc-in [:data :results_metadata :checksum]))
