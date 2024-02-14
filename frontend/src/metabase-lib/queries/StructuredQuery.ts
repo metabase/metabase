@@ -754,10 +754,6 @@ class StructuredQuery extends AtomicQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
   }
 
-  queries() {
-    return [this];
-  }
-
   // INTERNAL
   _updateQuery(
     updateFunction: (
