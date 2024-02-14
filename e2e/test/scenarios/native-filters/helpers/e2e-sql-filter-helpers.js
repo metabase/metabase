@@ -92,15 +92,12 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
-  // Both delay and a repeated sequence of `{arrowleft}{arrowright}` are there to prevent typing flakes
-  // Without them at least 1 in 10 test runs locally didn't type correctly
-  cy.get("@editor").type("{leftArrow}{rightArrow}{leftArrow}{rightArrow}", {
-    delay: 50,
-  });
-  cy.get("@editor").type(query, {
-    parseSpecialCharSequences: false,
-    ...options,
-  });
+  cy.get("@editor")
+    .should("have.class", "ace_editor")
+    .type(query, {
+      parseSpecialCharSequences: false,
+      ...options,
+    });
 }
 
 export function getRunQueryButton() {

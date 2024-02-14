@@ -37,7 +37,11 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
-  return cy.findByTestId("native-query-editor").as(alias).should("be.visible");
+  return cy
+    .findByTestId("native-query-editor")
+    .as(alias)
+    .should("be.visible")
+    .should("have.class", "ace_editor");
 }
 
 /**
