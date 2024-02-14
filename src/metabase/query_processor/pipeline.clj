@@ -46,19 +46,23 @@
   calls [[*result*]] with the reduced results. results."
   [rff metadata reducible-rows]
   (when-not (canceled?)
-    (let [[status rf]     (try
-                            [::ok (rff metadata)]
-                            (catch Throwable e
-                              [::error (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
-                                                {:type qp.error-type/qp, :rff rff}
-                                                e)]))
-          [status result] (when (= status ::ok)
-                            (try
-                              [::success (transduce identity rf reducible-rows)]
-                              (catch Throwable e
-                                [::error (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
-                                                  {:type qp.error-type/qp}
-                                                  e)])))]
+    (let [[status rf-or-e] (try
+                             [::ready-to-reduce (rff metadata)]
+                             (catch Throwable e
+                               [::error (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
+                                                 {:type qp.error-type/qp, :rff rff}
+                                                 e)]))
+          [status result]  (case status
+                             ::ready-to-reduce
+                             (try
+                               [::success (transduce identity rf-or-e reducible-rows)]
+                               (catch Throwable e
+                                 [::error (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
+                                                   {:type qp.error-type/qp}
+                                                   e)]))
+
+                             ::error
+                             [status rf-or-e])]
       (case status
         ::success (*result* result)
         ::error   (throw result)))))

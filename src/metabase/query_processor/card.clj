@@ -220,7 +220,8 @@
              ;; passed to the QP
              run         (process-query-for-card-default-run-fn qp export-format)}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
-  (let [dash-viz (when (not= context :question)
+  (let [dash-viz (when (and (not= context :question)
+                            dashcard-id)
                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
         card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
                                                  :dataset :result_metadata :visualization_settings]

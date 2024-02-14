@@ -10,6 +10,7 @@
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -115,6 +116,7 @@
           row-count                   (volatile! 0)]
       (fn
         ([]
+         (log/tracef "Writing initial metadata to results writer.")
          (qp.si/begin! results-writer
                        {:data (assoc initial-metadata :ordered-cols ordered-cols)}
                        viz-settings')
@@ -126,6 +128,7 @@
                 :status :completed))
 
         ([metadata row]
+         (log/tracef "Writing one row to results writer.")
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
@@ -135,6 +138,7 @@
   (let [orig qp.pipeline/*result*]
     (fn result [result]
       (when (= (:status result) :completed)
+        (log/debug "Finished writing results; closing results writer.")
         (qp.si/finish! results-writer result)
         (u/ignore-exceptions
           (.flush os)

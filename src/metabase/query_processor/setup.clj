@@ -187,6 +187,12 @@
    #'do-with-resolved-database])
 ;;; ↑↑↑ SETUP MIDDLEWARE ↑↑↑ happens from BOTTOM to TOP e.g. [[do-with-resolved-database]] is the first to do its thing
 
+(def ^:private ^:dynamic *has-setup*
+  "This is here so we can skip calling the setup middleware if it's already done. Not super important, since the setup
+  middleware should all no-op, but it keeps the stacktraces tider to not have a bunch of calls that don't do anything
+  there."
+  false)
+
 (mu/defn do-with-qp-setup
   "Impl for [[with-qp-setup]]."
   [query :- ::qp.schema/query
@@ -195,12 +201,15 @@
   (when (a.impl.dispatch/in-dispatch-thread?)
     (throw (ex-info "QP calls are not allowed inside core.async dispatch pool threads."
                     {:type qp.error-type/qp})))
-  (let [f (reduce
-           (fn [f middleware]
-             (middleware f))
-           f
-           setup-middleware)]
-    (f query)))
+  (if *has-setup*
+    (f query)
+    (let [f (reduce
+             (fn [f middleware]
+               (middleware f))
+             f
+             setup-middleware)]
+      (binding [*has-setup* true]
+        (f query)))))
 
 (defmacro with-qp-setup
   "Execute `body` with things like the QP Store, driver, and Database-local Settings resolved and bound as needed, and

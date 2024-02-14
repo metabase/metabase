@@ -2,7 +2,8 @@
   (:require
    [clojure.core.async :as a]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,7 +58,7 @@
                (log/trace "All rows consumed.")
                acc))))))))
 
-(defn combine-additional-reducing-fns
+(mu/defn combine-additional-reducing-fns
   "Utility function for creating a reducing function that reduces results using `primary-rf` and some number of
   `additional-rfs`, then combines them into a final result with `combine`.
 
@@ -86,8 +87,9 @@
 
   4. The completing arity of the primary reducing function is not applied automatically, so be sure to apply it
   yourself in the appropriate place in the body of your `combine` function."
-  [primary-rf additional-rfs combine]
-  {:pre [(fn? primary-rf) (sequential? additional-rfs) (every? fn? additional-rfs) (fn? combine)]}
+  [primary-rf     :- ifn?
+   additional-rfs :- [:sequential ifn?]
+   combine        :- ifn?]
   (let [additional-accs (volatile! (mapv (fn [rf] (rf))
                                          additional-rfs))]
     (fn combine-additional-reducing-fns-rf*

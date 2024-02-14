@@ -13,9 +13,12 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
 (defn- add-native-form-to-result-metadata [qp]
   (fn [query rff]
     (letfn [(rff* [metadata]
+              {:pre [(map? metadata)]}
               (rff (assoc metadata :native_form (:native query))))]
       (qp query rff*))))
 
@@ -62,6 +65,6 @@
     (try
       (execute* compiled-query rff)
       (catch Throwable e
-        (throw (ex-info (i18n/tru "Error executing query: {0}" (ex-message e))
+        (throw (ex-info (i18n/tru "Error executing query: {0}" (or (ex-message e) (.getCanonicalName (class e))))
                         {:query compiled-query, :type qp.error-type/db}
                         e))))))
