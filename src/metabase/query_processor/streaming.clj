@@ -179,14 +179,14 @@
 
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure
-  protocols, so return or `respond` with it directly. Pass the provided `context` to your query processor function of
-  choice. `export-format` is one of `:api` (for normal JSON API responses), `:json`, `:csv`, or `:xlsx` (for downloads).
+  protocols, so return or `respond` with it directly. `export-format` is one of `:api` (for normal JSON API
+  responses), `:json`, `:csv`, or `:xlsx` (for downloads).
 
   Typical example:
 
     (api/defendpoint-schema GET \"/whatever\" []
       (qp.streaming/streaming-response [rff :json]
-        (qp/process-query (qp/userland-query-with-default-constraints (assoc query :async true)) rff)))
+        (qp/process-query (qp/userland-query-with-default-constraints query) rff)))
 
   Handles either async or sync QP results, but you should prefer returning sync results so we can handle query
   cancelations properly."
