@@ -358,17 +358,22 @@ function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
   );
 }
 
-// Model questions may be composed via the `composeDataset` method.
-// A composed model question should be treated as equivalent to its original form.
+// Models or metrics may be composed via the `composeDataset` method.
+// A composed entity should be treated as the equivalent to its original form.
 // We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
 // in either form.
-function areModelsEquivalent({
+function areComposedEntitiesEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
   tableMetadata,
 }) {
-  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
+  if (
+    !lastRunQuestion ||
+    !currentQuestion ||
+    originalQuestion.type() !== "model" ||
+    originalQuestion.type() !== "metric"
+  ) {
     return false;
   }
 
@@ -416,7 +421,7 @@ function areQueriesEquivalent({
       currentQuestion?.datasetQuery(),
       tableMetadata,
     ) ||
-    areModelsEquivalent({
+    areComposedEntitiesEquivalent({
       originalQuestion,
       lastRunQuestion,
       currentQuestion,
