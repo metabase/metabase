@@ -224,6 +224,8 @@ function SavedQuestionLeftSide(props) {
 
   const hasLastEditInfo = question.lastEditInfo() != null;
   const isDataset = question.isDataset();
+  const type = question.type();
+  const isModelOrMetric = isDataset || type === "metric";
 
   const onHeaderChange = useCallback(
     name => {
@@ -256,11 +258,11 @@ function SavedQuestionLeftSide(props) {
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
             parts={[
-              ...(isAdditionalInfoVisible && isDataset
+              ...(isAdditionalInfoVisible && isModelOrMetric
                 ? [
-                    <DatasetCollectionBadge
+                    <HeaderCollectionBadge
                       key="collection"
-                      dataset={question}
+                      question={question}
                     />,
                   ]
                 : []),
@@ -352,14 +354,15 @@ function AhHocQuestionLeftSide(props) {
   );
 }
 
-DatasetCollectionBadge.propTypes = {
-  dataset: PropTypes.object.isRequired,
+HeaderCollectionBadge.propTypes = {
+  question: PropTypes.object.isRequired,
 };
 
-function DatasetCollectionBadge({ dataset }) {
-  const { collection } = dataset.card();
+function HeaderCollectionBadge({ question }) {
+  const { collection } = question.card();
+  const icon = question.type();
   return (
-    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="model">
+    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon={icon}>
       {collection?.name || t`Our analytics`}
     </HeadBreadcrumbs.Badge>
   );
