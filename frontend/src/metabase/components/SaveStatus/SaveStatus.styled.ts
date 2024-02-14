@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 
 const SaveStatusBase = styled.div`
   line-height: 1;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
