@@ -111,7 +111,9 @@
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
-   Use this to test destructive actions that may modify the data."
+   Use this to test destructive actions that may modify the data.
+   WARNING: this doesn't actually create and destroy a temporary database for cloud databases (like redshift) that
+   reuse a single database for all tests."
   {:style/indent :defn}
   [& body]
   `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym))) (fn [] ~@body)))
