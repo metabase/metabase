@@ -111,7 +111,7 @@
     (when-not (contains? field-values-types type)
       (throw (ex-info (tru "Invalid field-values type.")
                       {:type        type
-                       :stauts-code 400})))
+                       :status-code 400})))
 
     (when (and (= type :full)
                hash_key)
@@ -142,7 +142,8 @@
   (u/prog1 (merge {:type :full}
                   field-values)
     (assert-valid-human-readable-values field-values)
-    (assert-valid-type-hash-combo field-values)
+    ;; Take into account that :type has a default value in the database
+    (assert-valid-type-hash-combo (update field-values :type #(or % :full)))
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
     (when (= (:type <>) :full)
       (clear-advanced-field-values-for-field! field_id))))
@@ -158,8 +159,7 @@
                          :hash_key    hash_key
                          :status-code 400})))
       ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-      (when (and (contains? field-values :values)
-                 (= :full (:type (t2/select-one FieldValues (:id field-values)))))
+      (when (and (contains? field-values :values) (= :full (:type field-values)))
         (clear-advanced-field-values-for-field! (:field_id field-values))))))
 
 (t2/define-before-select :model/FieldValues

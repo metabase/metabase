@@ -19,7 +19,8 @@
    [metabase.util :as u]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import (clojure.lang ExceptionInfo)))
 
 (deftest ^:parallel field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
@@ -276,21 +277,35 @@
 ;;; |                                                 Life Cycle                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest insert-field-values-type-test
-  (testing "fieldvalues type=:full shouldn't have hash_key"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Full FieldValues shouldnt have hash_key"
-         (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :venues :id)
-                                                 :type :full
-                                                 :hash_key "random-hash"}]))))
+(deftest insert-field-values-hook-test
+  (testing "The model hooks prevent us inserting invalid type / hash_key combination")
+  (let [field-id (mt/id :venues :id)]
+    (try
+      (is (thrown-with-msg? Exception
+                            #"Full FieldValues shouldnt have hash_key"
+                            (t2/insert! :model/FieldValues :field_id field-id :hash_key "12345")))
+      (is (thrown-with-msg? Exception
+                            #"Full FieldValues shouldnt have hash_key"
+                            (t2/insert! :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Advanced FieldValues requires a hash_key"
+                            (t2/insert! :model/FieldValues :field_id field-id :type :sandbox)))
+      (finally
+        (t2/delete! :model/FieldValues :field_id field-id)))))
 
-  (testing "Advanced fieldvalues requires a hash_key"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Advanced FieldValues requires a hash_key"
-         (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :venues :id)
-                                                 :type :sandbox}])))))
+(deftest update-field-values-hook-test
+  (testing "The model hooks prevent us inserting invalid type / hash_key combination")
+  (let [field-id (mt/id :venues :id)
+        fv-id    (t2/insert-returning-pk! :model/FieldValues :field_id field-id :type :sandbox  :hash_key "12345")]
+    (try
+      (is (thrown-with-msg? Exception
+                            #"Cant update type or hash_key for a FieldValues."
+                            (t2/update! :model/FieldValues fv-id {:type :full})))
+      (is (thrown-with-msg? Exception
+                            #"Cant update type or hash_key for a FieldValues."
+                            (t2/update! :model/FieldValues fv-id {:hash_key "54321"})))
+      (finally
+        (t2/delete! :model/FieldValues :field_id field-id)))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp [FieldValues sandbox-fv {:field_id (mt/id :venues :id)
@@ -308,21 +323,6 @@
                                          :hash_key "random-hash"}]
     (t2/update! FieldValues (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
-
-(deftest cant-update-type-or-has-of-a-field-values-test
-  (t2.with-temp/with-temp [FieldValues fv {:field_id (mt/id :venues :id)
-                                           :type     :sandbox
-                                           :hash_key "random-hash"}]
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Cant update type or hash_key for a FieldValues."
-         (t2/update! FieldValues (:id fv) {:type :full})))
-
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Cant update type or hash_key for a FieldValues."
-         (t2/update! FieldValues (:id fv) {:hash_key "new-hash"})))))
-
 
 (deftest identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"
