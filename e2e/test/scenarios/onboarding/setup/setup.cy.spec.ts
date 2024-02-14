@@ -175,7 +175,12 @@ describe("scenarios > setup", () => {
       selectPreferredLanguageAndContinue();
 
       // User
-      fillUserAndContinue({ firstName: null, lastName: null });
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+        first_name: null,
+        last_name: null,
+      });
 
       cy.findByText("Hi. Nice to meet you!");
 
@@ -293,7 +298,12 @@ describe("scenarios > setup", () => {
 
     cy.findByTestId("setup-forms").within(() => {
       // User
-      fillUserAndContinue({ firstName: null, lastName: null });
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+        first_name: null,
+        last_name: null,
+      });
 
       cy.findByText("Hi. Nice to meet you!");
 
@@ -388,7 +398,10 @@ describeWithSnowplow("scenarios > setup", () => {
       step: "user_info",
     });
     cy.findByTestId("setup-forms").within(() => {
-      fillUserAndContinue({ firstName: null, lastName: null });
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+      });
 
       cy.findByText("What will you use Metabase for?").should("exist");
       // 6 - setup/step_seen "usage_question"
@@ -460,36 +473,36 @@ const selectPreferredLanguageAndContinue = () => {
 };
 
 const fillUserAndContinue = ({
-  email = admin.email,
-  firstName = admin.first_name,
-  lastName = admin.last_name,
-  password = admin.password,
-  companyName = "Epic team",
+  email,
+  first_name,
+  last_name,
+  password,
+  company_name,
 }: {
-  firstName?: string | null;
-  lastName?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string | null;
   password?: string | null;
-  companyName?: string | null;
-} = {}) => {
+  company_name?: string | null;
+}) => {
   cy.findByText("What should we call you?");
 
-  if (firstName !== null) {
-    cy.findByLabelText("First name").type(firstName);
+  if (first_name) {
+    cy.findByLabelText("First name").type(first_name);
   }
-  if (lastName !== null) {
-    cy.findByLabelText("Last name").type(lastName);
+  if (last_name) {
+    cy.findByLabelText("Last name").type(last_name);
   }
-  if (email !== null) {
+  if (email) {
     cy.findByLabelText("Email").type(email);
   }
-  if (companyName !== null) {
-    cy.findByLabelText("Company or team name").type(companyName);
+  if (company_name) {
+    cy.findByLabelText("Company or team name").type(company_name);
   }
-  if (password !== null) {
+  if (password) {
     cy.findByLabelText("Create a password").type(password);
   }
-  if (password !== null) {
+  if (password) {
     cy.findByLabelText("Confirm your password").type(password);
   }
   cy.button("Next").click();
