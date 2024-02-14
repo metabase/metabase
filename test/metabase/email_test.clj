@@ -6,9 +6,9 @@
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
-   [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
+   [metabase.test.util.dynamic-redefs :as tu.dr]
    [metabase.util :refer [prog1]]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt]
@@ -72,7 +72,7 @@
 (defn do-with-fake-inbox
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
   [f]
-  (mt/with-dynamic-redefs [email/send-email! fake-inbox-email-fn]
+  (tu.dr/with-dynamic-redefs [email/send-email! fake-inbox-email-fn]
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                        email-smtp-port 587]
@@ -249,13 +249,13 @@
              (@inbox "test@test.com")))))
     (testing "metrics collection"
       (let [calls (atom nil)]
-        (mt/with-dynamic-redefs [prometheus/inc #(swap! calls conj %)]
+        (tu.dr/with-dynamic-redefs [prometheus/inc #(swap! calls conj %)]
           (with-fake-inbox
-            (email/send-message!
-             :subject      "101 Reasons to use Metabase"
-             :recipients   ["test@test.com"]
-             :message-type :html
-             :message      "101. Metabase will make you a better person")))
+           (email/send-message!
+            :subject      "101 Reasons to use Metabase"
+            :recipients   ["test@test.com"]
+            :message-type :html
+            :message      "101. Metabase will make you a better person")))
         (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
         (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "error metrics collection"
@@ -264,9 +264,9 @@
                                   :max-attempts 1
                                   :initial-interval-millis 1)
               test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (mt/with-dynamic-redefs [prometheus/inc    #(swap! calls conj %)
-                                 retry/decorate (rt/test-retry-decorate-fn test-retry)
-                                 email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+              (tu.dr/with-dynamic-redefs [prometheus/inc    #(swap! calls conj %)
+                                          retry/decorate    (rt/test-retry-decorate-fn test-retry)
+                                          email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
           (email/send-message!
            :subject      "101 Reasons to use Metabase"
            :recipients   ["test@test.com"]
@@ -321,7 +321,7 @@
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))
         (testing "it does not wrap long, non-ASCII filenames"
-          (mt/with-dynamic-redefs [email/send-email! mock-send-email!]
+          (tu.dr/with-dynamic-redefs [email/send-email! mock-send-email!]
             (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
                   csv-file                     (temp-csv basename csv-contents)
                   params-with-problematic-file (-> params

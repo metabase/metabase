@@ -72,13 +72,14 @@
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
     (let [nonceJSON (atom nil)
           render-file stencil/render-file]
-      (mt/with-dynamic-redefs [stencil/render-file (fn [path variables]
-                                          (reset! nonceJSON (:nonceJSON variables))
-                                          ;; Use index_template.html instead of index.html so the frontend doesn't
-                                          ;; have to be built to run the test. The only difference between them
-                                          ;; should be the script tags for the webpack bundles
-                                          (assert (= path "frontend_client/index.html"))
-                                          (render-file "frontend_client/index_template.html" variables))]
+      (mt/with-dynamic-redefs [stencil/render-file
+                               (fn [path variables]
+                                 (reset! nonceJSON (:nonceJSON variables))
+                                 ;; Use index_template.html instead of index.html so the frontend doesn't
+                                 ;; have to be built to run the test. The only difference between them
+                                 ;; should be the script tags for the webpack bundles
+                                 (assert (= path "frontend_client/index.html"))
+                                 (render-file "frontend_client/index_template.html" variables))]
         (let [response  (http/get (str "http://localhost:" (config/config-str :mb-jetty-port)))
               nonce     (json/parse-string @nonceJSON)
               csp       (get-in response [:headers "Content-Security-Policy"])

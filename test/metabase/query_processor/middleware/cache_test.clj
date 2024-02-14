@@ -95,15 +95,16 @@
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
         (let [orig @#'cache/serialized-bytes]
-          (mt/with-dynamic-redefs [cache/serialized-bytes (fn []
-                                                 ;; if `save-results!` isn't going to get called because `*result-fn*`
-                                                 ;; throws an Exception, catch it and send it to `save-chan` so it still
-                                                 ;; gets a result and tests can finish
-                                                 (try
-                                                   (orig)
-                                                   (catch Throwable e
-                                                     (a/>!! save-chan e)
-                                                     (throw e))))]
+          (mt/with-dynamic-redefs [cache/serialized-bytes
+                                   (fn []
+                                     ;; if `save-results!` isn't going to get called because `*result-fn*`
+                                     ;; throws an Exception, catch it and send it to `save-chan` so it still
+                                     ;; gets a result and tests can finish
+                                     (try
+                                       (orig)
+                                       (catch Throwable e
+                                         (a/>!! save-chan e)
+                                         (throw e))))]
             (f {:save-chan save-chan, :purge-chan purge-chan})))))))
 
 (defmacro with-mock-cache [[& bindings] & body]
@@ -326,14 +327,19 @@
           called-promise                      (promise)
           save-query-execution-original       (var-get #'process-userland-query/save-query-execution!*)
           save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
-      (mt/with-dynamic-redefs [process-userland-query/save-query-execution!*       (fn [& args]
-                                                                          (swap! save-query-execution-count inc)
-                                                                          (apply save-query-execution-original args)
-                                                                          (deliver called-promise true))
-                    query/save-query-and-update-average-execution-time! (fn [& args]
-                                                                          (swap! update-avg-execution-count inc)
-                                                                          (apply save-query-update-avg-time-original args))
-                    cache/min-duration-ms                               (constantly 0)]
+      (mt/with-dynamic-redefs [process-userland-query/save-query-execution!*
+                               (fn [& args]
+                                 (swap! save-query-execution-count inc)
+                                 (apply save-query-execution-original args)
+                                 (deliver called-promise true))
+
+                               query/save-query-and-update-average-execution-time!
+                               (fn [& args]
+                                 (swap! update-avg-execution-count inc)
+                                 (apply save-query-update-avg-time-original args))
+
+                               cache/min-duration-ms
+                               (constantly 0)]
         (with-mock-cache [save-chan]
           (t2/delete! Query :query_hash q-hash)
           (is (not (:cached (qp/process-userland-query query (context.default/default-context)))))
@@ -395,7 +401,7 @@
                                    (qp/process-query (dissoc query :cache-ttl) rff context))
                                  (vec (csv/read-csv reader)))]
           (mt/with-dynamic-redefs [sql-jdbc.execute/execute-reducible-query (fn [& _]
-                                                                   (throw (Exception. "Should be cached!")))]
+                                                                              (throw (Exception. "Should be cached!")))]
             (with-open [ostream (java.io.PipedOutputStream.)
                         istream (java.io.PipedInputStream. ostream)
                         reader  (java.io.InputStreamReader. istream)]

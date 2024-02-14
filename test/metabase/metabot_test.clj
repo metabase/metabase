@@ -63,8 +63,8 @@
                        :dataset true}]
           (let [bot-sql (format "SELECT * FROM %s" (:name model))]
             (mt/with-dynamic-redefs [metabot-client/*create-chat-completion-endpoint* (test-bot-endpoint-single-message bot-sql)
-                          metabot-client/*create-embedding-endpoint*       simple-embedding-stub
-                          metabot-util/*prompt-templates*                  (constantly test-prompt-templates)]
+                                     metabot-client/*create-embedding-endpoint*       simple-embedding-stub
+                                     metabot-util/*prompt-templates*                  (constantly test-prompt-templates)]
               (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
                     user_prompt   "Show me all of my data"
                     context       {:model       denormalized-model
@@ -108,18 +108,24 @@
                                     :user_prompt user_prompt
                                     :prompt_task :infer_model}
                 bot-message        (format "The best model is probably %s" (:id orders-model))]
-            (mt/with-dynamic-redefs [metabot-client/*create-chat-completion-endpoint* (test-bot-endpoint-single-message bot-message)
-                          ;; Both the prompt and the model pseudo-ddl containing the text "orders" have better
-                          ;; encoding matches than other model ddls.
-                          metabot-client/*create-embedding-endpoint*       (fn [{:keys [_model input]} _options]
-                                                                             (let [embeddings (if (str/includes?
-                                                                                                   (u/upper-case-en input)
-                                                                                                   "ORDERS")
-                                                                                                [1.0 0.0 0.0 0.0]
-                                                                                                [0.0 0.0 0.0 0.0])]
-                                                                               {:data  [{:embedding embeddings}]
-                                                                                :usage {:prompt_tokens 10}}))
-                          metabot-util/*prompt-templates*                  (constantly test-prompt-templates)]
+            (mt/with-dynamic-redefs [metabot-client/*create-chat-completion-endpoint*
+                                     (test-bot-endpoint-single-message bot-message)
+
+                                     ;; Both the prompt and the model pseudo-ddl containing the text "orders" have better
+                                     ;; encoding matches than other model ddls.
+                                     metabot-client/*create-embedding-endpoint*
+                                     (fn [{:keys [_model input]} _options]
+                                       (let [orders?    (str/includes?
+                                                         (u/upper-case-en input)
+                                                         "ORDERS")
+                                             embeddings (if orders?
+                                                          [1.0 0.0 0.0 0.0]
+                                                          [0.0 0.0 0.0 0.0])]
+                                         {:data  [{:embedding embeddings}]
+                                          :usage {:prompt_tokens 10}}))
+
+                                     metabot-util/*prompt-templates*
+                                     (constantly test-prompt-templates)]
               (is
                (partial=
                 denormalized-model
@@ -134,30 +140,32 @@
                            :user_prompt user_prompt
                            :prompt_task :infer_native_sql}]
           (mt/with-dynamic-redefs [metabot-client/*create-chat-completion-endpoint*
-                        (fn [{:keys [messages]} _]
-                          ;; If the test messages contains REVIEWS, use it.
-                          ;; Otherwise, return a useless result.
-                          ;; This test will only pass if the embedding section below
-                          ;; matches on the reviews table.
-                          (let [content (if (str/includes?
-                                             (second messages)
-                                             "REVIEWS")
-                                          "SELECT * FROM REVIEWS"
-                                          "shrug")]
-                            {:choices [{:message {:content content}}]}))
-                        metabot-client/*create-embedding-endpoint*
-                        (fn [{:keys [_model input]} _options]
-                          ;; Both the prompt and the model pseudo-ddl containing the
-                          ;; text "reviews" have better encoding matches than other
-                          ;; model ddls.
-                          (let [embeddings (if (str/includes?
-                                                (u/upper-case-en input)
-                                                "REVIEWS")
-                                             [1.0 0.0 0.0 0.0]
-                                             [0.0 0.0 0.0 0.0])]
-                            {:data  [{:embedding embeddings}]
-                             :usage {:prompt_tokens 10}}))
-                        metabot-util/*prompt-templates* (constantly test-prompt-templates)]
+                                   (fn [{:keys [messages]} _]
+                                     ;; If the test messages contains REVIEWS, use it.
+                                     ;; Otherwise, return a useless result.
+                                     ;; This test will only pass if the embedding section below
+                                     ;; matches on the reviews table.
+                                     (let [content (if (str/includes?
+                                                        (second messages)
+                                                        "REVIEWS")
+                                                     "SELECT * FROM REVIEWS"
+                                                     "shrug")]
+                                       {:choices [{:message {:content content}}]}))
+
+                                   metabot-client/*create-embedding-endpoint*
+                                   (fn [{:keys [_model input]} _options]
+                                     ;; Both the prompt and the model pseudo-ddl containing the
+                                     ;; text "reviews" have better encoding matches than other
+                                     ;; model ddls.
+                                     (let [embeddings (if (str/includes?
+                                                           (u/upper-case-en input)
+                                                           "REVIEWS")
+                                                        [1.0 0.0 0.0 0.0]
+                                                        [0.0 0.0 0.0 0.0])]
+                                       {:data  [{:embedding embeddings}]
+                                        :usage {:prompt_tokens 10}}))
+
+                                   metabot-util/*prompt-templates* (constantly test-prompt-templates)]
             (is (= {:sql                      (mdb.query/format-sql "SELECT * FROM REVIEWS")
                     :prompt_template_versions ["infer_native_sql:0001"]}
                    (metabot/infer-native-sql-query context)))))))))

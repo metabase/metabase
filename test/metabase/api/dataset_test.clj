@@ -251,7 +251,7 @@
 
 (deftest non--download--queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
-                "(this also is a sanitiy check to make sure the `mt/with-dynamic-redefs` in the test above actually works)")
+                "(this also is a sanity check to make sure the `mt/with-dynamic-redefs` in the test above actually works)")
     (mt/with-dynamic-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (let [{row-count :row_count, :as result}
             (mt/user-http-request :rasta :post 202 "dataset"

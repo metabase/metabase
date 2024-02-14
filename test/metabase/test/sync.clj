@@ -5,6 +5,7 @@
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.sync :as sync]
    [metabase.test.data :as data]
+   [metabase.test.util.dynamic-redefs :as tu.dr]
    [toucan2.core :as t2]))
 
 (defn sync-steps-run-to-completion
@@ -24,5 +25,5 @@
   "Can sync process survive `f` crashing?"
   [f]
   `(is (= (sync-steps-run-to-completion)
-          (mt/with-dynamic-redefs [~f crash-fn]
+          (tu.dr/with-dynamic-redefs [~f crash-fn]
             (sync-steps-run-to-completion)))))

@@ -48,16 +48,17 @@
             (mt/with-fake-inbox
               ;; mock out the IP address geocoding function so we can make sure it handles timezones like PST correctly
               ;; (#15603)
-              (mt/with-dynamic-redefs [request.u/geocode-ip-addresses (fn [ip-addresses]
-                                                             (into {} (for [ip-address ip-addresses]
-                                                                        [ip-address
-                                                                         {:description "San Francisco, California, United States"
-                                                                          :timezone    (t/zone-id "America/Los_Angeles")}])))
-                            login-history/maybe-send-login-from-new-device-email
-                            (fn [login-history]
-                              (when-let [futur (original-maybe-send login-history)]
-                                ;; block in tests
-                                (u/deref-with-timeout futur 10000)))]
+              (mt/with-dynamic-redefs [request.u/geocode-ip-addresses
+                                       (fn [ip-addresses]
+                                         (into {} (for [ip-address ip-addresses]
+                                                    [ip-address
+                                                     {:description "San Francisco, California, United States"
+                                                      :timezone    (t/zone-id "America/Los_Angeles")}])))
+                                       login-history/maybe-send-login-from-new-device-email
+                                       (fn [login-history]
+                                         (when-let [futur (original-maybe-send login-history)]
+                                           ;; block in tests
+                                           (u/deref-with-timeout futur 10000)))]
                 (mt/with-temp [LoginHistory _ {:user_id   user-id
                                                :device_id (str (random-uuid))}
                                LoginHistory _ {:user_id   user-id

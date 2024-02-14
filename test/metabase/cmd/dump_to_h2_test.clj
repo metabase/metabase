@@ -49,7 +49,7 @@
 
 (deftest cmd-dump-to-h2-returns-code-from-dump-test
   (mt/with-dynamic-redefs [dump-to-h2/dump-to-h2! #(throw (Exception. "err"))
-                cmd/system-exit! identity]
+                           cmd/system-exit! identity]
     (is (= 1 (cmd/dump-to-h2 "file1")))))
 
 (defn persistent-data-source

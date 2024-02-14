@@ -297,9 +297,9 @@
 
     (testing "should be the hydrate function for `:group_ids`"
       (mt/with-dynamic-redefs [user/group-ids     (constantly '(user/group-ids <user>))
-                    user/add-group-ids (fn [users]
-                                         (for [user users]
-                                           (assoc user :group_ids '(user/add-group-ids <users>))))]
+                               user/add-group-ids (fn [users]
+                                                    (for [user users]
+                                                      (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
                  (-> (t2/hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)

@@ -145,7 +145,7 @@
         (t2.with-temp/with-temp [:model/Card {id :id} {:dataset       false
                                                        :dataset_query (mt/mbql-query users)}]
           (mt/with-dynamic-redefs [card/disable-implicit-action-for-model! (fn [& _args]
-                                                                  (throw (ex-info "Should not be called" {})))]
+                                                                             (throw (ex-info "Should not be called" {})))]
             (is (= 1 (t2/update! 'Card :id id {:dataset_query (mt/mbql-query users {:limit 1})}))))))
 
       (testing "only disable implicit actions, not http and query"

@@ -122,14 +122,15 @@
       (with-user-in-groups [user [(perms-group/admin)]]
         (let [log-warn-count (atom #{})]
           (mt/with-dynamic-redefs [t2/delete!
-                        (fn [model & _args]
-                          (when (= model PermissionsGroupMembership)
-                            (throw (ex-info (str perms-group-membership/fail-to-remove-last-admin-msg)
-                                            {:status-code 400}))))
-                        clojure.tools.logging/log*
-                        (fn [_logger level _throwable msg]
-                          (when (:= level :warn)
-                            (swap! log-warn-count conj msg)))]
+                                   (fn [model & _args]
+                                     (when (= model PermissionsGroupMembership)
+                                       (throw (ex-info (str perms-group-membership/fail-to-remove-last-admin-msg)
+                                                       {:status-code 400}))))
+
+                                   clojure.tools.logging/log*
+                                   (fn [_logger level _throwable msg]
+                                     (when (:= level :warn)
+                                       (swap! log-warn-count conj msg)))]
             ;; make sure sync run without throwing exception
             (integrations.common/sync-group-memberships! user #{} #{(perms-group/admin)})
             ;; make sure we log a msg for that

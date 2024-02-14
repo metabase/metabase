@@ -18,8 +18,7 @@
            (#'style/register-fonts-if-needed!))))
 
   (testing "If font registration fails, we should an Exception with a useful error message"
-    (mt/with-dynamic-redefs [style/register-font! (fn [& _]
-                                         (throw (ex-info "Oops!" {})))]
+    (mt/with-dynamic-redefs [style/register-font! (fn [& _] (throw (ex-info "Oops!" {})))]
       (let [messages (mt/with-log-messages-for-level :error
                        (is (thrown-with-msg?
                             clojure.lang.ExceptionInfo

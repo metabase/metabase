@@ -7,6 +7,7 @@
    [iapetos.operations :as ops]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures])
   (:import
    (io.prometheus.client Collector GaugeMetricFamily)

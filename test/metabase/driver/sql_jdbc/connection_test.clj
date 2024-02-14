@@ -49,8 +49,8 @@
             connection-details {:db "mem:connection_test"}
             spec               (mdb.spec/spec :h2 connection-details)]
         (mt/with-dynamic-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
-                                                    (original-destroy id destroyed-spec)
-                                                    (reset! destroyed? true))]
+                                                               (original-destroy id destroyed-spec)
+                                                               (reset! destroyed? true))]
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
            spec

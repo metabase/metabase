@@ -1,6 +1,7 @@
 (ns metabase.test.transforms
   (:require
    [clojure.test :refer :all]
+   [metabase.test.util.dynamic-redefs :as tu.dr]
    [metabase.transforms.specs :as tf.specs]))
 
 (def test-transform-spec
@@ -28,5 +29,5 @@
   "Evaluate `body` in a context where `transforms.specs/transform-specs` have been swapped for `test-transform-specs`"
   [& body]
   `(testing "with-test-transform-specs\n"
-     (mt/with-dynamic-redefs [tf.specs/transform-specs (delay [test-transform-spec])]
+     (tu.dr/with-dynamic-redefs [tf.specs/transform-specs (delay [test-transform-spec])]
        ~@body)))

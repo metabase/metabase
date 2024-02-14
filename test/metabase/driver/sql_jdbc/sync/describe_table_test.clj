@@ -130,7 +130,7 @@
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
     (let [org-result-set-seq jdbc/result-set-seq]
       (mt/with-dynamic-redefs [jdbc/result-set-seq (fn [& args]
-                                          (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
+                                                     (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
         (is (= #{{:name "longitude"   :base-type :type/Float}
                  {:name "category_id" :base-type :type/Integer}
                  {:name "price"       :base-type :type/Integer}
@@ -150,8 +150,8 @@
 (deftest calculated-semantic-type-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
     (mt/with-dynamic-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]
-                                                                  (when (= (u/lower-case-en column-name) "longitude")
-                                                                    :type/Longitude))]
+                                                                             (when (= (u/lower-case-en column-name) "longitude")
+                                                                               :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
              (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (t2/select-one Table :id (mt/id :venues)))
                   :fields
@@ -434,11 +434,9 @@
       ;; all table defined by `mt/defdataset` will have an pk column my default
       ;; so we need a little trick to test case that a table doesn't have a pk
       (mt/with-dynamic-redefs [sql-jdbc.describe-table/get-table-pks      (fn [driver conn db-name-or-nil table]
-                                                                 (condp = (:name table)
-                                                                   "json_without_pk"
-                                                                   []
-
-                                                                   (original-get-table-pks driver conn db-name-or-nil table)))
+                                                                            (condp = (:name table)
+                                                                              "json_without_pk" []
+                                                                              (original-get-table-pks driver conn db-name-or-nil table)))
                     metadata-queries/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
           (when-not (mysql/mariadb? (mt/db))

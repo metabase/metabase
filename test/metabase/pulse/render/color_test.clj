@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.pulse.render.color :as color]
-   [metabase.pulse.render.js-engine :as js]))
+   [metabase.pulse.render.js-engine :as js]
+   [metabase.test :as mt]))
 
 (def ^:private red "#ff0000")
 (def ^:private green "#00ff00")
@@ -26,8 +27,8 @@
   the real color picking script"
   [script & body]
   `(mt/with-dynamic-redefs [color/js-engine (let [delay# (delay (doto (js/context)
-                                                       (js/load-js-string ~script ~(name (gensym "color-src")))))]
-                                   (fn [] @delay#))]
+                                                                  (js/load-js-string ~script ~(name (gensym "color-src")))))]
+                                              (fn [] @delay#))]
      ~@body))
 
 (deftest color-test

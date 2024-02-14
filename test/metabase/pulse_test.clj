@@ -342,8 +342,9 @@
 
       :fixture
       (fn [_ thunk]
-        (mt/with-dynamic-redefs [qp.constraints/default-query-constraints (constantly {:max-results           10000
-                                                                            :max-results-bare-rows 30})]
+        (mt/with-dynamic-redefs [qp.constraints/default-query-constraints
+                                 (constantly {:max-results           10000
+                                              :max-results-bare-rows 30})]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert
@@ -887,7 +888,7 @@
   (testing "send email succeeds w/o retry"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (mt/with-dynamic-redefs [email/send-email! mt/fake-inbox-email-fn
-                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
+                               retry/decorate    (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
@@ -898,7 +899,7 @@
   (testing "send email succeeds hiding SMTP host not set error"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (mt/with-dynamic-redefs [email/send-email! (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))
-                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
+                               retry/decorate    (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
@@ -925,8 +926,8 @@
                               :max-attempts 2
                               :initial-interval-millis 1)
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (mt/with-dynamic-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                      retry/decorate    (rt/test-retry-decorate-fn test-retry)]
+      (mt/with-dynamic-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
+                               retry/decorate    (rt/test-retry-decorate-fn test-retry)]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
@@ -944,7 +945,7 @@
   (testing "post slack message succeeds w/o retry"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (mt/with-dynamic-redefs [slack/post-chat-message! (constantly nil)
-                    retry/decorate           (rt/test-retry-decorate-fn test-retry)]
+                               retry/decorate           (rt/test-retry-decorate-fn test-retry)]
         (#'metabase.pulse/send-notifications! [fake-slack-notification])
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                (get-positive-retry-metrics test-retry))))))
@@ -963,7 +964,7 @@
                               :initial-interval-millis 1)
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (mt/with-dynamic-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))
-                    retry/decorate           (rt/test-retry-decorate-fn test-retry)]
+                               retry/decorate           (rt/test-retry-decorate-fn test-retry)]
         (#'metabase.pulse/send-notifications! [fake-slack-notification])
         (is (= {:numberOfFailedCallsWithRetryAttempt 1}
                (get-positive-retry-metrics test-retry))))))
@@ -973,7 +974,7 @@
                               :initial-interval-millis 1)
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (mt/with-dynamic-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))
-                    retry/decorate           (rt/test-retry-decorate-fn test-retry)]
+                               retry/decorate           (rt/test-retry-decorate-fn test-retry)]
           (#'metabase.pulse/send-notifications! [fake-slack-notification])
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))))))

@@ -137,9 +137,9 @@
   (let [fingerprinted? (atom false)]
     (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* fingerprint-versions]
       (mt/with-dynamic-redefs [qp/process-query              (fn process-query
-                                                    ([_query rff _context]
-                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]])))
-                    fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
+                                                               ([_query rff _context]
+                                                                (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]])))
+                               fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
         (t2.with-temp/with-temp [Table table {}
                                  Field _     (assoc field-properties :table_id (u/the-id table))]
           [(fingerprint/fingerprint-fields! table)
@@ -256,7 +256,7 @@
                                           :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
         (mt/with-dynamic-redefs [qp/process-query             (fn [_query rff _context]
-                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                                                                (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                       fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
           (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
                   :updated-fingerprints 1, :fingerprints-attempted 1}
@@ -310,8 +310,8 @@
 (deftest refingerprint-fields-for-db!-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "refingerprints up to a limit"
-      (mt/with-dynamic-redefs [fingerprint/save-fingerprint! (constantly nil)
-                    fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
+      (mt/with-dynamic-redefs [fingerprint/save-fingerprint!             (constantly nil)
+                               fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
         (let [table (t2/select-one Table :id (mt/id :checkins))
               results (fingerprint/refingerprint-fields-for-db! (mt/db)
                                                                 (repeat (* @#'fingerprint/max-refingerprint-field-count 2) table)

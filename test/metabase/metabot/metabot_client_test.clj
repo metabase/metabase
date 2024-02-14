@@ -21,10 +21,10 @@
 (deftest create-embedding-test
   (testing "A simple test showing the expected input and output of create-embedding"
     (mt/with-dynamic-redefs [metabot-client/*create-embedding-endpoint* (fn [{:keys [_model input]} _options]
-                                                               {:data  [{:embedding [1.0 0.0 0.0 0.0]}]
-                                                                :usage {:prompt_tokens (quot
-                                                                                        (count input)
-                                                                                        4)}})]
+                                                                          {:data  [{:embedding [1.0 0.0 0.0 0.0]}]
+                                                                           :usage {:prompt_tokens (quot
+                                                                                                   (count input)
+                                                                                                   4)}})]
       ;; Note that the "rule of thumb" for token usage is string chars / 4, but this can be all over the place.
       (= {:prompt    "123412341"
           :embedding [1.0 0.0 0.0 0.0]

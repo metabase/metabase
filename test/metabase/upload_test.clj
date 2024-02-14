@@ -610,8 +610,8 @@
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-        (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
-                      upload/current-database    (constantly (mt/db))]
+       (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
+                                upload/current-database    (constantly (mt/db))]
           (let [table-name (mt/random-name)
                 datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                 ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
@@ -1030,10 +1030,10 @@
             _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                     :is_full_sync false})]
         (try
-          (mt/with-dynamic-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
-                        future-call (fn [thunk]
-                                      (swap! in-future? (constantly true))
-                                      (thunk))]
+          (mt/with-dynamic-redefs [;; do away with the `future` invocation since we don't want race conditions in a test
+                                   future-call (fn [thunk]
+                                                 (swap! in-future? (constantly true))
+                                                 (thunk))]
             (testing "Happy path with schema, and without table-prefix"
               ;; create not_public schema in the db
               (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
@@ -1113,8 +1113,7 @@
                         "event"           "csv_upload_successful"}
                  :user-id (str (mt/user->id :rasta))}
                 (last (snowplow-test/pop-event-data-and-user-id!))))
-        (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _]
-                                              (throw (Exception.)))]
+        (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
           (try (upload-example-csv!)
                (catch Throwable _
                  nil))
@@ -1337,7 +1336,7 @@
       (mt/with-report-timezone-id "UTC"
         (testing "Append should succeed for all possible CSV column types"
           (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
-                        upload/current-database    (constantly (mt/db))]
+                                   upload/current-database    (constantly (mt/db))]
             (with-upload-table!
               [table (create-upload-table!
                       {:col->upload-type (ordered-map/ordered-map

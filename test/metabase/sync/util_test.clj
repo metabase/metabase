@@ -72,12 +72,12 @@
         orig-log-fn              @#'sync-util/log-sync-summary
         orig-store-fn            @#'sync-util/store-sync-summary!]
     (mt/with-dynamic-redefs [sync-util/log-sync-summary    (fn [operation database operation-metadata]
-                                                  (swap! step-info-atom conj operation-metadata)
-                                                  (orig-log-fn operation database operation-metadata))
-                  sync-util/store-sync-summary! (fn [operation database operation-metadata]
-                                                  (let [result (orig-store-fn operation database operation-metadata)]
-                                                    (swap! created-task-history-ids concat result)
-                                                    result))]
+                                                             (swap! step-info-atom conj operation-metadata)
+                                                             (orig-log-fn operation database operation-metadata))
+                             sync-util/store-sync-summary! (fn [operation database operation-metadata]
+                                                             (let [result (orig-store-fn operation database operation-metadata)]
+                                                               (swap! created-task-history-ids concat result)
+                                                               result))]
       (f))
     {:operation-results @step-info-atom
      :task-history-ids  @created-task-history-ids}))
@@ -293,9 +293,9 @@
       (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
             db (t2/select-one Database :id (:id (mt/db)))]
         (mt/with-dynamic-redefs [sync-metadata/make-sync-steps (fn [_]
-                                                      [(sync-util/create-sync-step
-                                                         "fake-step"
-                                                         (fn [_] (throw (java.net.ConnectException.))))])]
+                                                                 [(sync-util/create-sync-step
+                                                                   "fake-step"
+                                                                   (fn [_] (throw (java.net.ConnectException.))))])]
           (sync/sync-database! db)
           (is (= "aborted" (t2/select-one-fn :initial_sync_status Database :id (:id db)))))))
 
@@ -320,8 +320,8 @@
               completed-chan (a/chan)]
           (let [sync-fields! sync-fields/sync-fields!]
             (mt/with-dynamic-redefs [sync-fields/sync-fields! (fn [database]
-                                                     (a/>!! syncing-chan ::syncing)
-                                                     (sync-fields! database))]
+                                                                (a/>!! syncing-chan ::syncing)
+                                                                (sync-fields! database))]
               (future
                 (sync/sync-database! (mt/db))
                 (a/>!! completed-chan ::sync-completed))

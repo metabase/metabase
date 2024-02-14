@@ -68,7 +68,7 @@
     (let [compile-call-count (atom 0)
           preprocess-call-count (atom 0)]
       (mt/with-dynamic-redefs [qp/compile    (fn [_] (swap! compile-call-count inc))
-                    qp/preprocess (fn [_] (swap! preprocess-call-count inc))]
+                               qp/preprocess (fn [_] (swap! preprocess-call-count inc))]
         (is (= {:data {}, :row_count 0, :status :completed}
                (catch-exceptions
                 (fn []))))

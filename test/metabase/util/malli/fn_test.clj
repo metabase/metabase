@@ -239,8 +239,8 @@
 (deftest instrument-ns-test
   (doseq [mode ["test" "prod" "dev"]]
     (mt/with-dynamic-redefs [config/is-prod? (= mode "prod")
-                  config/is-dev?  (= mode "dev")
-                  config/is-test? (= mode "test")]
+                             config/is-dev?  (= mode "dev")
+                             config/is-test? (= mode "test")]
       (testing (str "In " mode)
         (testing (str "\na namespace without :instrument/always meta should " (if (= mode "prod") "" "not") " be skipped")
           (let [n (create-ns (symbol (mt/random-name)))]

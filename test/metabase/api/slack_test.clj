@@ -12,9 +12,9 @@
     (testing "An admin can set a valid Slack app token to the slack-app-token setting, and any value in the
              `slack-token` setting is cleared"
       (mt/with-dynamic-redefs [slack/valid-token?                                (constantly true)
-                    slack/channel-exists?                             (constantly true)
-                    slack/refresh-channels-and-usernames!             (constantly nil)
-                    slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
+                               slack/channel-exists?                             (constantly true)
+                               slack/refresh-channels-and-usernames!             (constantly nil)
+                               slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
         (mt/with-temporary-setting-values [slack-app-token nil
                                            slack-token     "fake-token"]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
@@ -47,9 +47,9 @@
 
     (testing "An error is returned if the Slack files channel cannot be found, and the integration is not enabled"
       (mt/with-dynamic-redefs [slack/channel-exists?                             (constantly nil)
-                    slack/valid-token?                                (constantly true)
-                    slack/refresh-channels-and-usernames!             (constantly nil)
-                    slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
+                               slack/valid-token?                                (constantly true)
+                               slack/refresh-channels-and-usernames!             (constantly nil)
+                               slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
         (let [response (mt/user-http-request :crowberto :put 400 "slack/settings"
                                              {:slack-files-channel "fake-channel"
                                               :slack-app-token     "fake-token"})]

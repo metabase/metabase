@@ -19,10 +19,11 @@
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
-      (mt/with-dynamic-redefs [process-userland-query/save-query-execution!* (fn [query-execution]
-                                                                    (when-let [^bytes qe-hash (:hash query-execution)]
-                                                                      (when (java.util.Arrays/equals qe-hash original-hash)
-                                                                        (deliver result query-execution))))]
+      (mt/with-dynamic-redefs [process-userland-query/save-query-execution!*
+                               (fn [query-execution]
+                                 (when-let [^bytes qe-hash (:hash query-execution)]
+                                   (when (java.util.Arrays/equals qe-hash original-hash)
+                                     (deliver result query-execution))))]
         (run
           (fn qe-result* []
             (let [qe (deref result 1000 ::timed-out)]

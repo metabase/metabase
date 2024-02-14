@@ -213,15 +213,15 @@
                                          slack/slack-cached-channels-and-usernames
                                          {:channels channel-info}]
         (mt/with-dynamic-redefs [slack/POST (fn [endpoint payload]
-                                   (case endpoint
-                                     "files.upload"
-                                     (if @joined?
-                                       {:file {:url_private filename}}
-                                       (throw (ex-info "Not in that channel"
-                                                       {:error-code "not_in_channel"})))
-                                     "conversations.join"
-                                     (reset! joined? (= (-> payload :form-params :channel)
-                                                        slack-id))))]
+                                              (case endpoint
+                                                "files.upload"
+                                                (if @joined?
+                                                  {:file {:url_private filename}}
+                                                  (throw (ex-info "Not in that channel"
+                                                                  {:error-code "not_in_channel"})))
+                                                "conversations.join"
+                                                (reset! joined? (= (-> payload :form-params :channel)
+                                                                   slack-id))))]
           (slack/upload-file! (.getBytes "fake-picture") filename channel-id)
           (is @joined? (str "Did not attempt to join with slack-id " slack-id)))))))
 

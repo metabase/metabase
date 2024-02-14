@@ -179,8 +179,8 @@
           analyze-db-ran?          (promise)
           update-field-values-ran? (promise)]
       (mt/with-dynamic-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
-                    metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
-                    metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
+                               metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
+                               metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
         (with-scheduler-setup
           (t2.with-temp/with-temp [Database database db-info]
             ;; deref the promises in parallel so they all get sufficient time to run.

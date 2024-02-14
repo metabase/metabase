@@ -10,7 +10,7 @@
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.util :as mw.util]
    [metabase.sync :as sync]
-   [metabase.sync.sync-metadata]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -76,15 +76,15 @@
                                                  payload)))))]
       (testing "sync just table when table is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
-          (mt/with-dynamic-redefs [sync/sync-table! (fn [_table] (deliver long-sync-called? true))
-                                   metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
+          (mt/with-dynamic-redefs [sync/sync-table!                   (fn [_table] (deliver long-sync-called? true))
+                                   sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
             (post {:scan :full, :table_name table-name})
             (is @long-sync-called?)
             (is (not (realized? short-sync-called?))))))
       (testing "only a quick sync when quick parameter is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
-          (mt/with-dynamic-redefs [sync/sync-table! (fn [_table] (deliver long-sync-called? true))
-                                   metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
+          (mt/with-dynamic-redefs [sync/sync-table!                   (fn [_table] (deliver long-sync-called? true))
+                                   sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
             (post {:scan :schema, :table_name table-name})
             (is (not (realized? long-sync-called?)))
             (is @short-sync-called?))))
@@ -96,8 +96,8 @@
       (testing "simple sync with params"
         (let [full-sync?   (promise)
               smaller-sync (promise)]
-          (mt/with-dynamic-redefs [sync/sync-database! (fn [_db] (deliver full-sync? true))
-                                   metabase.sync.sync-metadata/sync-db-metadata! (fn [_db] (deliver smaller-sync true))]
+          (mt/with-dynamic-redefs [sync/sync-database!             (fn [_db] (deliver full-sync? true))
+                                   sync-metadata/sync-db-metadata! (fn [_db] (deliver smaller-sync true))]
             (post {:scan :schema})
             (is (not (realized? full-sync?)))
             (is @smaller-sync))))

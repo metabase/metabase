@@ -1131,7 +1131,7 @@
       (mt/with-premium-features #{:audit-app}
         (t2.with-temp/with-temp [Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
           (mt/with-dynamic-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
-                                   analyze/analyze-db! (deliver-when-db analyze-called? db)]
+                                   analyze/analyze-db!             (deliver-when-db analyze-called? db)]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
             ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
             ;; however if something went wrong, don't hang forever, eventually timeout and fail
@@ -1172,10 +1172,10 @@
     (mt/with-premium-features #{:audit-app}
       (let [update-field-values-called? (promise)]
         (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
-          (mt/with-dynamic-redefs [field-values/update-field-values! (fn [synced-db]
-
-                                                            (when (= (u/the-id synced-db) (u/the-id db))
-                                                              (deliver update-field-values-called? :sync-called)))]
+          (mt/with-dynamic-redefs [field-values/update-field-values!
+                                   (fn [synced-db]
+                                     (when (= (u/the-id synced-db) (u/the-id db))
+                                       (deliver update-field-values-called? :sync-called)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
             (is (= :sync-called
                    (deref update-field-values-called? long-timeout :sync-never-called)))
@@ -1265,9 +1265,9 @@
           ssl-values (atom [])
           valid?     (atom false)]
       (mt/with-dynamic-redefs [api.database/test-database-connection (fn [_ details & _]
-                                                            (swap! call-count inc)
-                                                            (swap! ssl-values conj (:ssl details))
-                                                            (if @valid? nil {:valid false}))]
+                                                                       (swap! call-count inc)
+                                                                       (swap! ssl-values conj (:ssl details))
+                                                                       (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
           (#'api.database/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))

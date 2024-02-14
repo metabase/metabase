@@ -67,7 +67,7 @@
      request-body
      (fn []
        (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                                h2/*allow-testing-h2-connections* true]
+                                h2/*allow-testing-h2-connections*                       true]
          (testing "API response should return a Session UUID"
            (is (=? {:id mt/is-uuid-string?}
                    (client/client :post 200 "setup" request-body))))
@@ -240,7 +240,7 @@
       (testing "should throw Exception if driver is invalid"
         (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
                (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                                        h2/*allow-testing-h2-connections* true]
+                                        h2/*allow-testing-h2-connections*                       true]
                  (client/client :post 400 "setup" (assoc (default-setup-input)
                                                          :database {:engine  "my-fake-driver"
                                                                     :name    (mt/random-name)
@@ -398,11 +398,11 @@
          body
          (fn []
            (mt/with-dynamic-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                                    h2/*allow-testing-h2-connections* true
-                                    api.setup/setup-set-settings! (let [orig @#'api.setup/setup-set-settings!]
-                                                                    (fn [& args]
-                                                                      (apply orig args)
-                                                                      (throw (ex-info "Oops!" {}))))]
+                                    h2/*allow-testing-h2-connections*                       true
+                                    api.setup/setup-set-settings!                           (let [orig @#'api.setup/setup-set-settings!]
+                                                                                              (fn [& args]
+                                                                                                (apply orig args)
+                                                                                                (throw (ex-info "Oops!" {}))))]
              (is (=? {:message "Oops!"}
                      (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"

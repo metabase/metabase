@@ -568,7 +568,7 @@
   This does result in a malformed img tag, because the src string ends up being an svg-string, but we immediately
   extract and replace this tag with the `img-node->svg-node` function."
   [{:keys [card data]}]
-  (mt/with-dynamic-redefs [js-svg/svg-string->bytes identity
+  (mt/with-dynamic-redefs [js-svg/svg-string->bytes       identity
                            image-bundle/make-image-bundle (fn [_ s]
                                                             {:image-src   s
                                                              :render-type :inline})]
@@ -653,9 +653,9 @@
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
         results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
     (mt/with-dynamic-redefs [js-svg/svg-string->bytes       identity
-                  image-bundle/make-image-bundle (fn [_ s]
-                                                   {:image-src   s
-                                                    :render-type :inline})]
+                             image-bundle/make-image-bundle (fn [_ s]
+                                                              {:image-src   s
+                                                               :render-type :inline})]
       (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
                         :content)]
         (-> content
@@ -672,9 +672,9 @@
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
         results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
     (mt/with-dynamic-redefs [js-svg/svg-string->bytes       identity
-                  image-bundle/make-image-bundle (fn [_ s]
-                                                   {:image-src   s
-                                                    :render-type :inline})]
+                             image-bundle/make-image-bundle (fn [_ s]
+                                                              {:image-src   s
+                                                               :render-type :inline})]
       (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
                             :content)]
         (-> content

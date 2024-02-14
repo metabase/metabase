@@ -56,7 +56,7 @@
 
   (testing "substring checking"
     (mt/with-dynamic-redefs [driver.u/database->driver (constantly (:engine (mt/db)))
-                  table/database (constantly (mi/instance Database {:id 5678}))]
+                             table/database            (constantly (mi/instance Database {:id 5678}))]
       (let [table  (mi/instance Table {:id 1234})
             fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"

@@ -1687,7 +1687,7 @@
                              Card       cr-card          {:collection_id (:id cr-collection)}
                              Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
       (mt/with-dynamic-redefs [perms/default-audit-collection          (constantly audit-collection)
-                    perms/default-custom-reports-collection (constantly cr-collection)]
+                               perms/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))
