@@ -223,9 +223,8 @@ function SavedQuestionLeftSide(props) {
   const [showSubHeader, setShowSubHeader] = useState(true);
 
   const hasLastEditInfo = question.lastEditInfo() != null;
-  const isDataset = question.isDataset();
   const type = question.type();
-  const isModelOrMetric = isDataset || type === "metric";
+  const isModelOrMetric = type === "model" || type === "metric";
 
   const onHeaderChange = useCallback(
     name => {
@@ -236,7 +235,8 @@ function SavedQuestionLeftSide(props) {
     [question, onSave],
   );
 
-  const renderDataSource = QuestionDataSource.shouldRender(props) && !isDataset;
+  const renderDataSource =
+    QuestionDataSource.shouldRender(props) && type === "question";
   const renderLastEdit = hasLastEditInfo && isAdditionalInfoVisible;
 
   useEffect(() => {
@@ -254,7 +254,7 @@ function SavedQuestionLeftSide(props) {
       showSubHeader={showSubHeader}
     >
       <ViewHeaderMainLeftContentContainer>
-        <SavedQuestionHeaderButtonContainer isDataset={isDataset}>
+        <SavedQuestionHeaderButtonContainer isModelOrMetric={isModelOrMetric}>
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
             parts={[
@@ -278,7 +278,7 @@ function SavedQuestionLeftSide(props) {
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {QuestionDataSource.shouldRender(props) && !isDataset && (
+          {QuestionDataSource.shouldRender(props) && !isModelOrMetric && (
             <StyledQuestionDataSource
               question={question}
               isObjectDetail={isObjectDetail}
