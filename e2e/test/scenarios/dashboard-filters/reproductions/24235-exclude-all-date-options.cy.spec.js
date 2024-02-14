@@ -34,7 +34,7 @@ describe("issue 24235", () => {
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
-  it.only("should remove filter when all exclude options are selected (metabase#24235)", () => {
+  it("should remove filter when all exclude options are selected (metabase#24235)", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         mapParameterToDashboardCard({ id, card_id, dashboard_id });
