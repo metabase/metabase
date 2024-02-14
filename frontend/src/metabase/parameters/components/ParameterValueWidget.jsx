@@ -35,15 +35,6 @@ import { areParameterValuesIdentical } from "metabase-lib/parameters/utils/param
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
 
-const DATE_WIDGETS = {
-  "date/single": DateSingleWidget,
-  "date/range": DateRangeWidget,
-  "date/relative": DateRelativeWidget,
-  "date/month-year": DateMonthYearWidget,
-  "date/quarter-year": DateQuarterYearWidget,
-  "date/all-options": DateAllOptionsWidget,
-};
-
 class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
@@ -276,10 +267,19 @@ function Widget({
   };
 
   if (isDateParameter(parameter)) {
-    const DateWidget = DATE_WIDGETS[parameter.type];
+    const DateWidget = {
+      "date/single": DateSingleWidget,
+      "date/range": DateRangeWidget,
+      "date/relative": DateRelativeWidget,
+      "date/month-year": DateMonthYearWidget,
+      "date/quarter-year": DateQuarterYearWidget,
+      "date/all-options": DateAllOptionsWidget,
+    }[parameter.type];
+
     return (
       <DateWidget
         value={value}
+        initialValue={value}
         defaultValue={parameter.default}
         required={parameter.required}
         setValue={setValue}
