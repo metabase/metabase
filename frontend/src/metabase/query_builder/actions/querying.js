@@ -111,7 +111,7 @@ export const runQuestionQuery = ({
 
     if (shouldUpdateUrl) {
       const isAdHocModelOrMetric =
-        (question.isDataset() || question.type() === "metric") &&
+        (question.type() === "model" || question.type() === "metric") &&
         isAdHocModelQuestion(question, originalQuestion);
 
       dispatch(
