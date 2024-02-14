@@ -347,7 +347,7 @@
     (t2/select :model/FieldValues :field_id 1)
     (t2/select :model/FieldValues :field_id 1 :type :full)
     (is (thrown-with-msg? ExceptionInfo
-                          #"Invalid query - :full FieldValues cannot have a hash_key"""
+                          #"Invalid query - :full FieldValues cannot have a hash_key"
                           (t2/select :model/FieldValues :field_id 1 :type :full :hash_key "12345")))
 
     (t2/select :model/FieldValues :field_id 1 :type :sandbox)
