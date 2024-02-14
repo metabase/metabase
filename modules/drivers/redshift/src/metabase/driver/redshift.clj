@@ -18,11 +18,10 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
+   [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -217,33 +216,15 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
-(defn- use-server-side-relative-datetime?
-  "Check whether server side :relative-datetime clause should be computed server side.
-   Units are [[metabase.util.date-2/add-units]] greater or equal to day."
-  [unit]
-  (contains? #{:day :week :month :quarter :year} unit))
-
-(defn- server-side-relative-datetime-honeysql-form
-  "Compute `:relative-datetime` clause value server-side. Value is sql formatted (and not passed as date time) to avoid
-   jdbc driver's timezone adjustments. Use of `qp.timezone/now` ensures correct timezone is used for the calculation.
-   For details see the [[metabase.driver.redshift-test/server-side-relative-datetime-truncation-test]]. Use of
-   server-side generated values instead of `getdate` Redshift function enables caching."
-  [amount unit]
-  [:cast
-   (-> (qp.timezone/now)
-       (u.date/truncate unit)
-       (u.date/add unit amount)
-       (u.date/format-sql))
-   :timestamp])
+#_(defmethod sql.qp/->honeysql [:redshift :relative-datetime]
+  [driver [_ amount unit]]
+  (if (qp.relative-datetime/use-server-side-relative-datetime? unit)
+    (qp.relative-datetime/cacheable-relative-datetime-honeysql unit amount)
+    ((get-method sql.qp/->honeysql :sql) driver [_ amount unit])))
 
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
-  (if (use-server-side-relative-datetime? unit)
-    (server-side-relative-datetime-honeysql-form amount unit)
-    (let [now-hsql (sql.qp/current-datetime-honeysql-form driver)]
-      (sql.qp/date driver unit (if (zero? amount)
-                                 now-hsql
-                                 (sql.qp/add-interval-honeysql-form driver now-hsql amount unit))))))
+  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
 (defmethod sql.qp/datetime-diff [:redshift :year]
   [driver _unit x y]

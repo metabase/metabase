@@ -32,6 +32,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -401,6 +402,16 @@
           [:to_timestamp_ntz
            [:convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
+
+#_(defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
+  [driver [_ amount unit]]
+  (if (qp.relative-datetime/use-server-side-relative-datetime? unit)
+    (qp.relative-datetime/cacheable-relative-datetime-honeysql unit amount)
+    ((get-method sql.qp/->honeysql :sql) driver [_ amount unit])))
+
+(defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
+  [driver [_ amount unit]]
+  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
