@@ -21,7 +21,7 @@
                                   (f))))
     (into #{} (map deref) @futures)))
 
-(deftest idempotent-insert!-test
+(deftest select-or-insert!-test
   ;; We test both a case where the database protects against duplicates, and where it does not.
   ;; Using Setting is perfect because it has only two required fields - (the primary) key & value (with no constraint).
   ;;
@@ -80,7 +80,7 @@
             (finally
               (t2/delete! Setting search-col search-value))))))))
 
-(deftest idempotent-upsert!-test
+(deftest updated-or-insert!-test
   ;; We test both a case where the database protects against duplicates, and where it does not.
   ;; Using Setting is perfect because it has only two required fields - (the primary) key & value (with no constraint).
   (let [columns [:key :value]]
@@ -103,7 +103,7 @@
                     thunk      (fn []
                                  (u/prog1 (str (random-uuid))
                                    (mdb.u/update-or-insert! Setting {search-col search-value}
-                                                            (fn [_]
+                                     (fn [_]
                                        ;; Make sure all the threads are in the mutating path
                                        (.countDown latch)
                                        (.await latch)
