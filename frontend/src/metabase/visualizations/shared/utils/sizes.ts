@@ -117,7 +117,7 @@ export const getDefaultSize = (
   visualizationType: CardDisplayType,
 ): VisualizationSize => getSize(visualizationType, "default");
 
-export const MOBILE_HEIGHT_BY_DISPLAY_TYPE = {
+export const MOBILE_HEIGHT_BY_DISPLAY_TYPE: Record<string, number> = {
   action: 1,
   link: 1,
   text: 2,
