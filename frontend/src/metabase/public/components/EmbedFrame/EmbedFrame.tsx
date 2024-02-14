@@ -14,6 +14,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 
@@ -143,6 +144,9 @@ function EmbedFrame({
   const finalName = titled ? name : null;
 
   const hasParameters = Array.isArray(parameters) && parameters.length > 0;
+  const hasVisibleParameters =
+    hasParameters &&
+    getVisibleParameters(parameters, hiddenParameterSlugs).length > 0;
 
   const hasHeader = Boolean(finalName || hasParameters);
 
@@ -186,7 +190,10 @@ function EmbedFrame({
           </Header>
         )}
         {hasParameters && (
-          <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
+          <ParametersWidgetContainer
+            hasVisibleParameters={hasVisibleParameters}
+            data-testid="dashboard-parameters-widget-container"
+          >
             <ParametersFixedWidthContainer
               data-testid="fixed-width-filters"
               isFixedWidth={dashboard?.width === "fixed"}

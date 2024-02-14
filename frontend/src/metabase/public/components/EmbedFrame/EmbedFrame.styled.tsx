@@ -101,7 +101,9 @@ const footerVariantStyles = {
   `,
 };
 
-export const ParametersWidgetContainer = styled(FullWidthContainer)`
+export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  hasVisibleParameters: boolean;
+}>`
   position: sticky;
   top: 0;
   left: 0;
@@ -110,8 +112,12 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
 
   background-color: ${color("white")};
 
-  padding-top: ${space(1)};
-  padding-bottom: ${space(1)};
+  ${props =>
+    props.hasVisibleParameters &&
+    css`
+      padding-top: ${space(1)};
+      padding-bottom: ${space(1)};
+    `}
 `;
 
 export const Footer = styled.footer<{ variant: FooterVariant }>`
