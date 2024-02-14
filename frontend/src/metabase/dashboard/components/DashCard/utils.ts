@@ -13,6 +13,7 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import * as Lib from "metabase-lib";
+import type { ParameterMappingOption as ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import type Question from "metabase-lib/Question";
 
@@ -32,20 +33,12 @@ export function shouldShowParameterMapper({
   );
 }
 
-// TODO: @uladzimirdev fix type definition in https://github.com/metabase/metabase/pull/38596
-export type MappingOption = {
-  name: string;
-  icon: string;
-  isForeign: boolean;
-  target: ParameterTarget;
-};
-
 export function getMappingOptionByTarget<T extends DashboardCard>(
-  mappingOptions: MappingOption[],
+  mappingOptions: ParameterMappingOption[],
   dashcard: T,
-  target: ParameterTarget,
+  target?: ParameterTarget | null,
   question?: T extends QuestionDashboardCard ? Question : undefined,
-): MappingOption | undefined {
+): ParameterMappingOption | undefined {
   if (!target) {
     return;
   }
@@ -75,11 +68,12 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
   }
 
   const stageIndex = -1;
-  const columns = Lib.visibleColumns(question.query(), stageIndex);
+  const query = question.query();
+  const columns = Lib.visibleColumns(query, stageIndex);
   const normalizedTarget = normalize(target[1]);
 
   const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
-    question.query(),
+    query,
     stageIndex,
     columns,
     [normalizedTarget],
@@ -91,7 +85,7 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
   }
 
   const mappingColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
-    question.query(),
+    query,
     stageIndex,
     columns,
     mappingOptions.map(({ target }) => normalize(target[1])),

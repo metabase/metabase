@@ -19,9 +19,9 @@ import type {
   Bookmark,
   Card,
   CardId,
-  QuestionDashboardCard,
   DashboardId,
   DashCardId,
+  DashboardCard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -292,10 +292,8 @@ export const getEditingParameter = createSelector(
 );
 
 const getCard = (state: State, { card }: { card: Card }) => card;
-const getDashCard = (
-  state: State,
-  { dashcard }: { dashcard: QuestionDashboardCard },
-) => dashcard;
+const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
+  dashcard;
 
 export const getParameterTarget = createSelector(
   [getEditingParameter, getCard, getDashCard],
