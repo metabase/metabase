@@ -3,7 +3,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.upload-test :as upload-test]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest uploads-disabled-for-sandboxed-user-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
