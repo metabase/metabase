@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { FIXED_WIDTH } from "./Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";
 
 interface DashboardCardProps {
   isAnimationDisabled?: boolean;
@@ -65,17 +65,8 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
   }
 `;
 
-export const DashboardGridContainer = styled.div<{
-  isFixedWidth: boolean;
-}>`
+export const DashboardGridContainer = styled(FixedWidthContainer)`
   display: flex;
   align-items: center;
   justify-content: center;
-
-  ${({ isFixedWidth }) =>
-    isFixedWidth &&
-    css`
-      margin: 0 auto;
-      max-width: ${FIXED_WIDTH};
-    `}
 `;

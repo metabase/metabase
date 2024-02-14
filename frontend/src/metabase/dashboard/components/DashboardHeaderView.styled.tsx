@@ -11,7 +11,7 @@ import {
 } from "metabase/styled-components/theme";
 import EditableText from "metabase/core/components/EditableText";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";
+import { MaxWidthContainer } from "./Dashboard/Dashboard.styled";
 import { SIDEBAR_WIDTH } from "./Sidebar";
 
 interface TypeForItemsThatRespondToNavBarOpen {
@@ -19,7 +19,7 @@ interface TypeForItemsThatRespondToNavBarOpen {
 }
 
 export const HeaderFixedWidthContainer = styled(
-  FixedWidthContainer,
+  MaxWidthContainer,
 )<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;

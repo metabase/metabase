@@ -94,10 +94,6 @@ export const ParametersAndCardsContainer = styled.div<{
   min-width: 0;
   overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
     shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
-  overflow-x: hidden;
-  @supports (overflow-x: clip) {
-    overflow-x: clip;
-  }
   padding-bottom: 40px;
 `;
 
@@ -138,7 +134,7 @@ export const CardsContainer = styled(FullWidthContainer)`
 `;
 
 export const FIXED_WIDTH = "1048px";
-export const FixedWidthContainer = styled.div<{
+export const MaxWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`
   width: 100%;
@@ -148,6 +144,18 @@ export const FixedWidthContainer = styled.div<{
     css`
       margin: 0 auto;
       max-width: ${FIXED_WIDTH};
+    `}
+`;
+export const FixedWidthContainer = styled.div<{
+  isFixedWidth: boolean;
+}>`
+  width: 100%;
+
+  ${({ isFixedWidth }) =>
+    isFixedWidth &&
+    css`
+      margin: 0 auto;
+      width: ${FIXED_WIDTH};
     `}
 `;
 
