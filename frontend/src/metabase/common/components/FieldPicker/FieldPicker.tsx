@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { FieldInfoIcon } from "metabase/components/MetadataInfo/FieldInfoIcon";
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   ToggleItem,
   ColumnItem,
@@ -91,7 +91,7 @@ export const FieldPicker = ({
 
               <ItemIcon name={getColumnIcon(item.column)} size={18} />
               <ItemTitle>{item.displayName}</ItemTitle>
-              <FieldInfoIcon
+              <QueryColumnInfoIcon
                 query={query}
                 stageIndex={stageIndex}
                 column={item.column}

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
-import { FieldInfoIcon } from "./FieldInfoIcon";
+import { QueryColumnInfoIcon } from "./ColumnInfoIcon";
 
 function setup(table: string, column: string) {
   const query = createQuery();
@@ -9,10 +9,12 @@ function setup(table: string, column: string) {
   const findColumn = columnFinder(query, columns);
   const col = findColumn(table, column);
 
-  return render(<FieldInfoIcon query={query} stageIndex={-1} column={col} />);
+  return render(
+    <QueryColumnInfoIcon query={query} stageIndex={-1} column={col} />,
+  );
 }
 
-describe("FieldInfoIcon", () => {
+describe("QueryColumnInfoIcon", () => {
   it("should show the hovercard only on hover", async () => {
     setup("PRODUCTS", "CATEGORY");
 

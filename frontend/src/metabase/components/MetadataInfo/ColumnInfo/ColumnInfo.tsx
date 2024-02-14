@@ -7,39 +7,26 @@ import {
   InfoContainer,
   SemanticTypeLabel,
   FieldFingerprintInfo,
-} from "./FieldInfo.styled";
+} from "./ColumnInfo.styled";
 
-export type FieldInfoProps = FieldInfoFieldProps | FieldInfoQueryProps;
-
-export function FieldInfo(props: FieldInfoProps) {
-  if ("field" in props) {
-    return <FieldInfoField {...props} />;
-  }
-
-  return <FieldInfoQuery {...props} />;
-}
-
-// eslint-disable-next-line import/no-default-export
-export default FieldInfo;
-
-type FieldInfoFieldProps = {
+export type TableColumnInfoProps = {
   className?: string;
-  /**
-   * @deprecated prefer to use the MLv2 query props
-   */
   field: Field | DatasetColumn;
   timezone?: string;
   showAllFieldValues?: boolean;
   showFingerprintInfo?: boolean;
 };
 
-export function FieldInfoField({
+/**
+ * @deprecated prefer to use the MLv2 query props
+ */
+export function TableColumnInfo({
   className,
   field,
   timezone,
   showAllFieldValues,
   showFingerprintInfo,
-}: FieldInfoFieldProps) {
+}: TableColumnInfoProps) {
   return (
     <InfoContainer className={className}>
       <ColumnDescription description={field.description} />
@@ -55,7 +42,7 @@ export function FieldInfoField({
   );
 }
 
-type FieldInfoQueryProps = {
+export type QueryColumnInfoProps = {
   className?: string;
   query: Lib.Query;
   stageIndex: number;
@@ -65,8 +52,7 @@ type FieldInfoQueryProps = {
   showFingerprintInfo?: boolean;
 };
 
-// TODO: support fingerprint info
-export function FieldInfoQuery({
+export function QueryColumnInfo({
   className,
   query,
   stageIndex,
@@ -74,7 +60,7 @@ export function FieldInfoQuery({
   showAllFieldValues,
   showFingerprintInfo,
   timezone,
-}: FieldInfoQueryProps) {
+}: QueryColumnInfoProps) {
   const { description, semanticType } = Lib.displayInfo(
     query,
     stageIndex,
