@@ -137,7 +137,6 @@ function getQuestion({
       display: "table",
       visualization_settings: {},
       type: "question",
-      dataset: false,
       dataset_query: {
         type: "query",
         database: SAMPLE_DB_ID,

@@ -173,11 +173,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
-          // When the dataset query changes, we should loose the dataset flag,
+          // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(
-            setCardAndRun({ ...card, dataset: false, type: "question" }),
-          );
+          dispatch(setCardAndRun({ ...card, type: "question" }));
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));

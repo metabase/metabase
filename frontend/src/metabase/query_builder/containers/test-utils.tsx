@@ -64,7 +64,6 @@ export const TEST_CARD = createMockCard({
 export const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
   type: "question",
-  dataset: false,
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -79,7 +78,6 @@ export const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
 export const TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
   type: "question",
-  dataset: false,
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",

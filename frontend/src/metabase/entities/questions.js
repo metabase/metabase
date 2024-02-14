@@ -43,7 +43,7 @@ const Questions = createEntity({
             const result = await get(payload);
 
             if (result.name.toLowerCase().includes("metric")) {
-              return { ...result, type: "metric", dataset: false };
+              return { ...result, type: "metric" };
             }
 
             return result;
@@ -55,7 +55,7 @@ const Questions = createEntity({
 
             return results.map(result => {
               if (result.name.toLowerCase().includes("metric")) {
-                return { ...result, type: "metric", dataset: false };
+                return { ...result, type: "metric" };
               }
 
               return result;
@@ -69,7 +69,6 @@ const Questions = createEntity({
               const tweakedPayload = {
                 ...payload,
                 type: "question",
-                dataset: false,
               };
               const result = await create(tweakedPayload);
               return { ...result, type: "metric" };
@@ -85,7 +84,6 @@ const Questions = createEntity({
               const tweakedPayload = {
                 ...payload,
                 type: "question",
-                dataset: false,
               };
               const result = await update(tweakedPayload);
               return { ...result, type: "metric" };
