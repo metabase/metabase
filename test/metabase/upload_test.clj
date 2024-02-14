@@ -1104,7 +1104,7 @@
   (mt/test-driver :h2
     (snowplow-test/with-fake-snowplow-collector
       (with-upload-table!
-        [_table (upload-example-csv!)]
+        [_table (card->table (upload-example-csv!))]
         (is (=? {:data {"model_id"        pos?
                         "size_mb"         3.910064697265625E-5
                         "num_columns"     2
@@ -1215,8 +1215,14 @@
         _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)]
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
 
+(defmacro maybe-apply-macro
+  [flag macro-fn & body]
+  `(if ~flag
+     (~macro-fn ~@body)
+     ~@body))
+
 (defn append-csv-with-defaults!
-  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden"
+  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
   [& {:keys [uploads-enabled user-id file table-id is-upload]
       :or {uploads-enabled true
            user-id         (mt/user->id :crowberto)
@@ -1236,6 +1242,7 @@
           (try (append-csv! {:table-id table-id
                              :file     file})
                (finally
+                 ;; Drop the table in the testdb if a new one was created.
                  (when new-table
                    (driver/drop-table! driver/*driver*
                                        (mt/id)
