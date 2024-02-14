@@ -74,11 +74,6 @@ if (hasPremiumFeature("whitelabel")) {
           ),
         },
         {
-          key: "application-font-files",
-          widget: FontFilesWidget,
-          getHidden: settings => settings["application-font-files"] == null,
-        },
-        {
           key: "application-colors",
           display_name: t`Color Palette`,
           widget: ColorSettingsWidget,
@@ -99,6 +94,11 @@ if (hasPremiumFeature("whitelabel")) {
           key: "application-font",
           display_name: t`Font`,
           widget: FontWidget,
+        },
+        {
+          key: "application-font-files",
+          widget: FontFilesWidget,
+          getHidden: settings => settings["application-font-files"] == null,
         },
         {
           key: "landing-page",
