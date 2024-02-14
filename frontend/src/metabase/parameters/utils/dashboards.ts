@@ -95,7 +95,7 @@ export function isDashboardParameterWithoutMapping(
 }
 
 function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
-  const extendedParameterMappings = dashcards.flatMap(dashcard => {
+  return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
     const extendedParameterMappings = (parameter_mappings || [])
@@ -113,8 +113,6 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
 
     return extendedParameterMappings;
   });
-
-  return extendedParameterMappings;
 }
 
 export function getDashboardUiParameters(
