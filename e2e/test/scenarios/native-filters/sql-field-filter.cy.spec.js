@@ -38,13 +38,13 @@ describe("scenarios > filters > sql filters > field filter", () => {
       FieldFilter.setWidgetType("ID");
     });
 
-    function setDefaultFieldValue(value, { buttonLabel = "Add filter" } = {}) {
+    function setDefaultFieldValue(value) {
       cy.findByTestId("sidebar-content")
         .findByText("Enter a default value…")
         .click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter a default value…").type(value);
-        cy.button(buttonLabel).click();
+        cy.button("Add filter").click();
       });
     }
 

@@ -117,7 +117,7 @@ describe("scenarios > dashboard > filters > number", () => {
     ensureDashboardCardHasText("37.65");
 
     // Removing value resets back to default
-    setFilterWidgetValue(null, "Enter a number", undefined, {
+    setFilterWidgetValue(null, "Enter a number", {
       buttonLabel: "Set to default",
     });
     filterWidget().findByText("2.07");

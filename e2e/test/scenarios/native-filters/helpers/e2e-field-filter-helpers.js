@@ -82,11 +82,8 @@ export function applyFilterByType(
  *
  * @param {string} value
  */
-export function addDefaultStringFilter(
-  value,
-  { buttonLabel = "Add filter" } = {},
-) {
-  enterDefaultValue(value, buttonLabel);
+export function addDefaultStringFilter(value) {
+  enterDefaultValue(value, "Add filter");
 }
 
 // FIELD FILTER NUMBER FILTERS
@@ -111,13 +108,10 @@ export function addWidgetNumberFilter(
  * @param {array|string} value
  * @return {function}
  */
-export function addDefaultNumberFilter(
-  value,
-  { buttonLabel = "Add filter" } = {},
-) {
+export function addDefaultNumberFilter(value) {
   return isBetweenFilter(value)
-    ? addBetweenFilter(value, buttonLabel)
-    : enterDefaultValue(value, buttonLabel);
+    ? addBetweenFilter(value)
+    : enterDefaultValue(value);
 }
 
 // UI PATTERNS
@@ -194,11 +188,7 @@ function enterDefaultValue(value, buttonLabel = "Add filter") {
  * @param {string} searchTerm
  * @param {string} result
  */
-export function pickDefaultValue(
-  searchTerm,
-  result,
-  { buttonLabel = "Add filter" } = {},
-) {
+export function pickDefaultValue(searchTerm, result) {
   cy.findByText("Enter a default value…").click();
   cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
 
@@ -212,7 +202,7 @@ export function pickDefaultValue(
   //
   cy.findByTestId(`${result}-filter-value`).should("be.visible").click();
 
-  cy.button(buttonLabel).click();
+  cy.button("Add filter").click();
 }
 
 /**

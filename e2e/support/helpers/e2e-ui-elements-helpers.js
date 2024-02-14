@@ -100,10 +100,9 @@ export function resetFilterWidgetToDefault(index = 0) {
 export function setFilterWidgetValue(
   value,
   targetPlaceholder,
-  index = 0,
   { buttonLabel = "Update filter" } = {},
 ) {
-  filterWidget().eq(index).click();
+  filterWidget().eq(0).click();
   popover().within(() => {
     cy.icon("close").click();
     if (value) {
@@ -115,10 +114,9 @@ export function setFilterWidgetValue(
 
 export function toggleFilterWidgetValues(
   values = [],
-  index = 0,
   { buttonLabel = "Add filter" } = {},
 ) {
-  filterWidget().eq(index).click();
+  filterWidget().eq(0).click();
 
   popover().within(() => {
     values.forEach(value => cy.findByText(value).click());

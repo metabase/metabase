@@ -85,7 +85,6 @@ function dateFilterSelector({
   filterType,
   filterValue,
   isFilterRequired = false,
-  buttonLabel = "Add filter",
 } = {}) {
   openDateFilterPicker(isFilterRequired);
 
@@ -100,12 +99,12 @@ function dateFilterSelector({
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      cy.findByText(buttonLabel).click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
-      cy.findByText(buttonLabel).click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Relative Date":
@@ -113,7 +112,7 @@ function dateFilterSelector({
       break;
 
     case "Date Filter":
-      DateFilter.setAdHocFilter({ ...filterValue, buttonLabel });
+      DateFilter.setAdHocFilter(filterValue);
       break;
 
     default:
