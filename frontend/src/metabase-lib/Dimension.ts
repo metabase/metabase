@@ -1099,11 +1099,7 @@ export class FieldDimension extends Dimension {
   }
 
   join() {
-    return this.joinAlias()
-      ? _.findWhere(this._query && this._query.joins(), {
-          alias: this.joinAlias(),
-        })
-      : null;
+    return null;
   }
 }
 
