@@ -1,7 +1,5 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
-
-import Select, { Option } from "metabase/core/components/Select";
+import { Select } from "metabase/ui";
 
 const SettingSelect = ({
   className = "",
@@ -10,28 +8,25 @@ const SettingSelect = ({
   onChange,
   disabled = false,
 }) => (
-  <Select
-    className={cx("SettingsInput", className)}
-    placeholder={placeholder}
-    value={value}
-    defaultValue={defaultValue}
-    disabled={disabled}
-    searchProp={searchProp}
-    onChange={e => onChange(e.target.value)}
-    buttonProps={{
-      dataTestId: key,
-    }}
-  >
-    {customOptions.map(option => {
-      const name = typeof option === "object" ? option.name : option;
-      const value = typeof option === "object" ? option.value : option;
-      return (
-        <Option key={value} name={name} value={value}>
-          {name}
-        </Option>
-      );
-    })}
-  </Select>
+  <>
+    <Select
+      className={className}
+      placeholder={placeholder}
+      value={value ?? defaultValue}
+      disabled={disabled}
+      searchProp={searchProp}
+      onChange={value => onChange(value)}
+      buttonProps={{
+        dataTestId: key,
+      }}
+      data={customOptions.map(option => {
+        return {
+          label: option.name,
+          value: option.value,
+        };
+      })}
+    />
+  </>
 );
 
 export default SettingSelect;
