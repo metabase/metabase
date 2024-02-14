@@ -29,7 +29,6 @@ import * as Lib from "metabase-lib";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
-import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
   getDashcardParameterMappingOptions,
@@ -38,6 +37,7 @@ import {
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
+import { getMappingOptionByTarget } from "../utils";
 import {
   Container,
   CardLabel,
@@ -98,9 +98,6 @@ export function DashCardCardParameterMapper({
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const selectedMappingOption = _.find(mappingOptions, option =>
-    _.isEqual(normalize(option.target), normalize(target)),
-  );
 
   const handleChangeTarget = useCallback(
     target => {
@@ -112,6 +109,13 @@ export function DashCardCardParameterMapper({
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isNativeDashCard(dashcard);
+
+  const selectedMappingOption = getMappingOptionByTarget(
+    mappingOptions,
+    dashcard,
+    target,
+    question,
+  );
 
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {

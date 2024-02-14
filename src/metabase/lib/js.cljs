@@ -467,10 +467,10 @@
    a `column`.
    For aggregations requiring an argument `column` is mandatory, otherwise
    it is optional."
-  ([aggregation-operator]
-   (lib.core/aggregation-clause aggregation-operator))
-  ([aggregation-operator column]
-   (lib.core/aggregation-clause aggregation-operator column)))
+  [aggregation-operator column]
+  (if (undefined? column)
+    (lib.core/aggregation-clause aggregation-operator)
+    (lib.core/aggregation-clause aggregation-operator column)))
 
 (defn ^:export available-aggregation-operators
   "Get the available aggregation operators for the stage with `stage-number` of

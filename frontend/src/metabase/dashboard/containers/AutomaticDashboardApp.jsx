@@ -125,31 +125,38 @@ class AutomaticDashboardAppInner extends Component {
               className="bg-white border-bottom"
               data-testid="automatic-dashboard-header"
             >
-              <div className="wrapper flex align-center py2">
-                <XrayIcon name="bolt" size={24} />
-                <div>
-                  <h2 className="text-wrap mr2">
-                    {dashboard && <TransientTitle dashboard={dashboard} />}
-                  </h2>
-                </div>
-                {savedDashboardId != null ? (
-                  <Button className="ml-auto" disabled>{t`Saved`}</Button>
-                ) : (
-                  <ActionButton
-                    className="ml-auto text-nowrap"
-                    success
-                    borderless
-                    actionFn={this.save}
-                  >
-                    {t`Save this`}
-                  </ActionButton>
-                )}
+              <div className="wrapper">
+                <FixedWidthContainer
+                  data-testid="fixed-width-dashboard-header"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <div className="flex align-center py2">
+                    <XrayIcon name="bolt" size={24} />
+                    <div>
+                      <h2 className="text-wrap mr2">
+                        {dashboard && <TransientTitle dashboard={dashboard} />}
+                      </h2>
+                    </div>
+                    {savedDashboardId != null ? (
+                      <Button className="ml-auto" disabled>{t`Saved`}</Button>
+                    ) : (
+                      <ActionButton
+                        className="ml-auto text-nowrap"
+                        success
+                        borderless
+                        actionFn={this.save}
+                      >
+                        {t`Save this`}
+                      </ActionButton>
+                    )}
+                  </div>
+                  {this.props.tabs.length > 1 && (
+                    <div className="wrapper flex align-center">
+                      <DashboardTabs location={this.props.location} />
+                    </div>
+                  )}
+                </FixedWidthContainer>
               </div>
-              {this.props.tabs.length > 1 && (
-                <div className="wrapper flex align-center">
-                  <DashboardTabs location={this.props.location} />
-                </div>
-              )}
             </div>
           )}
 

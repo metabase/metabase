@@ -822,7 +822,7 @@ describe("Question", () => {
       expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
     });
 
-    it("should return skip with with FK target field which are not FKs semantically", () => {
+    it("should skip FK field targets which are not FKs semantically", () => {
       const question = base_question.setResultsMetadata({
         columns: [{ fk_target_field_id: 5 }],
       });
