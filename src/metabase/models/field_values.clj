@@ -180,9 +180,14 @@
                       {:field-values field-values})))))
 
 (t2/define-before-select :model/FieldValues
-  [query]
-  (u/prog1 query
-    (assert-coherent-query (:kv-args query))))
+  [{:keys [kv-args] :as query}]
+  (assert-coherent-query kv-args)
+  ;; Ensure that query filters out invalid rows
+  (let [type (:type kv-args)]
+    (cond
+      (= :full type) (assoc-in query [:kv-args :hash_key] nil)
+      (some? type)   (update-in query [:kv-args :hash_key] #(or % [:not= nil]))
+      :else          query)))
 
 (t2/define-after-select :model/FieldValues
   [field-values]
