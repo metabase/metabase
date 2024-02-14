@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import {
   PLUGIN_APP_INIT_FUCTIONS,
   PLUGIN_LANDING_PAGE,
@@ -22,8 +22,6 @@ import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import { LandingPageWidget } from "./components/LandingPageWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
-import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
-import MetabotToggleWidget from "./components/MetabotToggleWidget";
 import { ImageUpload } from "./components/ImageUpload";
 import LogoIcon from "./components/LogoIcon";
 import { updateColors } from "./lib/whitelabel";
@@ -31,8 +29,8 @@ import { getLoadingMessageOptions } from "./lib/loading-message";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
 import {
   MetabaseLinksToggleDescription,
-  MetabaseLinksToggleWidget,
-} from "./components/MetabaseLinksToggleWidget";
+  SwitchWidget,
+} from "./components/SwitchWidget";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
@@ -58,6 +56,7 @@ if (hasPremiumFeature("whitelabel")) {
           isActive: true,
         },
         {
+          // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
           name: t`Conceal Metabase`,
           key: "conceal-metabase",
           to: "/admin/settings/whitelabel/conceal-metabase",
@@ -130,6 +129,7 @@ if (hasPremiumFeature("whitelabel")) {
           to: "/admin/settings/whitelabel/branding",
         },
         {
+          // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
           name: t`Conceal Metabase`,
           key: "conceal-metabase",
           to: "/admin/settings/whitelabel/conceal-metabase",
@@ -141,11 +141,9 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "-conceal-metabase-introduction",
           tab: "conceal-metabase",
-          widget: () => (
-            <Text>
-              {t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`}
-            </Text>
-          ),
+          // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+          description: t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`,
+          type: "hidden",
         },
         {
           key: "application-name",
@@ -157,33 +155,46 @@ if (hasPremiumFeature("whitelabel")) {
           key: "-toggle-group",
           tab: "conceal-metabase",
           display_name: t`Homepage, Documentation and References`,
+          // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
           description: t`Control the display of homepage visuals and greeting message plus other Metabase elements such as links to Metabase documentation and Metabase references in your instance.`,
-          widget: () => null,
+          type: "hidden",
         },
         {
           key: "show-lighthouse-illustration",
           tab: "conceal-metabase",
-          display_name: t`Lighthouse illustration`,
           description: null,
           type: "boolean",
-          widget: LighthouseToggleWidget,
           defaultValue: true,
+          widget: SwitchWidget,
+          props: {
+            label: t`Show lighthouse illustration on the home and login pages`,
+            mt: "-0.5rem",
+          },
         },
         {
           key: "show-metabase-links",
           tab: "conceal-metabase",
-          display_name: t`Documentation and references`,
-          description: <MetabaseLinksToggleDescription />,
-          widget: MetabaseLinksToggleWidget,
+          description: null,
+          widget: SwitchWidget,
+          props: {
+            // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+            label: jt`Show links and references to Metabase ${(
+              <MetabaseLinksToggleDescription key="show-metabase-links-description-tooltip" />
+            )}`,
+            mt: "-1rem",
+          },
         },
         {
           key: "show-metabot",
           tab: "conceal-metabase",
-          display_name: t`Metabot greeting`,
           description: null,
           type: "boolean",
-          widget: MetabotToggleWidget,
           defaultValue: true,
+          widget: SwitchWidget,
+          props: {
+            label: t`Show metabot and greeting on the homepage`,
+            mt: "-1rem",
+          },
         },
         {
           key: "help-link",
@@ -191,9 +202,12 @@ if (hasPremiumFeature("whitelabel")) {
           display_name: t`Help Link in the Settings menu`,
           description: (
             <p>
-              {t`The Settings menu includes a Help link that goes to `}
-              <Anchor href="https://www.metabase.com/help">{t`this page`}</Anchor>
-              {t` by default.`}
+              {jt`Choose a target to the Help link in the Settings menu. It links to ${(
+                <Anchor
+                  key="this-page"
+                  href="https://www.metabase.com/help"
+                >{t`this page`}</Anchor>
+              )} by default.`}
             </p>
           ),
           widget: HelpLinkSettings,

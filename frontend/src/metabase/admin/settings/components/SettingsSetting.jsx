@@ -28,6 +28,7 @@ const SETTING_WIDGET_MAP = {
   radio: SettingRadio,
   boolean: SettingToggle,
   text: SettingText,
+  hidden: () => null,
 };
 
 export default class SettingsSetting extends Component {
