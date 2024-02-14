@@ -18,6 +18,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { Anchor, Text } from "metabase/ui";
 import RedirectWidget from "metabase/admin/settings/components/widgets/RedirectWidget";
+import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import { LandingPageWidget } from "./components/LandingPageWidget";
@@ -149,7 +150,8 @@ if (hasPremiumFeature("whitelabel")) {
           key: "application-name",
           tab: "conceal-metabase",
           display_name: t`Application Name`,
-          type: "string",
+          // type: "string",
+          widget: SettingTextInput,
         },
         {
           key: "-toggle-group",
