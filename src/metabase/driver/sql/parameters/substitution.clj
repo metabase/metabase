@@ -118,12 +118,15 @@
 (defmethod align-temporal-unit-with-param-type-and-value :default
   [_driver _field param-type value]
   (when (params.dates/date-type? param-type)
-    (let [value* (if (params.dates/not-single-date-type? param-type)
-                   (:start (params.dates/date-string->range value))
-                   value)]
-      (if (re-matches shared.ut/local-date-regex value*)
-        :day
-        :minute))))
+    (if-let [exclusion-type (params.dates/exclusion-date-type param-type value)]
+      exclusion-type
+      (let [value* (if (params.dates/not-single-date-type? param-type)
+                     (let [param-range (params.dates/date-string->range value)]
+                       (or (:start param-range) (:end param-range))) ;; Before or after filters only have one of these
+                     value)]
+        (if (re-matches shared.ut/local-date-regex value*)
+          :day
+          :minute)))))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
@@ -296,9 +299,7 @@
            ->honeysql
            (honeysql->replacement-snippet-info driver))
 
-      (and (params.dates/date-type? param-type)
-           (string? value)
-           (re-matches params.dates/date-exclude-regex value))
+      (params.dates/exclusion-date-type param-type value)
       (let [field-clause (field->clause driver field param-type value)]
         (->> (params.dates/date-string->filter value field-clause)
              mbql.u/desugar-filter-clause
