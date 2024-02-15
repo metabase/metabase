@@ -26,19 +26,20 @@
   "Given a user-id, return the sandboxes that should be enforced for the current user. A sandbox is not enforced if the
   user is in a different permissions group that grants full access to the table."
   [user-id]
-  (let [group-id->sandboxes
-        (->> (t2/select :model/GroupTableAccessPolicy
-                        {:select [[:pgm.group_id :group_id]
-                                  [:s.*]]
-                         :from [[:permissions_group_membership :pgm]]
-                         :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
-                         :where [:= :pgm.user_id user-id]})
-             (map #(t2/hydrate % :table))
-             (group-by :group_id)
-             (m/map-vals (fn [sandboxes]
-                           (->> sandboxes
-                                (filter :table_id)
-                                (into #{})))))]
+  (let [sandboxes-with-group-ids (t2/hydrate
+                                  (t2/select :model/GroupTableAccessPolicy
+                                             {:select [[:pgm.group_id :group_id]
+                                                       [:s.*]]
+                                              :from [[:permissions_group_membership :pgm]]
+                                              :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
+                                              :where [:= :pgm.user_id user-id]})
+                                  :table)
+        group-id->sandboxes (->> sandboxes-with-group-ids
+                                 (group-by :group_id)
+                                 (m/map-vals (fn [sandboxes]
+                                               (->> sandboxes
+                                                    (filter :table_id)
+                                                    (into #{})))))]
     (filter #(enforce-sandbox? group-id->sandboxes %) (reduce set/union #{} (vals group-id->sandboxes)))))
 
 (defenterprise sandboxed-user?
