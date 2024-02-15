@@ -225,7 +225,7 @@
   (log/info (trs "Checking if Database has unrun migrations..."))
   (if (seq (unrun-migrations data-source))
     (do
-     (log/info (trs "Database has unrun migrations. Checking if migraton lock is taken..."))
+     (log/info (trs "Database has unrun migrations. Checking if migration lock is taken..."))
      (wait-for-migration-lock-to-be-cleared liquibase)
      ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
      ;; sure something still needs to be done...

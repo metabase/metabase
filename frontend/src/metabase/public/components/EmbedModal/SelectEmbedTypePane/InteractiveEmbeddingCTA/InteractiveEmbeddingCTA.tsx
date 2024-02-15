@@ -20,7 +20,7 @@ const useCTAText = () => {
   if (isPaidPlan) {
     return {
       showProBadge: false,
-      description: t`Your plan allows you to use Interactive Embedding create interactive embedding experiences with drill-through and more.`,
+      description: t`Your plan allows you to use Interactive Embedding to create interactive embedding experiences with drill-through and more.`,
       linkText: t`Set it up`,
       url: "/admin/settings/embedding-in-other-applications/full-app",
     };

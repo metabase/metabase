@@ -66,7 +66,7 @@ export const AppearanceSettings = ({
       <StaticEmbedSetupPaneSettingsContentSection
         title={t`Customizing your embed’s appearance`}
       >
-        <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${(
+        <Text>{jt`These cosmetic options require changing the server code. You can play around with and preview the options here, and check out the ${(
           <ExternalLink
             key="doc"
             href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}

@@ -26,7 +26,7 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
   return (
     <Stack mt="xl" align="center" justify="center" spacing="sm">
       <Title>{t`No API keys here yet`}</Title>
-      <Text color="text-medium">{t`You can create an API key to make API calls programatically.`}</Text>
+      <Text color="text-medium">{t`You can create an API key to make API calls programmatically.`}</Text>
       <Text color="text.1">{jt`You can ${(
         <Button
           key="create-key-button"
@@ -37,7 +37,7 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
         >
           {t`create an api key`}
         </Button>
-      )} to make API calls programatically.`}</Text>
+      )} to make API calls programmatically..`}</Text>
     </Stack>
   );
 }

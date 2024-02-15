@@ -371,7 +371,7 @@ describe("scenarios > admin > people", () => {
 
       modal().within(() => {
         cy.findByText(
-          "Are you sure you want remove this group and its API key?",
+          "Are you sure you want to remove this group and its API key?",
         );
         cy.button("Remove group and API key");
       });

@@ -42,7 +42,7 @@
      ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
      (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
        api-key
-       (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
+       (throw (ex-info (tru "could not generate a key with a unique prefix") {}))))))
 
 (defn- with-updated-by [api-key]
   (assoc api-key :updated_by_id api/*current-user-id*))
