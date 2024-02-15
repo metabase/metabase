@@ -70,9 +70,9 @@ UnaggregatedOrdinal.args = {
   renderingContext,
 };
 
-export const UnaggregatedOrdinal2 = Template.bind({});
-UnaggregatedOrdinal2.args = {
-  rawSeries: data.unaggregatedOrdinal2 as any,
+export const UnaggregatedLinear = Template.bind({});
+UnaggregatedLinear.args = {
+  rawSeries: data.unaggregatedLinear as any,
   dashcardSettings: {},
   renderingContext,
 };

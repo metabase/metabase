@@ -4,7 +4,7 @@ import timeseriesXScaleUnsorted from "./timeseries-x-scale-unsorted.json";
 import timeSeriesDataAsOrdinalXScale from "./timeseries-data-as-ordinal-x-scale.json";
 import logScaleWithLabelsHourOfDayXAxis from "./log-scale-with-labels-hour-of-day-x-axis.json";
 import unaggregatedOrdinal from "./unaggregated-ordinal.json";
-import unaggregatedOrdinal2 from "./unaggregated-ordinal-2.json";
+import unaggregatedLinear from "./unaggregated-linear.json";
 import unaggregatedTimeseries from "./unaggregated-timeseries.json";
 import mixedAboveZero from "./mixed-above-zero.json";
 import mixedBelowZero from "./mixed-below-zero.json";
@@ -33,7 +33,7 @@ export const data = {
   timeSeriesDataAsOrdinalXScale,
   logScaleWithLabelsHourOfDayXAxis,
   unaggregatedOrdinal,
-  unaggregatedOrdinal2,
+  unaggregatedLinear,
   unaggregatedTimeseries,
   mixedAboveZero,
   mixedBelowZero,
