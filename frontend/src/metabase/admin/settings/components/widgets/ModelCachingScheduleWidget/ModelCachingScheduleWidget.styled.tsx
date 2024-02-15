@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 
-import SettingSelect from "../SettingSelect";
+import { SettingSelect } from "../SettingSelect";
 
 export const Root = styled.div`
   display: flex;

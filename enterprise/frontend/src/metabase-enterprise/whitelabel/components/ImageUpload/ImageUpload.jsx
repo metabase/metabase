@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 
 import { FileInput } from "./ImageUpload.styled";
 
-export const ImageUpload = ({ setting, onChange, ...props }) => {
+export const ImageUpload = ({ id, setting, onChange, ...props }) => {
   const imageSource = setting.value;
   return (
     <div>
@@ -22,6 +22,7 @@ export const ImageUpload = ({ setting, onChange, ...props }) => {
       )}
       {window.File && window.FileReader ? (
         <FileInput
+          id={id}
           onChange={e => {
             if (e.target.files.length > 0) {
               const reader = new FileReader();
