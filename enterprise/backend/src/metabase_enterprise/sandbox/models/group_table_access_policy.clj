@@ -9,6 +9,7 @@
    [metabase.config :as config]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
@@ -158,7 +159,7 @@ to make sure that perms for all other tables in that DB are set at the table-lev
   :feature :sandboxes
   [sandboxes]
   (doall
-   (for [{table-id :table_id, group-id :group_id :as sandbox} sandboxes]
+   (for [sandbox sandboxes]
      (if-let [id (:id sandbox)]
        ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
        ;; This allows existing values to be "cleared" by being set to nil
@@ -168,15 +169,12 @@ to make sure that perms for all other tables in that DB are set at the table-lev
                        id
                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
          (t2/select-one GroupTableAccessPolicy :id id))
-       (when-let [permission-id (t2/select-one-fn :id :model/DataPermissions
-                                                  :table_id table-id
-                                                  :group_id group-id
-                                                  :perm_type :perms/data-access)]
-         ;; TODO: drop the permission_id field; it's not used
-         (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-id))))))))
+       (first (t2/insert-returning-instances! GroupTableAccessPolicy sandbox))))))
 
 (t2/define-before-insert :model/GroupTableAccessPolicy
-  [gtap]
+  [{:keys [table_id group_id], :as gtap}]
+  (let [db-id (database/table-id->database-id table_id)]
+    (data-perms/set-database-permission! group_id db-id :perms/native-query-editing :no))
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 

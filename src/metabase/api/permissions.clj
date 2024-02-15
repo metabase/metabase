@@ -38,7 +38,7 @@
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
-  (data-perms.graph/api-graph {}))
+  (data-perms.graph/api-graph))
 
 (api/defendpoint GET "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
