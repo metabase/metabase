@@ -351,7 +351,7 @@
                                                                       {:group-id 1 :value :no-self-service}
                                                                       {:group-id 1 :value :unrestricted}]))))
 
-(deftest schema-permission-for-user-test
+(deftest full-schema-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/User                       {user-id-1 :id}     {}
                  :model/PermissionsGroupMembership {}                  {:user_id  user-id-1
@@ -365,19 +365,19 @@
       (mt/with-no-data-perms-for-all-users!
         ;; Clear the default permissions for the groups
         (t2/delete! :model/DataPermissions :group_id group-id-1)
-        (testing "Schema-level permission for a group is the lowest permission available for a table in the schema"
+        (testing "'Full' schema-level permission for a group is the lowest permission available for a table in the schema"
           (data-perms/set-table-permission! all-users-group-id table-id-1 :perms/data-access :no-self-service)
           (data-perms/set-table-permission! all-users-group-id table-id-2 :perms/data-access :no-self-service)
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :unrestricted)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/data-access :unrestricted)
-          (is (= :unrestricted (data-perms/schema-permission-for-user
+          (is (= :unrestricted (data-perms/full-schema-permission-for-user
                                 user-id-1 :perms/data-access database-id-1 "schema_1"))))
-        (testing "Dropping permission for one table means we lose schema permissions"
+        (testing "Dropping permission for one table means we lose full schema permissions"
           (data-perms/set-table-permission! all-users-group-id table-id-1 :perms/data-access :no-self-service)
           (data-perms/set-table-permission! all-users-group-id table-id-2 :perms/data-access :no-self-service)
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :unrestricted)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/data-access :no-self-service)
-          (is (= :no-self-service (data-perms/schema-permission-for-user
+          (is (= :no-self-service (data-perms/full-schema-permission-for-user
                                    user-id-1 :perms/data-access database-id-1 "schema_1"))))
         (testing "Permissions don't merge across groups"
           ;; even if a user has `unrestricted` access to all tables in a schema, that doesn't count as `unrestricted`
@@ -386,7 +386,7 @@
           (data-perms/set-table-permission! all-users-group-id table-id-2 :perms/data-access :no-self-service)
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :no-self-service)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/data-access :unrestricted)
-          (is (= :no-self-service (data-perms/schema-permission-for-user
+          (is (= :no-self-service (data-perms/full-schema-permission-for-user
                                    user-id-1 :perms/data-access database-id-1 "schema_1"))))))))
 
 (deftest most-permissive-database-permission-for-user-test
@@ -463,3 +463,28 @@
           (data-perms/set-table-permission! group-id table-id-3 :perms/data-access :no-self-service)
           (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
             (is (= :no-self-service (perm-value table-id-4)))))))))
+
+(deftest additional-table-permissions-works
+  (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                 :model/Database                   {db-id :id}    {}
+                 :model/User                       {user-id :id}  {}
+                 :model/PermissionsGroupMembership {}             {:user_id  user-id
+                                                                   :group_id group-id}
+                 :model/Table                      {table-id :id} {:db_id db-id
+                                                                   :schema "PUBLIC"}]
+    (mt/with-no-data-perms-for-all-users!
+      (testing "we can override the existing permission, using normal coalesce logic"
+        (mt/with-restored-data-perms-for-group! group-id
+          (data-perms/set-database-permission! group-id db-id :perms/data-access :no-self-service)
+          (data-perms/with-additional-table-permission :perms/data-access db-id table-id :unrestricted
+            (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id))))))
+      (testing "normal coalesce logic applies, so e.g. `:block` will override `:no-self-service`"
+        (mt/with-restored-data-perms-for-group! group-id
+          (is (= :block (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id)))
+          (data-perms/with-additional-table-permission :perms/data-access db-id table-id :no-self-service
+            (is (= :block (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id))))))
+      (testing "... but WILL NOT override `:unrestricted`"
+        (mt/with-restored-data-perms-for-group! group-id
+          (is (= :block (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id)))
+          (data-perms/with-additional-table-permission :perms/data-access db-id table-id :unrestricted
+            (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/data-access db-id table-id)))))))))

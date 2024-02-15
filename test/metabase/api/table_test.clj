@@ -9,7 +9,6 @@
    [metabase.http-client :as client]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Card Database Field FieldValues Table]]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :as table]
    [metabase.permissions.test-util :as perms.test-util]
@@ -142,9 +141,9 @@
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
       (mt/with-temp [Database {database-id :id} {}
                      Table    {table-id :id}    {:db_id database-id}]
-        (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "table/" table-id)))))))))
 
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options

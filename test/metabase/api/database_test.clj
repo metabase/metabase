@@ -16,8 +16,8 @@
    [metabase.models
     :refer [Card Collection Database Field FieldValues Metric Segment Table]]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database :refer [protected-password]]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -1421,10 +1421,10 @@
       (mt/with-temp [Database {database-id :id} {}
                      Table    table-with-perms {:db_id database-id :schema "public" :name "table-with-perms"}
                      Table    _                {:db_id database-id :schema "public" :name "table-without-perms"}]
-        (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (perms/grant-permissions! (perms-group/all-users) database-id "public" table-with-perms)
-        (is (= ["table-with-perms"]
-               (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-table-permission! (perms-group/all-users) table-with-perms :perms/data-access :unrestricted)
+          (is (= ["table-with-perms"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))))))))
 
     (testing "should exclude inactive Tables"
       (mt/with-temp [Database {database-id :id} {}
