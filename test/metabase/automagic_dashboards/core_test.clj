@@ -1745,17 +1745,16 @@
                          transient_name))
                   (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                          comparison-description))
-                  (is (= (take 10
-                               [{:group-name nil, :card-name "SOURCE by CITY"}
-                                {:group-name nil, :card-name "SOURCE by CITY"}
-                                {:group-name nil, :card-name "SOURCE by NAME"}
-                                {:group-name nil, :card-name "SOURCE by NAME"}
-                                {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                                {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
-                                {:group-name nil, :card-name "Distinct values"}
-                                {:group-name nil, :card-name "Distinct values"}
-                                {:group-name nil, :card-name "Null values"}
-                                {:group-name nil, :card-name "Null values"}])
+                  (is (= [{:group-name nil, :card-name "SOURCE by CITY"}
+                          {:group-name nil, :card-name "SOURCE by CITY"}
+                          {:group-name nil, :card-name "SOURCE by NAME"}
+                          {:group-name nil, :card-name "SOURCE by NAME"}
+                          {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                          {:group-name nil, :card-name "Distinct values"}
+                          {:group-name nil, :card-name "Distinct values"}
+                          {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
+                          {:group-name nil, :card-name "Null values"}
+                          {:group-name nil, :card-name "Null values"}]
                          (->> comparison-dashcards
                               (take 10)
                               (map (fn [dashcard]

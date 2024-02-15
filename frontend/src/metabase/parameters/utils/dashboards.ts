@@ -21,7 +21,7 @@ import type {
 } from "metabase-lib/parameters/types";
 import {
   getParameterTargetField,
-  isVariableTarget,
+  isParameterVariableTarget,
 } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Field from "metabase-lib/metadata/Field";
@@ -182,7 +182,7 @@ function buildFieldFilterUiParameter(
   });
 
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
-    return isVariableTarget(mapping.target);
+    return isParameterVariableTarget(mapping.target);
   });
 
   const fields = mappedFields

@@ -1099,11 +1099,7 @@ export class FieldDimension extends Dimension {
   }
 
   join() {
-    return this.joinAlias()
-      ? _.findWhere(this._query && this._query.joins(), {
-          alias: this.joinAlias(),
-        })
-      : null;
+    return null;
   }
 }
 
@@ -1636,7 +1632,7 @@ export class TemplateTagDimension extends FieldDimension {
     return (tag && tag["display-name"]) || super.displayName();
   }
 
-  mbql() {
+  mbql(): VariableTarget {
     return ["template-tag", this.tagName()];
   }
 

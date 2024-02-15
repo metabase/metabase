@@ -346,12 +346,16 @@
     query
     (update query :stages pop)))
 
-(mu/defn drop-stage-if-empty :- ::lib.schema/query
-  "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
+(mu/defn drop-empty-stages :- ::lib.schema/query
+  "Drops all empty stages in the pipeline."
   [query :- ::lib.schema/query]
-  (if-not (has-clauses? query -1)
-    (drop-stage query)
-    query))
+  (update query :stages (fn [stages]
+                          (into []
+                                (keep-indexed (fn [stage-number stage]
+                                                (when (or (zero? stage-number)
+                                                          (has-clauses? query stage-number))
+                                                  stage)))
+                                stages))))
 
 (mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]
   "Given a query and current stage, returns a tuple of `[query next-stage-number]`.

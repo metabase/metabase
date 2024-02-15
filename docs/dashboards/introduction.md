@@ -122,7 +122,11 @@ In both cases, duplication only includes the dashboard, its card layout, filters
 
 ## Arranging dashboard cards
 
-To edit dashboard cards and move them around, click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface. Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
+To edit dashboard cards and move them around, click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface.
+
+### Editing cards
+
+Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
 ![Editing dashboard](images/duplicate-card.png)
 
@@ -131,9 +135,42 @@ To edit dashboard cards and move them around, click the **pencil** icon in the t
 - **Move a card within a tab**: click and drag the card. Other cards will move out of the way.
 - **Resize a card**: click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
 - **Remove a card**: hover over the card and click the X icon in the top right corner.
-- **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card.
+- **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card. You can only replace a question with another question, not another type of card (like a text card).
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
+
+### Dashboard sections
+
+To speed up card arrangement, you can add **sections** to your dashboards.
+
+![Add section](./images/add-section.png)
+
+Sections are templates with headings and pre-arranged cards. Once you add a section to a dashboard, you can pick questions for each card, and make any other changes you like. You can only pick questions for cards, not another type of card (like a text card).
+
+If you forget to set a question for a card, the dashboard will simply render a blank card.
+
+Sections include:
+
+**KPI Grid**
+
+![KPI Grid](./images/kpi-grid.png)
+
+**Large chart with KPIs to the right**
+
+![Large chart with KPIS to the right**](./images/large-chart-with-kpis-to-the-right.png)
+
+**KPIs with large chart below**
+
+![KPIs with large chart below](./images/kpis-with-large-chart-below.png)
+
+### Dashboard width
+
+You change the width of a dashboard.
+
+![Change dashboard width](./images/toggle-width.png)
+
+- **Fixed width** (default). Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
+- **Full width**. The layout and cards will expand to take up the full width of the screen.
 
 ## Changing a card's visualization settings
 

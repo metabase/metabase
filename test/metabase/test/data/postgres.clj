@@ -102,3 +102,5 @@
 
 (defmethod sql.tx/standalone-table-comment-sql :postgres [& args]
   (apply sql.tx/standard-standalone-table-comment-sql args))
+
+(defmethod sql.tx/session-schema :postgres [_driver] "public")
