@@ -47,6 +47,15 @@ export function ModelUploadModal({
     [models.data],
   );
 
+  useEffect(
+    function setDefaultTableId() {
+      if (uploadableModels.length === 1) {
+        setTableId(Number(uploadableModels[0].based_on_upload));
+      }
+    },
+    [uploadableModels],
+  );
+
   const handleUpload = () => {
     if (uploadMode === "append" && tableId) {
       const modelForTableId = uploadableModels.find(
