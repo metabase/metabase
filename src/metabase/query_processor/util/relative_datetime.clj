@@ -5,13 +5,13 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]))
 
-(defn use-server-side-relative-datetime?
+(defn- use-server-side-relative-datetime?
   "Check whether :relative-datetime clause could be computed server side. True for [[u.date/add-units]] greater than
    or equal to day."
   [unit]
   (contains? #{:day :week :month :quarter :year} unit))
 
-(defn relative-datetime-sql-str
+(defn- relative-datetime-sql-str
   "Compute relative datetime from [[qp.timezone/now]] shifted by `unit` and `amount`. Format the resulting value
    to literal string compatible with most sql databases, to avoid possible jdbc driver timezone conversions."
   [unit amount]
@@ -20,18 +20,7 @@
       (u.date/add unit amount)
       (u.date/format-sql)))
 
-#_(defn cacheable-relative-datetime-honeysql
-  "Return honeysql form for relative datetime clasue, that is cacheable -- values of `getdate` or `current_timestamp`
-   are computed server side."
-  [unit amount]
-  ;; In Snowflake, timestamp is user-specified alias to timestamp_ntz (default), timestamp_ltz or timestamp_tz.
-  ;; For more info see the docs: https://docs.snowflake.com/en/sql-reference/data-types-datetime#timestamp
-  ;; We do not have to care which timestamp is currently aliased, because [[relative-datetime-sql-str]]
-  ;; generates the now timestamp in the same timezone as `current_timestamp` or `getdate` function would.
-  [:cast (relative-datetime-sql-str unit amount) :timestamp])
-
-;; NOTE: At the time of writing, we are supporting Snowflake and Redshift which could share the logic. If we support
-;;       more databases in future, this method probably should be dividied into multimethods.
+;; NOTE: At the time of writing, we are supporting Snowflake and Redshift which could share the logic.
 (defn maybe-cacheable-relative-datetime-honeysql
   "Return honeysql form for relative datetime clasue, that is cacheable -- values of `getdate` or `current_timestamp`
    are computed server side."

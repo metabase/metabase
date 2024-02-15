@@ -64,7 +64,6 @@
    #{:redshift :snowflake}
    (mt/with-metadata-provider (mt/id)
      (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
-       ;; Units are [[metabase.driver.redshift/server-side-relative-datetime-units]] in defined order.
        (doseq [unit [:day :week :month :quarter :year]
                value [-30 0 7]
                :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator unit value)]]
@@ -89,8 +88,6 @@
                    [7 "Conchúr Tihomir" "2014-08-02T09:30:00-04:00"]
                    [6 "Shad Ferdynand" "2014-08-02T12:30:00-04:00"]]
                   (->> (mt/run-mbql-query
-                        ;; Using following table, test does not work from the repl. In the CI it should however.
-                        ;; TODO is to find out if and why!
                         users
                         {:fields [$id $name $last_login]
                          :filter [:and

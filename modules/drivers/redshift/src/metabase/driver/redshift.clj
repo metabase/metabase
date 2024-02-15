@@ -216,12 +216,6 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
-#_(defmethod sql.qp/->honeysql [:redshift :relative-datetime]
-  [driver [_ amount unit]]
-  (if (qp.relative-datetime/use-server-side-relative-datetime? unit)
-    (qp.relative-datetime/cacheable-relative-datetime-honeysql unit amount)
-    ((get-method sql.qp/->honeysql :sql) driver [_ amount unit])))
-
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
   (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))

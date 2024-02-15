@@ -403,12 +403,6 @@
            [:convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
 
-#_(defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
-  [driver [_ amount unit]]
-  (if (qp.relative-datetime/use-server-side-relative-datetime? unit)
-    (qp.relative-datetime/cacheable-relative-datetime-honeysql unit amount)
-    ((get-method sql.qp/->honeysql :sql) driver [_ amount unit])))
-
 (defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
   [driver [_ amount unit]]
   (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
