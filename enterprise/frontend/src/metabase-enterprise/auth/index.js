@@ -100,7 +100,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
         description: t`When a user logs in via SAML, create a Metabase account for them automatically if they don't have one.`,
         type: "boolean",
-        getHidden: () => true,
       },
       {
         key: "saml-identity-provider-uri",
@@ -194,7 +193,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
         description: t`When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.`,
         type: "boolean",
-        getHidden: () => true,
       },
       {
         key: "jwt-identity-provider-uri",

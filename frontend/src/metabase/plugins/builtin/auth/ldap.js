@@ -40,7 +40,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
           // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
           description: t`When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one.`,
           type: "boolean",
-          getHidden: () => true,
         },
         {
           key: "ldap-host",

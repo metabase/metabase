@@ -122,6 +122,7 @@ export const SettingsLdapFormView = ({
             <FormSwitch
               id="ldap-user-provisioning-enabled?"
               name={fields["ldap-user-provisioning-enabled?"].name}
+              defaultChecked={fields["ldap-user-provisioning-enabled?"].default}
             />
           </Stack>
           <FormSection title={"Server Settings"}>
@@ -215,12 +216,19 @@ const LDAP_ATTRS = [
   "ldap-sync-admin-group",
 ];
 
+const DEFAULTABLE_LDAP_ATTRS = new Set(["ldap-user-provisioning-enabled?"]);
+
 const getAttributeValues = (
   settings: Record<string, LdapFormSettingElement>,
   values: SettingValues,
 ) => {
   return Object.fromEntries(
-    LDAP_ATTRS.map(key => [key, values[key] ?? settings[key]?.default]),
+    LDAP_ATTRS.map(key => [
+      key,
+      DEFAULTABLE_LDAP_ATTRS.has(key)
+        ? values[key] ?? settings[key]?.default
+        : values[key],
+    ]),
   );
 };
 

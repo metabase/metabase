@@ -154,12 +154,19 @@ const JWT_ATTRS = [
   "jwt-group-sync",
 ];
 
+const DEFAULTABLE_JWT_ATTRS = new Set(["jwt-user-provisioning-enabled?"]);
+
 const getAttributeValues = (
   settings: Record<string, JWTFormSettingElement>,
   values: SettingValues,
 ) => {
   return Object.fromEntries(
-    JWT_ATTRS.map(key => [key, values[key] ?? settings[key]?.default]),
+    JWT_ATTRS.map(key => [
+      key,
+      DEFAULTABLE_JWT_ATTRS.has(key)
+        ? values[key] ?? settings[key]?.default
+        : values[key],
+    ]),
   );
 };
 
