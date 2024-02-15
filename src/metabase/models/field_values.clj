@@ -155,7 +155,7 @@
   [{:keys [field_id] :as field-values}]
   (u/prog1 (merge {:type :full} field-values)
     (assert-valid-human-readable-values field-values)
-    (assert-valid-type-hash-combo field-values)
+    (assert-valid-type-hash-combo <>)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
     (when (= :full (keyword (:type <>)))
       (clear-advanced-field-values-for-field! field_id))))
