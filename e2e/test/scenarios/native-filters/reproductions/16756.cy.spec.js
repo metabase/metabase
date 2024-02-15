@@ -58,7 +58,7 @@ describe("issue 16756", () => {
 
     popover().contains("15").click();
 
-    cy.button("Update filter").click();
+    cy.button("Add filter").click();
 
     runQuery();
 

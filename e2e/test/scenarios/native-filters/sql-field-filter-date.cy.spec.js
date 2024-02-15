@@ -32,7 +32,10 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
       cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
       FieldFilter.setWidgetType(subType);
-      dateFilterSelector({ filterType: subType, filterValue: value });
+      dateFilterSelector({
+        filterType: subType,
+        filterValue: value,
+      });
 
       SQLFilter.runQuery();
 
@@ -96,12 +99,12 @@ function dateFilterSelector({
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Relative Date":
