@@ -80,6 +80,7 @@ export const buildEChartsWaterfallSeries = (
         borderColorDoji: "transparent",
         borderWidth: 0,
       },
+      animationDuration: 0,
       barWidth,
       dimensions: [
         X_AXIS_DATA_KEY,
