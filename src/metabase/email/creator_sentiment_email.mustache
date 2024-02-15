@@ -1,8 +1,6 @@
 {{> metabase/email/_header }}
-  <div class="card-container">
-    <p style="font-weight: 500; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};">
-      <i>{{self-hosted}}</i>
-    </p>
+  <div class="card-container" style="color: {{colorTextMedium}};">
+    {{{self-hosted}}}
 
     <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
       Hi {{first-name}},
@@ -13,7 +11,7 @@
     </p>
 
     <p style="font-weight: 600; line-height: 1.375em; color: {{colorTextMedium}};">
-      We’d like to know how we’re doing. Can you spare 30 seconds to fill out this NPS survey?
+      We’d like to know how we’re doing.<br>Can you spare 30 seconds to fill out this NPS survey?
     </p>
 
     <div style="text-align: center;">

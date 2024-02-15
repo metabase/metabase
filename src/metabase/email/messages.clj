@@ -311,9 +311,10 @@
                          {:link (str "https://metabase.com/feedback/creator?context=" blob)}
                          {:link "https://metabase.com/feedback/creator"})
                        (when-not (premium-features/is-hosted?)
-                         {:self-hosted (str "(This email is sent directly from "
-                                            (public-settings/site-url)
-                                            ", it doesn't go through any external services)")}))
+                         {:self-hosted (str "<p style= \"font-weight: 500; font-size: 0.875em; line-height: 1.375em;\">"
+                                        "<i>(This email is sent directly from "
+                                        (public-settings/site-url)
+                                        ", it doesn't go through any external services)</i></p>")}))
         message {:subject      "Metabase would love your take on something"
                  :recipients   [email]
                  :message-type :html

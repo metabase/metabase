@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.stats :as stats]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -23,7 +24,7 @@
 (setting/defsetting ^:private no-surveys
   (deferred-tru "Enable or disable creator sentiment emails")
   :type       :boolean
-  :default    true
+  :default    false
   :visibility :internal
   :audit      :getter)
 
@@ -43,7 +44,7 @@
                      [:>= :d.created_at (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)]
                      [:= :u.is_active true]
                      [:= :u.type "personal"]
-                     (when has-whitelabelling? [:= :user.is_superuser true])]
+                     (when has-whitelabelling? [:= :u.is_superuser true])]
              :group-by [:u.id]
              :having [:and
                       [:>= [:count [:distinct :rc.id]] 10]
@@ -71,25 +72,15 @@
                           [[:count [:distinct [:case [:and [:= :rc.type "model"] [:= :rc.archived false]] :rc.id]]] :num_models]]
                  :from [[:report_card :rc]]}))
 
-(defn- fetch-plan-info []
-  (cond
-    (and config/ee-available? (premium-features/is-hosted?) (premium-features/has-any-features?)) "pro-cloud/enterprise-cloud"
-    (and config/ee-available? (premium-features/is-hosted?) (not (premium-features/has-any-features?))) "starter"
-    (and config/ee-available? (not (premium-features/is-hosted?))) "pro-self-hosted/enterprise-self-hosted"
-    (not config/ee-available?) "oss"
-    :else "unknown"))
-
-(defn- fetch-instance-data
-  [tracking-enabled]
-  (when tracking-enabled
-    (let [num-cards (fetch-num-cards)]
-      {:created_at (snowplow/instance-creation)
-       :plan (fetch-plan-info)
-       :verison (config/mb-version-info :tag)
-       :num_users (fetch-num-users)
-       :num_dashboards (fetch-num-dashboards)
-       :num_questions (:num_questions num-cards)
-       :num_models (:num_models num-cards)})))
+(defn- fetch-instance-data []
+  (let [num-cards (fetch-num-cards)]
+    {:created_at (snowplow/instance-creation)
+     :plan (stats/fetch-plan-info)
+     :verison (config/mb-version-info :tag)
+     :num_users (fetch-num-users)
+     :num_dashboards (fetch-num-dashboards)
+     :num_questions (:num_questions num-cards)
+     :num_models (:num_models num-cards)}))
 
 (defn- send-creator-sentiment-emails!
   "Send an email to the instance admin following up on their experience with Metabase thus far."
@@ -97,7 +88,7 @@
   ;; we need access to email AND the instance must have surveys enabled.
   (when (and (email/email-configured?)
              (not (no-surveys)))
-    (let [instance-data (fetch-instance-data (public-settings/anon-tracking-enabled))
+    (let [instance-data (when (public-settings/anon-tracking-enabled) (fetch-instance-data))
           creators (fetch-creators (premium-features/enable-whitelabeling?))
           month (- (.getValue (t/month)) 1)]
       (doseq [creator creators]
