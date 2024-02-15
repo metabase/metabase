@@ -113,7 +113,7 @@
 
    In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
    rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
-   This may result in `insert-fn` being called a second time.
+   This may result in `update-fn` being called a second time.
 
    In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
