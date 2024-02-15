@@ -70,7 +70,6 @@ describe(
       cy.visit("/admin/settings/authentication/ldap");
 
       getUserProvisioningInput().click();
-      enterLdapPort("389"); // api response fails without changing the port
       cy.button("Save changes").click();
       cy.wait("@updateLdapSettings");
 
