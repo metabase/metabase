@@ -176,7 +176,7 @@
                       {:field-values field-values})))
 
     (and (contains? field-values :hash_key) (nil? hash_key))
-    (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-nil hash_key"
+    (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
                     {:field-values field-values}))))
 
 (defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]

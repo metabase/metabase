@@ -292,7 +292,7 @@
                               (t2/insert! :model/FieldValues :field_id field-id :type :sandbox)))
         (is (thrown-with-msg? ExceptionInfo
                               #"Advanced FieldValues require a hash_key"
-                              (t2/insert! :model/FieldValues :field_id field-id :type :sandbox :hash_key "")))
+                              (t2/insert! :model/FieldValues :field_id field-id :type :sandbox :hash_key " ")))
         (finally
           ;; Clean up in case there were any failed assertions, and we ended up inserting values
           (t2/delete! :model/FieldValues :field_id field-id))))))
@@ -367,7 +367,7 @@
     (t2/select :model/FieldValues :field_id 1 :type :sandbox)
     (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key "12345")
     (is (thrown-with-msg? ExceptionInfo
-                          #"Invalid query - Advanced FieldValues can only specify a non-nil hash_key"
+                          #"Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
                           (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key nil)))))
 
 (deftest select-safety-filter-test
