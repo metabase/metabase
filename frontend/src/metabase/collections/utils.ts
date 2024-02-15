@@ -219,14 +219,17 @@ export function canManageCollectionAuthorityLevel(
   collection: Partial<Collection>,
   collectionMap: Partial<Record<CollectionId, Collection>>,
 ) {
-  if (isRootPersonalCollection(collection)) {
-    return false;
-  }
+  // if (isRootPersonalCollection(collection)) {
+  //   return false;
+  // }
   const parentId = coerceCollectionId(collection.parent_id);
   const parentCollection = collectionMap[parentId];
-  const collections = Object.values(collectionMap).filter(isNotNull);
+  // const collections = Object.values(collectionMap).filter(isNotNull);
+
+  console.log(parentCollection, collection)
+
   return (
-    parentCollection &&
-    !isPersonalOrPersonalChild(parentCollection, collections)
+    !!parentCollection 
+    // && !isPersonalOrPersonalChild(parentCollection, collections)
   );
 }

@@ -35,17 +35,7 @@ function FormAuthorityLevelFieldContainer({
   collectionsMap,
   isAdmin,
 }: FormAuthorityLevelFieldContainerProps) {
-  const canManageAuthorityLevel = useMemo(
-    () =>
-      isAdmin &&
-      canManageCollectionAuthorityLevel(
-        { parent_id: collectionParentId },
-        collectionsMap,
-      ),
-    [collectionParentId, collectionsMap, isAdmin],
-  );
-
-  if (!canManageAuthorityLevel) {
+  if (!isAdmin) {
     return null;
   }
 

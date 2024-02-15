@@ -34,8 +34,8 @@ export const CollectionMenu = ({
   if (
     isAdmin &&
     !isRoot &&
-    !isPersonal &&
-    !isPersonalCollectionChild &&
+    // !isPersonal &&
+    // !isPersonalCollectionChild &&
     canWrite
   ) {
     items.push(
