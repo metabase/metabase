@@ -1,10 +1,7 @@
 import { c } from "ttag";
 import { useDisclosure } from "@mantine/hooks";
-import type {
-  Card,
-  CollectionEssentials,
-  SearchResult,
-} from "metabase-types/api";
+import type { Card, SearchResult } from "metabase-types/api";
+import * as Urls from "metabase/lib/urls";
 
 import { getCollectionName, sortModels } from "../utils";
 
@@ -12,7 +9,6 @@ import {
   CollectionCollapse,
   CollectionExpandCollapseContainer,
   CollectionHeaderContainer,
-  CollectionHeaderGroup,
   CollectionHeaderToggle,
   ContainerExpandCollapseButton,
   ModelCard,
@@ -42,14 +38,27 @@ export const ModelGroup = ({
   const [areAllModelsShown, { toggle: toggleAllModelsShown }] =
     useDisclosure(false);
 
+  const dispatch = useDispatch();
+  const wrappable = { ...collection, model: "collection" };
+  const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
+  const icon = wrappedCollection.getIcon();
+
   return (
     <>
-      <CollectionHeader
-        collection={collection}
-        key={collectionHtmlId}
-        id={collectionHtmlId}
-        toggleSomeModelsShown={toggleSomeModelsShown}
-      />
+      <CollectionHeaderContainer id={collectionHtmlId} role="heading">
+        <Group spacing=".25rem">
+          <CollectionHeaderToggle
+            styles={noTransform}
+            onClick={toggleSomeModelsShown}
+          >
+            <Icon name={areSomeModelsShown ? "chevrondown" : "chevronright"} />
+          </CollectionHeaderToggle>
+          <Icon {...icon} />
+          <Text weight="bold" color="text-dark">
+            {getCollectionName(collection)}
+          </Text>
+        </Group>
+      </CollectionHeaderContainer>
       <CollectionCollapse in={areSomeModelsShown} transitionDuration={0}>
         {aboveFold.map(model => (
           <ModelCell
@@ -125,45 +134,6 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
         <LastEdited editorFullName={lastEditorFullName} timestamp={timestamp} />
       </ModelCard>
     </Link>
-  );
-};
-
-const CollectionHeader = ({
-  collection,
-  id,
-  toggleSomeModelsShown,
-}: {
-  collection: CollectionEssentials;
-  id: string;
-  toggleSomeModelsShown: () => void;
-}) => {
-  const dispatch = useDispatch();
-  const wrappable = { ...collection, model: "collection" };
-  const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
-  const icon = wrappedCollection.getIcon();
-
-  return (
-    <CollectionHeaderContainer
-      id={id}
-      role="heading"
-      pt="1rem"
-      mr="1rem"
-      align="center"
-    >
-      <CollectionHeaderGroup grow noWrap>
-        <CollectionHeaderToggle
-          styles={noTransform}
-          onClick={toggleSomeModelsShown}
-        >
-          <Group spacing=".25rem">
-            <Icon {...icon} />
-            <Text weight="bold" color="text-dark">
-              {getCollectionName(collection)}
-            </Text>
-          </Group>
-        </CollectionHeaderToggle>
-      </CollectionHeaderGroup>
-    </CollectionHeaderContainer>
   );
 };
 

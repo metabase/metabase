@@ -20,7 +20,7 @@ export const BrowseTabs = styled(Tabs)`
 `;
 
 export const BrowseTabsList = styled(Tabs.List)`
-  padding: 0 1rem;
+  padding: 0 2.5rem;
   background-color: ${color("white")};
   border-bottom-width: 1px;
 `;
@@ -43,7 +43,7 @@ export const BrowseTabsPanel = styled(Tabs.Panel)`
   flex-flow: column nowrap;
   flex: 1;
   height: 100%;
-  padding: 0 1rem;
+  padding: 0 2.5rem;
 `;
 
 export const BrowseContainer = styled.div`
@@ -55,7 +55,7 @@ export const BrowseContainer = styled.div`
 
 export const BrowseDataHeader = styled.header`
   display: flex;
-  padding: 1rem;
+  padding: 1rem 2.5rem;
   padding-bottom: 0.375rem;
   color: ${color("dark")};
   background-color: ${color("white")};

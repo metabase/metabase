@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import type { HTMLAttributes } from "react";
 import Card from "metabase/components/Card";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -8,11 +7,10 @@ import { color } from "metabase/lib/colors";
 import {
   Button,
   Collapse,
-  Flex,
-  Group,
-  Icon,
-  type ButtonProps,
+  Flex, Icon,
+  type ButtonProps
 } from "metabase/ui";
+import type { HTMLAttributes } from "react";
 import { BrowseGrid } from "./BrowseApp.styled";
 
 export const ModelCard = styled(Card)`
@@ -62,17 +60,19 @@ export const CollectionHeaderContainer = styled(Flex)`
   &:not(:first-of-type) {
     border-top: 1px solid #f0f0f0;
   }
+  position: relative;
+  top: 0.5rem;
+  margin-left: -1.25rem;
+  display: flex;
+  padding-top: 1rem;
+  margin-right: 1rem;
+  align-items: center;
 `;
 
 export const CollectionHeaderLink = styled(Link)`
   &:hover * {
     color: ${color("brand")};
   }
-`;
-
-export const CollectionHeaderGroup = styled(Group)`
-  position: relative;
-  top: 0.5rem;
 `;
 
 export const BannerModelIcon = styled(Icon)`
