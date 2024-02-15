@@ -11,7 +11,11 @@ import { useMount } from "react-use";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import { getSetting } from "metabase/selectors/settings";
-import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
+import {
+  isWithinIframe,
+  initializeIframeResizer,
+  isSmallScreen,
+} from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -144,11 +148,14 @@ function EmbedFrame({
   const finalName = titled ? name : null;
 
   const hasParameters = Array.isArray(parameters) && parameters.length > 0;
-  const hasVisibleParameters =
-    hasParameters &&
-    getVisibleParameters(parameters, hiddenParameterSlugs).length > 0;
+  const visibleParameters = hasParameters
+    ? getVisibleParameters(parameters, hiddenParameterSlugs)
+    : [];
+  const hasVisibleParameters = visibleParameters.length > 0;
 
   const hasHeader = Boolean(finalName || hasParameters);
+  const isParameterPanelSticky =
+    !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
 
   return (
     <Root
@@ -191,6 +198,7 @@ function EmbedFrame({
         )}
         {hasParameters && (
           <ParametersWidgetContainer
+            isSticky={isParameterPanelSticky}
             hasVisibleParameters={hasVisibleParameters}
             data-testid="dashboard-parameters-widget-container"
           >
@@ -232,6 +240,16 @@ function EmbedFrame({
       )}
     </Root>
   );
+}
+
+function isParametersWidgetContainersSticky(parameterCount: number) {
+  if (!isSmallScreen()) {
+    return true;
+  }
+
+  // Sticky header with more than 5 parameters
+  // takes too much space on small screens
+  return parameterCount <= 5;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

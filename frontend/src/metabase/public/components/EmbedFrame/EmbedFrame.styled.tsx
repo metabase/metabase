@@ -102,15 +102,20 @@ const footerVariantStyles = {
 };
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  isSticky: boolean;
   hasVisibleParameters: boolean;
 }>`
-  position: sticky;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 3;
+  ${props =>
+    props.isSticky &&
+    css`
+      position: sticky;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 3;
 
-  background-color: ${color("white")};
+      background-color: ${color("white")};
+    `}
 
   ${props =>
     props.hasVisibleParameters &&
