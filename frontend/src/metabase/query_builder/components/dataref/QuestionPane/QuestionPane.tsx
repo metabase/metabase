@@ -40,7 +40,7 @@ const QuestionPane = ({
   onBack,
   onClose,
 }: QuestionPaneProps) => {
-  const table = question.composeThisQuery()?.table() as Table; // ? is only needed to satisfy type-checker
+  const table = question.composeThisQuery()?.legacyQueryTable() as Table; // ? is only needed to satisfy type-checker
   return (
     <SidebarContent
       title={question.displayName() || undefined}

@@ -724,13 +724,13 @@ class Question {
     return databaseId;
   }
 
-  table(): Table | null {
+  legacyQueryTable(): Table | null {
     const query = this.legacyQuery({ useStructuredQuery: true });
     return query && typeof query.table === "function" ? query.table() : null;
   }
 
   tableId(): TableId | null {
-    const table = this.table();
+    const table = this.legacyQueryTable();
     return table ? table.id : null;
   }
 
