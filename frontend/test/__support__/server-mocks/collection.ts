@@ -54,9 +54,8 @@ function getCollectionVirtualSchemaURLs(collection: Collection) {
 
   const questions = ["path:/api/database/", db, "/schema/", schema].join("");
   const models = ["path:/api/database/", db, "/datasets/", schema].join("");
-  const metrics = models;
 
-  return { questions, models, metrics };
+  return { questions, models };
 }
 
 export function setupCollectionVirtualSchemaEndpoints(
@@ -65,19 +64,14 @@ export function setupCollectionVirtualSchemaEndpoints(
 ) {
   const urls = getCollectionVirtualSchemaURLs(collection);
 
-  const questionVirtualTables = cards
-    .filter(card => card.type === "question")
-    .map(convertSavedQuestionToVirtualTable);
-  const modelVirtualTables = cards
-    .filter(card => card.type === "model")
-    .map(convertSavedQuestionToVirtualTable);
-  const metricVirtualTables = cards
-    .filter(card => card.type === "metric")
-    .map(convertSavedQuestionToVirtualTable);
+  const [models, questions] = _.partition(cards, card => card.type === "model");
+  const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
+  const questionVirtualTables = questions.map(
+    convertSavedQuestionToVirtualTable,
+  );
 
   fetchMock.get(urls.questions, questionVirtualTables);
   fetchMock.get(urls.models, modelVirtualTables);
-  fetchMock.get(urls.metrics, metricVirtualTables);
 }
 
 export function setupCollectionItemsEndpoint({
