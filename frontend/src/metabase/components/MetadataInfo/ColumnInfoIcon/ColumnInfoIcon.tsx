@@ -10,9 +10,10 @@ import {
   TableColumnInfoPopover,
 } from "../ColumnInfoPopover";
 
-import { PopoverHoverTarget } from "./ColumnInfoIcon.styled";
+import { PopoverHoverTarget, ActiveStyles } from "./ColumnInfoIcon.styled";
 
 export function QueryColumnInfoIcon({
+  className,
   delay = [0, 150],
   ...props
 }: QueryColumnInfoPopoverProps) {
@@ -22,17 +23,19 @@ export function QueryColumnInfoIcon({
   return (
     <QueryColumnInfoPopover {...props} delay={delay}>
       <PopoverHoverTarget
+        className={className}
         name="info_filled"
-        hasDescription={Boolean(description)}
+        data-no-description={Boolean(description)}
         aria-label={t`More info`}
       />
     </QueryColumnInfoPopover>
   );
 }
 
-QueryColumnInfoIcon.HoverTarget = PopoverHoverTarget;
+QueryColumnInfoIcon.ActiveStyles = ActiveStyles;
 
 export function TableColumnInfoIcon({
+  className,
   delay = [0, 150],
   field,
   ...props
@@ -40,12 +43,13 @@ export function TableColumnInfoIcon({
   return (
     <TableColumnInfoPopover {...props} field={field} delay={delay}>
       <PopoverHoverTarget
+        className={className}
         name="info_filled"
-        hasDescription={Boolean(field.description)}
+        data-no-description={Boolean(field.description)}
         aria-label={t`More info`}
       />
     </TableColumnInfoPopover>
   );
 }
 
-TableColumnInfoIcon.HoverTarget = PopoverHoverTarget;
+TableColumnInfoIcon.ActiveStyles = ActiveStyles;

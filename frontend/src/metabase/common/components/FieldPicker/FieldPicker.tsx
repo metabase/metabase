@@ -3,12 +3,13 @@ import { t } from "ttag";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+// import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   ToggleItem,
   ColumnItem,
   ItemTitle,
   ItemIcon,
+  QueryColumnInfoIcon,
 } from "./FieldPicker.styled";
 
 interface FieldPickerProps {

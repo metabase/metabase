@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import { color, alpha, darken } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
-import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+
+import { QueryColumnInfoIcon as _QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 
 export const ItemTitle = styled.div`
   min-width: 10ch;
@@ -11,6 +12,12 @@ export const ItemIcon = styled(Icon)`
   margin: 0 0.5em;
   margin-left: 0.75em;
   color: ${color("text-dark")};
+`;
+
+export const QueryColumnInfoIcon = styled(_QueryColumnInfoIcon)`
+  color: ${alpha(darken(color("brand"), 0.6), 0.8)};
+  position: absolute;
+  right: 0.5em;
 `;
 
 export const ColumnItem = styled.li`
@@ -32,18 +39,7 @@ export const ColumnItem = styled.li`
 
     &:hover {
       background: ${color("bg-medium")};
-    }
-  }
-
-  ${QueryColumnInfoIcon.HoverTarget} {
-    color: ${alpha(darken(color("brand"), 0.6), 0.8)};
-    position: absolute;
-    right: 0.5em;
-  }
-
-  &:hover {
-    ${QueryColumnInfoIcon.HoverTarget} {
-      opacity: 1;
+      ${_QueryColumnInfoIcon.ActiveStyles}
     }
   }
 `;
