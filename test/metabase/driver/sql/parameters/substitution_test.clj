@@ -46,7 +46,9 @@
               :h2
               {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :venues :name))
                :value {:type  :string/=
-                       :value ["Doohickey"]}})))))
+                       :value ["Doohickey"]}}))))))
+
+(deftest ^:parallel field-filter->replacement-snippet-info-test-2
   (testing "Compound filters should be wrapped in parens"
     (mt/dataset test-data
       (mt/with-metadata-provider meta/metadata-provider

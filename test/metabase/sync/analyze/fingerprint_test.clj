@@ -137,8 +137,8 @@
   (let [fingerprinted? (atom false)]
     (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* fingerprint-versions]
       (with-redefs [qp/process-query              (fn process-query
-                                                    ([_query rff _context]
-                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]])))
+                                                    [_query rff]
+                                                    (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                     fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
         (t2.with-temp/with-temp [Table table {}
                                  Field _     (assoc field-properties :table_id (u/the-id table))]
@@ -246,7 +246,6 @@
               {1 #{:type/Text}}
               {:base_type :type/Text, :fingerprint_version 1}))))))
 
-
 (deftest fingerprint-table!-test
   (testing "the `fingerprint!` function is correctly updating the correct columns of Field"
     (t2.with-temp/with-temp [Field field {:base_type           :type/Integer
@@ -255,7 +254,7 @@
                                           :fingerprint_version 1
                                           :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
-        (with-redefs [qp/process-query             (fn [_query rff _context]
+        (with-redefs [qp/process-query             (fn [_query rff]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                       fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
           (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,

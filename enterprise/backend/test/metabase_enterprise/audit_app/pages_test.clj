@@ -7,6 +7,7 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader :as tools.reader]
    [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.dashboards]
    [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
    [metabase.models.permissions :as perms]
    [metabase.plugins.classloader :as classloader]
@@ -18,29 +19,33 @@
    [ring.util.codec :as codec]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(comment metabase-enterprise.audit-app.pages.dashboards/keep-me)
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(deftest preconditions-test
-  (classloader/require 'metabase-enterprise.audit-app.pages.dashboards)
+(deftest ^:parallel preconditions-test
   (testing "the method should exist"
-    (is (fn? (get-method audit.i/internal-query :metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed))))
+    (is (fn? (get-method audit.i/internal-query :metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed)))))
 
+(deftest preconditions-test-2
   (testing "test that a query will fail if not ran by an admin"
     (mt/with-premium-features #{:audit-app}
       (is (= {:status "failed", :error "You don't have permissions to do that."}
              (-> (mt/user-http-request :lucky :post 202 "dataset"
                                        {:type :internal
                                         :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                 (select-keys [:status :error]))))))
+                 (select-keys [:status :error])))))))
 
+(deftest preconditions-test-3
   (testing "ok, now try to run it. Should fail because we don't have audit-app enabled"
     (mt/with-premium-features nil
       (is (= {:status "failed", :error "Audit App queries are not enabled on this instance."}
              (-> (mt/user-http-request :crowberto :post 202 "dataset"
                                        {:type :internal
                                         :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                 (select-keys [:status :error]))))))
+                 (select-keys [:status :error])))))))
 
+(deftest preconditions-test-4
   (testing "non-admin users with monitoring permissions"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
@@ -232,5 +237,5 @@
                                             {:type :internal
                                              :fn   "metabase-enterprise.audit-app.pages.users/active-and-new-by-time"
                                              :args ["day"]})]
-          (is (not= 0
-                    (count (-> results :data :rows)))))))))
+          (is (=? {:data {:rows (every-pred sequential? seq)}}
+                  results)))))))

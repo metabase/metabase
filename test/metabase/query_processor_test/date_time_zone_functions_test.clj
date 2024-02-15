@@ -366,11 +366,15 @@
                                :aggregation [[:count]]
                                :breakout    [[:expression "expr"]]}}]]
             (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-              (is (= (set expected) (set (test-datetime-math query))))))))
+              (is (= (set expected) (set (test-datetime-math query)))))))))))
 
-      ;; mongo doesn't support casting string to date so we exclude it here
-      ;; tests for it are in [[metabase.driver.mongo.query-processor-test]]
-      (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+(deftest datetime-math-tests-mongodb
+  (mt/with-temporary-setting-values [start-of-week   :sunday
+                                     report-timezone "UTC"]
+    ;; mongo doesn't support casting string to date so we exclude it here
+    ;; tests for it are in [[metabase.driver.mongo.query-processor-test]]
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+      (mt/dataset times-mixed
         (testing "date arithmetic with date columns"
           (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
                   op                  [:datetime-add :datetime-subtract]
@@ -388,8 +392,12 @@
                                :aggregation [[:count]]
                                :breakout    [[:expression "expr"]]}}]]
             (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-              (is (= (set expected) (set (test-datetime-math query))))))))
+              (is (= (set expected) (set (test-datetime-math query)))))))))))
 
+(deftest temporal-arithmetic-with-literal-date-test
+  (mt/with-temporary-setting-values [start-of-week   :sunday
+                                     report-timezone "UTC"]
+    (mt/dataset times-mixed
       (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
         (testing "date arithmetics with literal date"
           (is (= ["2008-08-20 00:00:00" "2008-04-20 00:00:00"]
@@ -419,7 +427,9 @@
                      ffirst
                      u.date/parse
                      (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
-                     (close? (t/instant) (t/seconds 30)))))))))
+                     (close? (t/instant) (t/seconds 30))))))))))
+
+(deftest ^:parallel now-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
@@ -431,7 +441,9 @@
                  ffirst
                  u.date/parse
                  (t/zoned-date-time (t/zone-id "UTC"))
-                 (close? (t/instant) (t/seconds 30)))))))
+                 (close? (t/instant) (t/seconds 30))))))))
+
+(deftest ^:parallel now-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "now works in a filter"
       (is (= 1000
@@ -439,7 +451,9 @@
                     {:aggregation [[:count]]
                      :filter      [:<= $date [:now]]})
                   (mt/formatted-rows [int])
-                  ffirst)))))
+                  ffirst))))))
+
+(deftest ^:parallel now-test-4
   (mt/test-drivers (mt/normal-drivers-with-feature :now :datetime-diff)
     (testing "should work as an argument to datetime-diff"
       (is (= 0
@@ -448,7 +462,9 @@
                      :fields [[:expression "1"]]
                      :limit  1})
                   (mt/formatted-rows [int])
-                  ffirst)))))
+                  ffirst))))))
+
+(deftest ^:parallel now-test-5
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics :datetime-diff)
     (testing "should work in combination with datetime-diff and date-arithmetics"
       (is (= [1 1]

@@ -74,7 +74,7 @@
 (defn- card-query-results [card]
   (let [query (:dataset_query card)]
     (binding [qp.perms/*card-id* nil]
-      (qp/process-query (assoc query :async? false) {:card-id (:id card)}))))
+      (qp/process-query (assoc-in query [:info :card-id] (:id card))))))
 
 (defn- query-res-match
   "Checks that the queries for a card match between original (pre-dump) and new (after load). For now, just checks the
