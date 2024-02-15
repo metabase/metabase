@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import Tooltip from "metabase/core/components/Tooltip";
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import * as Lib from "metabase-lib";
 import {
   AddButton,
@@ -13,6 +14,7 @@ import {
   TitleContainer,
   RemoveButton,
   Root,
+  QueryColumnInfoIcon,
 } from "./BreakoutColumnListItem.styled";
 
 const STAGE_INDEX = -1;
@@ -59,9 +61,10 @@ export function BreakoutColumnListItem({
   const displayName = isPinned ? item.longDisplayName : item.displayName;
 
   return (
-    <Root
+    <HoverParent
+      as={Root}
+      {...{ isSelected }}
       aria-label={displayName}
-      isSelected={isSelected}
       aria-selected={isSelected}
       data-testid="dimension-list-item"
     >
@@ -83,6 +86,12 @@ export function BreakoutColumnListItem({
               breakout ? onUpdateColumn(column) : onAddColumn(column)
             }
           />
+          <QueryColumnInfoIcon
+            query={query}
+            stageIndex={STAGE_INDEX}
+            column={item.column}
+            position="top-end"
+          />
         </TitleContainer>
         {isSelected && (
           <RemoveButton
@@ -96,6 +105,6 @@ export function BreakoutColumnListItem({
           <AddButton aria-label={t`Add dimension`} onClick={handleAddClick} />
         </Tooltip>
       )}
-    </Root>
+    </HoverParent>
   );
 }

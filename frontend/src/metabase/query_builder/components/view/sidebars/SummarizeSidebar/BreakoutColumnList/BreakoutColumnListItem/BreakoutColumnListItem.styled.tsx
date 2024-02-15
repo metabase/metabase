@@ -4,6 +4,7 @@ import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/ui";
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { color, alpha } from "metabase/lib/colors";
+import { QueryColumnInfoIcon as BaseQueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 
 export const Content = styled.div`
   display: flex;
@@ -64,9 +65,14 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
+export const QueryColumnInfoIcon = styled(BaseQueryColumnInfoIcon)`
+  margin-left: auto;
+`;
+
 const selectedStyle = css`
   ${Content},
-  ${ColumnTypeIcon} {
+  ${ColumnTypeIcon},
+  ${QueryColumnInfoIcon} {
     background-color: ${color("summarize")};
     color: ${color("white")};
   }
@@ -87,6 +93,10 @@ const unselectedStyle = css`
     opacity: 0;
     color: ${color("text-light")};
     padding-left: 0;
+  }
+
+  ${QueryColumnInfoIcon} {
+    color: ${color("text-light")};
   }
 
   &:hover {
@@ -118,6 +128,7 @@ export const Root = styled.li<{ isSelected: boolean }>`
   cursor: pointer;
   margin: 0.25rem 0;
   min-height: 34px;
+  position: relative;
 
   ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
 `;
