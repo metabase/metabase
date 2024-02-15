@@ -174,7 +174,7 @@ export function getTrendLineOptionsAndDatasets(
         type: [5, 5],
         width: 2,
       },
-      zlevel: CHART_STYLE.trendLine.zIndex,
+      z: CHART_STYLE.trendLine.zIndex,
     }),
   );
 
