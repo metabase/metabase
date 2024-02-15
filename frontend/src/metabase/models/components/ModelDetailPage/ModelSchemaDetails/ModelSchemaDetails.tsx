@@ -30,7 +30,7 @@ function ModelSchemaDetails({ model, hasEditMetadataLink }: Props) {
     type: "metadata",
   });
 
-  const fields = useMemo(() => model.table()?.fields || [], [model]);
+  const fields = useMemo(() => model.legacyQueryTable()?.fields || [], [model]);
 
   const fieldsCount = useMemo(() => {
     return ((count: number) =>

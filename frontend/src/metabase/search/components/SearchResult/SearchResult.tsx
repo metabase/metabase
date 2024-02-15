@@ -112,6 +112,25 @@ export function SearchResult({
           <ModerationIcon status={moderated_status} filled size={14} />
         </Group>
         <InfoText showLinks={!onClick} result={result} isCompact={compact} />
+        {description && showDescription && (
+          <DescriptionSection>
+            <Group noWrap spacing="sm" data-testid="result-description">
+              <DescriptionDivider
+                size="md"
+                color="focus"
+                orientation="vertical"
+              />
+              <SearchResultDescription
+                dark
+                unwrapDisallowed
+                unstyleLinks
+                allowedElements={[]}
+              >
+                {description}
+              </SearchResultDescription>
+            </Group>
+          </DescriptionSection>
+        )}
       </ResultNameSection>
       {isLoading && (
         <LoadingSection px="xs">
@@ -122,25 +141,6 @@ export function SearchResult({
         <XRaySection>
           <XRayButton leftIcon={<Icon name="bolt" />} onClick={onXRayClick} />
         </XRaySection>
-      )}
-      {description && showDescription && (
-        <DescriptionSection>
-          <Group noWrap spacing="sm" data-testid="result-description">
-            <DescriptionDivider
-              size="md"
-              color="focus"
-              orientation="vertical"
-            />
-            <SearchResultDescription
-              dark
-              unwrapDisallowed
-              unstyleLinks
-              allowedElements={[]}
-            >
-              {description}
-            </SearchResultDescription>
-          </Group>
-        </DescriptionSection>
       )}
     </SearchResultContainer>
   );

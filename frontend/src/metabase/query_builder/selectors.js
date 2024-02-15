@@ -633,7 +633,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const isNewQuestion = !originalQuestion;
 
       if (isNewQuestion) {
-        return !question.isEmpty();
+        return !question.legacyQuery().isEmpty();
       }
 
       return isSavedQuestionChanged;
@@ -669,16 +669,17 @@ export const getRawSeries = createSelector(
     // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
     // BUT the last executed "dataset_query" (to ensure data matches the query)
     return (
-      results &&
-      question.atomicQueries().map((metricQuery, index) => ({
-        card: {
-          ...question.card(),
-          display: display,
-          visualization_settings: settings,
-          dataset_query: lastRunDatasetQuery,
+      results && [
+        {
+          card: {
+            ...question.card(),
+            display: display,
+            visualization_settings: settings,
+            dataset_query: lastRunDatasetQuery,
+          },
+          data: results[0] && results[0].data,
         },
-        data: results[index] && results[index].data,
-      }))
+      ]
     );
   },
 );

@@ -376,7 +376,7 @@ describe("QuestionDataSource", () => {
         it("displays table name", () => {
           const { question } = setup({ card });
           const node = screen.queryByText(
-            new RegExp(question.table().displayName()),
+            new RegExp(question.legacyQueryTable().displayName()),
           );
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).not.toBeInTheDocument();
@@ -385,22 +385,22 @@ describe("QuestionDataSource", () => {
         it("displays table link in subhead variant", () => {
           const { question } = setup({ card, subHead: true });
           const node = screen.queryByText(
-            new RegExp(question.table().displayName()),
+            new RegExp(question.legacyQueryTable().displayName()),
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            ML_Urls.getUrl(question.table().newQuestion()),
+            ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
           );
         });
 
         it("displays table link in object detail view", () => {
           const { question } = setup({ card, isObjectDetail: true });
           const node = screen.queryByText(
-            new RegExp(question.table().displayName()),
+            new RegExp(question.legacyQueryTable().displayName()),
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            ML_Urls.getUrl(question.table().newQuestion()),
+            ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
           );
         });
       });
@@ -417,11 +417,13 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays schema name", () => {
           const { question } = setup({ card });
-          const node = screen.queryByText(question.table().schema_name);
+          const node = screen.queryByText(
+            question.legacyQueryTable().schema_name,
+          );
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            Urls.browseSchema(question.table()),
+            Urls.browseSchema(question.legacyQueryTable()),
           );
         });
       });

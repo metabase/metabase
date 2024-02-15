@@ -15,10 +15,6 @@ export function appendStageIfAggregated(query: Lib.Query) {
     : query;
 }
 
-export function dropStageIfEmpty(query: Lib.Query) {
-  return Lib.dropStageIfEmpty(query, -1);
-}
-
 function getStageIndexes(query: Lib.Query) {
   const stageCount = Lib.stageCount(query);
   return stageCount > 1 ? [-2, -1] : [-1];
