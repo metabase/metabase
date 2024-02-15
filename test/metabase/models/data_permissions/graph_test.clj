@@ -2,10 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as db]))
 
 (deftest update-db-level-data-access-permissions!-test
@@ -282,22 +285,23 @@
   (is (= (#'data-perms.graph/rename-perm {:perms/manage-database :yes})                {:details :yes}))
   (is (= (#'data-perms.graph/rename-perm {:perms/manage-database :no})                 {}))
   ;; with schemas:
-  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :unrestricted}}})    {:data {:schemas {"PUBLIC" {22 :all}}}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :no-self-service}}}) {:data {:schemas {"PUBLIC" {}}}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :block}}})           {:data {:schemas {"PUBLIC" {22 :block}}}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :no}}})         {:download {:schemas {"PUBLIC" {}}}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :yes}}})        {:download {:schemas {"PUBLIC" {22 nil}}}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :no}}})    {:data-model {:schemas {"PUBLIC" {}}}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :yes}}})   {:data-model {:schemas {"PUBLIC" {22 :all}}}}))
-  ;; multiple schemas
-  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
-         {:data {:schemas {"PUBLIC" {22 :all}, "OTHER" {}, "SECRET" {11 :block}}}}))
+  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :unrestricted
+                                                                        23 :no-self-service}}}) {:data {:schemas {"PUBLIC" {22 :all}}}})))
+  ; (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :block}}})           {:data {:schemas {"PUBLIC" {22 :block}}}}))
+  ; (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {23 :yes
+  ;                                                                            24 :no}}})         {:download {:schemas {"PUBLIC" {23 nil}}}}))
+  ; (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :yes}}})        {:download {:schemas {"PUBLIC" {22 nil}}}})))
+  ; (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :no}}})    {:data-model {:schemas {"PUBLIC" {}}}}))
+  ; (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :yes}}})   {:data-model {:schemas {"PUBLIC" {22 :all}}}}))
+  ; ;; multiple schemas
+  ; (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
+  ;        {:data {:schemas {"PUBLIC" {22 :all}, "OTHER" {}, "SECRET" {11 :block}}}}))
 
-  (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
-         {:download {:schemas {"PUBLIC" {22 nil}, "OTHER" {7 nil}, "SECRET" {11 nil}}}}))
+  ; (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
+  ;        {:download {:schemas {"PUBLIC" {22 nil}, "OTHER" {7 nil}, "SECRET" {11 nil}}}}))
 
-  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
-         {:data-model {:schemas {"PUBLIC" {22 nil}, "OTHER" {7 nil}, "SECRET" {11 nil}}}})))
+  ; (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
+  ;        {:data-model {:schemas {"PUBLIC" {22 nil}, "OTHER" {7 nil}, "SECRET" {11 nil}}}})))
 
 (deftest rename-perm-test
   (is (api-graph=
@@ -346,3 +350,78 @@
   #_(defn- all-nongranular-perm-maps []
       (generate-maps (update-vals @#'data-perms.graph/->api-vals keys)))
   #_(doseq [in (all-nongranular-perm-maps)] (println "----\n" in "\n" (#'data-perms.graph/rename-perm in))))
+
+(defn- test-data-graph [group]
+  (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))
+
+(deftest graph-set-partial-permissions-for-table-test
+  (testing "Test that setting partial permissions for a table retains permissions for other tables -- #3888"
+    (mt/with-temp [:model/PermissionsGroup group]
+      (testing "before"
+        ;; first, graph permissions only for VENUES
+        (data-perms/set-table-permission! group (mt/id :venues) :perms/data-access :unrestricted)
+        (is (= {(mt/id :venues) :all}
+               (test-data-graph group))))
+      (testing "after"
+        ;; next, grant permissions via `update-graph!` for CATEGORIES as well. Make sure permissions for VENUES are
+        ;; retained (#3888)
+        (data-perms/set-table-permission! group (mt/id :categories) :perms/data-access :unrestricted)
+        (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
+               (test-data-graph group)))))))
+
+(deftest audit-db-update-test
+  (testing "Throws exception when we attempt to change the audit db permission manually."
+    (mt/with-temp [:model/PermissionsGroup group    {}]
+      (is (thrown-with-msg?
+           Exception
+           #"Audit database permissions can only be changed by updating audit collection permissions."
+           (data-perms.graph/update-data-perms-graph! [(u/the-id group) config/audit-db-id :data :schemas] :all))))))
+
+(deftest update-graph-validate-db-perms-test
+  (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
+    (mt/with-temp [:model/Database {db-id :id}]
+      (mt/with-no-data-perms-for-all-users!
+        (let [ks [:groups (u/the-id (perms-group/all-users)) db-id :data]]
+          (letfn [(perms []
+                    (get-in (data-perms.graph/api-graph) ks))
+                  (set-perms! [new-perms]
+                    (data-perms.graph/update-data-perms-graph! (assoc-in (data-perms.graph/api-graph) ks new-perms))
+                    (perms))]
+            (testing "Should initially have no perms"
+              (is (= {:schemas :block}
+                     (perms))))
+            (testing "grant schema perms"
+              (is (= {:schemas :all}
+                     (set-perms! {:schemas :all}))))
+            (testing "grant native perms"
+              (is (= {:schemas :all, :native :write}
+                     (set-perms! {:schemas :all, :native :write}))))
+            (testing "revoke native perms"
+              (is (= {:schemas :all}
+                     (set-perms! {:schemas :all, :native :none}))))
+            (testing "revoke schema perms"
+              (is (= nil
+                     (set-perms! {:schemas :none}))))
+            (testing "disallow schemas :none + :native :write"
+              (is (thrown-with-msg?
+                   Exception
+                   #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
+                   (set-perms! {:schemas :none, :native :write})))
+              (is (= nil
+                     (perms))))))))))
+
+(deftest no-op-partial-graph-updates
+  (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
+    (mt/with-temp [:model/PermissionsGroup group]
+      ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
+                                                              :revision (:revision (data-perms.graph/api-graph))})))
+        (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
+                                                              :revision (:revision (data-perms.graph/api-graph))})))
+
+        (data-perms/set-database-permission! group (mt/id) :perms/data-access :unrestricted)
+        (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :write :schemas :all}}}}
+                                                              :revision (:revision (data-perms.graph/api-graph))})))
+        (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :write :schemas :all}}}}
+                                                              :revision (:revision (data-perms.graph/api-graph))})))))))

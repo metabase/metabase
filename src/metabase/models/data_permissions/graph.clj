@@ -150,10 +150,10 @@
   [m]
   (if (map? m)
     (->> m
-         (map (fn [[k v]] [k (remove-empty-vals v)])) ; Apply recursively to all values
-         (filter (fn [[_ v]] (not (or (nil? v) (and (map? v) (empty? v)))))) ; Remove nil or empty
-         (into {})) ; Reconstruct map
-    m)) ; Return non-map values unchanged
+         (map (fn [[k v]] [k (remove-empty-vals v)]))
+         (filter (fn [[_ v]] (not (or (nil? v) (and (map? v) (empty? v))))))
+         (into {}))
+    m))
 
 (mu/defn api-graph :- api.permission-graph/StrictData
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
