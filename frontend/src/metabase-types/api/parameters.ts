@@ -1,6 +1,6 @@
 import type { CardId } from "./card";
 import type { RowValue } from "./dataset";
-import type { LocalFieldReference } from "./query";
+import type { ConcreteFieldReference, ExpressionReference } from "./query";
 
 export type StringParameterType =
   | "string/="
@@ -82,7 +82,7 @@ export type NativeParameterDimensionTarget = ["dimension", VariableTarget];
 
 export type StructuredParameterDimensionTarget = [
   "dimension",
-  LocalFieldReference,
+  ConcreteFieldReference | ExpressionReference,
 ];
 
 export type ParameterValueOrArray = string | number | Array<any>;

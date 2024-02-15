@@ -22,9 +22,9 @@ import {
   StepInfoList,
   StepError,
   StepToggle,
-} from "./PreferencesStep.styled";
+} from "./DataUsageStep.styled";
 
-export const PreferencesStep = ({
+export const DataUsageStep = ({
   stepLabel,
 }: NumberedStepProps): JSX.Element => {
   const [errorMessage, setErrorMessage] = useState<string>();

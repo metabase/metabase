@@ -1,30 +1,36 @@
-import { useEffect } from "react";
-import { t } from "ttag";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
-import { Flex, Icon, Text } from "metabase/ui";
+import { t } from "ttag";
+import _ from "underscore";
+import type { SearchResult } from "metabase-types/api";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import type { SearchResult } from "metabase-types/api";
 import { useDispatch } from "metabase/lib/redux";
+import type { FlexProps } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
-import { isValidBrowseTab, type BrowseTabId } from "../utils";
-import { BrowseDatabases } from "./BrowseDatabases";
-import { BrowseModels } from "./BrowseModels";
+import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import type { ActualModelFilters } from "../utils";
+import { isValidBrowseTab, type BrowseTabId, filterModels } from "../utils";
 import {
   BrowseAppRoot,
   BrowseContainer,
   BrowseDataHeader,
-  BrowseSectionContainer,
   BrowseTab,
   BrowseTabs,
-  BrowseTabsContainer,
   BrowseTabsList,
   BrowseTabsPanel,
+  LearnAboutDataIcon,
 } from "./BrowseApp.styled";
+import { BrowseDatabases } from "./BrowseDatabases";
 import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
+import { BrowseModels } from "./BrowseModels";
+
+const availableModelFilters = PLUGIN_CONTENT_VERIFICATION.availableModelFilters;
 
 export const BrowseApp = ({
   tab,
@@ -48,6 +54,50 @@ export const BrowseApp = ({
     }
   }, [tab]);
 
+  const getInitialModelFilters = () => {
+    return _.reduce(
+      availableModelFilters,
+      (acc, filter, filterName) => {
+        const storedFilterStatus = localStorage.getItem(
+          `browseFilters.${filterName}`,
+        );
+        const shouldFilterBeActive =
+          storedFilterStatus === null
+            ? filter.activeByDefault
+            : storedFilterStatus === "on";
+        return {
+          ...acc,
+          [filterName]: shouldFilterBeActive,
+        };
+      },
+      {},
+    );
+  };
+
+  const [actualModelFilters, setActualModelFilters] =
+    useState<ActualModelFilters>(getInitialModelFilters);
+  const { data: unfilteredModels = [] } = modelsResult;
+
+  const filteredModels = useMemo(
+    () =>
+      filterModels(unfilteredModels, actualModelFilters, availableModelFilters),
+    [unfilteredModels, actualModelFilters],
+  );
+  const filteredModelsResult = { ...modelsResult, data: filteredModels };
+
+  const handleModelFilterChange = useCallback(
+    (modelFilterName: string, active: boolean) => {
+      localStorage.setItem(
+        `browseFilters.${modelFilterName}`,
+        active ? "on" : "off",
+      );
+      setActualModelFilters((prev: ActualModelFilters) => {
+        return { ...prev, [modelFilterName]: active };
+      });
+    },
+    [setActualModelFilters],
+  );
+
   if (!isValidBrowseTab(tab)) {
     return <LoadingAndErrorWrapper error />;
   }
@@ -56,10 +106,9 @@ export const BrowseApp = ({
     <BrowseAppRoot data-testid="browse-app">
       <BrowseContainer>
         <BrowseDataHeader>
-          <BrowseSectionContainer>
+          <BrowseSection>
             <h2>{t`Browse data`}</h2>
-            {tab === "databases" && <LearnAboutDataLink />}
-          </BrowseSectionContainer>
+          </BrowseSection>
         </BrowseDataHeader>
         <BrowseTabs
           value={tab}
@@ -70,25 +119,32 @@ export const BrowseApp = ({
           }}
         >
           <BrowseTabsList>
-            <BrowseSectionContainer>
+            <BrowseSection>
               <BrowseTab key={"models"} value={"models"}>
                 {t`Models`}
               </BrowseTab>
               <BrowseTab key={"databases"} value={"databases"}>
                 {t`Databases`}
               </BrowseTab>
-            </BrowseSectionContainer>
+              {tab === "models" && (
+                <PLUGIN_CONTENT_VERIFICATION.ModelFilterControls
+                  actualModelFilters={actualModelFilters}
+                  handleModelFilterChange={handleModelFilterChange}
+                />
+              )}
+              {tab === "databases" && <LearnAboutDataLink />}
+            </BrowseSection>
           </BrowseTabsList>
           <BrowseTabsPanel key={tab} value={tab}>
-            <BrowseTabsContainer>
+            <BrowseSection direction="column">
               <BrowseTabContent
                 tab={tab}
-                modelsResult={modelsResult}
+                modelsResult={filteredModelsResult}
                 databasesResult={databasesResult}
               >
                 {children}
               </BrowseTabContent>
-            </BrowseTabsContainer>
+            </BrowseSection>
           </BrowseTabsPanel>
         </BrowseTabs>
       </BrowseContainer>
@@ -121,11 +177,15 @@ const LearnAboutDataLink = () => (
   <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
     <Link to="reference">
       <BrowseHeaderIconContainer>
-        <Icon size={14} name="reference" />
+        <LearnAboutDataIcon size={14} name="reference" />
         <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
           {t`Learn about our data`}
         </Text>
       </BrowseHeaderIconContainer>
     </Link>
   </Flex>
+);
+
+const BrowseSection = (props: FlexProps) => (
+  <Flex maw="64rem" m="0 auto" w="100%" align="center" {...props} />
 );

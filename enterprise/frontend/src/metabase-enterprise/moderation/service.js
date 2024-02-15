@@ -135,3 +135,10 @@ export function getModerationTimelineEvents(reviews, usersById, currentUser) {
     };
   });
 }
+
+export const getQuestionIcon = card => {
+  return (card.model === "dataset" || card.type === "model") &&
+    card.moderated_status === "verified"
+    ? { icon: "model_with_badge", tooltip: "Verified model" }
+    : null;
+};

@@ -20,6 +20,8 @@ import {
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions";
 
+import { PLUGIN_MODERATION } from "metabase/plugins";
+
 import { canonicalCollectionId } from "metabase/collections/utils";
 import forms from "./questions/forms";
 
@@ -223,6 +225,16 @@ function getCardLabel(card) {
 }
 
 export function getCardIcon(card) {
+  const type = PLUGIN_MODERATION.getQuestionIcon(card);
+
+  if (type) {
+    return {
+      name: type.icon,
+      color: type.color ? color(type.color) : undefined,
+      tooltip: type.tooltip,
+    };
+  }
+
   if (card.type === "model" || card.model === "dataset") {
     return { name: "model" };
   }
