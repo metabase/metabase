@@ -18,7 +18,9 @@ export function QueryColumnInfoIcon({
   ...props
 }: QueryColumnInfoPopoverProps) {
   const { query, stageIndex, column } = props;
-  const { description } = Lib.displayInfo(query, stageIndex, column);
+  const { description = "" } = query
+    ? Lib.displayInfo(query, stageIndex, column)
+    : {};
 
   return (
     <QueryColumnInfoPopover {...props} delay={delay}>

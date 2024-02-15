@@ -701,7 +701,7 @@ class TableInteractive extends Component {
 
     const columnInfoPopoverTestId = "field-info-popover";
     const question = this.props.question;
-    const query = question.query();
+    const query = question?.query();
     const stageIndex = -1;
 
     return (
@@ -790,7 +790,7 @@ class TableInteractive extends Component {
             placement="bottom-start"
             query={query}
             stageIndex={-1}
-            column={Lib.fromLegacyColumn(query, stageIndex, column)}
+            column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
             timezone={data.results_timezone}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
             showFingerprintInfo

@@ -48,7 +48,7 @@ export function TableColumnInfo({
 
 export type QueryColumnInfoProps = {
   className?: string;
-  query: Lib.Query;
+  query?: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   timezone?: string;
@@ -65,18 +65,16 @@ export function QueryColumnInfo({
   showFingerprintInfo,
   timezone,
 }: QueryColumnInfoProps) {
-  const { description, semanticType } = Lib.displayInfo(
-    query,
-    stageIndex,
-    column,
-  );
+  const { description = "", semanticType = null } = query
+    ? Lib.displayInfo(query, stageIndex, column)
+    : {};
 
   return (
     <InfoContainer className={className}>
       <ColumnDescription description={description} />
       <Small>
         <SemanticTypeLabel semanticType={semanticType} />
-        {showFingerprintInfo && (
+        {query && showFingerprintInfo && (
           <QueryColumnFingerprintInfo
             query={query}
             stageIndex={stageIndex}
