@@ -11,7 +11,6 @@ import { useDispatch } from "metabase/lib/redux";
 import type { FlexProps } from "metabase/ui";
 import { Flex, Text } from "metabase/ui";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import type { ActualModelFilters } from "../utils";
