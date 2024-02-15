@@ -697,12 +697,13 @@
                                   [46 47 40 60 7]))
 
                (sad-toucan-incidents-with-bucketing :week :eastern))))))
-  ;; Setting the JVM timezone will change how the datetime results are displayed but don't impact the calculation of the
-  ;; begin/end of the week
+  ;; Setting database timezone id will change how the datetime results are displayed, unless report timezone is set.
+  ;; If so, the report timezone takes precedence and result values are formatted according to that. Overriding
+  ;; database timezone id has no impact on beginning/end of week during calculation.
   ;;
   ;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
   ;; timezone (TIMEZONE FIXME)
-  (testing "JVM timezone set to Pacific"
+  (testing "Database timezone override set to Pacific"
     (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery-cloud-sdk})
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -725,7 +726,7 @@
                (results-by-week u.date/parse
                                 (format-in-timezone-fn :pacific)
                                 [46 47 40 60 7]))
-             (mt/with-system-timezone-id (timezone :pacific)
+             (mt/with-database-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :week :pacific)))))))
 
 (deftest group-by-week-of-year-test
