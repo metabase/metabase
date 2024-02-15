@@ -18,11 +18,11 @@
 
 (deftest params-values-test
   (testing "Return sandboxed `param_values` for Fields to which the current User only has sandboxed access."
-    (met/with-gtaps {:gtaps      {:venues
+    (met/with-gtaps! {:gtaps      {:venues
                                   {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
                                    :query      (mt.tu/restricted-column-query (mt/id))}}
                      :attributes {:cat 50}}
-      (perms.test-util/with-no-data-perms-for-all-users!
+      (mt/with-no-data-perms-for-all-users!
         (perms.test-util/with-perm-for-group-and-table! &group (mt/id :categories) :perms/data-access :unrestricted
           (perms/grant-permissions! &group (perms/table-read-path (mt/id :categories)))
           (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
@@ -60,7 +60,7 @@
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"
-    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+    (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
       (mt/with-temp-vals-in-db FieldValues (u/the-id (t2/select-one-pk FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
           (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
@@ -80,7 +80,7 @@
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (met/with-gtaps {:gtaps {:venues {}}}
+      (met/with-gtaps! {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures!
          (fn [{:keys [card-id mappings add-card! dashcards]}]
            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
@@ -97,7 +97,7 @@
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (met/with-gtaps {:gtaps {:venues {}}}
+      (met/with-gtaps! {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures!
          (fn [{:keys [dashboard-id card-id update-mappings! new-mappings]}]
            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
@@ -109,7 +109,7 @@
 
 (deftest parameters-with-source-is-card-test
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"
-    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+    (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp
         [Card      {card-id         :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
                                                 {:database_id     (mt/id)
