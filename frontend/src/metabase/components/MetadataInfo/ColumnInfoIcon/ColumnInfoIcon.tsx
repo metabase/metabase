@@ -12,13 +12,11 @@ import {
 
 import { PopoverHoverTarget } from "./ColumnInfoIcon.styled";
 
-const LAST_STAGE = -1;
-
 export function QueryColumnInfoIcon({
   delay = [0, 150],
   ...props
 }: QueryColumnInfoPopoverProps) {
-  const { query, stageIndex = LAST_STAGE, column } = props;
+  const { query, stageIndex, column } = props;
   const { description } = Lib.displayInfo(query, stageIndex, column);
 
   return (
