@@ -5,7 +5,6 @@
  */
 
 import type { IndexedEntity } from "metabase-types/api/modelIndexes";
-import type { CardType } from "metabase-types/api";
 
 import { createEntity } from "metabase/lib/entities";
 import { ModelIndexApi } from "metabase/services";
@@ -21,10 +20,8 @@ export const ModelIndexes = createEntity({
   schema: ModelIndexSchema,
   api: {
     ...ModelIndexApi,
-    list: ({ model_id, type }: { model_id?: string | null; type: CardType }) =>
-      model_id && type === "model"
-        ? ModelIndexApi.list({ model_id })
-        : { data: [] },
+    list: ({ model_id }: { model_id?: string | null }) =>
+      model_id ? ModelIndexApi.list({ model_id }) : { data: [] },
   },
   actions,
   utils,

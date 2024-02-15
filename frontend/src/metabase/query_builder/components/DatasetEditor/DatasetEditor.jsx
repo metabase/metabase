@@ -20,7 +20,7 @@ import { TagEditorSidebar } from "metabase/query_builder/components/template_tag
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 
-import { modelIndexes } from "metabase/entities";
+import { useModelIndexesListQuery } from "metabase/common/hooks";
 
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import {
@@ -75,7 +75,6 @@ const propTypes = {
   handleResize: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
   onOpenModal: PropTypes.func.isRequired,
-  modelIndexes: PropTypes.array.isRequired,
 
   // Native editor sidebars
   isShowingTemplateTagsEditor: PropTypes.bool.isRequired,
@@ -207,7 +206,6 @@ function DatasetEditor(props) {
     onSave,
     handleResize,
     onOpenModal,
-    modelIndexes = [],
   } = props;
 
   const isDirty = isModelQueryDirty || isMetadataDirty;
@@ -216,6 +214,11 @@ function DatasetEditor(props) {
     () => getSortedModelFields(question, resultsMetadata?.columns),
     [question, resultsMetadata],
   );
+
+  const { data: modelIndexes } = useModelIndexesListQuery({
+    query: { model_id: question.id() },
+    enabled: question.isSaved() && question.type() === "model",
+  });
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -541,13 +544,4 @@ function DatasetEditor(props) {
 
 DatasetEditor.propTypes = propTypes;
 
-export default _.compose(
-  modelIndexes.loadList({
-    query: (_state, props) => ({
-      model_id: props?.question?.id(),
-      type: props?.question?.type(),
-    }),
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(DatasetEditor);
+export default connect(mapStateToProps, mapDispatchToProps)(DatasetEditor);
