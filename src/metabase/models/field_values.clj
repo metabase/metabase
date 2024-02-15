@@ -105,39 +105,34 @@
                      :status-code           400}))))
 
 (defn- assert-valid-type-hash-combo
-  "If type is present, ensure that it is valid, and that a hash_key is provided iff this is an advanced field type."
+  "Ensure that type is present, valid, and that a hash_key is provided iff this is an advanced field type."
   [{:keys [type hash_key] :as _field-values}]
-  (let [type (keyword (or type :full))]
-    (when-not (contains? field-values-types type)
-      (throw (ex-info (tru "Invalid field-values type.")
-                      {:type        type
-                       :status-code 400})))
+  (when-not (contains? field-values-types type)
+    (throw (ex-info (tru "Invalid field-values type.")
+                    {:type        type
+                     :status-code 400})))
 
-    (when (and (= type :full)
-               hash_key)
-      (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
-                      {:type        type
-                       :hash_key    hash_key
-                       :status-code 400})))
+  (when (and (= type :full)
+             hash_key)
+    (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
+                    {:type        type
+                     :hash_key    hash_key
+                     :status-code 400})))
 
-    (when (and (advanced-field-values-types type)
-               (empty? hash_key))
-      (throw (ex-info (tru "Advanced FieldValues requires a hash_key.")
-                      {:type        type
-                       :status-code 400})))))
+  (when (and (advanced-field-values-types type)
+             (empty? hash_key))
+    (throw (ex-info (tru "Advanced FieldValues requires a hash_key.")
+                    {:type        type
+                     :status-code 400}))))
 
 (defn- assert-no-identity-changes [field-values]
-  (let [{:keys [field_id] :as changes} (t2/changes field-values)]
-    (when (some #(contains? changes %) [:type :hash_key])
-      (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
+  (let [changes (t2/changes field-values)]
+    (when (some #(contains? changes %) [:field_id :type :hash_key])
+      (throw (ex-info (tru "Can't update field_id, type, or hash_key for a FieldValues.")
                       {:id          (:id field-values)
+                       :field_id    (:field_id changes)
                        :type        (:type changes)
                        :hash_key    (:hash_key changes)
-                       :status-code 400})))
-    (when (some? field_id)
-      (throw (ex-info (tru "Can't update field_id for a FieldValues.")
-                      {:id          (:id field-values)
-                       :field_id    field_id
                        :status-code 400})))))
 
 (defn clear-advanced-field-values-for-field!
@@ -153,20 +148,20 @@
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
-  (u/prog1 (merge {:type :full} field-values)
+  (u/prog1 (update field-values :type #(keyword (or % :full)))
     (assert-valid-human-readable-values field-values)
     (assert-valid-type-hash-combo <>)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
-    (when (= :full (keyword (:type <>)))
+    (when (= :full (:type <>))
       (clear-advanced-field-values-for-field! field_id))))
 
 (t2/define-before-update :model/FieldValues
   [field-values]
-  (u/prog1 field-values
-    (assert-no-identity-changes field-values)
+  (u/prog1 (update field-values :type #(keyword (or % :full)))
+    (assert-no-identity-changes <>)
     (assert-valid-human-readable-values field-values)
     ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-    (when (and (contains? field-values :values) (= :full (keyword (:type field-values))))
+    (when (and (contains? field-values :values) (= :full (:type <>)))
       (clear-advanced-field-values-for-field! (:field_id field-values)))))
 
 (defn- assert-coherent-query [{:keys [type hash_key] :or {type :full} :as field-values}]

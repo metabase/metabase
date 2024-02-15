@@ -295,33 +295,44 @@
           (t2/delete! :model/FieldValues :field_id field-id))))))
 
 (deftest update-field-values-hook-test
-  (testing "The model hooks prevent us changing the intrinsic identity of a field values"
-    (t2.with-temp/with-temp [FieldValues {:keys [id]} {:field_id (mt/id :venues :id)
-                                                       :type     :sandbox
-                                                       :hash_key "random-hash"}]
-      (is (thrown-with-msg? ExceptionInfo
-                            #"Cant update field_id for a FieldValues."
-                            (t2/update! :model/FieldValues id {:field_id 1})))
-      (is (thrown-with-msg? ExceptionInfo
-                            #"Cant update type or hash_key for a FieldValues."
-                            (t2/update! :model/FieldValues id {:type :full})))
-      (is (thrown-with-msg? ExceptionInfo
-                            #"Cant update type or hash_key for a FieldValues."
-                            (t2/update! :model/FieldValues id {:type nil})))
-      (is (thrown-with-msg? ExceptionInfo
-                            #"Cant update type or hash_key for a FieldValues."
-                            (t2/update! :model/FieldValues id {:hash_key "54321"})))
-      (is (thrown-with-msg? ExceptionInfo
-                            #"Cant update type or hash_key for a FieldValues."
-                            (t2/update! :model/FieldValues id {:hash_key nil}))))))
+  (t2.with-temp/with-temp [FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
+                                                             :type     :full}
+                           FieldValues {sandbox-id :id} {:field_id (mt/id :venues :id)
+                                                             :type     :sandbox
+                                                             :hash_key "random-hash"}]
+    (testing "The model hooks prevent us changing the intrinsic identity of a field values"
+      (doseq [[id update-map] [[sandbox-id {:field_id 1}]
+                               [sandbox-id {:type :full}]
+                               [sandbox-id {:type nil}]
+                               [full-id {:type :sandbox}]
+                               [sandbox-id {:hash_key "another-hash"}]
+                               [sandbox-id {:hash_key nil}]
+                               [full-id {:hash_key "random-hash"}]
+                               ; not even if it keeps type / hash consistency
+                               [sandbox-id {:type :full, :hash_key nil}]
+                               [full-id {:type :sandbox, :hash_key "random-hash"}]]]
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Cant update field_id, type, or hash_key for a FieldValues."
+                              (t2/update! :model/FieldValues id update-map)))))
+
+    (testing "The model hooks permits mention of the existing values"
+      (doseq [[id update-map] [[full-id {:field_id (mt/id :venues :id)}]
+                               [sandbox-id {:type :sandbox}]
+                               [full-id {:type nil}]
+                               [full-id {:type :full}]
+                               [sandbox-id {:hash_key "random-hash"}]
+                               [full-id {:hash_key nil}]
+                               [full-id {:type :full, :hash_key nil}]
+                               [sandbox-id {:type :sandbox, :hash_key "random-hash"}]]]
+        (is (some? (t2/update! :model/FieldValues id update-map)))))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
-  (mt/with-temp [FieldValues sandbox-fv {:field_id (mt/id :venues :id)
-                                         :type     :sandbox
-                                         :hash_key "random-hash"}]
-    (t2/insert! FieldValues {:field_id (mt/id :venues :id)
-                             :type     :full})
-    (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
+  (doseq [explicitly-full? [false true]]
+    (mt/with-temp [FieldValues sandbox-fv {:field_id (mt/id :venues :id)
+                                           :type     :sandbox
+                                           :hash_key "random-hash"}]
+      (t2/insert! FieldValues (cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full)))
+      (is (not (t2/exists? FieldValues :id (:id sandbox-fv)))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp [FieldValues fv         {:field_id (mt/id :venues :id)
