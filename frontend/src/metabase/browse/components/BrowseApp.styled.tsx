@@ -1,7 +1,11 @@
 import styled from "@emotion/styled";
-import { Icon, Tabs } from "metabase/ui";
+import { Grid, Icon, Tabs } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import EmptyState from "metabase/components/EmptyState";
+import {
+  breakpointMinMedium,
+  breakpointMinSmall,
+} from "metabase/styled-components/theme";
 
 export const BrowseAppRoot = styled.div`
   flex: 1;
@@ -24,7 +28,8 @@ export const BrowseTab = styled(Tabs.Tab)`
   top: 1px;
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
-  padding: 10px;
+  padding: 10px 0;
+  margin-right: 10px;
   &:hover {
     color: ${color("brand")};
     background-color: inherit;
@@ -53,6 +58,21 @@ export const BrowseDataHeader = styled.header`
   padding-bottom: 0.375rem;
   color: ${color("dark")};
   background-color: ${color("white")};
+`;
+
+export const BrowseGrid = styled(Grid)`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1.5rem 1rem;
+  margin: 0;
+  width: 100%;
+
+  ${breakpointMinSmall} {
+    padding-bottom: 2.5rem;
+  }
+  ${breakpointMinMedium} {
+    padding-bottom: 3rem;
+  }
 `;
 
 export const CenteredEmptyState = styled(EmptyState)`

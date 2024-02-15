@@ -14,7 +14,7 @@ import { getLocale } from "metabase/setup/selectors";
 import { groupModels } from "../utils";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";
-import { GridContainer } from "./BrowseModels.styled";
+import { ModelGrid } from "./BrowseModels.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelGroup } from "./ModelGroup";
 
@@ -43,7 +43,7 @@ export const BrowseModels = ({
     return (
       <>
         <ModelExplanationBanner />
-        <GridContainer role="grid">
+        <ModelGrid role="grid">
           {groupsOfModels.map(groupOfModels => (
             <ModelGroup
               models={groupOfModels}
@@ -51,7 +51,7 @@ export const BrowseModels = ({
               localeCode={localeCode}
             />
           ))}
-        </GridContainer>
+        </ModelGrid>
       </>
     );
   }

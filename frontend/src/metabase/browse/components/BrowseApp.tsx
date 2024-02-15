@@ -167,7 +167,7 @@ const BrowseTabContent = ({
 };
 
 const LearnAboutDataLink = () => (
-  <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
+  <Flex ml="auto" justify="right" align="center" style={{ flexBasis: "40.0%" }}>
     <Link to="reference">
       <BrowseHeaderIconContainer>
         <LearnAboutDataIcon size={14} name="reference" />
@@ -180,5 +180,5 @@ const LearnAboutDataLink = () => (
 );
 
 const BrowseSection = (props: FlexProps) => (
-  <Flex maw="64rem" m="0 auto" w="100%" align="center" {...props} />
+  <Flex maw="64rem" m="0 auto" w="100%" {...props} />
 );
