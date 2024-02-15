@@ -23,18 +23,18 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
+  CardDisplayType,
   CardType,
   CollectionId,
   DatabaseId,
-  DatasetQuery,
-  DatasetData,
-  TableId,
-  Parameter as ParameterObject,
-  ParameterValues,
-  ParameterId,
-  VisualizationSettings,
-  CardDisplayType,
   Dataset,
+  DatasetData,
+  DatasetQuery,
+  Parameter as ParameterObject,
+  ParameterId,
+  ParameterValues,
+  TableId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 // TODO: remove these dependencies
@@ -720,13 +720,19 @@ class Question {
 
   databaseId(): DatabaseId | null {
     const query = this.query();
-    const databaseId = Lib.databaseID(query);
-    return databaseId;
+    return Lib.databaseID(query);
   }
 
   legacyQueryTable(): Table | null {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-    return query && typeof query.table === "function" ? query.table() : null;
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+    if (isNative) {
+      return this.legacyQuery().table();
+    } else {
+      const tableId = Lib.sourceTableOrCardId(query);
+      const metadata = this.metadata();
+      return metadata.table(tableId);
+    }
   }
 
   legacyQueryTableId(): TableId | null {
