@@ -24,15 +24,22 @@
           result        (promise)]
       (with-redefs [process-userland-query/save-query-execution!* (fn [query-execution]
                                                                     (when-let [^bytes qe-hash (:hash query-execution)]
-                                                                      (when (java.util.Arrays/equals qe-hash original-hash)
-                                                                        (deliver result query-execution))))]
+                                                                      (deliver
+                                                                       result
+                                                                       (if (java.util.Arrays/equals qe-hash original-hash)
+                                                                         query-execution
+                                                                         (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution)
+                                                                                  {:query                query
+                                                                                   :original-hash        (some-> original-hash codecs/bytes->hex)
+                                                                                   :query-execution      query-execution
+                                                                                   :query-execution-hash (some-> qe-hash codecs/bytes->hex)})))))]
         (run
-          (fn qe-result* []
-            (let [qe (deref result 1000 ::timed-out)]
-              (cond-> qe
-                (:running_time qe) (update :running_time int?)
-                (:hash qe)         (update :hash (fn [^bytes a-hash]
-                                                   (some-> a-hash codecs/bytes->hex)))))))))))
+         (fn qe-result* []
+           (let [qe (deref result 1000 ::timed-out)]
+             (cond-> qe
+               (:running_time qe) (update :running_time int?)
+               (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                  (some-> a-hash codecs/bytes->hex)))))))))))
 
 (defmacro with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
