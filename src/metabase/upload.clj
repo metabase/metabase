@@ -453,10 +453,10 @@
              (driver/database-supports? (driver.u/database->driver db) :schemas db))
         (ex-info (tru "A schema has not been set.")
                  {:status-code 422})
-        (not= :unrestricted (data-perms/schema-permission-for-user api/*current-user-id*
-                                                                   :perms/data-access
-                                                                   (u/the-id db)
-                                                                   schema-name))
+        (not= :unrestricted (data-perms/full-schema-permission-for-user api/*current-user-id*
+                                                                        :perms/data-access
+                                                                        (u/the-id db)
+                                                                        schema-name))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
