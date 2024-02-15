@@ -57,7 +57,7 @@
                                     {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:query :all}}}})
                 :expected-perms   (fn []
                                     {:schemas {:PUBLIC {(mt/id :venues) {:query "all"}}}})}}]
-        (met/with-gtaps {:gtaps {:venues {}}}
+        (met/with-gtaps! {:gtaps {:venues {}}}
           (testing message
             (testing "sanity check"
               (testing "perms graph endpoint should return segmented perms for Venues table"
@@ -161,7 +161,7 @@
                          :type :query}))
                "metabase_cache")))))
     (testing "Queries from source if sandboxed"
-      (met/with-gtaps
+      (met/with-gtaps!
         {:gtaps {:venues {:query (mt/mbql-query venues)
                           :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
          :attributes {"cat" 50}}
