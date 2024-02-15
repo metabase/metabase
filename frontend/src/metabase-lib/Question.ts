@@ -253,14 +253,6 @@ class Question {
     return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
-  /**
-   * returns whether this question is a model
-   * @deprecated Use Question.prototype.type instead
-   */
-  isDataset(): boolean {
-    return this._card && this._card.dataset;
-  }
-
   type(): CardType {
     return this._card?.type ?? "question";
   }
