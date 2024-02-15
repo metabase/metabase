@@ -13,7 +13,7 @@ interface Tab {
 }
 
 interface SettingsSectionProps {
-  tabs: Tab[];
+  tabs?: Tab[];
   settingElements: SettingElement[];
   settingValues: Settings;
   derivedSettingValues: Settings;
