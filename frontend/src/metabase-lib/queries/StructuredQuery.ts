@@ -862,18 +862,6 @@ class StructuredQuery extends AtomicQuery {
   });
 
   /**
-   * Returns the "last" nested query that is already summarized, or the query itself.
-   * Used in "view mode" to effectively ignore post-aggregation filter stages
-   */
-  topLevelQuery = _.once((): StructuredQuery => {
-    if (!this.canNest()) {
-      return this;
-    } else {
-      return this.lastSummarizedQuery() || this;
-    }
-  });
-
-  /**
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): Dimension | null | undefined {
