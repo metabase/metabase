@@ -196,10 +196,9 @@ function EmbedFrame({
             <Separator />
           </Header>
         )}
-        {hasParameters && (
+        {hasVisibleParameters && (
           <ParametersWidgetContainer
             isSticky={isParameterPanelSticky}
-            hasVisibleParameters={hasVisibleParameters}
             data-testid="dashboard-parameters-widget-container"
           >
             <ParametersFixedWidthContainer
