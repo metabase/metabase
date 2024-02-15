@@ -140,13 +140,10 @@ export const SaveQuestionModal = ({
     ],
   );
 
-  const { generatedName, generatedDescription, LLMIndicator } =
+  const { LLMIndicator } =
     PLUGIN_LLM_AUTODESCRIPTION.useLLMQuestionTitleAndDescription({
       initialValues,
       question,
-      defaultWrapper: ({ children }) => {
-        return <>{children}</>;
-      },
     });
 
   const handleOverwrite = useCallback(
@@ -234,16 +231,19 @@ export const SaveQuestionModal = ({
           <FormProvider
             initialValues={{
               ...initialValues,
-              ...{ name: generatedName, description: generatedDescription },
+              ...{},
               ...resumedValues,
             }}
             onSubmit={handleSubmit}
             validationSchema={SAVE_QUESTION_SCHEMA}
             enableReinitialize
           >
-            {({ values }) => (
+            {({ values, setFieldValue, validateForm }) => (
               <Form>
-                <LLMIndicator/>
+                <LLMIndicator
+                  setFieldValue={setFieldValue}
+                  validateForm={validateForm}
+                />
                 {showSaveType && (
                   <FormRadio
                     name="saveType"
@@ -267,22 +267,22 @@ export const SaveQuestionModal = ({
                         exit: 500,
                       }}
                     >
-                        <div className="saveQuestionModalFields">
-                          <FormInput
-                            name="name"
-                            title={t`Name`}
-                            placeholder={nameInputPlaceholder}
-                          />
-                          <FormTextArea
-                            name="description"
-                            title={t`Description`}
-                            placeholder={t`It's optional but oh, so helpful`}
-                          />
-                          <FormCollectionPicker
-                            name="collection_id"
-                            title={t`Which collection should this go in?`}
-                          />
-                        </div>
+                      <div className="saveQuestionModalFields">
+                        <FormInput
+                          name="name"
+                          title={t`Name`}
+                          placeholder={nameInputPlaceholder}
+                        />
+                        <FormTextArea
+                          name="description"
+                          title={t`Description`}
+                          placeholder={t`It's optional but oh, so helpful`}
+                        />
+                        <FormCollectionPicker
+                          name="collection_id"
+                          title={t`Which collection should this go in?`}
+                        />
+                      </div>
                     </CSSTransition>
                   )}
                 </TransitionGroup>

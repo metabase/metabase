@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 import type { DashboardId, Member, User } from "metabase-types/api";
 
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
@@ -69,19 +69,16 @@ export type TUseLLMDashboardDescription = ({
 export type TUseLLMIndicator = ({
   initialValues,
   question,
-  defaultWrapper,
 }: {
   initialValues: FormValues;
   question: Question;
-  defaultWrapper: ({ children }: { children?: ReactNode }) => JSX.Element | null;
 }) => {
-  generatedName: string;
-  generatedDescription: string;
-  loading: boolean;
   LLMIndicator: ({
-    children,
+    setFieldValue,
+    validateForm,
   }: {
-    children?: ReactNode;
+    setFieldValue: (name: string, value: string) => void;
+    validateForm: (values?: any) => void;
   }) => JSX.Element | null;
 };
 
