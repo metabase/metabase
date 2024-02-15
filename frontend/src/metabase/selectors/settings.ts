@@ -8,6 +8,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import { getPlan } from "metabase/common/utils/plan";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 export const getSettings = createSelector(
   (state: State) => state.settings,
@@ -109,3 +110,6 @@ export const getIsPaidPlan = createSelector(
     return tokenStatus != null && tokenStatus.valid;
   },
 );
+
+export const getIsEECode = (state: State) =>
+  PLUGIN_SELECTORS.getIsEECode(state);

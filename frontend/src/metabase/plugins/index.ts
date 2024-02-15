@@ -139,6 +139,7 @@ export const PLUGIN_SELECTORS = {
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
   getDashboardOverviewId: (_state: State) => undefined,
+  getIsEECode: (_state: State) => false,
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
