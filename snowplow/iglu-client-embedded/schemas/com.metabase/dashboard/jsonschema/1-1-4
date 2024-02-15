@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "dashboard",
     "format": "jsonschema",
-    "version": "1-1-3"
+    "version": "1-1-4"
   },
   "type": "object",
   "properties": {
@@ -28,7 +28,8 @@
         "dashboard_pdf_exported",
         "card_moved_to_tab",
         "dashboard_card_duplicated",
-        "dashboard_card_replaced"
+        "dashboard_card_replaced",
+        "dashboard_width_toggled"
       ],
       "maxLength": 1024
     },
@@ -73,6 +74,13 @@
       ],
       "minimum": 0,
       "maximum": 2147483647
+    },
+    "full_width": {
+      "description": "Boolean set to True if the dashboard was toggled to full width and False if full width was disabled.",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "required": [
