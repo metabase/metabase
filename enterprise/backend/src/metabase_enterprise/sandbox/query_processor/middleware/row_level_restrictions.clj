@@ -7,8 +7,7 @@
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.sandbox.models.group-table-access-policy
-    :as gtap
-    :refer [GroupTableAccessPolicy]]
+    :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db.connection :as mdb.connection]
    [metabase.lib.metadata :as lib.metadata]
@@ -16,8 +15,6 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -67,12 +64,7 @@
 
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
-    (let [group-ids           (qp.store/cached *current-user-id*
-                                (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*))
-          sandboxes           (when (seq group-ids)
-                               (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
-                                 :table_id [:in table-ids]))
-          enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
+    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for *current-user-id*)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))
