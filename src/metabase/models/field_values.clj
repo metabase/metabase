@@ -23,6 +23,7 @@
   There is also more written about how these are used for remapping in the docstrings
   for [[metabase.models.params.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
@@ -112,16 +113,14 @@
                     {:type        type
                      :status-code 400})))
 
-  (when (and (= type :full)
-             hash_key)
+  (when (and (= type :full) hash_key)
     (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
                     {:type        type
                      :hash_key    hash_key
                      :status-code 400})))
 
-  (when (and (advanced-field-values-types type)
-             (empty? hash_key))
-    (throw (ex-info (tru "Advanced FieldValues requires a hash_key.")
+  (when (and (advanced-field-values-types type) (str/blank? hash_key))
+    (throw (ex-info (tru "Advanced FieldValues require a hash_key.")
                     {:type        type
                      :status-code 400}))))
 
