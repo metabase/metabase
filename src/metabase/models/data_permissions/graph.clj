@@ -417,9 +417,9 @@
                :download   (update-db-level-download-permissions! group-id db-id new-perms)
                :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
                :details    (update-details-perms! group-id db-id new-perms))))
-        (save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
-        (delete-impersonations-if-needed-after-permissions-change! new)
-        (delete-gtaps-if-needed-after-permissions-change! new)))))
+         (save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
+         (delete-impersonations-if-needed-after-permissions-change! new)
+         (delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

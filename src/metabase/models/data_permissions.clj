@@ -178,7 +178,10 @@
 
 (mu/defn database-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
-  multiple permissions for the given type in different groups, they are coalesced into a single value."
+  multiple permissions for the given type in different groups, they are coalesced into a single value.
+
+  For permissions which can be set at the table-level or the database-level, this function will return the database-level
+  permission if the user has it."
   [user-id perm-type database-id]
   (when (not= :model/Database (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
@@ -378,6 +381,22 @@
                (into #{}))]
       (= (coalesce :perms/data-access perm-values)
          :block))))
+
+(mu/defn user-has-any-perms-of-type? :- :boolean
+  "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
+  group, for at least one database or table."
+  [user-id perm-type]
+  (or (is-superuser? user-id)
+      (let [value (most-permissive-value perm-type)]
+        (t2/exists? :model/DataPermissions
+                    {:select [[:p.perm_value :value]]
+                     :from [[:permissions_group_membership :pgm]]
+                     :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                            [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                     :where [:and
+                             [:= :pgm.user_id user-id]
+                             [:= :p.perm_type (u/qualified-name :perms/manage-table-metadata)]
+                             [:= :p.perm_value (u/qualified-name value)]]}))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
