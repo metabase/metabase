@@ -2,6 +2,9 @@ import _ from "underscore";
 import type {
   BaseCartesianChartModel,
   DataKey,
+  Datum,
+  DimensionModel,
+  SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   CardId,
@@ -14,6 +17,7 @@ import { getObjectEntries } from "metabase/lib/objects";
 import type { ClickObjectDimension } from "metabase-lib";
 import type {
   ComputedVisualizationSettings,
+  DataPoint,
   OnChangeCardAndRun,
   TooltipRowModel,
 } from "metabase/visualizations/types";
@@ -55,41 +59,49 @@ export const parseDataKey = (dataKey: DataKey) => {
   return { cardId, columnName, breakoutValue };
 };
 
-export const getEventDimensionsData = (
+const findSeriesModelIndexById = (
   chartModel: BaseCartesianChartModel,
-  seriesIndex: number,
-  dataIndex: number,
+  seriesId?: string,
 ) => {
-  const datum = chartModel.dataset[dataIndex];
-  const seriesModel = chartModel.seriesModels[seriesIndex];
+  if (seriesId == null) {
+    return -1;
+  }
 
+  return chartModel.seriesModels.findIndex(seriesModel =>
+    [seriesId, chartModel.seriesIdToDataKey?.[seriesId]].includes(
+      seriesModel.dataKey,
+    ),
+  );
+};
+
+export const getEventDimensions = (
+  datum: Datum,
+  dimensionModel: DimensionModel,
+  seriesModel: SeriesModel,
+) => {
   const dimensionValue = datum[X_AXIS_DATA_KEY];
-
   const dimensions: ClickObjectDimension[] = [
     {
-      column: chartModel.dimensionModel.column,
+      column: dimensionModel.column,
       value: dimensionValue,
     },
   ];
 
-  if ("breakoutColumn" in seriesModel) {
+  if (seriesModel != null && "breakoutColumn" in seriesModel) {
     dimensions.push({
       column: seriesModel.breakoutColumn,
       value: seriesModel.breakoutValue,
     });
   }
 
-  return {
-    dimensions,
-    dimensionValue,
-  };
+  return dimensions;
 };
 
 export const getEventColumnsData = (
   chartModel: BaseCartesianChartModel,
   seriesIndex: number,
   dataIndex: number,
-) => {
+): DataPoint[] => {
   const datum = chartModel.dataset[dataIndex];
 
   const seriesModel = chartModel.seriesModels[seriesIndex];
@@ -107,7 +119,7 @@ export const getEventColumnsData = (
           ? parseDataKey(dataKey)
           : { cardId: null, breakoutValue: null };
 
-      const isSameCard = cardId == null || cardId === seriesModel?.cardId;
+      const isSameCard = cardId == null || cardId === seriesModel.cardId;
       const isDifferentBreakoutSeries =
         isBreakoutSeries && String(seriesModel.breakoutValue) !== breakoutValue;
 
@@ -205,11 +217,9 @@ export const getSeriesHoverData = (
   event: EChartsSeriesMouseEvent,
 ) => {
   const { dataIndex, seriesId } = event;
-  const seriesIndex = chartModel.seriesModels.findIndex(
-    seriesModel => seriesModel.dataKey === seriesId,
-  );
+  const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
 
-  if (dataIndex == null) {
+  if (seriesIndex < 0 || dataIndex == null) {
     return;
   }
 
@@ -286,25 +296,26 @@ export const getSeriesClickData = (
   event: EChartsSeriesMouseEvent,
 ) => {
   const { seriesId, dataIndex } = event;
-  const seriesIndex = chartModel.seriesModels.findIndex(
-    seriesModel => seriesModel.dataKey === seriesId,
-  );
+  const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
+  const seriesModel = chartModel.seriesModels[seriesIndex];
+
   if (seriesIndex < 0 || dataIndex == null) {
     return;
   }
 
+  const datum = chartModel.dataset[dataIndex];
+
   const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
-  const { dimensions, dimensionValue } = getEventDimensionsData(
-    chartModel,
-    seriesIndex,
-    dataIndex,
+  const dimensions = getEventDimensions(
+    datum,
+    chartModel.dimensionModel,
+    seriesModel,
   );
-  const column = chartModel.seriesModels[seriesIndex].column;
 
   return {
     event: event.event.event,
-    value: dimensionValue, // TODO: verify is correct, should be metric value?
-    column,
+    value: datum[seriesModel.dataKey],
+    column: seriesModel.column,
     data,
     dimensions,
     settings,

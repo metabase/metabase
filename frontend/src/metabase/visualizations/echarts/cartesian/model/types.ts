@@ -119,6 +119,10 @@ export type BaseCartesianChartModel = {
   xAxisModel: XAxisModel;
 
   columnByDataKey: Record<DataKey, DatasetColumn>;
+
+  // Allows to use multiple ECharts series options to represent single data series
+  // and map series ids to data keys for chart events
+  seriesIdToDataKey?: Record<string, DataKey>;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {

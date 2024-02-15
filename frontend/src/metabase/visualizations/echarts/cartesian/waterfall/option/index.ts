@@ -1,5 +1,9 @@
-import type { RegisteredSeriesOption, EChartsOption } from "echarts";
-import type { DatasetOption, SeriesOption } from "echarts/types/dist/shared";
+import type {
+  RegisteredSeriesOption,
+  EChartsOption,
+  SeriesOption,
+} from "echarts";
+import type { DatasetOption } from "echarts/types/dist/shared";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
@@ -71,8 +75,10 @@ export const buildEChartsWaterfallSeries = (
       itemStyle: {
         color: settings["waterfall.increase_color"],
         color0: settings["waterfall.decrease_color"],
-        borderColor: settings["waterfall.increase_color"],
-        borderColor0: settings["waterfall.decrease_color"],
+        borderColor: "transparent",
+        borderColor0: "transparent",
+        borderColorDoji: "transparent",
+        borderWidth: 0,
       },
       barWidth,
       dimensions: [
@@ -146,7 +152,7 @@ export const buildEChartsWaterfallSeries = (
 
   if (settings["waterfall.show_total"]) {
     series.push({
-      id: "waterfall_total_label",
+      id: WATERFALL_TOTAL_KEY,
       type: "bar",
       barWidth,
       zlevel: CHART_STYLE.series.zIndex + 10,
