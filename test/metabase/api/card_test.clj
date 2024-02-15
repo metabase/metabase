@@ -3346,16 +3346,16 @@
                   {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
 
-(defn run-based-on-upload-test
+(defn run-based-on-upload-test!
   "Runs tests for based-on-upload `request` is a function that takes a card and returns a map which may have {:based_on_upload <table-id>}]
   This function exists to deduplicate test logic for all API endpoints that must return `based_on_upload`,
   including GET /api/collection/:id/items and GET /api/card/:id"
   [request]
   (mt/with-driver :h2 ; just test on H2 because failure should be independent of drivers
     (mt/with-temporary-setting-values [uploads-enabled true]
-      (mt/with-temp [:model/Database   {db-id :id :as db}     {:engine "h2"}
-                     :model/Table      {table-id :id}         {:db_id db-id, :is_upload true}
-                     :model/Collection {collection-id :id}    {}]
+      (mt/with-temp [:model/Database   {db-id :id}         {:engine "h2"}
+                     :model/Table      {table-id :id}      {:db_id db-id, :is_upload true}
+                     :model/Collection {collection-id :id} {}]
         (let [card-defaults {:collection_id collection-id
                              :type          :model
                              :dataset_query {:type     :query
@@ -3389,8 +3389,8 @@
                 (t2/update! :model/Table table-id {:is_upload true}))
               (testing "\nIf uploads are disabled, based_on_upload should be nil"
                 (mt/with-temp-copy-of-db
-                  (perms/revoke-data-perms! (perms-group/all-users) db)
-                  (is (nil? (:based_on_upload (mt/user-http-request :rasta :get 200 (str "card/" card-id)))))))
+                  (mt/with-no-data-perms-for-all-users!
+                    (is (nil? (:based_on_upload (mt/user-http-request :rasta :get 200 (str "card/" card-id))))))))
               (testing "\nIf uploads are disabled, based_on_upload should be nil"
                 (mt/with-temporary-setting-values [uploads-enabled false]
                   (is (nil? (:based_on_upload (request card))))))
@@ -3403,6 +3403,6 @@
                   (is (nil? (:based_on_upload (request card')))))))))))))
 
 (deftest based-on-upload-test
-  (run-based-on-upload-test
+  (run-based-on-upload-test!
    (fn [card]
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))

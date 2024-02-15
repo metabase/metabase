@@ -39,6 +39,16 @@
                                                    :perms/manage-database
                                                    db-id)))
 
+(defenterprise current-user-can-write-table?
+  "Enterprise version."
+  :feature :advanced-permissions
+  [table]
+  (= :yes (data-perms/table-permission-for-user
+           api/*current-user-id*
+           :perms/manage-table-metadata
+           (:db_id table)
+           (:id table))))
+
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
   This function is meant to be used for GET /api/user/current "

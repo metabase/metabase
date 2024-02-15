@@ -51,7 +51,7 @@
 
 (deftest parameters-with-source-is-card-test
   (testing "a card with a parameter whose source is a card should respect sandboxing"
-    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+    (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp
         [Card {source-card-id :id} {:database_id   (mt/id)
                                     :table_id      (mt/id :categories)
@@ -89,7 +89,7 @@
 
 (deftest is-sandboxed-test
   (testing "Adding a GTAP to the all users group to a table makes it such that is_sandboxed returns true."
-    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+    (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (t2.with-temp/with-temp [Card card {:database_id   (mt/id)
                                           :table_id      (mt/id :categories)
                                           :dataset_query (mt/mbql-query categories)}]
