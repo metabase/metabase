@@ -13,7 +13,7 @@ import type {
   TimelineEventId,
 } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
-import { getObjectEntries } from "metabase/lib/objects";
+import { getObjectKeys } from "metabase/lib/objects";
 import type { ClickObjectDimension } from "metabase-lib";
 import type {
   ComputedVisualizationSettings,
@@ -74,18 +74,45 @@ const findSeriesModelIndexById = (
   );
 };
 
+const getSameCardDataKeys = (
+  datum: Datum,
+  seriesModel: SeriesModel,
+): DataKey[] => {
+  return getObjectKeys(datum).filter(dataKey => {
+    if (dataKey === X_AXIS_DATA_KEY) {
+      return false;
+    }
+
+    const { cardId } = parseDataKey(dataKey);
+    return cardId == null || cardId === seriesModel.cardId;
+  });
+};
+
 export const getEventDimensions = (
+  chartModel: BaseCartesianChartModel,
   datum: Datum,
   dimensionModel: DimensionModel,
   seriesModel: SeriesModel,
 ) => {
-  const dimensionValue = datum[X_AXIS_DATA_KEY];
-  const dimensions: ClickObjectDimension[] = [
-    {
-      column: dimensionModel.column,
+  const sameCardDataKeys = getSameCardDataKeys(datum, seriesModel);
+  const sameCardDatumColumns = sameCardDataKeys
+    .map(dataKey => chartModel.columnByDataKey[dataKey])
+    .filter(isNotNull);
+  const dimensionColumn =
+    seriesModel.cardId != null
+      ? dimensionModel.columnByCardId[seriesModel.cardId]
+      : dimensionModel.column;
+
+  const hasDimensionValue = sameCardDatumColumns.includes(dimensionColumn);
+  const dimensions: ClickObjectDimension[] = [];
+
+  if (hasDimensionValue) {
+    const dimensionValue = datum[X_AXIS_DATA_KEY];
+    dimensions.push({
+      column: dimensionColumn,
       value: dimensionValue,
-    },
-  ];
+    });
+  }
 
   if (seriesModel != null && "breakoutColumn" in seriesModel) {
     dimensions.push({
@@ -108,23 +135,16 @@ export const getEventColumnsData = (
   const isBreakoutSeries =
     seriesModel != null && "breakoutColumn" in seriesModel;
 
-  return getObjectEntries(datum)
-    .map(([dataKey, value]) => {
-      if (dataKey === X_AXIS_DATA_KEY) {
-        return null;
-      }
+  return getSameCardDataKeys(datum, seriesModel)
+    .map(dataKey => {
+      const value = datum[dataKey];
 
-      const { cardId, breakoutValue } =
-        seriesModel != null
-          ? parseDataKey(dataKey)
-          : { cardId: null, breakoutValue: null };
+      const { breakoutValue } = parseDataKey(dataKey);
 
-      const isSameCard = cardId == null || cardId === seriesModel.cardId;
       const isDifferentBreakoutSeries =
         isBreakoutSeries && String(seriesModel.breakoutValue) !== breakoutValue;
 
-      const shouldIncludeValue = isSameCard && !isDifferentBreakoutSeries;
-      if (!shouldIncludeValue) {
+      if (isDifferentBreakoutSeries) {
         return null;
       }
 
@@ -307,6 +327,7 @@ export const getSeriesClickData = (
 
   const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
   const dimensions = getEventDimensions(
+    chartModel,
     datum,
     chartModel.dimensionModel,
     seriesModel,

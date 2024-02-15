@@ -73,8 +73,8 @@ export type DimensionModel = {
   column: DatasetColumn;
   // First card dimension column index
   columnIndex: number;
-  // All dimension columns from every card combined in a dashcard including the first one
-  columns: DatasetColumn[];
+  // All dimension columns by their card id
+  columnByCardId: Record<CardId, DatasetColumn>;
 };
 
 export type Datum = Record<DataKey, RowValue> & { [X_AXIS_DATA_KEY]: RowValue };

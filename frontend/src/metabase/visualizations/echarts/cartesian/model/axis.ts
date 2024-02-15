@@ -29,7 +29,11 @@ import {
   getDatasetExtents,
   getMetricDisplayValueGetter,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { getObjectEntries, getObjectKeys } from "metabase/lib/objects";
+import {
+  getObjectEntries,
+  getObjectKeys,
+  getObjectValues,
+} from "metabase/lib/objects";
 import {
   computeTimeseriesDataInverval,
   minTimeseriesUnit,
@@ -539,7 +543,7 @@ export function getTimeSeriesXAxisInterval(
   // 2. count - how many intervals per tick?
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
-    dimensionModel.columns.map(column => column.unit),
+    getObjectValues(dimensionModel.columnByCardId).map(column => column.unit),
   );
   const timezone = getTimezone(rawSeries);
   const { count, interval } = (computeTimeseriesDataInverval(xValues, unit) ?? {

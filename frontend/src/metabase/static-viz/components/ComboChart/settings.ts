@@ -104,7 +104,7 @@ export const computeStaticComboChartSettings = (
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
 
   const cardsColumns = getCardsColumns(rawSeries, settings);
-  const dimensionModel = getDimensionModel(cardsColumns);
+  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
   const seriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
