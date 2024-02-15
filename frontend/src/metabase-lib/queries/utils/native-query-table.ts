@@ -7,9 +7,9 @@ import { getDatasetTable } from "./nested-card-query-table";
 
 export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {
   const question = nativeQuery.question();
-  const isDataset = question.type() === "model" && question.isSaved();
+  const isModel = question.type() === "model" && question.isSaved();
 
-  if (isDataset) {
+  if (isModel) {
     return getDatasetTable(nativeQuery);
   }
 
