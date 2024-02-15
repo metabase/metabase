@@ -850,18 +850,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * Returns the "last" nested query that is already summarized, or `null` if none are
-   * */
-  lastSummarizedQuery = _.once((): StructuredQuery | null | undefined => {
-    if (this.hasAggregations() || !this.canNest()) {
-      return this;
-    } else {
-      const sourceQuery = this.sourceQuery();
-      return sourceQuery ? sourceQuery.lastSummarizedQuery() : null;
-    }
-  });
-
-  /**
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): Dimension | null | undefined {
