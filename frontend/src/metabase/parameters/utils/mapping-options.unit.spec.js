@@ -90,7 +90,7 @@ describe("parameters/utils/mapping-options", () => {
             sectionName: "Order",
             target: [
               "dimension",
-              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
             ],
           },
         ]);
