@@ -106,7 +106,7 @@
     :else
     (filter
      (fn [{db-id :db_id schema :schema}]
-       (= (data-perms/most-permissive-schema-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id schema)
+       (= (data-perms/schema-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id schema)
           :yes))
      schema)))
 
