@@ -56,24 +56,6 @@ export function BreakoutColumnListItem({
     [item.column, onRemoveColumn],
   );
 
-  const renderBucketPicker = useCallback(
-    () => (
-      <BucketPickerPopover
-        query={query}
-        stageIndex={STAGE_INDEX}
-        column={item.column}
-        isEditing={isSelected}
-        hasArrowIcon={false}
-        hasBinning
-        hasTemporalBucketing
-        onSelect={column =>
-          breakout ? onUpdateColumn(column) : onAddColumn(column)
-        }
-      />
-    ),
-    [query, breakout, item.column, isSelected, onAddColumn, onUpdateColumn],
-  );
-
   const displayName = isPinned ? item.longDisplayName : item.displayName;
 
   return (
@@ -88,7 +70,18 @@ export function BreakoutColumnListItem({
           <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
         </TitleContainer>
-        {renderBucketPicker()}
+        <BucketPickerPopover
+          query={query}
+          stageIndex={STAGE_INDEX}
+          column={item.column}
+          isEditing={isSelected}
+          hasArrowIcon={false}
+          hasBinning
+          hasTemporalBucketing
+          onSelect={column =>
+            breakout ? onUpdateColumn(column) : onAddColumn(column)
+          }
+        />
         {isSelected && (
           <RemoveButton
             onClick={handleRemoveColumn}
