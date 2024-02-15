@@ -360,10 +360,6 @@ class Question {
     return this.card().creationType;
   }
 
-  isEmpty(): boolean {
-    return this.legacyQuery({ useStructuredQuery: true }).isEmpty();
-  }
-
   /**
    * How many filters or other widgets are this question's values used for?
    */

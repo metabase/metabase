@@ -633,7 +633,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const isNewQuestion = !originalQuestion;
 
       if (isNewQuestion) {
-        return !question.isEmpty();
+        return !question.legacyQuery().isEmpty();
       }
 
       return isSavedQuestionChanged;
