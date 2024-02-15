@@ -54,12 +54,6 @@ export function applyParameters(
   parameterMappings = [],
 ) {
   const datasetQuery = copy(card.dataset_query);
-  // clean the query
-  if (datasetQuery.type === "query") {
-    const mlv2Query = datasetQuery.query.getMLv2Query();
-    const cleanQuery = Lib.dropStageIfEmpty(mlv2Query, -1);
-    datasetQuery.query = Lib.toLegacyQuery(cleanQuery);
-  }
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
     const value = parameterValues[parameter.id];
