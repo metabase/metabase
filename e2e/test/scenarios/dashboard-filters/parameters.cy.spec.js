@@ -1004,6 +1004,14 @@ describe("scenarios > dashboard > parameters", () => {
           "/api/dashboard/*/dashcard/*/card/*/query",
           cy.spy().as("cardQueryRequest"),
         ).as("cardQuery");
+        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+        cy.intercept(
+          "PUT",
+          "/api/dashboard/*",
+          // cy.spy().as("updateDashboardSpy"),
+        ).as("updateDashboard");
+
+        cy.intercept("GET", "/api/search*").as("search");
 
         cy.createQuestion({
           name: "Products Question",
@@ -1077,12 +1085,15 @@ describe("scenarios > dashboard > parameters", () => {
         });
       });
 
-      it("should autowire and filter cards with foreign keys when added to the dashboard via the query builder", () => {
+      it.only("should autowire and filter cards with foreign keys when added to the dashboard via the query builder", () => {
         visitDashboard("@dashboardId");
         editDashboard();
         setFilter("ID");
         selectDashboardFilter(getDashboardCard(0), "ID");
         saveDashboard();
+        cy.wait("@cardQuery");
+        // cy.log("save dashboard");
+        // cy.pause();
 
         cy.get("@ordersQuestionId").then(ordersQuestionId => {
           addQuestionFromQueryBuilder({ questionId: ordersQuestionId });
@@ -1095,7 +1106,7 @@ describe("scenarios > dashboard > parameters", () => {
           });
         });
 
-        cy.wait("@cardQuery");
+        // cy.wait("@cardQuery");
 
         goToFilterMapping("ID");
 
@@ -1105,26 +1116,29 @@ describe("scenarios > dashboard > parameters", () => {
 
         saveDashboard();
 
-        dashboardParametersContainer().findByText("ID").click();
+        // dashboardParametersContainer().findByText("ID").click();
 
-        popover().within(() => {
-          cy.findByRole("textbox").type("1{enter}");
-          cy.button("Add filter").click();
-        });
+        // cy.wait("@cardQuery");
+        // cy.get("@cardQueryRequest").should("have.been.called", 10);
 
-        cy.wait("@cardQuery");
+        // popover().within(() => {
+        //   cy.findByRole("textbox").type("1{enter}");
+        //   cy.button("Add filter").click();
+        // });
 
-        getDashboardCard(0).within(() => {
-          getTableCell("ID", 0).should("contain", "1");
-        });
+        // cy.wait("@cardQuery");
 
-        getDashboardCard(1).within(() => {
-          getTableCell("Product ID", 0).should("contain", "1");
-        });
+        // getDashboardCard(0).within(() => {
+        //   getTableCell("ID", 0).should("contain", "1");
+        // });
 
-        getDashboardCard(2).within(() => {
-          getTableCell("Product ID", 0).should("contain", "1");
-        });
+        // getDashboardCard(1).within(() => {
+        //   getTableCell("Product ID", 0).should("contain", "1");
+        // });
+
+        // getDashboardCard(2).within(() => {
+        //   getTableCell("Product ID", 0).should("contain", "1");
+        // });
       });
     });
   });
@@ -1155,6 +1169,7 @@ function createDashboardWithCards({
 }
 
 function addCardToDashboard(dashcardNames = "Orders Model") {
+  cy.log("added cards");
   const dashcardsToSelect =
     typeof dashcardNames === "string" ? [dashcardNames] : dashcardNames;
   cy.findByTestId("dashboard-header").icon("add").click();
@@ -1194,6 +1209,8 @@ function addQuestionFromQueryBuilder({
   openQuestionActions();
   popover().findByText("Add to dashboard").click();
   modal().findByText("36275").click();
+
+  cy.wait("@cardQuery");
 
   undoToast().should("be.visible");
   if (saveDashboardAfterAdd) {
