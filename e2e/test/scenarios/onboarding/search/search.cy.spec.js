@@ -197,13 +197,13 @@ describe("scenarios > search", () => {
         description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
 
         Lorem ipsum dolor sit amet.
-        
+
         ----
-        
+
         ## Heading 1
-        
+
         This is a [link](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg).
-        
+
         Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
       }).then(() => {
         cy.signInAsNormalUser();
@@ -220,6 +220,33 @@ describe("scenarios > search", () => {
       cy.findByTestId("result-description")
         .findByRole("img")
         .should("not.exist");
+    });
+
+    it("should not overflow container if results contain descriptions with large unborken strings", () => {
+      cy.createQuestion({
+        name: "Description Test",
+        query: { "source-table": ORDERS_ID },
+        description: `testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting`,
+      }).then(() => {
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        getSearchBar().type("Test");
+      });
+
+      const resultDescription = cy.findByTestId("result-description");
+      const parentContainer = cy.findByTestId(
+        "search-results-floating-container",
+      );
+
+      parentContainer.invoke("outerWidth").then(parentWidth => {
+        resultDescription
+          .invoke("outerWidth")
+          .should(
+            "be.lessThan",
+            parentWidth,
+            "Result description width should not exceed parent container width",
+          );
+      });
     });
 
     it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
