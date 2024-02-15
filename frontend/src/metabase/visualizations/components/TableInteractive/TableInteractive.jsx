@@ -33,7 +33,6 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import Question from "metabase-lib/Question";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
@@ -701,7 +700,7 @@ class TableInteractive extends Component {
     const isAscending = sortDirection === "asc";
 
     const columnInfoPopoverTestId = "field-info-popover";
-    const question = new Question(this.props.card, this.props.metadata);
+    const question = this.props.question;
     const query = question.query();
     const stageIndex = -1;
 
