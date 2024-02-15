@@ -219,34 +219,11 @@
       (log/warnf "Migration lock was cleared after %d retries." @retry-counter)
       (log/info "No migration lock found."))))
 
-(defn migrate-up-if-needed!
-  "Run any unrun `liquibase` migrations, if needed."
-  [^Liquibase liquibase ^DataSource data-source]
-  (log/info (trs "Checking if Database has unrun migrations..."))
-  (if (seq (unrun-migrations data-source))
-    (do
-     (log/info (trs "Database has unrun migrations. Checking if migraton lock is taken..."))
-     (wait-for-migration-lock-to-be-cleared liquibase)
-     ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
-     ;; sure something still needs to be done...
-     (let [to-run-migrations      (unrun-migrations data-source)
-           unrun-migrations-count (count to-run-migrations)]
-       (if (pos? unrun-migrations-count)
-         (let [^Contexts contexts nil
-               start-time         (System/currentTimeMillis)]
-           (log/info (trs "Running {0} migrations ..." unrun-migrations-count))
-           (doseq [^ChangeSet change to-run-migrations]
-             (log/tracef "To run migration %s" (.getId change)))
-           (.update liquibase contexts)
-           (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time)))))
-         (log/info
-          (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
-    (log/info (trs "No unrun migrations found."))))
-
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
-  Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
-  Clojure). This function initializes the database and the resource accessor which are often required."
+   Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
+   Clojure). This function initializes the database and the resource accessor which are often required.
+   The underlying locks are re-entrant, so it is safe to nest these blocks."
   [^Liquibase liquibase f]
   (let [database (.getDatabase liquibase)
         ^LockService lock-service (.getLockService (LockServiceFactory/getInstance) database)
@@ -261,6 +238,40 @@
                        (finally
                          (.releaseLock lock-service))))))))
 
+(defmacro with-scope-locked
+  "Run `body` in a scope on the Liquibase instance `liquibase`.
+   Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
+   Clojure). This function initializes the database and the resource accessor which are often required.
+   The underlying locks are re-entrant, so it is safe to nest these blocks."
+  {:style/indent 1}
+  [liquibase & body]
+  `(run-in-scope-locked ~liquibase (fn [] ~@body)))
+
+(defn migrate-up-if-needed!
+  "Run any unrun `liquibase` migrations, if needed."
+  [^Liquibase liquibase ^DataSource data-source]
+  (log/info (trs "Checking if Database has unrun migrations..."))
+  (if (seq (unrun-migrations data-source))
+    (do
+     (log/info (trs "Database has unrun migrations. Checking if migration lock is taken..."))
+     (wait-for-migration-lock-to-be-cleared liquibase)
+     (with-scope-locked liquibase
+      ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
+      ;; sure something still needs to be done...
+      (let [to-run-migrations      (unrun-migrations data-source)
+            unrun-migrations-count (count to-run-migrations)]
+        (if (pos? unrun-migrations-count)
+          (let [^Contexts contexts nil
+                start-time         (System/currentTimeMillis)]
+            (log/info (trs "Running {0} migrations ..." unrun-migrations-count))
+            (doseq [^ChangeSet change to-run-migrations]
+              (log/tracef "To run migration %s" (.getId change)))
+            (.update liquibase contexts)
+            (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time)))))
+          (log/info
+           (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance."))))))
+    (log/info (trs "No unrun migrations found."))))
+
 (defn update-with-change-log
   "Run update with the change log instances in `liquibase`."
   ([liquibase]
@@ -273,9 +284,8 @@
          log-iterator   (ChangeLogIterator. change-log ^"[Lliquibase.changelog.filter.ChangeSetFilter;" (into-array ChangeSetFilter change-set-filters))
          update-visitor (UpdateVisitor. database ^ChangeExecListener exec-listener)
          runtime-env    (RuntimeEnvironment. database (Contexts.) nil)]
-     (run-in-scope-locked
-      liquibase
-      #(.run ^ChangeLogIterator log-iterator update-visitor runtime-env)))))
+     (with-scope-locked liquibase
+       (.run ^ChangeLogIterator log-iterator update-visitor runtime-env)))))
 
 (mu/defn force-migrate-up-if-needed!
   "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:
@@ -289,36 +299,37 @@
    ^DataSource data-source :- (ms/InstanceOfClass DataSource)]
   ;; have to do this before clear the checksums else it will wait for locks to be released
   (release-lock-if-needed! liquibase)
-  (.clearCheckSums liquibase)
-  (when (seq (unrun-migrations data-source))
-    (let [change-log     (.getDatabaseChangeLog liquibase)
-          fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
-                               (.getChangeSets change-log))
-          exec-listener  (proxy [AbstractChangeExecListener] []
-                           (willRun [^ChangeSet change-set _database-change-log _database _run-status]
-                             (when (instance? ChangeSet change-set)
-                               (log/info (format "Start executing migration with id %s" (.getId change-set)))))
+  (with-scope-locked liquibase
+   (.clearCheckSums liquibase)
+   (when (seq (unrun-migrations data-source))
+     (let [change-log     (.getDatabaseChangeLog liquibase)
+           fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
+                                (.getChangeSets change-log))
+           exec-listener  (proxy [AbstractChangeExecListener] []
+                            (willRun [^ChangeSet change-set _database-change-log _database _run-status]
+                              (when (instance? ChangeSet change-set)
+                                (log/info (format "Start executing migration with id %s" (.getId change-set)))))
 
-                           (runFailed [^ChangeSet change-set _database-change-log _database ^Exception e]
-                             (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
+                            (runFailed [^ChangeSet change-set _database-change-log _database ^Exception e]
+                              (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
 
-                           (ran [change-set _database-change-log _database ^ChangeSet$ExecType exec-type]
-                             (when (instance? ChangeSet change-set)
-                               (condp = exec-type
-                                 ChangeSet$ExecType/EXECUTED
-                                 (log/info (u/format-color 'green "[SUCCESS]"))
+                            (ran [change-set _database-change-log _database ^ChangeSet$ExecType exec-type]
+                              (when (instance? ChangeSet change-set)
+                                (condp = exec-type
+                                  ChangeSet$ExecType/EXECUTED
+                                  (log/info (u/format-color 'green "[SUCCESS]"))
 
-                                 ChangeSet$ExecType/FAILED
-                                 (log/error (u/format-color 'red "[ERROR]"))
+                                  ChangeSet$ExecType/FAILED
+                                  (log/error (u/format-color 'red "[ERROR]"))
 
-                                 (log/info (format "[%s]" (.name exec-type)))))))]
-      (try
-        (doseq [^ChangeSet change-set (.getChangeSets change-log)]
-          (.setFailOnError change-set false))
-        (update-with-change-log liquibase {:exec-listener exec-listener})
-        (finally
-          (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
-            (.setFailOnError change-set fail-on-error?)))))))
+                                  (log/info (format "[%s]" (.name exec-type)))))))]
+       (try
+         (doseq [^ChangeSet change-set (.getChangeSets change-log)]
+           (.setFailOnError change-set false))
+         (update-with-change-log liquibase {:exec-listener exec-listener})
+         (finally
+           (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
+             (.setFailOnError change-set fail-on-error?))))))))
 
 
 (mu/defn consolidate-liquibase-changesets!
@@ -330,16 +341,18 @@
 
   See https://github.com/metabase/metabase/issues/3715
   Also see https://github.com/metabase/metabase/pull/34400"
-  [conn :- (ms/InstanceOfClass java.sql.Connection)]
+  [conn :- (ms/InstanceOfClass java.sql.Connection)
+   liquibase :- (ms/InstanceOfClass Liquibase)]
   (let [liquibase-table-name (changelog-table-name conn)
         statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
-    (when-not (fresh-install? conn)
-      (jdbc/execute!
-       {:connection conn}
-       [statement
-        "v00.00-000" "migrations/001_update_migrations.yaml"
-        "v45.00-001" "migrations/000_legacy_migrations.yaml"
-        "migrations/001_update_migrations.yaml"]))))
+    (with-scope-locked liquibase
+     (when-not (fresh-install? conn)
+       (jdbc/execute!
+        {:connection conn}
+        [statement
+         "v00.00-000" "migrations/001_update_migrations.yaml"
+         "v45.00-001" "migrations/000_legacy_migrations.yaml"
+         "migrations/001_update_migrations.yaml"])))))
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
@@ -359,13 +372,14 @@
      (throw (IllegalArgumentException.
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
                      (config/current-major-version)))))
-   ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
-   (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC" (changelog-table-name conn))
-         changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
-         ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
-         ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
-     (log/infof "Rolling back app database schema to version %d" target-version)
-     (.rollback liquibase (count ids-to-drop) ""))))
+   (with-scope-locked liquibase
+    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
+    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC" (changelog-table-name conn))
+          changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
+          ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
+          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
+      (log/infof "Rolling back app database schema to version %d" target-version)
+      (.rollback liquibase (count ids-to-drop) "")))))
 
 (defn latest-applied-major-version
   "Gets the latest version that was applied to the database."

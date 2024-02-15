@@ -74,7 +74,7 @@
     (log/info (trs "Setting up Liquibase..."))
     (liquibase/with-liquibase [liquibase conn]
       (try
-       (liquibase/consolidate-liquibase-changesets! conn)
+       (liquibase/consolidate-liquibase-changesets! conn liquibase)
        (log/info (trs "Liquibase is ready."))
        (case direction
          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
