@@ -6,7 +6,7 @@ export function createDatasetQuery(
   query: string,
   question: Question,
 ): DatasetQuery {
-  const tableId = question.tableId();
+  const tableId = question.legacyQueryTableId();
   const collection =
     tableId === null || typeof tableId === "undefined"
       ? undefined

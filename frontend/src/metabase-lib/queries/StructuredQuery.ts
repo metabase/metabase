@@ -901,7 +901,7 @@ class StructuredQuery extends AtomicQuery {
    */
   rootTable = _.once((): Table => {
     const question = this.question();
-    const questionTableId = question?.tableId();
+    const questionTableId = question?.legacyQueryTableId();
     if (questionTableId != null) {
       return this.metadata().table(questionTableId);
     }

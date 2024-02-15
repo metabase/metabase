@@ -729,7 +729,7 @@ class Question {
     return query && typeof query.table === "function" ? query.table() : null;
   }
 
-  tableId(): TableId | null {
+  legacyQueryTableId(): TableId | null {
     const table = this.legacyQueryTable();
     return table ? table.id : null;
   }
