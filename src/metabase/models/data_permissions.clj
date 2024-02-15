@@ -89,13 +89,15 @@
 (defn relevant-permissions-for-user
   "Returns all relevant rows for permissions for the user"
   [user-id]
-  (group-by (juxt :user_id :perm_type :db_id)
-            (t2/select :model/DataPermissions
-                       {:select [:p.* [:pgm.user_id :user_id]]
-                        :from [[:permissions_group_membership :pgm]]
-                        :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                               [:data_permissions :p] [:= :p.group_id :pg.id]]
-                        :where [:= :pgm.user_id user-id]})))
+  (->> (t2/select :model/DataPermissions
+                  {:select [:p.* [:pgm.user_id :user_id]]
+                   :from [[:permissions_group_membership :pgm]]
+                   :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                          [:data_permissions :p] [:= :p.group_id :pg.id]]
+                   :where [:= :pgm.user_id user-id]})
+       (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
+                 (update-in m [user_id perm_type db_id] (fnil conj []) row))
+               {})))
 
 (defn- relevant-permissions-for-user-perm-and-db
   "Returns all relevant rows for a given user, permission type, and db_id"
@@ -126,9 +128,9 @@
      ~@body))
 
 (defn- get-permissions [user-id perm-type db-id]
-  (if-let [cached-perms (and (= user-id api/*current-user-id*)
-                             (get @*permissions-for-user* [user-id perm-type db-id]))]
-    cached-perms
+  (if (and (= user-id api/*current-user-id*)
+           (get @*permissions-for-user* user-id))
+    (get-in @*permissions-for-user* [user-id perm-type db-id])
     (relevant-permissions-for-user-perm-and-db user-id perm-type db-id)))
 
 ;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
@@ -314,8 +316,8 @@
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
     (let [perm-values (->> (get-permissions user-id perm-type database-id)
-                             (map :perm_value)
-                             (into #{}))]
+                           (map :perm_value)
+                           (into #{}))]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
