@@ -362,7 +362,7 @@ function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
 // A composed entity should be treated as the equivalent to its original form.
 // We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
 // in either form.
-function areModelsEquivalent({
+function areComposedEntitiesEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
@@ -420,7 +420,7 @@ function areQueriesEquivalent({
       currentQuestion?.datasetQuery(),
       tableMetadata,
     ) ||
-    areModelsEquivalent({
+    areComposedEntitiesEquivalent({
       originalQuestion,
       lastRunQuestion,
       currentQuestion,
