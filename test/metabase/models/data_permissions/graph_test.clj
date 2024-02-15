@@ -22,7 +22,7 @@
     (testing "data-access permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph! api-graph)
+                                     (data-perms.graph/update-data-perms-graph!* api-graph)
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular data access permissions
         {group-id-1
@@ -96,7 +96,7 @@
     (testing "download permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph! api-graph)
+                                     (data-perms.graph/update-data-perms-graph!* api-graph)
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular download permissions
         {group-id-1
@@ -161,7 +161,7 @@
     (testing "data model editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph! api-graph)
+                                     (data-perms.graph/update-data-perms-graph!* api-graph)
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular data model editing permissions
         {group-id-1
@@ -220,7 +220,7 @@
     (testing "database details editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph! api-graph)
+                                     (data-perms.graph/update-data-perms-graph!* api-graph)
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Granting permission to edit database details
         {group-id-1

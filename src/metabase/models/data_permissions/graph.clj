@@ -360,7 +360,6 @@
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
 
-
 (defn log-permissions-changes
   "Log changes to the permissions graph."
   [old new]
@@ -397,8 +396,21 @@
                                            :after   changes
                                            :user_id api/*current-user-id*))))
 
-(mu/defn update-data-perms-graph!
+(mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly."
+  [graph]
+  (doseq [[group-id group-changes] graph]
+    (doseq [[db-id db-changes] group-changes
+            [perm-type new-perms] db-changes]
+      (case perm-type
+        :data       (update-db-level-data-access-permissions! group-id db-id new-perms)
+        :download   (update-db-level-download-permissions! group-id db-id new-perms)
+        :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
+        :details    (update-details-perms! group-id db-id new-perms)))))
+
+(mu/defn update-data-perms-graph!
+  "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally validates the revision number,
+   logs the changes, and ensures impersonations and sandboxes are consistent."
   ([new-graph :- api.permission-graph/StrictData]
    (let [old-graph (api-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
@@ -409,14 +421,7 @@
        (check-revision-numbers old-graph new-graph)
        (check-audit-db-permissions new)
        (t2/with-transaction [_conn]
-         (doseq [[group-id group-changes] new]
-           (doseq [[db-id db-changes] group-changes
-                   [perm-type new-perms] db-changes]
-             (case perm-type
-               :data       (update-db-level-data-access-permissions! group-id db-id new-perms)
-               :download   (update-db-level-download-permissions! group-id db-id new-perms)
-               :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
-               :details    (update-details-perms! group-id db-id new-perms))))
+         (update-data-perms-graph!* new)
          (save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
          (delete-impersonations-if-needed-after-permissions-change! new)
          (delete-gtaps-if-needed-after-permissions-change! new)))))
