@@ -203,7 +203,7 @@
    ;; flow the `:options` from the field we're aggregating. This is important, for some reason.
    ;; See [[metabase.query-processor-test.aggregation-test/field-settings-for-aggregate-fields-test]]
    (when first-arg
-     (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings]))
+     (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
    ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
 (lib.common/defop count       [] [x])
