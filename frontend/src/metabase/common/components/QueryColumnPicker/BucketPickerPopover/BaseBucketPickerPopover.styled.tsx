@@ -19,7 +19,7 @@ export const TriggerButton = styled.button`
 
   color: ${alpha(color("white"), 0.5)};
   font-weight: 700;
-  border-left: 2px solid ${alpha(color("border"), 0.1)};
+  border-left: 2px solid transparent;
   padding: 0.5rem;
   cursor: pointer;
 
