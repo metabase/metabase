@@ -56,19 +56,6 @@ export type PluginGroupManagersType = {
   confirmUpdateMembershipAction: any;
 };
 
-export type TUseLLMQuestionNameDescription = ({
-  initialValues,
-  question,
-}: {
-  initialValues: FormValues;
-  question: Question;
-}) => {
-  generatedName: string;
-  generatedDescription: string;
-  loading: boolean;
-  LLMLoadingIndicator: () => JSX.Element | null;
-};
-
 export type TUseLLMDashboardDescription = ({
   dashboardId,
 }: {
@@ -91,7 +78,7 @@ export type TUseLLMIndicator = ({
   generatedName: string;
   generatedDescription: string;
   loading: boolean;
-  LLMLoadingBadge: ({
+  LLMIndicator: ({
     children,
   }: {
     children?: ReactNode;
@@ -99,7 +86,6 @@ export type TUseLLMIndicator = ({
 };
 
 export type PluginLLMAutoDescription = {
-  useLLMQuestionNameDescription: TUseLLMQuestionNameDescription;
   useLLMDashboardDescription: TUseLLMDashboardDescription;
-  useLLMIndicator: TUseLLMIndicator;
+  useLLMQuestionTitleAndDescription: TUseLLMIndicator;
 };

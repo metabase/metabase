@@ -140,8 +140,8 @@ export const SaveQuestionModal = ({
     ],
   );
 
-  const { generatedName, generatedDescription, LLMLoadingBadge } =
-    PLUGIN_LLM_AUTODESCRIPTION.useLLMIndicator({
+  const { generatedName, generatedDescription, LLMIndicator } =
+    PLUGIN_LLM_AUTODESCRIPTION.useLLMQuestionTitleAndDescription({
       initialValues,
       question,
       defaultWrapper: ({ children }) => {
@@ -231,7 +231,6 @@ export const SaveQuestionModal = ({
           title={title}
           onClose={onClose}
         >
-          <LLMLoadingBadge/>
           <FormProvider
             initialValues={{
               ...initialValues,
@@ -244,6 +243,7 @@ export const SaveQuestionModal = ({
           >
             {({ values }) => (
               <Form>
+                <LLMIndicator/>
                 {showSaveType && (
                   <FormRadio
                     name="saveType"

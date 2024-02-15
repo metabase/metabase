@@ -156,22 +156,16 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 
 // llm autodescription
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
-  useLLMQuestionNameDescription: () => ({
-    generatedName: "",
-    generatedDescription: "",
-    loading: false,
-    LLMLoadingIndicator: () => null
-  }),
   useLLMDashboardDescription: () => ({
     generatedDescription: "",
     loading: false,
     SuggestDescriptionButton: () => null
   }),
-  useLLMIndicator: ({ defaultWrapper }) => ({
+  useLLMQuestionTitleAndDescription: ({ defaultWrapper }) => ({
     generatedName: "",
     generatedDescription: "",
     loading: false,
-    LLMLoadingBadge: ({ children }) => defaultWrapper({ children })
+    LLMIndicator: ({ children }) => defaultWrapper({ children })
   })
 };
 
