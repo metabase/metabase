@@ -49,9 +49,11 @@ describe("parameters/utils/mapping-options", () => {
       let virtualCardTable;
       beforeEach(() => {
         const question = ordersTable.question();
-        dataset = question
-          .setCard({ ...question.card(), id: 123 })
-          .setType("model");
+        dataset = question.setCard({
+          ...question.card(),
+          id: 123,
+          type: "model",
+        });
 
         // create a virtual table for the card
         // that contains fields with custom, model-specific metadata
@@ -60,7 +62,7 @@ describe("parameters/utils/mapping-options", () => {
         virtualCardTable.fields = [
           metadata.field(ORDERS.CREATED_AT).clone({
             table_id: `card__123`,
-            uniqueId: `card__123:${ORDERS.CREATED_AT.id}`,
+            uniqueId: `card__123:${ORDERS.CREATED_AT}`,
             display_name: "~*~Created At~*~",
           }),
         ];
@@ -88,7 +90,7 @@ describe("parameters/utils/mapping-options", () => {
             sectionName: "Order",
             target: [
               "dimension",
-              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
             ],
           },
         ]);
@@ -240,7 +242,7 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             target: [
               "dimension",
-              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
             ],
             isForeign: false,
           },
