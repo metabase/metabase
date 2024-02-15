@@ -64,11 +64,7 @@ const renderDatasetEditor = (card: Card | UnsavedCard) => {
   const question = new Question(card);
 
   renderWithProviders(
-    <DatasetEditor
-      {...defaultDatasetEditorProps}
-      question={question}
-      query={question.legacyQuery({ useStructuredQuery: true })}
-    />,
+    <DatasetEditor {...defaultDatasetEditorProps} question={question} />,
   );
 };
 
