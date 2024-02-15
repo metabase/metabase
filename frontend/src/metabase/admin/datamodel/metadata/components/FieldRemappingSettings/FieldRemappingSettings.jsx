@@ -123,13 +123,20 @@ class FieldRemappingSettings extends Component {
 
     this.clearEditingStates();
 
+    const notify = {
+      message: <strong>{t`${field.displayName()} updated`}</strong>,
+    };
+
     if (mappingType.type === "original") {
       MetabaseAnalytics.trackStructEvent(
         "Data Model",
         "Change Remapping Type",
         "No Remapping",
       );
-      await deleteFieldDimension({ id: field.id });
+      await deleteFieldDimension({
+        id: field.id,
+        notify,
+      });
       this.setState({ hasChanged: false });
     } else if (mappingType.type === "foreign") {
       // Try to find a entity name field from target table and choose it as remapping target field if it exists
@@ -142,7 +149,7 @@ class FieldRemappingSettings extends Component {
           "Foreign Key",
         );
         await updateFieldDimension(
-          { id: field.id },
+          { id: field.id, notify },
           {
             type: "external",
             name: field.display_name,

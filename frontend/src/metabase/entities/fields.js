@@ -28,6 +28,7 @@ import {
   field_semantic_types,
   has_field_values_options,
 } from "metabase/lib/core";
+import { addUndo } from "metabase/redux/undo";
 import { TYPE } from "metabase-lib/types/constants";
 import { getFieldValues } from "metabase-lib/queries/utils/field";
 import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
@@ -134,8 +135,11 @@ const Fields = createEntity({
     ),
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
-      ({ id }, dimension) =>
-        () => {
+      ({ id, notify }, dimension) =>
+        dispatch => {
+          if (notify) {
+            dispatch(addUndo(notify));
+          }
           return MetabaseApi.field_dimension_update({
             fieldId: id,
             ...dimension,
@@ -144,9 +148,12 @@ const Fields = createEntity({
     ),
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
-      ({ id }) =>
-        async () => {
+      ({ id, notify }) =>
+        async dispatch => {
           await MetabaseApi.field_dimension_delete({ fieldId: id });
+          if (notify) {
+            dispatch(addUndo(notify));
+          }
           return { id };
         },
     ),
