@@ -490,10 +490,10 @@
                  db-id     :db-id
                  schema    :schema
                  table-id  :table-id}]
-       (let [schema   (or schema "")
-             path     (if table-id
-                        [group-id db-id perm-type schema table-id]
-                        [group-id db-id perm-type])]
+       (let [schema         (or schema "")
+             path           (if table-id
+                              [group-id db-id perm-type schema table-id]
+                              [group-id db-id perm-type])]
          (assoc-in graph path value)))
      {}
      data-perms)))
@@ -596,13 +596,16 @@
             (when (not= values #{existing-db-perm-value})
               ;; If we're setting any table permissions to a value that is different from the database-level permission,
               ;; we need to replace it with individual permission rows for every table in the database instead.
+              ;; If the database-level permission was previously `:block`, we set the tables to `:no-self-service`.
               (let [other-tables    (t2/select :model/Table {:where [:and
                                                                      [:= :db_id db-id]
                                                                      [:not [:in :id table-ids]]]})
                     other-new-perms (map (fn [table]
                                            {:perm_type   perm-type
                                             :group_id    group-id
-                                            :perm_value  existing-db-perm-value
+                                            :perm_value  (if (= :block existing-db-perm-value)
+                                                           :no-self-service
+                                                           existing-db-perm-value)
                                             :db_id       db-id
                                             :table_id    (:id table)
                                             :schema_name (:schema table)})

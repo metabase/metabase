@@ -97,8 +97,7 @@
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]
-      (def graph graph)
-      (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
+      (data-perms.graph/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
       (let [sandbox-updates        (:sandboxes graph)
             sandboxes              (when sandbox-updates
                                      (upsert-sandboxes! sandbox-updates))

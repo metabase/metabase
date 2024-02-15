@@ -7,14 +7,19 @@
   Essentially, this is a translation layer between the graph used by the v1 permissions schema and the v2 permissions
   schema."
   (:require
+   [clojure.data :as data]
+   [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision :as perms-revision]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -178,6 +183,27 @@
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
+(defenterprise delete-gtaps-if-needed-after-permissions-change!
+  "Delete GTAPs (sandboxes) that are no longer needed after the permissions graph is updated. This is EE-specific --
+  OSS impl is a no-op, since sandboxes are an EE-only feature."
+  metabase-enterprise.sandbox.models.permissions.delete-sandboxes
+  [_])
+
+(defenterprise delete-impersonations-if-needed-after-permissions-change!
+  "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
+  EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
+  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  [_])
+
+(defn ee-permissions-exception
+  "Exception to throw when a permissions operation fails due to missing Enterprise Edition code, or missing a valid
+   token with the advanced-permissions feature."
+  [perm-type]
+  (ex-info
+    (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+         (str/replace (name perm-type) "-" " "))
+    {:status-code 402}))
+
 (defn- update-table-level-metadata-permissions!
   [group-id db-id schema new-table-perms]
   (let [new-table-perms
@@ -312,20 +338,89 @@
         (data-perms/set-database-permission! group-id db-id :perms/data-access :no-self-service)
 
         :block
-        (data-perms/set-database-permission! group-id db-id :perms/data-access :block)))))
+        (do
+          (when-not (premium-features/has-feature? :advanced-permissions)
+            (throw (ee-permissions-exception :block)))
+          (data-perms/set-database-permission! group-id db-id :perms/data-access :block))))))
 
 (defn- update-details-perms!
   [group-id db-id value]
   (data-perms/set-database-permission! group-id db-id :perms/manage-database value))
 
-(defn update-data-perms-graph!
+(defn check-audit-db-permissions
+  "Check that the changes coming in does not attempt to change audit database permission. Admins should
+  change these permissions in application monitoring permissions."
+  [changes]
+  (let [changes-ids (->> changes
+                         vals
+                         (map keys)
+                         (apply concat))]
+    (when (some #{config/audit-db-id} changes-ids)
+      (throw (ex-info (tru
+                       (str "Audit database permissions can only be changed by updating audit collection permissions."))
+                      {:status-code 400})))))
+
+
+(defn log-permissions-changes
+  "Log changes to the permissions graph."
+  [old new]
+  (log/debug
+   (trs "Changing permissions")
+   "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
+   "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
+
+(defn check-revision-numbers
+  "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
+  make sure people don't submit a new graph based on something out of date, which would otherwise stomp over changes
+  made in the interim. Return a 409 (Conflict) if the numbers don't match up."
+  [old-graph new-graph]
+  (when (not= (:revision old-graph) (:revision new-graph))
+    (throw (ex-info (tru
+                      (str "Looks like someone else edited the permissions and your data is out of date. "
+                           "Please fetch new data and try again."))
+                    {:status-code 409}))))
+
+(defn save-perms-revision!
+  "Save changes made to permission graph for logging/auditing purposes.
+  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
+  *  `model`   -- revision model, should be one of
+                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision]
+  *  `before`  -- the graph before the changes
+  *  `changes` -- set of changes applied in this revision."
+  [model current-revision before changes]
+  (when api/*current-user-id*
+    (first (t2/insert-returning-instances! model
+                                           ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
+                                           ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+                                           :id      (inc current-revision)
+                                           :before  before
+                                           :after   changes
+                                           :user_id api/*current-user-id*))))
+
+(mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly."
-  [graph]
-  (doseq [[group-id group-changes] graph]
-    (doseq [[db-id db-changes] group-changes
-            [perm-type new-perms] db-changes]
-      (case perm-type
-        :data       (update-db-level-data-access-permissions! group-id db-id new-perms)
-        :download   (update-db-level-download-permissions! group-id db-id new-perms)
-        :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
-        :details    (update-details-perms! group-id db-id new-perms)))))
+  ([new-graph :- api.permission-graph/StrictData]
+   (let [old-graph (api-graph)
+         [old new] (data/diff (:groups old-graph) (:groups new-graph))
+         old       (or old {})
+         new       (or new {})]
+     (when (or (seq old) (seq new))
+       (log-permissions-changes old new)
+       (check-revision-numbers old-graph new-graph)
+       (check-audit-db-permissions new)
+       (t2/with-transaction [_conn]
+         (doseq [[group-id group-changes] new]
+           (doseq [[db-id db-changes] group-changes
+                   [perm-type new-perms] db-changes]
+             (case perm-type
+               :data       (update-db-level-data-access-permissions! group-id db-id new-perms)
+               :download   (update-db-level-download-permissions! group-id db-id new-perms)
+               :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
+               :details    (update-details-perms! group-id db-id new-perms))))
+        (save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
+        (delete-impersonations-if-needed-after-permissions-change! new)
+        (delete-gtaps-if-needed-after-permissions-change! new)))))
+
+  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ([ks :- [:vector :any] new-value]
+   (update-data-perms-graph! (assoc-in (api-graph) (cons :groups ks) new-value))))

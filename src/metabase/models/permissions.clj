@@ -958,17 +958,6 @@
   (check-not-personal-collection-or-descendant collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
 
-(defenterprise ^:private delete-gtaps-if-needed-after-permissions-change!
-  "Delete GTAPs (sandboxes) that are no longer needed after the permissions graph is updated. This is EE-specific --
-  OSS impl is a no-op, since sandboxes are an EE-only feature."
-  metabase-enterprise.sandbox.models.permissions.delete-sandboxes
-  [_])
-
-(defenterprise ^:private delete-impersonations-if-needed-after-permissions-change!
-  "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
-  EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
-  metabase-enterprise.advanced-permissions.models.connection-impersonation
-  [_])
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
@@ -1257,16 +1246,16 @@
          old       (or old {})
          new       (or new {})]
      (when (or (seq old) (seq new))
-       (log-permissions-changes old new)
-       (check-revision-numbers old-graph new-graph)
-       (check-audit-db-permissions new)
+       (data-perms.graph/log-permissions-changes old new)
+       (data-perms.graph/check-revision-numbers old-graph new-graph)
+       (data-perms.graph/check-audit-db-permissions new)
        (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
         (data-perms.graph/update-data-perms-graph! new)
-        (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
-        (delete-impersonations-if-needed-after-permissions-change! new)
-        (delete-gtaps-if-needed-after-permissions-change! new)))))
+        (data-perms.graph/save-perms-revision! PermissionsRevision (:revision old-graph) old new)
+        (data-perms.graph/delete-impersonations-if-needed-after-permissions-change! new)
+        (data-perms.graph/delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
