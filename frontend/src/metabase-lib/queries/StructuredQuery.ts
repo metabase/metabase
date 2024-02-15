@@ -52,8 +52,6 @@ import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 
-import { getStructuredQueryTable } from "./utils/structured-query-table";
-
 type DimensionFilterFn = (dimension: Dimension) => boolean;
 export type FieldFilterFn = (filter: Field) => boolean;
 
@@ -195,7 +193,9 @@ class StructuredQuery extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {
-    return getStructuredQueryTable(this.question(), this);
+    const question = this.question();
+    const metadata = question.metadata();
+    return metadata.table(this._sourceTableId());
   });
 
   hasAggregations() {
