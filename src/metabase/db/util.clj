@@ -129,10 +129,11 @@
                               "This should not be used to change any of the identifying values")
                       ;; For convenience, we allow the update-fn to omit fields in the search-map
                       (merge updated select-map))]
-     (if-let [entity (apply t2/select-one model select-kvs)]
-       (let [pk      (pk-key entity)
-             updated (validate (update-fn entity))]
-         (t2/update! model pk (validate (update-fn entity)))
-         ;; we allow this operation to change the private key
-         (pk-key updated pk))
-       (t2/insert-returning-pk! model (validate (update-fn nil)))))))
+     (with-conflict-retry
+       (if-let [entity (apply t2/select-one model select-kvs)]
+         (let [pk      (pk-key entity)
+               updated (validate (update-fn entity))]
+           (t2/update! model pk (validate (update-fn entity)))
+           ;; we allow this operation to change the private key
+           (pk-key updated pk))
+         (t2/insert-returning-pk! model (validate (update-fn nil))))))
