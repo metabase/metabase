@@ -219,7 +219,7 @@ describe("HomeContent", () => {
       expect(localStorage.getItem("showEmbedHomepage")).toBeNull();
     });
 
-    it("should now show it if the user is not admin", async () => {
+    it("should not show it if the user is not admin", async () => {
       await setup({
         user: createMockUser({ is_superuser: false }),
         hasEmbeddingHomepageFlag: true,
@@ -230,7 +230,7 @@ describe("HomeContent", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should now show it if the localStorage flag is not set", async () => {
+    it("should not show it if the localStorage flag is not set", async () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
       });
