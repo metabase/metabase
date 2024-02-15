@@ -170,6 +170,27 @@
 (defn- get-additional-table-permission! [{:keys [db-id table-id]} perm-type]
   (get-in *additional-table-permissions* [db-id table-id perm-type]))
 
+(mu/defn table-permission-for-group :- PermissionValue
+  "Returns the effective permission value for a given *group*, permission type, and database ID, and table ID."
+  [group-id perm-type database-id table-id]
+  (when (not= :model/Table (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
+                    {perm-type (Permissions perm-type)})))
+  (let [perm-values (t2/select-fn-set :value
+                                      :model/DataPermissions
+                                      {:select [[:p.perm_value :value]]
+                                       :from [[:data_permissions :p]]
+                                       :where [:and
+                                               [:= :p.group_id group-id]
+                                               [:= :p.perm_type (u/qualified-name perm-type)]
+                                               [:= :p.db_id database-id]
+                                               [:or
+                                                [:= :table_id table-id]
+                                                [:= :table_id nil]]]})]
+    (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
+                                                                                perm-type)))
+        (least-permissive-value perm-type))))
+
 (mu/defn table-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."

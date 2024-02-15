@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.api.table
   (:require
    [compojure.core :refer [GET]]
+   [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.mbql.util :as mbql.u]
@@ -30,12 +31,10 @@
   "Returns true if the user has sandboxed permissions. If a sandbox policy exists, it overrides existing permission on
   the table."
   [table :- (mi/InstanceOf Table)]
-  (t2/exists? :model/GroupTableAccessPolicy
-              {:from [[:sandboxes :s]]
-               :join [[:permissions_group_membership :pgm] [:= :s.group_id :pgm.group_id]]
-               :where [:and
-                       [:= :s.table_id (:id table)]
-                       [:= :pgm.user_id api/*current-user-id*]]}))
+  (contains? (->> (sandbox.api.util/enforced-sandboxes-for api/*current-user-id*)
+                  (map :table_id)
+                  set)
+             (u/the-id table)))
 
 (mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
   [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]
