@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.comparison :as comparison]
    [metabase.automagic-dashboards.core :as magic]
@@ -947,13 +946,11 @@
                  Field    _ {:table_id table-id}
                  Metric   _ {:table_id table-id}]
     (mt/with-test-user :rasta
-      ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
-      @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (t2/select-one Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 5
+            (is (= 6
                    (call-count)))))))))
 
 (deftest empty-table-test
