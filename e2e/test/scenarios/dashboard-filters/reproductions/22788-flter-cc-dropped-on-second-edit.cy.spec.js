@@ -90,6 +90,11 @@ describe("issue 22788", () => {
 
     saveDashboard();
 
+    cy.findByTestId("dashboard-parameters-widget-container").within(() => {
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("my filter text");
+    });
+
     addFilterAndAssert();
   });
 });

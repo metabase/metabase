@@ -118,7 +118,8 @@ describe("issue 12926", () => {
 
       saveDashboard();
 
-      cy.get("@fetchAbort").should("have.been.calledOnce");
+      // we abort the card query and the dashcard query
+      cy.get("@fetchAbort").should("have.been.calledTwice");
 
       getDashboardCard().findByText(queryResult + parameterValue);
     });

@@ -12,6 +12,7 @@ import {
   questionInfoButton,
   rightSidebar,
   openQuestionsSidebar,
+  sidebar,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -75,8 +76,7 @@ describe("revision history", () => {
                 visitAndEditDashboard(body.id);
               });
               openQuestionsSidebar();
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("Orders, Count").click();
+              sidebar().findByText("Orders, Count").click();
               saveDashboard();
               openRevisionHistory();
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
