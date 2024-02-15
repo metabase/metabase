@@ -57,7 +57,7 @@
                                     {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:query :all}}}})
                 :expected-perms   (fn []
                                     {:schemas {:PUBLIC {(mt/id :venues) "all"}}})}}]
-        (met/with-gtaps {:gtaps {:venues {}}}
+        (met/with-gtaps! {:gtaps {:venues {}}}
           (testing message
             (testing "sanity check"
               (testing "perms graph endpoint should return segmented perms for Venues table"
