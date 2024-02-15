@@ -660,19 +660,19 @@
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
   {:revision (perms-revision/latest-id)
-   :groups   (data-perms.graph/db-graph->api-graph {})})
+   :groups   (data-perms.graph/api-graph {})})
 
 (defn data-graph-for-db
   "Efficiently returns a data permissions graph, which has all the permissions info for `db-id`."
   [db-id]
   {:revision (perms-revision/latest-id)
-   :groups (data-perms.graph/db-graph->api-graph {:db-id db-id})})
+   :groups (data-perms.graph/api-graph {:db-id db-id})})
 
 (defn data-graph-for-group
   "Efficiently returns a data permissions graph, which has all the permissions info for the permission group at `group-id`."
   [group-id]
   {:revision (perms-revision/latest-id)
-   :groups (data-perms.graph/db-graph->api-graph {:group-id group-id})})
+   :groups (data-perms.graph/api-graph {:group-id group-id})})
 
 (defn data-perms-graph-v2
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
@@ -1252,7 +1252,7 @@
 
   Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
   ([new-graph :- api.permission-graph/StrictData]
-   (let [old-graph (data-perms.graph/db-graph->api-graph {})
+   (let [old-graph (data-perms.graph/api-graph {})
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})
          new       (or new {})]

@@ -320,7 +320,7 @@
                  :model/Database         {db-id-1 :id}     {}]
     (testing "legacy perms-graph should be equal to the new one"
       (let [data-perms (constrain-graph group-id-1 db-id-1
-                                        (data-perms.graph/db-graph->api-graph {:audit? false}))
+                                        (data-perms.graph/api-graph {:audit? false}))
             api-perms (constrain-graph group-id-1 db-id-1
                                        (perms/data-perms-graph))]
         (is (api-graph=

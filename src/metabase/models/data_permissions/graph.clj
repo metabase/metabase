@@ -73,17 +73,24 @@
     [(->api-keys type) ((->api-vals type) value)]))
 
 (mu/defn ^:private api-table-perms
-  "Helper to transform a 'leaf' value with table-level schemas in the data permissions graph into an API-style data permissions value."
+  "Helper to transform 'leaf' values with table-level schemas in the data permissions graph into an API-style data permissions value.
+   Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
   [type :- data-perms/PermissionType
    schema->table-id->api-val]
-  (update-vals schema->table-id->api-val
-               (fn [table-id->api-val]
-                 (->> table-id->api-val
-                      (keep
-                       (fn [[table-id perm-val]]
-                         (when-not (ellide? type perm-val)
-                           [table-id ((->api-vals type) perm-val)])))
-                      (into {})))))
+  (let [transform-val         (fn [perm-val] ((->api-vals type) perm-val))
+        coalesce-or-transform (fn [table-id->perm]
+                                (let [unique-perms (set (vals table-id->perm))]
+                                  (if (= 1 (count unique-perms))
+                                    ;; Coalesce to schema-level permission if all table perms are identical
+                                    (transform-val (first unique-perms))
+                                    ;; Otherwise, transform each table-level permission individually
+                                    (into {} (map (fn [[table-id perm-val]]
+                                                    [table-id (transform-val perm-val)])
+                                                  (filter (fn [[_ perm-val]] (not (ellide? type perm-val)))
+                                                          table-id->perm))))))]
+    (->> (update-vals schema->table-id->api-val coalesce-or-transform)
+         (filter second)
+         (into {}))))
 
 (defn- granular-perm-rename [perms perm-key legacy-path]
   (let [perm-value (get perms perm-key)]
@@ -91,9 +98,9 @@
       (cond
         (map? perm-value)
         (assoc-in {} legacy-path (api-table-perms perm-key perm-value))
+
         (not (ellide? perm-key perm-value))
-        (assoc-in {} legacy-path ((->api-vals perm-key) perm-value))
-        :else {}))))
+        (assoc-in {} legacy-path ((->api-vals perm-key) perm-value))))))
 
 (defn- rename-perm
   "Transforms a 'leaf' value with db-level or table-level perms in the data permissions graph into an API-style data permissions value.
@@ -123,37 +130,50 @@
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
   For every db in the incoming graph, adds on admin permissions."
   [api-graph {:keys [db-id group-id]}]
-  (let [admin-group-id (u/the-id (perms-group/admin))]
+  (let [admin-group-id (u/the-id (perms-group/admin))
+        db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database {:where [:not= :id config/audit-db-id]}))]
     (if (and group-id (not= group-id admin-group-id))
       ;; Don't add admin perms when we're fetching the perms for a specific non-admin group
       api-graph
-      (reduce
-       (fn [api-graph db-id]
-         (assoc-in api-graph [admin-group-id db-id] legacy-admin-perms))
-       api-graph
-       (if db-id
-         [db-id]
-         (t2/select-pks-vec :model/Database {:where [:not= :id config/audit-db-id]}))))))
+      (reduce (fn [api-graph db-id]
+                (assoc-in api-graph [admin-group-id db-id] legacy-admin-perms))
+              api-graph
+              db-ids))))
 
-(mu/defn db-graph->api-graph :- api.permission-graph/StrictData
+(defn remove-empty-vals
+  "Recursively walks a nested map from bottom-up, removing keys with nil or empty map values."
+  [m]
+  (if (map? m)
+    (->> m
+         (map (fn [[k v]] [k (remove-empty-vals v)])) ; Apply recursively to all values
+         (filter (fn [[_ v]] (not (or (nil? v) (and (map? v) (empty? v)))))) ; Remove nil or empty
+         (into {})) ; Reconstruct map
+    m)) ; Return non-map values unchanged
+
+(mu/defn api-graph :- api.permission-graph/StrictData
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
   - Converts DB value names to API value names
   - Nesting: see [[rename-perms]] to see which keys in `graph` affect which paths in the api permission-graph
   - Adds sandboxed entries, and impersonations to graph"
-  [& {:as opts} :- [:map
-                    [:group-id {:optional true} [:maybe pos-int?]]
-                    [:db-id {:optional true} [:maybe pos-int?]]
-                    [:audit? {:optional true} [:maybe :boolean]]
-                    [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
-  (let [graph (data-perms/data-permissions-graph opts)]
-    {:revision (perms-revision/latest-id)
-     :groups (-> graph
-                 rename-perms
-                 (add-sandboxes-to-permissions-graph opts)
-                 (add-impersonations-to-permissions-graph opts)
-                 (add-admin-perms-to-permissions-graph opts))}))
+  ([]
+   (api-graph {}))
+
+  ([& {:as opts}
+    :- [:map
+        [:group-id {:optional true} [:maybe pos-int?]]
+        [:db-id {:optional true} [:maybe pos-int?]]
+        [:audit? {:optional true} [:maybe :boolean]]
+        [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
+   (let [graph (data-perms/data-permissions-graph opts)]
+     {:revision (perms-revision/latest-id)
+      :groups (-> graph
+                  rename-perms
+                  remove-empty-vals
+                  (add-sandboxes-to-permissions-graph opts)
+                  (add-impersonations-to-permissions-graph opts)
+                  (add-admin-perms-to-permissions-graph opts))})))
 
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
@@ -223,10 +243,6 @@
           :none
           (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :no))))))))
 
-; ;; TODO: Make sure we update download perm enforcement to infer native download permissions, since
-; ;; we'll no longer be setting them explicitly in the database.
-; ;; i.e. you should only be able to download the results of a native query at the most limited level
-; ;; you have for any table in the DB
 (defn- update-db-level-download-permissions!
   [group-id db-id new-db-perms]
   (when-let [schemas (:schemas new-db-perms)]

@@ -38,21 +38,21 @@
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
-  (data-perms.graph/db-graph->api-graph {}))
+  (data-perms.graph/api-graph {}))
 
 (api/defendpoint GET "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
   [db-id]
   {db-id ms/PositiveInt}
   (api/check-superuser)
-  (data-perms.graph/db-graph->api-graph {:db-id db-id}))
+  (data-perms.graph/api-graph {:db-id db-id}))
 
 (api/defendpoint GET "/graph/group/:group-id"
   "Fetch a graph of all Permissions for group-id `group-id`."
   [group-id]
   {group-id ms/PositiveInt}
   (api/check-superuser)
-  (data-perms.graph/db-graph->api-graph {:group-id group-id}))
+  (data-perms.graph/api-graph {:group-id group-id}))
 
 (defenterprise upsert-sandboxes!
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
@@ -97,6 +97,7 @@
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]
+      (def graph graph)
       (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
       (let [sandbox-updates        (:sandboxes graph)
             sandboxes              (when sandbox-updates
@@ -105,7 +106,7 @@
             impersonations         (when impersonation-updates
                                      (insert-impersonations! impersonation-updates))]
         (merge {:revision (perms-revision/latest-id)}
-               (when-not skip-graph {:groups (:groups (data-perms.graph/db-graph->api-graph {}))})
+               (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {}))})
                (when sandboxes {:sandboxes sandboxes})
                (when impersonations {:impersonations impersonations}))))))
 
