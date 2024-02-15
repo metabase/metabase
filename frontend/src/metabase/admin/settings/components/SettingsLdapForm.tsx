@@ -91,8 +91,7 @@ export const SettingsLdapFormView = ({
     values => {
       return onSubmit({
         ...values,
-        "ldap-port":
-          values["ldap-port"] === null ? values["ldap-port"]?.trim() : null,
+        "ldap-port": values["ldap-port"]?.trim(),
         "ldap-enabled": true,
       });
     },

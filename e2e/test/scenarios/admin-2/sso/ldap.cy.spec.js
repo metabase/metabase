@@ -96,7 +96,9 @@ describe(
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
-      cy.findAllByText("Wrong host or port").should("exist");
+      cy.findAllByText(
+        /An error occurred while attempting to connect to server/,
+      ).should("exist");
       cy.findByDisplayValue("localhost").should("exist");
     });
 
@@ -154,10 +156,17 @@ describe(
       });
 
       it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
-        crudGroupMappingsWidget("ldap");
+        cy.visit("/admin/settings/authentication/ldap");
+        cy.wait("@getSettings");
+        cy.wait("@getSessionProperties");
+
+        enterLdapSettings();
+
+        crudGroupMappingsWidget("ldap", { skipVisit: true });
       });
 
       it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
+        enterLdapSettings();
         checkGroupConsistencyAfterDeletingMappings("ldap");
       });
     });
