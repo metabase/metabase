@@ -11,7 +11,6 @@ import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
-import type Table from "metabase-lib/metadata/Table";
 import type Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
 import FieldList from "../FieldList";
@@ -40,7 +39,7 @@ const QuestionPane = ({
   onBack,
   onClose,
 }: QuestionPaneProps) => {
-  const table = question.composeThisQuery()?.legacyQueryTable() as Table; // ? is only needed to satisfy type-checker
+  const fields = question.getResultMetadata(); // ? is only needed to satisfy type-checker
   return (
     <SidebarContent
       title={question.displayName() || undefined}
@@ -90,9 +89,9 @@ const QuestionPane = ({
             </QuestionPaneDetailText>
           </QuestionPaneDetail>
         )}
-        {table.fields && (
+        {fields.length > 0 && (
           <FieldList
-            fields={table.fields}
+            fields={fields}
             onFieldClick={f => onItemClick("field", f)}
           />
         )}
