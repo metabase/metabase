@@ -27,7 +27,6 @@ import {
   isCompatibleAggregationOperatorForField,
 } from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
-import { isSegment } from "metabase-lib/queries/utils/filter";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
 import { createLookupByProperty } from "metabase-lib/utils";
@@ -74,10 +73,6 @@ export interface FilterSection {
 export interface DimensionOption {
   dimension: Dimension;
 }
-
-// type guards for determining data types
-export const isSegmentOption = (content: any): content is SegmentOption =>
-  content?.filter && isSegment(content.filter);
 
 export interface SegmentOption {
   name: string;
