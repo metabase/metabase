@@ -60,7 +60,7 @@ interface Props extends MainNavbarProps {
   rootCollection: Collection;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
-  allLoading: boolean;
+  allFetched: boolean;
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
@@ -80,7 +80,7 @@ function MainNavbarContainer({
   collections = [],
   rootCollection,
   hasDataAccess,
-  allLoading,
+  allFetched,
   location,
   params,
   openNavbar,
@@ -153,7 +153,7 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
-  if (allLoading) {
+  if (!allFetched) {
     return <NavbarLoadingView />;
   }
 

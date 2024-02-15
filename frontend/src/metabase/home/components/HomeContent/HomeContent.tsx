@@ -22,22 +22,11 @@ export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
-  const { data: databases, isLoading: isDatabasesLoading } =
-    useDatabaseListQuery();
-  const { data: recentItems, isLoading: isRecentItemsLoading } =
-    useRecentItemListQuery({ reload: true });
-  const { data: popularItems, isLoading: isPopularItemsLoading } =
-    usePopularItemListQuery({ reload: true });
+  const { data: databases } = useDatabaseListQuery();
+  const { data: recentItems } = useRecentItemListQuery({ reload: true });
+  const { data: popularItems } = usePopularItemListQuery({ reload: true });
 
-  if (
-    !user ||
-    isLoading(
-      user,
-      isDatabasesLoading,
-      isRecentItemsLoading,
-      isPopularItemsLoading,
-    )
-  ) {
+  if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -62,16 +51,16 @@ export const HomeContent = (): JSX.Element | null => {
 
 const isLoading = (
   user: User,
-  isDatabasesLoading: boolean,
-  isRecentItemsLoading: boolean,
-  isPopularItemsLoading: boolean,
+  databases: Database[] | undefined,
+  recentItems: RecentItem[] | undefined,
+  popularItems: PopularItem[] | undefined,
 ): boolean => {
   if (!user.has_question_and_dashboard) {
-    return isDatabasesLoading;
+    return databases == null;
   } else if (user.is_installer || !isWithinWeeks(user.first_login, 1)) {
-    return isDatabasesLoading || isRecentItemsLoading;
+    return databases == null || recentItems == null;
   } else {
-    return isDatabasesLoading || isRecentItemsLoading || isPopularItemsLoading;
+    return databases == null || recentItems == null || popularItems == null;
   }
 };
 
