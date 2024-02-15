@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 import type { DashboardId, Member, User } from "metabase-types/api";
 
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
-import type { FormValues } from "metabase/containers/SaveQuestionModal";
 import type Question from "metabase-lib/Question";
 import type { Member, User } from "metabase-types/api";
 
@@ -66,20 +65,16 @@ export type TUseLLMDashboardDescription = ({
   SuggestDescriptionButton: () => JSX.Element | null;
 };
 
-export type TUseLLMIndicator = ({
-  initialValues,
-  question,
-}: {
-  initialValues: FormValues;
-  question: Question;
-}) => {
+export type TLLMIndicatorProps = {
+  setFieldValue: (name: string, value: string) => void;
+  validateForm: (values?: any) => void;
+};
+
+export type TUseLLMIndicator = ({ question }: { question: Question }) => {
   LLMIndicator: ({
     setFieldValue,
     validateForm,
-  }: {
-    setFieldValue: (name: string, value: string) => void;
-    validateForm: (values?: any) => void;
-  }) => JSX.Element | null;
+  }: TLLMIndicatorProps) => JSX.Element | null;
 };
 
 export type PluginLLMAutoDescription = {

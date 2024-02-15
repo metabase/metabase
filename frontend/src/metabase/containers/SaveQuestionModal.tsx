@@ -140,10 +140,12 @@ export const SaveQuestionModal = ({
     ],
   );
 
+  const collectionId = canonicalCollectionId(initialValues.collection_id);
+  const questionWithCollectionId = question.setCollectionId(collectionId);
+
   const { LLMIndicator } =
     PLUGIN_LLM_AUTODESCRIPTION.useLLMQuestionTitleAndDescription({
-      initialValues,
-      question,
+      question: questionWithCollectionId,
     });
 
   const handleOverwrite = useCallback(

@@ -1,14 +1,16 @@
 import { useAsync } from "react-use";
 
 import { useState } from "react";
-import type { TUseLLMIndicator } from "metabase/plugins/types";
+import type {
+  TLLMIndicatorProps,
+  TUseLLMIndicator,
+} from "metabase/plugins/types";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Tooltip, Icon } from "metabase/ui";
 import { POST } from "metabase/lib/api";
 
 import "./loading.css";
-import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   getIsResultDirty,
   getResultsMetadata,
@@ -19,10 +21,7 @@ import * as Lib from "metabase-lib";
 
 const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 
-export const useLLMIndicator: TUseLLMIndicator = ({
-  initialValues,
-  question,
-}) => {
+export const useLLMIndicator: TUseLLMIndicator = ({ question }) => {
   const state = useSelector(state => state);
 
   const inactive = !getSetting(state, "ee-openai-api-key");
@@ -35,14 +34,11 @@ export const useLLMIndicator: TUseLLMIndicator = ({
       };
     }
 
-    const collectionId = canonicalCollectionId(initialValues.collection_id);
-    const questionWithCollectionId = question.setCollectionId(collectionId);
-
-    let questionWithVizSettings = questionWithCollectionId;
+    let questionWithVizSettings = question;
     const series = getTransformedSeries(state);
     if (series) {
       questionWithVizSettings = getQuestionWithDefaultVisualizationSettings(
-        questionWithCollectionId,
+        question,
         series,
       );
     }
@@ -68,13 +64,7 @@ export const useLLMIndicator: TUseLLMIndicator = ({
   const [clicked, setClicked] = useState(false);
 
   return {
-    LLMIndicator: ({
-      setFieldValue,
-      validateForm,
-    }: {
-      setFieldValue: (name: string, value: string) => void;
-      validateForm: (values?: any) => void;
-    }) => {
+    LLMIndicator: ({ setFieldValue, validateForm }: TLLMIndicatorProps) => {
       const handleClick = () => {
         setClicked(true);
 
