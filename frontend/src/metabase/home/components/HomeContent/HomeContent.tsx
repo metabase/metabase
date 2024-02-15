@@ -1,6 +1,7 @@
+import { useUpdate } from "react-use";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   useDatabaseListQuery,
@@ -13,17 +14,35 @@ import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 import { getIsXrayEnabled } from "../../selectors";
-import { isWithinWeeks } from "../../utils";
+import { isWithinWeeks, shouldShowEmbedHomepage } from "../../utils";
+import { EmbedMinimalHomepage } from "../EmbedMinimalHomepage";
 
 export const HomeContent = (): JSX.Element | null => {
+  const update = useUpdate();
   const user = useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
-  const { data: databases } = useDatabaseListQuery();
-  const { data: recentItems } = useRecentItemListQuery({ reload: true });
-  const { data: popularItems } = usePopularItemListQuery({ reload: true });
+  const { data: databases, isLoading: isDatabasesLoading } =
+    useDatabaseListQuery();
+  const { data: recentItems, isLoading: isRecentItemsLoading } =
+    useRecentItemListQuery({ reload: true });
+  const { data: popularItems, isLoading: isPopularItemsLoading } =
+    usePopularItemListQuery({ reload: true });
 
-  if (!user || isLoading(user, databases, recentItems, popularItems)) {
+  if (
+    !user ||
+    isLoading(
+      user,
+      isDatabasesLoading,
+      isRecentItemsLoading,
+      isPopularItemsLoading,
+    )
+  ) {
     return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (isAdmin && shouldShowEmbedHomepage()) {
+    return <EmbedMinimalHomepage onDismiss={update} />;
   }
 
   if (isPopularSection(user, recentItems, popularItems)) {
@@ -43,16 +62,16 @@ export const HomeContent = (): JSX.Element | null => {
 
 const isLoading = (
   user: User,
-  databases: Database[] | undefined,
-  recentItems: RecentItem[] | undefined,
-  popularItems: PopularItem[] | undefined,
+  isDatabasesLoading: boolean,
+  isRecentItemsLoading: boolean,
+  isPopularItemsLoading: boolean,
 ): boolean => {
   if (!user.has_question_and_dashboard) {
-    return databases == null;
+    return isDatabasesLoading;
   } else if (user.is_installer || !isWithinWeeks(user.first_login, 1)) {
-    return databases == null || recentItems == null;
+    return isDatabasesLoading || isRecentItemsLoading;
   } else {
-    return databases == null || recentItems == null || popularItems == null;
+    return isDatabasesLoading || isRecentItemsLoading || isPopularItemsLoading;
   }
 };
 

@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { isDimensionTarget } from "metabase-types/guards";
-import type { Card, ParameterDimensionTarget } from "metabase-types/api";
+import type { ParameterDimensionTarget } from "metabase-types/api";
 import { createMockTemplateTag } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -11,11 +11,9 @@ import {
 import type Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
-  isVariableTarget,
+  isParameterVariableTarget,
   getTemplateTagFromTarget,
-  getTargetFieldFromCard,
 } from "metabase-lib/parameters/utils/targets";
-import type Field from "metabase-lib/metadata/Field";
 
 describe("parameters/utils/targets", () => {
   const metadata = createMockMetadata({
@@ -29,8 +27,6 @@ describe("parameters/utils/targets", () => {
       expect(isDimensionTarget(["variable", ["template-tag", "foo"]])).toBe(
         false,
       );
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(isDimensionTarget()).toBe(false);
     });
 
     it('should return true for a target that contains a "dimension" string in the first entry', () => {
@@ -43,18 +39,18 @@ describe("parameters/utils/targets", () => {
 
   describe("isVariableTarget", () => {
     it("should return false for non-variable targets", () => {
-      expect(isVariableTarget(["dimension", ["field", 1, null]])).toBe(false);
-      expect(isVariableTarget(["dimension", ["template-tag", "foo"]])).toBe(
+      expect(isParameterVariableTarget(["dimension", ["field", 1, null]])).toBe(
         false,
       );
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(isVariableTarget()).toBe(false);
+      expect(
+        isParameterVariableTarget(["dimension", ["template-tag", "foo"]]),
+      ).toBe(false);
     });
 
     it("should return true for a variable target", () => {
-      expect(isVariableTarget(["variable", ["template-tag", "foo"]])).toBe(
-        true,
-      );
+      expect(
+        isParameterVariableTarget(["variable", ["template-tag", "foo"]]),
+      ).toBe(true);
     });
   });
 
@@ -69,10 +65,6 @@ describe("parameters/utils/targets", () => {
     });
 
     it("should return null for targets that are not template tags", () => {
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(getTemplateTagFromTarget(["dimension"])).toBe(null);
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(getTemplateTagFromTarget()).toBe(null);
       expect(
         getTemplateTagFromTarget(["dimension", ["field", 123, null]]),
       ).toBe(null);
@@ -132,44 +124,6 @@ describe("parameters/utils/targets", () => {
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),
-      );
-    });
-  });
-
-  describe("getTargetFieldFromCard", () => {
-    const target = [
-      "dimension",
-      ["field", PRODUCTS.CATEGORY, null],
-    ] as ParameterDimensionTarget;
-
-    it("should return the field that maps to the mapping target event given a card without a `dataset_query` (metabase#20656)", () => {
-      const expectedField = metadata.field(PRODUCTS.CATEGORY) as Field;
-
-      const card = {
-        id: 1,
-      } as Card;
-
-      expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
-        expect.objectContaining({ id: expectedField.id }),
-      );
-    });
-
-    it("should return the field that maps to the mapping target", () => {
-      const expectedField = metadata.field(PRODUCTS.CATEGORY) as Field;
-
-      const card = {
-        id: 1,
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PRODUCTS_ID,
-          },
-        },
-      } as Card;
-
-      expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
-        expect.objectContaining({ id: expectedField.id }),
       );
     });
   });

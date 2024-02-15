@@ -12,6 +12,8 @@ export type CardType = "model" | "question";
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
+  created_at: string;
+  updated_at: string;
   name: string;
   description: string | null;
   /**
@@ -24,6 +26,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;
   can_write: boolean;
+  initially_published_at: string | null;
 
   database_id?: DatabaseId;
   collection?: Collection | null;

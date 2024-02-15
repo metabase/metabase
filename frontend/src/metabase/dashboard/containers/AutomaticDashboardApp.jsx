@@ -31,6 +31,7 @@ import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import { DashboardTabs } from "../components/DashboardTabs";
+import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
 import {
   ItemContent,
   ItemDescription,
@@ -124,45 +125,57 @@ class AutomaticDashboardAppInner extends Component {
               className="bg-white border-bottom"
               data-testid="automatic-dashboard-header"
             >
-              <div className="wrapper flex align-center py2">
-                <XrayIcon name="bolt" size={24} />
-                <div>
-                  <h2 className="text-wrap mr2">
-                    {dashboard && <TransientTitle dashboard={dashboard} />}
-                  </h2>
-                </div>
-                {savedDashboardId != null ? (
-                  <Button className="ml-auto" disabled>{t`Saved`}</Button>
-                ) : (
-                  <ActionButton
-                    className="ml-auto text-nowrap"
-                    success
-                    borderless
-                    actionFn={this.save}
-                  >
-                    {t`Save this`}
-                  </ActionButton>
-                )}
+              <div className="wrapper">
+                <FixedWidthContainer
+                  data-testid="fixed-width-dashboard-header"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <div className="flex align-center py2">
+                    <XrayIcon name="bolt" size={24} />
+                    <div>
+                      <h2 className="text-wrap mr2">
+                        {dashboard && <TransientTitle dashboard={dashboard} />}
+                      </h2>
+                    </div>
+                    {savedDashboardId != null ? (
+                      <Button className="ml-auto" disabled>{t`Saved`}</Button>
+                    ) : (
+                      <ActionButton
+                        className="ml-auto text-nowrap"
+                        success
+                        borderless
+                        actionFn={this.save}
+                      >
+                        {t`Save this`}
+                      </ActionButton>
+                    )}
+                  </div>
+                  {this.props.tabs.length > 1 && (
+                    <div className="wrapper flex align-center">
+                      <DashboardTabs location={this.props.location} />
+                    </div>
+                  )}
+                </FixedWidthContainer>
               </div>
-              {this.props.tabs.length > 1 && (
-                <div className="wrapper flex align-center">
-                  <DashboardTabs location={this.props.location} />
-                </div>
-              )}
             </div>
           )}
 
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
-                <SyncedParametersList
-                  className="mt1"
-                  parameters={getValuePopulatedParameters(
-                    parameters,
-                    parameterValues,
-                  )}
-                  setParameterValue={setParameterValue}
-                />
+                <FixedWidthContainer
+                  data-testid="fixed-width-filters"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <SyncedParametersList
+                    className="mt1"
+                    parameters={getValuePopulatedParameters({
+                      parameters,
+                      values: parameterValues,
+                    })}
+                    setParameterValue={setParameterValue}
+                  />
+                </FixedWidthContainer>
               </div>
             )}
             <Dashboard isXray {...this.props} />

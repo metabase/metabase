@@ -127,3 +127,4 @@ serdes/meta:
   label: most_active_people_on_this_question
   model: Card
 metabase_version: vUNKNOWN (13e6090)
+type: question

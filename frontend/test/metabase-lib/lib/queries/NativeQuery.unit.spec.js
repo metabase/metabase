@@ -134,21 +134,7 @@ describe("NativeQuery", () => {
       });
     });
   });
-  describe("clean", () => {
-    it("should add template-tags: {} if there are none", () => {
-      const cleanedQuery = native =>
-        new NativeQuery(sampleDatabase.question(), {
-          type: "native",
-          database: SAMPLE_DB_ID,
-          native,
-        })
-          .clean()
-          .datasetQuery();
-      const q1 = cleanedQuery({ query: "select 1" });
-      const q2 = cleanedQuery({ query: "select 1", "template-tags": {} });
-      expect(q1).toEqual(q2);
-    });
-  });
+
   describe("Accessing the underlying native query", () => {
     test("You can access the actual native query via queryText()", () => {
       expect(makeQuery("SELECT * FROM ORDERS").queryText()).toEqual(
@@ -353,27 +339,6 @@ describe("NativeQuery", () => {
       const dimensions = q.dimensionOptions().dimensions;
       expect(dimensions).toHaveLength(1);
       expect(dimensions.map(d => d.displayName())).toEqual(["Category"]);
-    });
-  });
-
-  describe("dependentMetadata", () => {
-    it("should return a list of dependent fieldIds needed by the query's template tags", () => {
-      const q = makeQuery()
-        .setQueryText("SELECT * FROM PRODUCTS WHERE {{category}}")
-        .setTemplateTag("category", {
-          name: "category",
-          type: "dimension",
-          dimension: ["field", PRODUCTS.CATEGORY, null],
-        })
-        .setTemplateTag("foo", { name: "foo", type: "dimension" })
-        .setTemplateTag("bar", { name: "bar", type: "test" });
-
-      expect(q.dependentMetadata()).toEqual([
-        {
-          type: "field",
-          id: PRODUCTS.CATEGORY,
-        },
-      ]);
     });
   });
 

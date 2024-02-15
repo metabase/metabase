@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { Tooltip, Text, Flex } from "metabase/ui";
+import { Flex, Tooltip } from "metabase/ui";
 
 export type DashboardEmbedHeaderButtonProps = {
   onClick?: () => void;
@@ -36,19 +36,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
     };
 
     return (
-      <Tooltip
-        py="0.6rem"
-        px="0.75rem"
-        bg="bg-black"
-        offset={4}
-        label={
-          <Text c="inherit" size="sm" fw={700}>
-            {tooltipLabel}
-          </Text>
-        }
-        withArrow
-        arrowSize={10}
-      >
+      <Tooltip label={tooltipLabel}>
         <Flex>
           <DashboardHeaderButton
             data-disabled={disabled}

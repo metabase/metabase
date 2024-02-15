@@ -8,6 +8,8 @@ import {
   createPublicDashboardLink,
   dashboardParametersContainer,
   goToTab,
+  assertDashboardFixedWidth,
+  assertDashboardFullWidth,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -222,5 +224,25 @@ describe("scenarios > public > dashboard", () => {
       cy.findByText(textFilter.name).should("not.exist");
       cy.findByText(unusedFilter.name).should("not.exist");
     });
+  });
+
+  it("should respect dashboard width setting in a public dashboard", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id);
+    });
+
+    // new dashboards should default to 'fixed' width
+    assertDashboardFixedWidth();
+
+    // toggle full-width
+    cy.get("@dashboardId").then(id => {
+      cy.signInAsAdmin();
+      cy.request("PUT", `/api/dashboard/${id}`, {
+        width: "full",
+      });
+      visitPublicDashboard(id);
+    });
+
+    assertDashboardFullWidth();
   });
 });

@@ -43,23 +43,23 @@ const VISUALIZATION_SIZES: {
   },
   pie: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 8 },
   },
   funnel: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   gauge: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   progress: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   map: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   table: {
     min: { width: 4, height: 3 },
@@ -75,15 +75,15 @@ const VISUALIZATION_SIZES: {
   },
   scalar: {
     min: { width: 2, height: 2 },
-    default: { width: 4, height: 3 },
+    default: { width: 6, height: 3 },
   },
   smartscalar: {
     min: { width: 2, height: 2 },
-    default: { width: 4, height: 3 },
+    default: { width: 6, height: 3 },
   },
   link: {
     min: { width: 1, height: 1 },
-    default: { width: 4, height: 1 },
+    default: { width: 8, height: 1 },
   },
   action: {
     min: { width: 1, height: 1 },
@@ -95,7 +95,7 @@ const VISUALIZATION_SIZES: {
   },
   text: {
     min: { width: 1, height: 1 },
-    default: { width: 6, height: 3 },
+    default: { width: 12, height: 3 },
   },
 };
 
@@ -117,7 +117,7 @@ export const getDefaultSize = (
   visualizationType: CardDisplayType,
 ): VisualizationSize => getSize(visualizationType, "default");
 
-export const MOBILE_HEIGHT_BY_DISPLAY_TYPE = {
+export const MOBILE_HEIGHT_BY_DISPLAY_TYPE: Record<string, number> = {
   action: 1,
   link: 1,
   text: 2,

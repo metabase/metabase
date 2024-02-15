@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type {
-  DashboardCard,
+  QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
   DatasetColumn,
@@ -20,7 +20,7 @@ const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
 
 function explainClickBehaviorType(
   type: ClickBehaviorType,
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
 ) {
   return {
     action: t`Execute an action`,
@@ -34,7 +34,7 @@ function explainClickBehaviorType(
 
 interface Props {
   columns: DatasetColumn[];
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   getClickBehaviorForColumn: (
     column: DatasetColumn,
   ) => ClickBehavior | undefined;

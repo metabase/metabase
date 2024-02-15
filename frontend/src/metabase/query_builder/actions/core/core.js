@@ -209,7 +209,7 @@ export const apiCreateQuestion = question => {
 
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
-    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
+    const cleanQuery = Lib.dropEmptyStages(question.query());
     const questionToCreate = questionWithVizSettings
       .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
@@ -274,7 +274,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
+    const cleanQuery = Lib.dropEmptyStages(question.query());
     const questionToUpdate = questionWithVizSettings
       .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);

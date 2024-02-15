@@ -1,6 +1,4 @@
-import _ from "underscore";
-import cx from "classnames";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import type {
   Card,
@@ -9,17 +7,21 @@ import type {
 } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
-import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Link from "metabase/core/components/Link";
+import { useSelector } from "metabase/lib/redux";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import NoResults from "assets/img/no_results.svg";
-import { useSelector } from "metabase/lib/redux";
+import { Box, Group, Icon, Text, Title } from "metabase/ui";
+
+import { getCollectionIcon } from "metabase/entities/collections";
 import { getLocale } from "metabase/setup/selectors";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { getCollectionName, groupModels } from "../utils";
+import { entityForObject } from "metabase/lib/schema";
+import { color } from "metabase/lib/colors";
+import { getCollectionName, groupModels, sortModels } from "../utils";
+
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   CollectionHeaderContainer,
@@ -30,6 +32,7 @@ import {
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
+import { ModelExplanationBanner } from "./ModelExplanationBanner";
 
 export const BrowseModels = ({
   modelsResult,
@@ -39,10 +42,6 @@ export const BrowseModels = ({
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
-  const modelsFiltered = models.filter(
-    model => !isInstanceAnalyticsCollection(model.collection),
-  );
-  const groupsOfModels = groupModels(modelsFiltered, localeCode);
 
   if (error || isLoading) {
     return (
@@ -54,17 +53,22 @@ export const BrowseModels = ({
     );
   }
 
-  if (modelsFiltered.length) {
+  const groupsOfModels = groupModels(models, localeCode);
+
+  if (models.length) {
     return (
-      <GridContainer role="grid">
-        {groupsOfModels.map(groupOfModels => (
-          <ModelGroup
-            models={groupOfModels}
-            key={`modelgroup-${groupOfModels[0].collection.id}`}
-            localeCode={localeCode}
-          />
-        ))}
-      </GridContainer>
+      <>
+        <ModelExplanationBanner />
+        <GridContainer role="grid">
+          {groupsOfModels.map(groupOfModels => (
+            <ModelGroup
+              models={groupOfModels}
+              key={`modelgroup-${groupOfModels[0].collection.id}`}
+              localeCode={localeCode}
+            />
+          ))}
+        </GridContainer>
+      </>
     );
   }
 
@@ -90,26 +94,12 @@ const ModelGroup = ({
   models: SearchResult[];
   localeCode: string | undefined;
 }) => {
-  const sortedModels = models.sort((a, b) => {
-    if (!a.name && b.name) {
-      return 1;
-    }
-    if (a.name && !b.name) {
-      return -1;
-    }
-    if (!a.name && !b.name) {
-      return 0;
-    }
-    const nameA = a.name.toLowerCase();
-    const nameB = b.name.toLowerCase();
-    return nameA.localeCompare(nameB, localeCode);
-  });
+  const sortedModels = models.sort((a, b) => sortModels(a, b, localeCode));
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
   const collectionHtmlId = `collection-${collection.id}`;
 
-  // TODO: Check padding above the collection header
   return (
     <>
       <CollectionHeader
@@ -140,9 +130,9 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     model.last_editor_common_name ?? model.creator_common_name;
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
-  const noDescription = c(
-    "Indicates that a model has no description associated with it",
-  ).t`No description.`;
+  const entity = entityForObject(model);
+  const icon = entity?.objectSelectors?.getIcon?.(model);
+
   return (
     <Link
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
@@ -150,19 +140,14 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
       to={Urls.model(model as unknown as Partial<Card>)}
     >
       <ModelCard>
-        <Title order={4} className="text-wrap" lh="1rem" mb=".5rem">
+        <Box mb="auto">
+          <Icon {...icon} size={20} color={color("brand")} />
+        </Box>
+        <Title mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
           </MultilineEllipsified>
         </Title>
-        <Text h="2rem" size="xs" mb="auto">
-          <MultilineEllipsified
-            tooltipMaxWidth="20rem"
-            className={cx({ "text-light": !model.description })}
-          >
-            {model.description || noDescription}{" "}
-          </MultilineEllipsified>
-        </Text>
         <LastEdited editorFullName={lastEditorFullName} timestamp={timestamp} />
       </ModelCard>
     </Link>
@@ -176,13 +161,23 @@ const CollectionHeader = ({
   collection: CollectionEssentials;
   id: string;
 }) => {
+  const icon = getCollectionIcon(collection);
+
   return (
-    <CollectionHeaderContainer id={id} role="heading">
+    <CollectionHeaderContainer
+      id={id}
+      role="heading"
+      pt={"1rem"}
+      mr="1rem"
+      align="center"
+    >
       <CollectionHeaderGroup grow noWrap>
         <CollectionHeaderLink to={Urls.collection(collection)}>
           <Group spacing=".25rem">
-            <Icon name="folder" color="text-dark" size={16} />
-            <Text weight="bold">{getCollectionName(collection)}</Text>
+            <Icon {...icon} />
+            <Text weight="bold" color="text-dark">
+              {getCollectionName(collection)}
+            </Text>
           </Group>
         </CollectionHeaderLink>
       </CollectionHeaderGroup>

@@ -288,7 +288,7 @@
  [lib.stage
   append-stage
   drop-stage
-  drop-stage-if-empty
+  drop-empty-stages
   has-clauses?]
  [lib.temporal-bucket
   describe-temporal-unit

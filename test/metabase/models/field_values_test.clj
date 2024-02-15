@@ -128,6 +128,26 @@
   (sync/sync-database! db)
   (find-values field-values-id))
 
+(deftest implicit-deduplication-test
+  (let [before (t/zoned-date-time)
+        after  (t/plus before (t/millis 1))
+        later  (t/plus after (t/millis 1))]
+    (mt/with-temp [:model/Database    {database-id :id} {}
+                   :model/Table       {table-id :id}    {:db_id database-id}
+                   :model/Field       {field-id :id}     {:table_id table-id}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :created_at before :updated_at before}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
+
+      (testing "When we have multiple FieldValues rows in the database, "
+        (is (= 3 (count (t2/select FieldValues :field_id field-id :type :full :hash_key nil))))
+        (testing "we always return the most recently updated row"
+          (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))
+          (testing "... and older rows are implicitly deleted"
+            (is (= 1 (count (t2/select FieldValues :field_id field-id :type :full))))
+            ;; double check that we deleted the correct row
+            (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))))))))
+
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
     (testing "create a full Fieldvalues if it does not exist"

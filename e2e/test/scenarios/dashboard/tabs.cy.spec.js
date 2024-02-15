@@ -25,11 +25,12 @@ import {
   updateDashboardCards,
   goToTab,
   moveDashCardToTab,
-  addTextBoxWhileEditing,
+  addLinkWhileEditing,
   expectGoodSnowplowEvent,
   selectDashboardFilter,
   filterWidget,
   popover,
+  createDashboardWithTabs,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -208,7 +209,7 @@ describe("scenarios > dashboard > tabs", () => {
       goToTab("Tab 1");
 
       cy.log("add second card");
-      addTextBoxWhileEditing("Text card");
+      addLinkWhileEditing("https://www.metabase.com");
 
       cy.log("should stay on the same tab");
       cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
@@ -236,7 +237,7 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.log("should show undo toast with the correct text");
       cy.findByTestId("undo-list").within(() => {
-        cy.findByText("Text card moved").should("be.visible");
+        cy.findByText("Link card moved").should("be.visible");
         cy.findByText("Card moved: Orders").should("be.visible");
       });
 
@@ -644,16 +645,6 @@ function delayResponse(delayMs) {
       res.setDelay(delayMs);
     });
   };
-}
-
-function createDashboardWithTabs({ dashcards, tabs, ...dashboardDetails }) {
-  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-      ...dashboard,
-      dashcards,
-      tabs,
-    }).then(({ body: dashboard }) => cy.wrap(dashboard));
-  });
 }
 
 const createTextFilterMapping = ({ card_id }) => {

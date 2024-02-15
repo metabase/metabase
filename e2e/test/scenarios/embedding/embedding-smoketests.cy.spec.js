@@ -155,7 +155,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.findByRole("tab", { name: "Appearance" }).click();
 
           cy.findByText("Background");
-          cy.findByText("Dashboard title");
+          cy.findByText(
+            object === "dashboard" ? "Dashboard title" : "Question title",
+          );
           cy.findByText("Border");
           cy.findByText(
             (_, element) =>

@@ -1,4 +1,4 @@
-import type { TemplateTag } from "metabase-types/api";
+import type { TemplateTag, VariableTarget } from "metabase-types/api";
 import Variable from "metabase-lib/variables/Variable";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { VARIABLE_ICONS } from "./constants";
@@ -21,7 +21,7 @@ export default class TemplateTagVariable extends Variable {
     return tag && VARIABLE_ICONS[tag.type];
   }
 
-  mbql() {
+  mbql(): VariableTarget {
     return ["template-tag", this._args[0]];
   }
 }

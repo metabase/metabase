@@ -69,3 +69,4 @@ serdes/meta:
   label: alerts_and_subscriptions_created_last_week
   model: Card
 metabase_version: null
+type: question

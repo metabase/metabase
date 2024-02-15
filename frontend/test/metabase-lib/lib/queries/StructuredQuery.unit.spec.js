@@ -20,7 +20,6 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import Segment from "metabase-lib/metadata/Segment";
@@ -239,73 +238,14 @@ describe("StructuredQuery", () => {
         expect(query._database().id).toBe(SAMPLE_DB_ID);
       });
     });
-    describe("engine", () => {
-      it("identifies the engine of a query", () => {
-        // This is a magic constant and we should probably pull this up into an enum
-        expect(query.engine()).toBe("H2");
-      });
-    });
-    describe("dependentMetadata", () => {
-      it("should include db schemas and source table with foreignTables = true", () => {
-        expect(query.dependentMetadata()).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-        ]);
-      });
-
-      it("should include db schemas and source table for nested queries with foreignTables = true", () => {
-        expect(query.nest().dependentMetadata()).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-        ]);
-      });
-
-      it("should include db schemas and joined tables with foreignTables = false", () => {
-        expect(
-          query
-            .join({
-              alias: "x",
-              "source-table": PRODUCTS_ID,
-            })
-            .dependentMetadata(),
-        ).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-          { type: "table", id: PRODUCTS_ID, foreignTables: false },
-        ]);
-      });
-
-      describe("when the query is missing a database", () => {
-        it("should not include db schemas in dependent  metadata", () => {
-          const dependentMetadata = query
-            .setDatabaseId(null)
-            .dependentMetadata();
-
-          expect(dependentMetadata.some(({ type }) => type === "schema")).toBe(
-            false,
-          );
-        });
-      });
-    });
   });
 
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
-    describe("reset", () => {
-      it("Expect a reset query to not have a selected database", () => {
-        expect(query.reset()._database()).toBe(null);
-      });
-    });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
         expect(
           query.legacyQuery({ useStructuredQuery: true })["source-table"],
         ).toBe(ORDERS_ID);
-      });
-    });
-    describe("setDatabase", () => {
-      it("allows you to set a new database", () => {
-        const db = metadata.database(ANOTHER_DB_ID);
-        expect(query.setDatabase(db)._database().id).toBe(db.id);
       });
     });
     describe("_sourceTableId", () => {
@@ -574,15 +514,6 @@ describe("StructuredQuery", () => {
         expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(
           30,
         );
-      });
-    });
-    describe("hasValidBreakout", () => {
-      it("should return false if there are no breakouts", () => {
-        expect(query.hasValidBreakout()).toBe(false);
-      });
-      it("should return true if there is at least one breakout", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        expect(query.breakout(ordersProductId).hasValidBreakout()).toBe(true);
       });
     });
 

@@ -29,19 +29,15 @@ import {
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
+import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 
 import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import EmbedFrame from "../components/EmbedFrame";
 
-import {
-  DashboardContainer,
-  DashboardGridContainer,
-  Separator,
-} from "./PublicDashboard.styled";
+import { DashboardContainer } from "./PublicDashboard.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -159,6 +155,7 @@ class PublicDashboard extends Component {
       draftParameterValues,
       isFullscreen,
       isNightMode,
+      setParameterValueToDefault,
     } = this.props;
 
     const buttons = !isWithinIframe()
@@ -175,9 +172,12 @@ class PublicDashboard extends Component {
         draftParameterValues={draftParameterValues}
         hiddenParameterSlugs={this.getHiddenParameterSlugs()}
         setParameterValue={this.props.setParameterValue}
+        setParameterValueToDefault={setParameterValueToDefault}
+        enableParameterRequiredBehavior
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
         }
+        dashboardTabs={<DashboardTabs location={this.props.location} />}
       >
         <LoadingAndErrorWrapper
           className={cx({
@@ -188,18 +188,14 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardTabs location={this.props.location} />
-              <Separator />
-              <DashboardGridContainer>
-                <DashboardGridConnected
-                  {...this.props}
-                  isPublic
-                  className="spread"
-                  mode={PublicMode}
-                  metadata={this.props.metadata}
-                  navigateToNewCardFromDashboard={() => {}}
-                />
-              </DashboardGridContainer>
+              <DashboardGridConnected
+                {...this.props}
+                isPublic
+                className="spread"
+                mode={PublicMode}
+                metadata={this.props.metadata}
+                navigateToNewCardFromDashboard={() => {}}
+              />
             </DashboardContainer>
           )}
         </LoadingAndErrorWrapper>

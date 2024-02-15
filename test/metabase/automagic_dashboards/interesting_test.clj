@@ -544,9 +544,9 @@
                                   ["dimension" "Income"]], :score 100, :metric-name "AvgDiscount"}
                         {:metric ["sum" ["dimension" "GenericNumber"]], :score 100, :metric-name "Sum"}
                         {:metric ["avg" ["dimension" "GenericNumber"]], :score 100, :metric-name "Avg"}]
-          {total-id :id :as total-field} {:id 1 :name "TOTAL"}
-          {discount-id :id :as discount-field} {:id 2 :name "DISCOUNT"}
-          {income-id :id :as income-field} {:id 3 :name "INCOME"}]
+          total-field {:id 1 :name "TOTAL"}
+          discount-field {:id 2 :name "DISCOUNT"}
+          income-field {:id 3 :name "INCOME"}]
       (testing "When no dimensions are provided, we produce grounded dimensionless metrics"
         (is (= [{:metric-name       "Count"
                  :metric-title      "Count"
@@ -557,10 +557,10 @@
                  test-metrics
                  {"Count" {:matches []}}))))
       (testing "When we can match on a dimension, we produce every matching metric (2 for GenericNumber)"
-        (is (=? [{:metric-name       "Sum"
-                  :metric-definition {:aggregation [["sum" [:field total-id nil]]]}}
-                 {:metric-name       "Avg"
-                  :metric-definition {:aggregation [["avg" [:field total-id nil]]]}}]
+        (is (=? [{:metric-name       "Sum",
+                  :metric-definition {:aggregation [["sum" "TOTAL"]]}}
+                 {:metric-name       "Avg",
+                  :metric-definition {:aggregation [["avg" "TOTAL"]]}}]
                 (interesting/grounded-metrics
                   ;; Drop Count
                   (rest test-metrics)
@@ -569,17 +569,17 @@
       (testing "The addition of Discount doesn't add more matches as we need
                  Income as well to add the metric that uses Discount"
         (is (=? [{:metric-name       "Sum"
-                  :metric-definition {:aggregation [["sum" [:field total-id nil]]]}}
+                  :metric-definition {:aggregation [["sum" "TOTAL"]]}}
                  {:metric-name       "Avg"
-                  :metric-definition {:aggregation [["avg" [:field total-id nil]]]}}]
+                  :metric-definition {:aggregation [["avg" "TOTAL"]]}}]
                 (interesting/grounded-metrics
                   (rest test-metrics)
                   {"Count"         {:matches []}
                    "GenericNumber" {:matches [total-field]}
                    "Discount"      {:matches [discount-field]}}))))
       (testing "Discount and Income will add the satisfied AvgDiscount grounded metric"
-        (is (=? [{:metric-name "AvgDiscount",
-                  :metric-definition {:aggregation [["/" [:field discount-id nil] [:field income-id nil]]]}}
+        (is (=? [{:metric-name       "AvgDiscount",
+                  :metric-definition {:aggregation [["/" "DISCOUNT" "INCOME"]]}}
                  {:metric-name "Sum"}
                  {:metric-name "Avg"}]
                 (interesting/grounded-metrics

@@ -28,7 +28,6 @@ import type {
   DatabaseId,
   DatasetQuery,
   DatasetData,
-  DependentMetadataItem,
   TableId,
   Parameter as ParameterObject,
   ParameterValues,
@@ -37,10 +36,6 @@ import type {
   CardDisplayType,
   Dataset,
 } from "metabase-types/api";
-
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
-import * as FILTER from "metabase-lib/queries/utils/filter";
-import * as QUERY from "metabase-lib/queries/utils/query";
 
 // TODO: remove these dependencies
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
@@ -266,8 +261,8 @@ class Question {
     return this._card && this._card.dataset;
   }
 
-  type(): CardType | undefined {
-    return this._card && this._card.type;
+  type(): CardType {
+    return this._card?.type ?? "question";
   }
 
   /**
@@ -483,32 +478,6 @@ class Question {
    * Although most of these are essentially a way to modify the current query, having them as a part
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
-  usesMetric(metricId): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return (
-      !isNative &&
-      _.any(
-        QUERY.getAggregations(
-          this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
-            useStructuredQuery: true,
-          }),
-        ),
-        aggregation => AGGREGATION.getMetric(aggregation) === metricId,
-      )
-    );
-  }
-
-  usesSegment(segmentId): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return (
-      !isNative &&
-      QUERY.getFilters(
-        this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
-          useStructuredQuery: true,
-        }),
-      ).some(filter => FILTER.isSegment(filter) && filter[1] === segmentId)
-    );
-  }
 
   composeThisQuery(): Question | null | undefined {
     if (this.id()) {
@@ -641,9 +610,11 @@ class Question {
       return this;
     }
 
+    const query = this.query();
+
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
-        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+        findColumnSettingIndexForColumn(query, vizSettings, col) >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
@@ -803,7 +774,7 @@ class Question {
     return this.card().result_metadata ?? [];
   }
 
-  dependentMetadata(): DependentMetadataItem[] {
+  dependentMetadata(): Lib.DependentItem[] {
     const dependencies = [];
 
     // we frequently treat dataset/model questions like they are already nested
@@ -928,7 +899,7 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropStageIfEmpty(this.query()) : this.query();
+    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
 
     const cardCopy = {
       name: this._card.name,
@@ -1042,6 +1013,14 @@ class Question {
 
   getModerationReviews() {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
+  }
+
+  getCreator(): string {
+    return getIn(this, ["_card", "creator"]) || "";
+  }
+
+  getCreatedAt(): string {
+    return getIn(this, ["_card", "created_at"]) || "";
   }
 
   /**

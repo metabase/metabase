@@ -121,6 +121,15 @@
   :default    false
   :audit      :never)
 
+(defsetting dismissed-browse-models-banner
+  (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
@@ -268,7 +277,7 @@
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :authenticated
   :audit      :getter)
 

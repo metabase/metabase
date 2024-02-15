@@ -195,3 +195,4 @@ serdes/meta:
   label: system_tasks
   model: Card
 metabase_version: vUNKNOWN (1308cef)
+type: model

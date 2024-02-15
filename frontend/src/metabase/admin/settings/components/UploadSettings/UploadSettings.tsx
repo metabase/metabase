@@ -41,7 +41,7 @@ export interface UploadSettings {
   uploads_table_prefix: string | null;
 }
 
-export interface UploadSettingProps {
+interface UploadSettingProps {
   databases: Database[];
   settings: UploadSettings;
   updateSettings: (

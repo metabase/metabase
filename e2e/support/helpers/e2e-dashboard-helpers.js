@@ -138,8 +138,12 @@ export function setFilter(type, subType) {
   });
 }
 
+export function getRequiredToggle() {
+  return cy.findByLabelText("Always require a value");
+}
+
 export function toggleRequiredParameter() {
-  cy.findByLabelText("Always require a value").click();
+  getRequiredToggle().click();
 }
 
 export function createEmptyTextBox() {
@@ -151,6 +155,11 @@ export function createEmptyTextBox() {
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
   addTextBoxWhileEditing(string, options);
+}
+
+export function addLinkWhileEditing(string, options = {}) {
+  cy.findByLabelText("Add link card").click();
+  cy.findByPlaceholderText("https://example.com").type(string, options);
 }
 
 export function addTextBoxWhileEditing(string, options = {}) {
@@ -390,3 +399,60 @@ export const getNextUnsavedDashboardCardId = (() => {
   let id = 0;
   return () => --id;
 })();
+
+const MAX_WIDTH = "1048px";
+export function assertDashboardFixedWidth() {
+  cy.findByTestId("fixed-width-dashboard-header").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-dashboard-tabs").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-filters").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("dashboard-grid").should("have.css", "max-width", MAX_WIDTH);
+}
+
+export function assertDashboardFullWidth() {
+  cy.findByTestId("fixed-width-dashboard-header").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-dashboard-tabs").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-filters").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("dashboard-grid").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+}
+
+export function createDashboardWithTabs({
+  dashcards,
+  tabs,
+  ...dashboardDetails
+}) {
+  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+      dashcards,
+      tabs,
+    }).then(({ body: dashboard }) => cy.wrap(dashboard));
+  });
+}

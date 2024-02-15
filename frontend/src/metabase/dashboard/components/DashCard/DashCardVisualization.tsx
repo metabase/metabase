@@ -17,7 +17,6 @@ import {
 
 import type {
   Dashboard,
-  DashboardCard,
   DashCardId,
   Dataset,
   Series,
@@ -25,6 +24,7 @@ import type {
   ParameterValueOrArray,
   VirtualCardDisplay,
   VisualizationSettings,
+  DashboardCard,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -146,6 +146,7 @@ export function DashCardVisualization({
             action: t`Action Button`,
             text: t`Text Card`,
             heading: t`Heading Card`,
+            placeholder: t`Placeholder Card`,
           }[virtualDashcardType] ??
           t`This card does not support click mappings`;
 

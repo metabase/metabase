@@ -14,7 +14,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { RevokeIconWrapper } from "./PublicLinksListing.styled";
 
-export default class PublicLinksListing extends Component {
+class PublicLinksListing extends Component {
   constructor(props) {
     super(props);
     this.state = {

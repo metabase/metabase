@@ -448,7 +448,11 @@ describe("Static Embed Setup phase", () => {
           `"#theme=transparent&bordered=true&titled=true"`,
         );
 
-        userEvent.click(screen.getByText("Dashboard title"));
+        userEvent.click(
+          screen.getByText(
+            resourceType === "dashboard" ? "Dashboard title" : "Question title",
+          ),
+        );
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
           `"#theme=transparent&bordered=true&titled=false"`,

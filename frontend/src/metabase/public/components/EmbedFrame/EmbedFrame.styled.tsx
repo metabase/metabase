@@ -5,7 +5,10 @@ import {
   breakpointMinSmall,
   breakpointMinLarge,
   breakpointMinMedium,
+  space,
+  breakpointMaxSmall,
 } from "metabase/styled-components/theme";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 export const Root = styled.div<{
   hasScroll: boolean;
@@ -45,15 +48,29 @@ export const ContentContainer = styled.div<{ hasScroll: boolean }>`
 export const Header = styled.header`
   display: flex;
   flex-direction: column;
-  padding: 0.5rem;
+`;
+
+export const TitleAndDescriptionContainer = styled(FullWidthContainer)`
+  margin-top: 0.5rem;
 
   ${breakpointMinSmall} {
-    padding: 1rem;
+    margin-top: 1rem;
   }
 
   ${breakpointMinLarge} {
-    padding: 1.5rem;
+    margin-top: 1.5rem;
   }
+`;
+
+export const DashboardTabsContainer = styled(FullWidthContainer)`
+  ${breakpointMaxSmall} {
+    padding-left: 0;
+    padding-right: 0;
+  }
+`;
+
+export const Separator = styled.div`
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const Body = styled.main`
@@ -86,9 +103,9 @@ const footerVariantStyles = {
   `,
 };
 
-export const ParametersWidgetContainer = styled.div`
-  display: flex;
-  align-items: flex-start;
+export const ParametersWidgetContainer = styled(FullWidthContainer)`
+  padding-top: ${space(1)};
+  padding-bottom: ${space(1)};
 `;
 
 export const Footer = styled.footer<{ variant: FooterVariant }>`

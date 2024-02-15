@@ -330,6 +330,25 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         cy.get("text.x-axis-label").contains("Created At");
       });
   });
+
+  it("should default x-ray dashboard width to 'fixed'", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+    cy.wait("@dataset", { timeout: 60000 });
+
+    // x-ray dashboards should default to 'fixed' width
+    cy.findByTestId("fixed-width-dashboard-header").should(
+      "have.css",
+      "max-width",
+      "1048px",
+    );
+    cy.findByTestId("fixed-width-filters").should(
+      "have.css",
+      "max-width",
+      "1048px",
+    );
+    cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
+  });
 });
 
 function waitForSatisfyingResponse(

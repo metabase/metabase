@@ -27,7 +27,6 @@ export const TextCardDefault = styled.div`
 export const CardLabel = styled.div`
   font-size: 0.83em;
   margin-bottom: ${space(1)};
-  text-weight: bold;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -47,7 +46,6 @@ export const TargetButton = styled.div<{ variant: string }>`
   align-items: center;
   justify-content: space-between;
   background-color: ${color("white")};
-  text-weight: bold;
   cursor: pointer;
   border: 2px solid ${color("brand")};
   border-radius: 8px;
@@ -101,7 +99,7 @@ export const TargetButtonText = styled.span`
   margin-right: ${space(1)};
 `;
 
-export const CloseIconButton = styled(Button)<{ icon: string; size: number }>`
+export const CloseIconButton = styled(Button)<{ icon?: string; size?: number }>`
   color: ${color("white")};
   background-color: transparent;
   border: none;

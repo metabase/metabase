@@ -133,7 +133,9 @@ function ProfileLink({ adminItems, onLogout }) {
               className="p2 h5 text-centered text-medium border-top"
             >
               <span className="block">
+                {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
                 <span className="text-bold">Metabase</span>{" "}
+                {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
                 {t`is a Trademark of`} Metabase, Inc
               </span>
               <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>
