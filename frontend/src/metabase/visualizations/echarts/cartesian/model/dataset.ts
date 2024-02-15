@@ -398,7 +398,7 @@ export const getMetricDisplayValueGetter = (
     if (typeof value !== "number") {
       return value;
     }
-    const sign = value > 0 ? 1 : -1;
+    const sign = value >= 0 ? 1 : -1;
     return Math.pow(value, 2) * sign;
   };
 
