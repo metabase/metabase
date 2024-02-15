@@ -11,7 +11,6 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -158,19 +157,23 @@ to make sure that perms for all other tables in that DB are set at the table-lev
   if this does not exist, the sandbox will not be created."
   :feature :sandboxes
   [sandboxes]
-  (doseq [sandbox sandboxes]
-    (if-let [id (:id sandbox)]
-      ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
-      ;; This allows existing values to be "cleared" by being set to nil
-      (do
-        (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-          (t2/update! GroupTableAccessPolicy
-                      id
-                      (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-        (t2/select-one GroupTableAccessPolicy :id id))
-      (let [expected-permission-path (perms/table-sandboxed-query-path (:table_id sandbox))]
-        (when-let [permission-path-id (t2/select-one-fn :id Permissions :object expected-permission-path)]
-          (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id))))))))
+  (doall
+   (for [{table-id :table_id, group-id :group_id :as sandbox} sandboxes]
+     (if-let [id (:id sandbox)]
+       ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
+       ;; This allows existing values to be "cleared" by being set to nil
+       (do
+         (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
+           (t2/update! GroupTableAccessPolicy
+                       id
+                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
+         (t2/select-one GroupTableAccessPolicy :id id))
+       (when-let [permission-id (t2/select-one-fn :id :model/DataPermissions
+                                                  :table_id table-id
+                                                  :group_id group-id
+                                                  :perm_type :perms/data-access)]
+         ;; TODO: drop the permission_id field; it's not used
+         (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-id))))))))
 
 (t2/define-before-insert :model/GroupTableAccessPolicy
   [gtap]
