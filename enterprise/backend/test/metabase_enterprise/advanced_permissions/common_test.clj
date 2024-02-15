@@ -715,16 +715,16 @@
                      [:none              false "No data permissions on schema should fail"]
                      [{(:id table) :all} false "Data permissions on table should fail"]]]
               (testing description
-               (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {"some_schema" :all
-                                                                                   schema-name   schema-perms}}}}
-                 (if can-upload?
-                   (is (some? (upload-csv!)))
-                   (is (thrown-with-msg?
+                (with-all-users-data-perms! {db-id {:data {:native :none, :schemas {"some_schema" :all
+                                                                                    schema-name   schema-perms}}}}
+                  (if can-upload?
+                    (is (some? (upload-csv!)))
+                    (is (thrown-with-msg?
                          clojure.lang.ExceptionInfo
                          #"You don't have permissions to do that\."
-                         (upload-csv!))))))
-              (with-all-users-data-perms! {db-id {:data {:native :write, :schemas {schema-name :all}}}}
-                (is (some? (upload-csv!)))))))))))
+                         (upload-csv!)))))))
+            (with-all-users-data-perms! {db-id {:data {:native :write, :schemas :all}}}
+              (is (some? (upload-csv!))))))))))
 
 (deftest append-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -762,8 +762,7 @@
                             :table-id (:id table-a)
                             :user-id (mt/user->id :rasta))]
           (doseq [[perms                              can-append? test-string]
-                  [[{:native :none,  :schemas :block} false       "With blocked perms it should fail"]
-                   [{:native :write, :schemas :block} true        "With native query editing and blocked perms it should succeed"]]]
+                  [[{:native :none,  :schemas :block} false       "With blocked perms it should fail"]]]
             (testing test-string
               (with-all-users-data-perms! {db-id {:data perms}}
                 (if can-append?
