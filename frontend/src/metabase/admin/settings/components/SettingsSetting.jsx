@@ -9,7 +9,7 @@ import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";
 import SettingRadio from "./widgets/SettingRadio";
 import SettingToggle from "./widgets/SettingToggle";
-import SettingSelect from "./widgets/SettingSelect";
+import SettingSelect from "./widgets/deprecated/SettingSelect";
 import SettingText from "./widgets/SettingText";
 import { settingToFormFieldId, getEnvVarDocsUrl } from "./../../settings/utils";
 import {

@@ -19,6 +19,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { Anchor, Text } from "metabase/ui";
 import RedirectWidget from "metabase/admin/settings/components/widgets/RedirectWidget";
 import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
+import SettingSelect from "metabase/admin/settings/components/widgets/SettingSelect";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import { LandingPageWidget } from "./components/LandingPageWidget";
@@ -110,7 +111,7 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "loading-message",
           display_name: t`Loading message`,
-          type: "select",
+          widget: SettingSelect,
           options: getLoadingMessageOptions(),
           defaultValue: "doing-science",
         },
