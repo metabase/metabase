@@ -1,8 +1,7 @@
-import { equals, copy } from "metabase/lib/utils";
+import { equals } from "metabase/lib/utils";
 
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import Questions from "metabase/entities/questions";
-import * as Lib from "metabase-lib";
 
 export function createCard(name = null) {
   return {
@@ -43,18 +42,11 @@ export async function loadCard(cardId, { dispatch, getState }) {
 }
 
 function getCleanCard(card) {
-  const dataset_query = copy(card.dataset_query);
-  if (dataset_query.query) {
-    const mlv2Query = dataset_query.query.getMLv2Query();
-    const cleanQuery = Lib.dropStageIfEmpty(mlv2Query, -1);
-    dataset_query.query = Lib.toLegacyQuery(cleanQuery);
-  }
-
   return {
     name: card.name,
     collectionId: card.collectionId,
     description: card.description,
-    dataset_query: dataset_query,
+    dataset_query: card.dataset_query,
     display: card.display,
     displayIsLocked: card.displayIsLocked,
     parameters: card.parameters,
