@@ -127,7 +127,7 @@ const Questions = createEntity({
 
         const updatedCard = result?.payload?.question;
         if (updatedCard) {
-          dispatch({ type: API_UPDATE_QUESTION, payload: card });
+          dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
         }
 
         return result;
