@@ -164,15 +164,21 @@
     (when (and (contains? field-values :values) (= :full (:type <>)))
       (clear-advanced-field-values-for-field! (:field_id field-values)))))
 
-(defn- assert-coherent-query [{:keys [type hash_key] :or {type :full} :as field-values}]
-  (if (= :full (keyword type))
+(defn- assert-coherent-query [{:keys [type hash_key] :as field-values}]
+  (cond
+    (nil? type)
+    (when (some? hash_key)
+      (throw (ex-info "Invalid query - cannot specify a hash_key without specifying the type"
+                      {:field-values field-values})))
+
+    (= :full (keyword type))
     (when (some? hash_key)
       (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
                       {:field-values field-values})))
-    (when (and (contains? field-values :hash_key)
-               (nil? hash_key))
-      (throw (ex-info "Invalid query - Advanced FieldValues must have a hash_key"
-                      {:field-values field-values})))))
+
+    (and (contains? field-values :hash_key) (nil? hash_key))
+    (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-nil hash_key"
+                    {:field-values field-values}))))
 
 (defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]
   (cond
