@@ -218,6 +218,7 @@ export const SaveQuestionModal = ({
           title={title}
           onClose={onClose}
         >
+          <LLMLoadingBadge/>
           <FormProvider
             initialValues={{
               ...initialValues,
@@ -253,7 +254,6 @@ export const SaveQuestionModal = ({
                         exit: 500,
                       }}
                     >
-                      <LLMLoadingBadge>
                         <div className="saveQuestionModalFields">
                           <FormInput
                             name="name"
@@ -270,7 +270,6 @@ export const SaveQuestionModal = ({
                             title={t`Which collection should this go in?`}
                           />
                         </div>
-                      </LLMLoadingBadge>
                     </CSSTransition>
                   )}
                 </TransitionGroup>

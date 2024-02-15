@@ -84,7 +84,7 @@ export type TUseLLMIndicator = ({
 }: {
   initialValues: FormValues;
   question: Question;
-  defaultWrapper: ({ children }: { children: ReactNode }) => JSX.Element | null;
+  defaultWrapper: ({ children }: { children?: ReactNode }) => JSX.Element | null;
 }) => {
   generatedName: string;
   generatedDescription: string;
@@ -92,7 +92,7 @@ export type TUseLLMIndicator = ({
   LLMLoadingBadge: ({
     children,
   }: {
-    children: ReactNode;
+    children?: ReactNode;
   }) => JSX.Element | null;
 };
 
