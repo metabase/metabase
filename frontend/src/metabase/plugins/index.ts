@@ -160,13 +160,19 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
     generatedName: "",
     generatedDescription: "",
     loading: false,
-    LLMLoadingIndicator: () => null,
+    LLMLoadingIndicator: () => null
   }),
   useLLMDashboardDescription: () => ({
     generatedDescription: "",
     loading: false,
-    SuggestDescriptionButton: () => null,
+    SuggestDescriptionButton: () => null
   }),
+  useLLMIndicator: ({ defaultWrapper }) => ({
+    generatedName: "",
+    generatedDescription: "",
+    loading: false,
+    LLMLoadingBadge: ({ children }) => defaultWrapper({ children })
+  })
 };
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
