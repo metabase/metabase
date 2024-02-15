@@ -90,7 +90,7 @@ describe("parameters/utils/mapping-options", () => {
             sectionName: "Order",
             target: [
               "dimension",
-              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
             ],
           },
         ]);
@@ -242,7 +242,7 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             target: [
               "dimension",
-              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
             ],
             isForeign: false,
           },
