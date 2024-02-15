@@ -284,6 +284,16 @@
                (or (-> results mt/cols first)
                    results)))))))
 
+(deftest semantic-type-for-aggregate-fields-test
+  (testing "Does `:semantic-type` show up for aggregate Fields?"
+    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:semantic_type :type/Currency}
+      (let [results (mt/run-mbql-query venues
+                      {:aggregation [[:sum $price]]})]
+        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
+                      :semantic_type :type/Currency)
+               (or (-> results mt/cols first)
+                   results)))))))
+
 (deftest ^:parallel duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Do we properly handle queries that have more than one of the same aggregation? (#5393)"
