@@ -119,11 +119,27 @@ function EmbedFrame({
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
 }: Props) {
-  const [hasInnerScroll, setInnerScroll] = useState(true);
+  const [hasFrameScroll, setHasFrameScroll] = useState(true);
+  const [hasInnerScroll, setHasInnerScroll] = useState(
+    document.documentElement.scrollTop > 0,
+  );
 
   useMount(() => {
-    initializeIframeResizer(() => setInnerScroll(false));
+    initializeIframeResizer(() => setHasFrameScroll(false));
   });
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setHasInnerScroll(document.documentElement.scrollTop > 0);
+    };
+
+    document.addEventListener("scroll", handleScroll, {
+      capture: false,
+      passive: true,
+    });
+
+    return () => document.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const dispatch = useDispatch();
   useEffect(() => {
@@ -159,7 +175,7 @@ function EmbedFrame({
 
   return (
     <Root
-      hasScroll={hasInnerScroll}
+      hasScroll={hasFrameScroll}
       isBordered={bordered}
       className={cx("EmbedFrame", className, {
         [`Theme--${theme}`]: !!theme,
@@ -198,6 +214,7 @@ function EmbedFrame({
         )}
         {hasVisibleParameters && (
           <ParametersWidgetContainer
+            hasScroll={hasInnerScroll}
             isSticky={isParameterPanelSticky}
             data-testid="dashboard-parameters-widget-container"
           >

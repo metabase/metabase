@@ -102,10 +102,17 @@ const footerVariantStyles = {
 };
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  hasScroll: boolean;
   isSticky: boolean;
 }>`
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
+
+  ${props =>
+    props.hasScroll &&
+    css`
+      border-bottom: 1px solid ${color("border")};
+    `}
 
   ${props =>
     props.isSticky &&
