@@ -761,16 +761,12 @@
               append-csv! #(upload-test/append-csv-with-defaults!
                             :table-id (:id table-a)
                             :user-id (mt/user->id :rasta))]
-          (doseq [[perms                              can-append? test-string]
-                  [[{:native :none,  :schemas :block} false       "With blocked perms it should fail"]]]
-            (testing test-string
-              (with-all-users-data-perms! {db-id {:data perms}}
-                (if can-append?
-                  (is (some? (append-csv!)))
-                  (is (thrown-with-msg?
-                        clojure.lang.ExceptionInfo
-                        #"You don't have permissions to do that\."
-                        (append-csv!))))))))))))
+          (testing "With blocked perms it should fail"
+            (with-all-users-data-perms! {db-id {:data {:native :none, :schemas :block}}}
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"You don't have permissions to do that\."
+                   (append-csv!))))))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
