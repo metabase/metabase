@@ -36,41 +36,13 @@
     "import/order": [
       "error",
       {
-        "pathGroups": [
-          {
-            "pattern": "react",
-            "group": "builtin",
-            "position": "before"
-          },
-          {
-            "pattern": "metabase/**",
-            "group": "internal"
-          },
-          {
-            "pattern": "metabase/**/components",
-            "group": "internal",
-            "position": "before"
-          },
-          {
-            "pattern": "__**",
-            "group": "internal",
-            "position": "before"
-          },
-          {
-            "pattern": "metabase-lib/**",
-            "group": "internal",
-            "position": "after"
-          }
-        ],
-        "groups": [
-          "builtin",
-          "external",
-          "internal",
-          "parent",
-          "sibling",
-          "index",
-          "object"
-        ]
+        "newlines-between": "always",
+        "alphabetize": {
+          "order": "asc",
+          "orderImportKind": "asc",
+          "caseInsensitive": false
+        },
+        "warnOnUnassignedImports": false
       }
     ],
     "no-console": [2, { "allow": ["warn", "error"] }],
