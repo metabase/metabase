@@ -12,7 +12,7 @@ import StructuredQuery, {
 import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/queries/NativeQuery";
-import AtomicQuery from "metabase-lib/queries/AtomicQuery";
+import type AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
 import type BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
@@ -222,19 +222,6 @@ class Question {
   }
 
   /**
-   * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
-   */
-  atomicQueries(): AtomicQuery[] {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-
-    if (query instanceof AtomicQuery) {
-      return [query];
-    }
-
-    return [];
-  }
-
-  /**
    * The visualization type of the question
    */
   display(): string {
@@ -352,10 +339,6 @@ class Question {
     return this.setDisplay(display).updateSettings(settings);
   }
 
-  setDefaultQuery() {
-    return this.legacyQuery({ useStructuredQuery: true }).question();
-  }
-
   settings(): VisualizationSettings {
     return (this._card && this._card.visualization_settings) || {};
   }
@@ -377,10 +360,6 @@ class Question {
     return this.card().creationType;
   }
 
-  isEmpty(): boolean {
-    return this.legacyQuery({ useStructuredQuery: true }).isEmpty();
-  }
-
   /**
    * How many filters or other widgets are this question's values used for?
    */
@@ -393,10 +372,7 @@ class Question {
    */
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
-
-    return isNative
-      ? this.legacyQuery({ useStructuredQuery: true }).canRun()
-      : Lib.canRun(this.query());
+    return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
   }
 
   canWrite(): boolean {
@@ -748,13 +724,13 @@ class Question {
     return databaseId;
   }
 
-  table(): Table | null {
+  legacyQueryTable(): Table | null {
     const query = this.legacyQuery({ useStructuredQuery: true });
     return query && typeof query.table === "function" ? query.table() : null;
   }
 
-  tableId(): TableId | null {
-    const table = this.table();
+  legacyQueryTableId(): TableId | null {
+    const table = this.legacyQueryTable();
     return table ? table.id : null;
   }
 
