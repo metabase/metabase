@@ -53,7 +53,7 @@
                       (a/close! result-chan))
         futur       (.submit ^ThreadPoolExecutor @#'a/thread-macro-executor ^Runnable (bound-fn* thunk*))]
     ;; if `result-chan` gets a result/closed *before* `done-chan`, it means it was closed by the caller, so we should
-    ;; cancel the thread running `f*`
+    ;; cancel the thread running `thunk*`
     (a/go
       (let [[_ port] (a/alts! [done-chan result-chan] :priority true)]
         (when (= port result-chan)
