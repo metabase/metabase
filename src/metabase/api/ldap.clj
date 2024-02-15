@@ -104,7 +104,6 @@
   {settings :map}
   (api/check-superuser)
   (let [ldap-settings (-> settings
-                          (select-keys (keys ldap/mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
                                               (Long/parseLong ldap-port)))
                           (update :ldap-password update-password-if-needed))
