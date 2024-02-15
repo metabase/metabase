@@ -636,14 +636,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   // DIMENSION OPTIONS
-  _keyForFK(source, destination) {
-    if (source && destination) {
-      return `${source.id},${destination.id}`;
-    }
-
-    return null;
-  }
-
   dimensionOptions(
     dimensionFilter: DimensionFilterFn = _dimension => true,
   ): DimensionOptions {
