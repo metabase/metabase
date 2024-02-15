@@ -25,3 +25,9 @@ export type IndexedEntity = {
   name: string;
   pk_ref: FieldReference;
 };
+
+export type ModelIndexesListQuery = {
+  model_id: CardId | null;
+};
+
+export type ModelIndexesListResult = ModelIndex[];

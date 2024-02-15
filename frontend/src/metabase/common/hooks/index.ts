@@ -11,6 +11,7 @@ export * from "./use-field-values-query";
 export * from "./use-group-list-query";
 export * from "./use-metric-list-query";
 export * from "./use-metric-query";
+export * from "./use-model-indexes-list-query";
 export * from "./use-popular-item-list-query";
 export * from "./use-question-list-query";
 export * from "./use-question-query";
