@@ -2,7 +2,10 @@
   (:require
    [clojure.set :as set]
    [clojure.test :as t]
-   [metabase.mbql.normalize :as mbql.normalize]))
+   [metabase.mbql.normalize :as mbql.normalize]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (defn- tests {:style/indent 2} [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]
@@ -1479,3 +1482,15 @@
                                       :type     :query
                                       :query    {:source-table 2}
                                       :info     {:context "collection"}}))))
+
+(t/deftest ^:parallel dont-remove-nil-parameter-values-test
+  (t/testing "The FE code is extremely dumb and will consider parameters to be changed (haveParametersChanged) if we strip out value: nil"
+    (let [query {:type       :native
+                 :database   1
+                 :parameters [{:id     "d98c3875-e0f1-9270-d36a-5b729eef938e"
+                               :target [:dimension [:template-tag "category"]]
+                               :type   :category
+                               :value  nil}]}]
+      (t/is (=? {:parameters [{:id     "d98c3875-e0f1-9270-d36a-5b729eef938e"
+                               :value  nil}]}
+                (mbql.normalize/normalize query))))))

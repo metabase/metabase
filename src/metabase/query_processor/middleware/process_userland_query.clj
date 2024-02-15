@@ -124,7 +124,7 @@
     database-id                                                                      :database
     query-type                                                                       :type
     :as                                                                              query}]
-  {:pre [(instance? (Class/forName "[B") query-hash)]}
+  {:pre [(bytes? query-hash)]}
   {:database_id       database-id
    :executor_id       executed-by
    :action_id         action-id

@@ -55,7 +55,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server :as server]
    [metabase.server.handler :as handler]
@@ -83,7 +83,6 @@
 
 (p/import-vars
  [debug-qp
-  process-query-debug
   pprint-sql]
  [dev.explain
   explain-query]

@@ -883,10 +883,18 @@
         (set/rename-keys {:query :native}))
     (remove-empty-clauses source-query [:query])))
 
+(defn- remove-empty-clauses-in-parameter [parameter]
+  (merge
+   ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
+   ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
+   (select-keys parameter [:value])
+   (remove-empty-clauses-in-map parameter [:parameters ::sequence])))
+
 (def ^:private path->special-remove-empty-clauses-fn
-  {:native identity
-   :query  {:source-query remove-empty-clauses-in-source-query
-            :joins        {::sequence remove-empty-clauses-in-join}}
+  {:native       identity
+   :query        {:source-query remove-empty-clauses-in-source-query
+                  :joins        {::sequence remove-empty-clauses-in-join}}
+   :parameters   {::sequence remove-empty-clauses-in-parameter}
    :viz-settings identity})
 
 (defn- remove-empty-clauses
