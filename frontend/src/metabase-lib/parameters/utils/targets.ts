@@ -12,8 +12,6 @@ import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/Dimension";
 import Dimension from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 export function isParameterVariableTarget(
@@ -42,12 +40,8 @@ export function getParameterTargetField(
   question: Question,
 ) {
   if (isDimensionTarget(target)) {
-    const query = question.legacyQuery({ useStructuredQuery: true }) as
-      | NativeQuery
-      | StructuredQuery;
     const metadata = question.metadata();
-    const dimension = Dimension.parseMBQL(target[1], metadata, query);
-
+    const dimension = Dimension.parseMBQL(target[1], metadata);
     return dimension?.field();
   }
 
