@@ -101,7 +101,7 @@ const Questions = createEntity({
       Questions.actions.update(
         { id: card.id },
         { archived },
-        undo(opts, getCardLabel(card), archived ? t`archived` : t`unarchived`),
+        undo(opts, getLabel(card), archived ? t`archived` : t`unarchived`),
       ),
 
     setCollection: (card, collection, opts) => {
@@ -112,7 +112,7 @@ const Questions = createEntity({
             {
               collection_id: canonicalCollectionId(collection && collection.id),
             },
-            undo(opts, getCardLabel(card), t`moved`),
+            undo(opts, getLabel(card), t`moved`),
           ),
         );
         dispatch(
@@ -166,7 +166,7 @@ const Questions = createEntity({
     getUrl: (card, opts) => card && Urls.question(card, opts),
     getColor: () => color("text-medium"),
     getCollection: card => card && normalizedCollection(card.collection),
-    getCardIcon,
+    getIcon,
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -212,7 +212,7 @@ const Questions = createEntity({
   forms,
 });
 
-function getCardLabel(card) {
+function getLabel(card) {
   if (card.type === "model" || card.model === "dataset") {
     return t`model`;
   }
@@ -224,7 +224,7 @@ function getCardLabel(card) {
   return t`question`;
 }
 
-export function getCardIcon(card) {
+export function getIcon(card) {
   const type = PLUGIN_MODERATION.getQuestionIcon(card);
 
   if (type) {
