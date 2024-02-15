@@ -6,7 +6,7 @@ import { CompletedStep } from "../CompletedStep";
 import { DatabaseHelp } from "../DatabaseHelp";
 import { DatabaseStep } from "../DatabaseStep";
 import { LanguageStep } from "../LanguageStep";
-import { PreferencesStep } from "../PreferencesStep";
+import { DataUsageStep } from "../DataUsageStep";
 import { SetupHelp } from "../SetupHelp";
 import type { NumberedStepProps } from "../types";
 import { UsageQuestionStep } from "../UsageQuestionStep";
@@ -21,7 +21,7 @@ const STEP_COMPONENTS: Record<
   user_info: UserStep,
   usage_question: UsageQuestionStep,
   db_connection: DatabaseStep,
-  data_usage: PreferencesStep,
+  data_usage: DataUsageStep,
 };
 
 export const SettingsPage = (): JSX.Element => {

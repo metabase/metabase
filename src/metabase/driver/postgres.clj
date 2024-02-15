@@ -73,8 +73,8 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :index-info
-                 :uploads]]
+                 :uploads
+                 :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))

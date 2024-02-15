@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Tabs } from "metabase/ui";
+import { Icon, Tabs } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import EmptyState from "metabase/components/EmptyState";
 
@@ -55,19 +55,6 @@ export const BrowseDataHeader = styled.header`
   background-color: ${color("white")};
 `;
 
-export const BrowseSectionContainer = styled.div`
-  max-width: 1014px;
-  margin: 0 auto;
-  flex: 1;
-  display: flex;
-  width: 100%;
-`;
-
-export const BrowseTabsContainer = styled(BrowseSectionContainer)`
-  flex-flow: column nowrap;
-  justify-content: flex-start;
-`;
-
 export const CenteredEmptyState = styled(EmptyState)`
   display: flex;
   flex: 1;
@@ -75,4 +62,9 @@ export const CenteredEmptyState = styled(EmptyState)`
   align-items: center;
   justify-content: center;
   height: 100%;
+`;
+
+export const LearnAboutDataIcon = styled(Icon)`
+  min-width: 14px;
+  min-height: 14px;
 `;
