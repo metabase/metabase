@@ -26,7 +26,7 @@ type JWTFormSettingElement = Omit<SettingElement, "key"> & {
   key: string; // ensuring key is required
   is_env_setting?: boolean;
   env_name?: string;
-  default?: string;
+  default?: any;
 };
 
 type Props = {
@@ -119,7 +119,7 @@ export const SettingsJWTForm = ({
               <FormTextInput {...fields["jwt-attribute-lastname"]} />
             </Stack>
           </FormSection>
-          <FormSection title={"Group Schema"}>
+          <FormSection title={"Group Schema"} data-testid="jwt-group-schema">
             <GroupMappingsWidget
               isFormik
               setting={{ key: "jwt-group-sync" }}
