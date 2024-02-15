@@ -2,18 +2,8 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/ui";
-import { BucketPickerPopover as BaseBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { color, alpha } from "metabase/lib/colors";
-
-export const BucketPickerPopover = styled(BaseBucketPickerPopover)`
-  ${BaseBucketPickerPopover.TriggerButton} {
-    border-color: transparent;
-    visibility: hidden;
-    border-left-width: 1px;
-  }
-`;
-
-BucketPickerPopover.defaultProps = { color: "summarize" };
 
 export const Content = styled.div`
   display: flex;
@@ -26,7 +16,7 @@ export const TitleContainer = styled.div`
   display: flex;
   align-items: center;
   margin-left: 0.5rem;
-  padding: 0.5rem 0;
+  padding: 0;
   flex-grow: 1;
 `;
 
@@ -81,20 +71,24 @@ const selectedStyle = css`
     color: ${color("white")};
   }
 
-  ${BaseBucketPickerPopover.TriggerButton} {
-    visibility: visible;
+  ${BucketPickerPopover.TriggerButton} {
+    opacity: 0;
     color: ${alpha("white", 0.5)};
-    border-color: ${alpha("text-dark", 0.1)};
-    border-left-width: 1px;
   }
 
-  ${BaseBucketPickerPopover.TriggerButton}:hover {
+  ${BucketPickerPopover.TriggerButton}:hover {
     color: ${color("white")};
-    border-left-width: 1px;
+    opacity: 1;
   }
 `;
 
 const unselectedStyle = css`
+  ${BucketPickerPopover.TriggerButton} {
+    opacity: 0;
+    color: ${color("text-light")};
+    padding-left: 0;
+  }
+
   &:hover {
     ${Content},
     ${ColumnTypeIcon},
@@ -107,16 +101,13 @@ const unselectedStyle = css`
       background-color: ${color("bg-medium")};
     }
 
-    ${BaseBucketPickerPopover.TriggerButton} {
-      visibility: visible;
+    ${BucketPickerPopover.TriggerButton} {
+      opacity: 1;
       color: ${color("text-light")};
-      border-color: ${alpha("text-dark", 0.1)};
-      border-left-width: 1px;
     }
 
-    ${BaseBucketPickerPopover.TriggerButton}:hover {
+    ${BucketPickerPopover.TriggerButton}:hover {
       color: ${color("text-medium")};
-      border-left-width: 1px;
     }
   }
 `;

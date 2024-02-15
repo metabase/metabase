@@ -3,10 +3,10 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import Tooltip from "metabase/core/components/Tooltip";
+import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import * as Lib from "metabase-lib";
 import {
   AddButton,
-  BucketPickerPopover,
   Content,
   ColumnTypeIcon,
   Title,
@@ -69,19 +69,21 @@ export function BreakoutColumnListItem({
         <TitleContainer>
           <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
+          <BucketPickerPopover
+            query={query}
+            stageIndex={STAGE_INDEX}
+            column={item.column}
+            color="summarize"
+            isEditing={isSelected}
+            hasDot
+            hasChevronDown
+            hasBinning
+            hasTemporalBucketing
+            onSelect={column =>
+              breakout ? onUpdateColumn(column) : onAddColumn(column)
+            }
+          />
         </TitleContainer>
-        <BucketPickerPopover
-          query={query}
-          stageIndex={STAGE_INDEX}
-          column={item.column}
-          isEditing={isSelected}
-          hasArrowIcon={false}
-          hasBinning
-          hasTemporalBucketing
-          onSelect={column =>
-            breakout ? onUpdateColumn(column) : onAddColumn(column)
-          }
-        />
         {isSelected && (
           <RemoveButton
             onClick={handleRemoveColumn}
