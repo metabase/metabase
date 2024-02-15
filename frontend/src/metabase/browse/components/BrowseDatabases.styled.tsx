@@ -9,8 +9,7 @@ export const DatabaseGrid = styled(BrowseGrid)`
 
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;
-  box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.06) !important;
-
+  box-shadow: none;
   &:hover {
     color: ${color("brand")};
   }

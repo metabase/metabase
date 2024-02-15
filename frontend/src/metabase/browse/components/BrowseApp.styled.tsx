@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
-import { Grid, Icon, Tabs } from "metabase/ui";
-import { color } from "metabase/lib/colors";
 import EmptyState from "metabase/components/EmptyState";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
+import { Grid, Icon, Tabs } from "metabase/ui";
 
 export const BrowseAppRoot = styled.div`
   flex: 1;
@@ -28,7 +28,7 @@ export const BrowseTab = styled(Tabs.Tab)`
   top: 1px;
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
-  padding: 10px 0;
+  padding: 10px 0px;
   margin-right: 10px;
   &:hover {
     color: ${color("brand")};
