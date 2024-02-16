@@ -18,7 +18,9 @@ export function getPivotColumnSplit(question) {
         breakoutColumns,
         fieldRefs,
       );
-      return fieldRefs.filter(fieldIndex => breakoutIndexes[fieldIndex] >= 0);
+      return fieldRefs
+        .map((_, fieldIndex) => breakoutIndexes[fieldIndex])
+        .filter(breakoutIndex => breakoutIndex >= 0);
     },
   );
 
