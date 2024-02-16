@@ -71,7 +71,7 @@ export function getParameterTargetField(
     return null;
   }
 
-  // get the corresponding Field instance
+  // get the corresponding deprecated Field class instance
   const fields = metadata.fieldsList();
   const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
