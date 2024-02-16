@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import ModalContent from "metabase/components/ModalContent";
 import Text from "metabase/components/type/Text";
 import Button from "metabase/core/components/Button";

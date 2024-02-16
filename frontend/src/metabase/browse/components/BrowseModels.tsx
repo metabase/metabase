@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-
 import NoResults from "assets/img/no_results.svg";
 import type { useSearchListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

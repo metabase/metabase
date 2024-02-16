@@ -14,7 +14,6 @@ import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotificati
 import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
-
 import {
   AddYourOwnDataLink,
   CollectionMenuList,

@@ -3,7 +3,6 @@ import { createCachedSelector } from "re-reselect";
 import { createSelectorCreator, lruMemoize } from "reselect";
 import _ from "underscore";
 
-
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,

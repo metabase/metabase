@@ -4,7 +4,6 @@ import EventSandbox from "metabase/components/EventSandbox";
 import { FieldSet } from "metabase/components/FieldSet";
 import { Group, Icon } from "metabase/ui";
 
-
 export const DropdownFieldSet = styled(FieldSet)<{
   fieldHasValueOrFocus?: boolean;
 }>`

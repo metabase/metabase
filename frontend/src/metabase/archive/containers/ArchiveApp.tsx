@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-
 import { useSearchListQuery } from "metabase/common/hooks";
 import { ArchivedItem } from "metabase/components/ArchivedItem/ArchivedItem";
 import BulkActionBar from "metabase/components/BulkActionBar";

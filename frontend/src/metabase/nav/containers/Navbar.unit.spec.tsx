@@ -3,8 +3,6 @@ import type { Store } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-
-
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,

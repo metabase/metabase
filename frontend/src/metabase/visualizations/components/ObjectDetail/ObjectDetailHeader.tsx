@@ -9,7 +9,6 @@ import {
 } from "./ObjectDetailHeader.styled";
 import type { ObjectId } from "./types";
 
-
 export interface ObjectDetailHeaderProps {
   actionItems: {
     title: string;

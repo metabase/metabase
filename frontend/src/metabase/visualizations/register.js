@@ -4,7 +4,6 @@ import {
   setDefaultVisualization,
 } from "metabase/visualizations";
 
-
 import AreaChart from "./visualizations/AreaChart";
 import BarChart from "./visualizations/BarChart";
 import ComboChart from "./visualizations/ComboChart";

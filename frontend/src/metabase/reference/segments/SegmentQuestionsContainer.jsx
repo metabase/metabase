@@ -9,7 +9,6 @@ import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 import SegmentQuestions from "metabase/reference/segments/SegmentQuestions";
 
-
 import {
   getUser,
   getSegment,

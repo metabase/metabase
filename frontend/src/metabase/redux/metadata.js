@@ -11,7 +11,6 @@ import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi, RevisionsApi } from "metabase/services";
 
-
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
 const deprecated = message => console.warn("DEPRECATED: " + message);

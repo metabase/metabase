@@ -3,7 +3,6 @@ import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
-
 import Confirm from "metabase/components/Confirm";
 import { UtilApi } from "metabase/services";
 import type { TextInputProps } from "metabase/ui";

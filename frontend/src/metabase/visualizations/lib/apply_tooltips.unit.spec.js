@@ -13,7 +13,6 @@ import {
 } from "metabase/visualizations/lib/apply_tooltips";
 import { getDatas } from "metabase/visualizations/lib/renderer_utils";
 
-
 describe("getClickHoverObject", () => {
   it("should return data for tooltip", () => {
     const d = { data: { key: "foobar", value: 123 } };

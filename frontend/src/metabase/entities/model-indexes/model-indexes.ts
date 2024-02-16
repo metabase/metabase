@@ -4,7 +4,6 @@
  * This allows us to use search results to show a particular record in the model.
  */
 
-
 import { createEntity } from "metabase/lib/entities";
 import { ModelIndexSchema } from "metabase/schema";
 import { ModelIndexApi } from "metabase/services";

@@ -27,7 +27,6 @@ import type {
   SearchQuery,
 } from "./types";
 
-
 interface OwnProps<TId> {
   value?: PickerValue<TId>;
   models: PickerModel[];

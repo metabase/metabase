@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import type { Params } from "react-router/lib/Router";
 
-
-
 import { useUserQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";

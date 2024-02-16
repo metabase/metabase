@@ -5,7 +5,6 @@ import { goBack } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import Code from "metabase/components/Code";
 import ModalContent from "metabase/components/ModalContent";
 import Task from "metabase/entities/tasks";

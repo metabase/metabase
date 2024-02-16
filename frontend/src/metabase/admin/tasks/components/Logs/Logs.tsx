@@ -9,8 +9,6 @@ import Select, { Option } from "metabase/core/components/Select";
 import { UtilApi } from "metabase/services";
 import type { Log } from "metabase-types/api";
 
-
-
 import { LogsContainer, LogsContent } from "./Logs.styled";
 
 const MAX_LOGS = 50000;

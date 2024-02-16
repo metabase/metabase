@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import EmptyState from "metabase/components/EmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.css";

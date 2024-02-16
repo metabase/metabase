@@ -26,7 +26,6 @@ import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
 import type { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-
 import Metabot from "./Metabot";
 
 registerVisualizations();

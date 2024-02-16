@@ -16,7 +16,6 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 
-
 import {
   AdHocViewHeading,
   SaveButton,

@@ -2,7 +2,6 @@
 
 import { combineReducers } from "@reduxjs/toolkit";
 
-
 import admin from "metabase/admin/admin";
 import alert from "metabase/alert/alert";
 import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";

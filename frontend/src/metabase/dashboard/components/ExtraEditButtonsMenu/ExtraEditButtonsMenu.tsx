@@ -5,7 +5,6 @@ import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHe
 import { Box, Popover, Icon, Tooltip, Stack, Switch } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
 
 interface ExtraEditButtonsMenuProps {

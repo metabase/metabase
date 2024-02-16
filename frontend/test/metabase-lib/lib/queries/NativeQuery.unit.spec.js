@@ -11,7 +11,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
-
 const MONGO_DB_ID = SAMPLE_DB_ID + 1;
 
 const metadata = createMockMetadata({

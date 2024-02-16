@@ -6,7 +6,6 @@ import EntityMenuItem from "metabase/components/EntityMenuItem";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import { Popover } from "metabase/ui";
 
-
 /**
  * @deprecated: use Menu from "metabase/ui"
  */

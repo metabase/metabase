@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
 import { t } from "ttag";
 
-
 import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { Icon } from "metabase/ui";

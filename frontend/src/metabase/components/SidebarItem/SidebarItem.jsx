@@ -6,7 +6,6 @@ import { Link } from "react-router";
 import LabelIcon from "../LabelIcon";
 import S from "../Sidebar.css";
 
-
 const SidebarItem = ({ name, sidebar, icon, href }) => (
   <li>
     <Link to={href} className={S.item} activeClassName={S.selected}>

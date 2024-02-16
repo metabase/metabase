@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { t } from "ttag";
 
-
 import EmptyState from "metabase/components/EmptyState";
 import PaginationControls from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";

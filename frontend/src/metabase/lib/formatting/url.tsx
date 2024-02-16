@@ -6,7 +6,6 @@ import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
 import type { OptionsType } from "./types";
 import { formatValue, getRemappedValue } from "./value";
 
-
 function isSafeProtocol(protocol: string) {
   return (
     protocol !== "javascript:" && protocol !== "data:" && protocol !== "file:"

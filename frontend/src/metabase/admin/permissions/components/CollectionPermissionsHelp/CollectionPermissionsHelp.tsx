@@ -5,7 +5,6 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 
-
 export const CollectionPermissionsHelp = () => (
   <Flex direction="column" py="1.375rem" px="1.5rem">
     <Title order={4}>{t`Collection permissions`}</Title>

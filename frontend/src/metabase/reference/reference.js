@@ -3,7 +3,6 @@ import { assoc } from "icepick";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { handleActions, createAction } from "metabase/lib/redux";
 
-
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 
 export const SET_ERROR = "metabase/reference/SET_ERROR";

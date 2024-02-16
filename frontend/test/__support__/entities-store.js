@@ -4,7 +4,6 @@ import promise from "redux-promise";
 import * as entities from "metabase/redux/entities";
 import requestsReducer from "metabase/redux/requests";
 
-
 export function getStore(reducers = {}, initialState = {}, middleware = []) {
   const reducer = combineReducers({
     entities: entities.reducer,

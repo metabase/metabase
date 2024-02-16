@@ -1,7 +1,6 @@
 /* eslint-disable react/display-name, react/prop-types */
 import { Component } from "react";
 
-
 import { createMockMetadata } from "__support__/metadata";
 import { setupCardEndpoints } from "__support__/server-mocks/card";
 import { renderWithProviders, screen } from "__support__/ui";

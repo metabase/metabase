@@ -11,11 +11,6 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import { isNative } from "metabase-lib/queries/utils/card";
 
-
-
-
-
-
 import lineAndBarOnRender from "./LineAreaBarPostRender";
 import {
   applyChartTimeseriesXAxis,

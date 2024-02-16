@@ -28,8 +28,6 @@ import {
 import { partitions } from "./partitions";
 import type { PivotSetting, HeaderItem, CustomColumnWidth } from "./types";
 
-
-
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
   storedValue: PivotSetting,

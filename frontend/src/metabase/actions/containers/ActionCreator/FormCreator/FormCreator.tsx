@@ -8,7 +8,6 @@ import { Droppable, Draggable } from "react-beautiful-dnd";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
@@ -35,7 +34,6 @@ import {
 } from "./FormCreator.styled";
 import FormFieldEditor from "./FormFieldEditor";
 import { reorderFields } from "./utils";
-
 
 // FormEditor's can't be submitted as it serves as a form preview
 const ON_SUBMIT_NOOP = _.noop;

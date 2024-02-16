@@ -2,7 +2,6 @@ import Questions from "metabase/entities/questions";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { equals } from "metabase/lib/utils";
 
-
 export function createCard(name = null) {
   return {
     name: name,

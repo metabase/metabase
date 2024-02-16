@@ -11,7 +11,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
 
-
 import {
   PermissionsEditor,
   PermissionsEditorEmptyState,

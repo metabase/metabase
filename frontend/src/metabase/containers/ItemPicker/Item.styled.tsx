@@ -5,7 +5,6 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-
 export interface ItemRootProps {
   canSelect: boolean;
   isSelected: boolean;

@@ -11,8 +11,6 @@ import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-
-
 import ReadOnlyNotebook from "./ReadOnlyNotebook";
 
 const makeQuery = (options: any) => {

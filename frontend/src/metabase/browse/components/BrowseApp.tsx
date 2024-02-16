@@ -14,7 +14,7 @@ import type { FlexProps } from "metabase/ui";
 import { Flex, Text } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
-import type { ActualModelFilters , type BrowseTabId } from "../utils";
+import type { ActualModelFilters, type BrowseTabId } from "../utils";
 import { isValidBrowseTab, filterModels } from "../utils";
 
 import {

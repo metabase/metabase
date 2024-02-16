@@ -2,7 +2,6 @@ import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-
 import { getColumnIcon } from "metabase/common/utils/columns";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import type {

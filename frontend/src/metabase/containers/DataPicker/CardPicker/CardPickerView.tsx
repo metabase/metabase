@@ -1,13 +1,11 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-
 import { canonicalCollectionId } from "metabase/collections/utils";
 import SelectList from "metabase/components/SelectList";
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 import type Table from "metabase-lib/metadata/Table";
 import type { CollectionId, TableId } from "metabase-types/api";
-
 
 import EmptyState from "../EmptyState";
 import LoadingState from "../LoadingState";

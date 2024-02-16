@@ -5,7 +5,6 @@ import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
 
-
 export const FilterButton = styled(Button)`
   color: ${color("brand")};
   margin: 0.5rem;

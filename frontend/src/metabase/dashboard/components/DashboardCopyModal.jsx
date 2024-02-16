@@ -12,7 +12,6 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 
-
 import { getDashboardComplete } from "../selectors";
 
 const mapStateToProps = (state, props) => {

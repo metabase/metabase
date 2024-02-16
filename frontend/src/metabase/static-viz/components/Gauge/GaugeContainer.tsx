@@ -25,7 +25,6 @@ import {
   fixSwappedMinMax,
 } from "./utils";
 
-
 export interface GaugeContainerProps {
   card: Card;
   data: Data;

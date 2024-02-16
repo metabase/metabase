@@ -1,7 +1,6 @@
 import EventEmitter from "events";
 import querystring from "querystring";
 
-
 import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";

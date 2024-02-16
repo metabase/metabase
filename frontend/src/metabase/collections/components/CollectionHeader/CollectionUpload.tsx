@@ -2,7 +2,6 @@ import type { ChangeEvent } from "react";
 import { useState, useRef } from "react";
 import { t } from "ttag";
 
-
 import Tooltip, {
   TooltipContainer,
   TooltipTitle,

@@ -6,7 +6,6 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import type { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -17,8 +16,6 @@ import type {
   FieldValues,
   PopulatedFormObject,
 } from "metabase-types/forms";
-
-
 
 import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 

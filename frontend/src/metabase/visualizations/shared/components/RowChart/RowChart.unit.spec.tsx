@@ -6,7 +6,6 @@ import { measureTextWidth } from "metabase/lib/measure-text";
 
 import type { ChartFont } from "../../types/style";
 
-
 import type { RowChartProps } from "./RowChart";
 import { RowChart } from "./RowChart";
 import type { RowChartTheme } from "./types";

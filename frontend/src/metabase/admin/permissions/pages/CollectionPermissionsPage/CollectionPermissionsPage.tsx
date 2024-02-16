@@ -11,7 +11,6 @@ import Groups from "metabase/entities/groups";
 import type { Collection, CollectionId, GroupId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-
 import {
   PermissionsEditor,
   PermissionsEditorEmptyState,
@@ -36,7 +35,6 @@ import {
   getIsDirty,
   collectionsQuery,
 } from "../../selectors/collection-permissions";
-
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,

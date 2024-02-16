@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-
 export const Row = styled.div`
   display: flex;
   justify-content: space-between;

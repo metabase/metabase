@@ -31,7 +31,6 @@ import {
   getDashCardById,
 } from "../selectors";
 
-
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
 

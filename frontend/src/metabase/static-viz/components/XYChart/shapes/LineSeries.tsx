@@ -8,7 +8,6 @@ import type {
 } from "metabase/static-viz/components/XYChart/types";
 import { getY } from "metabase/static-viz/components/XYChart/utils";
 
-
 interface LineSeriesProps {
   series: Series[];
   yScaleLeft: PositionScale | null;

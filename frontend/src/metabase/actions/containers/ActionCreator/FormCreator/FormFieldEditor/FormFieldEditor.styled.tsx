@@ -6,7 +6,6 @@ import { color, darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
-
 const DRAG_HANDLE_SIZE = 12;
 
 export const FormFieldContainer = styled.div`

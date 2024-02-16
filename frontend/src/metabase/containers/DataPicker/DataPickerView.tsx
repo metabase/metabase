@@ -14,7 +14,6 @@ import type {
   DataTypeInfoItem,
 } from "./types";
 
-
 interface DataPickerViewProps extends DataPickerProps {
   dataTypes: DataTypeInfoItem[];
   searchQuery: string;

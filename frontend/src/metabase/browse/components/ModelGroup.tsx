@@ -1,4 +1,3 @@
-
 import Link from "metabase/core/components/Link";
 import Search from "metabase/entities/search";
 import { color } from "metabase/lib/colors";

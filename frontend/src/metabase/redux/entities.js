@@ -1,7 +1,6 @@
 import * as entitiesMap from "metabase/entities";
 import { combineEntities } from "metabase/lib/entities";
 
-
 const entitiesArray = Object.values(entitiesMap);
 
 export const { entities, reducer, requestsReducer } =

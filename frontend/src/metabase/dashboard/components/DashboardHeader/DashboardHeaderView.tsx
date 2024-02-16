@@ -4,7 +4,6 @@ import type * as React from "react";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { t } from "ttag";
 
-
 import EditBar from "metabase/components/EditBar";
 import { updateDashboard } from "metabase/dashboard/actions";
 import { getIsSidebarOpen } from "metabase/dashboard/selectors";

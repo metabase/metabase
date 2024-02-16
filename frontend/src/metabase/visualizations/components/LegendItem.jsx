@@ -3,7 +3,6 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
-
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Icon } from "metabase/ui";

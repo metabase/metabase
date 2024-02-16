@@ -3,7 +3,6 @@ import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { isEmpty } from "underscore";
 
-
 import Popover from "metabase/components/Popover";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { useSelector } from "metabase/lib/redux";

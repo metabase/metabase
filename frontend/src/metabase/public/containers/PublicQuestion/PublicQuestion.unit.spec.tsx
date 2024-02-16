@@ -14,7 +14,6 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-
 import { PublicQuestion } from "./PublicQuestion";
 
 registerVisualizations();

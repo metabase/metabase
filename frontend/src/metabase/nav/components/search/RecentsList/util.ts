@@ -1,4 +1,3 @@
-
 import { isSyncCompleted } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import type { RecentItem } from "metabase-types/api";

@@ -26,7 +26,6 @@ import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 import { ApiKeysApi } from "metabase/services";
 import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 
-
 import { AddRow } from "./AddRow";
 import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
 
