@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { Component } from "react";
+import { t } from "ttag";
 
 import { Icon } from "metabase/ui";
 
@@ -27,6 +28,7 @@ export default class SegmentItem extends Component {
           <ObjectActionSelect
             object={segment}
             objectType="segment"
+            objectTypeLocalized={t`Segment`}
             onRetire={onRetire}
           />
         </td>
