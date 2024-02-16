@@ -1,6 +1,5 @@
 // Reducers shared between "main" and "public" apps
 
-/* ducks */
 import app from "metabase/redux/app";
 import embed from "metabase/redux/embed";
 import requests from "metabase/redux/requests";
@@ -10,7 +9,6 @@ import upload from "metabase/redux/uploads";
 import { reducer as auth } from "metabase/redux/auth";
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 
-/* user */
 import { currentUser } from "metabase/redux/user";
 
 export default {
