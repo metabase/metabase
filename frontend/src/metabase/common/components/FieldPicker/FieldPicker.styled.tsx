@@ -39,7 +39,6 @@ export const ColumnItem = styled.li`
 
     &:hover {
       background: ${color("bg-medium")};
-      ${_QueryColumnInfoIcon.ActiveStyles}
     }
   }
 `;

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
-// import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   ToggleItem,
   ColumnItem,
@@ -81,7 +81,7 @@ export const FieldPicker = ({
       <DelayGroup>
         {items.map((item, index) => (
           <ColumnItem key={item.longDisplayName}>
-            <label>
+            <HoverParent as="label">
               <Checkbox
                 checked={isColumnSelected(item.column)}
                 disabled={
@@ -98,7 +98,7 @@ export const FieldPicker = ({
                 column={item.column}
                 position="right"
               />
-            </label>
+            </HoverParent>
           </ColumnItem>
         ))}
       </DelayGroup>

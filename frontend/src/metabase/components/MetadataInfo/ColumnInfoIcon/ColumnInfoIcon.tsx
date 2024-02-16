@@ -10,7 +10,8 @@ import {
   TableColumnInfoPopover,
 } from "../ColumnInfoPopover";
 
-import { PopoverHoverTarget, ActiveStyles } from "./ColumnInfoIcon.styled";
+import { PopoverHoverTarget, HoverParent } from "./ColumnInfoIcon.styled";
+export { HoverParent };
 
 export function QueryColumnInfoIcon({
   className,
@@ -34,7 +35,7 @@ export function QueryColumnInfoIcon({
   );
 }
 
-QueryColumnInfoIcon.ActiveStyles = ActiveStyles;
+QueryColumnInfoIcon.HoverParent = HoverParent;
 
 export function TableColumnInfoIcon({
   className,
@@ -54,4 +55,4 @@ export function TableColumnInfoIcon({
   );
 }
 
-TableColumnInfoIcon.ActiveStyles = ActiveStyles;
+TableColumnInfoIcon.HoverParent = HoverParent;
