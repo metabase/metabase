@@ -37,7 +37,7 @@ import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
-import { Flex, Modal } from "metabase/ui";
+import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type { CollectionId } from "metabase-types/api";
 
@@ -221,7 +221,7 @@ export const SaveQuestionModal = ({
       : t`What is the name of your model?`;
 
   return (
-    <Modal.Root size="md" onClose={onClose} opened={true}>
+    <Modal.Root onClose={onClose} opened={true}>
       <Modal.Overlay />
       <FormProvider
         initialValues={{
@@ -233,7 +233,7 @@ export const SaveQuestionModal = ({
         enableReinitialize
       >
         {({ values, setFieldValue, validateForm }) => (
-          <Modal.Content>
+          <Modal.Content p="md">
             <Modal.Header>
               <Modal.Title>{title}</Modal.Title>
               <Flex align="center" gap="sm">
@@ -283,6 +283,7 @@ export const SaveQuestionModal = ({
                         <FormCollectionPicker
                           name="collection_id"
                           title={t`Which collection should this go in?`}
+                          zIndex={DEFAULT_MODAL_Z_INDEX + 1}
                         />
                       </div>
                     </CSSTransition>
