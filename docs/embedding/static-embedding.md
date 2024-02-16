@@ -43,10 +43,11 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 1. Go to the question or dashboard that you want to embed in your website.
 2. Click on the **sharing icon** (square with an arrow pointing to the top right).
-3. Select **Embed this item in an application**.
-4. Optional: [Preview the appearance of the embed](#customizing-the-appearance-of-static-embeds).
-5. Optional: [Add parameters to the embed](./static-embedding-parameters.md).
-6. Click **Publish**.
+3. Select **Embed**.
+4. On the **Static embed** card, click the button: **Set this up**.
+5. Optional: [Preview the appearance of the embed](#customizing-the-appearance-of-static-embeds).
+6. Optional: [Add parameters to the embed](./static-embedding-parameters.md).
+7. Click **Publish**.
 
 ![Preview](./images/04-preview.png)
 
@@ -60,10 +61,10 @@ metabase_site_url/embed/question/your_jwt_token?parameter_name=value
 
 Once you've made a question or dashboard [embeddable](#making-a-question-or-dashboard-embeddable), you'll need to put the embedding URL for that question or dashboard on your website:
 
-1. Go to the question or dashboard > **sharing icon** > **Embed this item in an application**.
-2. Click **Code**.
+1. Go to the question or dashboard > **sharing icon** > **Embed**.
+2. Make any changes and copy the code.
 3. Optional: [Preview the server code](#previewing-the-frontend-code-for-an-embed).
-4. Add the server code to the file that builds your website.
+4. Add the code to server code that builds your website.
 5. Optional: [Preview the frontend code](#previewing-the-frontend-code-for-an-embed).
 6. Add the frontend code to the HTML file where you want your static embed to appear.
 
