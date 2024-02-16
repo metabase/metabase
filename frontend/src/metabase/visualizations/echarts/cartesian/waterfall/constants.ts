@@ -1,3 +1,5 @@
+import { NULL_CHAR } from "../constants/dataset";
+
 // Start of a waterfall bar
 export const WATERFALL_START_KEY = "start";
 // End of a waterfall bar
@@ -19,3 +21,5 @@ export const WATERFALL_DATA_KEYS: string[] = [
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
 ];
+
+export const WATERFALL_LABELS_SERIES_ID = `${NULL_CHAR}waterfall_labels`;

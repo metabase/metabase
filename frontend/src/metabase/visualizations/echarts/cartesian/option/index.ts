@@ -19,6 +19,20 @@ import {
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLineOptionsAndDatasets } from "./trend-line";
 
+export const getSharedEChartsOptions = () => ({
+  animation: true,
+  animationDuration: 0,
+  toolbox: {
+    show: false,
+  },
+  brush: {
+    toolbox: ["lineX"],
+    xAxisIndex: 0,
+    throttleType: "debounce",
+    throttleDelay: 200,
+  },
+});
+
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
@@ -88,17 +102,7 @@ export const getCartesianChartOption = (
   ];
 
   return {
-    animation: true,
-    animationDuration: 0,
-    toolbox: {
-      show: false,
-    },
-    brush: {
-      toolbox: ["lineX"],
-      xAxisIndex: 0,
-      throttleType: "debounce",
-      throttleDelay: 200,
-    },
+    ...getSharedEChartsOptions(),
     grid: {
       ...chartMeasurements.padding,
       containLabel: true,

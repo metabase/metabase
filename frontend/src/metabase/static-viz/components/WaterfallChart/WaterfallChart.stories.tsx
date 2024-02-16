@@ -210,8 +210,8 @@ NativeTimeSeriesQuarter.args = {
   renderingContext,
 };
 
-export const NnativeTimeSeriesWithGaps = Template.bind({});
-NnativeTimeSeriesWithGaps.args = {
+export const NativeTimeSeriesWithGaps = Template.bind({});
+NativeTimeSeriesWithGaps.args = {
   rawSeries: data.nativeTimeSeriesWithGaps as any,
   dashcardSettings: {},
   renderingContext,

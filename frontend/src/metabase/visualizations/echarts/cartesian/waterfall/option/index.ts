@@ -4,8 +4,10 @@ import type {
   SeriesOption,
 } from "echarts";
 import type { DatasetOption } from "echarts/types/dist/shared";
+import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
 import type {
   BaseCartesianChartModel,
+  ChartDataset,
   DataKey,
   XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -22,6 +24,7 @@ import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/const
 import {
   WATERFALL_END_2_KEY,
   WATERFALL_END_KEY,
+  WATERFALL_LABELS_SERIES_ID,
   WATERFALL_START_2_KEY,
   WATERFALL_START_KEY,
   WATERFALL_TOTAL_KEY,
@@ -34,6 +37,7 @@ import type { TimelineEventsModel } from "../../timeline-events/types";
 import { getChartMeasurements } from "../../utils/layout";
 import { getTimelineEventsSeries } from "../../timeline-events/option";
 import { buildAxes } from "../../option/axis";
+import { getSharedEChartsOptions } from "../../option";
 
 type WaterfallSeriesOptions =
   | RegisteredSeriesOption["line"]
@@ -44,6 +48,44 @@ const DEFAULT_BAR_WIDTH = `60%`;
 
 // Ensures bars are not too wide when there are just a few
 const getBarWidthPercent = (barsCount: number) => 1 / (1.4 * barsCount);
+
+const getLabelLayoutFn = (
+  dataset: ChartDataset,
+  chartMeasurements: ChartMeasurements,
+  settings: ComputedVisualizationSettings,
+): LabelLayoutOptionCallback => {
+  return params => {
+    const { dataIndex, rect } = params;
+    if (dataIndex == null) {
+      return {};
+    }
+
+    const datum = dataset[dataIndex];
+    const value = datum[WATERFALL_VALUE_KEY] ?? 0;
+    const end = datum[WATERFALL_END_KEY] ?? 0;
+    const isIncrease = getNumberOr(value, 0) >= 0;
+
+    const verticalAlignOffset =
+      CHART_STYLE.seriesLabels.size / 2 + CHART_STYLE.seriesLabels.offset;
+
+    const hasBottomSpace =
+      rect.y + CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset <
+      chartMeasurements.bounds.bottom;
+
+    const barHeight = rect.height;
+    const endSign = getNumberOr(end, 0) < 0 ? 1 : -1;
+    let labelOffset = (endSign * barHeight) / 2;
+    labelOffset +=
+      isIncrease || !hasBottomSpace
+        ? -verticalAlignOffset
+        : verticalAlignOffset;
+
+    return {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+      dy: labelOffset,
+    };
+  };
+};
 
 const getBarWidth = (
   xAxisModel: XAxisModel,
@@ -133,48 +175,16 @@ export const buildEChartsWaterfallSeries = (
       zlevel: CHART_STYLE.series.zIndex,
     },
     {
-      id: "waterfall_labels",
+      id: WATERFALL_LABELS_SERIES_ID,
       type: "line",
-      zlevel: CHART_STYLE.series.zIndex + 10,
+      z: CHART_STYLE.seriesLabels.zIndex,
       silent: true,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
       itemStyle: {
         color: "transparent",
       },
       symbolSize: 0,
-      labelLayout: params => {
-        const { dataIndex, rect } = params;
-        if (dataIndex == null) {
-          return {};
-        }
-
-        const datum = dataset[dataIndex];
-        const value = datum[WATERFALL_VALUE_KEY] ?? 0;
-        const end = datum[WATERFALL_END_KEY] ?? 0;
-        const isIncrease = getNumberOr(value, 0) >= 0;
-
-        const verticalAlignOffset =
-          CHART_STYLE.seriesLabels.size / 2 + CHART_STYLE.seriesLabels.offset;
-
-        const hasBottomSpace =
-          rect.y +
-            CHART_STYLE.seriesLabels.size +
-            CHART_STYLE.seriesLabels.offset <
-          chartMeasurements.bounds.bottom;
-
-        const barHeight = rect.height;
-        const endSign = getNumberOr(end, 0) < 0 ? 1 : -1;
-        let labelOffset = (endSign * barHeight) / 2;
-        labelOffset +=
-          isIncrease || !hasBottomSpace
-            ? -verticalAlignOffset
-            : verticalAlignOffset;
-
-        return {
-          hideOverlap: settings["graph.label_value_frequency"] === "fit",
-          dy: labelOffset,
-        };
-      },
+      labelLayout: getLabelLayoutFn(dataset, chartMeasurements, settings),
       encode: {
         y: WATERFALL_END_KEY,
         x: X_AXIS_DATA_KEY,
@@ -245,18 +255,7 @@ export const getWaterfallChartOption = (
   const echartsDataset = [{ source: chartModel.transformedDataset }];
 
   return {
-    // TODO: extract common options
-    animation: true,
-    animationDuration: 0,
-    toolbox: {
-      show: false,
-    },
-    brush: {
-      toolbox: ["lineX"],
-      xAxisIndex: 0,
-      throttleType: "debounce",
-      throttleDelay: 200,
-    },
+    ...getSharedEChartsOptions(),
     grid: {
       ...chartMeasurements.padding,
       containLabel: true,

@@ -1,5 +1,5 @@
 // We prefix misc data keys we add to avoid possible collisions with series data keys
-const NULL_CHAR = "\0";
+export const NULL_CHAR = "\0";
 
 // On stacked charts we show labels with the total value of stacks that are grouped by sign
 export const POSITIVE_STACK_TOTAL_DATA_KEY = `${NULL_CHAR}_positiveStackTotal`;
