@@ -42,10 +42,3 @@ export function updateBreakout(breakout, index, updatedBreakout) {
 export function removeBreakout(breakout, index) {
   return getBreakoutClause(remove(getBreakouts(breakout), index));
 }
-
-/**
- * @deprecated use MLv2
- */
-export function clearBreakouts() {
-  return undefined;
-}
