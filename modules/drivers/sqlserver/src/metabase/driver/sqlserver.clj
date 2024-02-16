@@ -564,7 +564,7 @@
     (binding [*compared-field-options*
               (when (and (vector? field)
                          (= (get field 0) :field))
-                (merge (let [field-id-or-name (field 1)]
+                (merge (let [field-id-or-name (get field 1)]
                          (when (integer? field-id-or-name)
                            (lib.metadata.protocols/field (qp.store/metadata-provider)
                                                          field-id-or-name)))
