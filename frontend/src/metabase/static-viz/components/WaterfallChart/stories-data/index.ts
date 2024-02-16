@@ -2,8 +2,9 @@ import timeseriesXScale from "./timeseries-x-scale.json";
 import ordinalXScale from "./ordinal-x-scale.json";
 import timeseriesXScaleUnsorted from "./timeseries-x-scale-unsorted.json";
 import timeSeriesDataAsOrdinalXScale from "./timeseries-data-as-ordinal-x-scale.json";
+import logScaleWithLabelsHourOfDayXAxis from "./log-scale-with-labels-hour-of-day-x-axis.json";
 import unaggregatedOrdinal from "./unaggregated-ordinal.json";
-import unaggregatedOrdinal2 from "./unaggregated-ordinal-2.json";
+import unaggregatedLinear from "./unaggregated-linear.json";
 import unaggregatedTimeseries from "./unaggregated-timeseries.json";
 import mixedAboveZero from "./mixed-above-zero.json";
 import mixedBelowZero from "./mixed-below-zero.json";
@@ -23,6 +24,7 @@ import powYScale from "./pow-y-scale.json";
 import powYScaleNegativeOnly from "./pow-y-scale-negative-only.json";
 import powYScaleMixed from "./pow-y-scale-mixed.json";
 import nativeTimeSeriesQuarter from "./native-time-series-quarter.json";
+import nativeTimeSeriesWithGaps from "./native-time-series-with-gaps.json";
 import structuredTimeSeriesYear from "./structured-time-series-year.json";
 
 export const data = {
@@ -30,8 +32,9 @@ export const data = {
   ordinalXScale,
   timeseriesXScaleUnsorted,
   timeSeriesDataAsOrdinalXScale,
+  logScaleWithLabelsHourOfDayXAxis,
   unaggregatedOrdinal,
-  unaggregatedOrdinal2,
+  unaggregatedLinear,
   unaggregatedTimeseries,
   mixedAboveZero,
   mixedBelowZero,
@@ -51,5 +54,6 @@ export const data = {
   powYScaleNegativeOnly,
   powYScaleMixed,
   nativeTimeSeriesQuarter,
+  nativeTimeSeriesWithGaps,
   structuredTimeSeriesYear,
 };

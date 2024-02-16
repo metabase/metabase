@@ -23,6 +23,7 @@ export interface OptionsType extends TimeOnlyOptions {
   majorWidth?: number;
   markdown_template?: any;
   maximumFractionDigits?: number;
+  negativeInParentheses?: boolean;
   noRange?: boolean;
   number_separators?: string;
   number_style?: string;

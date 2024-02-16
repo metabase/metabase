@@ -13,9 +13,17 @@ export interface TicksDimensions {
   xTicksHeight: number;
 }
 
+export interface ChartBoundsCoords {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
+
 export interface ChartMeasurements {
   padding: Padding;
   ticksDimensions: TicksDimensions;
+  bounds: ChartBoundsCoords;
 }
 
 export type EChartsSeriesOption =

@@ -35,6 +35,7 @@ import {
   STACKABLE_DISPLAY_TYPES,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
+  isDate,
   isDimension,
   isMetric,
   isNumeric,
@@ -418,14 +419,15 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.x_axis._is_numeric": {
     readDependencies: ["graph.dimensions"],
-    getDefault: ([{ data }], vizSettings) =>
-      dimensionIsNumeric(
+    getDefault: ([{ data }], vizSettings) => {
+      return dimensionIsNumeric(
         data,
         _.findIndex(
           data.cols,
           c => c.name === vizSettings["graph.dimensions"].filter(d => d)[0],
         ),
-      ),
+      );
+    },
   },
   "graph.x_axis._is_histogram": {
     getDefault: (
@@ -449,18 +451,25 @@ export const GRAPH_AXIS_SETTINGS = {
       "graph.x_axis._is_histogram",
     ],
     getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
-    getProps: (series, vizSettings) => {
+    getProps: ([{ data }], vizSettings) => {
+      const dimensionColumn = data.cols.find(
+        col => col.name === vizSettings["graph.dimensions"][0],
+      );
+
       const options = [];
       if (vizSettings["graph.x_axis._is_timeseries"]) {
         options.push({ name: t`Timeseries`, value: "timeseries" });
       }
       if (vizSettings["graph.x_axis._is_numeric"]) {
         options.push({ name: t`Linear`, value: "linear" });
-        if (!vizSettings["graph.x_axis._is_histogram"]) {
-          options.push({ name: t`Power`, value: "pow" });
-          options.push({ name: t`Log`, value: "log" });
+        // For relative date units such as day of week we do not want to show log, pow, histogram scales
+        if (!isDate(dimensionColumn)) {
+          if (!vizSettings["graph.x_axis._is_histogram"]) {
+            options.push({ name: t`Power`, value: "pow" });
+            options.push({ name: t`Log`, value: "log" });
+          }
+          options.push({ name: t`Histogram`, value: "histogram" });
         }
-        options.push({ name: t`Histogram`, value: "histogram" });
       }
       options.push({ name: t`Ordinal`, value: "ordinal" });
       return { options };
