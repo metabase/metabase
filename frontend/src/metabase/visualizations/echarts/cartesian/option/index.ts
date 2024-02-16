@@ -19,12 +19,27 @@ import {
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLineOptionsAndDatasets } from "./trend-line";
 
+export const getSharedEChartsOptions = () => ({
+  animation: true,
+  animationDuration: 0,
+  toolbox: {
+    show: false,
+  },
+  brush: {
+    toolbox: ["lineX"],
+    xAxisIndex: 0,
+    throttleType: "debounce",
+    throttleDelay: 200,
+  },
+});
+
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
+  chartHeight: number,
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -32,6 +47,8 @@ export const getCartesianChartOption = (
     chartModel,
     settings,
     hasTimelineEvents,
+    chartWidth,
+    chartHeight,
     renderingContext,
   );
   const timelineEventsSeries = hasTimelineEvents
@@ -47,6 +64,7 @@ export const getCartesianChartOption = (
     chartModel,
     settings,
     chartWidth,
+    chartMeasurements,
     renderingContext,
   );
   const goalSeriesOption = getGoalLineSeriesOption(
@@ -70,25 +88,21 @@ export const getCartesianChartOption = (
   const dimensions = [
     X_AXIS_DATA_KEY,
     ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
-    ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
   ];
+
+  if (settings["stackable.stack_type"] != null) {
+    dimensions.push(
+      ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
+    );
+  }
+
   const echartsDataset = [
     { source: chartModel.transformedDataset, dimensions },
     ...(trendDatasets ?? []),
   ];
 
   return {
-    animation: true,
-    animationDuration: 0,
-    toolbox: {
-      show: false,
-    },
-    brush: {
-      toolbox: ["lineX"],
-      xAxisIndex: 0,
-      throttleType: "debounce",
-      throttleDelay: 200,
-    },
+    ...getSharedEChartsOptions(),
     grid: {
       ...chartMeasurements.padding,
       containLabel: true,

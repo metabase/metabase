@@ -96,6 +96,14 @@ export const getCartesianChartModel = (
   }
   dataset = sortDataset(dataset, settings["graph.x_axis.scale"]);
 
+  const xAxisModel = getXAxisModel(
+    dimensionModel,
+    rawSeries,
+    dataset,
+    settings,
+    renderingContext,
+  );
+
   const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,
     seriesModels,
@@ -107,14 +115,6 @@ export const getCartesianChartModel = (
   );
 
   const insights = rawSeries.flatMap(series => series.data.insights ?? []);
-
-  const xAxisModel = getXAxisModel(
-    dimensionModel,
-    rawSeries,
-    dataset,
-    settings,
-    renderingContext,
-  );
 
   const yAxesModels = getYAxesModels(
     seriesModels,

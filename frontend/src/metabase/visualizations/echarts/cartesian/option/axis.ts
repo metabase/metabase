@@ -1,13 +1,16 @@
-import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
+import type {
+  AxisBaseOption,
+  AxisBaseOptionCommon,
+} from "echarts/types/src/coord/axisCommonTypes";
 import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
-  AxisFormatter,
-  CartesianChartModel,
+  BaseCartesianChartModel,
   Extent,
+  XAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
@@ -15,6 +18,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/option/types";
+import { getTimeSeriesMinInterval } from "metabase/visualizations/echarts/cartesian/utils/time-series";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -86,21 +90,6 @@ export const getTicksDefaultOption = ({
   };
 };
 
-export const getXAxisType = (settings: ComputedVisualizationSettings) => {
-  switch (settings["graph.x_axis.scale"]) {
-    case "timeseries":
-      return "time";
-    case "linear":
-    case "pow":
-      return "value";
-    case "log":
-      return "log";
-    // ^ pow and log are only for scatter plot
-    default:
-      return "category";
-  }
-};
-
 const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   switch (settings["graph.x_axis.axis_enabled"]) {
     case "rotate-45":
@@ -113,15 +102,15 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
 };
 
 export const buildDimensionAxis = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
-  formatter: AxisFormatter,
+  xAxisModel: XAxisModel,
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
-): CartesianAxisOption => {
+): AxisBaseOption => {
   const { getColor } = renderingContext;
-  const axisType = getXAxisType(settings);
+  const { axisType, formatter, timeSeriesInterval } = xAxisModel;
 
   const boundaryGap =
     axisType === "value" || axisType === "log"
@@ -165,7 +154,11 @@ export const buildDimensionAxis = (
         color: getColor("border"),
       },
     },
-  };
+    minInterval:
+      timeSeriesInterval != null
+        ? getTimeSeriesMinInterval(timeSeriesInterval)
+        : undefined,
+  } as AxisBaseOption;
 };
 
 export const buildMetricAxis = (
@@ -217,7 +210,7 @@ export const buildMetricAxis = (
 };
 
 const buildMetricsAxes = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
@@ -255,7 +248,7 @@ const buildMetricsAxes = (
 };
 
 export const buildAxes = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
@@ -265,7 +258,7 @@ export const buildAxes = (
     xAxis: buildDimensionAxis(
       chartModel,
       settings,
-      chartModel.xAxisModel.formatter,
+      chartModel.xAxisModel,
       chartMeasurements,
       hasTimelineEvents,
       renderingContext,

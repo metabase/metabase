@@ -1,26 +1,72 @@
+import { t } from "ttag";
 import dayjs from "dayjs";
-import {
-  assertMultiMetricColumns,
-  type CartesianChartColumns,
-} from "metabase/visualizations/lib/graph/columns";
-import { isNumber } from "metabase/lib/types";
-
+import type { RowValue } from "metabase-types/api";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { XAxisModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
-import type { RowValues } from "metabase-types/api";
+import type {
+  DataKey,
+  ChartDataset,
+  XAxisModel,
+  Datum,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import {
-  WATERFALL_EMPTY_VALUE,
-  type WaterfallDataset,
-  type WaterfallEmptyValue,
-} from "../types";
+  applySquareRootScaling,
+  replaceValues,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+
+import {
+  WATERFALL_DATA_KEYS,
+  WATERFALL_END_2_KEY,
+  WATERFALL_END_KEY,
+  WATERFALL_START_2_KEY,
+  WATERFALL_START_KEY,
+  WATERFALL_TOTAL_KEY,
+  WATERFALL_VALUE_KEY,
+} from "metabase/visualizations/echarts/cartesian/waterfall/constants";
+import { isNotNull, isNumber } from "metabase/lib/types";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import { tryGetDate } from "../../utils/time-series";
+
+const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
+  let hasZeros = false;
+  let minNonZeroValue = Infinity;
+
+  dataset.forEach(datum => {
+    const datumNumericValues = [
+      getNumberOr(datum[WATERFALL_START_KEY], null),
+      getNumberOr(datum[WATERFALL_END_KEY], null),
+    ].filter(isNotNull);
+
+    hasZeros = datumNumericValues.includes(0);
+
+    minNonZeroValue = Math.min(
+      minNonZeroValue,
+      ...datumNumericValues.filter(number => number !== 0),
+    );
+  });
+
+  if (!hasZeros && minNonZeroValue > 0) {
+    return dataset;
+  }
+
+  if (minNonZeroValue < 0) {
+    throw Error(t`X-axis must not cross 0 when using log scale.`);
+  }
+
+  const zeroReplacementValue = minNonZeroValue > 1 ? 1 : minNonZeroValue;
+
+  return replaceValues(dataset, (dataKey: DataKey, value: RowValue) =>
+    dataKey !== X_AXIS_DATA_KEY && value === 0 ? zeroReplacementValue : value,
+  );
+};
 
 const getTotalTimeSeriesXValue = (
-  lastDimensionValue: string | number | Date | null,
-  xAxisModel: XAxisModel,
+  lastDimensionValue: RowValue,
+  { timeSeriesInterval }: XAxisModel,
 ) => {
-  const { timeSeriesInterval } = xAxisModel;
-  if (timeSeriesInterval == null) {
+  const lastDimensionValueDate = tryGetDate(lastDimensionValue);
+  if (lastDimensionValueDate == null || timeSeriesInterval == null) {
     return null;
   }
   const { interval, count } = timeSeriesInterval;
@@ -29,118 +75,96 @@ const getTotalTimeSeriesXValue = (
     return null;
   }
 
-  if (interval === "quarter") {
-    return dayjs(lastDimensionValue).add(3, "month").toISOString();
-  }
-
+  // @ts-expect-error fix quarter types in dayjs
   return dayjs(lastDimensionValue).add(count, interval).toISOString();
 };
 
-export function getWaterfallDataset(
-  rows: RowValues[],
-  cardColumns: CartesianChartColumns,
+export const getWaterfallDataset = (
+  dataset: ChartDataset,
+  originalSeriesKey: DataKey,
   settings: ComputedVisualizationSettings,
   xAxisModel: XAxisModel,
-) {
-  const columns = assertMultiMetricColumns(cardColumns);
-  const dataset: WaterfallDataset = [];
+  hasTotal: boolean,
+): ChartDataset => {
+  let transformedDataset: ChartDataset = [];
 
-  // Step 1: calculate runningSums, negativeTranslation beforehand
-  let runningSums: number[] = [];
-  rows.forEach((row, index) => {
-    const rawMetric = row[columns.metrics[0].index];
-    const value = isNumber(rawMetric) ? rawMetric : 0;
+  dataset.forEach((datum, index) => {
+    const prevDatum = index === 0 ? null : transformedDataset[index - 1];
+    const rawValue = datum[originalSeriesKey];
+    const value = isNumber(rawValue) ? rawValue : 0;
 
-    if (index === 0) {
-      runningSums.push(value);
-      return;
+    const start = prevDatum == null ? 0 : prevDatum.end;
+    const end =
+      prevDatum == null ? value : getNumberOr(prevDatum?.end, 0) + value;
+
+    const waterfallDatum: Datum = {
+      [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY],
+      [WATERFALL_VALUE_KEY]: end - getNumberOr(start, 0),
+      [WATERFALL_START_KEY]: start,
+      [WATERFALL_END_KEY]: end,
+      // Candlestick series which we use for Waterfall bars requires having four unique dimensions
+      [WATERFALL_START_2_KEY]: start,
+      [WATERFALL_END_2_KEY]: end,
+    };
+
+    transformedDataset.push(waterfallDatum);
+  });
+
+  if (hasTotal && transformedDataset.length > 0) {
+    const lastDatum = transformedDataset[transformedDataset.length - 1];
+    const lastValue = lastDatum.end;
+
+    let totalXValue;
+    if (
+      settings["graph.x_axis.scale"] === "timeseries" &&
+      (typeof lastValue === "string" || typeof lastValue === "number")
+    ) {
+      totalXValue = getTotalTimeSeriesXValue(
+        lastDatum[X_AXIS_DATA_KEY],
+        xAxisModel,
+      );
+    } else {
+      totalXValue = t`Total`;
     }
 
-    runningSums.push(runningSums[runningSums.length - 1] + value);
-  });
+    transformedDataset.push({
+      [X_AXIS_DATA_KEY]: totalXValue,
+      [WATERFALL_END_KEY]: lastDatum[WATERFALL_END_KEY],
+      [WATERFALL_VALUE_KEY]: lastDatum[WATERFALL_END_KEY],
+      [WATERFALL_START_KEY]: 0,
+      [WATERFALL_TOTAL_KEY]: lastDatum[WATERFALL_END_KEY],
+    });
+  }
 
   if (settings["graph.y_axis.scale"] === "pow") {
-    runningSums = runningSums.map(sum => {
-      if (sum >= 0) {
-        return Math.sqrt(sum);
-      }
-      return -Math.sqrt(-sum);
-    });
-  }
-
-  const minSum = Math.min(...runningSums);
-  const negativeTranslation = minSum >= 0 ? 0 : -minSum;
-
-  // Step 2: create the waterfall dataset using the previously computed values
-  for (let i = 0; i < runningSums.length; i++) {
-    const dimension = String(rows[i][columns.dimension.index]);
-
-    let barOffset = negativeTranslation;
-    let increase: number | WaterfallEmptyValue = WATERFALL_EMPTY_VALUE;
-    let decrease: number | WaterfallEmptyValue = WATERFALL_EMPTY_VALUE;
-
-    const prevSum = i !== 0 ? runningSums[i - 1] : 0;
-    const currSum = runningSums[i];
-
-    if (currSum >= prevSum) {
-      barOffset += prevSum;
-      increase = currSum - prevSum;
-    } else {
-      barOffset += currSum;
-      decrease = Math.abs(prevSum - currSum);
-    }
-
-    dataset.push({
-      dimension,
-      barOffset,
-      increase,
-      decrease,
-      total: WATERFALL_EMPTY_VALUE,
-    });
-  }
-
-  if (!settings["waterfall.show_total"]) {
-    return { dataset, negativeTranslation };
-  }
-
-  // Step 3 (optional): datum for "Show total" setting
-  const total = runningSums[runningSums.length - 1];
-  const barOffset =
-    total >= 0 ? negativeTranslation : negativeTranslation + total;
-
-  let dimension = "Total";
-  // For timeseries x-axis ECharts will not allow mixed values,
-  // so we cannot set the dimension value to "Total." As a workaround,
-  // we instead set it to be a date after the final date in the dataset,
-  // then in the x-axis label formatter we will replace the label with the
-  // string "Total."
-  if (settings["graph.x_axis.scale"] === "timeseries") {
-    const lastDimensionValue = rows[rows.length - 1][columns.dimension.index];
-    if (typeof lastDimensionValue === "boolean") {
-      throw Error(
-        "dimension value cannot be boolean with timeseries x-axis scale",
-      );
-    }
-
-    const totalTimeSeriesXValue = getTotalTimeSeriesXValue(
-      lastDimensionValue,
-      xAxisModel,
+    transformedDataset = replaceValues(
+      transformedDataset,
+      (dataKey: DataKey, value: RowValue) =>
+        WATERFALL_DATA_KEYS.includes(dataKey)
+          ? applySquareRootScaling(value)
+          : value,
     );
-
-    if (totalTimeSeriesXValue == null) {
-      throw Error("Missing total time series x value for waterfall chart");
-    }
-
-    dimension = totalTimeSeriesXValue;
+  } else if (settings["graph.y_axis.scale"] === "log") {
+    transformedDataset = replaceZerosForLogScale(transformedDataset);
   }
 
-  dataset.push({
-    dimension,
-    barOffset,
-    increase: WATERFALL_EMPTY_VALUE,
-    decrease: WATERFALL_EMPTY_VALUE,
-    total: Math.abs(total),
-  });
+  return transformedDataset;
+};
 
-  return { dataset, negativeTranslation };
-}
+export const extendOriginalDatasetWithTotalDatum = (
+  dataset: ChartDataset,
+  waterfallDatasetTotalDatum: Datum,
+  seriesDataKey: DataKey,
+  settings: ComputedVisualizationSettings,
+) => {
+  if (dataset.length === 0 || !settings["waterfall.show_total"]) {
+    return dataset;
+  }
+
+  const totalDatum: Datum = {
+    [seriesDataKey]: waterfallDatasetTotalDatum[WATERFALL_TOTAL_KEY],
+    [X_AXIS_DATA_KEY]: t`Total`,
+  };
+
+  return [...dataset, totalDatum];
+};
