@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.query-processor.util :as qp.util]
-   [metabase.shared.automagic-dashboards.constants :as magic.constants]
+   [metabase.shared.dashboards.constants :as dashboards.constants]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
@@ -294,7 +294,7 @@
   (update-vals
     card-spec
     (fn [{:keys [visualization] :as card-spec}]
-      (let [defaults (get-in magic.constants/card-size-defaults [(keyword visualization) :default])]
+      (let [defaults (get-in dashboards.constants/card-size-defaults [(keyword visualization) :default])]
         (into defaults card-spec)))))
 
 (defn- set-default-card-dimensions

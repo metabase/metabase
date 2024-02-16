@@ -1,4 +1,4 @@
-(ns metabase.shared.automagic-dashboards.constants)
+(ns metabase.shared.dashboards.constants)
 
 (def ^:export GRID_WIDTH
   "Default width of a dashboard"
