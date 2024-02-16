@@ -2,7 +2,10 @@ import styled from "@emotion/styled";
 import { color, alpha, darken } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-import { QueryColumnInfoIcon as _QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import {
+  QueryColumnInfoIcon as _QueryColumnInfoIcon,
+  HoverParent,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 
 export const ItemTitle = styled.div`
   min-width: 10ch;
@@ -19,38 +22,33 @@ export const QueryColumnInfoIcon = styled(_QueryColumnInfoIcon)`
   margin-left: auto;
 `;
 
-export const ColumnItem = styled.li`
-  &:first-child {
-    margin-top: 0.5em;
-    label {
-      padding: 0.5em;
-    }
-  }
-  &:last-child {
-    margin-bottom: 0.5em;
-  }
-
-  label {
-    display: flex;
-    align-items: center;
-    margin: 0 0.5em;
-    padding: 0 0.5em;
-    padding-right: 0;
-    border-radius: 6px;
-    cursor: pointer;
-
-    &:hover {
-      background: ${color("bg-medium")};
-    }
-  }
+export const ItemList = styled.ul`
+  padding: 0.5em;
 `;
 
-export const ToggleItem = styled(ColumnItem)`
+export const ToggleItem = styled.li`
   border-bottom: 1px solid ${color("border")};
   padding-bottom: 0.5em;
   margin-bottom: 0.5em;
 
   ${ItemTitle} {
     margin-left: 1em;
+  }
+`;
+
+export const Label = styled(HoverParent)`
+  display: flex;
+  align-items: center;
+  padding: 0 0.5em;
+  padding-right: 0;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: ${color("bg-medium")};
+  }
+
+  ${ToggleItem} & {
+    padding: 0.5em;
   }
 `;

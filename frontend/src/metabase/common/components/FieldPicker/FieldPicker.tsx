@@ -3,10 +3,10 @@ import { t } from "ttag";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   ToggleItem,
-  ColumnItem,
+  ItemList,
+  Label,
   ItemTitle,
   ItemIcon,
   QueryColumnInfoIcon,
@@ -66,9 +66,9 @@ export const FieldPicker = ({
   };
 
   return (
-    <ul data-testid={props["data-testid"]}>
+    <ItemList data-testid={props["data-testid"]}>
       <ToggleItem>
-        <label>
+        <Label as="label">
           <Checkbox
             variant="stacked"
             checked={isAll}
@@ -76,12 +76,12 @@ export const FieldPicker = ({
             onChange={handleLabelToggle}
           />
           <ItemTitle>{isAll ? t`Select none` : t`Select all`}</ItemTitle>
-        </label>
+        </Label>
       </ToggleItem>
       <DelayGroup>
         {items.map((item, index) => (
-          <ColumnItem key={item.longDisplayName}>
-            <HoverParent as="label">
+          <li key={item.longDisplayName}>
+            <Label as="label">
               <Checkbox
                 checked={isColumnSelected(item.column)}
                 disabled={
@@ -98,10 +98,10 @@ export const FieldPicker = ({
                 column={item.column}
                 position="right"
               />
-            </HoverParent>
-          </ColumnItem>
+            </Label>
+          </li>
         ))}
       </DelayGroup>
-    </ul>
+    </ItemList>
   );
 };
