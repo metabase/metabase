@@ -17,8 +17,10 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
@@ -559,9 +561,14 @@
 (doseq [op [:= :!= :< :<= :> :>= :between]]
   (defmethod sql.qp/->honeysql [:sqlserver op]
     [driver [_ field :as clause]]
-    (binding [*compared-field-options* (when (and (vector? field)
-                                                  (= (get field 0) :field))
-                                         (get field 2))]
+    (binding [*compared-field-options*
+              (when (and (vector? field)
+                         (= (get field 0) :field))
+                (merge (let [field-id-or-name (get field 1)]
+                         (when (integer? field-id-or-name)
+                           (lib.metadata.protocols/field (qp.store/metadata-provider)
+                                                         field-id-or-name)))
+                       (get field 2)))]
       ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause))))
 
 (defmethod driver/db-default-timezone :sqlserver
