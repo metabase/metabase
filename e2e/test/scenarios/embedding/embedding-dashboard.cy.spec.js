@@ -224,7 +224,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
       getDashboardFilter("Name").click();
       toggleRequiredParameter();
       sidebar().findByText("Default value").next().click();
-      addWidgetStringFilter("Ferne Rosenbaum");
+      addWidgetStringFilter("Ferne Rosenbaum", {
+        buttonLabel: "Update filter",
+      });
       saveDashboard();
 
       // Check that parameter visibility is correct

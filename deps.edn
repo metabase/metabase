@@ -353,11 +353,8 @@
     io.github.metabase/hawk            {:git/url "https://github.com/metabase/hawk"
                                         :git/sha "59cba703e757bd94c0cc698dbf5338bf36276991"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
-    ;; Forcibly targeting a newer release than ships by default with shadow-cljs 2.20.20.
-    ;; It fixes an issue where TypeScript can't parse the `cljs_env.js` output file.
-    org.clojure/google-closure-library {:mvn/version "0.0-20230227-c7c0a541"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.9.1"}
-    thheller/shadow-cljs               {:mvn/version "2.26.5"}}}
+    thheller/shadow-cljs               {:mvn/version "2.27.4"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers

@@ -7,7 +7,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.models :refer [Action Card Dashboard DashboardCard]]
    [metabase.models.action :as action]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -31,7 +31,7 @@
         (testing "Implicit actions parameters and visualization_settings should be hydrated from the query"
           (mt/with-actions [_model {:dataset         true
                                     :dataset_query   query
-                                    :result_metadata (assoc-in (qp/query->expected-cols (mt/mbql-query categories))
+                                    :result_metadata (assoc-in (qp.preprocess/query->expected-cols (mt/mbql-query categories))
                                                                [1 :display_name] "Display Name")}
                             {:keys [action-id] :as _context} {:type :implicit}]
             (is (partial= {:id                     action-id
@@ -51,7 +51,7 @@
         (testing "for implicit actions visualization_settings.fields, "
           (mt/with-actions [_model {:dataset         true
                                     :dataset_query   query
-                                    :result_metadata (qp/query->expected-cols (mt/mbql-query categories))}
+                                    :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query categories))}
                             {:keys [action-id] :as _context} {:type :implicit
                                                               :visualization_settings {:fields {"doesnt_exist" {:id     "doesnt_exist"
                                                                                                                 :hidden false}

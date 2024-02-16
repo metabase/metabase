@@ -22,6 +22,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -867,7 +868,7 @@
                                                                                             :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"
                                                           :name          "CATEGORY"}]]
-                                       (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
+                                       (get-in (qp.preprocess/preprocess drill-thru-query) [:query :filter])))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)
@@ -1121,5 +1122,5 @@
                                           :dataset_query (mt/mbql-query categories)}]
         (let [query (:dataset_query card)]
           (process-userland-query-test/with-query-execution [qe query]
-            (qp/process-userland-query query)
+            (qp/process-query (qp/userland-query query))
             (is (:is_sandboxed (qe)))))))))

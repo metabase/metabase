@@ -233,6 +233,26 @@ class TagEditorParamInner extends Component<Props> {
     const hasNoDefaultValue = !tag.default;
     const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
 
+    // We want to remove "default" and "required" so that it
+    // doesn't show up in the default value input update button
+    const defaultParameterInputValue = _.omit(
+      tag.type === "text" || tag.type === "dimension"
+        ? parameter || {
+            fields: [],
+            ...tag,
+            type: tag["widget-type"] || null,
+          }
+        : {
+            fields: [],
+            hasVariableTemplateTagTarget: true,
+            type:
+              tag["widget-type"] ||
+              (tag.type === "date" ? "date/single" : null),
+          },
+      "default",
+      "required",
+    );
+
     return (
       <TagContainer data-testid={`tag-editor-variable-${tag.name}`}>
         <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
@@ -370,21 +390,7 @@ class TagEditorParamInner extends Component<Props> {
             )}
           </ContainerLabel>
           <DefaultParameterValueWidget
-            parameter={
-              tag.type === "text" || tag.type === "dimension"
-                ? parameter || {
-                    fields: [],
-                    ...tag,
-                    type: tag["widget-type"] || null,
-                  }
-                : {
-                    fields: [],
-                    hasVariableTemplateTagTarget: true,
-                    type:
-                      tag["widget-type"] ||
-                      (tag.type === "date" ? "date/single" : null),
-                  }
-            }
+            parameter={defaultParameterInputValue}
             value={tag.default}
             setValue={value => {
               this.setParameterAttribute("default", value);

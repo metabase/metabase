@@ -203,7 +203,7 @@ export function getSortedModelFields(
     return columnMetadata;
   }
 
-  const table = model.table();
+  const table = model.legacyQueryTable();
   const tableFields = table?.fields ?? [];
   const tableColumns = tableFields.map(field => field.column());
 

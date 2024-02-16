@@ -7,6 +7,7 @@ import {
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import Collections from "metabase/entities/collections";
+import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { Collection } from "metabase-types/api/collection";
@@ -15,6 +16,7 @@ import type { IconName } from "metabase/ui";
 import type Table from "metabase-lib/metadata/Table";
 import type Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import FieldList from "../FieldList";
 import { PaneContent } from "../Pane.styled";
 import {
@@ -31,6 +33,7 @@ interface QuestionPaneProps {
   onBack: () => void;
   onClose: () => void;
   question: Question;
+  table: Table;
   collection: Collection | null;
 }
 
@@ -55,11 +58,11 @@ const getIcon = (question: Question): IconName => {
 const QuestionPane = ({
   onItemClick,
   question,
+  table,
   collection,
   onBack,
   onClose,
 }: QuestionPaneProps) => {
-  const table = question.composeThisQuery()?.table() as Table; // ? is only needed to satisfy type-checker
   return (
     <SidebarContent
       title={question.displayName() || undefined}
@@ -124,6 +127,12 @@ const QuestionPane = ({
 export default _.compose(
   Questions.load({
     id: (_state: State, props: QuestionPaneProps) => props.question.id,
+  }),
+  Tables.load({
+    id: (_state: State, props: QuestionPaneProps) =>
+      getQuestionVirtualTableId(props.question.id()),
+    fetchType: "fetchMetadata",
+    requestType: "fetchMetadata",
   }),
   Collections.load({
     id: (_state: State, props: QuestionPaneProps) =>

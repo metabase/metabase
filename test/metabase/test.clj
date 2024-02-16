@@ -3,7 +3,6 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
-  (:refer-clojure :exclude [compile])
   (:require
    [humane-are.core :as humane-are]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
@@ -162,8 +161,6 @@
   with-current-user]
 
  [qp
-  compile
-  preprocess
   process-query]
 
  [qp.store
@@ -265,7 +262,6 @@
 
  [tu.misc
   object-defaults
-  test-qp-middleware
   with-clock
   with-single-admin-user]
 

@@ -411,6 +411,8 @@
 
   You can use [[metabase.query-processor.reducible/reducible-rows]] to create reducible, streaming results.
 
+  `respond` MUST BE CALLED SYNCHRONOUSLY!!!
+
   Example impl:
 
     (defmethod reducible-query :my-driver
@@ -702,7 +704,7 @@
 
   For databases that do not feature concepts like 'prepared statements', this method need not be implemented; the
   default implementation is an identity function."
-  {:added "0.32.0", :arglists '([driver query]), :style/indent 1}
+  {:added "0.32.0", :arglists '([driver inner-query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

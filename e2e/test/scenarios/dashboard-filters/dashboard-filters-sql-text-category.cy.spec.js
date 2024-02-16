@@ -87,7 +87,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     filterWidget().click();
 
-    applyFilterByType("Is", "Doohickey");
+    applyFilterByType("Is", "Doohickey", { buttonLabel: "Update filter" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rustic Paper Wallet").should("not.exist");

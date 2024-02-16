@@ -94,15 +94,21 @@
   (memoize fetch-access-and-refresh-tokens*))
 
 (defn- database->credential*
-  [scopes {{:keys [^String client-id, ^String client-secret, ^String auth-code, ^String access-token, ^String refresh-token
+  [scopes {{:keys [^String client-id
+                   ^String client-secret
+                   ^String auth-code
+                   ^String access-token
+                   ^String refresh-token
                    ^String service-account-json]
             :as   details} :details
            id              :id
            :as             db}]
-  {:pre [(map? db) (or (and (seq client-id) (seq client-secret) (or (seq auth-code)
-                                                                    (and (seq access-token) (seq refresh-token))))
-                       (seq service-account-json))]}
-
+  {:pre [(map? db)
+         (or (and (seq client-id)
+                  (seq client-secret)
+                  (or (seq auth-code)
+                      (and (seq access-token) (seq refresh-token))))
+             (seq service-account-json))]}
   (if (seq service-account-json)
     (let [creds (GoogleCredential/fromStream (ByteArrayInputStream. (.getBytes service-account-json))
                                              http-transport

@@ -282,9 +282,6 @@ const orders_count_by_id_question = new Question(
 describe("Question", () => {
   describe("CREATED WITH", () => {
     describe("new Question(alreadyDefinedCard, metadata)", () => {
-      it("isn't empty", () => {
-        expect(orders_raw_question.isEmpty()).toBe(false);
-      });
       it("has an id", () => {
         expect(orders_raw_question.id()).toBe(orders_raw_card.id);
       });

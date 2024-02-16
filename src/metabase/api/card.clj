@@ -637,10 +637,10 @@
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (qp.card/run-query-for-card-async
+  (qp.card/process-query-for-card
    card-id :api
    :parameters   parameters
-   :ignore_cache ignore_cache
+   :ignore-cache ignore_cache
    :dashboard-id dashboard_id
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
@@ -654,7 +654,7 @@
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
    export-format (into [:enum] api.dataset/export-formats)}
-  (qp.card/run-query-for-card-async
+  (qp.card/process-query-for-card
    card-id export-format
    :parameters  (json/parse-string parameters keyword)
    :constraints nil
@@ -727,10 +727,10 @@
                  :or   {ignore_cache false}} :body}]
   {card-id      ms/PositiveInt
    ignore_cache [:maybe :boolean]}
-  (qp.card/run-query-for-card-async card-id :api
-                            :parameters parameters,
-                            :qp-runner qp.pivot/run-pivot-query
-                            :ignore_cache ignore_cache))
+  (qp.card/process-query-for-card card-id :api
+                                    :parameters   parameters
+                                    :qp           qp.pivot/run-pivot-query
+                                    :ignore-cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this

@@ -7,6 +7,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
@@ -25,7 +26,7 @@
 (defn- nest-expressions [query]
   (driver/with-driver (or driver/*driver* :h2)
     (-> query
-        qp/preprocess
+        qp.preprocess/preprocess
         :query
         nest-query/nest-expressions
         remove-source-metadata)))
@@ -67,7 +68,7 @@
                            :breakout    [$price]
                            :aggregation [[:count]]
                            :fields      [[:expression "double_price"]]})
-                        qp/preprocess
+                        qp.preprocess/preprocess
                         add/add-alias-info
                         nest-expressions))))))
 
@@ -118,7 +119,7 @@
                                            !day.date
                                            !month.date]
                              :limit       1})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           nest-expressions)))))))
 
@@ -521,7 +522,7 @@
                                             :alias        "CategoriesStats"
                                             :fields       :all}]
                              :limit       3})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           nest-expressions)))))))
 
@@ -639,7 +640,7 @@
                                               :alias        "PRODUCTS__via__PRODUCT_ID"
                                               :fk-field-id  %product-id
                                               :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
-                            qp/preprocess
+                            qp.preprocess/preprocess
                             add/add-alias-info
                             nest-expressions))))))))
 
@@ -681,7 +682,7 @@
                              :aggregation [[:count]]
                              :order-by    [[:asc [:expression"CATEGORY"]]]
                              :limit       1})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           :query
                           nest-query/nest-expressions)))))))
