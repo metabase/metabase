@@ -96,9 +96,7 @@ describe(
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
-      cy.findAllByText(
-        /An error occurred while attempting to connect to server/,
-      ).should("exist");
+      cy.findAllByText("Wrong host or port").should("exist");
       cy.findByDisplayValue("localhost").should("exist");
     });
 
