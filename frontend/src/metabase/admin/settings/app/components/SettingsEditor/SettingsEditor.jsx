@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { bindActionCreators } from "@reduxjs/toolkit";
@@ -13,7 +13,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
+import SaveStatus from "metabase/components/SaveStatus";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -56,8 +56,6 @@ const mapDispatchToProps = dispatch => ({
     },
     dispatch,
   ),
-  notify: undo => dispatch(addUndo(undo)),
-  unnotify: undoId => dispatch(dismissUndo(undoId)),
   dispatch,
 });
 
@@ -73,8 +71,7 @@ class SettingsEditor extends Component {
 
   constructor(props) {
     super(props);
-
-    this.state = { currentUndoId: null };
+    this.saveStatusRef = createRef();
   }
 
   componentDidMount() {
@@ -85,7 +82,7 @@ class SettingsEditor extends Component {
     const { settingValues, updateSetting, reloadSettings, dispatch } =
       this.props;
 
-    this.setSaving();
+    this.saveStatusRef.current.setSaving();
 
     const oldValue = setting.value;
 
@@ -124,7 +121,7 @@ class SettingsEditor extends Component {
         }
       }
 
-      this.setSaved();
+      this.saveStatusRef.current.setSaved();
 
       const value = prepareAnalyticsValue(setting);
 
@@ -138,7 +135,7 @@ class SettingsEditor extends Component {
     } catch (error) {
       const message =
         error && (error.message || (error.data && error.data.message));
-      this.setSaveError(message);
+      this.saveStatusRef.current.setSaveError(message);
       MetabaseAnalytics.trackStructEvent(
         "General Settings",
         setting.display_name,
@@ -157,35 +154,6 @@ class SettingsEditor extends Component {
     return updateSetting({ ...setting, value });
   };
 
-  unnotify = () => {
-    if (this.state.currentUndoId) {
-      this.props.unnotify(this.state.currentUndoId);
-    }
-  };
-
-  notify = undo => {
-    this.unnotify();
-    this.props.notify(undo);
-    this.setState({ currentUndoId: undo.id });
-  };
-
-  setSaving = () => {
-    this.notify({ id: "save-status", icon: "info", message: t`Saving...` });
-  };
-
-  setSaved = () => {
-    this.notify({ id: "save-status", message: t`Saved` });
-  };
-
-  setSaveError = error => {
-    const message = t`Error:` + String(error.message || error);
-    this.props.notify({ id: "save-status-error", icon: "error", message });
-  };
-
-  clear = () => {
-    this.unnotify();
-  };
-
   renderSettingsPane() {
     const { activeSection, settings, settingValues, derivedSettingValues } =
       this.props;
@@ -202,16 +170,13 @@ class SettingsEditor extends Component {
     if (activeSection.component) {
       return (
         <activeSection.component
+          saveStatusRef={this.saveStatusRef}
           elements={activeSection.settings}
           settingValues={settingValues}
           derivedSettingValues={derivedSettingValues}
           updateSetting={this.updateSetting.bind(this)}
           onChangeSetting={this.handleChangeSetting.bind(this)}
           reloadSettings={this.props.reloadSettings}
-          setSaving={this.setSaving}
-          setSaved={this.setSaved}
-          setSaveError={this.setSaveError}
-          clearSaved={this.clearSaved}
         />
       );
     }
@@ -223,10 +188,6 @@ class SettingsEditor extends Component {
         updateSetting={this.updateSetting.bind(this)}
         onChangeSetting={this.handleChangeSetting.bind(this)}
         reloadSettings={this.props.reloadSettings}
-        setSaving={this.setSaving}
-        setSaved={this.setSaved}
-        setSaveError={this.setSaveError}
-        clearSaved={this.clearSaved}
       />
     );
   }
@@ -290,6 +251,7 @@ class SettingsEditor extends Component {
   render() {
     return (
       <AdminLayout sidebar={this.renderSettingsSections()}>
+        <SaveStatus ref={this.saveStatusRef} />
         <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
       </AdminLayout>
     );
