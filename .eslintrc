@@ -26,6 +26,7 @@
           "orderImportKind": "asc",
           "caseInsensitive": false
         },
+        "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
         "warnOnUnassignedImports": false
       }
     ],
