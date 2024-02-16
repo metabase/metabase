@@ -1,14 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
 import { c, msgid } from "ttag";
-import type { Card, SearchResult } from "metabase-types/api";
+import { useEffect } from "react";
+import type { Card, CollectionId, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
 import Search from "metabase/entities/search";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import { Box, Icon, Title } from "metabase/ui";
 
+import { updateSetting } from "metabase/admin/settings/settings";
+import { isValidCollectionId } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
+import { getSetting } from "metabase/selectors/settings";
 import { getCollectionName, sortModels } from "../utils";
 
 import {
@@ -27,6 +31,47 @@ import {
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
 
+type CollectionPrefs = Record<CollectionId, ModelVisibilityPrefs>;
+
+type ModelVisibilityPrefs = {
+  areAllModelsShown: boolean;
+  areSomeModelsShown: boolean;
+};
+
+const isRecordWithCollectionIdKeys = (
+  prefs: unknown,
+): prefs is Record<CollectionId, any> =>
+  typeof prefs === "object" &&
+  prefs !== null &&
+  Object.keys(prefs).every(key => isValidCollectionId(key));
+
+const isValidModelVisibilityPrefs = (
+  value: unknown,
+): value is ModelVisibilityPrefs =>
+  typeof value === "object" &&
+  value !== null &&
+  Object.keys(value).includes("areAllModelsShown") &&
+  Object.keys(value).includes("areSomeModelsShown") &&
+  Object.values(value).every(val => typeof val === "boolean");
+
+const isValidCollectionPrefs = (prefs: unknown): prefs is CollectionPrefs =>
+  isRecordWithCollectionIdKeys(prefs) &&
+  Object.values(prefs).every(val => isValidModelVisibilityPrefs(val));
+
+const tryToParseCollectionPrefs = (
+  json: string | null,
+): CollectionPrefs | null => {
+  try {
+    const parsed = JSON.parse(json || "");
+    return isValidCollectionPrefs(parsed) ? parsed : null;
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      return null;
+    }
+    throw e;
+  }
+};
+
 export const ModelGroup = ({
   models,
   localeCode,
@@ -39,6 +84,13 @@ export const ModelGroup = ({
   const sortedModels = models.sort((a, b) => sortModels(a, b, localeCode));
   const collection = models[0].collection;
 
+  const collectionPrefsAsString = useSelector(state =>
+    getSetting(state, "browse-collection-prefs"),
+  );
+  const initialCollectionPrefs = collectionPrefsAsString
+    ? tryToParseCollectionPrefs(collectionPrefsAsString)
+    : null;
+
   /** This id is used by aria-labelledby */
   const collectionHtmlId = `collection-${collection.id}`;
 
@@ -46,12 +98,35 @@ export const ModelGroup = ({
   const aboveFold = sortedModels.slice(0, collapsedSize);
   const belowFold = sortedModels.slice(collapsedSize);
 
-  const [areSomeModelsShown, { toggle: toggleSomeModelsShown }] =
-    useDisclosure(true);
-  const [areAllModelsShown, { toggle: toggleAllModelsShown }] =
-    useDisclosure(false);
+  const [areSomeModelsShown, { toggle: toggleSomeModelsShown }] = useDisclosure(
+    initialCollectionPrefs?.[collection.id]?.areSomeModelsShown,
+  );
+  const [areAllModelsShown, { toggle: toggleAllModelsShown }] = useDisclosure(
+    initialCollectionPrefs?.[collection.id]?.areAllModelsShown,
+  );
 
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    const newCollectionPrefs = {
+      ...initialCollectionPrefs,
+      [collection.id]: { areAllModelsShown, areSomeModelsShown },
+    };
+    // FIXME: Can this lead to race conditions? Perhaps a system with Promise.all would make sense?
+    dispatch(
+      updateSetting({
+        key: "browse-collection-prefs",
+        value: JSON.stringify(newCollectionPrefs),
+      }),
+    );
+  }, [
+    dispatch,
+    initialCollectionPrefs,
+    areAllModelsShown,
+    areSomeModelsShown,
+    collection.id,
+  ]);
+
   const wrappable = { ...collection, model: "collection" };
   const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
   const icon = wrappedCollection.getIcon();
