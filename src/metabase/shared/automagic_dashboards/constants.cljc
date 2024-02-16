@@ -4,7 +4,8 @@
   "Default width of a dashboard"
   24)
 
-(def ^:private card-size-defaults*
+(def card-size-defaults
+  "Default card sizes per visualization type"
   {:table       {:min {:width 4 :height 3} :default {:width 12 :height 9}}
    :gauge       {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :bar         {:min {:width 4 :height 3} :default {:width 12 :height 6}}
@@ -28,7 +29,6 @@
    :heading     {:min {:width 1 :height 1} :default {:width GRID_WIDTH}}
    :text        {:min {:width 1 :height 1} :default {:width 12 :height 3}}})
 
-(def ^:export card-size-defaults
-  "Default card sizes per visualization type"
-  #?(:clj  card-size-defaults*
-     :cljs (clj->js card-size-defaults*)))
+#?(:cljs (def ^:export CARD_SIZE_DEFAULTS_JSON
+           "Default card sizes per visualization type as a json object suitable for the FE"
+           (clj->js card-size-defaults)))
