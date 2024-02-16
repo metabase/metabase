@@ -92,7 +92,7 @@
       (cond
         card-id
         (do
-          (check-card-read-perms database-id *card-id*)
+          (check-card-read-perms database-id card-id)
           (when-not (query-perms/check-data-perms outer-query required-perms :throw-exceptions? false)
             (check-block-permissions outer-query)))
 
