@@ -27,6 +27,7 @@ export const ModelFilterControls = ({
       size="sm"
       labelPosition="left"
       styles={{
+        root: { display: "flex", alignItems: "center" },
         body: {
           alignItems: "center",
           // Align with tab labels:
