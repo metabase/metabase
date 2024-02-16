@@ -10,36 +10,29 @@ class SaveStatus extends Component {
   constructor(props, context) {
     super(props, context);
 
-    this.state = {
-      currentUndoId: null,
-    };
-
     _.bindAll(this, "setSaving", "setSaved", "setSaveError", "clear");
   }
 
   unnotify = () => {
-    if (this.state.currentUndoId) {
-      this.props.unnotify(this.state.currentUndoId);
-    }
+    this.props.unnotify("save-status");
   };
 
   notify = undo => {
     this.unnotify();
-    this.props.notify(undo);
-    this.setState({ currentUndoId: undo.id });
+    this.props.notify({ id: "save-status", ...undo });
   };
 
   setSaving() {
-    this.notify({ id: "save-status", icon: "info", message: t`Saving...` });
+    this.notify({ icon: "info", message: t`Saving...` });
   }
 
   setSaved() {
-    this.notify({ id: "save-status", message: t`Saved` });
+    this.notify({ message: t`Saved` });
   }
 
   setSaveError(error) {
     const message = t`Error:` + " " + String(error.message || error);
-    this.notify({ id: "save-status-error", icon: "warning", message });
+    this.notify({ icon: "warning", message, timeout: null });
   }
 
   clear() {
