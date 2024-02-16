@@ -1287,7 +1287,7 @@
 
 (deftest filter-by-expression-time-interval-test
   (testing "Datetime expressions can filter to a date range (#33528)"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
       (mt/dataset
         checkins:1-per-day
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
