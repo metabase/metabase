@@ -76,7 +76,8 @@
       (try
        (when (= :force direction)
          (liquibase/release-lock-if-needed! liquibase))
-       (liquibase/consolidate-liquibase-changesets! conn liquibase)
+       (when-not (= :release-locks direction)
+         (liquibase/consolidate-liquibase-changesets! conn liquibase))
        (log/info (trs "Liquibase is ready."))
        (case direction
          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
