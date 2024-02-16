@@ -3,15 +3,15 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Metrics from "metabase/entities/metrics";
 import Questions from "metabase/entities/questions";
+import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
 import Segments from "metabase/entities/segments";
 import { PUT } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
-  createThunkAction,
   compose,
+  createThunkAction,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
