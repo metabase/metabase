@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { main, restore } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const PIVOT_QUESTION = {
@@ -17,6 +17,7 @@ const PIVOT_QUESTION = {
     aggregation: [
       ["distinct", ["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
     ],
+    limit: 10,
   },
   visualization_settings: {
     "pivot_table.column_split": {
@@ -68,18 +69,26 @@ describe("issue 37726", () => {
       .button("Add dimension")
       .click();
 
-    // Wait for the pivot call to return
     cy.wait("@pivot");
+    waitToFinishLoading();
+
+    cy.findByTestId("pivot-table").findByText("Product → Category");
 
     // Refresh the page -- this loads the question using the transient value
     cy.reload();
 
+    cy.wait("@pivot");
+    waitToFinishLoading();
     // Look for the new column name in the resulting pivot table.
     // Note that before this fix, the page would error out and this elements,
     // along with the rest of the pivot table, would not appear.
     // Instead, you got a nice ⚠️ icon and a "Something's gone wrong" tooltip.
-    main().within(() => {
-      cy.findByText("Product → Category");
-    });
+    cy.findByTestId("pivot-table").findByText("Product → Category");
   });
 });
+
+function waitToFinishLoading() {
+  cy.get("main")
+    .findByText(/loading|doing science/i)
+    .should("not.exist");
+}

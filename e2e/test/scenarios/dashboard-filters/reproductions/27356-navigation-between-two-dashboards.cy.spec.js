@@ -2,6 +2,7 @@ import {
   restore,
   openNavigationSidebar,
   visitDashboard,
+  navigationSidebar,
 } from "e2e/support/helpers";
 
 const ratingFilter = {
@@ -34,26 +35,29 @@ describe("issue 27356", () => {
     cy.createDashboard(regularDashboard).then(({ body: { id } }) => {
       cy.request("POST", `/api/bookmark/dashboard/${id}`);
       visitDashboard(id);
+      waitForDashboardToBeLoaded();
     });
   });
 
   it("should seamlessly move between dashboards with or without filters without triggering an error (metabase#27356)", () => {
     openNavigationSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(paramDashboard.name).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+
+    navigationSidebar().findByText(paramDashboard.name).click();
+    waitForDashboardToBeLoaded();
 
     openNavigationSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(regularDashboard.name).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+    navigationSidebar().findByText(regularDashboard.name).click();
+    waitForDashboardToBeLoaded();
 
     openNavigationSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(paramDashboard.name).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+    navigationSidebar().findByText(paramDashboard.name).click();
+    waitForDashboardToBeLoaded();
   });
 });
+
+const waitForDashboardToBeLoaded = () => {
+  cy.wait("@getDashboard");
+  cy.findByTestId("dashboard-empty-state").findByText(
+    "This dashboard is looking empty.",
+  );
+};
