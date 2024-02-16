@@ -196,3 +196,17 @@ PowYScaleMixed.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const NativeTimeSeriesQuarter = Template.bind({});
+NativeTimeSeriesQuarter.args = {
+  rawSeries: data.nativeTimeSeriesQuarter as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const StructuredTimeSeriesYear = Template.bind({});
+StructuredTimeSeriesYear.args = {
+  rawSeries: data.structuredTimeSeriesYear as any,
+  dashcardSettings: {},
+  renderingContext,
+};
