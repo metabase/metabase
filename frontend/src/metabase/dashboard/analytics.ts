@@ -1,5 +1,6 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
 import type { DashboardId, DashboardWidth } from "metabase-types/api";
+import type { SectionId } from "./sections";
 
 const DASHBOARD_SCHEMA_VERSION = "1-1-3";
 
@@ -40,6 +41,17 @@ export const trackCardCreated = (
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
     event: `new_${type}_card_created`,
     dashboard_id,
+  });
+};
+
+export const trackSectionAdded = (
+  dashboardId: DashboardId,
+  sectionId: SectionId,
+) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_section_added",
+    dashboard_id: dashboardId,
+    section_layout: sectionId,
   });
 };
 
