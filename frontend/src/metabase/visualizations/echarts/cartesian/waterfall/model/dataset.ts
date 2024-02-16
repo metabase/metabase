@@ -26,6 +26,7 @@ import {
 import { isNotNull, isNumber } from "metabase/lib/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import { tryGetDate } from "../../utils/time-series";
 
 const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
   let hasZeros = false;
@@ -61,11 +62,11 @@ const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
 };
 
 const getTotalTimeSeriesXValue = (
-  lastDimensionValue: string | number,
-  xAxisModel: XAxisModel,
+  lastDimensionValue: RowValue,
+  { timeSeriesInterval }: XAxisModel,
 ) => {
-  const { timeSeriesInterval } = xAxisModel;
-  if (timeSeriesInterval == null) {
+  const lastDimensionValueDate = tryGetDate(lastDimensionValue);
+  if (lastDimensionValueDate == null || timeSeriesInterval == null) {
     return null;
   }
   const { interval, count } = timeSeriesInterval;
@@ -119,7 +120,7 @@ export const getWaterfallDataset = (
       (typeof lastValue === "string" || typeof lastValue === "number")
     ) {
       totalXValue = getTotalTimeSeriesXValue(
-        lastDatum[X_AXIS_DATA_KEY] as any,
+        lastDatum[X_AXIS_DATA_KEY],
         xAxisModel,
       );
     } else {

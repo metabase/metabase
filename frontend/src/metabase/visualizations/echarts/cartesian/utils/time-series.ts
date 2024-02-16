@@ -1,3 +1,6 @@
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
+import type { RowValue } from "metabase-types/api";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
   TimeSeriesInterval,
@@ -35,4 +38,12 @@ export const getTimeSeriesMinInterval = ({
   count,
 }: TimeSeriesInterval) => {
   return getApproximateUnitDurationMs(interval) * count;
+};
+
+export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
+  if (typeof rowValue === "boolean") {
+    return null;
+  }
+  const date = dayjs(rowValue);
+  return date.isValid() ? date : null;
 };

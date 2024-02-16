@@ -1,8 +1,6 @@
 import d3 from "d3";
 import _ from "underscore";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
-import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
 import type {
   AxisFormatter,
   DataKey,
@@ -43,6 +41,7 @@ import {
 } from "metabase/visualizations/lib/timeseries";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isDate } from "metabase-lib/types/utils/isa";
+import { tryGetDate } from "../utils/time-series";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -527,14 +526,6 @@ function getTimezone(rawSeries: RawSeries) {
   const { results_timezone } = rawSeries[0].data;
   return results_timezone || DEFAULT_TIMEZONE;
 }
-
-const tryGetDate = (rowValue: RowValue): Dayjs | null => {
-  if (typeof rowValue === "boolean") {
-    return null;
-  }
-  const date = dayjs(rowValue);
-  return date.isValid() ? date : null;
-};
 
 const getXAxisDateRange = (xValues: RowValue[]): DateRange | undefined => {
   if (xValues.length === 0) {
