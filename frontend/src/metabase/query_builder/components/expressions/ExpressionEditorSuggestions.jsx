@@ -49,6 +49,8 @@ function colorForIcon(icon) {
 }
 export default class ExpressionEditorSuggestions extends Component {
   static propTypes = {
+    query: PropTypes.object.isRequired,
+    stageIndex: PropTypes.number.isRequired,
     suggestions: PropTypes.array,
     onSuggestionMouseDown: PropTypes.func, // signature is f(index)
     highlightedIndex: PropTypes.number.isRequired,
