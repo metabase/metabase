@@ -171,7 +171,9 @@ function EmbedFrame({
 
   const hasHeader = Boolean(finalName || hasParameters);
   const isParameterPanelSticky =
-    !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
+    !!dashboard &&
+    theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
+    isParametersWidgetContainersSticky(visibleParameters.length);
 
   return (
     <Root
