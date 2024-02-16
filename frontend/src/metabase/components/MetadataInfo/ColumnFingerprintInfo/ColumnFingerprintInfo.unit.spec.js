@@ -8,7 +8,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import FieldFingerprintInfo from "./FieldFingerprintInfo";
+import { TableColumnFingerprintInfo } from "./ColumnFingerprintInfo";
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -20,7 +20,7 @@ const metadata = getMetadata(state);
 function setup(field) {
   return renderWithProviders(
     <div data-testid="container">
-      <FieldFingerprintInfo
+      <TableColumnFingerprintInfo
         field={field}
         timezone={field.table?.database?.timezone}
       />

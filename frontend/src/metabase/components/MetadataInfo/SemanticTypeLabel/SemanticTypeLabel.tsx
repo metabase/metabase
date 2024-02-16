@@ -4,8 +4,6 @@ import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
-import type Field from "metabase-lib/metadata/Field";
-import type { DatasetColumn } from "metabase-types/api";
 
 import {
   LabelContainer,
@@ -13,14 +11,15 @@ import {
   InvertedColorRelativeSizeIcon,
 } from "../MetadataInfo.styled";
 
-type Props = {
+type SemanticTypeLabelProps = {
   className?: string;
-  field: Field | DatasetColumn;
+  semanticType: string | null | undefined;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function FieldSemanticTypeLabel({ className, field }: Props) {
-  const semanticType = field.semantic_type;
+export function SemanticTypeLabel({
+  className,
+  semanticType,
+}: SemanticTypeLabelProps) {
   const semanticTypeIcon = getSemanticTypeIcon(semanticType) || "ellipsis";
   const semanticTypeName =
     getSemanticTypeName(semanticType) || t`No special type`;

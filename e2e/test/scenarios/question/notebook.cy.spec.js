@@ -417,6 +417,17 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("ID").should("not.exist");
   });
 
+  it("should render a field info icon in the fields picker", () => {
+    openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
+    cy.findByTestId("fields-picker").click();
+    cy.findAllByLabelText("More info").first().realHover();
+    cy.findByRole("dialog").contains("This is a unique ID");
+  });
+
   it("should treat max/min on a name as a string filter (metabase#21973)", () => {
     const questionDetails = {
       name: "21973",
