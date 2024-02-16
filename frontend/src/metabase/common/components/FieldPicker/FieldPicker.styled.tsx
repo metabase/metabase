@@ -16,13 +16,15 @@ export const ItemIcon = styled(Icon)`
 
 export const QueryColumnInfoIcon = styled(_QueryColumnInfoIcon)`
   color: ${alpha(darken(color("brand"), 0.6), 0.8)};
-  position: absolute;
-  right: 0.5em;
+  margin-left: auto;
 `;
 
 export const ColumnItem = styled.li`
   &:first-child {
     margin-top: 0.5em;
+    label {
+      padding: 0.5em;
+    }
   }
   &:last-child {
     margin-bottom: 0.5em;
@@ -32,8 +34,8 @@ export const ColumnItem = styled.li`
     display: flex;
     align-items: center;
     margin: 0 0.5em;
-    padding: 0.5em;
-    padding-right: 3em;
+    padding: 0 0.5em;
+    padding-right: 0;
     border-radius: 6px;
     cursor: pointer;
 
