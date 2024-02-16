@@ -1,6 +1,7 @@
 (ns metabase.models.data-permissions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -138,7 +139,21 @@
         (is (= :no (data-perms/database-permission-for-user user-id :perms/native-query-editing database-id-2))))
 
       (testing "Admins always have the most permissive value, regardless of group membership"
-        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :perms/native-query-editing database-id-2)))))))
+        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :perms/native-query-editing database-id-2)))))
+
+    (testing "caching works as expected"
+      (binding [api/*current-user-id* user-id]
+        (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
+          (data-perms/set-database-permission! group-id-1 database-id-1 :perms/native-query-editing :yes)
+          (data-perms/with-relevant-permissions-for-user user-id
+            ;; retrieve the cache now so it doesn't get counted in the call-count
+            @data-perms/*permissions-for-user*
+            ;; make the cache wrong
+            (data-perms/set-database-permission! group-id-1 database-id-1 :perms/native-query-editing :no)
+            ;; the cached value is used
+            (t2/with-call-count [call-count]
+              (is (= :yes (data-perms/database-permission-for-user user-id :perms/native-query-editing database-id-1)))
+              (is (zero? (call-count))))))))))
 
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
@@ -162,7 +177,20 @@
         (is (= :block (data-perms/table-permission-for-user user-id :perms/data-access database-id table-id-2))))
 
       (testing "Admins always have the most permissive value, regardless of group membership"
-        (is (= :unrestricted (data-perms/table-permission-for-user (mt/user->id :crowberto) :perms/data-access database-id table-id-2)))))))
+        (is (= :unrestricted (data-perms/table-permission-for-user (mt/user->id :crowberto) :perms/data-access database-id table-id-2)))))
+    (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
+      (testing "caching works as expected"
+        (binding [api/*current-user-id* user-id]
+          (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :unrestricted)
+          (data-perms/with-relevant-permissions-for-user user-id
+            ;; retrieve the cache now so it doesn't get counted in the call count
+            @data-perms/*permissions-for-user*
+            ;; make the cache wrong
+            (data-perms/set-table-permission! group-id-1 table-id-1 :perms/data-access :no-self-service)
+            ;; the cached value is used
+            (t2/with-call-count [call-count]
+              (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/data-access database-id table-id-1)))
+              (is (zero? (call-count))))))))))
 
 (deftest permissions-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
