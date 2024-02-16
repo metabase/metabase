@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { EChartsType } from "echarts";
-import type * as React from "react";
-import type { LineSeriesOption } from "echarts/types/dist/echarts";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -10,25 +8,16 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
-import {
-  canBrush,
-  getBrushData,
-  getSeriesClickData,
-  getSeriesHoverData,
-  getTimelineEventsForEvent,
-  getTimelineEventsHoverData,
-  hasSelectedTimelineEvents,
-} from "metabase/visualizations/visualizations/CartesianChart/events";
-import type {
-  EChartsSeriesBrushEndEvent,
-  EChartsSeriesMouseEvent,
-} from "metabase/visualizations/echarts/types";
-import { getSeriesIdFromECharts } from "metabase/visualizations/echarts/cartesian/utils/id";
+
+import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 import { useModelsAndOption } from "./use-models-and-option";
 import { useChartDebug } from "./use-chart-debug";
 
 export function CartesianChart(props: VisualizationProps) {
+  // The width and height from props reflect the dimensions of the entire container which includes legend,
+  // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
+  const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+
   const {
     rawSeries,
     settings,
@@ -39,20 +28,17 @@ export function CartesianChart(props: VisualizationProps) {
     actionButtons,
     isQueryBuilder,
     isFullscreen,
-    selectedTimelineEventIds,
     hovered,
-    visualizationIsClickable,
     onChangeCardAndRun,
     onHoverChange,
-    onVisualizationClick,
-    onSelectTimelineEvents,
-    onDeselectTimelineEvents,
-    onOpenTimelines,
   } = props;
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption(props);
+  const { chartModel, timelineEventsModel, option } = useModelsAndOption({
+    ...props,
+    width: chartSize.width,
+    height: chartSize.height,
+  });
   useChartDebug({ isQueryBuilder, rawSeries, option });
 
-  const isBrushing = useRef<boolean>();
   const chartRef = useRef<EChartsType>();
 
   const hasTitle = showTitle && settings["card.title"];
@@ -62,230 +48,21 @@ export function CartesianChart(props: VisualizationProps) {
   const legendItems = useMemo(() => getLegendItems(chartModel), [chartModel]);
   const hasLegend = legendItems.length > 1;
 
-  const openQuestion = useCallback(() => {
-    if (onChangeCardAndRun) {
-      onChangeCardAndRun({
-        nextCard: card,
-        seriesIndex: 0,
-      });
-    }
-  }, [card, onChangeCardAndRun]);
-
-  const eventHandlers: EChartsEventHandler[] = useMemo(
-    () => [
-      {
-        eventName: "mouseout",
-        query: "series",
-        handler: () => {
-          onHoverChange?.(null);
-        },
-      },
-      {
-        eventName: "mousemove",
-        query: "series",
-        handler: (event: EChartsSeriesMouseEvent) => {
-          if (isBrushing.current) {
-            return;
-          }
-
-          if (timelineEventsModel && event.name === "timeline-event") {
-            const eventData = getTimelineEventsHoverData(
-              timelineEventsModel,
-              event,
-            );
-
-            onHoverChange?.(eventData);
-            return;
-          }
-
-          onHoverChange?.(
-            getSeriesHoverData(chartModel, settings, event, card.display),
-          );
-        },
-      },
-      {
-        eventName: "click",
-        handler: (event: EChartsSeriesMouseEvent) => {
-          const clickData = getSeriesClickData(
-            chartModel,
-            settings,
-            event,
-            card.display,
-          );
-
-          if (timelineEventsModel && event.name === "timeline-event") {
-            onOpenTimelines?.();
-
-            const clickedTimelineEvents = getTimelineEventsForEvent(
-              timelineEventsModel,
-              event,
-            );
-
-            if (!clickedTimelineEvents) {
-              return;
-            }
-
-            if (
-              hasSelectedTimelineEvents(
-                clickedTimelineEvents,
-                selectedTimelineEventIds ?? [],
-              )
-            ) {
-              onDeselectTimelineEvents?.();
-              return;
-            }
-
-            onSelectTimelineEvents?.(clickedTimelineEvents);
-            return;
-          }
-
-          if (!visualizationIsClickable(clickData)) {
-            openQuestion();
-          }
-
-          onVisualizationClick?.(clickData);
-        },
-      },
-      {
-        eventName: "brush",
-        handler: () => {
-          isBrushing.current = true;
-        },
-      },
-      {
-        eventName: "brushEnd",
-        handler: (event: EChartsSeriesBrushEndEvent) => {
-          const eventData = getBrushData(rawSeries, chartModel, event);
-
-          if (eventData) {
-            onChangeCardAndRun(eventData);
-          }
-        },
-      },
-    ],
-    [
-      chartModel,
-      openQuestion,
-      rawSeries,
-      selectedTimelineEventIds,
-      settings,
-      card.display,
-      timelineEventsModel,
-      visualizationIsClickable,
-      onChangeCardAndRun,
-      onVisualizationClick,
-      onHoverChange,
-      onOpenTimelines,
-      onSelectTimelineEvents,
-      onDeselectTimelineEvents,
-    ],
-  );
-
-  useEffect(
-    function handleHoverStates() {
-      const chart = chartRef.current;
-      if (!chart) {
-        return;
-      }
-
-      if (hovered?.index == null) {
-        return;
-      }
-
-      const { datumIndex, index } = hovered;
-      const seriesId = chartModel.seriesModels[index].dataKey;
-
-      // ECharts series contain goal line, trend lines, and timeline events so the series index
-      // is different from one in chartModel.seriesModels
-      const eChartsSeriesIndex = (
-        option?.series as LineSeriesOption[]
-      ).findIndex(
-        series => getSeriesIdFromECharts(series.id, card.display) === seriesId,
-      );
-
-      chart.dispatchAction({
-        type: "highlight",
-        dataIndex: datumIndex,
-        seriesIndex: eChartsSeriesIndex,
-      });
-
-      return () => {
-        chart.dispatchAction({
-          type: "downplay",
-          dataIndex: datumIndex,
-          seriesIndex: eChartsSeriesIndex,
-        });
-      };
-    },
-    [chartModel.seriesModels, hovered, option?.series, card.display],
-  );
-
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
   }, []);
 
-  // In order to keep brushing always enabled we have to re-enable it on every model change
-  useEffect(
-    function enableBrushing() {
-      const shouldEnableBrushing =
-        canBrush(rawSeries, settings, onChangeCardAndRun) && !hovered;
-
-      setTimeout(() => {
-        if (shouldEnableBrushing) {
-          chartRef.current?.dispatchAction({
-            type: "takeGlobalCursor",
-            key: "brush",
-            brushOption: {
-              brushType: "lineX",
-              brushMode: "single",
-            },
-          });
-        } else {
-          chartRef.current?.dispatchAction({
-            type: "takeGlobalCursor",
-          });
-        }
-      }, 0);
-    },
-    [onChangeCardAndRun, option, rawSeries, settings, hovered],
+  const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
+    chartRef,
+    chartModel,
+    timelineEventsModel,
+    option,
+    props,
   );
 
-  const handleSelectSeries = useCallback(
-    (event: React.MouseEvent, seriesIndex: number) => {
-      const seriesModel = chartModel.seriesModels[seriesIndex];
-      const hasBreakout = "breakoutColumn" in seriesModel;
-      const dimensions = hasBreakout
-        ? [
-            {
-              column: seriesModel.breakoutColumn,
-              value: seriesModel.breakoutValue,
-            },
-          ]
-        : undefined;
-
-      const clickData = {
-        column: seriesModel.column,
-        dimensions,
-        settings,
-      };
-
-      if (hasBreakout && visualizationIsClickable(clickData)) {
-        onVisualizationClick({
-          ...clickData,
-          element: event.currentTarget,
-        });
-      } else {
-        openQuestion();
-      }
-    },
-    [
-      chartModel.seriesModels,
-      onVisualizationClick,
-      openQuestion,
-      settings,
-      visualizationIsClickable,
-    ],
-  );
+  const handleResize = useCallback((width: number, height: number) => {
+    setChartSize({ width, height });
+  }, []);
 
   const canSelectTitle = !!onChangeCardAndRun;
 
@@ -298,7 +75,7 @@ export function CartesianChart(props: VisualizationProps) {
           icon={headerIcon}
           // @ts-expect-error will be fixed when LegendCaption gets converted to TypeScript
           actionButtons={actionButtons}
-          onSelectTitle={canSelectTitle ? openQuestion : undefined}
+          onSelectTitle={canSelectTitle ? onOpenQuestion : undefined}
           width={width}
         />
       )}
@@ -310,12 +87,13 @@ export function CartesianChart(props: VisualizationProps) {
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
-        onSelectSeries={handleSelectSeries}
+        onSelectSeries={onSelectSeries}
         onHoverChange={onHoverChange}
       >
         <CartesianChartRenderer
           option={option}
           eventHandlers={eventHandlers}
+          onResize={handleResize}
           onInit={handleInit}
         />
       </CartesianChartLegendLayout>

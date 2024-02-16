@@ -7,13 +7,13 @@ import type {
   XAxisScale,
 } from "metabase-types/api";
 import type {
-  CartesianChartModel,
   DataKey,
   Extent,
   ChartDataset,
   SeriesExtents,
   SeriesModel,
   Datum,
+  BaseCartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -28,8 +28,6 @@ import {
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
-
-import { getXAxisType } from "../option/axis";
 
 /**
  * Sums two metric column values.
@@ -329,7 +327,10 @@ export const applyVisualizationSettingsDataTransformations = (
   ]);
 };
 
-export const sortDataset = (dataset: ChartDataset, xAxisScale?: XAxisScale) => {
+export const sortDataset = (
+  dataset: ChartDataset,
+  xAxisScale?: XAxisScale,
+): ChartDataset => {
   if (xAxisScale === "timeseries") {
     return sortByDimension(dataset, (left, right) => {
       if (typeof left === "string" && typeof right === "string") {
@@ -358,19 +359,19 @@ export const sortDataset = (dataset: ChartDataset, xAxisScale?: XAxisScale) => {
  * @returns A sorted dataset.
  */
 const sortByDimension = (
-  dataset: Record<DataKey, RowValue>[],
+  dataset: ChartDataset,
   compareFn: (a: RowValue, b: RowValue) => number,
-): Record<DataKey, RowValue>[] => {
+): ChartDataset => {
   return dataset.sort((left, right) => {
     return compareFn(left[X_AXIS_DATA_KEY], right[X_AXIS_DATA_KEY]);
   });
 };
 
 export function getDimensionDisplayValueGetter(
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
 ) {
-  const axisType = getXAxisType(settings);
+  const { axisType } = chartModel.xAxisModel;
   const isPowerScale = settings["graph.x_axis.scale"] === "pow";
 
   return (value: string) => {
@@ -381,7 +382,8 @@ export function getDimensionDisplayValueGetter(
       return dayjs(value).format("YYYY-MM-DDTHH:mm:ss");
     }
     if (isNumeric(chartModel.dimensionModel.column)) {
-      return parseInt(value, 10);
+      const parsedNumber = parseInt(value, 10);
+      return isNaN(parsedNumber) ? value : parsedNumber;
     }
     return value;
   };
@@ -396,7 +398,7 @@ export const getMetricDisplayValueGetter = (
     if (typeof value !== "number") {
       return value;
     }
-    const sign = value > 0 ? 1 : -1;
+    const sign = value >= 0 ? 1 : -1;
     return Math.pow(value, 2) * sign;
   };
 
@@ -448,19 +450,19 @@ type ReplacerFn = (dataKey: DataKey, value: RowValue) => RowValue;
 /**
  * Creates a new dataset with the values replaced according to the provided replacer function.
  *
- * @param {Record<DataKey, RowValue>[]} dataset - The original dataset.
+ * @param {ChartDataset} dataset - The original dataset.
  * @param {ReplacerFn} replacer - The function that will be used to replace values.
- * @returns {Record<DataKey, RowValue>[]} A new dataset with the replaced values.
+ * @returns {ChartDataset} A new dataset with the replaced values.
  */
 export const replaceValues = (
-  dataset: Record<DataKey, RowValue>[],
+  dataset: ChartDataset,
   replacer: ReplacerFn,
-) => {
+): ChartDataset => {
   return dataset.map(datum => {
     return getObjectKeys(datum).reduce((updatedRow, dataKey) => {
       updatedRow[dataKey] = replacer(dataKey, datum[dataKey]);
       return updatedRow;
-    }, {} as Record<DataKey, RowValue>);
+    }, {} as Datum);
   });
 };
 

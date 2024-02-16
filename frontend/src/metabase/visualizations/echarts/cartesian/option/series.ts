@@ -3,7 +3,10 @@ import type { RegisteredSeriesOption } from "echarts";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 
 import type { CallbackDataParams } from "echarts/types/dist/shared";
-import type { LabelLayoutOptionCallbackParams } from "echarts/types/dist/echarts";
+import type {
+  LabelLayoutOptionCallbackParams,
+  SeriesOption,
+} from "echarts/types/dist/echarts";
 import type {
   SeriesModel,
   CartesianChartModel,
@@ -22,36 +25,71 @@ import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/car
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getObjectValues } from "metabase/lib/objects";
-import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type {
+  ChartMeasurements,
+  EChartsSeriesOption,
+} from "metabase/visualizations/echarts/cartesian/option/types";
+import {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { buildEChartsScatterSeries } from "../scatter/series";
-import { buildEChartsWaterfallSeries } from "../waterfall/series";
-import { checkWaterfallChartModel } from "../waterfall/utils";
 import { getSeriesYAxisIndex } from "./utils";
+
+export const getBarLabelLayout =
+  (
+    dataset: ChartDataset,
+    settings: ComputedVisualizationSettings,
+    seriesDataKey: DataKey,
+  ): SeriesOption["labelLayout"] =>
+  params => {
+    const { dataIndex, rect } = params;
+    if (dataIndex == null) {
+      return {};
+    }
+
+    const labelValue = dataset[dataIndex][seriesDataKey];
+    if (typeof labelValue !== "number") {
+      return {};
+    }
+
+    const barHeight = rect.height;
+    const labelOffset =
+      barHeight / 2 +
+      CHART_STYLE.seriesLabels.size / 2 +
+      CHART_STYLE.seriesLabels.offset;
+    return {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+      dy: labelValue < 0 ? labelOffset : -labelOffset,
+    };
+  };
 
 export function getDataLabelFormatter(
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
+  labelDataKey: DataKey,
   renderingContext: RenderingContext,
+  formattingOptions: OptionsType = {},
 ) {
   const valueFormatter = (value: unknown) =>
     renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: settings["graph.label_value_formatting"] === "compact",
+      ...formattingOptions,
     });
 
   const valueGetter = getMetricDisplayValueGetter(settings);
 
-  return (datum: CallbackDataParams) => {
-    const dimensionIndex = datum?.encode?.y[0];
-    const dimensionName =
-      dimensionIndex != null ? datum?.dimensionNames?.[dimensionIndex] : null;
-    if (dimensionName == null) {
+  return (params: CallbackDataParams) => {
+    const value = (params.data as Datum)[labelDataKey];
+
+    if (value == null) {
       return " ";
     }
-    const value = valueGetter((datum?.value as any)?.[dimensionName]);
-    return valueFormatter(value);
+    return valueFormatter(valueGetter(value));
   };
 }
 
@@ -72,7 +110,12 @@ export const buildEChartsLabelOptions = (
     color: renderingContext.getColor("text-dark"),
     textBorderColor: renderingContext.getColor("white"),
     textBorderWidth: 3,
-    formatter: getDataLabelFormatter(seriesModel, settings, renderingContext),
+    formatter: getDataLabelFormatter(
+      seriesModel,
+      settings,
+      seriesModel.dataKey,
+      renderingContext,
+    ),
   };
 };
 
@@ -134,27 +177,7 @@ const buildEChartsBarSeries = (
       renderingContext,
       settings["graph.show_values"] && settings["stackable.stack_type"] == null,
     ),
-    labelLayout: params => {
-      const { dataIndex, rect } = params;
-      if (dataIndex == null) {
-        return {};
-      }
-
-      const labelValue = dataset[dataIndex][seriesModel.dataKey];
-      if (typeof labelValue !== "number") {
-        return {};
-      }
-
-      const barHeight = rect.height;
-      const labelOffset =
-        barHeight / 2 +
-        CHART_STYLE.seriesLabels.size / 2 +
-        CHART_STYLE.seriesLabels.offset;
-      return {
-        hideOverlap: settings["graph.label_value_frequency"] === "fit",
-        dy: labelValue < 0 ? labelOffset : -labelOffset,
-      };
-    },
+    labelLayout: getBarLabelLayout(dataset, settings, seriesModel.dataKey),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -297,7 +320,7 @@ const generateStackOption = (
     },
     label: {
       ...seriesOptionFromStack.label,
-      position: signKey === "positiveStackTotal" ? "top" : "bottom",
+      position: signKey === POSITIVE_STACK_TOTAL_DATA_KEY ? "top" : "bottom",
       show: true,
       formatter: (
         params: LabelLayoutOptionCallbackParams & { data: Datum },
@@ -307,8 +330,8 @@ const generateStackOption = (
           const seriesValue = params.data[stackDataKeys];
           if (
             typeof seriesValue === "number" &&
-            ((signKey === "positiveStackTotal" && seriesValue > 0) ||
-              (signKey === "negativeStackTotal" && seriesValue < 0))
+            ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue > 0) ||
+              (signKey === NEGATIVE_STACK_TOTAL_DATA_KEY && seriesValue < 0))
           ) {
             stackValue = (stackValue ?? 0) + seriesValue;
           }
@@ -357,7 +380,7 @@ export const getStackTotalsSeries = (
       generateStackOption(
         chartModel,
         settings,
-        "positiveStackTotal",
+        POSITIVE_STACK_TOTAL_DATA_KEY,
         stackDataKeys,
         firstSeriesInStack,
         renderingContext,
@@ -365,7 +388,7 @@ export const getStackTotalsSeries = (
       generateStackOption(
         chartModel,
         settings,
-        "negativeStackTotal",
+        NEGATIVE_STACK_TOTAL_DATA_KEY,
         stackDataKeys,
         firstSeriesInStack,
         renderingContext,
@@ -378,6 +401,7 @@ export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartWidth: number,
+  chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption[] => {
   const seriesSettingsByDataKey = chartModel.seriesModels.reduce(
@@ -429,14 +453,6 @@ export const buildEChartsSeries = (
             seriesModel,
             chartModel.bubbleSizeDomain,
             yAxisIndex,
-            renderingContext,
-          );
-        case "waterfall":
-          return buildEChartsWaterfallSeries(
-            seriesModel,
-            chartModel.dataset,
-            settings,
-            checkWaterfallChartModel(chartModel).total,
             renderingContext,
           );
       }

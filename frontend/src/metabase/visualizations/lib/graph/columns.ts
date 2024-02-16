@@ -71,11 +71,11 @@ export type CartesianChartColumns =
 export function assertMultiMetricColumns(
   chartColumns: CartesianChartColumns,
 ): MultipleMetricsChartColumns {
-  if (Object.keys(chartColumns).includes("breakout")) {
+  if ("breakout" in chartColumns) {
     throw Error("Given `chartColumns` has breakout");
   }
 
-  return chartColumns as MultipleMetricsChartColumns;
+  return chartColumns;
 }
 
 export const getCartesianChartColumns = (

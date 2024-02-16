@@ -2,9 +2,9 @@ import { init } from "echarts";
 
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { getWaterfallOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 
+import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import { computeStaticWaterfallChartSettings } from "./settings";
 
 const WIDTH = 540;
@@ -28,12 +28,13 @@ export function WaterfallChart({
     computedVisualizationSettings,
     renderingContext,
   );
-  const option = getWaterfallOption(
+  const option = getWaterfallChartOption(
     chartModel,
     null,
     [],
     computedVisualizationSettings,
     WIDTH,
+    HEIGHT,
     renderingContext,
   );
 
