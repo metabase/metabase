@@ -21,6 +21,7 @@ registerVisualizations();
 
 describe("QueryBuilder", () => {
   afterEach(() => {
+    fetchMock.flush();
     jest.resetAllMocks();
   });
 
