@@ -5,7 +5,6 @@
    [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -272,36 +271,56 @@
      (remove-download:native (replace-empty-map-with-nil b))))
 
 (deftest perms-are-renamed-test
-  (is (= (#'data-perms.graph/rename-perm {:perms/data-access :unrestricted})           {:data {:schemas :all}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/data-access :no-self-service})        {}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/data-access :block})                  {:data {:schemas :block}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/download-results :one-million-rows})  {:download {:schemas :full}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/download-results :ten-thousand-rows}) {:download {:schemas :limited}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/download-results :no})                {}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata :yes})          {:data-model {:schemas :all}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata :no})           {}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/native-query-editing :yes})           {:data {:native :write}}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/native-query-editing :no})            {}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/manage-database :yes})                {:details :yes}))
-  (is (= (#'data-perms.graph/rename-perm {:perms/manage-database :no})                 {}))
-  ;; with schemas:
-  (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :unrestricted
-                                                                        23 :no-self-service}}}) {:data {:schemas {"PUBLIC" {22 :all}}}})))
-  ; (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :block}}})           {:data {:schemas {"PUBLIC" {22 :block}}}}))
-  ; (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {23 :yes
-  ;                                                                            24 :no}}})         {:download {:schemas {"PUBLIC" {23 nil}}}}))
-  ; (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :yes}}})        {:download {:schemas {"PUBLIC" {22 nil}}}})))
-  ; (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :no}}})    {:data-model {:schemas {"PUBLIC" {}}}}))
-  ; (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :yes}}})   {:data-model {:schemas {"PUBLIC" {22 :all}}}}))
-  ; ;; multiple schemas
-  ; (is (= (#'data-perms.graph/rename-perm {:perms/data-access {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
-  ;        {:data {:schemas {"PUBLIC" {22 :all}, "OTHER" {}, "SECRET" {11 :block}}}}))
-
-  ; (is (= (#'data-perms.graph/rename-perm {:perms/download-results {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
-  ;        {:download {:schemas {"PUBLIC" {22 nil}, "OTHER" {7 nil}, "SECRET" {11 nil}}}}))
-
-  ; (is (= (#'data-perms.graph/rename-perm {:perms/manage-table-metadata {"PUBLIC" {22 :unrestricted} "OTHER" {7 :no-self-service} "SECRET" {11 :block}}})
-  ;        {:data-model {:schemas {"PUBLIC" {22 nil}, "OTHER" {7 nil}, "SECRET" {11 nil}}}})))
+  (testing "Perm keys and values are correctly renamed, and permissions are ellided as necessary"
+    (are [db-graph api-graph] (= api-graph (-> db-graph
+                                               (#'data-perms.graph/rename-perm)
+                                               (#'data-perms.graph/remove-empty-vals)))
+      {:perms/data-access :unrestricted}           {:data {:schemas :all}}
+      {:perms/data-access :no-self-service}        {}
+      {:perms/data-access :block}                  {:data {:schemas :block}}
+      {:perms/native-query-editing :yes}           {:data {:native :write}}
+      {:perms/native-query-editing :no}            {}
+      {:perms/download-results :one-million-rows}  {:download {:schemas :full}}
+      {:perms/download-results :ten-thousand-rows} {:download {:schemas :limited}}
+      {:perms/download-results :no}                {}
+      {:perms/manage-table-metadata :yes}          {:data-model {:schemas :all}}
+      {:perms/manage-table-metadata :no}           {}
+      {:perms/manage-database :yes}                {:details :yes}
+      {:perms/manage-database :no}                 {}
+      ;; with schemas:
+      {:perms/data-access
+       {"PUBLIC" {1 :unrestricted
+                  2 :no-self-service}}}            {:data {:schemas {"PUBLIC" {1 :all}}}}
+      {:perms/data-access
+       {"PUBLIC" {1 :unrestricted
+                  2 :unrestricted}}}               {:data {:schemas {"PUBLIC" :all}}}
+      {:perms/data-access
+       {"PUBLIC" {1 :no-self-service
+                  2 :no-self-service}}}            {}
+      {:perms/download-results
+       {"PUBLIC" {1 :one-million-rows
+                  2 :no}}}                         {:download {:schemas {"PUBLIC" {1 :full}}}}
+      {:perms/download-results
+       {"PUBLIC" {1 :one-million-rows
+                  2 :ten-thousand-rows}}}          {:download {:schemas {"PUBLIC" {1 :full
+                                                                                   2 :limited}}}}
+      {:perms/manage-table-metadata
+       {"PUBLIC" {1 :yes}}}                        {:data-model {:schemas {"PUBLIC" :all}}}
+      {:perms/manage-table-metadata
+       {"PUBLIC" {1 :no}}}                         {}
+      {:perms/manage-table-metadata
+       {"PUBLIC" {1 :yes
+                  2 :no}}}                         {:data-model {:schemas {"PUBLIC" {1 :all}}}}
+      ;; multiple schemas
+      {:perms/data-access
+       {"PUBLIC" {1 :unrestricted}
+        "OTHER" {2 :no-self-service}
+        "SECRET" {3 :block}}}                      {:data {:schemas {"PUBLIC" :all, "SECRET" :block}}}
+      {:perms/data-access
+       {"PUBLIC" {1 :unrestricted
+                  2 :no-self-service}
+        "OTHER" {3 :no-self-service
+                 4 :no-self-service}}}             {:data {:schemas {"PUBLIC" {1 :all}}}})))
 
 (deftest rename-perm-test
   (is (api-graph=
@@ -318,38 +337,6 @@
   (-> graph
       (assoc :groups {group-id (get-in graph [:groups group-id])})
       (assoc-in [:groups group-id] {db-id (get-in graph [:groups group-id db-id])})))
-
-(deftest api-graphs-are-equal
-  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}  {}
-                 :model/Database         {db-id-1 :id}     {}]
-    (testing "legacy perms-graph should be equal to the new one"
-      (let [data-perms (constrain-graph group-id-1 db-id-1
-                                        (data-perms.graph/api-graph {:audit? false}))
-            api-perms (constrain-graph group-id-1 db-id-1
-                                       (perms/data-perms-graph))]
-        (is (api-graph=
-             (:groups api-perms)
-             (:groups data-perms)))))))
-
-(comment
-  (clojure.test/run-test-var #'api-graphs-are-equal))
-
-
-(comment
-  #_(require '[clojure.math.combinatorics :as math.combo])
-
-  #_(defn- generate-maps
-      "Given a map like {:a [1 2] :b [2]} returns all combos like: [{:a 1 :b 2} {:a 2 :b 2}]"
-      [m]
-      (let [keys (keys m)
-            values (vals m)
-            combinations (apply math.combo/cartesian-product values)]
-        (mapv #(zipmap keys %) combinations)))
-
-  ;; TODO: eyeball this:
-  #_(defn- all-nongranular-perm-maps []
-      (generate-maps (update-vals @#'data-perms.graph/->api-vals keys)))
-  #_(doseq [in (all-nongranular-perm-maps)] (println "----\n" in "\n" (#'data-perms.graph/rename-perm in))))
 
 (defn- test-data-graph [group]
   (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))
