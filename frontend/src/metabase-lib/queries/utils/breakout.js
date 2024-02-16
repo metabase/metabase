@@ -1,4 +1,4 @@
-import { add, update, remove, clear } from "./util";
+import { add, update, remove } from "./util";
 
 /**
  * Returns canonical list of Breakouts, with nulls removed
@@ -41,11 +41,4 @@ export function updateBreakout(breakout, index, updatedBreakout) {
  */
 export function removeBreakout(breakout, index) {
   return getBreakoutClause(remove(getBreakouts(breakout), index));
-}
-
-/**
- * @deprecated use MLv2
- */
-export function clearBreakouts(breakout) {
-  return getBreakoutClause(clear());
 }

@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { add, update, remove, clear } from "./util";
+import { add, update, remove } from "./util";
 
 // returns canonical list of Fields, with nulls removed
 function getFields(fields) {
@@ -25,9 +25,6 @@ export function updateField(fields, index, updatedField) {
 }
 export function removeField(fields, index) {
   return getFieldClause(remove(getFields(fields), index));
-}
-export function clearFields(fields) {
-  return getFieldClause(clear());
 }
 
 // Metadata field "values" type is inconsistent
