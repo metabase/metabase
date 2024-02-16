@@ -1,4 +1,3 @@
-/* eslint-disable import/order */
 import MetabaseSettings from "metabase/lib/settings";
 
 // SETTINGS OVERRIDES:
