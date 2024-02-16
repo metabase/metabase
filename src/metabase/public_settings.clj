@@ -385,7 +385,7 @@
   :audit      :getter)
 
 (defsetting application-colors
-  (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You might need to refresh your browser to see your changes take effect.")
+  (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.")
   :visibility :public
   :export?    true
   :type       :json
