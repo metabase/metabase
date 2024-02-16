@@ -1,9 +1,7 @@
 import type { ComponentType } from "react";
 import type { DashboardId, Member, User } from "metabase-types/api";
-
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
 import type Question from "metabase-lib/Question";
-import type { Member, User } from "metabase-types/api";
 
 export interface AuthProvider {
   name: string;
@@ -55,16 +53,6 @@ export type PluginGroupManagersType = {
   confirmUpdateMembershipAction: any;
 };
 
-export type TUseLLMDashboardDescription = ({
-  dashboardId,
-}: {
-  dashboardId: DashboardId;
-}) => {
-  generatedDescription: string;
-  loading: boolean;
-  SuggestDescriptionButton: () => JSX.Element | null;
-};
-
 export type TLLMIndicatorProps = {
   question: Question;
   setFieldValue: (field: string, value: string) => void;
@@ -78,6 +66,5 @@ export type TLLMSuggestQuestionInfo = ({
 }: TLLMIndicatorProps) => JSX.Element | null;
 
 export type PluginLLMAutoDescription = {
-  useLLMDashboardDescription: TUseLLMDashboardDescription;
   LLMSuggestQuestionInfo: TLLMSuggestQuestionInfo;
 };
