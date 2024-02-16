@@ -29,6 +29,9 @@
 ;; if it attempts to delete this user and it is the only admin test user
 (use-fixtures :once (fixtures/initialize :test-users))
 
+(def random-fake-token
+  "d7ad0b5f9ddfd1953b1b427b75d620e4ba91d38e7bcbc09d8982480863dbc611")
+
 (defn- wait-for-result
   "Call thunk up to 10 times, until it returns a truthy value. Wait 50ms between tries. Useful for waiting for something
   asynchronous to happen."
@@ -106,7 +109,7 @@
                                                            :status   "fake"
                                                            :features ["test" "fixture"]
                                                            :trial    false})]
-        (let [license-token "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+        (let [license-token random-fake-token]
           (with-setup! {:license-token license-token}
             (testing "Creating a new admin user should set the `admin-email` Setting"
               (is (= license-token (premium-features/premium-embedding-token))))))))))
@@ -647,22 +650,13 @@
                                                              :features ["test" "fixture"]
                                                              :trial    false})]
           (is (= {:valid true}
-                 (client/client :get "setup/token-check?license-token=aaa"))))))
+                 (client/client :get (str "setup/token-check?license-token=" random-fake-token)))))))
     (testing "Check that returns {valid: false} for invalid token"
       (mt/with-temporary-setting-values [has-user-setup false]
-        (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                            {:valid    false
-                                                             :status   "fake"
-                                                             :features []
-                                                             :trial    false})]
+        (with-redefs [premium-features/fetch-token-status (fn [_x] {:valid false})]
           (is (= {:valid false}
-                 (client/client :get "setup/token-check?license-token=aaa")))))
+                 (client/client :get (str "setup/token-check?license-token=" random-fake-token))))))
       (testing "Check that returns {valid: false} for invalid token"
         (mt/with-temporary-setting-values [has-user-setup true]
-          (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                              {:valid    false
-                                                               :status   "fake"
-                                                               :features []
-                                                               :trial    false})]
             (is (= "This endpoint can only be used before the initial setup."
-                (client/client :get "setup/token-check?license-token=aaa")))))))))
+                (client/client :get (str "setup/token-check?license-token=" random-fake-token)))))))))
