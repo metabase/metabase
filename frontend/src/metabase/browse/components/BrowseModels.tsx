@@ -41,11 +41,12 @@ export const BrowseModels = ({
       <>
         <ModelExplanationBanner />
         <ModelGrid role="grid">
-          {groupsOfModels.map(groupOfModels => (
+          {groupsOfModels.map((groupOfModels, index) => (
             <ModelGroup
               models={groupOfModels}
               key={`modelgroup-${groupOfModels[0].collection.id}`}
               localeCode={localeCode}
+              index={index}
             />
           ))}
         </ModelGrid>

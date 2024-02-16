@@ -15,6 +15,7 @@ import { getCollectionName, sortModels } from "../utils";
 import {
   CollectionCollapse,
   CollectionExpandCollapseContainer,
+  CollectionHeader,
   CollectionHeaderContainer,
   CollectionHeaderLink,
   CollectionHeaderToggle,
@@ -29,9 +30,11 @@ import { LastEdited } from "./LastEdited";
 export const ModelGroup = ({
   models,
   localeCode,
+  index,
 }: {
   models: SearchResult[];
   localeCode: string | undefined;
+  index: number;
 }) => {
   const sortedModels = models.sort((a, b) => sortModels(a, b, localeCode));
   const collection = models[0].collection;
@@ -61,28 +64,25 @@ export const ModelGroup = ({
           onClick={toggleSomeModelsShown}
         >
           <FixedSizeIcon
+            color={color("text-medium")}
             name={areSomeModelsShown ? "chevrondown" : "chevronright"}
           />
         </CollectionHeaderToggle>
-        <CollectionHeaderLink to={Urls.collection(collection)}>
-          <FixedSizeIcon {...icon} />
-          <Title
-            size="1rem"
-            lh="1rem"
-            ml=".25rem"
-            mr="1rem"
-            color={color("text-dark")}
-          >
-            {getCollectionName(collection)}
-          </Title>
-        </CollectionHeaderLink>
-        <CollectionSummary>
-          {c("{0} is the number of models in a collection").ngettext(
-            msgid`${models.length} model`,
-            `${models.length} models`,
-            models.length,
-          )}
-        </CollectionSummary>
+        <CollectionHeader index={index}>
+          <CollectionHeaderLink to={Urls.collection(collection)}>
+            <FixedSizeIcon {...icon} />
+            <Title size="1rem" lh="1rem" ml=".25rem" mr="1rem" color="inherit">
+              {getCollectionName(collection)}
+            </Title>
+          </CollectionHeaderLink>
+          <CollectionSummary>
+            {c("{0} is the number of models in a collection").ngettext(
+              msgid`${models.length} model`,
+              `${models.length} models`,
+              models.length,
+            )}
+          </CollectionSummary>
+        </CollectionHeader>
       </CollectionHeaderContainer>
       <CollectionCollapse in={areSomeModelsShown} transitionDuration={0}>
         {aboveFold.map(model => (

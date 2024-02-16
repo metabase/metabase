@@ -11,6 +11,7 @@ import { BrowseGrid } from "./BrowseApp.styled";
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
   padding-bottom: 1rem;
+  margin: 0.5rem 0;
 
   height: 9rem;
   display: flex;
@@ -52,14 +53,8 @@ export const ModelGrid = styled(BrowseGrid)``;
 
 export const CollectionHeaderContainer = styled(Flex)`
   grid-column: 1 / -1;
-  &:not(:first-of-type) {
-    border-top: 1px solid #f0f0f0;
-  }
-  position: relative;
-  top: 0.5rem;
-  margin-left: -2.5rem;
+  margin-left: -2.25rem;
   display: flex;
-  padding-top: 1rem;
   align-items: center;
 `;
 
@@ -93,6 +88,7 @@ export const CollectionExpandCollapseContainer = styled(Flex)`
   justify-content: flex-start;
   align-items: center;
   grid-column: 1 / -1;
+  margin: 0.5rem 0;
 `;
 
 export const CollectionHeaderToggle = styled(Button)<
@@ -100,7 +96,8 @@ export const CollectionHeaderToggle = styled(Button)<
 >`
   padding: 10px;
   position: relative;
-  top: 2px;
+  top: 6px;
+  margin-top: 0.5rem;
   border: none;
   background-color: transparent;
   overflow: unset;
@@ -112,8 +109,8 @@ export const CollectionHeaderToggle = styled(Button)<
 export const CollectionSummary = styled.div`
   margin-left: auto;
   white-space: nowrap;
-  font-size: 1rem;
-  color: ${color("text-dark")};
+  font-size: 0.75rem;
+  color: ${color("text-medium")};
 `;
 
 export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
@@ -124,4 +121,11 @@ export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
 export const BannerModelIcon = styled(FixedSizeIcon)`
   color: ${color("text-dark")};
   margin-right: 0.5rem;
+`;
+
+export const CollectionHeader = styled.div<{ index: number }>`
+  display: flex;
+  width: 100%;
+  padding-top: 1rem;
+  ${({ index }) => index > 0 && `border-top: 1px solid ${color("border")};`}
 `;

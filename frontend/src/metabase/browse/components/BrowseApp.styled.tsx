@@ -64,7 +64,7 @@ export const BrowseDataHeader = styled.header`
 export const BrowseGrid = styled(Grid)`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 1.5rem 1rem;
+  gap: 0rem 1rem;
   margin: 0;
   width: 100%;
 

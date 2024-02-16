@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
-
+import { Link } from "react-router";
+import { color } from "metabase/lib/colors";
 import Card from "metabase/components/Card";
 import { color } from "metabase/lib/colors";
 
@@ -17,7 +18,7 @@ export const DatabaseCard = styled(Card)`
   }
 `;
 
-export const DatabaseGridItem = styled.div`
+export const DatabaseCardLink = styled(Link)`
   &:hover {
     color: ${color("brand")};
   }
