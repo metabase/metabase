@@ -95,8 +95,7 @@ const updateOrderBy = (query, index, orderBy) =>
   setOrderByClause(query, O.updateOrderBy(query["order-by"], index, orderBy));
 const removeOrderBy = (query, index) =>
   setOrderByClause(query, O.removeOrderBy(query["order-by"], index));
-const clearOrderBy = query =>
-  setOrderByClause(query, O.clearOrderBy(query["order-by"]));
+const clearOrderBy = query => setOrderByClause(query);
 
 // FIELD
 export const addField = (query, field) =>
