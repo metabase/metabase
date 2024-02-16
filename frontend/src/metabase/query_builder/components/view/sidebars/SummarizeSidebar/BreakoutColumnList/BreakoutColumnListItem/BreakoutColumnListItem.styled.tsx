@@ -80,6 +80,8 @@ const selectedStyle = css`
   ${BucketPickerPopover.TriggerButton} {
     opacity: 0;
     color: ${alpha("white", 0.5)};
+    padding-left: 0;
+    border-left: 0;
   }
 
   ${BucketPickerPopover.TriggerButton}:hover {
@@ -93,6 +95,7 @@ const unselectedStyle = css`
     opacity: 0;
     color: ${color("text-light")};
     padding-left: 0;
+    border-left: 0;
   }
 
   ${QueryColumnInfoIcon} {
