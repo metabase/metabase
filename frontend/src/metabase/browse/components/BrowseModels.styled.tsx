@@ -59,6 +59,7 @@ export const CollectionHeaderContainer = styled(Flex)`
   margin-left: -2.25rem;
   display: flex;
   align-items: center;
+  margin-top: 0.5rem;
 `;
 
 export const CollectionHeaderLink = styled(Link)`
@@ -100,13 +101,14 @@ export const CollectionHeaderToggle = styled(Button)<
   padding: 10px;
   position: relative;
   top: 6px;
-  margin-top: 0.5rem;
+  margin-top: 1rem;
   border: none;
   background-color: transparent;
   overflow: unset;
   &:hover {
     background-color: inherit;
-    div {
+    div,
+    svg {
       color: ${color("brand")};
     }
   }
@@ -132,6 +134,6 @@ export const BannerModelIcon = styled(FixedSizeIcon)`
 export const CollectionHeader = styled.div<{ index: number }>`
   display: flex;
   width: 100%;
-  padding-top: 1rem;
+  padding-top: 1.5rem;
   ${({ index }) => index > 0 && `border-top: 1px solid ${color("border")};`}
 `;
