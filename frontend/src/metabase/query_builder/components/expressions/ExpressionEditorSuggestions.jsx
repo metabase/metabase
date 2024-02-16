@@ -3,14 +3,17 @@ import { Component, Fragment } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { DelayGroup, Icon } from "metabase/ui";
 import { isObscured } from "metabase/lib/dom";
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   ExpressionListItem,
   ExpressionList,
   ExpressionPopover,
   SuggestionSpanContent,
   SuggestionSpanRoot,
+  SuggestionTitle,
+  QueryColumnInfoIcon,
 } from "./ExpressionEditorSuggestions.styled";
 
 const SuggestionSpan = ({ suggestion, isHighlighted }) => {
@@ -80,7 +83,8 @@ export default class ExpressionEditorSuggestions extends Component {
   });
 
   render() {
-    const { suggestions, highlightedIndex, target } = this.props;
+    const { query, stageIndex, suggestions, highlightedIndex, target } =
+      this.props;
 
     if (!suggestions.length || !target) {
       return null;
@@ -88,35 +92,41 @@ export default class ExpressionEditorSuggestions extends Component {
 
     return (
       /* data-ignore-outside-clicks is required until this expression editor is migrated to the mantine's Popover */
-      <ExpressionPopover
-        placement="bottom-start"
-        sizeToFit
-        visible
-        reference={target}
-        zIndex={300}
-        content={
-          <ExpressionList
-            data-testid="expression-suggestions-list"
-            className="pb1"
-            data-ignore-outside-clicks
-          >
-            {suggestions.map((suggestion, i) => (
-              <Fragment key={`$suggestion-${i}`}>
-                <ExpressionEditorSuggestionsListItem
-                  suggestion={suggestion}
-                  isHighlighted={i === highlightedIndex}
-                  onMouseDownCapture={this.createOnMouseDownHandler(i)}
-                />
-              </Fragment>
-            ))}
-          </ExpressionList>
-        }
-      />
+      <DelayGroup>
+        <ExpressionPopover
+          placement="bottom-start"
+          sizeToFit
+          visible
+          reference={target}
+          zIndex={300}
+          content={
+            <ExpressionList
+              data-testid="expression-suggestions-list"
+              className="pb1"
+              data-ignore-outside-clicks
+            >
+              {suggestions.map((suggestion, i) => (
+                <Fragment key={`$suggestion-${i}`}>
+                  <ExpressionEditorSuggestionsListItem
+                    query={query}
+                    stageIndex={stageIndex}
+                    suggestion={suggestion}
+                    isHighlighted={i === highlightedIndex}
+                    onMouseDownCapture={this.createOnMouseDownHandler(i)}
+                  />
+                </Fragment>
+              ))}
+            </ExpressionList>
+          }
+        />
+      </DelayGroup>
     );
   }
 }
 
 function ExpressionEditorSuggestionsListItem({
+  query,
+  stageIndex,
   suggestion,
   isHighlighted,
   onMouseDownCapture,
@@ -125,23 +135,33 @@ function ExpressionEditorSuggestionsListItem({
   const { normal, highlighted } = colorForIcon(icon);
 
   return (
-    <ExpressionListItem
-      onMouseDownCapture={onMouseDownCapture}
-      isHighlighted={isHighlighted}
-      className="hover-parent hover--inherit"
-      data-ignore-outside-clicks
-    >
-      <Icon
-        name={icon}
-        color={isHighlighted ? highlighted : normal}
-        className="mr1"
-        data-ignore-outside-clicks
-      />
-      <SuggestionSpan
-        suggestion={suggestion}
+    <HoverParent>
+      <ExpressionListItem
+        onMouseDownCapture={onMouseDownCapture}
         isHighlighted={isHighlighted}
+        className="hover-parent hover--inherit"
         data-ignore-outside-clicks
-      />
-    </ExpressionListItem>
+      >
+        <Icon
+          name={icon}
+          color={isHighlighted ? highlighted : normal}
+          className="mr1"
+          data-ignore-outside-clicks
+        />
+        <SuggestionTitle>
+          <SuggestionSpan
+            suggestion={suggestion}
+            isHighlighted={isHighlighted}
+            data-ignore-outside-clicks
+          />
+        </SuggestionTitle>
+        <QueryColumnInfoIcon
+          query={query}
+          stageIndex={stageIndex}
+          column={suggestion}
+          position="right"
+        />
+      </ExpressionListItem>
+    </HoverParent>
   );
 }
