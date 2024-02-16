@@ -193,7 +193,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (t2/select [FieldValues :field_id :values], :field_id id))
+  (t2/select [FieldValues :field_id :values], :field_id id :type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
   "Recusively find the field id for a nested field name, return nil if not found.
