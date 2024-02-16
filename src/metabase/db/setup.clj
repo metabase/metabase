@@ -74,6 +74,8 @@
     (log/info (trs "Setting up Liquibase..."))
     (liquibase/with-liquibase [liquibase conn]
       (try
+       (when (= :force direction)
+         (liquibase/release-lock-if-needed! liquibase))
        (liquibase/consolidate-liquibase-changesets! conn liquibase)
        (log/info (trs "Liquibase is ready."))
        (case direction
