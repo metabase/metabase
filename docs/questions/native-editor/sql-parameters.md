@@ -276,6 +276,15 @@ If however, there are too many different values in that column to display in a d
 
 Some things that could trip you up when trying to set up a Field Filter variable.
 
+## Requiring a value for a filter widget
+
+You can enforce a value of
+
+In the **Variable** settings sidebar, you can toggle the **Always require a value** option. If you turn this on:
+
+- You must enter a default value.
+- The default value will override any optional syntax in your code (like an optional `WHERE` clause). If no value is passed to the filter, Metabase will run the query using the default value. Click on the **Eye** icon in the editor to preview the SQL Metabase will run.
+
 ### Table aliases
 
 You won't be able to select values from field filters in queries that use table aliases for joins or CTEs.
@@ -345,12 +354,6 @@ More on [Dashboard filters][dashboard-filters].
 - [Troubleshooting SQL][troubleshooting-sql].
 - [Troubleshooting filters][troubleshooting-filters].
 - [Dashboard filters][dashboard-filters].
-
----
-
-## Next: Referencing saved questions in queries
-
-Learn how to [refer to a saved question in a SQL query](referencing-saved-questions-in-queries.md).
 
 [sql-editor]: ./writing-sql.md
 [dashboard-filters]: ../../dashboards/filters.md
