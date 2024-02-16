@@ -119,7 +119,7 @@ const buildEChartsBarSeries = (
       },
     },
     type: "bar",
-    zlevel: CHART_STYLE.series.zIndex,
+    z: CHART_STYLE.series.zIndex,
     yAxisIndex,
     barGap: 0,
     stack: stackName,
@@ -230,7 +230,7 @@ const buildEChartsLineAreaSeries = (
         opacity: blurOpacity,
       },
     },
-    zlevel: CHART_STYLE.series.zIndex,
+    z: CHART_STYLE.series.zIndex,
     id: seriesModel.dataKey,
     type: "line",
     yAxisIndex,
@@ -332,7 +332,7 @@ const generateStackOption = (
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
     },
-    zlevel: CHART_STYLE.series.zIndex,
+    z: CHART_STYLE.series.zIndex,
   };
 };
 

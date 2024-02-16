@@ -182,6 +182,13 @@ GoalLineOutOfBounds37848.args = {
   renderingContext,
 };
 
+export const GoalLineUnderSeries38824 = Template.bind({});
+GoalLineUnderSeries38824.args = {
+  rawSeries: data.goalLineUnderSeries38824 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const GoalVerySmall = Template.bind({});
 GoalVerySmall.args = {
   rawSeries: data.goalVerySmall as any,
