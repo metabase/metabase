@@ -65,21 +65,14 @@ export const CollectionHeaderContainer = styled(Flex)`
   margin-left: -2.5rem;
   display: flex;
   padding-top: 1rem;
-  margin-right: 1rem;
   align-items: center;
+  gap: 0.25rem;
 `;
 
 export const CollectionHeaderLink = styled(Link)`
-  &:hover * {
+  &:hover {
     color: ${color("brand")};
   }
-`;
-
-export const BannerModelIcon = styled(Icon)`
-  color: ${color("text-dark")};
-  margin-right: 0.5rem;
-  min-width: 16px;
-  min-height: 16px;
 `;
 
 export const BannerCloseButton = styled(IconButtonWrapper)`
@@ -117,4 +110,21 @@ export const CollectionHeaderToggle = styled(Button)<
   &:hover div {
     color: ${color("brand")};
   }
+`;
+
+export const CollectionSummary = styled.div`
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 1rem;
+  color: ${color("text-dark")};
+`;
+
+export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
+  min-width: ${({ size }) => size ?? 16}px;
+  min-height: ${({ size }) => size ?? 16}px;
+`;
+
+export const BannerModelIcon = styled(FixedSizeIcon)`
+  color: ${color("text-dark")};
+  margin-right: 0.5rem;
 `;

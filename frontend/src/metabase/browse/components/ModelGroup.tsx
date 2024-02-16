@@ -1,16 +1,26 @@
-import { c } from "ttag";
 import { useDisclosure } from "@mantine/hooks";
+import { c, msgid } from "ttag";
 import type { Card, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
+import Link from "metabase/core/components/Link";
+import Search from "metabase/entities/search";
+import { useDispatch } from "metabase/lib/redux";
+
+import { Box, Icon, Title } from "metabase/ui";
+
+import { color } from "metabase/lib/colors";
 import { getCollectionName, sortModels } from "../utils";
 
 import {
   CollectionCollapse,
   CollectionExpandCollapseContainer,
   CollectionHeaderContainer,
+  CollectionHeaderLink,
   CollectionHeaderToggle,
+  CollectionSummary,
   ContainerExpandCollapseButton,
+  FixedSizeIcon,
   ModelCard,
   MultilineEllipsified,
 } from "./BrowseModels.styled";
@@ -46,23 +56,33 @@ export const ModelGroup = ({
   return (
     <>
       <CollectionHeaderContainer id={collectionHtmlId} role="heading">
-        <Group spacing=".25rem">
-          <CollectionHeaderToggle
-            styles={noTransform}
-            onClick={toggleSomeModelsShown}
-          >
-            <Icon
-              size="16"
-              name={areSomeModelsShown ? "chevrondown" : "chevronright"}
-            />
-          </CollectionHeaderToggle>
-          <Icon {...icon} />
-          <Text weight="bold" color={color("text-dark")}>
-            <Link to={Urls.collection(collection)}>
-              {getCollectionName(collection)}
-            </Link>
-          </Text>
-        </Group>
+        <CollectionHeaderToggle
+          styles={noTransform}
+          onClick={toggleSomeModelsShown}
+        >
+          <FixedSizeIcon
+            name={areSomeModelsShown ? "chevrondown" : "chevronright"}
+          />
+        </CollectionHeaderToggle>
+        <FixedSizeIcon {...icon} />
+        <Title
+          size="1rem"
+          lh="1rem"
+          ml=".25rem"
+          mr="1rem"
+          color={color("text-dark")}
+        >
+          <CollectionHeaderLink to={Urls.collection(collection)}>
+            {getCollectionName(collection)}
+          </CollectionHeaderLink>
+        </Title>
+        <CollectionSummary>
+          {c("{0} is the number of models in a collection").ngettext(
+            msgid`${models.length} model`,
+            `${models.length} models`,
+            models.length,
+          )}
+        </CollectionSummary>
       </CollectionHeaderContainer>
       <CollectionCollapse in={areSomeModelsShown} transitionDuration={0}>
         {aboveFold.map(model => (
