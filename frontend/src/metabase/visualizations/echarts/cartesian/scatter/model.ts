@@ -1,15 +1,15 @@
-import type { RawSeries, RowValue } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { DataKey } from "../model/types";
+import type { ChartDataset, Datum } from "../model/types";
 import { getDatasetKey } from "../model/dataset";
 
 export function getScatterPlotDataset(
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
-): Record<DataKey, RowValue>[] {
-  const dataset: Record<DataKey, RowValue>[] = [];
+): ChartDataset {
+  const dataset: Datum[] = [];
 
   rawSeries.forEach((cardSeries, index) => {
     const {
@@ -19,7 +19,7 @@ export function getScatterPlotDataset(
     const columnDescs = cardsColumns[index];
 
     rows.forEach(row => {
-      const datum: Record<DataKey, RowValue> = {};
+      const datum: Datum = { [X_AXIS_DATA_KEY]: null };
 
       cols.forEach((column, columnIndex) => {
         const value = row[columnIndex];

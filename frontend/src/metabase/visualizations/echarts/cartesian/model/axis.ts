@@ -1,5 +1,6 @@
 import d3 from "d3";
 import _ from "underscore";
+import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 import type {
   AxisFormatter,
   DataKey,
@@ -11,6 +12,7 @@ import type {
   YAxisModel,
   DimensionModel,
   TimeSeriesInterval,
+  DateRange,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -28,13 +30,18 @@ import {
   getDatasetExtents,
   getMetricDisplayValueGetter,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { getObjectEntries, getObjectKeys } from "metabase/lib/objects";
+import {
+  getObjectEntries,
+  getObjectKeys,
+  getObjectValues,
+} from "metabase/lib/objects";
 import {
   computeTimeseriesDataInverval,
   minTimeseriesUnit,
 } from "metabase/visualizations/lib/timeseries";
-import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { isDate } from "metabase-lib/types/utils/isa";
+import { tryGetDate } from "../utils/time-series";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -394,7 +401,7 @@ function getYAxisExtent(
     : calculateNonStackedExtent(seriesKeys, dataset);
 }
 
-function getYAxisModel(
+export function getYAxisModel(
   seriesKeys: DataKey[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
@@ -457,6 +464,26 @@ export function getYAxesModels(
   };
 }
 
+export const getXAxisEChartsType = (
+  dimensionModel: DimensionModel,
+  settings: ComputedVisualizationSettings,
+): OptionAxisType => {
+  // Relative time scale charts have numeric dimensions but should use category scale
+  const isDimensionColumnDate = isDate(dimensionModel.column);
+
+  switch (settings["graph.x_axis.scale"]) {
+    case "timeseries":
+      return "time";
+    case "linear":
+    case "pow":
+      return isDimensionColumnDate ? "category" : "value";
+    case "log":
+      return isDimensionColumnDate ? "category" : "log";
+    default:
+      return "category";
+  }
+};
+
 export function getXAxisModel(
   dimensionModel: DimensionModel,
   rawSeries: RawSeries,
@@ -468,32 +495,27 @@ export function getXAxisModel(
     ? settings["graph.x_axis.title_text"]
     : undefined;
 
-  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
-
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
       column: dimensionModel.column,
       ...(settings.column?.(dimensionModel.column) ?? {}),
-      noRange: isHistogram,
+      noRange: settings["graph.x_axis.scale"] === "histogram",
     });
 
   const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
 
-  const timeSeriesInterval = getTimeSeriesXAxisInterval(
-    xValues,
-    rawSeries,
-    dimensionModel,
-  );
-  const numericInterval = getNumericXAxisInterval(
-    xValues,
-    dimensionModel,
-    settings,
-  );
+  const timeSeriesInterval =
+    settings["graph.x_axis.scale"] === "timeseries"
+      ? getTimeSeriesXAxisInterval(xValues, rawSeries, dimensionModel)
+      : undefined;
+
+  const axisType = getXAxisEChartsType(dimensionModel, settings);
+
   return {
     formatter,
     label,
     timeSeriesInterval,
-    numericInterval,
+    axisType,
   };
 }
 
@@ -505,6 +527,22 @@ function getTimezone(rawSeries: RawSeries) {
   return results_timezone || DEFAULT_TIMEZONE;
 }
 
+const getXAxisDateRange = (xValues: RowValue[]): DateRange | undefined => {
+  if (xValues.length === 0) {
+    return undefined;
+  }
+
+  // Assume the dataset is sorted
+  const minDate = tryGetDate(xValues[0]);
+  const maxDate = tryGetDate(xValues[xValues.length - 1]);
+
+  if (minDate == null || maxDate == null) {
+    return undefined;
+  }
+
+  return [minDate, maxDate];
+};
+
 export function getTimeSeriesXAxisInterval(
   xValues: RowValue[],
   rawSeries: RawSeries,
@@ -515,34 +553,22 @@ export function getTimeSeriesXAxisInterval(
   // 2. count - how many intervals per tick?
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
-    dimensionModel.columns.map(column => column.unit),
+    getObjectValues(dimensionModel.columnByCardId).map(column => column.unit),
   );
   const timezone = getTimezone(rawSeries);
   const { count, interval } = (computeTimeseriesDataInverval(xValues, unit) ?? {
     count: 1,
     interval: "day",
   }) as Pick<TimeSeriesInterval, "count" | "interval">;
-  return { count, interval, timezone };
-}
 
-export function getNumericXAxisInterval(
-  xValues: RowValue[],
-  dimensionModel: DimensionModel,
-  settings: ComputedVisualizationSettings,
-) {
-  if (
-    ["linear", "log", "pow", "histogram"].includes(
-      // @ts-expect-error x axis scale value can be undefined
-      settings["graph.x_axis.scale"],
-    )
-  ) {
-    return undefined;
+  const range = getXAxisDateRange(xValues);
+  let lengthInIntervals = 0;
+
+  if (range) {
+    const [min, max] = range;
+    // A single date counts as one interval
+    lengthInIntervals = Math.max(1, Math.ceil(max.diff(min, interval) / count));
   }
 
-  const binningInfo = dimensionModel.column.binning_info;
-  if (binningInfo) {
-    return binningInfo.bin_width;
-  }
-
-  return computeNumericDataInverval(xValues);
+  return { count, interval, timezone, lengthInIntervals, range };
 }

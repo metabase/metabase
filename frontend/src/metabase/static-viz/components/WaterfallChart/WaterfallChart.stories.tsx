@@ -43,6 +43,13 @@ TimeseriesXScaleUnsorted.args = {
   renderingContext,
 };
 
+export const LogScaleWithLabelsHourOfDayXAxis = Template.bind({});
+LogScaleWithLabelsHourOfDayXAxis.args = {
+  rawSeries: data.logScaleWithLabelsHourOfDayXAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const OrdinalXScale = Template.bind({});
 OrdinalXScale.args = {
   rawSeries: data.ordinalXScale as any,
@@ -64,9 +71,9 @@ UnaggregatedOrdinal.args = {
   renderingContext,
 };
 
-export const UnaggregatedOrdinal2 = Template.bind({});
-UnaggregatedOrdinal2.args = {
-  rawSeries: data.unaggregatedOrdinal2 as any,
+export const UnaggregatedLinear = Template.bind({});
+UnaggregatedLinear.args = {
+  rawSeries: data.unaggregatedLinear as any,
   dashcardSettings: {},
   renderingContext,
 };
@@ -200,6 +207,13 @@ PowYScaleMixed.args = {
 export const NativeTimeSeriesQuarter = Template.bind({});
 NativeTimeSeriesQuarter.args = {
   rawSeries: data.nativeTimeSeriesQuarter as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const NativeTimeSeriesWithGaps = Template.bind({});
+NativeTimeSeriesWithGaps.args = {
+  rawSeries: data.nativeTimeSeriesWithGaps as any,
   dashcardSettings: {},
   renderingContext,
 };
