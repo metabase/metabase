@@ -66,8 +66,7 @@ export const removeBreakout = (query, index) =>
 /**
  * @deprecated use MLv2
  */
-export const clearBreakouts = query =>
-  setBreakoutClause(query, B.clearBreakouts(query.breakout));
+const clearBreakouts = query => setBreakoutClause(query);
 
 // FILTER
 
