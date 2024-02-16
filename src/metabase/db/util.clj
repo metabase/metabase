@@ -84,6 +84,12 @@
 (defn select-or-insert!
   "Return a database record if it exists, otherwise create it.
 
+   The `select-map` is used to query the `model`, and if a result is found it is immediately returned.
+   If no value is found, `insert-fn` is called to generate the entity to be inserted.
+
+   Note that this generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
+   will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
+
    This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
    calculating initial values that may be expensive, or require side effects.
 
@@ -93,20 +99,28 @@
 
    In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
-  {:style/indent 2}
   [model select-map insert-fn]
-  (with-conflict-retry
-   (let [select-kvs (mapcat identity select-map)
-         validate   (fn [updated#]
-                      (assert (= select-map (merge select-map (select-keys updated# (keys select-map))))
-                              "This should not be used to change any of the identifying values")
-                      ;; For convenience, we allow the insert-fn to omit fields in the search-map
-                      (merge updated# select-map))]
-     (or (apply t2/select-one model select-kvs)
-         (t2/insert-returning-instance! model (validate (insert-fn)))))))
+  (let [select-kvs (mapcat identity select-map)
+        insert-fn  #(let [instance (insert-fn)]
+                      ;; the inserted values must be consistent with the select query
+                      (assert (not (u/conflicting-keys? select-map instance))
+                              "this should not be used to change any of the identifying values")
+                      ;; for convenience, we allow insert-fn's result to omit fields in the search-map
+                      (merge instance select-map))]
+    (with-conflict-retry
+      (or (apply t2/select-one model select-kvs)
+          (t2/insert-returning-instance! model (insert-fn))))))
 
 (defn update-or-insert!
   "Update a database record, if it exists, otherwise create it.
+
+   The `select-map` is used to query the `model`, and if a result is found then we will update that entity, otherwise
+   a new entity will be created. We use `update-fn` to calculate both updates and initial values - in the first case
+   it will be called with the existing value, and in the second case it will be called with nil, analogous to the way
+   that [[clojure.core/update]] calls its function.
+
+   Note that the generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
+   will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
 
    This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
    calculating initial values that may be expensive, or require side effects.
@@ -117,23 +131,23 @@
 
    In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
-  {:style/indent 2}
   [model select-map update-fn]
-  (with-conflict-retry
-   (let [select-kvs (mapcat identity select-map)
-         pks        (t2/primary-keys model)
-         _          (assert (= 1 (count pks)) "This helper does not currently support compound keys")
-         pk-key     (keyword (first pks))
-         validate   (fn [updated]
-                      (assert (= select-map (merge select-map (select-keys updated (keys select-map))))
-                              "This should not be used to change any of the identifying values")
-                      ;; For convenience, we allow the update-fn to omit fields in the search-map
-                      (merge updated select-map))]
-     (with-conflict-retry
-       (if-let [entity (apply t2/select-one model select-kvs)]
-         (let [pk      (pk-key entity)
-               updated (validate (update-fn entity))]
-           (t2/update! model pk (validate (update-fn entity)))
-           ;; we allow this operation to change the private key
-           (pk-key updated pk))
-         (t2/insert-returning-pk! model (validate (update-fn nil))))))
+  (let [select-kvs (mapcat identity select-map)
+        pks        (t2/primary-keys model)
+        _          (assert (= 1 (count pks)) "This helper does not currently support compound keys")
+        pk-key     (keyword (first pks))
+        update-fn  (fn [existing]
+                     (let [updated (update-fn existing)]
+                       ;; the inserted / updated values must be consistent with the select query
+                       (assert (not (u/conflicting-keys? select-map updated))
+                               "This should not be used to change any of the identifying values")
+                       ;; For convenience, we allow the update-fn to omit fields in the search-map
+                       (merge updated select-map)))]
+    (with-conflict-retry
+      (if-let [existing (apply t2/select-one model select-kvs)]
+        (let [pk      (pk-key existing)
+              updated (update-fn existing)]
+          (t2/update! model pk updated)
+          ;; the private key may have been changed by the update, and this is OK.
+          (pk-key updated pk))
+        (t2/insert-returning-pk! model (update-fn nil))))))
