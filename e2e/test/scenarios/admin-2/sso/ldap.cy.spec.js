@@ -156,17 +156,10 @@ describe(
       });
 
       it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
-        cy.visit("/admin/settings/authentication/ldap");
-        cy.wait("@getSettings");
-        cy.wait("@getSessionProperties");
-
-        enterLdapSettings();
-
-        crudGroupMappingsWidget("ldap", { skipVisit: true });
+        crudGroupMappingsWidget("ldap");
       });
 
       it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
-        enterLdapSettings();
         checkGroupConsistencyAfterDeletingMappings("ldap");
       });
     });

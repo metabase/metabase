@@ -1,14 +1,9 @@
 import { popover } from "e2e/support/helpers";
 
-export function crudGroupMappingsWidget(
-  authenticationMethod,
-  { skipVisit = false },
-) {
-  if (!skipVisit) {
-    cy.visit("/admin/settings/authentication/" + authenticationMethod);
-    cy.wait("@getSettings");
-    cy.wait("@getSessionProperties");
-  }
+export function crudGroupMappingsWidget(authenticationMethod) {
+  cy.visit("/admin/settings/authentication/" + authenticationMethod);
+  cy.wait("@getSettings");
+  cy.wait("@getSessionProperties");
 
   // Create mapping, then delete it along with its groups
   createMapping("cn=People1");
