@@ -31,7 +31,8 @@
     :model/QueryCache
     :model/QueryExecution
     :model/CardFavorite
-    :model/DashboardFavorite})
+    :model/DashboardFavorite
+    :model/CacheConfig})
 
 (defn- all-model-names []
   (into (sorted-set)

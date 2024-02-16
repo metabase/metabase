@@ -24,7 +24,7 @@
                                    :value [1]}]
                      :constraints nil
                      :middleware nil
-                     :cache-ttl nil)]
+                     :cache-strategy nil)]
           (mt/with-actions [_                   {:dataset true :dataset_query dataset-query}
                             {:keys [action-id]} {:type :implicit :kind "row/update"}]
             (process-userland-query-test/with-query-execution [qe query]

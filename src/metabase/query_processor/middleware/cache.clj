@@ -54,11 +54,6 @@
     (catch Throwable e
       (log/error e (trs "Error purging old cache entries: {0}" (ex-message e))))))
 
-(defn- min-duration-ms
-  "Minimum duration it must take a query to complete in order for it to be eligible for caching."
-  []
-  (* (public-settings/query-caching-min-ttl) 1000))
-
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -85,7 +80,7 @@
   (try
     (let [bytez (serialized-bytes)]
       (if-not (instance? (Class/forName "[B") bytez)
-        (log/error (trs "Cannot cache results: expected byte array, got {0}" (class bytez)))
+        (log/errorf "Cannot cache results: expected byte array, got %s" (class bytez))
         (do
           (log/trace "Got serialized bytes; saving to cache backend")
           (i/save-results! *backend* query-hash bytez)
@@ -97,7 +92,7 @@
         (log/debug e (trs "Not caching results: results are larger than {0} KB" (public-settings/query-caching-max-kb)))
         (log/error e (trs "Error saving query results to cache: {0}" (ex-message e)))))))
 
-(defn- save-results-xform [start-time metadata query-hash rf]
+(defn- save-results-xform [start-time metadata query-hash strategy rf]
   (let [has-rows? (volatile! false)]
     (add-object-to-cache! (assoc metadata
                                  :cache-version cache-version
@@ -109,17 +104,18 @@
        (add-object-to-cache! (if (map? result)
                                (m/dissoc-in result [:data :rows])
                                {}))
-       (let [duration-ms (- (System/currentTimeMillis) start-time)
-             eligible?   (and @has-rows?
-                              (> duration-ms (min-duration-ms)))]
+       (let [duration-ms  (- (System/currentTimeMillis) start-time)
+             min-duration (:min-duration strategy 0)
+             eligible?    (and @has-rows?
+                               (> duration-ms min-duration))]
          (log/infof "Query took %s to run; minimum for cache eligibility is %s; %s"
                     (u/format-milliseconds duration-ms)
-                    (u/format-milliseconds (min-duration-ms))
+                    (u/format-milliseconds min-duration)
                     (if eligible? "eligible" "not eligible"))
          (when eligible?
-           (cache-results! query-hash)))
-       (rf (cond-> result
-             (map? result) (assoc-in [:cache/details :hash] query-hash))))
+           (cache-results! query-hash))
+         (rf (cond-> result
+               (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?))))))
 
       ([acc row]
        (add-object-to-cache! row)
@@ -162,21 +158,23 @@
                                                    #_result
                                                    :any]
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [ignore-cache? query-hash max-age-seconds rff]
+  [ignore-cache? query-hash strategy rff]
   (try
     (or (when-not ignore-cache?
-          (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
-                      (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
-          (i/with-cached-results *backend* query-hash max-age-seconds [is]
-            (when is
+          (log/debugf "Looking for cached results for query with hash '%s' satisfying %s"
+                      (i/short-hex-hash query-hash) (pr-str strategy))
+          (i/with-cached-results *backend* query-hash strategy [is]
+            (if is
               (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
-                (log/tracef "Found cached results. Version: %s" (pr-str (:cache-version metadata)))
+                (log/debugf "Found cached results for hash '%s'. Version: %s"
+                            (i/short-hex-hash query-hash) (pr-str (:cache-version metadata)))
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
                   (log/tracef "Reducing cached rows...")
                   (let [result (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)]
                     (log/tracef "All cached rows reduced")
-                    [::ok result]))))))
+                    [::ok result])))
+              (log/debugf "Not found cached results for hash '%s'" (i/short-hex-hash query-hash)))))
         [::miss nil])
     (catch EofException _
       (log/debug (trs "Request is closed; no one to return cached results to"))
@@ -190,13 +188,13 @@
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (mu/defn ^:private run-query-with-cache :- :some
-  [qp {:keys [cache-ttl middleware], :as query} :- ::qp.schema/query
-   rff                                          :- ::qp.schema/rff]
+  [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/query
+   rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see
   ;; #14388.
   (let [query-hash      (qp.util/query-hash query)
-        [status result] (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff)]
+        [status result] (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-strategy rff)]
     (case status
       ::ok
       result
@@ -218,19 +216,18 @@
                                               (orig-reduce rff metadata rows)))))]
           (qp query
               (fn [metadata]
-                (save-results-xform start-time-ms metadata query-hash (rff metadata)))))))))
+                (save-results-xform start-time-ms metadata query-hash cache-strategy (rff metadata)))))))))
 
-(defn- is-cacheable? {:arglists '([query])} [{:keys [cache-ttl]}]
+(defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
   (and (public-settings/enable-query-caching)
-       cache-ttl))
+       cache-strategy))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.
   In order for a query to be eligible for caching:
 
      *  Caching (the `enable-query-caching` Setting) must be enabled
-     *  The query must pass a `:cache-ttl` value. For Cards, this can be the value of `:cache_ttl`,
-        otherwise falling back to the value of the `query-caching-default-ttl` Setting.
+     *  The query must pass a `:cache-strategy` value
      *  The query must already be permissions-checked. Since the cache bypasses the normal
         query processor pipeline, the ad-hoc permissions-checking middleware isn't applied for cached results.
         (The various `/api/card/` endpoints that make use of caching do `can-read?` checks for the Card *before*

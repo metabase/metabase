@@ -12,6 +12,7 @@
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes :as audit-app]
    [metabase-enterprise.billing.api.routes :as billing]
+   [metabase-enterprise.caching.api :as caching]
    [metabase-enterprise.content-verification.api.routes
     :as content-verification]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
@@ -43,4 +44,7 @@
     (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
    (compojure/context
     "/serialization" []
-    (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))))
+    (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
+   (compojure/context
+    "/caching" []
+    (ee.api.common/+require-premium-feature :cache-granular-controls (deferred-tru "Caching") caching/routes))))
