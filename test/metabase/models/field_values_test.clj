@@ -346,6 +346,15 @@
     (t2/update! FieldValues (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
+(deftest update-full-field-without-values-should-remove-not-all-cached-field-values
+  (mt/with-temp [FieldValues fv         {:field_id (mt/id :venues :id)
+                                         :type     :full}
+                 FieldValues sandbox-fv {:field_id (mt/id :venues :id)
+                                         :type     :sandbox
+                                         :hash_key "random-hash"}]
+    (t2/update! FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
+    (is (t2/exists? FieldValues :id (:id sandbox-fv)))))
+
 (deftest identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"
     (mt/with-temp [Database    db    {:name "field-db" :engine :h2}

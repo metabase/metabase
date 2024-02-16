@@ -124,15 +124,14 @@
                     {:type        type
                      :status-code 400}))))
 
-(defn- assert-no-identity-changes [field-values]
-  (let [changes (t2/changes field-values)]
-    (when (some #(contains? changes %) [:field_id :type :hash_key])
-      (throw (ex-info (tru "Can't update field_id, type, or hash_key for a FieldValues.")
-                      {:id          (:id field-values)
-                       :field_id    (:field_id changes)
-                       :type        (:type changes)
-                       :hash_key    (:hash_key changes)
-                       :status-code 400})))))
+(defn- assert-no-identity-changes [id changes]
+  (when (some #(contains? changes %) [:field_id :type :hash_key])
+    (throw (ex-info (tru "Can't update field_id, type, or hash_key for a FieldValues.")
+                    {:id          id
+                     :field_id    (:field_id changes)
+                     :type        (:type changes)
+                     :hash_key    (:hash_key changes)
+                     :status-code 400}))))
 
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
@@ -156,12 +155,13 @@
 
 (t2/define-before-update :model/FieldValues
   [field-values]
-  (u/prog1 (update field-values :type #(keyword (or % :full)))
-    (assert-no-identity-changes <>)
-    (assert-valid-human-readable-values field-values)
-    ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-    (when (and (contains? field-values :values) (= :full (:type <>)))
-      (clear-advanced-field-values-for-field! (:field_id field-values)))))
+  (let [changes (t2/changes field-values)]
+    (u/prog1 (update field-values :type #(keyword (or % :full)))
+      (assert-no-identity-changes (:id field-values) changes)
+      (assert-valid-human-readable-values field-values)
+      ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
+      (when (and (contains? changes :values) (= :full (:type <>)))
+        (clear-advanced-field-values-for-field! (:field_id field-values))))))
 
 (defn- assert-coherent-query [{:keys [type hash_key] :as field-values}]
   (cond
