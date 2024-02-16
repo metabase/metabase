@@ -5,8 +5,6 @@ import * as Yup from "yup";
 
 import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
 import { Form, FormProvider } from "metabase/forms";
-import { Group } from "metabase/ui";
-import { apiGetCardSummary } from "metabase/query_builder/actions";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -23,23 +21,13 @@ import {
   isInstanceAnalyticsCollection,
   getInstanceAnalyticsCustomCollection,
 } from "metabase/collections/utils";
-import { useCollectionListQuery } from "metabase/common/hooks";
-import ModalContent from "metabase/components/ModalContent";
-import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
-import Button from "metabase/core/components/Button";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormFooter from "metabase/core/components/FormFooter";
-import FormInput from "metabase/core/components/FormInput";
-import FormRadio from "metabase/core/components/FormRadio";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import { Form, FormProvider } from "metabase/forms";
+import type { CollectionId } from "metabase-types/api";
 import * as Errors from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type Question from "metabase-lib/Question";
-import type { CollectionId } from "metabase-types/api";
+import { CreateCollectionOnTheGo } from "./CreateCollectionOnTheGo";
 
 import "./SaveQuestionModal.css";
 
@@ -219,80 +207,87 @@ export const SaveQuestionModal = ({
   return (
     <Modal.Root onClose={onClose} opened={true}>
       <Modal.Overlay />
-      <FormProvider
-        initialValues={initialValues}
-        onSubmit={handleSubmit}
-        validationSchema={SAVE_QUESTION_SCHEMA}
-        enableReinitialize
-      >
-        {({ values, setFieldValue, validateForm }) => (
-          <Modal.Content p="md">
-            <Modal.Header>
-              <Modal.Title>{title}</Modal.Title>
-              <Flex align="center" gap="sm">
-                <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
-                  question={questionWithCollectionId}
-                  setFieldValue={setFieldValue}
-                  validateForm={validateForm}
-                />
-                <Modal.CloseButton />
-              </Flex>
-            </Modal.Header>
-            <Modal.Body>
-              <Form>
-                {showSaveType && (
-                  <FormRadio
-                    name="saveType"
-                    title={t`Replace or save as new?`}
-                    options={[
-                      {
-                        name: t`Replace original question, "${originalQuestion?.displayName()}"`,
-                        value: "overwrite",
-                      },
-                      { name: t`Save as new question`, value: "create" },
-                    ]}
-                    vertical
-                  />
-                )}
-                <TransitionGroup>
-                  {values.saveType === "create" && (
-                    <CSSTransition
-                      classNames="saveQuestionModalFields"
-                      timeout={{
-                        enter: 500,
-                        exit: 500,
-                      }}
-                    >
-                      <div className="saveQuestionModalFields">
-                        <FormInput
-                          name="name"
-                          title={t`Name`}
-                          placeholder={nameInputPlaceholder}
-                        />
-                        <FormTextArea
-                          name="description"
-                          title={t`Description`}
-                          placeholder={t`It's optional but oh, so helpful`}
-                        />
-                        <FormCollectionPicker
-                          name="collection_id"
-                          title={t`Which collection should this go in?`}
-                          zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-                        />
-                      </div>
-                    </CSSTransition>
-                  )}
-                </TransitionGroup>
-                <FormFooter>
-                  <FormErrorMessage inline />
-                  <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
-                  <FormSubmitButton title={t`Save`} primary />
-                </FormFooter>
-              </Form>
-            </Modal.Body>
-          </Modal.Content>
+      <CreateCollectionOnTheGo>
+        {({ resumedValues }) => (
+          <FormProvider
+            initialValues={{ ...initialValues, ...resumedValues }}
+            onSubmit={handleSubmit}
+            validationSchema={SAVE_QUESTION_SCHEMA}
+            enableReinitialize
+          >
+            {({ values, setFieldValue, validateForm }) => (
+              <Modal.Content p="md">
+                <Modal.Header>
+                  <Modal.Title>{title}</Modal.Title>
+                  <Flex align="center" gap="sm">
+                    <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
+                      question={questionWithCollectionId}
+                      setFieldValue={setFieldValue}
+                      validateForm={validateForm}
+                    />
+                    <Modal.CloseButton />
+                  </Flex>
+                </Modal.Header>
+                <Modal.Body>
+                  <Form>
+                    {showSaveType && (
+                      <FormRadio
+                        name="saveType"
+                        title={t`Replace or save as new?`}
+                        options={[
+                          {
+                            name: t`Replace original question, "${originalQuestion?.displayName()}"`,
+                            value: "overwrite",
+                          },
+                          { name: t`Save as new question`, value: "create" },
+                        ]}
+                        vertical
+                      />
+                    )}
+                    <TransitionGroup>
+                      {values.saveType === "create" && (
+                        <CSSTransition
+                          classNames="saveQuestionModalFields"
+                          timeout={{
+                            enter: 500,
+                            exit: 500,
+                          }}
+                        >
+                          <div className="saveQuestionModalFields">
+                            <FormInput
+                              name="name"
+                              title={t`Name`}
+                              placeholder={nameInputPlaceholder}
+                            />
+                            <FormTextArea
+                              name="description"
+                              title={t`Description`}
+                              placeholder={t`It's optional but oh, so helpful`}
+                            />
+                            <FormCollectionPicker
+                              name="collection_id"
+                              title={t`Which collection should this go in?`}
+                              zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+                            />
+                          </div>
+                        </CSSTransition>
+                      )}
+                    </TransitionGroup>
+                    <FormFooter>
+                      <FormErrorMessage inline />
+                      <Button
+                        type="button"
+                        onClick={onClose}
+                      >{t`Cancel`}</Button>
+                      <FormSubmitButton title={t`Save`} primary />
+                    </FormFooter>
+                  </Form>
+                </Modal.Body>
+              </Modal.Content>
+            )}
+          </FormProvider>
         )}
-      </FormProvider>
+      </CreateCollectionOnTheGo>
     </Modal.Root>
   );
 };
