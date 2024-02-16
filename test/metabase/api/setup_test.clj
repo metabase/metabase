@@ -14,6 +14,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -96,6 +97,20 @@
                         :model    "User"
                         :details  {}}
                        (mt/latest-audit-log-entry :user-joined user-id)))))))))))
+
+(deftest set-license-token-test
+  (testing "POST /api/setup"
+    (testing "Check that we accept a license-token in the ssetup endpoint"
+       (with-redefs [premium-features/fetch-token-status (fn [_x]
+                                                          {:valid    true
+                                                           :status   "fake"
+                                                           :features ["test" "fixture"]
+                                                           :trial    false})]
+        (let [license-token "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+          (with-setup! {:license-token license-token}
+            (testing "Creating a new admin user should set the `admin-email` Setting"
+              (is (= license-token (premium-features/premium-embedding-token))))))))))
+
 
 (deftest invite-user-test
   (testing "POST /api/setup"
@@ -615,3 +630,39 @@
         (is (= "You don't have permissions to do that." (client/client :get "setup/user_defaults?token=987654"))))
       (testing "with valid token"
         (is (= {:email "john.doe@example.com"} (client/client :get "setup/user_defaults?token=123456")))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         GET /api/setup/token-check                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+
+(deftest token-check-valid
+  (testing "GET /api/token-check"
+    (testing "Check that returns {valid: true} for valid token"
+      (mt/with-temporary-setting-values [has-user-setup false]
+        (with-redefs [premium-features/fetch-token-status (fn [_x]
+                                                            {:valid    true
+                                                             :status   "fake"
+                                                             :features ["test" "fixture"]
+                                                             :trial    false})]
+          (is (= {:valid true}
+                 (client/client :get "setup/token-check?license-token=aaa"))))))
+    (testing "Check that returns {valid: false} for invalid token"
+      (mt/with-temporary-setting-values [has-user-setup false]
+        (with-redefs [premium-features/fetch-token-status (fn [_x]
+                                                            {:valid    false
+                                                             :status   "fake"
+                                                             :features []
+                                                             :trial    false})]
+          (is (= {:valid false}
+                 (client/client :get "setup/token-check?license-token=aaa")))))
+      (testing "Check that returns {valid: false} for invalid token"
+        (mt/with-temporary-setting-values [has-user-setup true]
+          (with-redefs [premium-features/fetch-token-status (fn [_x]
+                                                              {:valid    false
+                                                               :status   "fake"
+                                                               :features []
+                                                               :trial    false})]
+            (is (= "This endpoint can only be used before the initial setup."
+                (client/client :get "setup/token-check?license-token=aaa")))))))))
