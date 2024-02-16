@@ -1,6 +1,5 @@
 import { assoc } from "icepick";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 import { titleize, humanize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";

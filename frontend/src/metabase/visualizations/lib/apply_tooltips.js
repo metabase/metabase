@@ -1,8 +1,7 @@
 /// code to "apply" chart tooltips. (How does one apply a tooltip?)
 
 import d3 from "d3";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { getIn } from "icepick";
 import _ from "underscore";
 

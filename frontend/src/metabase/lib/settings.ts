@@ -1,7 +1,6 @@
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { parseTimestamp } from "metabase/lib/time";
 import { numberToWord, compareVersions } from "metabase/lib/utils";

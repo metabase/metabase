@@ -1,6 +1,5 @@
 import { useState } from "react";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import type { ComponentStory } from "@storybook/react";
 import TimeInput from "./TimeInput";
 

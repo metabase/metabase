@@ -1,7 +1,5 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
+import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import type { NumberLike, StringLike } from "@visx/scale";
 import type {
   DatasetColumn,

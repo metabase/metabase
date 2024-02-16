@@ -1,5 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import testAcrossTimezones from "__support__/timezones";
 
 import { computeTimeseriesDataInverval } from "metabase/visualizations/lib/timeseries";

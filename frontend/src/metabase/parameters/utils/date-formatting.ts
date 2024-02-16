@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { DATE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
 import { EXCLUDE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/ExcludeDatePicker";
