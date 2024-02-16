@@ -67,23 +67,6 @@ describe("StructuredQuery nesting", () => {
         },
       });
     });
-
-    it("should return a table with correct dimensions", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable
-        .legacyQuery()
-        .aggregate(["count"])
-        .breakout(["field", ORDERS.PRODUCT_ID, null]);
-      expect(
-        q
-          .nest()
-          .filterDimensionOptions()
-          .dimensions.map(d => d.mbql()),
-      ).toEqual([
-        ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
-        ["field", "count", { "base-type": "type/Integer" }],
-      ]);
-    });
   });
 
   describe("topLevelQuery", () => {

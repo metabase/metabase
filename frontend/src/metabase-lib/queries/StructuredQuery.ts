@@ -9,15 +9,15 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import Dimension, {
-  FieldDimension,
-  ExpressionDimension,
   AggregationDimension,
+  ExpressionDimension,
+  FieldDimension,
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
 import {
-  format as formatExpression,
   DISPLAY_QUOTES,
+  format as formatExpression,
 } from "metabase-lib/expressions/format";
 import {
   getAggregationOperators,
@@ -35,11 +35,10 @@ import type {
   DatasetQuery,
   ExpressionClause,
   Filter,
-  TableId,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
+  TableId,
 } from "metabase-types/api";
-
 
 import type Question from "../Question";
 import type Database from "../metadata/Database";
@@ -52,7 +51,6 @@ import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
-import { getStructuredQueryTable } from "./utils/structured-query-table";
 
 type DimensionFilterFn = (dimension: Dimension) => boolean;
 export type FieldFilterFn = (filter: Field) => boolean;
@@ -195,7 +193,9 @@ class StructuredQuery extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {
-    return getStructuredQueryTable(this.question(), this);
+    const question = this.question();
+    const metadata = question.metadata();
+    return metadata.table(this._sourceTableId());
   });
 
   hasAggregations() {
