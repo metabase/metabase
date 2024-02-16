@@ -70,24 +70,36 @@
   (t/days 14))
 
 (def advanced-field-values-types
-  "A class of fieldvalues that has additional constraints/filters."
+  "A class of field-values that has additional constraints/filters."
   #{:sandbox         ;; field values filtered by sandbox permissions
     :impersonation   ;; field values with connection impersonation enforced (db-level roles)
     :linked-filter}) ;; field values with constraints from other linked parameters on dashboard/embedding
 
 (def ^:private field-values-types
   "All FieldValues type."
-  (into #{:full} ;; default type for fieldvalues where it contains values for a field without constraints
+  (into #{:full} ;; default type for field-values where it contains values for a field without constraints
         advanced-field-values-types))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Entity & Lifecycle                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def FieldValues
+(def MixedFieldValues
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
   We'll keep this till we replace all the symbols in our codebase."
   :model/FieldValues)
+
+(def FullFieldValues
+  "Using a var is nicer than keyword, because we can put some semantic documentation here. It's also nice for refactoring."
+  :model/FullFieldValues)
+
+(def AdvancedFieldValues
+  "Using a var is nicer than keyword, because we can put some semantic documentation here. It's also nice for refactoring."
+  :model/AdvancedFieldValues)
+
+(derive :model/FullFieldValues :model/FieldValues)
+
+(derive :model/AdvancedFieldValues :model/FieldValues)
 
 (methodical/defmethod t2/table-name :model/FieldValues [_model] :metabase_fieldvalues)
 
@@ -115,13 +127,13 @@
                      :status-code 400})))
 
   (when (and (= type :full) hash_key)
-    (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
+    (throw (ex-info (tru "FullFieldValues shouldn't have hash_key.")
                     {:type        type
                      :hash_key    hash_key
                      :status-code 400})))
 
   (when (and (advanced-field-values-types type) (str/blank? hash_key))
-    (throw (ex-info (tru "Advanced FieldValues require a hash_key.")
+    (throw (ex-info (tru "AdvancedFieldValues require a hash_key.")
                     {:type        type
                      :status-code 400}))))
 
@@ -137,32 +149,55 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (t2/delete! FieldValues :field_id (u/the-id field-or-id)
-                          :type     [:in advanced-field-values-types]))
+  (t2/delete! AdvancedFieldValues
+              :field_id (u/the-id field-or-id)
+              :type [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
-  "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
+  "Remove all FieldValues for a `field-or-id`, including the advanced ones."
   [field-or-id]
-  (t2/delete! FieldValues :field_id (u/the-id field-or-id)))
+  (t2/delete! MixedFieldValues :field_id (u/the-id field-or-id)))
 
+;; TODO specialize
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
-  (u/prog1 (update field-values :type #(keyword (or % :full)))
+  (u/prog1 field-values
     (assert-valid-human-readable-values field-values)
-    (assert-valid-type-hash-combo <>)
+    (assert-valid-type-hash-combo field-values)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
-    (when (= :full (:type <>))
+    (when (= :full (:type field-values))
       (clear-advanced-field-values-for-field! field_id))))
 
+(t2/define-before-insert :model/AdvancedFieldValues
+  [{:keys [type] :as field-values}]
+  (assert (contains? advanced-field-values-types type))
+  field-values)
+
+(t2/define-before-insert :model/FullFieldValues
+  [{:keys [type] :as field-values}]
+  (assert (or (nil? type) (= :full type)))
+  (assoc field-values :type :full))
+
+;; TODO specialize
 (t2/define-before-update :model/FieldValues
   [field-values]
   (let [changes (t2/changes field-values)]
-    (u/prog1 (update field-values :type #(keyword (or % :full)))
+    (u/prog1 field-values
       (assert-no-identity-changes (:id field-values) changes)
       (assert-valid-human-readable-values field-values)
       ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-      (when (and (contains? changes :values) (= :full (:type <>)))
+      (when (and (contains? changes :values) (= :full (:type field-values)))
         (clear-advanced-field-values-for-field! (:field_id field-values))))))
+
+(t2/define-before-update :model/AdvancedFieldValues
+  [{:keys [type] :as field-values}]
+  (assert (or (nil? type) (contains? advanced-field-values-types type)))
+  field-values)
+
+(t2/define-before-update :model/FullFieldValues
+  [{:keys [type] :as field-values}]
+  (assert (or (nil? type) (= :full type)))
+  field-values)
 
 (defn- assert-coherent-query [{:keys [type hash_key] :as field-values}]
   (cond
@@ -173,11 +208,11 @@
 
     (= :full (keyword type))
     (when (some? hash_key)
-      (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
+      (throw (ex-info "Invalid query - FullFieldValues cannot have a hash_key"
                       {:field-values field-values})))
 
     (and (contains? field-values :hash_key) (nil? hash_key))
-    (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
+    (throw (ex-info "Invalid query - AdvancedFieldValues can only specify a non-empty hash_key"
                     {:field-values field-values}))))
 
 (defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]
@@ -186,10 +221,29 @@
     (some? type)             (update field-values :hash_key #(or % [:not= nil]))
     :else                    field-values))
 
+;; TODO specialize
 (t2/define-before-select :model/FieldValues
   [{:keys [kv-args] :as query}]
   (assert-coherent-query kv-args)
   (update query :kv-args add-mismatched-hash-filter))
+
+(t2/define-before-select :model/AdvancedFieldValues
+  [{{pk :toucan/pk :keys [id field_id type hash_key] :as kv-args} :kv-args :as query}]
+  (assert (or pk id
+              (and
+               (some? field_id)
+               (contains? advanced-field-values-types type)
+               (some? hash_key))))
+  query)
+
+(t2/define-before-select :model/FullFieldValues
+  [{{pk :toucan/pk :keys [id field_id type hash_key] :as kv-args} :kv-args :as query}]
+  (assert (or pk id
+              (and
+               (some? field_id)
+               (or (nil? type) (= :full type))
+               (nil? hash_key))))
+  (assoc query :type :full))
 
 (t2/define-after-select :model/FieldValues
   [field-values]
@@ -214,7 +268,7 @@
                                        :else
                                        [])))))
 
-
+;; TODO specialize?
 (defmethod serdes/hash-fields :model/FieldValues
   [_field-values]
   [(serdes/hydrated-hash :field)])
@@ -371,22 +425,15 @@
   (if (<= (count rows) 1)
     (first rows)
     (let [[latest & duplicates] (sort-by :updated_at u/reverse-compare rows)]
-      (t2/delete! FieldValues :id [:in (map :id duplicates)])
+      (t2/delete! MixedFieldValues :id [:in (map :id duplicates)])
       latest)))
-
-(defn get-latest-field-values
-  "This returns the FieldValues with the given :type and :hash_key for the given Field.
-   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
-  [field-id type hash]
-  (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
-  (delete-duplicates-and-return-latest!
-    (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
 
 (defn get-latest-full-field-values
   "This returns the full FieldValues for the given Field.
    This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id]
-  (get-latest-field-values field-id :full nil))
+  (delete-duplicates-and-return-latest!
+   (t2/select FullFieldValues :field_id field-id :type :full)))
 
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
@@ -433,7 +480,7 @@
       (and field-values unwrapped-values)
       (do
        (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
-       (t2/update! FieldValues (u/the-id field-values)
+       (t2/update! FullFieldValues (u/the-id field-values)
                    (m/remove-vals nil?
                                   {:has_more_values       has_more_values
                                    :values                values
@@ -444,7 +491,7 @@
       unwrapped-values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (mdb.u/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+        (mdb.u/select-or-insert! FullFieldValues {:field_id (u/the-id field), :type :full}
           (constantly {:has_more_values       has_more_values
                        :values                values
                        :human_readable_values human-readable-values}))
@@ -474,10 +521,10 @@
 
           (do
             (when existing
-              (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
+              (t2/update! FullFieldValues (:id existing) {:last_used_at :%now}))
             (get-latest-full-field-values field-id)))
         (do
-          (t2/update! FieldValues (:id existing) {:last_used_at :%now})
+          (t2/update! FullFieldValues (:id existing) {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

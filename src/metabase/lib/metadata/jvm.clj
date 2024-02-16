@@ -115,8 +115,8 @@
   ":metadata/column joins Dimension and FieldValues by default; namespace their columns so we can distinguish them from
   the columns coming back from Field."
   [_model]
-  {:model/Dimension   "dimension"
-   :model/FieldValues "values"})
+  {:model/Dimension       "dimension"
+   :model/FullFieldValues "values"})
 
 (methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/column
                                              #_resolved-query clojure.lang.IPersistentMap
@@ -164,7 +164,7 @@
                 [:and
                  [:= :dimension/field_id :field/id]
                  [:inline [:in :dimension/type ["external" "internal"]]]]
-                [(t2/table-name :model/FieldValues) :values]
+                [(t2/table-name :model/FullFieldValues) :values]
                 [:and
                  [:= :values/field_id :field/id]
                  [:= :values/type [:inline "full"]]]]}))

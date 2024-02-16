@@ -13,7 +13,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values :refer [MixedFieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.related :as related]
@@ -488,7 +488,7 @@
   {id ms/PositiveInt}
   (api/write-check (t2/select-one Table :id id))
   (when-let [field-ids (t2/select-pks-set Field :table_id id)]
-    (t2/delete! (t2/table-name FieldValues) :field_id [:in field-ids]))
+    (t2/delete! (t2/table-name MixedFieldValues) :field_id [:in field-ids]))
   {:status :success})
 
 (api/defendpoint GET "/:id/related"

@@ -5,7 +5,7 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.field :refer [Field]]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values :refer [AdvancedFieldValues MixedFieldValues]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -15,7 +15,7 @@
 
 (mu/defn ^:private clear-field-values-for-field!
   [field :- i/FieldInstance]
-  (when (t2/exists? FieldValues :field_id (u/the-id field))
+  (when (t2/exists? MixedFieldValues :field_id (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
@@ -82,8 +82,8 @@
                                        :%now
                                        (- (t/as field-values/advanced-field-values-max-age :days))
                                        :day)]]
-          rows-count (apply t2/count FieldValues conditions)]
-      (apply t2/delete! FieldValues conditions)
+          rows-count (apply t2/count AdvancedFieldValues conditions)]
+      (apply t2/delete! AdvancedFieldValues conditions)
       rows-count)))
 
 (mu/defn delete-expired-advanced-field-values-for-table!

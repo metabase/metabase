@@ -6,7 +6,7 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models.field-values :refer [MixedFieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -146,15 +146,16 @@
     {:order-by field-order-rule}))
 
 (mi/define-simple-hydration-method ^{:arglists '([table])} field-values
-  :field_values
-  "Return the FieldValues for all Fields belonging to a single `table`."
-  [{:keys [id]}]
-  (let [field-ids (t2/select-pks-set Field
+                                   :field_values
+                                   "Return the FieldValues for all Fields belonging to a single `table`."
+                                   [{:keys [id]}]
+                                   (let [field-ids (t2/select-pks-set Field
                     :table_id        id
                     :visibility_type "normal"
                     {:order-by field-order-rule})]
-    (when (seq field-ids)
-      (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids]))))
+                                     (when (seq field-ids)
+                                       ;; TODO Should this just be the Full values? Don't have enough context here
+                                       (t2/select-fn->fn :field_id :values MixedFieldValues, :field_id [:in field-ids]))))
 
 (mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
   :pk_field

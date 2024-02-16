@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.models.field :as field]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values :refer [AdvancedFieldValues]]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -129,7 +129,7 @@
   ([fv-type field constraints]
    (let [hash-key   (hash-key-for-advanced-field-values fv-type (:id field) constraints)
          select-kvs {:field_id (:id field) :type fv-type :hash_key hash-key}
-         fv         (mdb.u/select-or-insert! :model/FieldValues select-kvs
+         fv         (mdb.u/select-or-insert! AdvancedFieldValues select-kvs
                       #(prepare-advanced-field-values fv-type field hash-key constraints))]
      (cond
        (nil? fv) nil
@@ -138,7 +138,7 @@
        (field-values/advanced-field-values-expired? fv)
        (do
          ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
-         (t2/delete! FieldValues :id (:id fv))
+         (t2/delete! AdvancedFieldValues :id (:id fv))
          (recur fv-type field constraints))
 
        :else fv))))

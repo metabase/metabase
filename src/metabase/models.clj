@@ -115,7 +115,7 @@
  [database Database]
  [dimension Dimension]
  [field Field]
- [field-values FieldValues]
+ [field-values AdvancedFieldValues FullFieldValues MixedFieldValues]
  [login-history LoginHistory]
  [metric Metric]
  [moderation-review ModerationReview]

@@ -24,7 +24,7 @@
             DashboardCardSeries
             Database
             Field
-            FieldValues
+            FullFieldValues
             PermissionsGroup
             PermissionsGroupMembership
             Pulse
@@ -638,7 +638,7 @@
                                                      :parameter_id "foo"
                                                      :target       [:dimension
                                                                     [:field (mt/id :venues :name) nil]]}]}]
-      (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
+      (t2/delete! FullFieldValues :field_id (mt/id :venues :name) :type :full)
       (testing "Request triggers computation of field values if missing (#30218)"
         (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
                                                                "25°"
@@ -3143,7 +3143,7 @@
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
     ;; ignore the cache entries added by #23699
-    (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
+    (mt/with-temp-vals-in-db FullFieldValues (t2/select-one-pk FullFieldValues :field_id (mt/id :categories :name)) {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]

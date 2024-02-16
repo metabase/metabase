@@ -50,6 +50,7 @@
     :model/Setting
     :model/Table
     :model/Field
+    ;; TODO should become FullFieldValues
     :model/FieldValues
     :model/Segment
     :model/Metric

@@ -16,7 +16,7 @@
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
-            Database Dimension Field FieldValues]]
+            Database Dimension Field FullFieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
@@ -638,7 +638,7 @@
                                 :parameter_id "foo"
                                 :target       [:dimension
                                                [:field (mt/id :venues :name) nil]]}]}]
-        (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
+        (t2/delete! FullFieldValues :field_id (mt/id :venues :name) :type :full)
         (testing "Request triggers computation of field values if missing (#30218)"
           (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
                                                                  "25°"
@@ -917,7 +917,7 @@
 
 (deftest double-check-that-the-field-has-fieldvalues
   (is (= [1 2 3 4]
-         (t2/select-one-fn :values FieldValues :field_id (mt/id :venues :price)))))
+         (t2/select-one-fn :values FullFieldValues :field_id (mt/id :venues :price)))))
 
 (defn- price-param-values []
   {(mt/id :venues :price) {:values                [1 2 3 4]

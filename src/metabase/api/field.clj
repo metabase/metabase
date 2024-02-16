@@ -8,7 +8,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values :refer [FullFieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
@@ -312,7 +312,7 @@
           update-map             {:values                (map first value-pairs)
                                   :human_readable_values (when human-readable-values?
                                                            (map second value-pairs))}
-          updated-pk             (mdb.u/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+          updated-pk             (mdb.u/update-or-insert! FullFieldValues {:field_id (u/the-id field), :type :full}
                                    (constantly update-map))]
       (api/check-500 (pos? updated-pk))))
   {:status :success})

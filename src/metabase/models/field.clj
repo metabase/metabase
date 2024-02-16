@@ -8,7 +8,7 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values :refer [FullFieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -193,7 +193,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (t2/select [FieldValues :field_id :values], :field_id id :type :full))
+  (t2/select [FullFieldValues :field_id :values], :field_id id :type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
   "Recusively find the field id for a nested field name, return nil if not found.
@@ -234,7 +234,7 @@
   ;; with Field. See the doc in [[metabase.models.field-values]] for more.
   ;; We filter down to only :type =:full values, as they contain configured labels which must be preserved. The Advanced
   ;; FieldValues can then be regenerated without loss given these Full entities.
-  (let [id->field-values (select-field-id->instance fields FieldValues :type :full)]
+  (let [id->field-values (select-field-id->instance fields FullFieldValues :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -243,7 +243,7 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal `fields`."
   [fields]
   (let [id->field-values (select-field-id->instance (filter field-values/field-should-have-field-values? fields)
-                                                    [FieldValues :id :human_readable_values :values :field_id]
+                                                    [FullFieldValues :id :human_readable_values :values :field_id]
                                                     :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))

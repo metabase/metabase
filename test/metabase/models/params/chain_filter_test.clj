@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [metabase.models :refer [Field FieldValues]]
+   [metabase.models :refer [Field AdvancedFieldValues FullFieldValues MixedFieldValues]]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
@@ -477,7 +477,7 @@
 (deftest use-cached-field-values-test
   (testing "chain-filter should use cached FieldValues if applicable (#13832)"
     (let [field-id (mt/id :categories :name)]
-      (mt/with-model-cleanup [FieldValues]
+      (mt/with-model-cleanup [AdvancedFieldValues]
         (testing "should created a full FieldValues when constraints is `nil`"
           ;; warm up the cache
           (chain-filter categories.name nil)
@@ -486,7 +486,7 @@
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (take-n-values 3 (chain-filter categories.name nil))))
-            (is (= 1 (t2/count FieldValues :field_id field-id :type :full)))))
+            (is (= 1 (t2/count FullFieldValues :field_id field-id :type :full)))))
 
         (testing "should create a linked-filter FieldValues when have constraints"
           ;; make sure we have a clean start
@@ -498,17 +498,17 @@
             (is (= {:values          [["Japanese"] ["Steakhouse"]]
                     :has_more_values false}
                    (chain-filter categories.name {venues.price 4})))
-            (is (= 1 (t2/count FieldValues :field_id field-id :type :linked-filter)))))
+            (is (= 1 (t2/count AdvancedFieldValues :field_id field-id :type :linked-filter)))))
 
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
-            [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
-                                          (dissoc :id)
-                                          (assoc :name "NAME2"))
-             :model/FieldValues  _    {:field_id (:id field)
-                                       :type     :full
-                                       :values   ["Goooood" "Bad"]}]
-            (is (= {:values          [["Goooood"]]
+            [:model/Field     field (-> (t2/select-one :model/Field (mt/id :categories :name))
+                                        (dissoc :id)
+                                        (assoc :name "NAME2"))
+             FullFieldValues  _     {:field_id (:id field)
+                                     :type     :full
+                                     :values   ["Goooood" "Bad"]}]
+            (is (= {:values         [["Goooood"]]
                     :has_more_values false}
                    (chain-filter-search categories.name2 nil "oooood")))))
 
@@ -518,11 +518,11 @@
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})
-            (is (= 1 (t2/count FieldValues :field_id field-id :type "linked-filter"))))
+            (is (= 1 (t2/count AdvancedFieldValues :field_id field-id :type "linked-filter"))))
 
           (testing "should search for the values of linked-filter FieldValues"
-            (t2/update! FieldValues {:field_id field-id
-                                     :type     "linked-filter"}
+            (t2/update! AdvancedFieldValues {:field_id field-id
+                                             :type     "linked-filter"}
                         {:values (json/generate-string ["Good" "Bad"])
                          ;; HACK: currently this is hardcoded to true for linked-filter
                          ;; in [[params.field-values/fetch-advanced-field-values]]
@@ -532,8 +532,8 @@
                     :has_more_values false}
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
-              (t2/update! FieldValues {:field_id field-id
-                                       :type     "linked-filter"}
+              (t2/update! AdvancedFieldValues {:field_id field-id
+                                               :type     "linked-filter"}
                           {:has_more_values true})
               (is (= {:values          [["Steakhouse"]]
                       :has_more_values false}
@@ -589,7 +589,7 @@
           (testing "no FieldValues"
             (thunk))
           (testing "with FieldValues for myfield"
-            (t2.with-temp/with-temp [FieldValues _ {:field_id %myfield, :values ["value" nil ""]}]
+            (t2.with-temp/with-temp [FullFieldValues _ {:field_id %myfield, :values ["value" nil ""]}]
               (mt/with-temp-vals-in-db Field %myfield {:has_field_values "auto-list"}
                 (testing "Sanity check: make sure we will actually use the cached FieldValues"
                   (is (field-values/field-should-have-field-values? %myfield))
@@ -598,19 +598,19 @@
 
 (defn- do-with-clean-field-values-for-field
   [field-or-field-id thunk]
-  (mt/with-model-cleanup [FieldValues]
+  (mt/with-model-cleanup [MixedFieldValues]
     (let [field-id         (u/the-id field-or-field-id)
           has_field_values (t2/select-one-fn :has_field_values Field :id field-id)
-          fvs              (t2/select FieldValues :field_id field-id)]
+          fvs              (t2/select MixedFieldValues :field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
-      ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
+      ;; from changing this to `nil` if the field is `auto-list` and exceeds thresholds
       (t2/update! Field field-id {:has_field_values "list"})
-      (t2/delete! FieldValues :field_id field-id)
+      (t2/delete! MixedFieldValues :field_id field-id)
       (try
         (thunk)
         (finally
          (t2/update! Field field-id {:has_field_values has_field_values})
-         (t2/insert! FieldValues fvs))))))
+         (t2/insert! MixedFieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field
   "Run `body` with all FieldValues for `field-id` deleted.

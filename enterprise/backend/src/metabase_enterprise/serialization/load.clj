@@ -21,7 +21,7 @@
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models.field-values :refer [FullFieldValues]]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
@@ -266,7 +266,7 @@
                              (update :fk_target_field_id (comp :field fully-qualified-name->context))
                              (dissoc :values)
                              (assoc :table_id (:table context)))))]
-    (maybe-upsert-many! context FieldValues
+    (maybe-upsert-many! context FullFieldValues
       (for [[field-value field-id] (map vector field-values field-ids)
             :when field-id]
         (assoc field-value :field_id field-id)))))

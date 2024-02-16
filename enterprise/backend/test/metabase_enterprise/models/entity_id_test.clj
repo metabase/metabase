@@ -46,7 +46,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
-    :model/FieldValues
+    :model/FieldValues :model/AdvancedFieldValues :model/FullFieldValues
     :model/MetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
