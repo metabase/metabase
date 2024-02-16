@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
-import { c, msgid } from "ttag";
 import { useEffect } from "react";
+import { c, msgid } from "ttag";
 import type { Card, CollectionId, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
@@ -29,7 +29,6 @@ import {
   ModelCardLink,
   MultilineEllipsified,
 } from "./BrowseModels.styled";
-import { LastEdited } from "./LastEdited";
 
 type CollectionPrefs = Record<CollectionId, ModelVisibilityPrefs>;
 
@@ -107,25 +106,21 @@ export const ModelGroup = ({
 
   const dispatch = useDispatch();
 
+  const newCollectionPrefs = {
+    ...initialCollectionPrefs,
+    [collection.id]: { areAllModelsShown, areSomeModelsShown },
+  };
+  const newCollectionPrefsStringified = JSON.stringify(newCollectionPrefs);
+
   useEffect(() => {
-    const newCollectionPrefs = {
-      ...initialCollectionPrefs,
-      [collection.id]: { areAllModelsShown, areSomeModelsShown },
-    };
     // FIXME: Can this lead to race conditions? Perhaps a system with Promise.all would make sense?
     dispatch(
       updateSetting({
         key: "browse-collection-prefs",
-        value: JSON.stringify(newCollectionPrefs),
+        value: newCollectionPrefsStringified,
       }),
     );
-  }, [
-    dispatch,
-    initialCollectionPrefs,
-    areAllModelsShown,
-    areSomeModelsShown,
-    collection.id,
-  ]);
+  }, [dispatch, newCollectionPrefsStringified]);
 
   const wrappable = { ...collection, model: "collection" };
   const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
@@ -212,10 +207,6 @@ interface ModelCellProps {
 const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const headingId = `heading-for-model-${model.id}`;
 
-  const lastEditorFullName =
-    model.last_editor_common_name ?? model.creator_common_name;
-  const timestamp = model.last_edited_at ?? model.created_at ?? "";
-
   return (
     <ModelCardLink
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
@@ -231,7 +222,9 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
             {model.name}
           </MultilineEllipsified>
         </Title>
-        <LastEdited editorFullName={lastEditorFullName} timestamp={timestamp} />
+        <MultilineEllipsified tooltipMaxWidth="20rem">
+          {model.description}
+        </MultilineEllipsified>
       </ModelCard>
     </ModelCardLink>
   );
