@@ -19996,10 +19996,10 @@ shadow-cljs-jar@1.3.4:
   resolved "https://registry.yarnpkg.com/shadow-cljs-jar/-/shadow-cljs-jar-1.3.4.tgz#0939d91c468b4bc5eab5a958f79e7ef5696fdf62"
   integrity sha512-cZB2pzVXBnhpJ6PQdsjO+j/MksR28mv4QD/hP/2y1fsIa9Z9RutYgh3N34FZ8Ktl4puAXaIGlct+gMCJ5BmwmA==
 
-shadow-cljs@2.26.5:
-  version "2.26.5"
-  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.26.5.tgz#978335510faeea81c32f70e8fe911ff5b0287a1b"
-  integrity sha512-3mWQefe1va6hjGxIIfLliw3N1ylJxH/qQLw5P3oJS40GO/6cRELXJT3pB9vSKr8SoRdt5mnfUMh1JkG2MGmrhw==
+shadow-cljs@2.27.4:
+  version "2.27.4"
+  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.27.4.tgz#92aab4d6119d132dd110d743fecc4611f1989077"
+  integrity sha512-NgLkdK1hpjDCCVAwQdBebz+0DzgaVYaGOw1ojUwY627DLL+kG/pwhw+qiDEFeJl+CWCMFiWJgnwVEM8d/Cit5g==
   dependencies:
     node-libs-browser "^2.2.1"
     readline-sync "^1.4.7"
@@ -20197,15 +20197,9 @@ source-list-map@^2.0.0:
   resolved "https://registry.yarnpkg.com/source-list-map/-/source-list-map-2.0.1.tgz#3993bd873bfc48479cca9ea3a547835c7c154b34"
   integrity sha512-qnQ7gVMxGNxsiL4lEuJwe/To8UnK7fAnmbGEEH8RpLouuKbeEm0lhbQVFIrNSuB+G7tVrAlVsZgETT5nljf+Iw==
 
-source-map-js@^0.6.2:
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/source-map-js/-/source-map-js-0.6.2.tgz#0bb5de631b41cfbda6cfba8bd05a80efdfd2385e"
-  integrity sha512-/3GptzWzu0+0MBQFrDKzw/DvvMTUORvgY6k6jd/VS6iCR4RDTKWH6v6WPwQoUO8667uQEf9Oe38DxAYWY5F/Ug==
-
-source-map-js@^1.0.1, source-map-js@^1.0.2:
+source-map-js@^0.6.2, source-map-js@^1.0.1, source-map-js@^1.0.2, "source-map-js@git+https://github.com/7rulnik/source-map-js#6e5dfccf75f84f619d3646188aef7ef7cf8f6376":
   version "1.0.2"
-  resolved "https://registry.yarnpkg.com/source-map-js/-/source-map-js-1.0.2.tgz#adbc361d9c62df380125e7f161f71c826f1e490c"
-  integrity sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==
+  resolved "git+https://github.com/7rulnik/source-map-js#6e5dfccf75f84f619d3646188aef7ef7cf8f6376"
 
 source-map-loader@^4.0.1:
   version "4.0.1"

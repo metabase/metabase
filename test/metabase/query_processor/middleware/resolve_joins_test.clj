@@ -175,7 +175,9 @@
 
 (deftest ^:parallel resolve-source-query-with-fields-all-test
   (testing "Can we resolve joins using a `:source-query` and `:fields` `:all`?"
-    (let [source-metadata (get-in (qp/process-userland-query (mt/mbql-query categories {:limit 1}))
+    (let [source-metadata (get-in (qp/process-query
+                                   (qp/userland-query
+                                    (mt/mbql-query categories {:limit 1})))
                                   [:data :results_metadata :columns])
           resolved        (resolve-joins
                            (mt/mbql-query venues

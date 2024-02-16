@@ -273,7 +273,7 @@
     "promise-loader": "^1.0.0",
     "raf": "^3.4.0",
     "react-refresh": "^0.13.0",
-    "shadow-cljs": "2.26.5",
+    "shadow-cljs": "2.27.4",
     "source-map-loader": "^4.0.1",
     "terser-webpack-plugin": "^5.3.9",
     "typescript": "^4.7.2",
@@ -295,6 +295,7 @@
     "json5": "2.2.2",
     "nth-check": "2.0.1",
     "set-value": "4.0.1",
+    "source-map-js": "git+https://github.com/7rulnik/source-map-js#6e5dfccf75f84f619d3646188aef7ef7cf8f6376",
     "unset-value": "2.0.1"
   },
   "scripts": {

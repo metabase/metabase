@@ -11,6 +11,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.sync.analyze.query-results :as qr]
@@ -88,10 +90,11 @@
 (deftest save-result-metadata-test
   (testing "test that Card result metadata is saved after running a Card"
     (t2.with-temp/with-temp [Card card]
-      (let [result (qp/process-userland-query
-                    (assoc (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
-                           :info {:card-id    (u/the-id card)
-                                  :query-hash (qp.util/query-hash {})}))]
+      (let [result (qp/process-query
+                    (qp/userland-query
+                     (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
+                     {:card-id    (u/the-id card)
+                      :query-hash (qp.util/query-hash {})}))]
         (when-not (= :completed (:status result))
           (throw (ex-info "Query failed." result))))
       (is (= (round-to-2-decimals (default-card-results-native))
@@ -101,9 +104,11 @@
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
     (t2.with-temp/with-temp [Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                                         :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
-      (let [result (qp/process-userland-query {:database lib.schema.id/saved-questions-virtual-database-id
-                                               :type     :query
-                                               :query    {:source-table (str "card__" (u/the-id card))}})]
+      (let [result (qp/process-query
+                    (qp/userland-query
+                     {:database lib.schema.id/saved-questions-virtual-database-id
+                      :type     :query
+                      :query    {:source-table (str "card__" (u/the-id card))}}))]
         (is (partial= {:status :completed}
                       result)))
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
@@ -126,10 +131,11 @@
   (testing "make sure that queries come back with metadata"
     (is (= {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
                         (-> col (update :semantic_type keyword) (update :base_type keyword)))}
-           (-> (qp/process-userland-query
-                {:database (mt/id)
-                 :type     :native
-                 :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
+           (-> (qp/process-query
+                (qp/userland-query
+                 {:database (mt/id)
+                  :type     :native
+                  :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}}))
                (get-in [:data :results_metadata])
                round-to-2-decimals)))))
 
@@ -155,11 +161,12 @@
           (let [fields (str/join ", " (map :name (default-card-results-native)))
                 native-query (str "SELECT " fields " FROM VENUES")
                 existing-metadata (add-preserved (default-card-results-native))
-                results (qp/process-userland-query
-                         {:database (mt/id)
-                          :type :native
-                          :native {:query native-query}
-                          :info {:metadata/dataset-metadata existing-metadata}})]
+                results (qp/process-query
+                         (qp/userland-query
+                          {:database (mt/id)
+                           :type     :native
+                           :native   {:query native-query}
+                           :info     {:metadata/dataset-metadata existing-metadata}}))]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))
         (testing "mbql"
@@ -167,27 +174,30 @@
                        :type :query
                        :query {:source-table (mt/id :venues)}}
                 existing-metadata (add-preserved (-> query
-                                                     (qp/process-userland-query)
+                                                     qp/userland-query
+                                                     qp/process-query
                                                      :data :results_metadata :columns))
-                results (qp/process-userland-query
-                         (update query
-                                 :info
-                                 merge
-                                 {:metadata/dataset-metadata existing-metadata}))]
+                results (qp/process-query
+                         (qp/userland-query
+                          (update query
+                                  :info
+                                  merge
+                                  {:metadata/dataset-metadata existing-metadata})))]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))))))
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
     (t2.with-temp/with-temp [Card card]
-      (qp/process-userland-query
-       {:database (mt/id)
-        :type     :query
-        :query    {:source-table (mt/id :checkins)
-                   :aggregation  [[:count]]
-                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]}
-        :info     {:card-id    (u/the-id card)
-                   :query-hash (qp.util/query-hash {})}})
+      (qp/process-query
+       (qp/userland-query
+        {:database (mt/id)
+         :type     :query
+         :query    {:source-table (mt/id :checkins)
+                    :aggregation  [[:count]]
+                    :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]}
+         :info     {:card-id    (u/the-id card)
+                    :query-hash (qp.util/query-hash {})}}))
       (is (=? [{:base_type    :type/Date
                 :effective_type    :type/Date
                 :visibility_type :normal
@@ -229,7 +239,7 @@
 (deftest ^:parallel valid-results-metadata-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "Native queries should come back with valid results metadata (#12265)"
-      (let [metadata (-> (mt/mbql-query venues) qp/compile mt/native-query results-metadata)]
+      (let [metadata (-> (mt/mbql-query venues) qp.compile/compile mt/native-query results-metadata)]
         (is (seq metadata))
         (is (not (me/humanize (mc/validate qr/ResultsMetadata metadata))))))))
 
@@ -268,7 +278,7 @@
       (letfn [(do-test [num-expected-columns]
                 (let [results-metadata (get-in (mt/run-mbql-query orders {:limit 10})
                                                [:data :results_metadata :columns])
-                      expected-cols    (qp/query->expected-cols (mt/mbql-query orders))]
+                      expected-cols    (qp.preprocess/query->expected-cols (mt/mbql-query orders))]
                   (is (= num-expected-columns
                          (count results-metadata)))
                   (is (= num-expected-columns
