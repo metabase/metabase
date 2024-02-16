@@ -47,5 +47,5 @@ export function removeBreakout(breakout, index) {
  * @deprecated use MLv2
  */
 export function clearBreakouts() {
-  return getBreakoutClause([]);
+  return undefined;
 }
