@@ -101,7 +101,28 @@ const footerVariantStyles = {
   `,
 };
 
+function getParameterPanelBackgroundColor(theme?: string) {
+  if (theme === "night") {
+    return color("bg-black");
+  }
+  if (theme === "transparent") {
+    return "transparent";
+  }
+  return color("white");
+}
+
+function getParameterPanelBorderColor(theme?: string) {
+  if (theme === "night") {
+    return color("bg-dark");
+  }
+  if (theme === "transparent") {
+    return "transparent";
+  }
+  return color("border");
+}
+
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  embedFrameTheme?: string;
   hasScroll: boolean;
   isSticky: boolean;
 }>`
@@ -111,7 +132,8 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   ${props =>
     props.hasScroll &&
     css`
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid
+        ${getParameterPanelBorderColor(props.embedFrameTheme)};
     `}
 
   ${props =>
@@ -123,7 +145,9 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       width: 100%;
       z-index: 3;
 
-      background-color: ${color("white")};
+      background-color: ${getParameterPanelBackgroundColor(
+        props.embedFrameTheme,
+      )};
     `}
 `;
 

@@ -214,6 +214,7 @@ function EmbedFrame({
         )}
         {hasVisibleParameters && (
           <ParametersWidgetContainer
+            embedFrameTheme={theme}
             hasScroll={hasInnerScroll}
             isSticky={isParameterPanelSticky}
             data-testid="dashboard-parameters-widget-container"
