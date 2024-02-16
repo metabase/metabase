@@ -137,9 +137,12 @@ export const PLUGIN_SELECTORS = {
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
+  // Make sure we get the same color to not trigger any rerendering
+  getApplicationColors: (_state: State) => colors,
   getShowMetabaseLinks: (_state: State) => true,
   getDashboardOverviewId: (_state: State) => undefined,
 };
+const colors = {};
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
