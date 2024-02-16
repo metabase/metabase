@@ -1,31 +1,28 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import type { TokenStatus, Version } from "metabase-types/api";
+import type {
+  SettingKey,
+  Settings,
+  TokenStatus,
+  Version,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import { getPlan } from "metabase/common/utils/plan";
 
-export const getSettings: <S extends State>(state: S) => GetSettings<S> =
-  createSelector(
-    (state: State) => state.settings,
-    settings => settings.values,
-  );
+export const getSettings = createSelector(
+  (state: State) => state.settings,
+  settings => settings.values,
+);
 
 export const getSettingsLoading = createSelector(
   (state: State) => state.settings,
   settings => settings.loading,
 );
 
-type GetSettings<S extends State> = S["settings"]["values"];
-type GetSettingKey<S extends State> = keyof GetSettings<S>;
-
-export const getSetting = <S extends State, T extends GetSettingKey<S>>(
-  state: S,
+export const getSetting = <T extends SettingKey>(
+  state: State,
   key: T,
-): GetSettings<S>[T] => {
-  const settings = getSettings(state);
-  const setting = settings[key];
-  return setting;
-};
+): Settings[T] => getSettings(state)[key];
 
 export const getStoreUrl = (path = "") => {
   return `https://store.metabase.com/${path}`;

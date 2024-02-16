@@ -13,10 +13,6 @@ export function getApplicationName(state: State) {
   return PLUGIN_SELECTORS.getApplicationName(state);
 }
 
-export function getApplicationColors(state: State) {
-  return PLUGIN_SELECTORS.getApplicationColors(state);
-}
-
 export function getCanWhitelabel(state: State) {
   return PLUGIN_SELECTORS.canWhitelabel(state);
 }

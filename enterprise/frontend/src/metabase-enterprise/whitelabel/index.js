@@ -10,7 +10,6 @@ import {
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
-  getApplicationColors,
   getApplicationName,
   getIsWhiteLabeling,
   getLoadingMessage,
@@ -247,5 +246,4 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
   PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
-  PLUGIN_SELECTORS.getApplicationColors = getApplicationColors;
 }

@@ -30,7 +30,3 @@ export function getApplicationName(state: EnterpriseState) {
 export function getShowMetabaseLinks(state: EnterpriseState) {
   return getSetting(state, "show-metabase-links");
 }
-
-export function getApplicationColors(state: EnterpriseState) {
-  return getSetting(state, "application-colors");
-}
