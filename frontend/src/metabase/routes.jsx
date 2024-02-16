@@ -12,17 +12,14 @@ import App from "metabase/App.tsx";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 
-// auth containers
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
 
-/* Dashboards */
 import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
 
-/* Browse data */
 import { BrowseApp } from "metabase/browse/components/BrowseApp";
 import SchemaBrowser from "metabase/browse/components/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
@@ -42,13 +39,11 @@ import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 
-// Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
 import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
 
-// Reference Segments
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
@@ -56,7 +51,6 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 
-// Reference Databases
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import TableListContainer from "metabase/reference/databases/TableListContainer";
