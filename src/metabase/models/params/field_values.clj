@@ -46,9 +46,7 @@
   [field-ids]
   (when (seq field-ids)
     (not-empty
-     (let [fields       (-> (t2/select :model/Field :id [:in (set field-ids)])
-                            (field/readable-fields-only)
-                            (t2/hydrate :values))
+     (let [fields       (field/readable-fields-only (t2/select :model/Field :id [:in (set field-ids)]))
            field-values (->> (map #(select-keys (field-values/get-or-create-full-field-values! %)
                                                 [:field_id :human_readable_values :values])
                                   fields)
