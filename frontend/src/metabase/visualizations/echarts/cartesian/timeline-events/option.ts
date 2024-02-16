@@ -77,7 +77,7 @@ export const getTimelineEventsSeries = (
     animation: false,
     type: "line",
     data: [],
-    zlevel: CHART_STYLE.timelineEvents.zIndex,
+    z: CHART_STYLE.timelineEvents.zIndex,
     markLine: {
       symbol: "none",
       lineStyle: {
