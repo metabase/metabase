@@ -114,7 +114,7 @@
   the query metadata so that the frontend can determine whether to show the download option on the UI."
   :feature :advanced-permissions
   [qp]
-  (fn [query rff context]
+  (fn [query rff]
     (let [download-perms-level (if api/*current-user-permissions-set*
                                  (current-user-download-perms-level query)
                                  ;; If no user is bound, assume full download permissions (e.g. for public questions)
@@ -125,5 +125,4 @@
                         {:type qp.error-type/missing-required-permissions
                          :permissions-error? true})))
       (qp query
-          (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
-          context))))
+          (fn rff* [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))))))

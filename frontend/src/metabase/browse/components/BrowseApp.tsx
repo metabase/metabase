@@ -11,7 +11,6 @@ import { useDispatch } from "metabase/lib/redux";
 import type { FlexProps } from "metabase/ui";
 import { Flex, Text } from "metabase/ui";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import type { ActualModelFilters } from "../utils";
@@ -49,9 +48,7 @@ export const BrowseApp = ({
   const databasesResult = useDatabaseListQuery();
 
   useEffect(() => {
-    if (isValidBrowseTab(tab)) {
-      localStorage.setItem("defaultBrowseTab", tab);
-    }
+    localStorage.setItem("defaultBrowseTab", tab);
   }, [tab]);
 
   const getInitialModelFilters = () => {
@@ -97,10 +94,6 @@ export const BrowseApp = ({
     },
     [setActualModelFilters],
   );
-
-  if (!isValidBrowseTab(tab)) {
-    return <LoadingAndErrorWrapper error />;
-  }
 
   return (
     <BrowseAppRoot data-testid="browse-app">
@@ -174,7 +167,7 @@ const BrowseTabContent = ({
 };
 
 const LearnAboutDataLink = () => (
-  <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
+  <Flex ml="auto" justify="right" align="center" style={{ flexBasis: "40.0%" }}>
     <Link to="reference">
       <BrowseHeaderIconContainer>
         <LearnAboutDataIcon size={14} name="reference" />
@@ -187,5 +180,5 @@ const LearnAboutDataLink = () => (
 );
 
 const BrowseSection = (props: FlexProps) => (
-  <Flex maw="64rem" m="0 auto" w="100%" align="center" {...props} />
+  <Flex maw="64rem" m="0 auto" w="100%" {...props} />
 );

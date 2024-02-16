@@ -943,10 +943,12 @@
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
                       (t2/hydrate :parent_id)
-                      :parent_id)]
-    (if parent-id
-      (serdes/identity-hash (t2/select-one Collection :id parent-id))
-      "ROOT")))
+                      :parent_id)
+        parent    (when parent-id (t2/select-one Collection :id parent-id))]
+    (cond
+      (not parent-id) "ROOT"
+      (not parent)    (throw (ex-info (format "Collection %s is an orphan" (:id coll)) {:parent-id parent-id}))
+      :else           (serdes/identity-hash parent))))
 
 (defmethod serdes/hash-fields Collection
   [_collection]

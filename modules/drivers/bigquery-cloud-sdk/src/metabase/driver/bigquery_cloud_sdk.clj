@@ -15,8 +15,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models :refer [Database]]
    [metabase.models.table :as table]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
@@ -51,8 +51,8 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
-(defn- database-details->client
-  ^BigQuery [details]
+(mu/defn ^:private database-details->client
+  ^BigQuery [details :- :map]
   (let [creds   (bigquery.common/database-details->service-account-credential details)
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
@@ -366,8 +366,9 @@
     (catch Throwable e
       (throw-invalid-query e sql parameters))))
 
-(defn- execute-bigquery-on-db
-  ^TableResult [database sql parameters cancel-chan cancel-requested?]
+(mu/defn ^:private execute-bigquery-on-db :- some?
+  ^TableResult
+  [database :- [:map [:details :map]] sql parameters cancel-chan cancel-requested?]
   (execute-bigquery
    (database-details->client (:details database))
    sql
@@ -387,7 +388,7 @@
               [])
           (fetch-page (.getNextPage response) cancel-requested?))))))
 
-(defn- post-process-native
+(mu/defn ^:private post-process-native :- some?
   "Parse results of a BigQuery query. `respond` is the same function passed to
   `metabase.driver/execute-reducible-query`, and has the signature
 
@@ -409,7 +410,12 @@
      (for [^FieldValueList row (fetch-page resp cancel-requested?)]
        (map parse-field-value row parsers)))))
 
-(defn- ^:dynamic *process-native* [respond database sql parameters cancel-chan]
+(mu/defn ^:private ^:dynamic *process-native*
+  [respond  :- fn?
+   database :- [:map [:details :map]]
+   sql
+   parameters
+   cancel-chan]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
@@ -438,14 +444,14 @@
     "UTC"))
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
-  [_ {{sql :query, :keys [params]} :native, :as outer-query} context respond]
+  [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
   (let [database (lib.metadata/database (qp.store/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
                   (str "-- " (qp.util/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
-        (*process-native* respond database sql params (qp.context/canceled-chan context))))))
+        (*process-native* respond database sql params qp.pipeline/*canceled-chan*)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |

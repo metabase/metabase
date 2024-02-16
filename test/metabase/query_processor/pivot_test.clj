@@ -221,7 +221,7 @@
                    (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156}
-                    (qp.pivot/run-pivot-query query {:visualization-settings viz-settings})))))))))
+                    (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz-settings}))))))))))
 
 (deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
@@ -297,7 +297,7 @@
               ([acc] acc)
               ([acc _] (inc acc))))]
     (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
-           (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil rff nil)))))
+           (qp.pivot/run-pivot-query (api.pivots/pivot-query) rff)))))
 
 (deftest ^:parallel parameters-query-test
   (mt/dataset test-data
@@ -350,7 +350,7 @@
 (deftest ^:parallel pivots-should-not-return-expressions-test-3
   (mt/dataset test-data
     (testing "We should still be able to use expressions inside the aggregations"
-      (is (=? {:status   :completed}
+      (is (=? {:status :completed}
               (qp.pivot/run-pivot-query
                (mt/mbql-query orders
                  {:expressions {"Product Rating + 1" [:+ $product_id->products.rating 1]}
@@ -382,7 +382,37 @@
                 (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
                   (is (=? {:status "completed"}
                           result))
-                  (is (= (mt/rows (qp.pivot/run-pivot-query query))
+                  (is (= [["Doohickey" "Affiliate" 0 783]
+                          ["Doohickey" "Facebook" 0 816]
+                          ["Doohickey" "Google" 0 844]
+                          ["Doohickey" "Organic" 0 738]
+                          ["Doohickey" "Twitter" 0 795]
+                          ["Gadget" "Affiliate" 0 899]
+                          ["Gadget" "Facebook" 0 1041]
+                          ["Gadget" "Google" 0 971]
+                          ["Gadget" "Organic" 0 1038]
+                          ["Gadget" "Twitter" 0 990]
+                          ["Gizmo" "Affiliate" 0 876]
+                          ["Gizmo" "Facebook" 0 994]
+                          ["Gizmo" "Google" 0 956]
+                          ["Gizmo" "Organic" 0 972]
+                          ["Gizmo" "Twitter" 0 986]
+                          ["Widget" "Affiliate" 0 962]
+                          ["Widget" "Facebook" 0 1055]
+                          ["Widget" "Google" 0 1027]
+                          ["Widget" "Organic" 0 1016]
+                          ["Widget" "Twitter" 0 1001]
+                          [nil "Affiliate" 1 3520]
+                          [nil "Facebook" 1 3906]
+                          [nil "Google" 1 3798]
+                          [nil "Organic" 1 3764]
+                          [nil "Twitter" 1 3772]
+                          ["Doohickey" nil 2 3976]
+                          ["Gadget" nil 2 4939]
+                          ["Gizmo" nil 2 4784]
+                          ["Widget" nil 2 5061]
+                          [nil nil 3 18760]]
+                         (mt/rows (qp.pivot/run-pivot-query query))
                          (mt/rows result))))))))))))
 
 (deftest ^:parallel pivot-with-order-by-test
@@ -404,10 +434,10 @@
   (testing "Pivot queries should allow ordering by aggregation (#22872)"
     (mt/dataset test-data
       (let  [query (mt/mbql-query reviews
-                     {:breakout [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
+                     {:breakout    [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
                       :aggregation [[:count]]
-                      :order-by [[:asc [:aggregation 0 nil]]]
-                      :filter [:between $created_at "2019-01-01" "2021-01-01"]})]
+                      :order-by    [[:asc [:aggregation 0 nil]]]
+                      :filter      [:between $created_at "2019-01-01" "2021-01-01"]})]
         (mt/with-native-query-testing-context query
           (is (= [[1 "2020-01-01T00:00:00Z" 0 5]
                   [2 "2020-01-01T00:00:00Z" 0 13]

@@ -405,7 +405,7 @@
                        (if (= ref field_ref) (f col) col))
                      cols))]
         (let [query           (mt/native-query {:query "select * from products"})
-              results-meta    (->> (qp/process-userland-query query)
+              results-meta    (->> (qp/process-query (qp/userland-query query))
                                    :data :results_metadata :columns)
               id-field-ref    (:field_ref (by-id results-meta "id"))
               title-field-ref (:field_ref (by-id results-meta "title"))

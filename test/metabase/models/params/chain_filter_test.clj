@@ -11,7 +11,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-
 (defn shorthand->constraint [field-id v]
   (if-not (vector? v)
     {:field-id field-id
