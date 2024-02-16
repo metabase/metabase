@@ -1,13 +1,11 @@
 import type {
   ConcreteFieldReference,
-  DatasetColumn,
   FieldReference,
   NativeParameterDimensionTarget,
   ParameterTarget,
   ParameterTextTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
-  VariableTarget,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import * as Lib from "metabase-lib";
@@ -16,6 +14,7 @@ import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import { isTemplateTagReference } from "metabase-lib/references";
 
 export function isParameterVariableTarget(
   target: ParameterTarget,
@@ -50,11 +49,10 @@ export function getParameterTargetField(
   const query = question.query();
   const metadata = question.metadata();
   const stageIndex = -1;
-  const { isNative } = Lib.queryDisplayInfo(query);
 
-  if (isNative) {
+  if (isTemplateTagReference(fieldRef)) {
     const dimension = TemplateTagDimension.parseMBQL(
-      fieldRef as VariableTarget,
+      fieldRef,
       metadata,
       question.legacyQuery() as NativeQuery,
     );
@@ -66,8 +64,8 @@ export function getParameterTargetField(
   const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
-    fields as DatasetColumn[],
-    [fieldRef as FieldReference],
+    fields.map(field => Lib.fromLegacyColumn(query, stageIndex, field)),
+    [fieldRef],
   );
 
   return fields[fieldIndex];
