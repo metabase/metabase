@@ -127,10 +127,10 @@
          {invited_first_name :first_name,
           invited_last_name  :last_name,
           invited_email      :email}                    :invite
-          license-token                                 :license-token
+          license_token                                 :license_token
          {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
   {token              SetupToken
-   license-token      [:maybe ms/NonBlankString]
+   license_token      [:maybe ms/NonBlankString]
    site_name          ms/NonBlankString
    site_locale        [:maybe ms/ValidLocale]
    first_name         [:maybe ms/NonBlankString]
@@ -160,7 +160,7 @@
                                                        {:email email, :first_name first_name})
                   (setup-set-settings!
                    request
-                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking, :license-token license-token})
+                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking, :license-token license_token})
                   (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this

@@ -103,14 +103,14 @@
 
 (deftest set-license-token-test
   (testing "POST /api/setup"
-    (testing "Check that we accept a license-token in the ssetup endpoint"
+    (testing "Check that we accept a license_token in the setup endpoint"
        (with-redefs [premium-features/fetch-token-status (fn [_x]
                                                           {:valid    true
                                                            :status   "fake"
                                                            :features ["test" "fixture"]
                                                            :trial    false})]
         (let [license-token random-fake-token]
-          (with-setup! {:license-token license-token}
+          (with-setup! {:license_token license-token}
             (testing "Creating a new admin user should set the `admin-email` Setting"
               (is (= license-token (premium-features/premium-embedding-token))))))))))
 
@@ -650,13 +650,13 @@
                                                              :features ["test" "fixture"]
                                                              :trial    false})]
           (is (= {:valid true}
-                 (client/client :get (str "setup/token-check?license-token=" random-fake-token)))))))
+                 (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))))
     (testing "Check that returns {valid: false} for invalid token"
       (mt/with-temporary-setting-values [has-user-setup false]
         (with-redefs [premium-features/fetch-token-status (fn [_x] {:valid false})]
           (is (= {:valid false}
-                 (client/client :get (str "setup/token-check?license-token=" random-fake-token))))))
+                 (client/client :get (str "setup/token-check?license_token=" random-fake-token))))))
       (testing "Check that returns {valid: false} for invalid token"
         (mt/with-temporary-setting-values [has-user-setup true]
             (is (= "This endpoint can only be used before the initial setup."
-                (client/client :get (str "setup/token-check?license-token=" random-fake-token)))))))))
+                (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))))))
