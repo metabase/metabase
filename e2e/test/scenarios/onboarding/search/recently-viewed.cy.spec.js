@@ -1,4 +1,8 @@
 import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   visitQuestion,
   visitDashboard,
@@ -7,10 +11,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("search > recently viewed", () => {
   beforeEach(() => {

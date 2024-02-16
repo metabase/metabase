@@ -1,13 +1,21 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+
 import { Button } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import type * as Lib from "metabase-lib";
+
 import { ChartSettingAddRemoveColumns } from "../ChartSettingAddRemoveColumns/ChartSettingAddRemoveColumns";
+
 import { TableColumnSelector } from "./TableColumnSelector";
+import type {
+  ColumnSettingItem,
+  DragColumnProps,
+  EditWidgetConfig,
+} from "./types";
 import {
   disableColumnInSettings,
   enableColumnInSettings,
@@ -16,11 +24,6 @@ import {
   getQueryColumnSettingItems,
   moveColumnInSettings,
 } from "./utils";
-import type {
-  ColumnSettingItem,
-  DragColumnProps,
-  EditWidgetConfig,
-} from "./types";
 
 export interface QueryColumnSelectorProps {
   value: TableColumnOrderSetting[];

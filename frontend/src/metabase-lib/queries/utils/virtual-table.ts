@@ -1,10 +1,11 @@
-import type { TableId } from "metabase-types/api";
-import Table from "metabase-lib/metadata/Table";
-import Field from "metabase-lib/metadata/Field";
 import type Database from "metabase-lib/metadata/Database";
+import Field from "metabase-lib/metadata/Field";
 import type Metadata from "metabase-lib/metadata/Metadata";
-import type StructuredQuery from "../StructuredQuery";
+import Table from "metabase-lib/metadata/Table";
+import type { TableId } from "metabase-types/api";
+
 import type NativeQuery from "../NativeQuery";
+import type StructuredQuery from "../StructuredQuery";
 
 type VirtualTableProps = {
   id: TableId;

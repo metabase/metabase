@@ -1,5 +1,8 @@
 import { onlyOn } from "@cypress/skip-test";
 
+
+import { USERS } from "e2e/support/cypress_data";
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
 import {
   restore,
   popover,
@@ -13,8 +16,6 @@ import {
   sidebar,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
-import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const PERMISSIONS = {

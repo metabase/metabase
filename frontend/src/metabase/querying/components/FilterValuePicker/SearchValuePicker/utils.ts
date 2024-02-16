@@ -1,5 +1,6 @@
 import { MetabaseApi } from "metabase/services";
 import type { FieldId, FieldValue } from "metabase-types/api";
+
 import { SEARCH_LIMIT } from "./constants";
 
 export function getSearchValues(

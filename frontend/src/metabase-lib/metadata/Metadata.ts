@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import type {
   CardId,
   DatabaseId,
@@ -11,13 +12,15 @@ import type {
   Settings,
   TableId,
 } from "metabase-types/api";
+
 import type Question from "../Question";
+
 import type Database from "./Database";
-import type Table from "./Table";
-import type Schema from "./Schema";
 import type Field from "./Field";
 import type Metric from "./Metric";
+import type Schema from "./Schema";
 import type Segment from "./Segment";
+import type Table from "./Table";
 import { getUniqueFieldId } from "./utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "./utils/saved-questions";
 

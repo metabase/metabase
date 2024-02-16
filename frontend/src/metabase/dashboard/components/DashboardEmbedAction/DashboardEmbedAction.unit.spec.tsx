@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
+import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
+import type { DashboardSharingEmbeddingModalProps } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
-import type { DashboardSharingEmbeddingModalProps } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 
 interface SetupProps {
   isAdmin: boolean;

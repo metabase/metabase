@@ -1,28 +1,25 @@
 import { Route } from "react-router";
 
-import { renderWithProviders } from "__support__/ui";
-import { mockSettings } from "__support__/settings";
 import { setupEnterprisePlugins } from "__support__/enterprise";
-
-import { createMockState } from "metabase-types/store/mocks";
-
-import {
-  createMockCollection,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
-
 import {
   setupCollectionPermissionsGraphEndpoint,
   setupCollectionsEndpoints,
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
-
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
 import type {
   CollectionPermissionsGraph,
   Collection,
   Group,
   TokenFeatures,
 } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+
 import { CollectionPermissionsPage } from "../CollectionPermissionsPage";
 
 const personalCollection = createMockCollection({

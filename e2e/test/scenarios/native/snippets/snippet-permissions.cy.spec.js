@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   restore,
   modal,
@@ -9,7 +10,6 @@ import {
   isOSS,
 } from "e2e/support/helpers";
 
-import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 

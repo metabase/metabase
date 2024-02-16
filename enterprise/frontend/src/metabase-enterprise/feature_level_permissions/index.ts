@@ -1,10 +1,10 @@
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { DATA_PERMISSIONS_TOOLBAR_CONTENT } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { DATA_PERMISSIONS_TOOLBAR_CONTENT } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 
 import { getFeatureLevelDataPermissions } from "./permission-management";
 import {

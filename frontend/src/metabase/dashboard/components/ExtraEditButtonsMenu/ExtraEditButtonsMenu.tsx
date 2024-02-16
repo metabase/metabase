@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import { Box, Popover, Icon, Tooltip, Stack, Switch } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-import { Box, Popover, Icon, Tooltip, Stack, Switch } from "metabase/ui";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
 

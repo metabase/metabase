@@ -1,4 +1,6 @@
 import { assoc, assocIn } from "icepick";
+
+import { createMockEntitiesState } from "__support__/store";
 import {
   getQuestion,
   getIsResultDirty,
@@ -6,7 +8,7 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import { createMockEntitiesState } from "__support__/store";
+import Question from "metabase-lib/Question";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -20,7 +22,6 @@ import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
 } from "metabase-types/store/mocks";
-import Question from "metabase-lib/Question";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return createMockState({

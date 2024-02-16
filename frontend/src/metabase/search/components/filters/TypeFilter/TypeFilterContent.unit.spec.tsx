@@ -1,20 +1,22 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+
+import { setupSearchEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   within,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  createMockDatabase,
-  createMockSearchResult,
-} from "metabase-types/api/mocks";
-import { setupSearchEndpoints } from "__support__/server-mocks";
 import type {
   EnabledSearchModelType,
   SearchModelType,
 } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
+
 import { TypeFilterContent } from "./TypeFilterContent";
 
 const MODEL_NAME: Record<EnabledSearchModelType, string> = {

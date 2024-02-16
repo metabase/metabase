@@ -1,6 +1,6 @@
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import { formatValue } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 function getElementIndex(e: HTMLElement | null) {
   return (

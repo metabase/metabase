@@ -1,5 +1,6 @@
-import _ from "underscore";
 import type { ScaleContinuousNumeric } from "d3-scale";
+import _ from "underscore";
+
 import type { ValueFormatter } from "metabase/visualizations/shared/types/format";
 import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import type { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";

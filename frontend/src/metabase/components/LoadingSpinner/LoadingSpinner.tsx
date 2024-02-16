@@ -1,6 +1,6 @@
 import { isReducedMotionPreferred } from "metabase/lib/dom";
-
 import { Icon } from "metabase/ui";
+
 import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";
 
 interface Props {

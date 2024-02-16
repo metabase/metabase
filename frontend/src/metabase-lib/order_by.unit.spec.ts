@@ -1,11 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   createProductsTitleField,
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
+
 import { columnFinder, createQuery } from "./test-helpers";
 
 describe("order by", () => {

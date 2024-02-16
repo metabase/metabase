@@ -1,16 +1,14 @@
-import fetchMock from "fetch-mock";
 import type { MockCall } from "fetch-mock";
+import fetchMock from "fetch-mock";
+
+import { setupModelIndexEndpoints } from "__support__/server-mocks";
+import Question from "metabase-lib/Question";
+import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
 import {
   createMockField as createBaseMockField,
   createMockCard,
   createMockModelIndex,
 } from "metabase-types/api/mocks";
-
-import { setupModelIndexEndpoints } from "__support__/server-mocks";
-
-import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
-
-import Question from "metabase-lib/Question";
 
 import type { FieldWithMaybeIndex } from "./actions";
 import { updateModelIndexes, cleanIndexFlags } from "./actions";

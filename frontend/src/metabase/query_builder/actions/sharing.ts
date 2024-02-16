@@ -1,7 +1,8 @@
 import { createAction } from "redux-actions";
+
+import { CardApi } from "metabase/services";
 import type { Card, CardId } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
-import { CardApi } from "metabase/services";
 
 type CardIdPayload = {
   id: CardId;

@@ -2,21 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
-import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockColumn,
-  createMockDataset,
-  createMockFieldValues,
-  createMockModelIndex,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockResultsMetadata,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
-  createMockUnsavedCard,
-} from "metabase-types/api/mocks";
+
 
 import {
   setupAlertsEndpoints,
@@ -39,17 +25,32 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import NewItemMenu from "metabase/containers/NewItemMenu";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { serializeCardForUrl } from "metabase/lib/card";
+import { checkNotNull } from "metabase/lib/types";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockColumn,
+  createMockDataset,
+  createMockFieldValues,
+  createMockModelIndex,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
+  createMockResultsMetadata,
+  createMockStructuredDatasetQuery,
+  createMockStructuredQuery,
+  createMockUnsavedCard,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import NewItemMenu from "metabase/containers/NewItemMenu";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-import { serializeCardForUrl } from "metabase/lib/card";
-import { checkNotNull } from "metabase/lib/types";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
 import QueryBuilder from "./QueryBuilder";
 

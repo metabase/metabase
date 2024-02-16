@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { color } from "metabase/lib/colors";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const QueryError = styled.div`
   overflow: auto;

@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
+import { Component } from "react";
 
-import { Icon } from "metabase/ui";
 import SnippetCollections from "metabase/entities/snippet-collections";
+import { Icon } from "metabase/ui";
 
 import CollectionOptionsButton from "./CollectionOptionsButton";
 

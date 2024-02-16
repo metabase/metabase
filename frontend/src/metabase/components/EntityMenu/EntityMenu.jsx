@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
 import cx from "classnames";
+import { createRef, Component } from "react";
 
+import EntityMenuItem from "metabase/components/EntityMenuItem";
+import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import { Popover } from "metabase/ui";
 
-import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
-import EntityMenuItem from "metabase/components/EntityMenuItem";
 
 /**
  * @deprecated: use Menu from "metabase/ui"

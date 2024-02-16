@@ -1,6 +1,7 @@
-import { useState } from "react";
 import type { FocusEvent } from "react";
+import { useState } from "react";
 import { t } from "ttag";
+
 import { MultiSelect } from "metabase/ui";
 
 interface StaticValuePickerProps {

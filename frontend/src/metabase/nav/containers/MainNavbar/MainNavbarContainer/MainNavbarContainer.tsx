@@ -1,15 +1,15 @@
+import type { LocationDescriptor } from "history";
 import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
 
+import { logout } from "metabase/auth/actions";
+import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import {
+  currentUserPersonalCollections,
+  nonPersonalOrArchivedCollection,
+} from "metabase/collections/utils";
 import Modal from "metabase/components/Modal";
-
-import * as Urls from "metabase/lib/urls";
-
-import type { Bookmark, Collection, User } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
@@ -18,19 +18,15 @@ import Collections, {
   ROOT_COLLECTION,
 } from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
-import { logout } from "metabase/auth/actions";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import * as Urls from "metabase/lib/urls";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
-
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import {
-  currentUserPersonalCollections,
-  nonPersonalOrArchivedCollection,
-} from "metabase/collections/utils";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/metadata/Database";
+import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-import type { MainNavbarProps, SelectedItem } from "../types";
 import NavbarLoadingView from "../NavbarLoadingView";
+import type { MainNavbarProps, SelectedItem } from "../types";
 
 import MainNavbarView from "./MainNavbarView";
 

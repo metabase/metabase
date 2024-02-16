@@ -1,4 +1,5 @@
 import { assocIn } from "icepick";
+
 import type { ChartSettings, Series } from "../../XYChart/types";
 import { getX } from "../../XYChart/utils";
 import type { Size } from "../types";

@@ -1,4 +1,9 @@
 import { onlyOn } from "@cypress/skip-test";
+
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitDashboard,
@@ -9,10 +14,6 @@ import {
   openQuestionsSidebar,
 } from "e2e/support/helpers";
 
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

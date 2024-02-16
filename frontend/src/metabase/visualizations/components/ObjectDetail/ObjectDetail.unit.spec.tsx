@@ -1,19 +1,19 @@
 import fetchMock from "fetch-mock";
-import {
-  getBrokenUpTextMatcher,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
-import { testDataset } from "__support__/testDataset";
+
 import {
   setupActionsEndpoints,
   setupDatabasesEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { testDataset } from "__support__/testDataset";
 import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
+  getBrokenUpTextMatcher,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import type { Field } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
@@ -22,10 +22,10 @@ import {
   createProductsTable,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
-import { createMockEntitiesState } from "__support__/store";
-import { checkNotNull } from "metabase/lib/types";
-
-import type { Field } from "metabase-types/api";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import ObjectDetail from "./ObjectDetail";
 

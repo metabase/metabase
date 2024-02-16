@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createNewTab,
   dashboardGrid,
@@ -14,7 +15,6 @@ import {
   sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const CATEGORY_FILTER = createMockParameter({

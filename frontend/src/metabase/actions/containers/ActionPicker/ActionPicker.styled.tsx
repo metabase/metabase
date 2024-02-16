@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
 
+import CollapseSection from "metabase/components/CollapseSection";
+import UnstyledEmptyState from "metabase/components/EmptyState";
+import Button from "metabase/core/components/Button";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-import UnstyledEmptyState from "metabase/components/EmptyState";
-import Button from "metabase/core/components/Button";
-import CollapseSection from "metabase/components/CollapseSection";
 
 export const ModelCollapseSection = styled(CollapseSection)`
   margin-bottom: ${space(1)};

@@ -1,6 +1,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { has24HourModeSetting } from "metabase/lib/time";
+
 import NumericInput from "metabase/components/NumericInput";
+import { has24HourModeSetting } from "metabase/lib/time";
 import { Icon } from "metabase/ui";
 
 import { AmPmLabel } from "./HoursMinutesInput.styled";

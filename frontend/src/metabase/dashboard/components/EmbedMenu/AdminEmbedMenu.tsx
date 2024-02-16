@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
+
 import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton";
 import type {
   EmbedMenuModes,

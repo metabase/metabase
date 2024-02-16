@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-
-import { t } from "ttag";
 import cx from "classnames";
+import { Component } from "react";
+import { t } from "ttag";
 import _ from "underscore";
-import { Icon } from "metabase/ui";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { Icon } from "metabase/ui";
 
 export default class SaveStatus extends Component {
   constructor(props, context) {

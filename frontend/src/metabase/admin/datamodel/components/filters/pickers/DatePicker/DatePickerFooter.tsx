@@ -1,8 +1,9 @@
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import type * as React from "react";
 import { t } from "ttag";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { Icon } from "metabase/ui";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   computeFilterTimeRange,
   getTimeComponent,
@@ -11,7 +12,6 @@ import {
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,
 } from "metabase-lib/queries/utils/query-time";
-import type Filter from "metabase-lib/queries/structured/Filter";
 
 import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 

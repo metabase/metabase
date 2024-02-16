@@ -1,15 +1,17 @@
-import { useState } from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
-import { createMockCard, createMockUser } from "metabase-types/api/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import { checkNotNull } from "metabase/lib/types";
+import fetchMock from "fetch-mock";
+import { useState } from "react";
+
 import { setupCardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/Question";
+import { createMockCard, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+
 import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover";
 
 const SITE_URL = "http://metabase.test";

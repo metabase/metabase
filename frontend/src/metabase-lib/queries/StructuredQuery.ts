@@ -3,9 +3,31 @@
 /**
  * Represents a structured MBQL query.
  */
-import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
+
+import * as Lib from "metabase-lib";
+import Dimension, {
+  FieldDimension,
+  ExpressionDimension,
+  AggregationDimension,
+} from "metabase-lib/Dimension";
+import DimensionOptions from "metabase-lib/DimensionOptions";
+import type { AggregationOperator } from "metabase-lib/deprecated-types";
+import {
+  format as formatExpression,
+  DISPLAY_QUOTES,
+} from "metabase-lib/expressions/format";
+import {
+  getAggregationOperators,
+  isCompatibleAggregationOperatorForField,
+} from "metabase-lib/operators/utils";
+import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
+import { isSegment } from "metabase-lib/queries/utils/filter";
+import * as Q from "metabase-lib/queries/utils/query";
+import { TYPE } from "metabase-lib/types/constants";
+import { createLookupByProperty } from "metabase-lib/utils";
 import type {
   Aggregation,
   Breakout,
@@ -17,41 +39,19 @@ import type {
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import {
-  format as formatExpression,
-  DISPLAY_QUOTES,
-} from "metabase-lib/expressions/format";
-import {
-  getAggregationOperators,
-  isCompatibleAggregationOperatorForField,
-} from "metabase-lib/operators/utils";
-import { TYPE } from "metabase-lib/types/constants";
-import { isSegment } from "metabase-lib/queries/utils/filter";
-import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
-import * as Q from "metabase-lib/queries/utils/query";
-import { createLookupByProperty } from "metabase-lib/utils";
-import Dimension, {
-  FieldDimension,
-  ExpressionDimension,
-  AggregationDimension,
-} from "metabase-lib/Dimension";
-import DimensionOptions from "metabase-lib/DimensionOptions";
-import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
-import type { Query } from "../types";
 
-import type Segment from "../metadata/Segment";
-import type Database from "../metadata/Database";
 import type Question from "../Question";
-import type Table from "../metadata/Table";
+import type Database from "../metadata/Database";
 import Field from "../metadata/Field";
+import type Segment from "../metadata/Segment";
+import type Table from "../metadata/Table";
+import type { Query } from "../types";
 
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
-
 import { getStructuredQueryTable } from "./utils/structured-query-table";
 
 type DimensionFilterFn = (dimension: Dimension) => boolean;

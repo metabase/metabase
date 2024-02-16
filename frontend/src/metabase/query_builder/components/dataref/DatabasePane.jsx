@@ -1,8 +1,10 @@
 /* eslint "react/prop-types": "warn" */
-import _ from "underscore";
 import PropTypes from "prop-types";
+import _ from "underscore";
+
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
+
 import DatabaseSchemasPane from "./DatabaseSchemasPane";
 import DatabaseTablesPane from "./DatabaseTablesPane";
 

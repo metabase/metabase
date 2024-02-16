@@ -1,17 +1,17 @@
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import type * as React from "react";
-import { t } from "ttag";
 import cx from "classnames";
 import type { Location } from "history";
+import type * as React from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
-import type { Collection, Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateDashboard } from "metabase/dashboard/actions";
 import { getIsSidebarOpen } from "metabase/dashboard/selectors";
+import { color } from "metabase/lib/colors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import type { Collection, Dashboard } from "metabase-types/api";
 
 import {
   EditWarning,

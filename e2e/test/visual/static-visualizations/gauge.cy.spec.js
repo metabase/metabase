@@ -1,3 +1,6 @@
+
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   setupSMTP,
@@ -5,9 +8,6 @@ import {
   sendSubscriptionsEmail,
   visitDashboard,
 } from "e2e/support/helpers";
-
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 

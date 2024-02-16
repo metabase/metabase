@@ -1,5 +1,5 @@
-import { Text } from "metabase/ui";
 import { getFilterTitle } from "metabase/parameters/utils/date-formatting";
+import { Text } from "metabase/ui";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 export type SearchFilterDateDisplayProps = {

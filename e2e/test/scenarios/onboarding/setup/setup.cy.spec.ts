@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   blockSnowplow,
   describeWithSnowplow,
@@ -9,7 +10,6 @@ import {
   restore,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 

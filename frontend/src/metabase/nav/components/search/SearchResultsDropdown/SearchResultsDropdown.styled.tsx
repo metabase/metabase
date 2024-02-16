@@ -1,11 +1,12 @@
 import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import type { PaperProps, GroupProps } from "metabase/ui";
 import { Group, Paper } from "metabase/ui";
 

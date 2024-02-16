@@ -1,17 +1,19 @@
-import { t } from "ttag";
-import { getIn } from "icepick";
 import cx from "classnames";
+import { getIn } from "icepick";
+import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
-import MetabaseSettings from "metabase/lib/settings";
-import { getEngineNativeType } from "metabase/lib/engine";
-import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
+import { ErrorMessage } from "metabase/components/ErrorMessage";
+import { getEngineNativeType } from "metabase/lib/engine";
+import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import { isNotNull } from "metabase/lib/types";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { useSelector } from "metabase/lib/redux";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
+
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
+
 import {
   QueryError,
   QueryErrorHeader,

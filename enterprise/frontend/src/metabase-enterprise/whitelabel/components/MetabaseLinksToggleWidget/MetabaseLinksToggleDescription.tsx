@@ -1,4 +1,5 @@
 import { t, jt } from "ttag";
+
 import { Anchor, Popover, Stack, Text } from "metabase/ui";
 
 export function MetabaseLinksToggleDescription() {

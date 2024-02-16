@@ -1,9 +1,12 @@
 import { t } from "ttag";
+
 import ErrorBoundary from "metabase/ErrorBoundary";
-import type { BillingInfoLineItem, BillingInfo } from "metabase-types/api";
-import { Text } from "metabase/ui";
 import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
+import { Text } from "metabase/ui";
+import type { BillingInfoLineItem, BillingInfo } from "metabase-types/api";
+
 import { StillNeedHelp } from "../StillNeedHelp";
+
 import {
   BillingInfoCard,
   BillingInfoRowContainer,
