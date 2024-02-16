@@ -474,32 +474,32 @@
                       :source-table (mt/id :categories)
                       :condition    ["="
                                      ["field" (mt/id :venues :category_id) nil]
-                           ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
-               :alias "Categories"}]
-             :limit 1}
-            :type "query"}
+                                     ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
+                      :alias "Categories"}]
+                    :limit 1}
+                   :type "query"}
 
-    :viz-settings {:column_settings {},
-                   :table.columns
-                   [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
-                    {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
-                    {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
-                    {:name "NAME_2", :fieldRef [:field (mt/id :categories :name) {:join-alias "Categories"}], :enabled true}]}
+     :viz-settings {:column_settings {},
+                    :table.columns
+                    [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                     {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                     {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
+                     {:name "NAME_2", :fieldRef [:field (mt/id :categories :name) {:join-alias "Categories"}], :enabled true}]}
 
-    :assertions {:csv (fn [results]
-                        (is (= [["ID" "Name" "Category ID" "Categories → Name"]
-                                ["1" "Red Medicine" "4" "Asian"]]
-                               (csv/read-csv results))))
-
-                 :json (fn [results]
+     :assertions {:csv (fn [results]
                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
                                  ["1" "Red Medicine" "4" "Asian"]]
-                                (parse-json-results results))))
+                                (csv/read-csv results))))
 
-                 :xlsx (fn [results]
-                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
-                                 [1.0 "Red Medicine" 4.0 "Asian"]]
-                                (xlsx-test/parse-xlsx-results results))))}}))
+                  :json (fn [results]
+                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                  ["1" "Red Medicine" "4" "Asian"]]
+                                 (parse-json-results results))))
+
+                  :xlsx (fn [results]
+                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                  [1.0 "Red Medicine" 4.0 "Asian"]]
+                                 (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest native-query-test
   (do-test!
