@@ -15,6 +15,7 @@ import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 export function isParameterVariableTarget(
   target: ParameterTarget,
@@ -47,19 +48,20 @@ export function getParameterTargetField(
 
   const fieldRef = target[1];
   const query = question.query();
+  const metadata = question.metadata();
   const stageIndex = -1;
   const { isNative } = Lib.queryDisplayInfo(query);
 
   if (isNative) {
     const dimension = TemplateTagDimension.parseMBQL(
       fieldRef as VariableTarget,
-      question.metadata(),
+      metadata,
       question.legacyQuery() as NativeQuery,
     );
     return dimension?.field();
   }
 
-  const table = question.legacyQueryTable();
+  const table = metadata.table(getQuestionVirtualTableId(question.id()));
   const fields = table?.fields ?? [];
   const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
