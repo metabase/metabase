@@ -38,9 +38,8 @@ class SaveStatus extends Component {
   }
 
   setSaveError(error) {
-    const message =
-      t`Error:` + String(this.state.error.message || this.state.error);
-    this.props.notify({ id: "save-status-error", icon: "error", message });
+    const message = t`Error:` + " " + String(error.message || error);
+    this.notify({ id: "save-status-error", icon: "warning", message });
   }
 
   clear() {
