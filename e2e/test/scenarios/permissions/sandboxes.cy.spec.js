@@ -776,6 +776,7 @@ describeEE("formatting > sandboxes", () => {
         .click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sandboxed").click();
+      cy.button("Limit access").click();
       cy.button("Change").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
