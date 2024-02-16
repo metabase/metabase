@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
 
-import FieldInfo from "metabase/components/MetadataInfo/FieldInfo";
 import { HoverCard } from "metabase/ui";
 
-export const WidthBoundFieldInfo = styled(FieldInfo)`
+export const WidthBound = styled.div`
   width: 300px;
   font-size: 14px;
 `;

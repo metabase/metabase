@@ -20,7 +20,8 @@ import {
 
 const propTypes = {
   className: PropTypes.string,
-  field: PropTypes.object.isRequired,
+  field: PropTypes.object,
+  fieldId: PropTypes.number,
   fieldValues: PropTypes.array,
   fetchFieldValues: PropTypes.func.isRequired,
   hasListValues: PropTypes.bool,
@@ -30,7 +31,7 @@ const propTypes = {
 const FIELD_VALUES_SHOW_LIMIT = 35;
 
 const mapStateToProps = (state, props) => {
-  const fieldId = props.field.id;
+  const { fieldId } = props;
   const metadata = getMetadata(state);
   const field = metadata.field(fieldId);
   const fieldValues =
@@ -40,6 +41,7 @@ const mapStateToProps = (state, props) => {
         })
       : [];
   return {
+    field,
     fieldValues: fieldValues || [],
     hasListValues: field?.has_field_values === "list",
   };
@@ -52,12 +54,12 @@ const mapDispatchToProps = {
 export function CategoryFingerprint({
   className,
   field,
+  fieldId,
   fieldValues = [],
   fetchFieldValues,
   hasListValues,
   showAllFieldValues,
 }) {
-  const fieldId = field.id;
   const isMissingFieldValues = fieldValues.length === 0;
   const shouldFetchFieldValues = hasListValues && isMissingFieldValues;
 
@@ -120,6 +122,9 @@ function ExtendedFieldValuesList({ fieldValues }) {
     <ul>
       {fieldValues.map((fieldValue, i) => {
         const value = Array.isArray(fieldValue) ? fieldValue[0] : fieldValue;
+        if (value === null) {
+          return null;
+        }
         return <Li key={i}>{value}</Li>;
       })}
     </ul>
@@ -135,6 +140,7 @@ function ShortenedFieldValuesList({ isLoading, fieldValues }) {
   const shortenedValuesStr = fieldValues
     .slice(0, FIELD_VALUES_SHOW_LIMIT)
     .map(value => (Array.isArray(value) ? value[0] : value))
+    .filter(value => value !== null)
     .join(", ");
 
   return (
