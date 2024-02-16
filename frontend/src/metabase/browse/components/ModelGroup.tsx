@@ -51,11 +51,16 @@ export const ModelGroup = ({
             styles={noTransform}
             onClick={toggleSomeModelsShown}
           >
-            <Icon name={areSomeModelsShown ? "chevrondown" : "chevronright"} />
+            <Icon
+              size="16"
+              name={areSomeModelsShown ? "chevrondown" : "chevronright"}
+            />
           </CollectionHeaderToggle>
           <Icon {...icon} />
-          <Text weight="bold" color="text-dark">
-            {getCollectionName(collection)}
+          <Text weight="bold" color={color("text-dark")}>
+            <Link to={Urls.collection(collection)}>
+              {getCollectionName(collection)}
+            </Link>
           </Text>
         </Group>
       </CollectionHeaderContainer>

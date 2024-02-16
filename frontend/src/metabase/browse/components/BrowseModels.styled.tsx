@@ -62,7 +62,7 @@ export const CollectionHeaderContainer = styled(Flex)`
   }
   position: relative;
   top: 0.5rem;
-  margin-left: -1.25rem;
+  margin-left: -2.5rem;
   display: flex;
   padding-top: 1rem;
   margin-right: 1rem;
@@ -109,7 +109,9 @@ export const CollectionExpandCollapseContainer = styled(Flex)`
 export const CollectionHeaderToggle = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`
-  padding: 0;
+  padding: 10px;
+  position: relative;
+  top: 2px;
   border: none;
   background-color: transparent;
   &:hover div {
