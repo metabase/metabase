@@ -28,7 +28,7 @@ export function QueryColumnInfoIcon({
       <PopoverHoverTarget
         className={className}
         name="info_filled"
-        data-no-description={Boolean(description)}
+        hasDescription={Boolean(description)}
         aria-label={t`More info`}
       />
     </QueryColumnInfoPopover>
@@ -48,7 +48,7 @@ export function TableColumnInfoIcon({
       <PopoverHoverTarget
         className={className}
         name="info_filled"
-        data-no-description={Boolean(field.description)}
+        hasDescription={Boolean(field.description)}
         aria-label={t`More info`}
       />
     </TableColumnInfoPopover>
