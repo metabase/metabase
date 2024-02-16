@@ -9,6 +9,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Tooltip, Icon } from "metabase/ui";
 import { POST } from "metabase/lib/api";
+import { color } from "metabase/lib/colors";
 
 import "./loading.css";
 import {
@@ -84,7 +85,7 @@ export const useLLMIndicator: TUseLLMIndicator = ({ question }) => {
         return (
           <Flex justify="flex-end">
             <Tooltip label="Descriptions being generated." position="top-end">
-              <Icon name="star" className="pulseicon" size={24} />
+              <Icon name="ai" className="pulseicon" size={16} />
             </Tooltip>
           </Flex>
         );
@@ -96,13 +97,11 @@ export const useLLMIndicator: TUseLLMIndicator = ({ question }) => {
               position="top-end"
             >
               <Icon
-                name="star_filled"
-                className="text-brand"
-                // color="#ffff00"
-                // stroke="#000000"
+                name="ai"
+                color={color("brand")}
                 onClick={handleClick}
                 style={{ verticalAlign: "middle", cursor: "pointer" }}
-                size={24}
+                size={16}
               />
             </Tooltip>
           </Flex>
